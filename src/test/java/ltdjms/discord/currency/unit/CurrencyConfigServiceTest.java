@@ -3,8 +3,10 @@ package ltdjms.discord.currency.unit;
 import ltdjms.discord.currency.domain.GuildCurrencyConfig;
 import ltdjms.discord.currency.persistence.GuildCurrencyConfigRepository;
 import ltdjms.discord.currency.services.CurrencyConfigService;
+import ltdjms.discord.currency.services.EmojiValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -30,11 +32,14 @@ class CurrencyConfigServiceTest {
     @Mock
     private GuildCurrencyConfigRepository configRepository;
 
+    @Mock
+    private EmojiValidator emojiValidator;
+
     private CurrencyConfigService configService;
 
     @BeforeEach
     void setUp() {
-        configService = new CurrencyConfigService(configRepository);
+        configService = new CurrencyConfigService(configRepository, emojiValidator);
     }
 
     @Test
@@ -152,11 +157,11 @@ class CurrencyConfigServiceTest {
     @Test
     @DisplayName("should reject icon exceeding maximum length")
     void shouldRejectIconExceedingMaxLength() {
-        String tooLongIcon = "A".repeat(33);
+        String tooLongIcon = "A".repeat(65);
 
         assertThatThrownBy(() -> configService.updateConfig(TEST_GUILD_ID, null, tooLongIcon))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("32");
+                .hasMessageContaining("64");
     }
 
     @Test
@@ -196,5 +201,103 @@ class CurrencyConfigServiceTest {
         assertThat(config2.guildId()).isEqualTo(guild2);
         verify(configRepository).findByGuildId(guild1);
         verify(configRepository).findByGuildId(guild2);
+    }
+
+    @Nested
+    @DisplayName("Discord Custom Emoji Validation")
+    class DiscordCustomEmojiValidation {
+
+        @Test
+        @DisplayName("should accept valid Discord custom emoji when validator returns true")
+        void shouldAcceptValidDiscordCustomEmoji() {
+            // Given
+            String customEmoji = "<:gold_coin:1234567890123456789>";
+            when(emojiValidator.isValidCustomEmoji(customEmoji)).thenReturn(true);
+            when(configRepository.findByGuildId(TEST_GUILD_ID)).thenReturn(Optional.empty());
+            when(configRepository.saveOrUpdate(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            // When
+            GuildCurrencyConfig updated = configService.updateConfig(TEST_GUILD_ID, null, customEmoji);
+
+            // Then
+            assertThat(updated.currencyIcon()).isEqualTo(customEmoji);
+            verify(emojiValidator).isValidCustomEmoji(customEmoji);
+        }
+
+        @Test
+        @DisplayName("should accept valid animated Discord custom emoji")
+        void shouldAcceptValidAnimatedDiscordCustomEmoji() {
+            // Given
+            String animatedEmoji = "<a:spinning_coin:9876543210987654321>";
+            when(emojiValidator.isValidCustomEmoji(animatedEmoji)).thenReturn(true);
+            when(configRepository.findByGuildId(TEST_GUILD_ID)).thenReturn(Optional.empty());
+            when(configRepository.saveOrUpdate(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            // When
+            GuildCurrencyConfig updated = configService.updateConfig(TEST_GUILD_ID, null, animatedEmoji);
+
+            // Then
+            assertThat(updated.currencyIcon()).isEqualTo(animatedEmoji);
+        }
+
+        @Test
+        @DisplayName("should reject invalid Discord custom emoji when validator returns false")
+        void shouldRejectInvalidDiscordCustomEmoji() {
+            // Given - emoji with invalid ID
+            String invalidEmoji = "<:invalid:abc>";
+            when(emojiValidator.isValidCustomEmoji(invalidEmoji)).thenReturn(false);
+
+            // When/Then
+            assertThatThrownBy(() -> configService.updateConfig(TEST_GUILD_ID, null, invalidEmoji))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Invalid Discord custom emoji");
+
+            verify(configRepository, never()).saveOrUpdate(any());
+        }
+
+        @Test
+        @DisplayName("should not validate non-custom-emoji strings")
+        void shouldNotValidateNonCustomEmojiStrings() {
+            // Given - regular Unicode emoji, not a custom emoji format
+            String unicodeEmoji = "💰";
+            when(configRepository.findByGuildId(TEST_GUILD_ID)).thenReturn(Optional.empty());
+            when(configRepository.saveOrUpdate(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            // When
+            GuildCurrencyConfig updated = configService.updateConfig(TEST_GUILD_ID, null, unicodeEmoji);
+
+            // Then - validator should not be called for non-custom emoji
+            verify(emojiValidator, never()).isValidCustomEmoji(any());
+            assertThat(updated.currencyIcon()).isEqualTo(unicodeEmoji);
+        }
+
+        @Test
+        @DisplayName("should not validate text-only icons")
+        void shouldNotValidateTextOnlyIcons() {
+            // Given - pure text icon
+            String textIcon = "Gold Coins";
+            when(configRepository.findByGuildId(TEST_GUILD_ID)).thenReturn(Optional.empty());
+            when(configRepository.saveOrUpdate(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            // When
+            GuildCurrencyConfig updated = configService.updateConfig(TEST_GUILD_ID, null, textIcon);
+
+            // Then - validator should not be called for plain text
+            verify(emojiValidator, never()).isValidCustomEmoji(any());
+            assertThat(updated.currencyIcon()).isEqualTo(textIcon);
+        }
+
+        @Test
+        @DisplayName("should reject custom emoji format with malformed ID")
+        void shouldRejectCustomEmojiWithMalformedId() {
+            // Given - looks like custom emoji but has invalid ID
+            String malformedEmoji = "<:coin:not_a_number>";
+            when(emojiValidator.isValidCustomEmoji(malformedEmoji)).thenReturn(false);
+
+            // When/Then
+            assertThatThrownBy(() -> configService.updateConfig(TEST_GUILD_ID, null, malformedEmoji))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Invalid Discord custom emoji");
+        }
     }
 }

@@ -3,15 +3,16 @@ FROM eclipse-temurin:17-jdk AS builder
 
 WORKDIR /app
 
-# Copy Maven configuration
+# Install Maven once so dependency download can be cached separately from source changes
+RUN apt-get update && apt-get install -y maven && rm -rf /var/lib/apt/lists/*
+
+# Copy Maven configuration and pre-fetch dependencies (stable layer)
 COPY pom.xml .
+RUN mvn -q -B dependency:go-offline
 
-# Copy source code
+# Copy source code and build the application (skip tests for Docker build)
 COPY src ./src
-
-# Build the application (skip tests for Docker build)
-RUN apt-get update && apt-get install -y maven && \
-    mvn clean package -DskipTests && \
+RUN mvn -q -B clean package -DskipTests && \
     # Copy the shaded application JAR (with dependencies) to a stable name
     cp target/discord-currency-bot-*.jar app.jar
 

@@ -11,11 +11,13 @@ import ltdjms.discord.currency.services.BalanceAdjustmentService;
 import ltdjms.discord.currency.services.BalanceService;
 import ltdjms.discord.currency.services.CurrencyConfigService;
 import ltdjms.discord.currency.services.DefaultBalanceService;
+import ltdjms.discord.currency.services.EmojiValidator;
+import ltdjms.discord.currency.services.JdaEmojiValidator;
 import ltdjms.discord.shared.DatabaseConfig;
+import ltdjms.discord.shared.DatabaseSchemaMigrator;
 import ltdjms.discord.shared.EnvironmentConfig;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
-import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,13 +41,19 @@ public class DiscordCurrencyBot {
         this.databaseConfig = new DatabaseConfig(envConfig);
         DataSource dataSource = databaseConfig.getDataSource();
 
+        // Apply non-destructive schema migrations before using the database.
+        // This keeps the actual schema in sync with src/main/resources/db/schema.sql
+        // for both local development and container environments.
+        DatabaseSchemaMigrator.forDefaultSchema().migrate(dataSource);
+
         // Initialize repositories
         GuildCurrencyConfigRepository configRepository = new JdbcGuildCurrencyConfigRepository(dataSource);
         MemberCurrencyAccountRepository accountRepository = new JdbcMemberCurrencyAccountRepository(dataSource);
 
         // Initialize services
+        EmojiValidator emojiValidator = new JdaEmojiValidator();
         BalanceService balanceService = new DefaultBalanceService(accountRepository, configRepository);
-        CurrencyConfigService configService = new CurrencyConfigService(configRepository);
+        CurrencyConfigService configService = new CurrencyConfigService(configRepository, emojiValidator);
         BalanceAdjustmentService adjustmentService = new BalanceAdjustmentService(accountRepository, configRepository);
 
         // Initialize command handlers
@@ -57,9 +65,10 @@ public class DiscordCurrencyBot {
         SlashCommandListener slashCommandListener = new SlashCommandListener(
                 balanceHandler, configHandler, adjustmentHandler);
 
-        // Build JDA instance
+        // Build JDA instance with default non-privileged gateway intents to avoid
+        // DISALLOWED_INTENTS (4014) errors when the bot token does not have
+        // privileged intents such as GUILD_MEMBERS enabled.
         this.jda = JDABuilder.createLight(envConfig.getDiscordBotToken())
-                .enableIntents(GatewayIntent.GUILD_MEMBERS)
                 .addEventListeners(slashCommandListener)
                 .build();
 

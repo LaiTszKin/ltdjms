@@ -10,6 +10,8 @@ import ltdjms.discord.currency.persistence.MemberCurrencyAccountRepository;
 import ltdjms.discord.currency.services.BalanceAdjustmentService;
 import ltdjms.discord.currency.services.CurrencyConfigService;
 import ltdjms.discord.currency.services.DefaultBalanceService;
+import ltdjms.discord.currency.services.EmojiValidator;
+import ltdjms.discord.currency.services.NoOpEmojiValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -55,7 +57,8 @@ class SlashCommandPerformanceTest extends PostgresIntegrationTestBase {
 
         balanceService = new DefaultBalanceService(accountRepo, configRepo);
         adjustmentService = new BalanceAdjustmentService(accountRepo, configRepo);
-        configService = new CurrencyConfigService(configRepo);
+        EmojiValidator emojiValidator = new NoOpEmojiValidator();
+        configService = new CurrencyConfigService(configRepo, emojiValidator);
         metrics = new SlashCommandMetrics();
         random = new Random(42); // Fixed seed for reproducibility
     }

@@ -57,27 +57,51 @@ class CurrencyIconLengthTest {
         }
 
         @Test
-        @DisplayName("should accept icon with exactly 32 characters")
-        void shouldAcceptIconWithExactly32Characters() {
+        @DisplayName("should accept icon with exactly 64 characters")
+        void shouldAcceptIconWithExactly64Characters() {
             Instant now = Instant.now();
-            String icon32Chars = "a".repeat(32);
+            String icon64Chars = "a".repeat(64);
             GuildCurrencyConfig config = new GuildCurrencyConfig(
-                    TEST_GUILD_ID, "Currency", icon32Chars, now, now);
+                    TEST_GUILD_ID, "Currency", icon64Chars, now, now);
 
-            assertThat(config.currencyIcon()).hasSize(32);
+            assertThat(config.currencyIcon()).hasSize(64);
         }
 
         @Test
-        @DisplayName("should reject icon exceeding 32 characters")
-        void shouldRejectIconExceeding32Characters() {
+        @DisplayName("should reject icon exceeding 64 characters")
+        void shouldRejectIconExceeding64Characters() {
             Instant now = Instant.now();
-            String tooLongIcon = "a".repeat(33);
+            String tooLongIcon = "a".repeat(65);
 
             assertThatThrownBy(() -> new GuildCurrencyConfig(
                     TEST_GUILD_ID, "Currency", tooLongIcon, now, now))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("exceed")
-                    .hasMessageContaining("32");
+                    .hasMessageContaining("64");
+        }
+
+        @Test
+        @DisplayName("should accept Discord custom emoji format")
+        void shouldAcceptDiscordCustomEmojiFormat() {
+            Instant now = Instant.now();
+            // Discord custom emoji format: <:name:id> or <a:name:id>
+            String customEmoji = "<:gold_coin:1234567890123456789>";
+            GuildCurrencyConfig config = new GuildCurrencyConfig(
+                    TEST_GUILD_ID, "Gold", customEmoji, now, now);
+
+            assertThat(config.currencyIcon()).isEqualTo(customEmoji);
+        }
+
+        @Test
+        @DisplayName("should accept animated Discord custom emoji format")
+        void shouldAcceptAnimatedDiscordCustomEmojiFormat() {
+            Instant now = Instant.now();
+            // Animated custom emoji format: <a:name:id>
+            String animatedEmoji = "<a:spinning_coin:9876543210987654321>";
+            GuildCurrencyConfig config = new GuildCurrencyConfig(
+                    TEST_GUILD_ID, "Spinning Coins", animatedEmoji, now, now);
+
+            assertThat(config.currencyIcon()).isEqualTo(animatedEmoji);
         }
 
         @Test
@@ -143,9 +167,9 @@ class CurrencyIconLengthTest {
     class MaxIconLengthConstant {
 
         @Test
-        @DisplayName("MAX_ICON_LENGTH should be 32")
-        void maxIconLengthShouldBe32() {
-            assertThat(GuildCurrencyConfig.MAX_ICON_LENGTH).isEqualTo(32);
+        @DisplayName("MAX_ICON_LENGTH should be 64")
+        void maxIconLengthShouldBe64() {
+            assertThat(GuildCurrencyConfig.MAX_ICON_LENGTH).isEqualTo(64);
         }
     }
 }

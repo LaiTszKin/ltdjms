@@ -10,6 +10,8 @@ import ltdjms.discord.currency.services.BalanceAdjustmentService;
 import ltdjms.discord.currency.services.BalanceAdjustmentService.BalanceAdjustmentResult;
 import ltdjms.discord.currency.services.CurrencyConfigService;
 import ltdjms.discord.currency.services.DefaultBalanceService;
+import ltdjms.discord.currency.services.EmojiValidator;
+import ltdjms.discord.currency.services.NoOpEmojiValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -37,7 +39,8 @@ class BalanceAdjustmentCommandIntegrationTest extends PostgresIntegrationTestBas
         accountRepository = new JdbcMemberCurrencyAccountRepository(dataSource);
         adjustmentService = new BalanceAdjustmentService(accountRepository, configRepository);
         balanceService = new DefaultBalanceService(accountRepository, configRepository);
-        configService = new CurrencyConfigService(configRepository);
+        EmojiValidator emojiValidator = new NoOpEmojiValidator();
+        configService = new CurrencyConfigService(configRepository, emojiValidator);
     }
 
     @Test

@@ -9,6 +9,8 @@ import ltdjms.discord.currency.services.BalanceAdjustmentService;
 import ltdjms.discord.currency.services.BalanceService;
 import ltdjms.discord.currency.services.CurrencyConfigService;
 import ltdjms.discord.currency.services.DefaultBalanceService;
+import ltdjms.discord.currency.services.EmojiValidator;
+import ltdjms.discord.currency.services.NoOpEmojiValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -250,7 +252,8 @@ class EdgeCaseTests {
 
         @BeforeEach
         void setUp() {
-            configService = new CurrencyConfigService(configRepository);
+            EmojiValidator emojiValidator = new NoOpEmojiValidator();
+            configService = new CurrencyConfigService(configRepository, emojiValidator);
         }
 
         @Test

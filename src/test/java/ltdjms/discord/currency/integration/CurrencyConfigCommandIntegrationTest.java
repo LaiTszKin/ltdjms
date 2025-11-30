@@ -8,11 +8,14 @@ import ltdjms.discord.currency.persistence.JdbcMemberCurrencyAccountRepository;
 import ltdjms.discord.currency.persistence.MemberCurrencyAccountRepository;
 import ltdjms.discord.currency.services.CurrencyConfigService;
 import ltdjms.discord.currency.services.DefaultBalanceService;
+import ltdjms.discord.currency.services.EmojiValidator;
+import ltdjms.discord.currency.services.NoOpEmojiValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Integration tests for currency configuration commands.
@@ -27,12 +30,14 @@ class CurrencyConfigCommandIntegrationTest extends PostgresIntegrationTestBase {
     private DefaultBalanceService balanceService;
     private GuildCurrencyConfigRepository configRepository;
     private MemberCurrencyAccountRepository accountRepository;
+    private EmojiValidator emojiValidator;
 
     @BeforeEach
     void setUp() {
         configRepository = new JdbcGuildCurrencyConfigRepository(dataSource);
         accountRepository = new JdbcMemberCurrencyAccountRepository(dataSource);
-        configService = new CurrencyConfigService(configRepository);
+        emojiValidator = new NoOpEmojiValidator();
+        configService = new CurrencyConfigService(configRepository, emojiValidator);
         balanceService = new DefaultBalanceService(accountRepository, configRepository);
     }
 
@@ -158,5 +163,92 @@ class CurrencyConfigCommandIntegrationTest extends PostgresIntegrationTestBase {
 
         GuildCurrencyConfig reloaded = configService.getConfig(TEST_GUILD_ID);
         assertThat(reloaded.currencyIcon()).isEqualTo(longIcon);
+    }
+
+    @Test
+    @DisplayName("should accept Discord custom emoji and persist correctly")
+    void shouldAcceptDiscordCustomEmojiAndPersistCorrectly() {
+        // Given - valid Discord custom emoji format
+        String customEmoji = "<:gold_coin:1234567890123456789>";
+
+        // When - update config with custom emoji
+        GuildCurrencyConfig updated =
+                configService.updateConfig(TEST_GUILD_ID, "Custom Gold", customEmoji);
+
+        // Then - emoji should be persisted and retrieved correctly
+        assertThat(updated.currencyIcon()).isEqualTo(customEmoji);
+
+        GuildCurrencyConfig reloaded = configService.getConfig(TEST_GUILD_ID);
+        assertThat(reloaded.currencyIcon()).isEqualTo(customEmoji);
+
+        // And balance view should show the custom emoji
+        BalanceView balance = balanceService.getBalance(TEST_GUILD_ID, TEST_USER_ID);
+        assertThat(balance.currencyIcon()).isEqualTo(customEmoji);
+    }
+
+    @Test
+    @DisplayName("should accept animated Discord custom emoji")
+    void shouldAcceptAnimatedDiscordCustomEmoji() {
+        // Given - animated custom emoji format
+        String animatedEmoji = "<a:spinning_coin:9876543210987654321>";
+
+        // When
+        GuildCurrencyConfig updated =
+                configService.updateConfig(TEST_GUILD_ID, "Spinning", animatedEmoji);
+
+        // Then
+        assertThat(updated.currencyIcon()).isEqualTo(animatedEmoji);
+
+        GuildCurrencyConfig reloaded = configService.getConfig(TEST_GUILD_ID);
+        assertThat(reloaded.currencyIcon()).isEqualTo(animatedEmoji);
+    }
+
+    @Test
+    @DisplayName("should reject invalid Discord custom emoji format")
+    void shouldRejectInvalidDiscordCustomEmojiFormat() {
+        // Given - invalid emoji format (invalid ID)
+        String invalidEmoji = "<:invalid:abc>";
+
+        // When/Then - should reject
+        assertThatThrownBy(() ->
+                configService.updateConfig(TEST_GUILD_ID, "Invalid", invalidEmoji))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Invalid Discord custom emoji");
+    }
+
+    @Test
+    @DisplayName("should still accept Unicode emoji after custom emoji feature")
+    void shouldStillAcceptUnicodeEmojiAfterCustomEmojiFeature() {
+        // Given - various Unicode emoji types
+        String[] unicodeEmojis = {"💰", "🪙", "👨‍👩‍👧‍👦", "🇺🇸", "👍🏽"};
+
+        for (String emoji : unicodeEmojis) {
+            // When
+            GuildCurrencyConfig updated =
+                    configService.updateConfig(TEST_GUILD_ID, "Unicode Test", emoji);
+
+            // Then
+            assertThat(updated.currencyIcon()).isEqualTo(emoji);
+
+            GuildCurrencyConfig reloaded = configService.getConfig(TEST_GUILD_ID);
+            assertThat(reloaded.currencyIcon()).isEqualTo(emoji);
+        }
+    }
+
+    @Test
+    @DisplayName("should still accept emoji with text combination")
+    void shouldStillAcceptEmojiWithTextCombination() {
+        // Given - emoji + text combination
+        String emojiWithText = "💎 Points";
+
+        // When
+        GuildCurrencyConfig updated =
+                configService.updateConfig(TEST_GUILD_ID, "Gems", emojiWithText);
+
+        // Then
+        assertThat(updated.currencyIcon()).isEqualTo(emojiWithText);
+
+        GuildCurrencyConfig reloaded = configService.getConfig(TEST_GUILD_ID);
+        assertThat(reloaded.currencyIcon()).isEqualTo(emojiWithText);
     }
 }

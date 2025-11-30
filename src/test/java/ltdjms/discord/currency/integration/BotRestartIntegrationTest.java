@@ -10,6 +10,8 @@ import ltdjms.discord.currency.services.BalanceAdjustmentService;
 import ltdjms.discord.currency.services.BalanceAdjustmentService.BalanceAdjustmentResult;
 import ltdjms.discord.currency.services.CurrencyConfigService;
 import ltdjms.discord.currency.services.DefaultBalanceService;
+import ltdjms.discord.currency.services.EmojiValidator;
+import ltdjms.discord.currency.services.NoOpEmojiValidator;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -126,13 +128,14 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
         void shouldPreserveCurrencyConfigurationAfterRestart() {
             // Given
             GuildCurrencyConfigRepository configRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
-            CurrencyConfigService configService = new CurrencyConfigService(configRepo);
+            EmojiValidator emojiValidator = new NoOpEmojiValidator();
+            CurrencyConfigService configService = new CurrencyConfigService(configRepo, emojiValidator);
 
             configService.updateConfig(TEST_GUILD_ID, "龍幣", "🐉");
 
             // When - simulate restart
             GuildCurrencyConfigRepository newConfigRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
-            CurrencyConfigService newConfigService = new CurrencyConfigService(newConfigRepo);
+            CurrencyConfigService newConfigService = new CurrencyConfigService(newConfigRepo, emojiValidator);
 
             // Then
             GuildCurrencyConfig preserved = newConfigService.getConfig(TEST_GUILD_ID);
@@ -148,14 +151,15 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
             long guild2 = TEST_GUILD_ID + 1;
 
             GuildCurrencyConfigRepository configRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
-            CurrencyConfigService configService = new CurrencyConfigService(configRepo);
+            EmojiValidator emojiValidator = new NoOpEmojiValidator();
+            CurrencyConfigService configService = new CurrencyConfigService(configRepo, emojiValidator);
 
             configService.updateConfig(guild1, "金幣", "💰");
             configService.updateConfig(guild2, "星星", "⭐");
 
             // When - simulate restart
             GuildCurrencyConfigRepository newConfigRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
-            CurrencyConfigService newConfigService = new CurrencyConfigService(newConfigRepo);
+            CurrencyConfigService newConfigService = new CurrencyConfigService(newConfigRepo, emojiValidator);
 
             // Then
             GuildCurrencyConfig config1 = newConfigService.getConfig(guild1);
@@ -270,7 +274,8 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
             // Given - set up config and balance
             GuildCurrencyConfigRepository configRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
             MemberCurrencyAccountRepository accountRepo = new JdbcMemberCurrencyAccountRepository(dataSource);
-            CurrencyConfigService configService = new CurrencyConfigService(configRepo);
+            EmojiValidator emojiValidator = new NoOpEmojiValidator();
+            CurrencyConfigService configService = new CurrencyConfigService(configRepo, emojiValidator);
             BalanceAdjustmentService adjustmentService = new BalanceAdjustmentService(accountRepo, configRepo);
             DefaultBalanceService balanceService = new DefaultBalanceService(accountRepo, configRepo);
 
@@ -301,7 +306,8 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
             // Given - initial setup
             GuildCurrencyConfigRepository configRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
             MemberCurrencyAccountRepository accountRepo = new JdbcMemberCurrencyAccountRepository(dataSource);
-            CurrencyConfigService configService = new CurrencyConfigService(configRepo);
+            EmojiValidator emojiValidator = new NoOpEmojiValidator();
+            CurrencyConfigService configService = new CurrencyConfigService(configRepo, emojiValidator);
             BalanceAdjustmentService adjustmentService = new BalanceAdjustmentService(accountRepo, configRepo);
 
             adjustmentService.adjustBalance(TEST_GUILD_ID, TEST_USER_ID, 500L);
@@ -310,7 +316,7 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
             // Simulate restart
             GuildCurrencyConfigRepository newConfigRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
             MemberCurrencyAccountRepository newAccountRepo = new JdbcMemberCurrencyAccountRepository(dataSource);
-            CurrencyConfigService newConfigService = new CurrencyConfigService(newConfigRepo);
+            CurrencyConfigService newConfigService = new CurrencyConfigService(newConfigRepo, emojiValidator);
             DefaultBalanceService newBalanceService = new DefaultBalanceService(newAccountRepo, newConfigRepo);
 
             // Update config after restart

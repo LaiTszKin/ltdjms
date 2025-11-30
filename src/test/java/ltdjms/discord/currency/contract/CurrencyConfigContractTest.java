@@ -58,21 +58,21 @@ class CurrencyConfigContractTest {
     @Test
     @DisplayName("Currency icon should respect maximum length per contract")
     void currencyIconShouldRespectMaxLength() {
-        // Given - contract specifies maxLength: 32
+        // Given - contract specifies maxLength: 64
         String validIcon = "💎 Points"; // Text + emoji within limit
         Instant now = Instant.now();
 
         // When/Then - should not throw
         GuildCurrencyConfig config = new GuildCurrencyConfig(
                 TEST_GUILD_ID, "Coins", validIcon, now, now);
-        assertThat(config.currencyIcon().length()).isLessThanOrEqualTo(32);
+        assertThat(config.currencyIcon().length()).isLessThanOrEqualTo(64);
     }
 
     @Test
     @DisplayName("Currency icon exceeding max length should be rejected")
     void currencyIconExceedingMaxLengthShouldBeRejected() {
-        // Given - contract specifies maxLength: 32
-        String tooLongIcon = "A".repeat(33);
+        // Given - contract specifies maxLength: 64
+        String tooLongIcon = "A".repeat(65);
         Instant now = Instant.now();
 
         // When/Then

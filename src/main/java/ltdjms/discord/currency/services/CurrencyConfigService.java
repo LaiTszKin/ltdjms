@@ -5,6 +5,8 @@ import ltdjms.discord.currency.persistence.GuildCurrencyConfigRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.regex.Pattern;
+
 /**
  * Service for managing guild currency configuration.
  * Handles creating and updating currency name and icon per guild.
@@ -13,10 +15,21 @@ public class CurrencyConfigService {
 
     private static final Logger LOG = LoggerFactory.getLogger(CurrencyConfigService.class);
 
-    private final GuildCurrencyConfigRepository configRepository;
+    /**
+     * Pattern to detect Discord custom emoji format.
+     * Matches: {@code <:name:id>} or {@code <a:name:id>}
+     * This is a loose pattern to catch anything that looks like a custom emoji,
+     * the actual validation is done by EmojiValidator.
+     */
+    private static final Pattern CUSTOM_EMOJI_PATTERN =
+            Pattern.compile("^<a?:[^:]+:[^>]+>$");
 
-    public CurrencyConfigService(GuildCurrencyConfigRepository configRepository) {
+    private final GuildCurrencyConfigRepository configRepository;
+    private final EmojiValidator emojiValidator;
+
+    public CurrencyConfigService(GuildCurrencyConfigRepository configRepository, EmojiValidator emojiValidator) {
         this.configRepository = configRepository;
+        this.emojiValidator = emojiValidator;
     }
 
     /**
@@ -86,5 +99,26 @@ public class CurrencyConfigService {
             throw new IllegalArgumentException(
                     "Currency icon cannot exceed " + GuildCurrencyConfig.MAX_ICON_LENGTH + " characters");
         }
+
+        // Check if it looks like a Discord custom emoji format
+        if (looksLikeCustomEmoji(icon)) {
+            // Validate using the emoji validator
+            if (!emojiValidator.isValidCustomEmoji(icon)) {
+                throw new IllegalArgumentException(
+                        "Invalid Discord custom emoji: '" + icon + "'. " +
+                        "Please ensure the emoji exists and is accessible.");
+            }
+        }
+    }
+
+    /**
+     * Checks if the icon string looks like a Discord custom emoji format.
+     * This is a quick check to determine if we need to validate with JDA.
+     *
+     * @param icon the icon string to check
+     * @return true if it looks like a custom emoji format
+     */
+    private boolean looksLikeCustomEmoji(String icon) {
+        return CUSTOM_EMOJI_PATTERN.matcher(icon).matches();
     }
 }

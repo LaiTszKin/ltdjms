@@ -30,9 +30,10 @@ public record GuildCurrencyConfig(
     public static final int MAX_NAME_LENGTH = 50;
 
     /**
-     * Maximum length for the currency icon/label (supports multi-codepoint emoji and short text).
+     * Maximum length for the currency icon/label (supports multi-codepoint emoji,
+     * Discord custom emoji markup, and short text).
      */
-    public static final int MAX_ICON_LENGTH = 32;
+    public static final int MAX_ICON_LENGTH = 64;
 
     public GuildCurrencyConfig {
         Objects.requireNonNull(currencyName, "currencyName must not be null");

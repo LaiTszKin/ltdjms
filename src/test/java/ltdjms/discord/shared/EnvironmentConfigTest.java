@@ -2,6 +2,8 @@ package ltdjms.discord.shared;
 
 import org.junit.jupiter.api.Test;
 
+import java.nio.file.Path;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -13,7 +15,9 @@ class EnvironmentConfigTest {
 
     @Test
     void defaultDatabaseUrlUsesLocalCurrencyBotDatabase() {
-        EnvironmentConfig config = new EnvironmentConfig();
+        // Use a test directory without .env so we only see defaults and application.properties,
+        // independent of the developer's local .env file.
+        EnvironmentConfig config = new EnvironmentConfig(Path.of("src/test/resources"));
 
         // When DB_URL is not set in the environment, we should fall back to the
         // hardcoded default JDBC URL instead of a placeholder literal.
@@ -21,4 +25,3 @@ class EnvironmentConfigTest {
                 .isEqualTo("jdbc:postgresql://localhost:5432/currency_bot");
     }
 }
-

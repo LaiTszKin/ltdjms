@@ -5,7 +5,7 @@
 CREATE TABLE IF NOT EXISTS guild_currency_config (
     guild_id BIGINT PRIMARY KEY,
     currency_name VARCHAR(50) NOT NULL DEFAULT 'Coins',
-    currency_icon VARCHAR(32) NOT NULL DEFAULT '🪙',
+    currency_icon VARCHAR(64) NOT NULL DEFAULT '🪙',
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );

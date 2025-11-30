@@ -5,10 +5,13 @@ import ltdjms.discord.currency.bot.SlashCommandListener;
 import ltdjms.discord.currency.domain.GuildCurrencyConfig;
 import ltdjms.discord.currency.persistence.RepositoryException;
 import ltdjms.discord.currency.services.CurrencyConfigService;
+import net.dv8tion.jda.api.entities.emoji.CustomEmoji;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.List;
 
 /**
  * Handler for the /currency-config slash command.
@@ -35,7 +38,7 @@ public class CurrencyConfigCommandHandler implements SlashCommandListener.Comman
         OptionMapping iconOption = event.getOption("icon");
 
         String name = nameOption != null ? nameOption.getAsString() : null;
-        String icon = iconOption != null ? iconOption.getAsString() : null;
+        String icon = extractIconValue(iconOption);
 
         // If no options provided, show current config
         if (name == null && icon == null) {
@@ -64,6 +67,35 @@ public class CurrencyConfigCommandHandler implements SlashCommandListener.Comman
         } catch (Exception e) {
             BotErrorHandler.handleUnexpectedError(event, e);
         }
+    }
+
+    /**
+     * Extracts the icon value from the option mapping.
+     * If the option contains a rendered custom emoji (from Discord's autocomplete or paste),
+     * extracts the formatted string (e.g., {@code <:name:id>}) from Mentions.
+     * Otherwise, returns the raw string value.
+     *
+     * @param iconOption the icon option mapping, may be null
+     * @return the icon string value, or null if option is null
+     */
+    private String extractIconValue(OptionMapping iconOption) {
+        if (iconOption == null) {
+            return null;
+        }
+
+        // Check if the option contains rendered custom emoji(s) via Mentions
+        List<CustomEmoji> customEmojis = iconOption.getMentions().getCustomEmojis();
+        if (!customEmojis.isEmpty()) {
+            // Use the first custom emoji's formatted string
+            CustomEmoji emoji = customEmojis.get(0);
+            String formatted = emoji.getFormatted();
+            LOG.debug("Extracted custom emoji from Mentions: {} -> {}", emoji.getName(), formatted);
+            return formatted;
+        }
+
+        // No custom emoji in Mentions, use the raw string value
+        // This handles: Unicode emoji, manually typed <:name:id>, or other text
+        return iconOption.getAsString();
     }
 
     private void showCurrentConfig(SlashCommandInteractionEvent event, long guildId) {
