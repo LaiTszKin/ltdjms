@@ -2,10 +2,10 @@ package ltdjms.discord.currency.commands;
 
 import ltdjms.discord.currency.bot.BotErrorHandler;
 import ltdjms.discord.currency.bot.SlashCommandListener;
-import ltdjms.discord.currency.persistence.NegativeBalanceException;
-import ltdjms.discord.currency.persistence.RepositoryException;
 import ltdjms.discord.currency.services.BalanceAdjustmentService;
 import ltdjms.discord.currency.services.BalanceAdjustmentService.BalanceAdjustmentResult;
+import ltdjms.discord.shared.DomainError;
+import ltdjms.discord.shared.Result;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
@@ -16,6 +16,10 @@ import org.slf4j.LoggerFactory;
  * Handler for the /adjust-balance slash command.
  * Allows administrators to add, subtract, or set a member's balance to a specific value.
  * Supports three modes: add, deduct, and adjust.
+ *
+ * <p>All predictable errors are handled via Result&lt;T, DomainError&gt; pattern.
+ * This handler does not catch domain exceptions directly; instead it relies on
+ * the Result-based service API for all expected error conditions.</p>
  */
 public class BalanceAdjustmentCommandHandler implements SlashCommandListener.CommandHandler {
 
@@ -48,57 +52,46 @@ public class BalanceAdjustmentCommandHandler implements SlashCommandListener.Com
         long targetUserId = targetUser.getIdLong();
         long amount = amountOption.getAsLong();
 
-        try {
-            BalanceAdjustmentResult result = switch (mode) {
-                case "add" -> handleAddMode(guildId, targetUserId, amount);
-                case "deduct" -> handleDeductMode(guildId, targetUserId, amount);
-                case "adjust" -> handleAdjustMode(guildId, targetUserId, amount);
-                default -> {
-                    BotErrorHandler.handleInvalidInput(event, "Invalid mode: " + mode);
-                    yield null;
-                }
-            };
+        Result<BalanceAdjustmentResult, DomainError> result = switch (mode) {
+            case "add" -> handleAddMode(guildId, targetUserId, amount);
+            case "deduct" -> handleDeductMode(guildId, targetUserId, amount);
+            case "adjust" -> handleAdjustMode(guildId, targetUserId, amount);
+            default -> Result.err(DomainError.invalidInput("Invalid mode: " + mode));
+        };
 
-            if (result != null) {
-                String message = formatResultMessage(mode, result, targetUser.getAsMention());
-                event.reply(message).queue();
-
-                BotErrorHandler.logSuccess(event,
-                        "mode=" + mode + ", user=" + targetUserId +
-                        ", amount=" + amount + ", newBalance=" + result.newBalance());
-            }
-
-        } catch (IllegalArgumentException e) {
-            BotErrorHandler.handleInvalidInput(event, e.getMessage());
-        } catch (NegativeBalanceException e) {
-            BotErrorHandler.handleInvalidInput(event,
-                    "Cannot reduce balance below zero. Current balance is insufficient for this deduction.");
-        } catch (RepositoryException e) {
-            BotErrorHandler.handleDatabaseError(event, e);
-        } catch (Exception e) {
-            BotErrorHandler.handleUnexpectedError(event, e);
+        if (result.isErr()) {
+            BotErrorHandler.handleDomainError(event, result.getError());
+            return;
         }
+
+        BalanceAdjustmentResult adjustmentResult = result.getValue();
+        String message = formatResultMessage(mode, adjustmentResult, targetUser.getAsMention());
+        event.reply(message).queue();
+
+        BotErrorHandler.logSuccess(event,
+                "mode=" + mode + ", user=" + targetUserId +
+                        ", amount=" + amount + ", newBalance=" + adjustmentResult.newBalance());
     }
 
-    private BalanceAdjustmentResult handleAddMode(long guildId, long userId, long amount) {
+    private Result<BalanceAdjustmentResult, DomainError> handleAddMode(long guildId, long userId, long amount) {
         if (amount <= 0) {
-            throw new IllegalArgumentException("Amount must be positive for add mode.");
+            return Result.err(DomainError.invalidInput("Amount must be positive for add mode."));
         }
-        return adjustmentService.adjustBalance(guildId, userId, amount);
+        return adjustmentService.tryAdjustBalance(guildId, userId, amount);
     }
 
-    private BalanceAdjustmentResult handleDeductMode(long guildId, long userId, long amount) {
+    private Result<BalanceAdjustmentResult, DomainError> handleDeductMode(long guildId, long userId, long amount) {
         if (amount <= 0) {
-            throw new IllegalArgumentException("Amount must be positive for deduct mode.");
+            return Result.err(DomainError.invalidInput("Amount must be positive for deduct mode."));
         }
-        return adjustmentService.adjustBalance(guildId, userId, -amount);
+        return adjustmentService.tryAdjustBalance(guildId, userId, -amount);
     }
 
-    private BalanceAdjustmentResult handleAdjustMode(long guildId, long userId, long targetBalance) {
+    private Result<BalanceAdjustmentResult, DomainError> handleAdjustMode(long guildId, long userId, long targetBalance) {
         if (targetBalance < 0) {
-            throw new IllegalArgumentException("Target balance cannot be negative for adjust mode.");
+            return Result.err(DomainError.invalidInput("Target balance cannot be negative for adjust mode."));
         }
-        return adjustmentService.adjustBalanceTo(guildId, userId, targetBalance);
+        return adjustmentService.tryAdjustBalanceTo(guildId, userId, targetBalance);
     }
 
     private String formatResultMessage(String mode, BalanceAdjustmentResult result, String targetUserMention) {

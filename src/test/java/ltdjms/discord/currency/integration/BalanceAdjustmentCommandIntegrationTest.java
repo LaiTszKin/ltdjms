@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.*;
  * Integration tests for balance adjustment commands.
  * Verifies admin balance adjustments and their effect on member balances.
  */
+@SuppressWarnings("deprecation") // intentionally exercise deprecated service APIs for backward-compat coverage
 class BalanceAdjustmentCommandIntegrationTest extends PostgresIntegrationTestBase {
 
     private static final long TEST_GUILD_ID = 123456789012345678L;

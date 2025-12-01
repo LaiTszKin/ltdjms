@@ -3,8 +3,9 @@ package ltdjms.discord.currency.commands;
 import ltdjms.discord.currency.bot.BotErrorHandler;
 import ltdjms.discord.currency.bot.SlashCommandListener;
 import ltdjms.discord.currency.domain.GuildCurrencyConfig;
-import ltdjms.discord.currency.persistence.RepositoryException;
 import ltdjms.discord.currency.services.CurrencyConfigService;
+import ltdjms.discord.shared.DomainError;
+import ltdjms.discord.shared.Result;
 import net.dv8tion.jda.api.entities.emoji.CustomEmoji;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
@@ -16,6 +17,10 @@ import java.util.List;
 /**
  * Handler for the /currency-config slash command.
  * Allows administrators to configure the guild's currency name and icon.
+ *
+ * <p>All predictable errors are handled via Result&lt;T, DomainError&gt; pattern.
+ * This handler does not catch domain exceptions directly; instead it relies on
+ * the Result-based service API for all expected error conditions.</p>
  */
 public class CurrencyConfigCommandHandler implements SlashCommandListener.CommandHandler {
 
@@ -46,27 +51,24 @@ public class CurrencyConfigCommandHandler implements SlashCommandListener.Comman
             return;
         }
 
-        try {
-            GuildCurrencyConfig updated = configService.updateConfig(guildId, name, icon);
+        Result<GuildCurrencyConfig, DomainError> result = configService.tryUpdateConfig(guildId, name, icon);
 
-            String message = String.format(
-                    "✅ Currency configuration updated!\n" +
-                            "Name: **%s**\n" +
-                            "Icon: %s",
-                    updated.currencyName(),
-                    updated.currencyIcon()
-            );
-            event.reply(message).queue();
-
-            BotErrorHandler.logSuccess(event, "name=" + updated.currencyName() + ", icon=" + updated.currencyIcon());
-
-        } catch (IllegalArgumentException e) {
-            BotErrorHandler.handleInvalidInput(event, e.getMessage());
-        } catch (RepositoryException e) {
-            BotErrorHandler.handleDatabaseError(event, e);
-        } catch (Exception e) {
-            BotErrorHandler.handleUnexpectedError(event, e);
+        if (result.isErr()) {
+            BotErrorHandler.handleDomainError(event, result.getError());
+            return;
         }
+
+        GuildCurrencyConfig updated = result.getValue();
+        String message = String.format(
+                "✅ Currency configuration updated!\n" +
+                        "Name: **%s**\n" +
+                        "Icon: %s",
+                updated.currencyName(),
+                updated.currencyIcon()
+        );
+        event.reply(message).queue();
+
+        BotErrorHandler.logSuccess(event, "name=" + updated.currencyName() + ", icon=" + updated.currencyIcon());
     }
 
     /**
@@ -99,23 +101,22 @@ public class CurrencyConfigCommandHandler implements SlashCommandListener.Comman
     }
 
     private void showCurrentConfig(SlashCommandInteractionEvent event, long guildId) {
-        try {
-            GuildCurrencyConfig config = configService.getConfig(guildId);
+        Result<GuildCurrencyConfig, DomainError> result = configService.tryGetConfig(guildId);
 
-            String message = String.format(
-                    "**Current Currency Configuration**\n" +
-                            "Name: **%s**\n" +
-                            "Icon: %s\n\n" +
-                            "_Use `/currency-config name:<name> icon:<emoji>` to update_",
-                    config.currencyName(),
-                    config.currencyIcon()
-            );
-            event.reply(message).setEphemeral(true).queue();
-
-        } catch (RepositoryException e) {
-            BotErrorHandler.handleDatabaseError(event, e);
-        } catch (Exception e) {
-            BotErrorHandler.handleUnexpectedError(event, e);
+        if (result.isErr()) {
+            BotErrorHandler.handleDomainError(event, result.getError());
+            return;
         }
+
+        GuildCurrencyConfig config = result.getValue();
+        String message = String.format(
+                "**Current Currency Configuration**\n" +
+                        "Name: **%s**\n" +
+                        "Icon: %s\n\n" +
+                        "_Use `/currency-config name:<name> icon:<emoji>` to update_",
+                config.currencyName(),
+                config.currencyIcon()
+        );
+        event.reply(message).setEphemeral(true).queue();
     }
 }

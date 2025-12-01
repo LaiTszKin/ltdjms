@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.*;
  * Verifies that balances and configurations are preserved across service restarts
  * and that no partial or duplicated adjustments occur.
  */
+@SuppressWarnings("deprecation") // uses deprecated balance/config APIs to ensure backward-compatible behaviour
 class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
 
     private static final long TEST_GUILD_ID = 123456789012345678L;

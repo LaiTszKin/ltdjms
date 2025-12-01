@@ -30,6 +30,7 @@ import static org.mockito.Mockito.*;
  * Tests invalid amounts, missing configuration, member rejoin scenarios, and permission errors.
  */
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("deprecation") // covers legacy exception-based APIs (getBalance/adjustBalance/updateConfig)
 class EdgeCaseTests {
 
     private static final long TEST_GUILD_ID = 123456789012345678L;

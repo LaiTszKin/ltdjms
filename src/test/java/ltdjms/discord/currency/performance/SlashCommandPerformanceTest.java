@@ -34,11 +34,13 @@ import static org.assertj.core.api.Assertions.*;
  * - Error rate < 1%
  * - 95% of commands complete within 3 seconds
  */
+@SuppressWarnings("deprecation") // performance scenarios still use deprecated balance/config APIs for realism
 class SlashCommandPerformanceTest extends PostgresIntegrationTestBase {
 
     private static final long TEST_GUILD_ID = 123456789012345678L;
     private static final int CONCURRENT_USERS = 20;
     private static final int COMMANDS_PER_SECOND = 20;
+    @SuppressWarnings("unused") // kept for reference as full-duration load test configuration
     private static final int TEST_DURATION_SECONDS = 60;
 
     // For local testing, use shorter duration

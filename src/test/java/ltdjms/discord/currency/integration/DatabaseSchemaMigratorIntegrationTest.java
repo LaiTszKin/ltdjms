@@ -28,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class DatabaseSchemaMigratorIntegrationTest {
 
     @Container
+    @SuppressWarnings("resource") // managed by Testcontainers lifecycle, closed automatically
     private static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
             .withDatabaseName("migration_test")
             .withUsername("test")
@@ -140,4 +141,3 @@ class DatabaseSchemaMigratorIntegrationTest {
         }
     }
 }
-

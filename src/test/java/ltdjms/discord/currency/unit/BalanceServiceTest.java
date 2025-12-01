@@ -5,8 +5,11 @@ import ltdjms.discord.currency.domain.GuildCurrencyConfig;
 import ltdjms.discord.currency.domain.MemberCurrencyAccount;
 import ltdjms.discord.currency.persistence.GuildCurrencyConfigRepository;
 import ltdjms.discord.currency.persistence.MemberCurrencyAccountRepository;
+import ltdjms.discord.currency.persistence.RepositoryException;
 import ltdjms.discord.currency.services.BalanceService;
 import ltdjms.discord.currency.services.DefaultBalanceService;
+import ltdjms.discord.shared.DomainError;
+import ltdjms.discord.shared.Result;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,6 +28,7 @@ import static org.mockito.Mockito.*;
  * Tests balance retrieval logic, auto-creation of accounts, and currency configuration handling.
  */
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("deprecation") // exercises deprecated getBalance alongside new tryGetBalance API
 class BalanceServiceTest {
 
     private static final long TEST_GUILD_ID = 123456789012345678L;
@@ -168,5 +172,37 @@ class BalanceServiceTest {
         assertThat(result2.balance()).isEqualTo(200L);
         assertThat(result1.guildId()).isEqualTo(guild1);
         assertThat(result2.guildId()).isEqualTo(guild2);
+    }
+
+    @Test
+    @DisplayName("tryGetBalance 應在成功時回傳 Ok")
+    void tryGetBalanceShouldReturnOkOnSuccess() {
+        MemberCurrencyAccount account = MemberCurrencyAccount.createNew(TEST_GUILD_ID, TEST_USER_ID);
+        when(accountRepository.findOrCreate(TEST_GUILD_ID, TEST_USER_ID)).thenReturn(account);
+        when(configRepository.findByGuildId(TEST_GUILD_ID)).thenReturn(Optional.empty());
+
+        Result<BalanceView, DomainError> result =
+                balanceService.tryGetBalance(TEST_GUILD_ID, TEST_USER_ID);
+
+        assertThat(result.isOk()).isTrue();
+        BalanceView view = result.getValue();
+        assertThat(view.guildId()).isEqualTo(TEST_GUILD_ID);
+        assertThat(view.userId()).isEqualTo(TEST_USER_ID);
+        assertThat(view.balance()).isEqualTo(0L);
+    }
+
+    @Test
+    @DisplayName("tryGetBalance 應將 RepositoryException 映射為 PERSISTENCE_FAILURE")
+    void tryGetBalanceShouldMapRepositoryExceptionToPersistenceFailure() {
+        when(accountRepository.findOrCreate(TEST_GUILD_ID, TEST_USER_ID))
+                .thenThrow(new RepositoryException("DB error"));
+
+        Result<BalanceView, DomainError> result =
+                balanceService.tryGetBalance(TEST_GUILD_ID, TEST_USER_ID);
+
+        assertThat(result.isErr()).isTrue();
+        DomainError error = result.getError();
+        assertThat(error.category()).isEqualTo(DomainError.Category.PERSISTENCE_FAILURE);
+        assertThat(error.message()).contains("Failed to retrieve balance");
     }
 }

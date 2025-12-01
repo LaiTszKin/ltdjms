@@ -2,10 +2,10 @@ package ltdjms.discord.gametoken.commands;
 
 import ltdjms.discord.currency.bot.BotErrorHandler;
 import ltdjms.discord.currency.bot.SlashCommandListener;
-import ltdjms.discord.currency.persistence.RepositoryException;
-import ltdjms.discord.gametoken.persistence.InsufficientTokensException;
 import ltdjms.discord.gametoken.services.GameTokenService;
 import ltdjms.discord.gametoken.services.GameTokenService.TokenAdjustmentResult;
+import ltdjms.discord.shared.DomainError;
+import ltdjms.discord.shared.Result;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
@@ -15,6 +15,10 @@ import org.slf4j.LoggerFactory;
 /**
  * Handler for the /game-token-adjust slash command.
  * Allows administrators to add or subtract game tokens from a member's account.
+ *
+ * <p>All predictable errors are handled via Result&lt;T, DomainError&gt; pattern.
+ * This handler does not catch domain exceptions directly; instead it relies on
+ * the Result-based service API for all expected error conditions.</p>
  */
 public class GameTokenAdjustCommandHandler implements SlashCommandListener.CommandHandler {
 
@@ -50,24 +54,19 @@ public class GameTokenAdjustCommandHandler implements SlashCommandListener.Comma
             return;
         }
 
-        try {
-            TokenAdjustmentResult result = tokenService.adjustTokens(guildId, targetUserId, amount);
+        Result<TokenAdjustmentResult, DomainError> result =
+                tokenService.tryAdjustTokens(guildId, targetUserId, amount);
 
-            String message = result.formatMessage(targetUser.getAsMention());
-            event.reply(message).queue();
-
-            BotErrorHandler.logSuccess(event,
-                    "user=" + targetUserId + ", amount=" + amount + ", newTokens=" + result.newTokens());
-
-        } catch (IllegalArgumentException e) {
-            BotErrorHandler.handleInvalidInput(event, e.getMessage());
-        } catch (InsufficientTokensException e) {
-            BotErrorHandler.handleInvalidInput(event,
-                    "Cannot reduce tokens below zero. Current balance is insufficient for this deduction.");
-        } catch (RepositoryException e) {
-            BotErrorHandler.handleDatabaseError(event, e);
-        } catch (Exception e) {
-            BotErrorHandler.handleUnexpectedError(event, e);
+        if (result.isErr()) {
+            BotErrorHandler.handleDomainError(event, result.getError());
+            return;
         }
+
+        TokenAdjustmentResult adjustmentResult = result.getValue();
+        String message = adjustmentResult.formatMessage(targetUser.getAsMention());
+        event.reply(message).queue();
+
+        BotErrorHandler.logSuccess(event,
+                "user=" + targetUserId + ", amount=" + amount + ", newTokens=" + adjustmentResult.newTokens());
     }
 }

@@ -20,6 +20,15 @@ public sealed interface Result<T, E> permits Result.Ok, Result.Err {
     }
 
     /**
+     * Creates a success result with a Unit value for void operations.
+     * Use this when the success case doesn't need to carry a meaningful value.
+     */
+    @SuppressWarnings("unchecked")
+    static <E> Result<Unit, E> okVoid() {
+        return (Result<Unit, E>) Ok.UNIT_OK;
+    }
+
+    /**
      * Creates an error result with the given error.
      */
     static <T, E> Result<T, E> err(E error) {
@@ -75,6 +84,9 @@ public sealed interface Result<T, E> permits Result.Ok, Result.Err {
      * Success case implementation.
      */
     record Ok<T, E>(T value) implements Result<T, E> {
+
+        /** Singleton Ok result for Unit (void) operations. */
+        static final Ok<Unit, ?> UNIT_OK = new Ok<>(Unit.INSTANCE);
 
         public Ok {
             Objects.requireNonNull(value, "value must not be null");

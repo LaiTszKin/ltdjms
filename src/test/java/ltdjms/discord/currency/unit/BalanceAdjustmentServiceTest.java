@@ -21,7 +21,6 @@ import java.time.Instant;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 /**
@@ -29,6 +28,7 @@ import static org.mockito.Mockito.*;
  * Tests credit, debit, and error handling including non-negative balance enforcement.
  */
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("deprecation") // covers both legacy exception-based API and new Result-based API
 class BalanceAdjustmentServiceTest {
 
     private static final long TEST_GUILD_ID = 123456789012345678L;

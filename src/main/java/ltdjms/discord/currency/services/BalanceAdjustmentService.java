@@ -37,7 +37,9 @@ public class BalanceAdjustmentService {
      * @return the adjustment result
      * @throws IllegalArgumentException   if the amount exceeds the per-command maximum
      * @throws NegativeBalanceException   if the adjustment would result in a negative balance
+     * @deprecated Use {@link #tryAdjustBalance(long, long, long)} for Result-based error handling
      */
+    @Deprecated
     public BalanceAdjustmentResult adjustBalance(long guildId, long userId, long amount) {
         LOG.debug("Adjusting balance for guildId={}, userId={}, amount={}", guildId, userId, amount);
 
@@ -126,6 +128,72 @@ public class BalanceAdjustmentService {
     }
 
     /**
+     * Adjusts a member's balance to a specific target value using Result-based error handling.
+     *
+     * @param guildId       the Discord guild ID
+     * @param userId        the Discord user ID
+     * @param targetBalance the target balance to set (must be non-negative)
+     * @return Result containing BalanceAdjustmentResult on success, or DomainError on failure
+     */
+    public Result<BalanceAdjustmentResult, DomainError> tryAdjustBalanceTo(long guildId, long userId, long targetBalance) {
+        LOG.debug("Adjusting balance to target for guildId={}, userId={}, targetBalance={}",
+                guildId, userId, targetBalance);
+
+        // Validate target balance
+        if (targetBalance < 0) {
+            return Result.err(DomainError.invalidInput("Target balance cannot be negative: " + targetBalance));
+        }
+
+        // Get current balance
+        MemberCurrencyAccount current = accountRepository.findOrCreate(guildId, userId);
+        long previousBalance = current.balance();
+
+        // Calculate delta with overflow protection
+        long delta;
+        try {
+            delta = Math.subtractExact(targetBalance, previousBalance);
+        } catch (ArithmeticException e) {
+            return Result.err(DomainError.invalidInput(
+                    "Adjustment would cause overflow: target=" + targetBalance + ", current=" + previousBalance));
+        }
+
+        // Validate delta
+        if (!MemberCurrencyAccount.isValidAdjustmentAmount(delta)) {
+            return Result.err(DomainError.invalidInput(
+                    "Amount exceeds maximum: |" + delta + "| > " + MemberCurrencyAccount.MAX_ADJUSTMENT_AMOUNT));
+        }
+
+        // Apply adjustment using Result-based API
+        Result<MemberCurrencyAccount, DomainError> adjustResult =
+                accountRepository.tryAdjustBalance(guildId, userId, delta);
+
+        if (adjustResult.isErr()) {
+            return Result.err(adjustResult.getError());
+        }
+
+        MemberCurrencyAccount updated = adjustResult.getValue();
+
+        // Get currency config for display
+        GuildCurrencyConfig config = configRepository.findByGuildId(guildId)
+                .orElse(GuildCurrencyConfig.createDefault(guildId));
+
+        BalanceAdjustmentResult result = new BalanceAdjustmentResult(
+                guildId,
+                userId,
+                previousBalance,
+                updated.balance(),
+                delta,
+                config.currencyName(),
+                config.currencyIcon()
+        );
+
+        LOG.info("Balance adjusted to target: guildId={}, userId={}, previous={}, new={}, adjustment={}",
+                guildId, userId, previousBalance, updated.balance(), delta);
+
+        return Result.ok(result);
+    }
+
+    /**
      * Adjusts a member's balance to a specific target value.
      *
      * @param guildId       the Discord guild ID
@@ -133,7 +201,9 @@ public class BalanceAdjustmentService {
      * @param targetBalance the target balance to set (must be non-negative)
      * @return the adjustment result
      * @throws IllegalArgumentException if the target balance is negative or the delta exceeds maximum
+     * @deprecated Use {@link #tryAdjustBalanceTo(long, long, long)} for Result-based error handling
      */
+    @Deprecated
     public BalanceAdjustmentResult adjustBalanceTo(long guildId, long userId, long targetBalance) {
         LOG.debug("Adjusting balance to target for guildId={}, userId={}, targetBalance={}",
                 guildId, userId, targetBalance);

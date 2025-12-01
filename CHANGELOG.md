@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2025-12-01
+
+### Added
+- 新增 Dagger 2 依賴注入框架，提供完整的 DI 架構：
+  - `AppComponent` 作為主要 DI 入口點
+  - `DatabaseModule` 提供資料庫相關依賴（DataSource、DSLContext）
+  - `CurrencyRepositoryModule` 與 `GameTokenRepositoryModule` 提供 repository 依賴
+  - `CurrencyServiceModule` 與 `GameTokenServiceModule` 提供服務層依賴
+  - `CommandHandlerModule` 提供指令處理器與 SlashCommandListener 依賴
+- 新增 `DaggerWiringIntegrationTest` 驗證所有 Dagger 依賴正確注入
+- 新增 jOOQ 依賴作為未來 SQL 查詢的基礎設施
+
+### Changed
+- 重構 `DiscordCurrencyBot` 使用 Dagger component 進行依賴注入，取代手動建構依賴鏈
+- 重構 `EnvironmentConfig` 使用 Typesafe Config 進行設定管理，內部使用 `Config` 物件處理多層設定來源的優先順序
+- 擴充 `EnvironmentConfigDotEnvIntegrationTest`，新增優先順序測試、回退測試與完整設定值測試
+- 更新 README.md 文件，說明 Dagger 2 與 Typesafe Config 的使用
+
+### Technical
+- 設定優先順序維持不變：系統環境變數 > .env 檔案 > application.conf/properties > 內建預設值
+- 所有 repository、service 與 command handler 現在都是 singleton 範疇
+
 ## [0.3.0] - 2025-11-30
 
 ### Added

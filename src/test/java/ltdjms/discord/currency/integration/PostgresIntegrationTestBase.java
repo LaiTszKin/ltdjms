@@ -24,6 +24,7 @@ import java.sql.Statement;
 public abstract class PostgresIntegrationTestBase {
 
     @Container
+    @SuppressWarnings("resource") // managed by Testcontainers; closed via JUnit/Testcontainers lifecycle
     protected static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
             .withDatabaseName("currency_bot_test")
             .withUsername("test")

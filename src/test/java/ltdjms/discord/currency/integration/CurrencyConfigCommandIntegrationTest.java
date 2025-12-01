@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Integration tests for currency configuration commands.
  * Verifies admin configuration updates and their effect on balance views.
  */
+@SuppressWarnings("deprecation") // intentionally calls deprecated balance/config APIs to verify legacy flows
 class CurrencyConfigCommandIntegrationTest extends PostgresIntegrationTestBase {
 
     private static final long TEST_GUILD_ID = 123456789012345678L;

@@ -6,7 +6,7 @@
 
     <groupId>ltdjms</groupId>
     <artifactId>discord-currency-bot</artifactId>
-    <version>0.3.0</version>
+    <version>0.4.0</version>
     <packaging>jar</packaging>
 
     <name>Discord Currency Bot</name>
@@ -24,6 +24,9 @@
         <hikaricp.version>6.2.1</hikaricp.version>
         <slf4j.version>2.0.16</slf4j.version>
         <logback.version>1.5.12</logback.version>
+        <jooq.version>3.19.15</jooq.version>
+        <dagger.version>2.52</dagger.version>
+        <typesafe-config.version>1.4.3</typesafe-config.version>
 
         <!-- Test dependency versions -->
         <junit.version>5.11.3</junit.version>
@@ -50,6 +53,27 @@
             <groupId>com.zaxxer</groupId>
             <artifactId>HikariCP</artifactId>
             <version>${hikaricp.version}</version>
+        </dependency>
+
+        <!-- JOOQ -->
+        <dependency>
+            <groupId>org.jooq</groupId>
+            <artifactId>jooq</artifactId>
+            <version>${jooq.version}</version>
+        </dependency>
+
+        <!-- Dependency Injection -->
+        <dependency>
+            <groupId>com.google.dagger</groupId>
+            <artifactId>dagger</artifactId>
+            <version>${dagger.version}</version>
+        </dependency>
+
+        <!-- Configuration -->
+        <dependency>
+            <groupId>com.typesafe</groupId>
+            <artifactId>config</artifactId>
+            <version>${typesafe-config.version}</version>
         </dependency>
 
         <!-- Logging -->
@@ -124,6 +148,13 @@
                 <configuration>
                     <source>${java.version}</source>
                     <target>${java.version}</target>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>com.google.dagger</groupId>
+                            <artifactId>dagger-compiler</artifactId>
+                            <version>${dagger.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
             <plugin>
@@ -138,13 +169,14 @@
                         --add-opens java.base/java.util=ALL-UNNAMED
                         --add-opens java.base/java.lang.invoke=ALL-UNNAMED
                         -XX:+EnableDynamicAgentLoading
+                        -Dnet.bytebuddy.experimental=true
                     </argLine>
                 </configuration>
             </plugin>
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.12</version>
+                <version>0.8.14</version>
                 <executions>
                     <execution>
                         <id>prepare-agent</id>
@@ -193,6 +225,9 @@
                                 <!-- Exclude error handler and validator classes -->
                                 <exclude>**/EmojiValidator.class</exclude>
                                 <exclude>**/DiscordEmojiValidator.class</exclude>
+                                <exclude>**/JdaEmojiValidator.class</exclude>
+                                <!-- Exclude infrastructure-only database configuration (covered indirectly by integration tests) -->
+                                <exclude>**/DatabaseConfig.class</exclude>
                                 <exclude>**/RepositoryException.class</exclude>
                                 <exclude>**/NegativeBalanceException.class</exclude>
                                 <!-- Exclude JDBC repository implementation details (covered by integration tests) -->

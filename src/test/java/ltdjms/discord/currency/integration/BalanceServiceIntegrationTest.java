@@ -18,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Integration tests for BalanceService.
  * Tests balance retrieval with a real PostgreSQL database.
  */
+@SuppressWarnings("deprecation") // uses deprecated BalanceService#getBalance for compatibility verification
 class BalanceServiceIntegrationTest extends PostgresIntegrationTestBase {
 
     private static final long TEST_GUILD_ID = 123456789012345678L;

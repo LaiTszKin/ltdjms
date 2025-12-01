@@ -1,30 +1,11 @@
 package ltdjms.discord.currency.bot;
 
-import ltdjms.discord.currency.commands.BalanceAdjustmentCommandHandler;
-import ltdjms.discord.currency.commands.BalanceCommandHandler;
-import ltdjms.discord.currency.commands.CurrencyConfigCommandHandler;
-import ltdjms.discord.currency.persistence.GuildCurrencyConfigRepository;
-import ltdjms.discord.currency.persistence.JdbcGuildCurrencyConfigRepository;
-import ltdjms.discord.currency.persistence.JdbcMemberCurrencyAccountRepository;
-import ltdjms.discord.currency.persistence.MemberCurrencyAccountRepository;
-import ltdjms.discord.currency.services.BalanceAdjustmentService;
-import ltdjms.discord.currency.services.BalanceService;
-import ltdjms.discord.currency.services.CurrencyConfigService;
-import ltdjms.discord.currency.services.DefaultBalanceService;
-import ltdjms.discord.currency.services.EmojiValidator;
-import ltdjms.discord.currency.services.JdaEmojiValidator;
-import ltdjms.discord.gametoken.commands.DiceGame1CommandHandler;
-import ltdjms.discord.gametoken.commands.DiceGame1ConfigCommandHandler;
-import ltdjms.discord.gametoken.commands.GameTokenAdjustCommandHandler;
-import ltdjms.discord.gametoken.persistence.DiceGame1ConfigRepository;
-import ltdjms.discord.gametoken.persistence.GameTokenAccountRepository;
-import ltdjms.discord.gametoken.persistence.JdbcDiceGame1ConfigRepository;
-import ltdjms.discord.gametoken.persistence.JdbcGameTokenAccountRepository;
-import ltdjms.discord.gametoken.services.DiceGame1Service;
-import ltdjms.discord.gametoken.services.GameTokenService;
 import ltdjms.discord.shared.DatabaseConfig;
 import ltdjms.discord.shared.DatabaseSchemaMigrator;
 import ltdjms.discord.shared.EnvironmentConfig;
+import ltdjms.discord.shared.di.AppComponent;
+import ltdjms.discord.shared.di.DaggerAppComponent;
+import ltdjms.discord.shared.di.DatabaseModule;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import org.slf4j.Logger;
@@ -34,7 +15,7 @@ import javax.sql.DataSource;
 
 /**
  * Main entry point for the Discord Currency Bot.
- * Bootstraps JDA with required intents and wires up command handlers.
+ * Bootstraps JDA with required intents and wires up command handlers via Dagger DI.
  */
 public class DiscordCurrencyBot {
 
@@ -42,46 +23,27 @@ public class DiscordCurrencyBot {
 
     private final JDA jda;
     private final DatabaseConfig databaseConfig;
+    private final AppComponent appComponent;
 
     public DiscordCurrencyBot(EnvironmentConfig envConfig) throws InterruptedException {
         LOG.info("Starting Discord Currency Bot...");
 
-        // Initialize database
-        this.databaseConfig = new DatabaseConfig(envConfig);
-        DataSource dataSource = databaseConfig.getDataSource();
+        // Build Dagger component with environment config
+        this.appComponent = DaggerAppComponent.builder()
+                .databaseModule(new DatabaseModule(envConfig))
+                .build();
+
+        // Get database config from Dagger
+        this.databaseConfig = appComponent.databaseConfig();
+        DataSource dataSource = appComponent.dataSource();
 
         // Apply non-destructive schema migrations before using the database.
         // This keeps the actual schema in sync with src/main/resources/db/schema.sql
         // for both local development and container environments.
         DatabaseSchemaMigrator.forDefaultSchema().migrate(dataSource);
 
-        // Initialize repositories
-        GuildCurrencyConfigRepository configRepository = new JdbcGuildCurrencyConfigRepository(dataSource);
-        MemberCurrencyAccountRepository accountRepository = new JdbcMemberCurrencyAccountRepository(dataSource);
-        GameTokenAccountRepository tokenRepository = new JdbcGameTokenAccountRepository(dataSource);
-        DiceGame1ConfigRepository diceGameConfigRepository = new JdbcDiceGame1ConfigRepository(dataSource);
-
-        // Initialize services
-        EmojiValidator emojiValidator = new JdaEmojiValidator();
-        BalanceService balanceService = new DefaultBalanceService(accountRepository, configRepository);
-        CurrencyConfigService configService = new CurrencyConfigService(configRepository, emojiValidator);
-        BalanceAdjustmentService adjustmentService = new BalanceAdjustmentService(accountRepository, configRepository);
-        GameTokenService tokenService = new GameTokenService(tokenRepository);
-        DiceGame1Service diceGameService = new DiceGame1Service(accountRepository);
-
-        // Initialize command handlers
-        BalanceCommandHandler balanceHandler = new BalanceCommandHandler(balanceService);
-        CurrencyConfigCommandHandler configHandler = new CurrencyConfigCommandHandler(configService);
-        BalanceAdjustmentCommandHandler adjustmentHandler = new BalanceAdjustmentCommandHandler(adjustmentService);
-        GameTokenAdjustCommandHandler gameTokenAdjustHandler = new GameTokenAdjustCommandHandler(tokenService);
-        DiceGame1CommandHandler diceGame1Handler = new DiceGame1CommandHandler(
-                tokenService, diceGameService, diceGameConfigRepository, configRepository);
-        DiceGame1ConfigCommandHandler diceGame1ConfigHandler = new DiceGame1ConfigCommandHandler(diceGameConfigRepository);
-
-        // Initialize slash command listener
-        SlashCommandListener slashCommandListener = new SlashCommandListener(
-                balanceHandler, configHandler, adjustmentHandler,
-                gameTokenAdjustHandler, diceGame1Handler, diceGame1ConfigHandler);
+        // Get slash command listener from Dagger
+        SlashCommandListener slashCommandListener = appComponent.slashCommandListener();
 
         // Build JDA instance with default non-privileged gateway intents to avoid
         // DISALLOWED_INTENTS (4014) errors when the bot token does not have
@@ -106,6 +68,15 @@ public class DiscordCurrencyBot {
      */
     public JDA getJda() {
         return jda;
+    }
+
+    /**
+     * Returns the Dagger AppComponent for accessing dependencies.
+     *
+     * @return the AppComponent instance
+     */
+    public AppComponent getAppComponent() {
+        return appComponent;
     }
 
     /**
