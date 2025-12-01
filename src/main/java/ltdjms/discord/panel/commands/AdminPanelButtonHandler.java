@@ -200,7 +200,8 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         // Initialize or reset session state
         sessionStates.put(sessionKey, new SessionState(ManagementType.BALANCE));
 
-        MessageEmbed embed = buildBalanceManagementEmbed(null, null, null);
+        String currencyIcon = adminPanelService.getCurrencyConfig(guildId).currencyIcon();
+        MessageEmbed embed = buildBalanceManagementEmbed(null, null, null, currencyIcon);
 
         EntitySelectMenu userSelect = EntitySelectMenu.create(SELECT_BALANCE_USER, EntitySelectMenu.SelectTarget.USER)
                 .setPlaceholder("選擇要調整的成員")
@@ -219,7 +220,7 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
                         ActionRow.of(userSelect),
                         ActionRow.of(modeSelect),
                         ActionRow.of(
-                                Button.primary(BUTTON_OPEN_BALANCE_MODAL, "💰 輸入金額").asDisabled(),
+                                Button.primary(BUTTON_OPEN_BALANCE_MODAL, currencyIcon + " 輸入金額").asDisabled(),
                                 Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")
                         )
                 )
@@ -244,10 +245,12 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         Long currentBalance = balanceResult.isOk() ? balanceResult.getValue() : null;
         state.currentValue = currentBalance;
 
+        String currencyIcon = adminPanelService.getCurrencyConfig(guildId).currencyIcon();
         MessageEmbed embed = buildBalanceManagementEmbed(
                 selectedUser.getAsMention(),
                 currentBalance,
-                state.selectedMode
+                state.selectedMode,
+                currencyIcon
         );
 
         boolean canOpenModal = state.selectedUserId != null && state.selectedMode != null;
@@ -271,8 +274,8 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
                         ActionRow.of(modeSelect),
                         ActionRow.of(
                                 canOpenModal
-                                        ? Button.primary(BUTTON_OPEN_BALANCE_MODAL, "💰 輸入金額")
-                                        : Button.primary(BUTTON_OPEN_BALANCE_MODAL, "💰 輸入金額").asDisabled(),
+                                        ? Button.primary(BUTTON_OPEN_BALANCE_MODAL, currencyIcon + " 輸入金額")
+                                        : Button.primary(BUTTON_OPEN_BALANCE_MODAL, currencyIcon + " 輸入金額").asDisabled(),
                                 Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")
                         )
                 )
@@ -286,10 +289,12 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
                 k -> new SessionState(ManagementType.BALANCE));
         state.selectedMode = mode;
 
+        String currencyIcon = adminPanelService.getCurrencyConfig(guildId).currencyIcon();
         MessageEmbed embed = buildBalanceManagementEmbed(
                 state.selectedUserMention,
                 state.currentValue,
-                mode
+                mode,
+                currencyIcon
         );
 
         boolean canOpenModal = state.selectedUserId != null && state.selectedMode != null;
@@ -313,8 +318,8 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
                         ActionRow.of(modeSelect),
                         ActionRow.of(
                                 canOpenModal
-                                        ? Button.primary(BUTTON_OPEN_BALANCE_MODAL, "💰 輸入金額")
-                                        : Button.primary(BUTTON_OPEN_BALANCE_MODAL, "💰 輸入金額").asDisabled(),
+                                        ? Button.primary(BUTTON_OPEN_BALANCE_MODAL, currencyIcon + " 輸入金額")
+                                        : Button.primary(BUTTON_OPEN_BALANCE_MODAL, currencyIcon + " 輸入金額").asDisabled(),
                                 Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")
                         )
                 )
@@ -354,16 +359,16 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         event.replyModal(modal).queue();
     }
 
-    private MessageEmbed buildBalanceManagementEmbed(String userMention, Long currentBalance, String mode) {
+    private MessageEmbed buildBalanceManagementEmbed(String userMention, Long currentBalance, String mode, String currencyIcon) {
         EmbedBuilder builder = new EmbedBuilder()
-                .setTitle("💰 使用者餘額管理")
+                .setTitle(currencyIcon + " 使用者餘額管理")
                 .setColor(EMBED_COLOR)
                 .setDescription("選擇要調整餘額的成員和調整模式");
 
         if (userMention != null) {
             builder.addField("選取成員", userMention, true);
             if (currentBalance != null) {
-                builder.addField("目前餘額", String.format("💰 %,d", currentBalance), true);
+                builder.addField("目前餘額", String.format("%s %,d", currencyIcon, currentBalance), true);
             } else {
                 builder.addField("目前餘額", "（無法取得）", true);
             }
@@ -571,8 +576,9 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
 
         DiceGame1Config game1Config = adminPanelService.getDiceGame1Config(guildId);
         DiceGame2Config game2Config = adminPanelService.getDiceGame2Config(guildId);
+        String currencyIcon = adminPanelService.getCurrencyConfig(guildId).currencyIcon();
 
-        MessageEmbed embed = buildGameManagementEmbed(game1Config, game2Config);
+        MessageEmbed embed = buildGameManagementEmbed(game1Config, game2Config, currencyIcon);
 
         StringSelectMenu gameSelect = StringSelectMenu.create(SELECT_GAME)
                 .setPlaceholder("選擇遊戲")
@@ -600,6 +606,7 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
 
     private void showDiceGame1Settings(StringSelectInteractionEvent event, long guildId) {
         DiceGame1Config config = adminPanelService.getDiceGame1Config(guildId);
+        String currencyIcon = adminPanelService.getCurrencyConfig(guildId).currencyIcon();
 
         MessageEmbed embed = new EmbedBuilder()
                 .setTitle("🎲 摘星手設定")
@@ -610,7 +617,8 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
                                 config.maxTokensPerPlay()),
                         true)
                 .addField("獎勵設定",
-                        String.format("單骰獎勵倍率：💰 %,d\n（1 點 = %,d、6 點 = %,d）",
+                        String.format("單骰獎勵倍率：%s %,d\n（1 點 = %,d、6 點 = %,d）",
+                                currencyIcon,
                                 config.rewardPerDiceValue(),
                                 config.rewardPerDiceValue(),
                                 config.rewardPerDiceValue() * 6),
@@ -635,6 +643,7 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
 
     private void showDiceGame2Settings(StringSelectInteractionEvent event, long guildId) {
         DiceGame2Config config = adminPanelService.getDiceGame2Config(guildId);
+        String currencyIcon = adminPanelService.getCurrencyConfig(guildId).currencyIcon();
 
         MessageEmbed embed = new EmbedBuilder()
                 .setTitle("🎲 神龍擺尾設定")
@@ -645,14 +654,14 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
                                 config.maxTokensPerPlay()),
                         true)
                 .addField("獎勵倍率",
-                        String.format("順子倍率：💰 %,d\n基礎倍率：💰 %,d",
-                                config.straightMultiplier(),
-                                config.baseMultiplier()),
+                        String.format("順子倍率：%s %,d\n基礎倍率：%s %,d",
+                                currencyIcon, config.straightMultiplier(),
+                                currencyIcon, config.baseMultiplier()),
                         true)
                 .addField("豹子獎勵",
-                        String.format("小豹子（<10）：💰 %,d\n大豹子（≥10）：💰 %,d",
-                                config.tripleLowBonus(),
-                                config.tripleHighBonus()),
+                        String.format("小豹子（<10）：%s %,d\n大豹子（≥10）：%s %,d",
+                                currencyIcon, config.tripleLowBonus(),
+                                currencyIcon, config.tripleHighBonus()),
                         false)
                 .setFooter("選擇要調整的設定類別")
                 .build();
@@ -820,23 +829,24 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         event.replyModal(modal).queue();
     }
 
-    private MessageEmbed buildGameManagementEmbed(DiceGame1Config game1Config, DiceGame2Config game2Config) {
+    private MessageEmbed buildGameManagementEmbed(DiceGame1Config game1Config, DiceGame2Config game2Config, String currencyIcon) {
         return new EmbedBuilder()
                 .setTitle("🎲 遊戲設定管理")
                 .setColor(EMBED_COLOR)
                 .setDescription("選擇要調整設定的遊戲")
                 .addField("摘星手",
-                        String.format("代幣範圍：🎮 %,d ~ %,d\n單骰倍率：💰 %,d",
+                        String.format("代幣範圍：🎮 %,d ~ %,d\n單骰倍率：%s %,d",
                                 game1Config.minTokensPerPlay(),
                                 game1Config.maxTokensPerPlay(),
+                                currencyIcon,
                                 game1Config.rewardPerDiceValue()),
                         false)
                 .addField("神龍擺尾",
-                        String.format("代幣範圍：🎮 %,d ~ %,d\n順子倍率：💰 %,d\n基礎倍率：💰 %,d",
+                        String.format("代幣範圍：🎮 %,d ~ %,d\n順子倍率：%s %,d\n基礎倍率：%s %,d",
                                 game2Config.minTokensPerPlay(),
                                 game2Config.maxTokensPerPlay(),
-                                game2Config.straightMultiplier(),
-                                game2Config.baseMultiplier()),
+                                currencyIcon, game2Config.straightMultiplier(),
+                                currencyIcon, game2Config.baseMultiplier()),
                         false)
                 .setFooter("選擇遊戲以查看詳細設定")
                 .build();
@@ -850,11 +860,12 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         String sessionKey = getSessionKey(event.getUser().getIdLong(), guildId);
         sessionStates.remove(sessionKey);
 
+        String currencyIcon = adminPanelService.getCurrencyConfig(guildId).currencyIcon();
         MessageEmbed embed = new EmbedBuilder()
                 .setTitle("🔧 管理面板")
                 .setDescription("選擇要管理的項目：")
                 .setColor(EMBED_COLOR)
-                .addField("💰 使用者餘額管理", "調整成員的貨幣餘額", false)
+                .addField(currencyIcon + " 使用者餘額管理", "調整成員的貨幣餘額", false)
                 .addField("🎮 遊戲代幣管理", "調整成員的遊戲代幣餘額", false)
                 .addField("🎲 遊戲設定管理", "調整遊戲的代幣消耗設定", false)
                 .setFooter("點擊下方按鈕進入對應功能")
@@ -862,7 +873,7 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
 
         event.editMessageEmbeds(embed)
                 .setComponents(ActionRow.of(
-                        Button.primary(BUTTON_BALANCE, "💰 使用者餘額管理"),
+                        Button.primary(BUTTON_BALANCE, currencyIcon + " 使用者餘額管理"),
                         Button.primary(BUTTON_TOKENS, "🎮 遊戲代幣管理"),
                         Button.primary(BUTTON_GAMES, "🎲 遊戲設定管理")
                 ))
@@ -915,9 +926,10 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         }
 
         AdminPanelService.BalanceAdjustmentResult adjustResult = result.getValue();
+        String currencyIcon = adminPanelService.getCurrencyConfig(guildId).currencyIcon();
         event.reply(String.format(
-                "✅ 餘額調整成功！\n<@%d> 的餘額：\n調整前：💰 %,d\n調整後：💰 %,d",
-                userId, adjustResult.previousBalance(), adjustResult.newBalance()
+                "✅ 餘額調整成功！\n<@%d> 的餘額：\n調整前：%s %,d\n調整後：%s %,d",
+                userId, currencyIcon, adjustResult.previousBalance(), currencyIcon, adjustResult.newBalance()
         )).setEphemeral(true).queue();
     }
 
@@ -1044,10 +1056,11 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         }
 
         DiceGame1Config newConfig = result.getValue();
+        String currencyIcon = adminPanelService.getCurrencyConfig(guildId).currencyIcon();
         event.reply(String.format(
                 "✅ 摘星手獎勵設定更新成功！\n" +
-                        "單骰倍率：💰 %,d → %,d",
-                oldConfig.rewardPerDiceValue(), newConfig.rewardPerDiceValue()
+                        "單骰倍率：%s %,d → %,d",
+                currencyIcon, oldConfig.rewardPerDiceValue(), newConfig.rewardPerDiceValue()
         )).setEphemeral(true).queue();
     }
 
@@ -1128,12 +1141,13 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         }
 
         DiceGame2Config newConfig = result.getValue();
+        String currencyIcon = adminPanelService.getCurrencyConfig(guildId).currencyIcon();
         event.reply(String.format(
                 "✅ 神龍擺尾獎勵倍率更新成功！\n" +
-                        "順子倍率：💰 %,d → %,d\n" +
-                        "基礎倍率：💰 %,d → %,d",
-                oldConfig.straightMultiplier(), newConfig.straightMultiplier(),
-                oldConfig.baseMultiplier(), newConfig.baseMultiplier()
+                        "順子倍率：%s %,d → %,d\n" +
+                        "基礎倍率：%s %,d → %,d",
+                currencyIcon, oldConfig.straightMultiplier(), newConfig.straightMultiplier(),
+                currencyIcon, oldConfig.baseMultiplier(), newConfig.baseMultiplier()
         )).setEphemeral(true).queue();
     }
 
@@ -1168,12 +1182,13 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         }
 
         DiceGame2Config newConfig = result.getValue();
+        String currencyIcon = adminPanelService.getCurrencyConfig(guildId).currencyIcon();
         event.reply(String.format(
                 "✅ 神龍擺尾豹子獎勵更新成功！\n" +
-                        "小豹子：💰 %,d → %,d\n" +
-                        "大豹子：💰 %,d → %,d",
-                oldConfig.tripleLowBonus(), newConfig.tripleLowBonus(),
-                oldConfig.tripleHighBonus(), newConfig.tripleHighBonus()
+                        "小豹子：%s %,d → %,d\n" +
+                        "大豹子：%s %,d → %,d",
+                currencyIcon, oldConfig.tripleLowBonus(), newConfig.tripleLowBonus(),
+                currencyIcon, oldConfig.tripleHighBonus(), newConfig.tripleHighBonus()
         )).setEphemeral(true).queue();
     }
 

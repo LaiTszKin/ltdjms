@@ -55,7 +55,7 @@ public class UserPanelCommandHandler implements SlashCommandListener.CommandHand
 
         event.replyEmbeds(embed)
                 .addActionRow(
-                        Button.secondary(BUTTON_CURRENCY_HISTORY, "💰 查看貨幣流水"),
+                        Button.secondary(BUTTON_CURRENCY_HISTORY, panelView.getCurrencyHistoryButtonLabel()),
                         Button.secondary(BUTTON_TOKEN_HISTORY, "📜 查看遊戲代幣流水")
                 )
                 .setEphemeral(true)

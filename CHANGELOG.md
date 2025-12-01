@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.7.2] - 2025-12-01
+
+### Changed
+- 在 `/admin-panel` 管理面板中全面使用 `GuildCurrencyConfig` 的貨幣圖示：主選單的「使用者餘額管理」欄位與按鈕、餘額管理頁的「輸入金額」按鈕，以及骰子小遊戲獎勵設定更新成功訊息都會套用伺服器自訂的貨幣圖示。
+- 在 `/user-panel` 個人面板中使用 `GuildCurrencyConfig` 的貨幣名稱與圖示：貨幣餘額欄位名稱改為顯示實際貨幣名稱（例如「星幣餘額」），「查看貨幣流水」按鈕改為使用對應的貨幣圖示。
+
 ## [0.7.1] - 2025-12-01
 
 ### Changed

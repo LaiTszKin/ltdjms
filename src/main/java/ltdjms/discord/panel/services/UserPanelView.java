@@ -53,11 +53,22 @@ public record UserPanelView(
 
     /**
      * Gets the currency balance field name for the embed.
+     * Uses the guild's custom currency name for consistency.
      *
-     * @return the field name in zh-TW
+     * @return the field name in zh-TW, e.g., "星幣餘額"
      */
     public String getCurrencyFieldName() {
-        return "貨幣餘額";
+        return currencyName + "餘額";
+    }
+
+    /**
+     * Gets the button label for viewing currency transaction history.
+     * Uses the guild's custom currency icon for consistency.
+     *
+     * @return the button label in zh-TW, e.g., "✨ 查看貨幣流水"
+     */
+    public String getCurrencyHistoryButtonLabel() {
+        return currencyIcon + " 查看貨幣流水";
     }
 
     /**

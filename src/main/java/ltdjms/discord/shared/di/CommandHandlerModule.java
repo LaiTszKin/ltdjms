@@ -97,10 +97,12 @@ public class CommandHandlerModule {
             GameTokenService gameTokenService,
             GameTokenTransactionService transactionService,
             DiceGame1ConfigRepository diceGame1ConfigRepository,
-            DiceGame2ConfigRepository diceGame2ConfigRepository) {
+            DiceGame2ConfigRepository diceGame2ConfigRepository,
+            CurrencyConfigService currencyConfigService) {
         return new AdminPanelService(
                 balanceService, balanceAdjustmentService, gameTokenService,
-                transactionService, diceGame1ConfigRepository, diceGame2ConfigRepository);
+                transactionService, diceGame1ConfigRepository, diceGame2ConfigRepository,
+                currencyConfigService);
     }
 
     @Provides

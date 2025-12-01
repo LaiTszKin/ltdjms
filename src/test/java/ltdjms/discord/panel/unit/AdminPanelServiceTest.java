@@ -1,8 +1,10 @@
 package ltdjms.discord.panel.unit;
 
 import ltdjms.discord.currency.domain.BalanceView;
+import ltdjms.discord.currency.domain.GuildCurrencyConfig;
 import ltdjms.discord.currency.services.BalanceAdjustmentService;
 import ltdjms.discord.currency.services.BalanceService;
+import ltdjms.discord.currency.services.CurrencyConfigService;
 import ltdjms.discord.gametoken.domain.DiceGame1Config;
 import ltdjms.discord.gametoken.domain.DiceGame2Config;
 import ltdjms.discord.gametoken.domain.GameTokenTransaction;
@@ -38,6 +40,7 @@ class AdminPanelServiceTest {
     private GameTokenTransactionService transactionService;
     private DiceGame1ConfigRepository diceGame1ConfigRepository;
     private DiceGame2ConfigRepository diceGame2ConfigRepository;
+    private CurrencyConfigService currencyConfigService;
     private AdminPanelService adminPanelService;
 
     @BeforeEach
@@ -48,6 +51,7 @@ class AdminPanelServiceTest {
         transactionService = mock(GameTokenTransactionService.class);
         diceGame1ConfigRepository = mock(DiceGame1ConfigRepository.class);
         diceGame2ConfigRepository = mock(DiceGame2ConfigRepository.class);
+        currencyConfigService = mock(CurrencyConfigService.class);
 
         adminPanelService = new AdminPanelService(
                 balanceService,
@@ -55,8 +59,45 @@ class AdminPanelServiceTest {
                 gameTokenService,
                 transactionService,
                 diceGame1ConfigRepository,
-                diceGame2ConfigRepository
+                diceGame2ConfigRepository,
+                currencyConfigService
         );
+    }
+
+    @Nested
+    @DisplayName("getCurrencyConfig")
+    class GetCurrencyConfig {
+
+        @Test
+        @DisplayName("should return custom currency config when available")
+        void shouldReturnCustomCurrencyConfig() {
+            // Given - guild has custom currency "星幣" with icon "✨"
+            GuildCurrencyConfig customConfig = GuildCurrencyConfig.createDefault(TEST_GUILD_ID)
+                    .withUpdates("星幣", "✨");
+            when(currencyConfigService.getConfig(TEST_GUILD_ID)).thenReturn(customConfig);
+
+            // When
+            GuildCurrencyConfig result = adminPanelService.getCurrencyConfig(TEST_GUILD_ID);
+
+            // Then
+            assertThat(result.currencyName()).isEqualTo("星幣");
+            assertThat(result.currencyIcon()).isEqualTo("✨");
+        }
+
+        @Test
+        @DisplayName("should return default currency config when no custom config exists")
+        void shouldReturnDefaultCurrencyConfig() {
+            // Given - no custom config, returns default
+            GuildCurrencyConfig defaultConfig = GuildCurrencyConfig.createDefault(TEST_GUILD_ID);
+            when(currencyConfigService.getConfig(TEST_GUILD_ID)).thenReturn(defaultConfig);
+
+            // When
+            GuildCurrencyConfig result = adminPanelService.getCurrencyConfig(TEST_GUILD_ID);
+
+            // Then
+            assertThat(result.currencyName()).isEqualTo(GuildCurrencyConfig.DEFAULT_NAME);
+            assertThat(result.currencyIcon()).isEqualTo(GuildCurrencyConfig.DEFAULT_ICON);
+        }
     }
 
     @Nested

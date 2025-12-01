@@ -170,6 +170,36 @@ class UserPanelServiceTest {
             assertThat(currencyField).contains("0");
             assertThat(tokenField).contains("0");
         }
+
+        @Test
+        @DisplayName("should include currency name in currency field name")
+        void shouldIncludeCurrencyNameInFieldName() {
+            // Given - user has custom currency "星幣" with icon "✨"
+            UserPanelView view = new UserPanelView(
+                    TEST_GUILD_ID, TEST_USER_ID, 1000L, "星幣", "✨", 50L);
+
+            // When
+            String fieldName = view.getCurrencyFieldName();
+
+            // Then - field name should include the custom currency name
+            assertThat(fieldName).contains("星幣");
+            assertThat(fieldName).contains("餘額");
+        }
+
+        @Test
+        @DisplayName("should return currency icon for button display")
+        void shouldReturnCurrencyIconForButton() {
+            // Given - user has custom currency with icon "✨"
+            UserPanelView view = new UserPanelView(
+                    TEST_GUILD_ID, TEST_USER_ID, 1000L, "星幣", "✨", 50L);
+
+            // When
+            String buttonLabel = view.getCurrencyHistoryButtonLabel();
+
+            // Then - button label should use the custom currency icon
+            assertThat(buttonLabel).contains("✨");
+            assertThat(buttonLabel).contains("流水");
+        }
     }
 
     @Nested

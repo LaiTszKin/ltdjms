@@ -1,7 +1,9 @@
 package ltdjms.discord.panel.services;
 
+import ltdjms.discord.currency.domain.GuildCurrencyConfig;
 import ltdjms.discord.currency.services.BalanceAdjustmentService;
 import ltdjms.discord.currency.services.BalanceService;
+import ltdjms.discord.currency.services.CurrencyConfigService;
 import ltdjms.discord.gametoken.domain.DiceGame1Config;
 import ltdjms.discord.gametoken.domain.DiceGame2Config;
 import ltdjms.discord.gametoken.domain.GameTokenTransaction;
@@ -28,6 +30,7 @@ public class AdminPanelService {
     private final GameTokenTransactionService transactionService;
     private final DiceGame1ConfigRepository diceGame1ConfigRepository;
     private final DiceGame2ConfigRepository diceGame2ConfigRepository;
+    private final CurrencyConfigService currencyConfigService;
 
     public AdminPanelService(
             BalanceService balanceService,
@@ -35,7 +38,8 @@ public class AdminPanelService {
             GameTokenService gameTokenService,
             GameTokenTransactionService transactionService,
             DiceGame1ConfigRepository diceGame1ConfigRepository,
-            DiceGame2ConfigRepository diceGame2ConfigRepository
+            DiceGame2ConfigRepository diceGame2ConfigRepository,
+            CurrencyConfigService currencyConfigService
     ) {
         this.balanceService = balanceService;
         this.balanceAdjustmentService = balanceAdjustmentService;
@@ -43,6 +47,17 @@ public class AdminPanelService {
         this.transactionService = transactionService;
         this.diceGame1ConfigRepository = diceGame1ConfigRepository;
         this.diceGame2ConfigRepository = diceGame2ConfigRepository;
+        this.currencyConfigService = currencyConfigService;
+    }
+
+    /**
+     * Gets the currency configuration for a guild.
+     *
+     * @param guildId the guild ID
+     * @return the currency configuration with name and icon
+     */
+    public GuildCurrencyConfig getCurrencyConfig(long guildId) {
+        return currencyConfigService.getConfig(guildId);
     }
 
     /**

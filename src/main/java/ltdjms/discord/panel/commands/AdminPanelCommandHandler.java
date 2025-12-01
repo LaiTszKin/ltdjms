@@ -38,11 +38,12 @@ public class AdminPanelCommandHandler implements SlashCommandListener.CommandHan
 
         LOG.debug("Processing /admin-panel for guildId={}", guildId);
 
-        MessageEmbed embed = buildMainPanelEmbed();
+        String currencyIcon = adminPanelService.getCurrencyConfig(guildId).currencyIcon();
+        MessageEmbed embed = buildMainPanelEmbed(currencyIcon);
 
         event.replyEmbeds(embed)
                 .addActionRow(
-                        Button.primary(BUTTON_BALANCE_MANAGEMENT, "💰 使用者餘額管理"),
+                        Button.primary(BUTTON_BALANCE_MANAGEMENT, currencyIcon + " 使用者餘額管理"),
                         Button.primary(BUTTON_TOKEN_MANAGEMENT, "🎮 遊戲代幣管理"),
                         Button.primary(BUTTON_GAME_MANAGEMENT, "🎲 遊戲設定管理")
                 )
@@ -53,12 +54,12 @@ public class AdminPanelCommandHandler implements SlashCommandListener.CommandHan
                 guildId, event.getUser().getIdLong());
     }
 
-    private MessageEmbed buildMainPanelEmbed() {
+    private MessageEmbed buildMainPanelEmbed(String currencyIcon) {
         return new EmbedBuilder()
                 .setTitle("🔧 管理面板")
                 .setDescription("選擇要管理的項目：")
                 .setColor(EMBED_COLOR)
-                .addField("💰 使用者餘額管理", "調整成員的貨幣餘額", false)
+                .addField(currencyIcon + " 使用者餘額管理", "調整成員的貨幣餘額", false)
                 .addField("🎮 遊戲代幣管理", "調整成員的遊戲代幣餘額", false)
                 .addField("🎲 遊戲設定管理", "調整遊戲的代幣消耗設定", false)
                 .setFooter("點擊下方按鈕進入對應功能")
