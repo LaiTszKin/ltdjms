@@ -6,7 +6,7 @@
 
     <groupId>ltdjms</groupId>
     <artifactId>discord-currency-bot</artifactId>
-    <version>0.4.0</version>
+    <version>0.5.0</version>
     <packaging>jar</packaging>
 
     <name>Discord Currency Bot</name>
@@ -230,8 +230,14 @@
                                 <exclude>**/DatabaseConfig.class</exclude>
                                 <exclude>**/RepositoryException.class</exclude>
                                 <exclude>**/NegativeBalanceException.class</exclude>
-                                <!-- Exclude JDBC repository implementation details (covered by integration tests) -->
+                                <!-- Exclude repository implementation details (covered by integration tests) -->
                                 <exclude>**/Jdbc*Repository.class</exclude>
+                                <exclude>**/Jooq*Repository.class</exclude>
+                                <!-- Exclude Dagger component wiring and DI modules (infrastructure-only) -->
+                                <exclude>**/AppComponent.class</exclude>
+                                <exclude>**/AppComponentFactory.class</exclude>
+                                <exclude>**/DaggerAppComponent*.class</exclude>
+                                <exclude>**/*Module.class</exclude>
                             </excludes>
                         </configuration>
                     </execution>

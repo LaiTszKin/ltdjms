@@ -4,8 +4,7 @@ import ltdjms.discord.shared.DatabaseConfig;
 import ltdjms.discord.shared.DatabaseSchemaMigrator;
 import ltdjms.discord.shared.EnvironmentConfig;
 import ltdjms.discord.shared.di.AppComponent;
-import ltdjms.discord.shared.di.DaggerAppComponent;
-import ltdjms.discord.shared.di.DatabaseModule;
+import ltdjms.discord.shared.di.AppComponentFactory;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import org.slf4j.Logger;
@@ -29,9 +28,7 @@ public class DiscordCurrencyBot {
         LOG.info("Starting Discord Currency Bot...");
 
         // Build Dagger component with environment config
-        this.appComponent = DaggerAppComponent.builder()
-                .databaseModule(new DatabaseModule(envConfig))
-                .build();
+        this.appComponent = AppComponentFactory.create(envConfig);
 
         // Get database config from Dagger
         this.databaseConfig = appComponent.databaseConfig();

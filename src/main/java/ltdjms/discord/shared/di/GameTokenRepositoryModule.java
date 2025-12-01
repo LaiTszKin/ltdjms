@@ -3,8 +3,10 @@ package ltdjms.discord.shared.di;
 import dagger.Module;
 import dagger.Provides;
 import ltdjms.discord.gametoken.persistence.DiceGame1ConfigRepository;
+import ltdjms.discord.gametoken.persistence.DiceGame2ConfigRepository;
 import ltdjms.discord.gametoken.persistence.GameTokenAccountRepository;
 import ltdjms.discord.gametoken.persistence.JdbcDiceGame1ConfigRepository;
+import ltdjms.discord.gametoken.persistence.JdbcDiceGame2ConfigRepository;
 import ltdjms.discord.gametoken.persistence.JdbcGameTokenAccountRepository;
 
 import javax.inject.Singleton;
@@ -27,5 +29,11 @@ public class GameTokenRepositoryModule {
     @Singleton
     public DiceGame1ConfigRepository provideDiceGame1ConfigRepository(DataSource dataSource) {
         return new JdbcDiceGame1ConfigRepository(dataSource);
+    }
+
+    @Provides
+    @Singleton
+    public DiceGame2ConfigRepository provideDiceGame2ConfigRepository(DataSource dataSource) {
+        return new JdbcDiceGame2ConfigRepository(dataSource);
     }
 }

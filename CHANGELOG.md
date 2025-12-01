@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0] - 2025-12-01
+
+### Added
+- 新增骰子小遊戲 `dice-game-2`：每局擲 15 顆骰子，支援順子與三條計分規則，消耗遊戲代幣並發放伺服器貨幣獎勵。
+- 新增 `DiceGame2Service`、`DiceGame2Config`、`DiceGame2ConfigRepository` 與 `JdbcDiceGame2ConfigRepository`，以及 `dice_game2_config` 資料表與 `UPDATE` 觸發器，讓每個伺服器可以獨立設定每局所需的遊戲代幣數量。
+- 新增 `/dice-game-2` 與 `/dice-game-2-config` 斜線指令與對應的 command handler、Dagger DI 模組與 `SlashCommandListener` 註冊。
+- 新增 `DiceGame2ServiceTest`、`DiceGame2CommandHandlerTest` 與 `DiceGame2ConfigTest`，涵蓋骰子擲骰邏輯、順子/三條拆分、獎勵計算、設定物件不變條件與 Discord 訊息格式。
+- 新增 `AppComponentFactory` 與 `AppComponentLoadTest`，集中 Dagger AppComponent 建立邏輯，並以更輕量的方式驗證 Dagger wiring。
+
+### Changed
+- 調整整合測試基底 `PostgresIntegrationTestBase`，在每個測試案例前一併清理 `dice_game2_config` 資料表，確保測試資料庫狀態一致。
+- 更新 `SlashCommandListener` 與 `CommandHandlerModule` / `GameTokenRepositoryModule` / `GameTokenServiceModule`，納入 `DiceGame2CommandHandler`、`DiceGame2ConfigCommandHandler` 與 `DiceGame2Service` 的依賴註冊。
+- 更新 `schema.sql` 新增 `dice_game2_config` 資料表與對應非負約束與 updated_at 觸發器。
+- 更新 `pom.xml` 中 Jacoco 覆蓋率檢查的排除清單，將 Dagger 產生的 component、DI modules 與 JDBC/JOOQ repository 實作視為基礎設施類別，不再計入 80% 覆蓋率門檻。
+- 調整 README，將 Docker 操作指令更新為 `make update`、`make start`、`make start-dev`、`make stop` 與 `make logs`，並補充遊戲代幣與兩個骰子小遊戲的功能說明。
+
 ## [0.4.0] - 2025-12-01
 
 ### Added

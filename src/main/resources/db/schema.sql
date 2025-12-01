@@ -93,3 +93,21 @@ CREATE TRIGGER update_dice_game1_config_updated_at
     BEFORE UPDATE ON dice_game1_config
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
+
+-- Dice game 2 configuration table
+CREATE TABLE IF NOT EXISTS dice_game2_config (
+    guild_id BIGINT PRIMARY KEY,
+    tokens_per_play BIGINT NOT NULL DEFAULT 1,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+
+    -- Ensure tokens_per_play is never negative
+    CONSTRAINT dice_game2_tokens_per_play_non_negative CHECK (tokens_per_play >= 0)
+);
+
+-- Trigger for dice_game2_config
+DROP TRIGGER IF EXISTS update_dice_game2_config_updated_at ON dice_game2_config;
+CREATE TRIGGER update_dice_game2_config_updated_at
+    BEFORE UPDATE ON dice_game2_config
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();

@@ -5,6 +5,8 @@ import ltdjms.discord.currency.commands.BalanceCommandHandler;
 import ltdjms.discord.currency.commands.CurrencyConfigCommandHandler;
 import ltdjms.discord.gametoken.commands.DiceGame1CommandHandler;
 import ltdjms.discord.gametoken.commands.DiceGame1ConfigCommandHandler;
+import ltdjms.discord.gametoken.commands.DiceGame2CommandHandler;
+import ltdjms.discord.gametoken.commands.DiceGame2ConfigCommandHandler;
 import ltdjms.discord.gametoken.commands.GameTokenAdjustCommandHandler;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.Permission;
@@ -32,6 +34,8 @@ public class SlashCommandListener extends ListenerAdapter {
     public static final String CMD_GAME_TOKEN_ADJUST = "game-token-adjust";
     public static final String CMD_DICE_GAME_1 = "dice-game-1";
     public static final String CMD_DICE_GAME_1_CONFIG = "dice-game-1-config";
+    public static final String CMD_DICE_GAME_2 = "dice-game-2";
+    public static final String CMD_DICE_GAME_2_CONFIG = "dice-game-2-config";
 
     private final BalanceCommandHandler balanceHandler;
     private final CurrencyConfigCommandHandler configHandler;
@@ -39,6 +43,8 @@ public class SlashCommandListener extends ListenerAdapter {
     private final GameTokenAdjustCommandHandler gameTokenAdjustHandler;
     private final DiceGame1CommandHandler diceGame1Handler;
     private final DiceGame1ConfigCommandHandler diceGame1ConfigHandler;
+    private final DiceGame2CommandHandler diceGame2Handler;
+    private final DiceGame2ConfigCommandHandler diceGame2ConfigHandler;
     private final SlashCommandMetrics metrics;
 
     public SlashCommandListener(
@@ -47,9 +53,12 @@ public class SlashCommandListener extends ListenerAdapter {
             BalanceAdjustmentCommandHandler adjustmentHandler,
             GameTokenAdjustCommandHandler gameTokenAdjustHandler,
             DiceGame1CommandHandler diceGame1Handler,
-            DiceGame1ConfigCommandHandler diceGame1ConfigHandler) {
+            DiceGame1ConfigCommandHandler diceGame1ConfigHandler,
+            DiceGame2CommandHandler diceGame2Handler,
+            DiceGame2ConfigCommandHandler diceGame2ConfigHandler) {
         this(balanceHandler, configHandler, adjustmentHandler,
                 gameTokenAdjustHandler, diceGame1Handler, diceGame1ConfigHandler,
+                diceGame2Handler, diceGame2ConfigHandler,
                 new SlashCommandMetrics());
     }
 
@@ -60,6 +69,8 @@ public class SlashCommandListener extends ListenerAdapter {
             GameTokenAdjustCommandHandler gameTokenAdjustHandler,
             DiceGame1CommandHandler diceGame1Handler,
             DiceGame1ConfigCommandHandler diceGame1ConfigHandler,
+            DiceGame2CommandHandler diceGame2Handler,
+            DiceGame2ConfigCommandHandler diceGame2ConfigHandler,
             SlashCommandMetrics metrics) {
         this.balanceHandler = balanceHandler;
         this.configHandler = configHandler;
@@ -67,6 +78,8 @@ public class SlashCommandListener extends ListenerAdapter {
         this.gameTokenAdjustHandler = gameTokenAdjustHandler;
         this.diceGame1Handler = diceGame1Handler;
         this.diceGame1ConfigHandler = diceGame1ConfigHandler;
+        this.diceGame2Handler = diceGame2Handler;
+        this.diceGame2ConfigHandler = diceGame2ConfigHandler;
         this.metrics = metrics;
     }
 
@@ -122,6 +135,14 @@ public class SlashCommandListener extends ListenerAdapter {
                 // /dice-game-1-config - admin only
                 Commands.slash(CMD_DICE_GAME_1_CONFIG, "Configure the dice game settings")
                         .addOption(OptionType.INTEGER, "token-cost", "Number of game tokens required per play", false)
+                        .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.ADMINISTRATOR)),
+
+                // /dice-game-2 - available to all users
+                Commands.slash(CMD_DICE_GAME_2, "Play the dice game 2 mini-game with straights and triples (costs game tokens)"),
+
+                // /dice-game-2-config - admin only
+                Commands.slash(CMD_DICE_GAME_2_CONFIG, "Configure the dice game 2 settings")
+                        .addOption(OptionType.INTEGER, "token-cost", "Number of game tokens required per play", false)
                         .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.ADMINISTRATOR))
         ).queue(
                 commands -> LOG.info("Registered {} slash commands", commands.size()),
@@ -153,6 +174,8 @@ public class SlashCommandListener extends ListenerAdapter {
                 case CMD_GAME_TOKEN_ADJUST -> handleWithAdminCheck(event, gameTokenAdjustHandler);
                 case CMD_DICE_GAME_1 -> diceGame1Handler.handle(event);
                 case CMD_DICE_GAME_1_CONFIG -> handleWithAdminCheck(event, diceGame1ConfigHandler);
+                case CMD_DICE_GAME_2 -> diceGame2Handler.handle(event);
+                case CMD_DICE_GAME_2_CONFIG -> handleWithAdminCheck(event, diceGame2ConfigHandler);
                 default -> {
                     LOG.warn("Unknown command received: {}", commandName);
                     event.reply("Unknown command.").setEphemeral(true).queue();
