@@ -3,7 +3,7 @@ package ltdjms.discord.currency.bot;
 import ltdjms.discord.panel.commands.AdminPanelButtonHandler;
 import ltdjms.discord.panel.commands.UserPanelButtonHandler;
 import ltdjms.discord.shared.DatabaseConfig;
-import ltdjms.discord.shared.DatabaseSchemaMigrator;
+import ltdjms.discord.shared.DatabaseMigrationRunner;
 import ltdjms.discord.shared.EnvironmentConfig;
 import ltdjms.discord.shared.di.AppComponent;
 import ltdjms.discord.shared.di.AppComponentFactory;
@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory;
 import javax.sql.DataSource;
 
 /**
- * Main entry point for the Discord Currency Bot.
+ * Main entry point for the LTDJ management system.
  * Bootstraps JDA with required intents and wires up command handlers via Dagger DI.
  */
 public class DiscordCurrencyBot {
@@ -27,7 +27,7 @@ public class DiscordCurrencyBot {
     private final AppComponent appComponent;
 
     public DiscordCurrencyBot(EnvironmentConfig envConfig) throws InterruptedException {
-        LOG.info("Starting Discord Currency Bot...");
+        LOG.info("Starting LTDJ management system...");
 
         // Build Dagger component with environment config
         this.appComponent = AppComponentFactory.create(envConfig);
@@ -36,10 +36,10 @@ public class DiscordCurrencyBot {
         this.databaseConfig = appComponent.databaseConfig();
         DataSource dataSource = appComponent.dataSource();
 
-        // Apply non-destructive schema migrations before using the database.
-        // This keeps the actual schema in sync with src/main/resources/db/schema.sql
-        // for both local development and container environments.
-        DatabaseSchemaMigrator.forDefaultSchema().migrate(dataSource);
+        // Apply database migrations via Flyway before using the database.
+        // This ensures the schema is up-to-date with the latest migrations.
+        // If migration fails, the bot will not start (SchemaMigrationException is thrown).
+        DatabaseMigrationRunner.forDefaultMigrations().migrate(dataSource);
 
         // Get slash command listener from Dagger
         SlashCommandListener slashCommandListener = appComponent.slashCommandListener();
@@ -61,7 +61,7 @@ public class DiscordCurrencyBot {
         // Register slash commands globally
         slashCommandListener.registerCommands(jda);
 
-        LOG.info("Discord Currency Bot started successfully!");
+        LOG.info("LTDJ management system started successfully!");
     }
 
     /**
@@ -86,14 +86,14 @@ public class DiscordCurrencyBot {
      * Shuts down the bot gracefully.
      */
     public void shutdown() {
-        LOG.info("Shutting down Discord Currency Bot...");
+        LOG.info("Shutting down LTDJ management system...");
         if (jda != null) {
             jda.shutdown();
         }
         if (databaseConfig != null) {
             databaseConfig.close();
         }
-        LOG.info("Discord Currency Bot shutdown complete.");
+        LOG.info("LTDJ management system shutdown complete.");
     }
 
     public static void main(String[] args) {
@@ -111,7 +111,7 @@ public class DiscordCurrencyBot {
             LOG.error("Configuration error: {}", e.getMessage());
             System.exit(1);
         } catch (Exception e) {
-            LOG.error("Failed to start Discord Currency Bot", e);
+            LOG.error("Failed to start LTDJ management system", e);
             System.exit(1);
         }
     }

@@ -12,7 +12,7 @@ flowchart LR
   Discord["Discord API / Gateway"]
   Bot["JDA Bot\n(DiscordCurrencyBot)"]
   Listener["SlashCommandListener\n+ Button Handlers"]
-  Handler["Command Handlers\n(balance, dice-game-1, ... )"]
+  Handler["Command Handlers\n(currency-config, dice-game-1, user-panel, ... )"]
   Service["Domain Services\n(BalanceService, GameTokenService, ...)"]
   Repo["Repositories\n(Jdbc*/Jooq*Repository)"]
   DB["PostgreSQL\n(currency_bot)"]
@@ -26,6 +26,7 @@ flowchart LR
 - **JDA 5.x**：與 Discord 溝通的 Java Discord API。
 - **Dagger 2**：依賴注入框架，透過 `AppComponent` 組裝所有服務與 Repository。
 - **PostgreSQL**：資料儲存，schema 定義在 `src/main/resources/db/schema.sql`。
+- **Flyway**：資料庫 migration 管理，migration 檔案位於 `src/main/resources/db/migration/`。
 - **JDBC / jOOQ**：資料存取層，提供型別安全的 SQL 操作。
 - **Typesafe Config**：設定載入與合併（環境變數、`.env`、`application.conf` 等）。
 
@@ -43,10 +44,11 @@ flowchart LR
    - `DatabaseConfig` 與 `DataSource`
    - 各種服務（`BalanceService`、`GameTokenService` 等）
    - 指令與面板的 handler（包括 `SlashCommandListener`、`UserPanelButtonHandler`、`AdminPanelButtonHandler`）。
-4. 呼叫 `DatabaseSchemaMigrator.forDefaultSchema().migrate(dataSource)`：
-   - 比對實際資料庫 schema 與 `schema.sql`
-   - 自動套用**非破壞性**變更（新增表／欄位等）
-   - 若偵測到破壞性變更則中止啟動並拋出例外
+4. 呼叫 `DatabaseMigrationRunner.forDefaultMigrations().migrate(dataSource)`：
+   - 使用 Flyway 執行 `src/main/resources/db/migration/` 下的所有 pending migrations
+   - 若是空資料庫，會建立完整 schema
+   - 若是既有資料庫，會套用任何新增的 migration
+   - 若 migration 失敗則中止啟動並拋出 `SchemaMigrationException`
 5. 透過 `JDABuilder.createLight(envConfig.getDiscordBotToken())` 建立 JDA：
    - 使用非特權 Gateway Intents，避免因 Bot 未啟用特權 Intents 而無法連線
    - 註冊 `SlashCommandListener` 及面板按鈕 handler
@@ -67,8 +69,8 @@ flowchart LR
 - `panel/`  
   使用者面板與管理面板：`/user-panel`、`/admin-panel` 指令與各種按鈕、Modal 處理邏輯。
 
-- `shared/`  
-  共用基礎設施：資料庫連線設定、schema migration、`Result<T, E>` 型別、`DomainError`、設定載入與 Dagger DI 定義。
+- `shared/`
+  共用基礎設施：資料庫連線設定、Flyway schema migration、`Result<T, E>` 型別、`DomainError`、設定載入與 Dagger DI 定義。
 
 ### 3.2 分層設計
 
@@ -87,7 +89,7 @@ flowchart LR
   - 負責組合多個 repository 與 domain 行為，形成高階操作。
 
 - `commands/`  
-  - 對應每個 slash command 的 handler（例如 `BalanceCommandHandler` 等）
+  - 對應每個 slash command 的 handler（例如 `CurrencyConfigCommandHandler`、`DiceGame1CommandHandler`、`UserPanelCommandHandler` 等）
   - 接收 JDA 事件，轉換為服務呼叫與 Discord 回應。
 
 這樣的分層有助於：
@@ -115,20 +117,9 @@ flowchart LR
 
 ## 5. 請求處理流程示例
 
-### 5.1 `/balance` 指令
+> 註：舊版的 `/balance`、`/adjust-balance` 等指令已不再作為獨立 slash commands 註冊，其核心邏輯仍存在於服務層，並由 `/user-panel` 與 `/admin-panel` 封裝使用。
 
-1. 使用者在伺服器輸入 `/balance`。
-2. Discord 將指令事件透過 Gateway 傳給 JDA。
-3. JDA 觸發 `SlashCommandListener.onSlashCommandInteraction`：
-   - 檢查事件是否來自 guild
-   - 根據指令名稱 `balance` 呼叫 `BalanceCommandHandler.handle(event)`
-4. `BalanceCommandHandler`：
-   - 由 Dagger 注入 `BalanceService`
-   - 呼叫 `balanceService.tryGetBalance(guildId, userId)`，取得 `Result<BalanceView, DomainError>`
-   - 成功時呼叫 `event.reply(balanceView.formatMessage())`
-   - 失敗時委派給 `BotErrorHandler` 統一處理錯誤回應
-
-### 5.2 `/dice-game-1` 指令
+### 5.1 `/dice-game-1` 指令
 
 1. 使用者輸入 `/dice-game-1`。
 2. `SlashCommandListener` 將事件轉發到 `DiceGame1CommandHandler`。
@@ -141,7 +132,7 @@ flowchart LR
    - 將結果格式化成 Discord 訊息並回覆
    - 同時透過 `GameTokenTransactionService` 記錄代幣消耗的交易紀錄
 
-### 5.3 `/admin-panel` 指令與面板互動
+### 5.2 `/admin-panel` 指令與面板互動
 
 1. 管理員輸入 `/admin-panel`。
 2. `SlashCommandListener` 呼叫 `AdminPanelCommandHandler.handle`：
@@ -154,6 +145,16 @@ flowchart LR
    - `AdminPanelButtonHandler.onModalInteraction` 將表單資料轉換為 service 呼叫
    - 例如呼叫 `AdminPanelService.adjustBalance` 或 `adjustTokens`
    - 再依結果回覆成功或錯誤訊息
+
+### 5.3 `/user-panel` 指令
+
+1. 成員在伺服器輸入 `/user-panel`。
+2. `SlashCommandListener` 將事件轉發到 `UserPanelCommandHandler`。
+3. `UserPanelCommandHandler`：
+   - 透過 `UserPanelService.getUserPanelView` 讀取貨幣餘額、遊戲代幣餘額與貨幣設定。
+   - 將結果組成 Embed（包含貨幣與代幣欄位），並附上「查看遊戲代幣流水」按鈕。
+   - 以 ephemeral 訊息回覆。
+4. 後續按鈕互動由 `UserPanelButtonHandler` 處理，載入 `GameTokenTransactionService` 提供的交易分頁資料。
 
 ## 6. 錯誤處理與 Result 模式
 
@@ -180,6 +181,16 @@ Command handler 通常遵守以下模式：
 - 把「預期錯誤」（例如餘額不足、輸入無效）與「非預期錯誤」（例外、資料庫問題）清楚區分。
 - 減少在 handler 中做複雜的 try-catch，讓業務邏輯集中在 service 層。
 
+## 7. 指令 Metrics 與觀測性
+
+為了在實際環境中監控指令延遲與錯誤率，`SlashCommandListener` 會在處理每一個 slash 指令時使用 `SlashCommandMetrics`：
+
+- 在收到指令時建立一個 metrics context，紀錄指令名稱與開始時間。
+- 在正常回應或發生錯誤後，呼叫對應的「成功／失敗」記錄方法，計算耗時並寫入日誌。
+- 日誌中會包含指令名稱、處理結果（成功／錯誤）與執行時間，方便後續以 log-based 方式進行監控與效能分析。
+
+這套 metrics 機制目前主要以 Logback console log 為輸出目標，但設計上與 command handler 解耦，未來若需要接入外部監控系統（如 Prometheus、雲端監控服務）時，可在不改動 handler 的前提下擴充 `SlashCommandMetrics` 的實作。
+
 ---
 
 若你打算新增新的 slash command 或面板功能，建議先閱讀：
@@ -189,4 +200,3 @@ Command handler 通常遵守以下模式：
 - `docs/modules/panels.md`
 
 了解現有模組的分層與模式後，再依樣擴充會更順手。
-

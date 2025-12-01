@@ -1,5 +1,6 @@
 package ltdjms.discord.currency.unit;
 
+import ltdjms.discord.currency.domain.CurrencyTransaction;
 import ltdjms.discord.currency.domain.GuildCurrencyConfig;
 import ltdjms.discord.currency.domain.MemberCurrencyAccount;
 import ltdjms.discord.currency.persistence.GuildCurrencyConfigRepository;
@@ -7,6 +8,7 @@ import ltdjms.discord.currency.persistence.MemberCurrencyAccountRepository;
 import ltdjms.discord.currency.persistence.NegativeBalanceException;
 import ltdjms.discord.currency.services.BalanceAdjustmentService;
 import ltdjms.discord.currency.services.BalanceAdjustmentService.BalanceAdjustmentResult;
+import ltdjms.discord.currency.services.CurrencyTransactionService;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,11 +42,14 @@ class BalanceAdjustmentServiceTest {
     @Mock
     private GuildCurrencyConfigRepository configRepository;
 
+    @Mock
+    private CurrencyTransactionService transactionService;
+
     private BalanceAdjustmentService adjustmentService;
 
     @BeforeEach
     void setUp() {
-        adjustmentService = new BalanceAdjustmentService(accountRepository, configRepository);
+        adjustmentService = new BalanceAdjustmentService(accountRepository, configRepository, transactionService);
     }
 
     @Test
@@ -377,6 +382,88 @@ class BalanceAdjustmentServiceTest {
             assertThat(result.isOk()).isTrue();
             assertThat(result.getValue().currencyName()).isEqualTo("Gold");
             assertThat(result.getValue().currencyIcon()).isEqualTo("💰");
+        }
+
+        @Test
+        @DisplayName("should record transaction on successful adjustment")
+        void shouldRecordTransactionOnSuccessfulAdjustment() {
+            // Given
+            Instant now = Instant.now();
+            MemberCurrencyAccount initial = new MemberCurrencyAccount(TEST_GUILD_ID, TEST_USER_ID, 100L, now, now);
+            MemberCurrencyAccount adjusted = new MemberCurrencyAccount(TEST_GUILD_ID, TEST_USER_ID, 150L, now, now);
+
+            when(accountRepository.findOrCreate(TEST_GUILD_ID, TEST_USER_ID)).thenReturn(initial);
+            when(accountRepository.tryAdjustBalance(TEST_GUILD_ID, TEST_USER_ID, 50L)).thenReturn(Result.ok(adjusted));
+            when(configRepository.findByGuildId(TEST_GUILD_ID)).thenReturn(Optional.empty());
+
+            // When
+            Result<BalanceAdjustmentResult, DomainError> result =
+                    adjustmentService.tryAdjustBalance(TEST_GUILD_ID, TEST_USER_ID, 50L);
+
+            // Then
+            assertThat(result.isOk()).isTrue();
+            verify(transactionService).recordTransaction(
+                    eq(TEST_GUILD_ID),
+                    eq(TEST_USER_ID),
+                    eq(50L),
+                    eq(150L),
+                    eq(CurrencyTransaction.Source.ADMIN_ADJUSTMENT),
+                    isNull()
+            );
+        }
+
+        @Test
+        @DisplayName("should not record transaction on failed adjustment")
+        void shouldNotRecordTransactionOnFailedAdjustment() {
+            // Given
+            Instant now = Instant.now();
+            MemberCurrencyAccount initial = new MemberCurrencyAccount(TEST_GUILD_ID, TEST_USER_ID, 50L, now, now);
+            DomainError error = DomainError.insufficientBalance("Insufficient balance");
+
+            when(accountRepository.findOrCreate(TEST_GUILD_ID, TEST_USER_ID)).thenReturn(initial);
+            when(accountRepository.tryAdjustBalance(TEST_GUILD_ID, TEST_USER_ID, -100L))
+                    .thenReturn(Result.err(error));
+
+            // When
+            Result<BalanceAdjustmentResult, DomainError> result =
+                    adjustmentService.tryAdjustBalance(TEST_GUILD_ID, TEST_USER_ID, -100L);
+
+            // Then
+            assertThat(result.isErr()).isTrue();
+            verifyNoInteractions(transactionService);
+        }
+    }
+
+    @Nested
+    @DisplayName("tryAdjustBalanceTo (Result-based API, adjust to target)")
+    class TryAdjustBalanceToTests {
+
+        @Test
+        @DisplayName("should record transaction on successful target adjustment")
+        void shouldRecordTransactionOnSuccessfulTargetAdjustment() {
+            // Given
+            Instant now = Instant.now();
+            MemberCurrencyAccount initial = new MemberCurrencyAccount(TEST_GUILD_ID, TEST_USER_ID, 100L, now, now);
+            MemberCurrencyAccount adjusted = new MemberCurrencyAccount(TEST_GUILD_ID, TEST_USER_ID, 500L, now, now);
+
+            when(accountRepository.findOrCreate(TEST_GUILD_ID, TEST_USER_ID)).thenReturn(initial);
+            when(accountRepository.tryAdjustBalance(TEST_GUILD_ID, TEST_USER_ID, 400L)).thenReturn(Result.ok(adjusted));
+            when(configRepository.findByGuildId(TEST_GUILD_ID)).thenReturn(Optional.empty());
+
+            // When
+            Result<BalanceAdjustmentResult, DomainError> result =
+                    adjustmentService.tryAdjustBalanceTo(TEST_GUILD_ID, TEST_USER_ID, 500L);
+
+            // Then
+            assertThat(result.isOk()).isTrue();
+            verify(transactionService).recordTransaction(
+                    eq(TEST_GUILD_ID),
+                    eq(TEST_USER_ID),
+                    eq(400L),
+                    eq(500L),
+                    eq(CurrencyTransaction.Source.ADMIN_ADJUSTMENT),
+                    isNull()
+            );
         }
     }
 }

@@ -26,6 +26,7 @@ public class UserPanelCommandHandler implements SlashCommandListener.CommandHand
 
     // Button IDs for interaction handling
     public static final String BUTTON_TOKEN_HISTORY = "user_panel_token_history";
+    public static final String BUTTON_CURRENCY_HISTORY = "user_panel_currency_history";
 
     private static final Color EMBED_COLOR = new Color(0x5865F2); // Discord blurple
 
@@ -54,6 +55,7 @@ public class UserPanelCommandHandler implements SlashCommandListener.CommandHand
 
         event.replyEmbeds(embed)
                 .addActionRow(
+                        Button.secondary(BUTTON_CURRENCY_HISTORY, "💰 查看貨幣流水"),
                         Button.secondary(BUTTON_TOKEN_HISTORY, "📜 查看遊戲代幣流水")
                 )
                 .setEphemeral(true)
@@ -70,7 +72,7 @@ public class UserPanelCommandHandler implements SlashCommandListener.CommandHand
                 .setColor(EMBED_COLOR)
                 .addField(view.getCurrencyFieldName(), view.formatCurrencyField(), true)
                 .addField(view.getGameTokensFieldName(), view.formatGameTokensField(), true)
-                .setFooter("點擊下方按鈕查看遊戲代幣流水")
+                .setFooter("點擊下方按鈕查看流水紀錄")
                 .build();
     }
 }

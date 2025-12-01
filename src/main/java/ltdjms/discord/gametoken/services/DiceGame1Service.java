@@ -2,6 +2,7 @@ package ltdjms.discord.gametoken.services;
 
 import ltdjms.discord.currency.domain.MemberCurrencyAccount;
 import ltdjms.discord.currency.persistence.MemberCurrencyAccountRepository;
+import ltdjms.discord.gametoken.domain.DiceGame1Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,21 +13,13 @@ import java.util.Random;
 /**
  * Service for the dice-game-1 mini-game.
  * Handles dice rolling, reward calculation, and currency distribution.
+ *
+ * <p>The number of dice rolled is determined by the number of tokens spent:
+ * 1 token = 1 dice.</p>
  */
 public class DiceGame1Service {
 
     private static final Logger LOG = LoggerFactory.getLogger(DiceGame1Service.class);
-
-    /**
-     * Number of dice rolls per game.
-     */
-    public static final int ROLLS_PER_GAME = 5;
-
-    /**
-     * Base reward multiplier: each dice value (1-6) is multiplied by this to get the reward.
-     * 1 -> 250,000, 2 -> 500,000, ..., 6 -> 1,500,000
-     */
-    public static final long REWARD_PER_DICE_VALUE = 250_000L;
 
     private final MemberCurrencyAccountRepository currencyRepository;
     private final Random random;
@@ -44,22 +37,25 @@ public class DiceGame1Service {
     }
 
     /**
-     * Plays the dice game for a member.
-     * Rolls 5 dice and calculates the total reward based on dice values.
+     * Plays the dice game for a member using the provided configuration and token amount.
+     * Rolls one dice per token spent and calculates the total reward based on dice values.
      * The reward is added to the member's currency account.
      *
-     * @param guildId the Discord guild ID
-     * @param userId  the Discord user ID
+     * @param guildId   the Discord guild ID
+     * @param userId    the Discord user ID
+     * @param config    the game configuration containing reward multiplier
+     * @param diceCount the number of dice to roll (equals tokens spent)
      * @return the game result
      */
-    public DiceGameResult play(long guildId, long userId) {
-        LOG.debug("Playing dice-game-1 for guildId={}, userId={}", guildId, userId);
+    public DiceGameResult play(long guildId, long userId, DiceGame1Config config, int diceCount) {
+        LOG.debug("Playing dice-game-1 for guildId={}, userId={}, diceCount={}, rewardPerDice={}",
+                guildId, userId, diceCount, config.rewardPerDiceValue());
 
         // Roll dice
-        List<Integer> diceRolls = rollDice();
+        List<Integer> diceRolls = rollDice(diceCount);
 
-        // Calculate total reward
-        long totalReward = calculateTotalReward(diceRolls);
+        // Calculate total reward using configured multiplier
+        long totalReward = calculateTotalReward(diceRolls, config.rewardPerDiceValue());
 
         // Apply reward to currency account (may need multiple adjustments due to MAX_ADJUSTMENT_AMOUNT)
         long previousBalance = currencyRepository.findOrCreate(guildId, userId).balance();
@@ -84,27 +80,29 @@ public class DiceGame1Service {
     }
 
     /**
-     * Rolls the dice for a game.
+     * Rolls the specified number of dice.
      *
+     * @param count the number of dice to roll
      * @return list of dice values (1-6)
      */
-    List<Integer> rollDice() {
-        List<Integer> rolls = new ArrayList<>(ROLLS_PER_GAME);
-        for (int i = 0; i < ROLLS_PER_GAME; i++) {
+    List<Integer> rollDice(int count) {
+        List<Integer> rolls = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
             rolls.add(random.nextInt(6) + 1);  // 1-6
         }
         return rolls;
     }
 
     /**
-     * Calculates the total reward based on dice rolls.
+     * Calculates the total reward based on dice rolls and configured reward multiplier.
      *
-     * @param diceRolls the list of dice values
+     * @param diceRolls          the list of dice values
+     * @param rewardPerDiceValue the reward multiplier per dice value
      * @return the total reward
      */
-    long calculateTotalReward(List<Integer> diceRolls) {
+    long calculateTotalReward(List<Integer> diceRolls, long rewardPerDiceValue) {
         return diceRolls.stream()
-                .mapToLong(dice -> (long) dice * REWARD_PER_DICE_VALUE)
+                .mapToLong(dice -> (long) dice * rewardPerDiceValue)
                 .sum();
     }
 

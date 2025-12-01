@@ -1,26 +1,25 @@
 package ltdjms.discord.currency.bot;
 
-import ltdjms.discord.currency.commands.BalanceAdjustmentCommandHandler;
-import ltdjms.discord.currency.commands.BalanceCommandHandler;
 import ltdjms.discord.currency.commands.CurrencyConfigCommandHandler;
 import ltdjms.discord.gametoken.commands.DiceGame1CommandHandler;
-import ltdjms.discord.gametoken.commands.DiceGame1ConfigCommandHandler;
 import ltdjms.discord.gametoken.commands.DiceGame2CommandHandler;
-import ltdjms.discord.gametoken.commands.DiceGame2ConfigCommandHandler;
-import ltdjms.discord.gametoken.commands.GameTokenAdjustCommandHandler;
 import ltdjms.discord.panel.commands.AdminPanelCommandHandler;
 import ltdjms.discord.panel.commands.UserPanelCommandHandler;
 import ltdjms.discord.shared.localization.CommandLocalizations;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
+import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.List;
 
 /**
  * Listener that receives slash command events and delegates to appropriate command handlers.
@@ -30,67 +29,40 @@ public class SlashCommandListener extends ListenerAdapter {
 
     private static final Logger LOG = LoggerFactory.getLogger(SlashCommandListener.class);
 
-    // Command names
-    public static final String CMD_BALANCE = "balance";
+    // Command names - only canonical commands retained
     public static final String CMD_CURRENCY_CONFIG = "currency-config";
-    public static final String CMD_ADJUST_BALANCE = "adjust-balance";
-    public static final String CMD_GAME_TOKEN_ADJUST = "game-token-adjust";
     public static final String CMD_DICE_GAME_1 = "dice-game-1";
-    public static final String CMD_DICE_GAME_1_CONFIG = "dice-game-1-config";
     public static final String CMD_DICE_GAME_2 = "dice-game-2";
-    public static final String CMD_DICE_GAME_2_CONFIG = "dice-game-2-config";
     public static final String CMD_USER_PANEL = "user-panel";
     public static final String CMD_ADMIN_PANEL = "admin-panel";
 
-    private final BalanceCommandHandler balanceHandler;
     private final CurrencyConfigCommandHandler configHandler;
-    private final BalanceAdjustmentCommandHandler adjustmentHandler;
-    private final GameTokenAdjustCommandHandler gameTokenAdjustHandler;
     private final DiceGame1CommandHandler diceGame1Handler;
-    private final DiceGame1ConfigCommandHandler diceGame1ConfigHandler;
     private final DiceGame2CommandHandler diceGame2Handler;
-    private final DiceGame2ConfigCommandHandler diceGame2ConfigHandler;
     private final UserPanelCommandHandler userPanelHandler;
     private final AdminPanelCommandHandler adminPanelHandler;
     private final SlashCommandMetrics metrics;
 
     public SlashCommandListener(
-            BalanceCommandHandler balanceHandler,
             CurrencyConfigCommandHandler configHandler,
-            BalanceAdjustmentCommandHandler adjustmentHandler,
-            GameTokenAdjustCommandHandler gameTokenAdjustHandler,
             DiceGame1CommandHandler diceGame1Handler,
-            DiceGame1ConfigCommandHandler diceGame1ConfigHandler,
             DiceGame2CommandHandler diceGame2Handler,
-            DiceGame2ConfigCommandHandler diceGame2ConfigHandler,
             UserPanelCommandHandler userPanelHandler,
             AdminPanelCommandHandler adminPanelHandler) {
-        this(balanceHandler, configHandler, adjustmentHandler,
-                gameTokenAdjustHandler, diceGame1Handler, diceGame1ConfigHandler,
-                diceGame2Handler, diceGame2ConfigHandler, userPanelHandler, adminPanelHandler,
-                new SlashCommandMetrics());
+        this(configHandler, diceGame1Handler, diceGame2Handler,
+                userPanelHandler, adminPanelHandler, new SlashCommandMetrics());
     }
 
     public SlashCommandListener(
-            BalanceCommandHandler balanceHandler,
             CurrencyConfigCommandHandler configHandler,
-            BalanceAdjustmentCommandHandler adjustmentHandler,
-            GameTokenAdjustCommandHandler gameTokenAdjustHandler,
             DiceGame1CommandHandler diceGame1Handler,
-            DiceGame1ConfigCommandHandler diceGame1ConfigHandler,
             DiceGame2CommandHandler diceGame2Handler,
-            DiceGame2ConfigCommandHandler diceGame2ConfigHandler,
             UserPanelCommandHandler userPanelHandler,
             AdminPanelCommandHandler adminPanelHandler,
             SlashCommandMetrics metrics) {
-        this.balanceHandler = balanceHandler;
         this.configHandler = configHandler;
-        this.adjustmentHandler = adjustmentHandler;
-        this.gameTokenAdjustHandler = gameTokenAdjustHandler;
         this.diceGame1Handler = diceGame1Handler;
-        this.diceGame1ConfigHandler = diceGame1ConfigHandler;
         this.diceGame2Handler = diceGame2Handler;
-        this.diceGame2ConfigHandler = diceGame2ConfigHandler;
         this.userPanelHandler = userPanelHandler;
         this.adminPanelHandler = adminPanelHandler;
         this.metrics = metrics;
@@ -106,21 +78,17 @@ public class SlashCommandListener extends ListenerAdapter {
     }
 
     /**
-     * Registers all slash commands with Discord.
-     * Should be called after JDA is ready.
-     * Includes zh-TW localization for command names and descriptions.
+     * Builds the complete list of slash command definitions with zh-TW localization.
+     * This method can be used for both global and guild-specific command registration.
      *
-     * @param jda the JDA instance
+     * <p>Note: Legacy commands (/balance, /adjust-balance, /game-token-adjust,
+     * /dice-game-1-config, /dice-game-2-config) have been removed. Their functionality
+     * is now available through /user-panel and /admin-panel respectively.</p>
+     *
+     * @return the list of slash command definitions
      */
-    public void registerCommands(JDA jda) {
-        LOG.info("Registering slash commands with zh-TW localization...");
-
-        jda.updateCommands().addCommands(
-                // /balance - available to all users
-                Commands.slash(CMD_BALANCE, "Check your current currency balance")
-                        .setNameLocalizations(CommandLocalizations.getNameLocalizations(CMD_BALANCE))
-                        .setDescriptionLocalizations(CommandLocalizations.getDescriptionLocalizations(CMD_BALANCE)),
-
+    public List<SlashCommandData> buildAllCommandDefinitions() {
+        return List.of(
                 // /currency-config - admin only
                 Commands.slash(CMD_CURRENCY_CONFIG, "Configure the server's currency settings")
                         .setNameLocalizations(CommandLocalizations.getNameLocalizations(CMD_CURRENCY_CONFIG))
@@ -135,71 +103,25 @@ public class SlashCommandListener extends ListenerAdapter {
                         )
                         .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.ADMINISTRATOR)),
 
-                // /adjust-balance - admin only
-                Commands.slash(CMD_ADJUST_BALANCE, "Adjust a member's currency balance")
-                        .setNameLocalizations(CommandLocalizations.getNameLocalizations(CMD_ADJUST_BALANCE))
-                        .setDescriptionLocalizations(CommandLocalizations.getDescriptionLocalizations(CMD_ADJUST_BALANCE))
-                        .addOptions(
-                                new OptionData(OptionType.STRING, "mode", "The adjustment mode", true)
-                                        .setNameLocalizations(CommandLocalizations.getOptionNameLocalizations("mode"))
-                                        .setDescriptionLocalizations(CommandLocalizations.getOptionDescriptionLocalizations("mode"))
-                                        .addChoice("add", "add")
-                                        .addChoice("deduct", "deduct")
-                                        .addChoice("adjust", "adjust"),
-                                new OptionData(OptionType.USER, "member", "The member whose balance to adjust", true)
-                                        .setNameLocalizations(CommandLocalizations.getOptionNameLocalizations("member"))
-                                        .setDescriptionLocalizations(CommandLocalizations.getOptionDescriptionLocalizations("member")),
-                                new OptionData(OptionType.INTEGER, "amount", "Amount to add/deduct, or target balance for adjust mode", true)
-                                        .setNameLocalizations(CommandLocalizations.getOptionNameLocalizations("amount"))
-                                        .setDescriptionLocalizations(CommandLocalizations.getOptionDescriptionLocalizations("amount"))
-                        )
-                        .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.ADMINISTRATOR)),
-
-                // /game-token-adjust - admin only
-                Commands.slash(CMD_GAME_TOKEN_ADJUST, "Adjust a member's game token balance")
-                        .setNameLocalizations(CommandLocalizations.getNameLocalizations(CMD_GAME_TOKEN_ADJUST))
-                        .setDescriptionLocalizations(CommandLocalizations.getDescriptionLocalizations(CMD_GAME_TOKEN_ADJUST))
-                        .addOptions(
-                                new OptionData(OptionType.USER, "member", "The member whose tokens to adjust", true)
-                                        .setNameLocalizations(CommandLocalizations.getOptionNameLocalizations("member"))
-                                        .setDescriptionLocalizations(CommandLocalizations.getOptionDescriptionLocalizations("member")),
-                                new OptionData(OptionType.INTEGER, "amount", "Amount to add (positive) or subtract (negative)", true)
-                                        .setNameLocalizations(CommandLocalizations.getOptionNameLocalizations("amount"))
-                                        .setDescriptionLocalizations(CommandLocalizations.getOptionDescriptionLocalizations("amount"))
-                        )
-                        .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.ADMINISTRATOR)),
-
                 // /dice-game-1 - available to all users
                 Commands.slash(CMD_DICE_GAME_1, "Play the dice mini-game (costs game tokens)")
                         .setNameLocalizations(CommandLocalizations.getNameLocalizations(CMD_DICE_GAME_1))
-                        .setDescriptionLocalizations(CommandLocalizations.getDescriptionLocalizations(CMD_DICE_GAME_1)),
-
-                // /dice-game-1-config - admin only
-                Commands.slash(CMD_DICE_GAME_1_CONFIG, "Configure the dice game settings")
-                        .setNameLocalizations(CommandLocalizations.getNameLocalizations(CMD_DICE_GAME_1_CONFIG))
-                        .setDescriptionLocalizations(CommandLocalizations.getDescriptionLocalizations(CMD_DICE_GAME_1_CONFIG))
+                        .setDescriptionLocalizations(CommandLocalizations.getDescriptionLocalizations(CMD_DICE_GAME_1))
                         .addOptions(
-                                new OptionData(OptionType.INTEGER, "token-cost", "Number of game tokens required per play", false)
-                                        .setNameLocalizations(CommandLocalizations.getOptionNameLocalizations("token-cost"))
-                                        .setDescriptionLocalizations(CommandLocalizations.getOptionDescriptionLocalizations("token-cost"))
-                        )
-                        .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.ADMINISTRATOR)),
+                                new OptionData(OptionType.INTEGER, "tokens", "Number of tokens to wager for this play (optional)", false)
+                                        .setNameLocalizations(CommandLocalizations.getOptionNameLocalizations("tokens"))
+                                        .setDescriptionLocalizations(CommandLocalizations.getOptionDescriptionLocalizations("tokens"))
+                        ),
 
                 // /dice-game-2 - available to all users
                 Commands.slash(CMD_DICE_GAME_2, "Play the dice game 2 mini-game with straights and triples (costs game tokens)")
                         .setNameLocalizations(CommandLocalizations.getNameLocalizations(CMD_DICE_GAME_2))
-                        .setDescriptionLocalizations(CommandLocalizations.getDescriptionLocalizations(CMD_DICE_GAME_2)),
-
-                // /dice-game-2-config - admin only
-                Commands.slash(CMD_DICE_GAME_2_CONFIG, "Configure the dice game 2 settings")
-                        .setNameLocalizations(CommandLocalizations.getNameLocalizations(CMD_DICE_GAME_2_CONFIG))
-                        .setDescriptionLocalizations(CommandLocalizations.getDescriptionLocalizations(CMD_DICE_GAME_2_CONFIG))
+                        .setDescriptionLocalizations(CommandLocalizations.getDescriptionLocalizations(CMD_DICE_GAME_2))
                         .addOptions(
-                                new OptionData(OptionType.INTEGER, "token-cost", "Number of game tokens required per play", false)
-                                        .setNameLocalizations(CommandLocalizations.getOptionNameLocalizations("token-cost"))
-                                        .setDescriptionLocalizations(CommandLocalizations.getOptionDescriptionLocalizations("token-cost"))
-                        )
-                        .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.ADMINISTRATOR)),
+                                new OptionData(OptionType.INTEGER, "tokens", "Number of tokens to wager for this play (optional)", false)
+                                        .setNameLocalizations(CommandLocalizations.getOptionNameLocalizations("tokens"))
+                                        .setDescriptionLocalizations(CommandLocalizations.getOptionDescriptionLocalizations("tokens"))
+                        ),
 
                 // /user-panel - available to all users
                 Commands.slash(CMD_USER_PANEL, "View your currency balance, game tokens, and transaction history")
@@ -211,10 +133,94 @@ public class SlashCommandListener extends ListenerAdapter {
                         .setNameLocalizations(CommandLocalizations.getNameLocalizations(CMD_ADMIN_PANEL))
                         .setDescriptionLocalizations(CommandLocalizations.getDescriptionLocalizations(CMD_ADMIN_PANEL))
                         .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.ADMINISTRATOR))
-        ).queue(
-                commands -> LOG.info("Registered {} slash commands with zh-TW localization", commands.size()),
-                error -> LOG.error("Failed to register slash commands", error)
         );
+    }
+
+    /**
+     * Registers all slash commands for all guilds the bot is currently in.
+     * Should be called after JDA is ready.
+     * Uses guild-specific command registration for faster propagation.
+     * Includes zh-TW localization for command names and descriptions.
+     *
+     * @param jda the JDA instance
+     */
+    public void registerCommands(JDA jda) {
+        // Clear any existing global application commands to avoid duplicate entries
+        // when we manage commands on a per-guild basis.
+        jda.updateCommands().queue();
+
+        var guilds = jda.getGuilds();
+        var commandDefinitions = buildAllCommandDefinitions();
+        int commandCount = commandDefinitions.size();
+
+        LOG.info("Syncing {} slash commands for {} guilds with zh-TW localization...",
+                commandCount, guilds.size());
+
+        int successCount = 0;
+        int failCount = 0;
+
+        for (var guild : guilds) {
+            try {
+                syncCommandsForGuild(guild, commandDefinitions);
+                successCount++;
+            } catch (Exception e) {
+                failCount++;
+                LOG.warn("Failed to submit command sync for guild={}: {}",
+                        guild.getIdLong(), e.getMessage());
+            }
+        }
+
+        LOG.info("Submitted command sync for {} guilds ({} commands each). Success={}, Failed={}",
+                guilds.size(), commandCount, successCount, failCount);
+    }
+
+    /**
+     * Synchronizes slash commands for a single guild.
+     * This method can be used both during startup and when joining a new guild.
+     *
+     * @param guild the guild to sync commands for
+     */
+    public void syncCommandsForGuild(net.dv8tion.jda.api.entities.Guild guild) {
+        syncCommandsForGuild(guild, buildAllCommandDefinitions());
+    }
+
+    /**
+     * Synchronizes slash commands for a single guild with pre-built command definitions.
+     *
+     * @param guild the guild to sync commands for
+     * @param commandDefinitions the command definitions to register
+     */
+    private void syncCommandsForGuild(net.dv8tion.jda.api.entities.Guild guild,
+                                      List<SlashCommandData> commandDefinitions) {
+        guild.updateCommands()
+                .addCommands(commandDefinitions)
+                .queue(
+                        commands -> LOG.debug("Synced {} commands for guild={}",
+                                commands.size(), guild.getIdLong()),
+                        error -> LOG.warn("Failed to sync commands for guild={}: {}",
+                                guild.getIdLong(), error.getMessage())
+                );
+    }
+
+    /**
+     * Handles the event when the bot joins a new guild.
+     * Automatically syncs all slash commands to the new guild.
+     *
+     * @param event the guild join event
+     */
+    @Override
+    public void onGuildJoin(GuildJoinEvent event) {
+        var guild = event.getGuild();
+        LOG.info("Bot joined new guild={} ({}). Syncing slash commands...",
+                guild.getIdLong(), guild.getName());
+
+        try {
+            syncCommandsForGuild(guild);
+            LOG.info("Successfully submitted command sync for new guild={}", guild.getIdLong());
+        } catch (Exception e) {
+            LOG.error("Failed to sync commands for new guild={}: {}",
+                    guild.getIdLong(), e.getMessage(), e);
+        }
     }
 
     @Override
@@ -235,14 +241,9 @@ public class SlashCommandListener extends ListenerAdapter {
 
         try {
             switch (commandName) {
-                case CMD_BALANCE -> balanceHandler.handle(event);
                 case CMD_CURRENCY_CONFIG -> handleWithAdminCheck(event, configHandler);
-                case CMD_ADJUST_BALANCE -> handleWithAdminCheck(event, adjustmentHandler);
-                case CMD_GAME_TOKEN_ADJUST -> handleWithAdminCheck(event, gameTokenAdjustHandler);
                 case CMD_DICE_GAME_1 -> diceGame1Handler.handle(event);
-                case CMD_DICE_GAME_1_CONFIG -> handleWithAdminCheck(event, diceGame1ConfigHandler);
                 case CMD_DICE_GAME_2 -> diceGame2Handler.handle(event);
-                case CMD_DICE_GAME_2_CONFIG -> handleWithAdminCheck(event, diceGame2ConfigHandler);
                 case CMD_USER_PANEL -> userPanelHandler.handle(event);
                 case CMD_ADMIN_PANEL -> handleWithAdminCheck(event, adminPanelHandler);
                 default -> {

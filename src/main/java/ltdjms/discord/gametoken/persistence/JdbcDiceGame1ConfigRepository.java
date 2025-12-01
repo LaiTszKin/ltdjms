@@ -25,7 +25,8 @@ public class JdbcDiceGame1ConfigRepository implements DiceGame1ConfigRepository 
 
     @Override
     public Optional<DiceGame1Config> findByGuildId(long guildId) {
-        String sql = "SELECT guild_id, tokens_per_play, created_at, updated_at " +
+        String sql = "SELECT guild_id, min_tokens_per_play, max_tokens_per_play, " +
+                "reward_per_dice_value, created_at, updated_at " +
                 "FROM dice_game1_config WHERE guild_id = ?";
 
         try (Connection conn = dataSource.getConnection();
@@ -48,24 +49,29 @@ public class JdbcDiceGame1ConfigRepository implements DiceGame1ConfigRepository 
 
     @Override
     public DiceGame1Config save(DiceGame1Config config) {
-        String sql = "INSERT INTO dice_game1_config (guild_id, tokens_per_play, created_at, updated_at) " +
-                "VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO dice_game1_config " +
+                "(guild_id, min_tokens_per_play, max_tokens_per_play, " +
+                "reward_per_dice_value, created_at, updated_at) " +
+                "VALUES (?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setLong(1, config.guildId());
-            stmt.setLong(2, config.tokensPerPlay());
-            stmt.setTimestamp(3, Timestamp.from(config.createdAt()));
-            stmt.setTimestamp(4, Timestamp.from(config.updatedAt()));
+            stmt.setLong(2, config.minTokensPerPlay());
+            stmt.setLong(3, config.maxTokensPerPlay());
+            stmt.setLong(4, config.rewardPerDiceValue());
+            stmt.setTimestamp(5, Timestamp.from(config.createdAt()));
+            stmt.setTimestamp(6, Timestamp.from(config.updatedAt()));
 
             int affected = stmt.executeUpdate();
             if (affected != 1) {
                 throw new RepositoryException("Expected 1 row affected, got " + affected);
             }
 
-            LOG.info("Saved dice game config: guildId={}, tokensPerPlay={}",
-                    config.guildId(), config.tokensPerPlay());
+            LOG.info("Saved dice game config: guildId={}, minTokens={}, maxTokens={}, reward={}",
+                    config.guildId(), config.minTokensPerPlay(), config.maxTokensPerPlay(),
+                    config.rewardPerDiceValue());
             return config;
 
         } catch (SQLException e) {
@@ -84,38 +90,84 @@ public class JdbcDiceGame1ConfigRepository implements DiceGame1ConfigRepository 
     }
 
     @Override
-    public DiceGame1Config updateTokensPerPlay(long guildId, long tokensPerPlay) {
-        if (tokensPerPlay < 0) {
-            throw new IllegalArgumentException("tokensPerPlay cannot be negative: " + tokensPerPlay);
+    public DiceGame1Config updateTokensPerPlayRange(long guildId, long minTokens, long maxTokens) {
+        if (minTokens < 0) {
+            throw new IllegalArgumentException("minTokens cannot be negative: " + minTokens);
+        }
+        if (maxTokens < 0) {
+            throw new IllegalArgumentException("maxTokens cannot be negative: " + maxTokens);
+        }
+        if (minTokens > maxTokens) {
+            throw new IllegalArgumentException("minTokens cannot be greater than maxTokens");
         }
 
         // First, ensure the config exists
         findOrCreateDefault(guildId);
 
         String sql = "UPDATE dice_game1_config " +
-                "SET tokens_per_play = ?, updated_at = ? " +
+                "SET min_tokens_per_play = ?, max_tokens_per_play = ?, updated_at = ? " +
                 "WHERE guild_id = ? " +
-                "RETURNING guild_id, tokens_per_play, created_at, updated_at";
+                "RETURNING guild_id, min_tokens_per_play, max_tokens_per_play, " +
+                "reward_per_dice_value, created_at, updated_at";
 
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            stmt.setLong(1, tokensPerPlay);
-            stmt.setTimestamp(2, Timestamp.from(Instant.now()));
-            stmt.setLong(3, guildId);
+            stmt.setLong(1, minTokens);
+            stmt.setLong(2, maxTokens);
+            stmt.setTimestamp(3, Timestamp.from(Instant.now()));
+            stmt.setLong(4, guildId);
 
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     DiceGame1Config updated = mapRow(rs);
-                    LOG.info("Updated dice game config: guildId={}, tokensPerPlay={}",
-                            guildId, updated.tokensPerPlay());
+                    LOG.info("Updated dice game config tokens range: guildId={}, min={}, max={}",
+                            guildId, updated.minTokensPerPlay(), updated.maxTokensPerPlay());
                     return updated;
                 } else {
                     throw new RepositoryException("Config not found after creation");
                 }
             }
         } catch (SQLException e) {
-            LOG.error("Failed to update dice game config for guildId={}", guildId, e);
+            LOG.error("Failed to update dice game config tokens range for guildId={}", guildId, e);
+            throw new RepositoryException("Failed to update dice game config", e);
+        }
+    }
+
+    @Override
+    public DiceGame1Config updateRewardPerDiceValue(long guildId, long rewardPerDiceValue) {
+        if (rewardPerDiceValue < 0) {
+            throw new IllegalArgumentException("rewardPerDiceValue cannot be negative: " + rewardPerDiceValue);
+        }
+
+        // First, ensure the config exists
+        findOrCreateDefault(guildId);
+
+        String sql = "UPDATE dice_game1_config " +
+                "SET reward_per_dice_value = ?, updated_at = ? " +
+                "WHERE guild_id = ? " +
+                "RETURNING guild_id, min_tokens_per_play, max_tokens_per_play, " +
+                "reward_per_dice_value, created_at, updated_at";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setLong(1, rewardPerDiceValue);
+            stmt.setTimestamp(2, Timestamp.from(Instant.now()));
+            stmt.setLong(3, guildId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    DiceGame1Config updated = mapRow(rs);
+                    LOG.info("Updated dice game config reward: guildId={}, rewardPerDiceValue={}",
+                            guildId, updated.rewardPerDiceValue());
+                    return updated;
+                } else {
+                    throw new RepositoryException("Config not found after creation");
+                }
+            }
+        } catch (SQLException e) {
+            LOG.error("Failed to update dice game config reward for guildId={}", guildId, e);
             throw new RepositoryException("Failed to update dice game config", e);
         }
     }
@@ -144,7 +196,9 @@ public class JdbcDiceGame1ConfigRepository implements DiceGame1ConfigRepository 
     private DiceGame1Config mapRow(ResultSet rs) throws SQLException {
         return new DiceGame1Config(
                 rs.getLong("guild_id"),
-                rs.getLong("tokens_per_play"),
+                rs.getLong("min_tokens_per_play"),
+                rs.getLong("max_tokens_per_play"),
+                rs.getLong("reward_per_dice_value"),
                 rs.getTimestamp("created_at").toInstant(),
                 rs.getTimestamp("updated_at").toInstant()
         );

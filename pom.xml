@@ -5,8 +5,8 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>ltdjms</groupId>
-    <artifactId>discord-currency-bot</artifactId>
-    <version>0.6.0</version>
+    <artifactId>ltdjms</artifactId>
+    <version>0.7.0</version>
     <packaging>jar</packaging>
 
     <name>LTDJ Management System</name>
@@ -27,6 +27,9 @@
         <jooq.version>3.19.15</jooq.version>
         <dagger.version>2.52</dagger.version>
         <typesafe-config.version>1.4.3</typesafe-config.version>
+
+        <!-- Database Migration -->
+        <flyway.version>10.21.0</flyway.version>
 
         <!-- Test dependency versions -->
         <junit.version>5.11.3</junit.version>
@@ -74,6 +77,18 @@
             <groupId>com.typesafe</groupId>
             <artifactId>config</artifactId>
             <version>${typesafe-config.version}</version>
+        </dependency>
+
+        <!-- Database Migration -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+            <version>${flyway.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+            <version>${flyway.version}</version>
         </dependency>
 
         <!-- Logging -->
@@ -272,6 +287,10 @@
                         </goals>
                         <configuration>
                             <transformers>
+                                <!-- Merge META-INF/services from all dependencies so Flyway and other
+                                     ServiceLoader-based plugins (including PostgreSQL support) are
+                                     correctly registered in the shaded JAR. -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <mainClass>ltdjms.discord.currency.bot.DiscordCurrencyBot</mainClass>
                                 </transformer>
@@ -280,6 +299,23 @@
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-maven-plugin</artifactId>
+                <version>${flyway.version}</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.flywaydb</groupId>
+                        <artifactId>flyway-database-postgresql</artifactId>
+                        <version>${flyway.version}</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>org.postgresql</groupId>
+                        <artifactId>postgresql</artifactId>
+                        <version>${postgresql.version}</version>
+                    </dependency>
+                </dependencies>
             </plugin>
         </plugins>
     </build>

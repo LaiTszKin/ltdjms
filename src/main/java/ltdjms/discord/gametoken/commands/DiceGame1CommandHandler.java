@@ -14,13 +14,19 @@ import ltdjms.discord.gametoken.services.GameTokenService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
+import ltdjms.discord.shared.localization.DiceGameMessages;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.interactions.DiscordLocale;
+import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Handler for the /dice-game-1 slash command.
  * Allows players to play the dice mini-game by spending game tokens.
+ *
+ * <p>Players must explicitly specify how many tokens to spend; the number of dice
+ * rolled equals the number of tokens spent (1 token = 1 dice).</p>
  *
  * <p>All predictable errors are handled via Result&lt;T, DomainError&gt; pattern.
  * This handler does not catch domain exceptions directly; instead it relies on
@@ -53,22 +59,44 @@ public class DiceGame1CommandHandler implements SlashCommandListener.CommandHand
     public void handle(SlashCommandInteractionEvent event) {
         long guildId = event.getGuild().getIdLong();
         long userId = event.getUser().getIdLong();
+        DiscordLocale locale = event.getUserLocale();
 
-        LOG.debug("Processing /dice-game-1 for guildId={}, userId={}", guildId, userId);
+        LOG.debug("Processing /dice-game-1 for guildId={}, userId={}, locale={}", guildId, userId, locale);
 
-        // Get the token cost for this guild
+        // Get the game configuration for this guild
         DiceGame1Config gameConfig = configRepository.findOrCreateDefault(guildId);
-        long tokenCost = gameConfig.tokensPerPlay();
+
+        // Require player to specify token amount - no default
+        OptionMapping tokensOption = event.getOption("tokens");
+        if (tokensOption == null) {
+            String message = DiceGameMessages.formatMissingTokensError(
+                    gameConfig.minTokensPerPlay(),
+                    gameConfig.maxTokensPerPlay(),
+                    locale
+            );
+            event.reply(message).setEphemeral(true).queue();
+            return;
+        }
+
+        long tokenCost = tokensOption.getAsLong();
+
+        // Validate player input against configured range
+        if (!gameConfig.isValidTokenAmount(tokenCost)) {
+            String message = DiceGameMessages.formatTokenRangeError(
+                    tokenCost,
+                    gameConfig.minTokensPerPlay(),
+                    gameConfig.maxTokensPerPlay(),
+                    locale
+            );
+            event.reply(message).setEphemeral(true).queue();
+            return;
+        }
 
         // Check if player has enough tokens
         if (!tokenService.hasEnoughTokens(guildId, userId, tokenCost)) {
             long currentTokens = tokenService.getBalance(guildId, userId);
-            event.reply(String.format(
-                    "You don't have enough game tokens to play!\n" +
-                            "Required: %,d tokens\n" +
-                            "Your balance: %,d tokens",
-                    tokenCost, currentTokens
-            )).setEphemeral(true).queue();
+            String message = DiceGameMessages.formatInsufficientTokens(tokenCost, currentTokens, locale);
+            event.reply(message).setEphemeral(true).queue();
             return;
         }
 
@@ -93,17 +121,20 @@ public class DiceGame1CommandHandler implements SlashCommandListener.CommandHand
                 null
         );
 
-        // Play the game
-        DiceGameResult result = diceGameService.play(guildId, userId);
+        // Play the game with dice count = tokens spent
+        int diceCount = (int) tokenCost;
+        DiceGameResult result = diceGameService.play(guildId, userId, gameConfig, diceCount);
 
         // Get currency config for display
         GuildCurrencyConfig currencyConfig = currencyConfigRepository.findByGuildId(guildId)
                 .orElse(GuildCurrencyConfig.createDefault(guildId));
 
-        // Format and send response
-        String message = result.formatMessage(
+        // Format and send response with locale-aware messages
+        String message = DiceGameMessages.formatDiceGame1Result(
+                result,
                 currencyConfig.currencyIcon(),
-                currencyConfig.currencyName()
+                currencyConfig.currencyName(),
+                locale
         );
         event.reply(message).queue();
 

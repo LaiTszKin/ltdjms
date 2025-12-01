@@ -3,12 +3,15 @@ package ltdjms.discord.currency.performance;
 import ltdjms.discord.currency.bot.SlashCommandMetrics;
 import ltdjms.discord.currency.domain.BalanceView;
 import ltdjms.discord.currency.integration.PostgresIntegrationTestBase;
+import ltdjms.discord.currency.domain.CurrencyTransactionRepository;
 import ltdjms.discord.currency.persistence.GuildCurrencyConfigRepository;
+import ltdjms.discord.currency.persistence.JdbcCurrencyTransactionRepository;
 import ltdjms.discord.currency.persistence.JdbcGuildCurrencyConfigRepository;
 import ltdjms.discord.currency.persistence.JdbcMemberCurrencyAccountRepository;
 import ltdjms.discord.currency.persistence.MemberCurrencyAccountRepository;
 import ltdjms.discord.currency.services.BalanceAdjustmentService;
 import ltdjms.discord.currency.services.CurrencyConfigService;
+import ltdjms.discord.currency.services.CurrencyTransactionService;
 import ltdjms.discord.currency.services.DefaultBalanceService;
 import ltdjms.discord.currency.services.EmojiValidator;
 import ltdjms.discord.currency.services.NoOpEmojiValidator;
@@ -56,9 +59,11 @@ class SlashCommandPerformanceTest extends PostgresIntegrationTestBase {
     void setUp() {
         GuildCurrencyConfigRepository configRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
         MemberCurrencyAccountRepository accountRepo = new JdbcMemberCurrencyAccountRepository(dataSource);
+        CurrencyTransactionRepository transactionRepo = new JdbcCurrencyTransactionRepository(dataSource);
+        CurrencyTransactionService transactionService = new CurrencyTransactionService(transactionRepo);
 
         balanceService = new DefaultBalanceService(accountRepo, configRepo);
-        adjustmentService = new BalanceAdjustmentService(accountRepo, configRepo);
+        adjustmentService = new BalanceAdjustmentService(accountRepo, configRepo, transactionService);
         EmojiValidator emojiValidator = new NoOpEmojiValidator();
         configService = new CurrencyConfigService(configRepo, emojiValidator);
         metrics = new SlashCommandMetrics();

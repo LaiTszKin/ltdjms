@@ -2,9 +2,11 @@ package ltdjms.discord.panel.unit;
 
 import ltdjms.discord.currency.domain.BalanceView;
 import ltdjms.discord.currency.services.BalanceService;
+import ltdjms.discord.currency.services.CurrencyTransactionService;
 import ltdjms.discord.gametoken.services.GameTokenService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService.TransactionPage;
+import ltdjms.discord.panel.commands.UserPanelButtonHandler;
 import ltdjms.discord.panel.services.UserPanelService;
 import ltdjms.discord.panel.services.UserPanelView;
 import ltdjms.discord.shared.DomainError;
@@ -31,15 +33,18 @@ class UserPanelServiceTest {
 
     private BalanceService balanceService;
     private GameTokenService gameTokenService;
-    private GameTokenTransactionService transactionService;
+    private GameTokenTransactionService gameTokenTransactionService;
+    private CurrencyTransactionService currencyTransactionService;
     private UserPanelService userPanelService;
 
     @BeforeEach
     void setUp() {
         balanceService = mock(BalanceService.class);
         gameTokenService = mock(GameTokenService.class);
-        transactionService = mock(GameTokenTransactionService.class);
-        userPanelService = new UserPanelService(balanceService, gameTokenService, transactionService);
+        gameTokenTransactionService = mock(GameTokenTransactionService.class);
+        currencyTransactionService = mock(CurrencyTransactionService.class);
+        userPanelService = new UserPanelService(
+                balanceService, gameTokenService, gameTokenTransactionService, currencyTransactionService);
     }
 
     @Nested
@@ -177,7 +182,7 @@ class UserPanelServiceTest {
             // Given
             TransactionPage expectedPage = new TransactionPage(
                     Collections.emptyList(), 1, 1, 0, 10);
-            when(transactionService.getTransactionPage(TEST_GUILD_ID, TEST_USER_ID, 1, 10))
+            when(gameTokenTransactionService.getTransactionPage(TEST_GUILD_ID, TEST_USER_ID, 1, 10))
                     .thenReturn(expectedPage);
 
             // When
@@ -185,6 +190,56 @@ class UserPanelServiceTest {
 
             // Then
             assertThat(result).isEqualTo(expectedPage);
+        }
+    }
+
+    @Nested
+    @DisplayName("getCurrencyTransactionPage")
+    class GetCurrencyTransactionPage {
+
+        @Test
+        @DisplayName("should return currency transaction page from transaction service")
+        void shouldReturnCurrencyTransactionPage() {
+            // Given
+            CurrencyTransactionService.TransactionPage expectedPage =
+                    new CurrencyTransactionService.TransactionPage(
+                            Collections.emptyList(), 1, 1, 0, 10);
+            when(currencyTransactionService.getTransactionPage(TEST_GUILD_ID, TEST_USER_ID, 1, 10))
+                    .thenReturn(expectedPage);
+
+            // When
+            CurrencyTransactionService.TransactionPage result =
+                    userPanelService.getCurrencyTransactionPage(TEST_GUILD_ID, TEST_USER_ID, 1);
+
+            // Then
+            assertThat(result).isEqualTo(expectedPage);
+        }
+    }
+
+    @Nested
+    @DisplayName("UserPanelButtonHandler constants")
+    class UserPanelButtonHandlerConstants {
+
+        @Test
+        @DisplayName("should define back to panel button ID")
+        void shouldDefineBackToPanelButtonId() {
+            // Verify the constant is defined and has the expected value
+            assertThat(UserPanelButtonHandler.BUTTON_BACK_TO_PANEL)
+                    .isEqualTo("user_panel_back");
+        }
+
+        @Test
+        @DisplayName("should define button prefix for token pages")
+        void shouldDefineTokenPageButtonPrefix() {
+            assertThat(UserPanelButtonHandler.BUTTON_PREFIX_TOKEN_PAGE)
+                    .isEqualTo("user_panel_token_page_");
+        }
+
+        @Test
+        @DisplayName("should define button prefix for currency pages")
+        void shouldDefineCurrencyPageButtonPrefix() {
+            assertThat(UserPanelButtonHandler.BUTTON_PREFIX_CURRENCY_PAGE)
+                    .isEqualTo("user_panel_currency_page_");
         }
     }
 }

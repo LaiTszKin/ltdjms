@@ -189,15 +189,7 @@ export DB_PASSWORD="postgres"
 
 當 Bot 成功啟動並加入伺服器後，你可以透過以下步驟驗證：
 
-1. 在伺服器任一文字頻道輸入：
-
-   ```text
-   /balance
-   ```
-
-   - 第一次使用時，系統會為你建立帳戶並顯示初始餘額（預設為 0）。
-
-2. 以具管理員權限的帳號輸入：
+1. 以具管理員權限的帳號輸入：
 
    ```text
    /currency-config name:金幣 icon:💰
@@ -205,35 +197,41 @@ export DB_PASSWORD="postgres"
 
    - 你應該會收到包含新貨幣名稱與圖示的成功訊息。
 
-3. 以管理員身分輸入：
-
-   ```text
-   /adjust-balance mode:add member:@某位成員 amount:100
-   ```
-
-   - 對應成員的餘額應該會增加 100，並在訊息中顯示調整前後的餘額。
-
-4. 測試遊戲代幣與小遊戲：
-
-   - 先給自己一些遊戲代幣：
-
-     ```text
-     /game-token-adjust member:@自己 amount:10
-     ```
-
-   - 再嘗試骰子遊戲 1：
-
-     ```text
-     /dice-game-1
-     ```
-
-5. 查看個人面板：
+2. 以一般成員身分輸入：
 
    ```text
    /user-panel
    ```
 
    - 應該會看到你的貨幣餘額與遊戲代幣餘額，並有查看遊戲代幣流水的按鈕。
+
+3. 以管理員身分輸入：
+
+   ```text
+   /admin-panel
+   ```
+
+   - 應該會看到一個僅自己可見的管理面板 Embed，包含：
+     - 「💰 使用者餘額管理」
+     - 「🎮 遊戲代幣管理」
+     - 「🎲 遊戲設定管理」
+
+4. 測試遊戲代幣與小遊戲：
+
+   - 先透過管理面板的「遊戲代幣管理」給自己一些遊戲代幣。
+   - 再嘗試骰子遊戲 1：
+
+     ```text
+     /dice-game-1
+     ```
+
+5. 再次查看個人面板：
+
+   ```text
+   /user-panel
+   ```
+
+   - 應該可以看到貨幣餘額因遊戲而變動，且遊戲代幣流水中有相對應紀錄。
 
 若以上流程皆正常，代表 Bot 已成功安裝並運作。
 
@@ -246,3 +244,76 @@ export DB_PASSWORD="postgres"
 - 想擴充功能或調整行為：建議先閱讀  
   `docs/modules/currency-system.md`、`docs/modules/game-tokens-and-games.md` 與 `docs/modules/panels.md`
 
+## 9. 常見錯誤排除（Troubleshooting）
+
+### 9.1 Bot 無法啟動（立即結束）
+
+可能原因：
+
+- `DISCORD_BOT_TOKEN` 未設定或為空
+- 資料庫連線資訊錯誤（`DB_URL`、`DB_USERNAME`、`DB_PASSWORD`）
+
+處理方式：
+
+1. 確認 `.env` 或環境變數中已設定 `DISCORD_BOT_TOKEN`，且沒有多餘空白字元。
+2. 確認 PostgreSQL 有啟動，且 `DB_URL` 指向正確的 host / port / 資料庫名稱。
+3. 重新執行：
+
+   ```bash
+   make start-dev   # 或 make run / make start，視你的啟動方式而定
+   ```
+
+   並檢查終端機的錯誤訊息。
+
+### 9.2 Bot 無法連線 Discord
+
+症狀：
+
+- 程式看似啟動，但日誌中持續出現連線錯誤。
+- 在 Discord 中看不到 Bot 上線。
+
+可能原因：
+
+- `DISCORD_BOT_TOKEN` 無效或已被重設
+- Bot 在 Discord Developer Portal 中被停用或權限異常
+
+處理方式：
+
+1. 到 Discord Developer Portal 重新產生 Token，更新 `.env` 或環境變數。
+2. 確認 OAuth2 邀請網址使用的是正確的應用程式／Bot。
+3. 重啟 Bot 後再次檢查日誌。
+
+### 9.3 啟動時出現 `SchemaMigrationException`
+
+症狀：
+
+- 容器或程式啟動不久後即結束，日誌中出現 `SchemaMigrationException` 或類似訊息。
+
+原因：
+
+- `DatabaseSchemaMigrator` 發現實際資料庫 schema 與 `src/main/resources/db/schema.sql` 之間存在**可能破壞性**差異（例如欄位型別變更、刪除欄位等），為避免破壞資料而中止啟動。
+
+處理方式（建議流程）：
+
+1. 詳讀日誌中列出的 schema 差異，找出是哪些表／欄位不相容。
+2. 規劃對應的 migration SQL（或使用自行管理的 migration 工具），在維護時段手動套用。
+3. 確認資料庫 schema 已與 `schema.sql` 一致後，再重新啟動 Bot。
+
+### 9.4 Slash 指令出現錯誤訊息
+
+若在 Discord 中執行指令（例如 `/adjust-balance` 或 `/dice-game-1`）時收到錯誤訊息，通常屬於**業務規則檢查失敗**，例如：
+
+- 餘額不足或代幣不足
+- 單次調整金額超過上限
+- 該伺服器尚未設定貨幣
+
+這些錯誤由 `DomainError` 與 `BotErrorHandler` 統一格式化，訊息中通常會包含：
+
+- 指令名稱
+- 失敗原因的自然語言說明
+- 可能的下一步（例如提示管理員先執行 `/currency-config`）
+
+若你是開發者，想更深入了解這些錯誤的來源，建議閱讀：
+
+- `docs/architecture/overview.md` 的「錯誤處理與 Result 模式」
+- `docs/modules/currency-system.md`、`docs/modules/game-tokens-and-games.md` 中各指令的流程說明

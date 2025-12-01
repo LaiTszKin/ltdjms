@@ -14,7 +14,7 @@ RUN mvn -q -B dependency:go-offline
 COPY src ./src
 RUN mvn -q -B clean package -DskipTests && \
     # Copy the shaded application JAR (with dependencies) to a stable name
-    cp target/discord-currency-bot-*.jar app.jar
+    cp target/ltdjms-*.jar app.jar
 
 # Stage 2: Runtime
 FROM eclipse-temurin:17-jre

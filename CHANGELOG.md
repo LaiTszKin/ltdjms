@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+## [0.7.0] - 2025-12-01
+
+### Added
+- 新增 `currency_transaction` 資料表與對應的 domain、repository 與 `CurrencyTransactionService`，支援在 `/user-panel` 中查詢伺服器貨幣交易流水。
+- 在個人面板新增「💰 查看貨幣流水」與「🔙 返回主頁」等按鈕，支援在主面板與貨幣／遊戲代幣流水分頁之間切換。
+- 新增 `SlashCommandListenerTest`、`DiceGameMessagesTest`、`AdminPanelServiceTest`、`DatabaseMigrationRunnerIntegrationTest` 等測試，覆蓋新的 Flyway migration、面板行為與本地化訊息。
+
+### Changed
+- **重大變更**：以 Flyway 取代自訂的 `DatabaseSchemaMigrator`，改用版本化 migration 檔案管理資料庫 schema。
+- 新增 `DatabaseMigrationRunner` 封裝 Flyway 執行邏輯，在 Bot 啟動時自動套用 pending migrations。
+- 新增 `V001__baseline.sql` 作為初始 schema migration，與現有 `schema.sql` 內容一致。
+- 新增 `scripts/db/migrate.sh` migration 腳本，支援在本機、測試與正式環境手動執行 migration。
+- 在 `pom.xml` 中加入 Flyway core、database-postgresql 依賴與 flyway-maven-plugin`，並在 shade plugin 中加入 `ServicesResourceTransformer` 確保 Flyway ServiceLoader 註冊正確。
+- 更新 slash commands 註冊邏輯與文件，將 `/balance`、`/adjust-balance`、`/game-token-adjust`、`/dice-game-1-config`、`/dice-game-2-config` 等舊指令整合到 `/user-panel` 與 `/admin-panel` 面板中。
+- 更新 `docs/architecture/overview.md` 與 `docs/operations/deployment-and-maintenance.md`，說明 Flyway migration 流程。
+- 移除不再使用的 `DatabaseSchemaMigrator` 與相關測試資源檔案。
+
 ## [0.6.0] - 2025-12-01
 
 ### Added

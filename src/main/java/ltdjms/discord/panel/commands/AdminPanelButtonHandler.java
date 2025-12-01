@@ -1,16 +1,21 @@
 package ltdjms.discord.panel.commands;
 
+import ltdjms.discord.gametoken.domain.DiceGame1Config;
+import ltdjms.discord.gametoken.domain.DiceGame2Config;
 import ltdjms.discord.panel.services.AdminPanelService;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.component.EntitySelectInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
+import net.dv8tion.jda.api.interactions.components.selections.EntitySelectMenu;
 import net.dv8tion.jda.api.interactions.components.selections.StringSelectMenu;
 import net.dv8tion.jda.api.interactions.components.text.TextInput;
 import net.dv8tion.jda.api.interactions.components.text.TextInputStyle;
@@ -19,9 +24,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.awt.Color;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Handles button and modal interactions for the admin panel.
+ * Handles button, select menu, and modal interactions for the admin panel.
+ * Supports user selection via EntitySelectMenu, mode selection via StringSelectMenu,
+ * and amount input via Modal for balance and token management.
  */
 public class AdminPanelButtonHandler extends ListenerAdapter {
 
@@ -34,16 +44,30 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     public static final String BUTTON_TOKENS = "admin_panel_tokens";
     public static final String BUTTON_GAMES = "admin_panel_games";
     public static final String BUTTON_BACK = "admin_panel_back";
+    public static final String BUTTON_OPEN_BALANCE_MODAL = "admin_open_balance_modal";
+    public static final String BUTTON_OPEN_TOKEN_MODAL = "admin_open_token_modal";
 
     // Modal IDs
     public static final String MODAL_BALANCE_ADJUST = "admin_modal_balance_adjust";
     public static final String MODAL_TOKEN_ADJUST = "admin_modal_token_adjust";
-    public static final String MODAL_GAME_CONFIG = "admin_modal_game_config";
+    public static final String MODAL_GAME_1_TOKENS = "admin_modal_game1_tokens";
+    public static final String MODAL_GAME_1_REWARD = "admin_modal_game1_reward";
+    public static final String MODAL_GAME_2_TOKENS = "admin_modal_game2_tokens";
+    public static final String MODAL_GAME_2_MULTIPLIERS = "admin_modal_game2_multipliers";
+    public static final String MODAL_GAME_2_BONUSES = "admin_modal_game2_bonuses";
 
     // Select Menu IDs
     public static final String SELECT_GAME = "admin_select_game";
+    public static final String SELECT_BALANCE_USER = "admin_select_balance_user";
+    public static final String SELECT_BALANCE_MODE = "admin_select_balance_mode";
+    public static final String SELECT_TOKEN_USER = "admin_select_token_user";
+    public static final String SELECT_TOKEN_MODE = "admin_select_token_mode";
+    public static final String SELECT_GAME_SETTING = "admin_select_game_setting";
 
     private final AdminPanelService adminPanelService;
+
+    // Session state for user selections (keyed by interactionId or uniqueId)
+    private final Map<String, SessionState> sessionStates = new ConcurrentHashMap<>();
 
     public AdminPanelButtonHandler(AdminPanelService adminPanelService) {
         this.adminPanelService = adminPanelService;
@@ -53,7 +77,7 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     public void onButtonInteraction(ButtonInteractionEvent event) {
         String buttonId = event.getComponentId();
 
-        if (!buttonId.startsWith("admin_panel_")) {
+        if (!buttonId.startsWith("admin_")) {
             return;
         }
 
@@ -71,6 +95,8 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
                 case BUTTON_TOKENS -> showTokenManagement(event);
                 case BUTTON_GAMES -> showGameManagement(event);
                 case BUTTON_BACK -> showMainPanel(event);
+                case BUTTON_OPEN_BALANCE_MODAL -> openBalanceModal(event);
+                case BUTTON_OPEN_TOKEN_MODAL -> openTokenModal(event);
                 default -> LOG.warn("Unknown admin panel button: {}", buttonId);
             }
         } catch (Exception e) {
@@ -80,133 +106,750 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     }
 
     @Override
-    public void onStringSelectInteraction(StringSelectInteractionEvent event) {
+    public void onEntitySelectInteraction(EntitySelectInteractionEvent event) {
         String selectId = event.getComponentId();
 
-        if (!selectId.equals(SELECT_GAME)) {
+        if (!selectId.startsWith("admin_select_")) {
             return;
         }
 
-        String gameType = event.getValues().get(0);
+        if (!event.isFromGuild() || event.getGuild() == null) {
+            return;
+        }
+
         long guildId = event.getGuild().getIdLong();
+        String sessionKey = getSessionKey(event.getUser().getIdLong(), guildId);
 
-        long currentCost = adminPanelService.getGameTokenCost(guildId, gameType);
+        try {
+            if (selectId.equals(SELECT_BALANCE_USER)) {
+                handleBalanceUserSelect(event, sessionKey, guildId);
+            } else if (selectId.equals(SELECT_TOKEN_USER)) {
+                handleTokenUserSelect(event, sessionKey, guildId);
+            }
+        } catch (Exception e) {
+            LOG.error("Error handling entity select: {}", selectId, e);
+            event.reply("發生錯誤，請稍後再試").setEphemeral(true).queue();
+        }
+    }
 
-        TextInput costInput = TextInput.create("new_cost", "新的代幣消耗數量", TextInputStyle.SHORT)
-                .setPlaceholder("輸入新的代幣消耗數量")
-                .setValue(String.valueOf(currentCost))
-                .setRequired(true)
-                .setMinLength(1)
-                .setMaxLength(10)
-                .build();
+    @Override
+    public void onStringSelectInteraction(StringSelectInteractionEvent event) {
+        String selectId = event.getComponentId();
 
-        Modal modal = Modal.create(MODAL_GAME_CONFIG + ":" + gameType, "調整遊戲代幣消耗")
-                .addComponents(ActionRow.of(costInput))
-                .build();
+        if (!selectId.startsWith("admin_select_")) {
+            return;
+        }
 
-        event.replyModal(modal).queue();
+        if (!event.isFromGuild() || event.getGuild() == null) {
+            return;
+        }
+
+        long guildId = event.getGuild().getIdLong();
+        String sessionKey = getSessionKey(event.getUser().getIdLong(), guildId);
+
+        try {
+            switch (selectId) {
+                case SELECT_GAME -> handleGameSelect(event, guildId);
+                case SELECT_BALANCE_MODE -> handleBalanceModeSelect(event, sessionKey, guildId);
+                case SELECT_TOKEN_MODE -> handleTokenModeSelect(event, sessionKey, guildId);
+                case SELECT_GAME_SETTING -> handleGameSettingSelect(event, guildId);
+                default -> LOG.warn("Unknown string select: {}", selectId);
+            }
+        } catch (Exception e) {
+            LOG.error("Error handling string select: {}", selectId, e);
+            event.reply("發生錯誤，請稍後再試").setEphemeral(true).queue();
+        }
     }
 
     @Override
     public void onModalInteraction(ModalInteractionEvent event) {
         String modalId = event.getModalId();
 
-        if (modalId.startsWith(MODAL_BALANCE_ADJUST)) {
-            handleBalanceAdjustModal(event);
-        } else if (modalId.startsWith(MODAL_TOKEN_ADJUST)) {
-            handleTokenAdjustModal(event);
-        } else if (modalId.startsWith(MODAL_GAME_CONFIG)) {
-            handleGameConfigModal(event);
+        if (!modalId.startsWith("admin_modal_")) {
+            return;
+        }
+
+        try {
+            if (modalId.startsWith(MODAL_BALANCE_ADJUST)) {
+                handleBalanceAdjustModal(event);
+            } else if (modalId.startsWith(MODAL_TOKEN_ADJUST)) {
+                handleTokenAdjustModal(event);
+            } else if (modalId.startsWith(MODAL_GAME_1_TOKENS)) {
+                handleGame1TokensModal(event);
+            } else if (modalId.startsWith(MODAL_GAME_1_REWARD)) {
+                handleGame1RewardModal(event);
+            } else if (modalId.startsWith(MODAL_GAME_2_TOKENS)) {
+                handleGame2TokensModal(event);
+            } else if (modalId.startsWith(MODAL_GAME_2_MULTIPLIERS)) {
+                handleGame2MultipliersModal(event);
+            } else if (modalId.startsWith(MODAL_GAME_2_BONUSES)) {
+                handleGame2BonusesModal(event);
+            }
+        } catch (Exception e) {
+            LOG.error("Error handling modal: {}", modalId, e);
+            event.reply("發生錯誤，請稍後再試").setEphemeral(true).queue();
         }
     }
 
+    // ===== Balance Management =====
+
     private void showBalanceManagement(ButtonInteractionEvent event) {
-        TextInput userIdInput = TextInput.create("user_id", "使用者 ID", TextInputStyle.SHORT)
-                .setPlaceholder("輸入要調整的使用者 ID")
-                .setRequired(true)
-                .setMinLength(15)
-                .setMaxLength(20)
-                .build();
-
-        TextInput modeInput = TextInput.create("mode", "調整模式", TextInputStyle.SHORT)
-                .setPlaceholder("add（增加）、deduct（扣除）或 adjust（設定）")
-                .setRequired(true)
-                .setMinLength(3)
-                .setMaxLength(6)
-                .build();
-
-        TextInput amountInput = TextInput.create("amount", "金額", TextInputStyle.SHORT)
-                .setPlaceholder("輸入調整金額或目標餘額")
-                .setRequired(true)
-                .setMinLength(1)
-                .setMaxLength(15)
-                .build();
-
-        Modal modal = Modal.create(MODAL_BALANCE_ADJUST, "調整使用者餘額")
-                .addComponents(
-                        ActionRow.of(userIdInput),
-                        ActionRow.of(modeInput),
-                        ActionRow.of(amountInput)
-                )
-                .build();
-
-        event.replyModal(modal).queue();
-    }
-
-    private void showTokenManagement(ButtonInteractionEvent event) {
-        TextInput userIdInput = TextInput.create("user_id", "使用者 ID", TextInputStyle.SHORT)
-                .setPlaceholder("輸入要調整的使用者 ID")
-                .setRequired(true)
-                .setMinLength(15)
-                .setMaxLength(20)
-                .build();
-
-        TextInput amountInput = TextInput.create("amount", "調整數量", TextInputStyle.SHORT)
-                .setPlaceholder("正數增加，負數扣除")
-                .setRequired(true)
-                .setMinLength(1)
-                .setMaxLength(15)
-                .build();
-
-        Modal modal = Modal.create(MODAL_TOKEN_ADJUST, "調整遊戲代幣")
-                .addComponents(
-                        ActionRow.of(userIdInput),
-                        ActionRow.of(amountInput)
-                )
-                .build();
-
-        event.replyModal(modal).queue();
-    }
-
-    private void showGameManagement(ButtonInteractionEvent event) {
         long guildId = event.getGuild().getIdLong();
+        String sessionKey = getSessionKey(event.getUser().getIdLong(), guildId);
 
-        long diceGame1Cost = adminPanelService.getGameTokenCost(guildId, "dice-game-1");
-        long diceGame2Cost = adminPanelService.getGameTokenCost(guildId, "dice-game-2");
+        // Initialize or reset session state
+        sessionStates.put(sessionKey, new SessionState(ManagementType.BALANCE));
 
-        MessageEmbed embed = new EmbedBuilder()
-                .setTitle("🎲 遊戲設定管理")
-                .setColor(EMBED_COLOR)
-                .setDescription("選擇要調整的遊戲：")
-                .addField("骰子遊戲 1", String.format("目前代幣消耗：🎮 %,d", diceGame1Cost), false)
-                .addField("骰子遊戲 2", String.format("目前代幣消耗：🎮 %,d", diceGame2Cost), false)
+        MessageEmbed embed = buildBalanceManagementEmbed(null, null, null);
+
+        EntitySelectMenu userSelect = EntitySelectMenu.create(SELECT_BALANCE_USER, EntitySelectMenu.SelectTarget.USER)
+                .setPlaceholder("選擇要調整的成員")
+                .setRequiredRange(1, 1)
                 .build();
 
-        StringSelectMenu selectMenu = StringSelectMenu.create(SELECT_GAME)
-                .setPlaceholder("選擇遊戲")
-                .addOption("骰子遊戲 1", "dice-game-1", "調整骰子遊戲 1 的代幣消耗")
-                .addOption("骰子遊戲 2", "dice-game-2", "調整骰子遊戲 2 的代幣消耗")
+        StringSelectMenu modeSelect = StringSelectMenu.create(SELECT_BALANCE_MODE)
+                .setPlaceholder("選擇調整模式")
+                .addOption("增加餘額", "add", "在現有餘額基礎上增加指定金額")
+                .addOption("扣除餘額", "deduct", "從現有餘額扣除指定金額")
+                .addOption("設定餘額", "adjust", "將餘額直接設定為指定金額")
                 .build();
 
         event.editMessageEmbeds(embed)
                 .setComponents(
-                        ActionRow.of(selectMenu),
+                        ActionRow.of(userSelect),
+                        ActionRow.of(modeSelect),
+                        ActionRow.of(
+                                Button.primary(BUTTON_OPEN_BALANCE_MODAL, "💰 輸入金額").asDisabled(),
+                                Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")
+                        )
+                )
+                .queue();
+    }
+
+    private void handleBalanceUserSelect(EntitySelectInteractionEvent event, String sessionKey, long guildId) {
+        List<User> selectedUsers = event.getMentions().getUsers();
+        if (selectedUsers.isEmpty()) {
+            event.reply("請選擇一位成員").setEphemeral(true).queue();
+            return;
+        }
+
+        User selectedUser = selectedUsers.get(0);
+        SessionState state = sessionStates.computeIfAbsent(sessionKey,
+                k -> new SessionState(ManagementType.BALANCE));
+        state.selectedUserId = selectedUser.getIdLong();
+        state.selectedUserMention = selectedUser.getAsMention();
+
+        // Get current balance
+        Result<Long, DomainError> balanceResult = adminPanelService.getMemberBalance(guildId, selectedUser.getIdLong());
+        Long currentBalance = balanceResult.isOk() ? balanceResult.getValue() : null;
+        state.currentValue = currentBalance;
+
+        MessageEmbed embed = buildBalanceManagementEmbed(
+                selectedUser.getAsMention(),
+                currentBalance,
+                state.selectedMode
+        );
+
+        boolean canOpenModal = state.selectedUserId != null && state.selectedMode != null;
+
+        EntitySelectMenu userSelect = EntitySelectMenu.create(SELECT_BALANCE_USER, EntitySelectMenu.SelectTarget.USER)
+                .setPlaceholder("選擇要調整的成員")
+                .setRequiredRange(1, 1)
+                .build();
+
+        StringSelectMenu modeSelect = StringSelectMenu.create(SELECT_BALANCE_MODE)
+                .setPlaceholder("選擇調整模式")
+                .addOption("增加餘額", "add", "在現有餘額基礎上增加指定金額")
+                .addOption("扣除餘額", "deduct", "從現有餘額扣除指定金額")
+                .addOption("設定餘額", "adjust", "將餘額直接設定為指定金額")
+                .setDefaultValues(state.selectedMode != null ? List.of(state.selectedMode) : List.of())
+                .build();
+
+        event.editMessageEmbeds(embed)
+                .setComponents(
+                        ActionRow.of(userSelect),
+                        ActionRow.of(modeSelect),
+                        ActionRow.of(
+                                canOpenModal
+                                        ? Button.primary(BUTTON_OPEN_BALANCE_MODAL, "💰 輸入金額")
+                                        : Button.primary(BUTTON_OPEN_BALANCE_MODAL, "💰 輸入金額").asDisabled(),
+                                Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")
+                        )
+                )
+                .queue();
+    }
+
+    private void handleBalanceModeSelect(StringSelectInteractionEvent event, String sessionKey, long guildId) {
+        String mode = event.getValues().get(0);
+
+        SessionState state = sessionStates.computeIfAbsent(sessionKey,
+                k -> new SessionState(ManagementType.BALANCE));
+        state.selectedMode = mode;
+
+        MessageEmbed embed = buildBalanceManagementEmbed(
+                state.selectedUserMention,
+                state.currentValue,
+                mode
+        );
+
+        boolean canOpenModal = state.selectedUserId != null && state.selectedMode != null;
+
+        EntitySelectMenu userSelect = EntitySelectMenu.create(SELECT_BALANCE_USER, EntitySelectMenu.SelectTarget.USER)
+                .setPlaceholder("選擇要調整的成員")
+                .setRequiredRange(1, 1)
+                .build();
+
+        StringSelectMenu modeSelect = StringSelectMenu.create(SELECT_BALANCE_MODE)
+                .setPlaceholder("選擇調整模式")
+                .addOption("增加餘額", "add", "在現有餘額基礎上增加指定金額")
+                .addOption("扣除餘額", "deduct", "從現有餘額扣除指定金額")
+                .addOption("設定餘額", "adjust", "將餘額直接設定為指定金額")
+                .setDefaultValues(List.of(mode))
+                .build();
+
+        event.editMessageEmbeds(embed)
+                .setComponents(
+                        ActionRow.of(userSelect),
+                        ActionRow.of(modeSelect),
+                        ActionRow.of(
+                                canOpenModal
+                                        ? Button.primary(BUTTON_OPEN_BALANCE_MODAL, "💰 輸入金額")
+                                        : Button.primary(BUTTON_OPEN_BALANCE_MODAL, "💰 輸入金額").asDisabled(),
+                                Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")
+                        )
+                )
+                .queue();
+    }
+
+    private void openBalanceModal(ButtonInteractionEvent event) {
+        long guildId = event.getGuild().getIdLong();
+        String sessionKey = getSessionKey(event.getUser().getIdLong(), guildId);
+        SessionState state = sessionStates.get(sessionKey);
+
+        if (state == null || state.selectedUserId == null || state.selectedMode == null) {
+            event.reply("請先選擇成員和調整模式").setEphemeral(true).queue();
+            return;
+        }
+
+        String modeLabel = getModeLabel(state.selectedMode);
+        String modalTitle = String.format("%s - %s", modeLabel, state.selectedUserMention);
+        if (modalTitle.length() > 45) {
+            modalTitle = modeLabel;
+        }
+
+        TextInput amountInput = TextInput.create("amount", "金額", TextInputStyle.SHORT)
+                .setPlaceholder(state.selectedMode.equals("adjust") ? "輸入目標餘額" : "輸入調整金額")
+                .setRequired(true)
+                .setMinLength(1)
+                .setMaxLength(15)
+                .build();
+
+        Modal modal = Modal.create(
+                        MODAL_BALANCE_ADJUST + ":" + state.selectedUserId + ":" + state.selectedMode,
+                        modalTitle
+                )
+                .addComponents(ActionRow.of(amountInput))
+                .build();
+
+        event.replyModal(modal).queue();
+    }
+
+    private MessageEmbed buildBalanceManagementEmbed(String userMention, Long currentBalance, String mode) {
+        EmbedBuilder builder = new EmbedBuilder()
+                .setTitle("💰 使用者餘額管理")
+                .setColor(EMBED_COLOR)
+                .setDescription("選擇要調整餘額的成員和調整模式");
+
+        if (userMention != null) {
+            builder.addField("選取成員", userMention, true);
+            if (currentBalance != null) {
+                builder.addField("目前餘額", String.format("💰 %,d", currentBalance), true);
+            } else {
+                builder.addField("目前餘額", "（無法取得）", true);
+            }
+        }
+
+        if (mode != null) {
+            builder.addField("調整模式", getModeLabel(mode), false);
+        }
+
+        builder.setFooter("選擇成員和模式後點擊「輸入金額」按鈕");
+
+        return builder.build();
+    }
+
+    // ===== Token Management =====
+
+    private void showTokenManagement(ButtonInteractionEvent event) {
+        long guildId = event.getGuild().getIdLong();
+        String sessionKey = getSessionKey(event.getUser().getIdLong(), guildId);
+
+        // Initialize or reset session state
+        sessionStates.put(sessionKey, new SessionState(ManagementType.TOKEN));
+
+        MessageEmbed embed = buildTokenManagementEmbed(null, null, null);
+
+        EntitySelectMenu userSelect = EntitySelectMenu.create(SELECT_TOKEN_USER, EntitySelectMenu.SelectTarget.USER)
+                .setPlaceholder("選擇要調整的成員")
+                .setRequiredRange(1, 1)
+                .build();
+
+        StringSelectMenu modeSelect = StringSelectMenu.create(SELECT_TOKEN_MODE)
+                .setPlaceholder("選擇調整模式")
+                .addOption("增加代幣", "add", "在現有代幣基礎上增加指定數量")
+                .addOption("扣除代幣", "deduct", "從現有代幣扣除指定數量")
+                .addOption("設定代幣", "adjust", "將代幣直接設定為指定數量")
+                .build();
+
+        event.editMessageEmbeds(embed)
+                .setComponents(
+                        ActionRow.of(userSelect),
+                        ActionRow.of(modeSelect),
+                        ActionRow.of(
+                                Button.primary(BUTTON_OPEN_TOKEN_MODAL, "🎮 輸入數量").asDisabled(),
+                                Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")
+                        )
+                )
+                .queue();
+    }
+
+    private void handleTokenUserSelect(EntitySelectInteractionEvent event, String sessionKey, long guildId) {
+        List<User> selectedUsers = event.getMentions().getUsers();
+        if (selectedUsers.isEmpty()) {
+            event.reply("請選擇一位成員").setEphemeral(true).queue();
+            return;
+        }
+
+        User selectedUser = selectedUsers.get(0);
+        SessionState state = sessionStates.computeIfAbsent(sessionKey,
+                k -> new SessionState(ManagementType.TOKEN));
+        state.selectedUserId = selectedUser.getIdLong();
+        state.selectedUserMention = selectedUser.getAsMention();
+
+        // Get current token balance
+        long currentTokens = adminPanelService.getMemberTokens(guildId, selectedUser.getIdLong());
+        state.currentValue = currentTokens;
+
+        MessageEmbed embed = buildTokenManagementEmbed(
+                selectedUser.getAsMention(),
+                currentTokens,
+                state.selectedMode
+        );
+
+        boolean canOpenModal = state.selectedUserId != null && state.selectedMode != null;
+
+        EntitySelectMenu userSelect = EntitySelectMenu.create(SELECT_TOKEN_USER, EntitySelectMenu.SelectTarget.USER)
+                .setPlaceholder("選擇要調整的成員")
+                .setRequiredRange(1, 1)
+                .build();
+
+        StringSelectMenu modeSelect = StringSelectMenu.create(SELECT_TOKEN_MODE)
+                .setPlaceholder("選擇調整模式")
+                .addOption("增加代幣", "add", "在現有代幣基礎上增加指定數量")
+                .addOption("扣除代幣", "deduct", "從現有代幣扣除指定數量")
+                .addOption("設定代幣", "adjust", "將代幣直接設定為指定數量")
+                .setDefaultValues(state.selectedMode != null ? List.of(state.selectedMode) : List.of())
+                .build();
+
+        event.editMessageEmbeds(embed)
+                .setComponents(
+                        ActionRow.of(userSelect),
+                        ActionRow.of(modeSelect),
+                        ActionRow.of(
+                                canOpenModal
+                                        ? Button.primary(BUTTON_OPEN_TOKEN_MODAL, "🎮 輸入數量")
+                                        : Button.primary(BUTTON_OPEN_TOKEN_MODAL, "🎮 輸入數量").asDisabled(),
+                                Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")
+                        )
+                )
+                .queue();
+    }
+
+    private void handleTokenModeSelect(StringSelectInteractionEvent event, String sessionKey, long guildId) {
+        String mode = event.getValues().get(0);
+
+        SessionState state = sessionStates.computeIfAbsent(sessionKey,
+                k -> new SessionState(ManagementType.TOKEN));
+        state.selectedMode = mode;
+
+        MessageEmbed embed = buildTokenManagementEmbed(
+                state.selectedUserMention,
+                state.currentValue,
+                mode
+        );
+
+        boolean canOpenModal = state.selectedUserId != null && state.selectedMode != null;
+
+        EntitySelectMenu userSelect = EntitySelectMenu.create(SELECT_TOKEN_USER, EntitySelectMenu.SelectTarget.USER)
+                .setPlaceholder("選擇要調整的成員")
+                .setRequiredRange(1, 1)
+                .build();
+
+        StringSelectMenu modeSelect = StringSelectMenu.create(SELECT_TOKEN_MODE)
+                .setPlaceholder("選擇調整模式")
+                .addOption("增加代幣", "add", "在現有代幣基礎上增加指定數量")
+                .addOption("扣除代幣", "deduct", "從現有代幣扣除指定數量")
+                .addOption("設定代幣", "adjust", "將代幣直接設定為指定數量")
+                .setDefaultValues(List.of(mode))
+                .build();
+
+        event.editMessageEmbeds(embed)
+                .setComponents(
+                        ActionRow.of(userSelect),
+                        ActionRow.of(modeSelect),
+                        ActionRow.of(
+                                canOpenModal
+                                        ? Button.primary(BUTTON_OPEN_TOKEN_MODAL, "🎮 輸入數量")
+                                        : Button.primary(BUTTON_OPEN_TOKEN_MODAL, "🎮 輸入數量").asDisabled(),
+                                Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")
+                        )
+                )
+                .queue();
+    }
+
+    private void openTokenModal(ButtonInteractionEvent event) {
+        long guildId = event.getGuild().getIdLong();
+        String sessionKey = getSessionKey(event.getUser().getIdLong(), guildId);
+        SessionState state = sessionStates.get(sessionKey);
+
+        if (state == null || state.selectedUserId == null || state.selectedMode == null) {
+            event.reply("請先選擇成員和調整模式").setEphemeral(true).queue();
+            return;
+        }
+
+        String modeLabel = getTokenModeLabel(state.selectedMode);
+        String modalTitle = String.format("%s - %s", modeLabel, state.selectedUserMention);
+        if (modalTitle.length() > 45) {
+            modalTitle = modeLabel;
+        }
+
+        TextInput amountInput = TextInput.create("amount", "數量", TextInputStyle.SHORT)
+                .setPlaceholder(state.selectedMode.equals("adjust") ? "輸入目標代幣數量" : "輸入調整數量")
+                .setRequired(true)
+                .setMinLength(1)
+                .setMaxLength(15)
+                .build();
+
+        Modal modal = Modal.create(
+                        MODAL_TOKEN_ADJUST + ":" + state.selectedUserId + ":" + state.selectedMode,
+                        modalTitle
+                )
+                .addComponents(ActionRow.of(amountInput))
+                .build();
+
+        event.replyModal(modal).queue();
+    }
+
+    private MessageEmbed buildTokenManagementEmbed(String userMention, Long currentTokens, String mode) {
+        EmbedBuilder builder = new EmbedBuilder()
+                .setTitle("🎮 遊戲代幣管理")
+                .setColor(EMBED_COLOR)
+                .setDescription("選擇要調整代幣的成員和調整模式");
+
+        if (userMention != null) {
+            builder.addField("選取成員", userMention, true);
+            if (currentTokens != null) {
+                builder.addField("目前代幣", String.format("🎮 %,d", currentTokens), true);
+            } else {
+                builder.addField("目前代幣", "（無法取得）", true);
+            }
+        }
+
+        if (mode != null) {
+            builder.addField("調整模式", getTokenModeLabel(mode), false);
+        }
+
+        builder.setFooter("選擇成員和模式後點擊「輸入數量」按鈕");
+
+        return builder.build();
+    }
+
+    // ===== Game Management =====
+
+    private void showGameManagement(ButtonInteractionEvent event) {
+        long guildId = event.getGuild().getIdLong();
+
+        DiceGame1Config game1Config = adminPanelService.getDiceGame1Config(guildId);
+        DiceGame2Config game2Config = adminPanelService.getDiceGame2Config(guildId);
+
+        MessageEmbed embed = buildGameManagementEmbed(game1Config, game2Config);
+
+        StringSelectMenu gameSelect = StringSelectMenu.create(SELECT_GAME)
+                .setPlaceholder("選擇遊戲")
+                .addOption("骰子遊戲 1", "dice-game-1", "查看與調整骰子遊戲 1 的設定")
+                .addOption("骰子遊戲 2", "dice-game-2", "查看與調整骰子遊戲 2 的設定")
+                .build();
+
+        event.editMessageEmbeds(embed)
+                .setComponents(
+                        ActionRow.of(gameSelect),
                         ActionRow.of(Button.secondary(BUTTON_BACK, "⬅️ 返回主選單"))
                 )
                 .queue();
     }
 
+    private void handleGameSelect(StringSelectInteractionEvent event, long guildId) {
+        String gameType = event.getValues().get(0);
+
+        if (gameType.equals("dice-game-1")) {
+            showDiceGame1Settings(event, guildId);
+        } else if (gameType.equals("dice-game-2")) {
+            showDiceGame2Settings(event, guildId);
+        }
+    }
+
+    private void showDiceGame1Settings(StringSelectInteractionEvent event, long guildId) {
+        DiceGame1Config config = adminPanelService.getDiceGame1Config(guildId);
+
+        MessageEmbed embed = new EmbedBuilder()
+                .setTitle("🎲 骰子遊戲 1 設定")
+                .setColor(EMBED_COLOR)
+                .addField("代幣範圍",
+                        String.format("最小：🎮 %,d\n最大：🎮 %,d",
+                                config.minTokensPerPlay(),
+                                config.maxTokensPerPlay()),
+                        true)
+                .addField("獎勵設定",
+                        String.format("單骰獎勵倍率：💰 %,d\n（1 點 = %,d、6 點 = %,d）",
+                                config.rewardPerDiceValue(),
+                                config.rewardPerDiceValue(),
+                                config.rewardPerDiceValue() * 6),
+                        true)
+                .setFooter("選擇要調整的設定類別")
+                .build();
+
+        StringSelectMenu settingSelect = StringSelectMenu.create(SELECT_GAME_SETTING)
+                .setPlaceholder("選擇要調整的設定")
+                .addOption("代幣範圍", "game1-tokens", "調整每局可投入的代幣數量範圍")
+                .addOption("獎勵倍率", "game1-reward", "調整單骰獎勵的基礎倍率")
+                .build();
+
+        event.editMessageEmbeds(embed)
+                .setComponents(
+                        ActionRow.of(settingSelect),
+                        ActionRow.of(Button.secondary(BUTTON_GAMES, "🎲 返回遊戲列表"),
+                                Button.secondary(BUTTON_BACK, "⬅️ 返回主選單"))
+                )
+                .queue();
+    }
+
+    private void showDiceGame2Settings(StringSelectInteractionEvent event, long guildId) {
+        DiceGame2Config config = adminPanelService.getDiceGame2Config(guildId);
+
+        MessageEmbed embed = new EmbedBuilder()
+                .setTitle("🎲 骰子遊戲 2 設定")
+                .setColor(EMBED_COLOR)
+                .addField("代幣範圍",
+                        String.format("最小：🎮 %,d\n最大：🎮 %,d",
+                                config.minTokensPerPlay(),
+                                config.maxTokensPerPlay()),
+                        true)
+                .addField("獎勵倍率",
+                        String.format("順子倍率：💰 %,d\n基礎倍率：💰 %,d",
+                                config.straightMultiplier(),
+                                config.baseMultiplier()),
+                        true)
+                .addField("豹子獎勵",
+                        String.format("小豹子（<10）：💰 %,d\n大豹子（≥10）：💰 %,d",
+                                config.tripleLowBonus(),
+                                config.tripleHighBonus()),
+                        false)
+                .setFooter("選擇要調整的設定類別")
+                .build();
+
+        StringSelectMenu settingSelect = StringSelectMenu.create(SELECT_GAME_SETTING)
+                .setPlaceholder("選擇要調整的設定")
+                .addOption("代幣範圍", "game2-tokens", "調整每局可投入的代幣數量範圍")
+                .addOption("獎勵倍率", "game2-multipliers", "調整順子和基礎獎勵倍率")
+                .addOption("豹子獎勵", "game2-bonuses", "調整小豹子和大豹子的獎勵金額")
+                .build();
+
+        event.editMessageEmbeds(embed)
+                .setComponents(
+                        ActionRow.of(settingSelect),
+                        ActionRow.of(Button.secondary(BUTTON_GAMES, "🎲 返回遊戲列表"),
+                                Button.secondary(BUTTON_BACK, "⬅️ 返回主選單"))
+                )
+                .queue();
+    }
+
+    private void handleGameSettingSelect(StringSelectInteractionEvent event, long guildId) {
+        String setting = event.getValues().get(0);
+
+        switch (setting) {
+            case "game1-tokens" -> openGame1TokensModal(event, guildId);
+            case "game1-reward" -> openGame1RewardModal(event, guildId);
+            case "game2-tokens" -> openGame2TokensModal(event, guildId);
+            case "game2-multipliers" -> openGame2MultipliersModal(event, guildId);
+            case "game2-bonuses" -> openGame2BonusesModal(event, guildId);
+            default -> LOG.warn("Unknown game setting: {}", setting);
+        }
+    }
+
+    private void openGame1TokensModal(StringSelectInteractionEvent event, long guildId) {
+        DiceGame1Config config = adminPanelService.getDiceGame1Config(guildId);
+
+        TextInput minInput = TextInput.create("min", "最小代幣數", TextInputStyle.SHORT)
+                .setPlaceholder("最小可投入代幣數量")
+                .setValue(String.valueOf(config.minTokensPerPlay()))
+                .setRequired(true)
+                .setMinLength(1)
+                .setMaxLength(10)
+                .build();
+
+        TextInput maxInput = TextInput.create("max", "最大代幣數", TextInputStyle.SHORT)
+                .setPlaceholder("最大可投入代幣數量")
+                .setValue(String.valueOf(config.maxTokensPerPlay()))
+                .setRequired(true)
+                .setMinLength(1)
+                .setMaxLength(10)
+                .build();
+
+        Modal modal = Modal.create(MODAL_GAME_1_TOKENS, "骰子遊戲 1 - 代幣範圍")
+                .addComponents(
+                        ActionRow.of(minInput),
+                        ActionRow.of(maxInput)
+                )
+                .build();
+
+        event.replyModal(modal).queue();
+    }
+
+    private void openGame1RewardModal(StringSelectInteractionEvent event, long guildId) {
+        DiceGame1Config config = adminPanelService.getDiceGame1Config(guildId);
+
+        TextInput rewardInput = TextInput.create("reward", "單骰獎勵倍率", TextInputStyle.SHORT)
+                .setPlaceholder("每點數的獎勵金額")
+                .setValue(String.valueOf(config.rewardPerDiceValue()))
+                .setRequired(true)
+                .setMinLength(1)
+                .setMaxLength(15)
+                .build();
+
+        Modal modal = Modal.create(MODAL_GAME_1_REWARD, "骰子遊戲 1 - 獎勵設定")
+                .addComponents(ActionRow.of(rewardInput))
+                .build();
+
+        event.replyModal(modal).queue();
+    }
+
+    private void openGame2TokensModal(StringSelectInteractionEvent event, long guildId) {
+        DiceGame2Config config = adminPanelService.getDiceGame2Config(guildId);
+
+        TextInput minInput = TextInput.create("min", "最小代幣數", TextInputStyle.SHORT)
+                .setPlaceholder("最小可投入代幣數量")
+                .setValue(String.valueOf(config.minTokensPerPlay()))
+                .setRequired(true)
+                .setMinLength(1)
+                .setMaxLength(10)
+                .build();
+
+        TextInput maxInput = TextInput.create("max", "最大代幣數", TextInputStyle.SHORT)
+                .setPlaceholder("最大可投入代幣數量")
+                .setValue(String.valueOf(config.maxTokensPerPlay()))
+                .setRequired(true)
+                .setMinLength(1)
+                .setMaxLength(10)
+                .build();
+
+        Modal modal = Modal.create(MODAL_GAME_2_TOKENS, "骰子遊戲 2 - 代幣範圍")
+                .addComponents(
+                        ActionRow.of(minInput),
+                        ActionRow.of(maxInput)
+                )
+                .build();
+
+        event.replyModal(modal).queue();
+    }
+
+    private void openGame2MultipliersModal(StringSelectInteractionEvent event, long guildId) {
+        DiceGame2Config config = adminPanelService.getDiceGame2Config(guildId);
+
+        TextInput straightInput = TextInput.create("straight", "順子倍率", TextInputStyle.SHORT)
+                .setPlaceholder("順子獎勵的基礎倍率")
+                .setValue(String.valueOf(config.straightMultiplier()))
+                .setRequired(true)
+                .setMinLength(1)
+                .setMaxLength(15)
+                .build();
+
+        TextInput baseInput = TextInput.create("base", "基礎倍率", TextInputStyle.SHORT)
+                .setPlaceholder("非順子非豹子的基礎倍率")
+                .setValue(String.valueOf(config.baseMultiplier()))
+                .setRequired(true)
+                .setMinLength(1)
+                .setMaxLength(15)
+                .build();
+
+        Modal modal = Modal.create(MODAL_GAME_2_MULTIPLIERS, "骰子遊戲 2 - 獎勵倍率")
+                .addComponents(
+                        ActionRow.of(straightInput),
+                        ActionRow.of(baseInput)
+                )
+                .build();
+
+        event.replyModal(modal).queue();
+    }
+
+    private void openGame2BonusesModal(StringSelectInteractionEvent event, long guildId) {
+        DiceGame2Config config = adminPanelService.getDiceGame2Config(guildId);
+
+        TextInput lowInput = TextInput.create("low", "小豹子獎勵", TextInputStyle.SHORT)
+                .setPlaceholder("小豹子（總和<10）的獎勵金額")
+                .setValue(String.valueOf(config.tripleLowBonus()))
+                .setRequired(true)
+                .setMinLength(1)
+                .setMaxLength(15)
+                .build();
+
+        TextInput highInput = TextInput.create("high", "大豹子獎勵", TextInputStyle.SHORT)
+                .setPlaceholder("大豹子（總和≥10）的獎勵金額")
+                .setValue(String.valueOf(config.tripleHighBonus()))
+                .setRequired(true)
+                .setMinLength(1)
+                .setMaxLength(15)
+                .build();
+
+        Modal modal = Modal.create(MODAL_GAME_2_BONUSES, "骰子遊戲 2 - 豹子獎勵")
+                .addComponents(
+                        ActionRow.of(lowInput),
+                        ActionRow.of(highInput)
+                )
+                .build();
+
+        event.replyModal(modal).queue();
+    }
+
+    private MessageEmbed buildGameManagementEmbed(DiceGame1Config game1Config, DiceGame2Config game2Config) {
+        return new EmbedBuilder()
+                .setTitle("🎲 遊戲設定管理")
+                .setColor(EMBED_COLOR)
+                .setDescription("選擇要調整設定的遊戲")
+                .addField("骰子遊戲 1",
+                        String.format("代幣範圍：🎮 %,d ~ %,d\n單骰倍率：💰 %,d",
+                                game1Config.minTokensPerPlay(),
+                                game1Config.maxTokensPerPlay(),
+                                game1Config.rewardPerDiceValue()),
+                        false)
+                .addField("骰子遊戲 2",
+                        String.format("代幣範圍：🎮 %,d ~ %,d\n順子倍率：💰 %,d\n基礎倍率：💰 %,d",
+                                game2Config.minTokensPerPlay(),
+                                game2Config.maxTokensPerPlay(),
+                                game2Config.straightMultiplier(),
+                                game2Config.baseMultiplier()),
+                        false)
+                .setFooter("選擇遊戲以查看詳細設定")
+                .build();
+    }
+
+    // ===== Main Panel =====
+
     private void showMainPanel(ButtonInteractionEvent event) {
+        // Clear session state
+        long guildId = event.getGuild().getIdLong();
+        String sessionKey = getSessionKey(event.getUser().getIdLong(), guildId);
+        sessionStates.remove(sessionKey);
+
         MessageEmbed embed = new EmbedBuilder()
                 .setTitle("🔧 管理面板")
                 .setDescription("選擇要管理的項目：")
@@ -226,25 +869,40 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
                 .queue();
     }
 
+    // ===== Modal Handlers =====
+
     private void handleBalanceAdjustModal(ModalInteractionEvent event) {
         long guildId = event.getGuild().getIdLong();
 
-        String userIdStr = event.getValue("user_id").getAsString().trim();
-        String mode = event.getValue("mode").getAsString().trim().toLowerCase();
-        String amountStr = event.getValue("amount").getAsString().trim();
-
-        long userId;
-        long amount;
-        try {
-            userId = Long.parseLong(userIdStr);
-            amount = Long.parseLong(amountStr);
-        } catch (NumberFormatException e) {
-            event.reply("輸入格式錯誤，請確認使用者 ID 和金額為有效數字").setEphemeral(true).queue();
+        // Parse userId and mode from modal ID
+        String[] parts = event.getModalId().split(":");
+        if (parts.length < 3) {
+            event.reply("無效的操作").setEphemeral(true).queue();
             return;
         }
 
-        if (!mode.equals("add") && !mode.equals("deduct") && !mode.equals("adjust")) {
-            event.reply("調整模式必須為 add、deduct 或 adjust").setEphemeral(true).queue();
+        long userId;
+        String mode;
+        try {
+            userId = Long.parseLong(parts[1]);
+            mode = parts[2];
+        } catch (NumberFormatException e) {
+            event.reply("無效的操作").setEphemeral(true).queue();
+            return;
+        }
+
+        String amountStr = event.getValue("amount").getAsString().trim();
+
+        long amount;
+        try {
+            amount = Long.parseLong(amountStr);
+        } catch (NumberFormatException e) {
+            event.reply("金額格式錯誤，請輸入有效數字").setEphemeral(true).queue();
+            return;
+        }
+
+        if (amount < 0 && !mode.equals("adjust")) {
+            event.reply("金額不可為負數").setEphemeral(true).queue();
             return;
         }
 
@@ -258,7 +916,7 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
 
         AdminPanelService.BalanceAdjustmentResult adjustResult = result.getValue();
         event.reply(String.format(
-                "✅ 餘額調整成功！\n<@%d> 的餘額：\n調整前：%,d\n調整後：%,d",
+                "✅ 餘額調整成功！\n<@%d> 的餘額：\n調整前：💰 %,d\n調整後：💰 %,d",
                 userId, adjustResult.previousBalance(), adjustResult.newBalance()
         )).setEphemeral(true).queue();
     }
@@ -266,21 +924,40 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     private void handleTokenAdjustModal(ModalInteractionEvent event) {
         long guildId = event.getGuild().getIdLong();
 
-        String userIdStr = event.getValue("user_id").getAsString().trim();
-        String amountStr = event.getValue("amount").getAsString().trim();
+        // Parse userId and mode from modal ID
+        String[] parts = event.getModalId().split(":");
+        if (parts.length < 3) {
+            event.reply("無效的操作").setEphemeral(true).queue();
+            return;
+        }
 
         long userId;
+        String mode;
+        try {
+            userId = Long.parseLong(parts[1]);
+            mode = parts[2];
+        } catch (NumberFormatException e) {
+            event.reply("無效的操作").setEphemeral(true).queue();
+            return;
+        }
+
+        String amountStr = event.getValue("amount").getAsString().trim();
+
         long amount;
         try {
-            userId = Long.parseLong(userIdStr);
             amount = Long.parseLong(amountStr);
         } catch (NumberFormatException e) {
-            event.reply("輸入格式錯誤，請確認使用者 ID 和數量為有效數字").setEphemeral(true).queue();
+            event.reply("數量格式錯誤，請輸入有效數字").setEphemeral(true).queue();
+            return;
+        }
+
+        if (amount < 0 && !mode.equals("adjust")) {
+            event.reply("數量不可為負數").setEphemeral(true).queue();
             return;
         }
 
         Result<AdminPanelService.TokenAdjustmentResult, DomainError> result =
-                adminPanelService.adjustTokens(guildId, userId, amount);
+                adminPanelService.adjustTokens(guildId, userId, mode, amount);
 
         if (result.isErr()) {
             event.reply("調整失敗：" + result.getError().message()).setEphemeral(true).queue();
@@ -294,29 +971,251 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         )).setEphemeral(true).queue();
     }
 
-    private void handleGameConfigModal(ModalInteractionEvent event) {
+    private void handleGame1TokensModal(ModalInteractionEvent event) {
         long guildId = event.getGuild().getIdLong();
-        String gameType = event.getModalId().split(":")[1];
 
-        String costStr = event.getValue("new_cost").getAsString().trim();
+        String minStr = event.getValue("min").getAsString().trim();
+        String maxStr = event.getValue("max").getAsString().trim();
 
-        long newCost;
+        long minTokens, maxTokens;
         try {
-            newCost = Long.parseLong(costStr);
+            minTokens = Long.parseLong(minStr);
+            maxTokens = Long.parseLong(maxStr);
         } catch (NumberFormatException e) {
-            event.reply("輸入格式錯誤，請確認代幣消耗為有效數字").setEphemeral(true).queue();
+            event.reply("數值格式錯誤，請輸入有效數字").setEphemeral(true).queue();
             return;
         }
 
-        Result<AdminPanelService.GameConfigUpdateResult, DomainError> result =
-                adminPanelService.updateGameTokenCost(guildId, gameType, newCost);
+        // Validate
+        if (minTokens < 0 || maxTokens < 0) {
+            event.reply("數值不可為負數").setEphemeral(true).queue();
+            return;
+        }
+
+        if (minTokens > maxTokens) {
+            event.reply("最小值不可大於最大值").setEphemeral(true).queue();
+            return;
+        }
+
+        DiceGame1Config oldConfig = adminPanelService.getDiceGame1Config(guildId);
+        Result<DiceGame1Config, DomainError> result =
+                adminPanelService.updateDiceGame1Config(guildId, minTokens, maxTokens, null);
 
         if (result.isErr()) {
             event.reply("更新失敗：" + result.getError().message()).setEphemeral(true).queue();
             return;
         }
 
-        AdminPanelService.GameConfigUpdateResult updateResult = result.getValue();
-        event.reply(updateResult.formatMessage()).setEphemeral(true).queue();
+        DiceGame1Config newConfig = result.getValue();
+        event.reply(String.format(
+                "✅ 骰子遊戲 1 代幣範圍更新成功！\n" +
+                        "最小：🎮 %,d → %,d\n" +
+                        "最大：🎮 %,d → %,d",
+                oldConfig.minTokensPerPlay(), newConfig.minTokensPerPlay(),
+                oldConfig.maxTokensPerPlay(), newConfig.maxTokensPerPlay()
+        )).setEphemeral(true).queue();
+    }
+
+    private void handleGame1RewardModal(ModalInteractionEvent event) {
+        long guildId = event.getGuild().getIdLong();
+
+        String rewardStr = event.getValue("reward").getAsString().trim();
+
+        long rewardPerDice;
+        try {
+            rewardPerDice = Long.parseLong(rewardStr);
+        } catch (NumberFormatException e) {
+            event.reply("數值格式錯誤，請輸入有效數字").setEphemeral(true).queue();
+            return;
+        }
+
+        if (rewardPerDice < 0) {
+            event.reply("獎勵倍率不可為負數").setEphemeral(true).queue();
+            return;
+        }
+
+        DiceGame1Config oldConfig = adminPanelService.getDiceGame1Config(guildId);
+        Result<DiceGame1Config, DomainError> result =
+                adminPanelService.updateDiceGame1Config(guildId, null, null, rewardPerDice);
+
+        if (result.isErr()) {
+            event.reply("更新失敗：" + result.getError().message()).setEphemeral(true).queue();
+            return;
+        }
+
+        DiceGame1Config newConfig = result.getValue();
+        event.reply(String.format(
+                "✅ 骰子遊戲 1 獎勵設定更新成功！\n" +
+                        "單骰倍率：💰 %,d → %,d",
+                oldConfig.rewardPerDiceValue(), newConfig.rewardPerDiceValue()
+        )).setEphemeral(true).queue();
+    }
+
+    private void handleGame2TokensModal(ModalInteractionEvent event) {
+        long guildId = event.getGuild().getIdLong();
+
+        String minStr = event.getValue("min").getAsString().trim();
+        String maxStr = event.getValue("max").getAsString().trim();
+
+        long minTokens, maxTokens;
+        try {
+            minTokens = Long.parseLong(minStr);
+            maxTokens = Long.parseLong(maxStr);
+        } catch (NumberFormatException e) {
+            event.reply("數值格式錯誤，請輸入有效數字").setEphemeral(true).queue();
+            return;
+        }
+
+        // Validate
+        if (minTokens < 0 || maxTokens < 0) {
+            event.reply("數值不可為負數").setEphemeral(true).queue();
+            return;
+        }
+
+        if (minTokens > maxTokens) {
+            event.reply("最小值不可大於最大值").setEphemeral(true).queue();
+            return;
+        }
+
+        DiceGame2Config oldConfig = adminPanelService.getDiceGame2Config(guildId);
+        Result<DiceGame2Config, DomainError> result =
+                adminPanelService.updateDiceGame2Config(guildId, minTokens, maxTokens,
+                        null, null, null, null);
+
+        if (result.isErr()) {
+            event.reply("更新失敗：" + result.getError().message()).setEphemeral(true).queue();
+            return;
+        }
+
+        DiceGame2Config newConfig = result.getValue();
+        event.reply(String.format(
+                "✅ 骰子遊戲 2 代幣範圍更新成功！\n" +
+                        "最小：🎮 %,d → %,d\n" +
+                        "最大：🎮 %,d → %,d",
+                oldConfig.minTokensPerPlay(), newConfig.minTokensPerPlay(),
+                oldConfig.maxTokensPerPlay(), newConfig.maxTokensPerPlay()
+        )).setEphemeral(true).queue();
+    }
+
+    private void handleGame2MultipliersModal(ModalInteractionEvent event) {
+        long guildId = event.getGuild().getIdLong();
+
+        String straightStr = event.getValue("straight").getAsString().trim();
+        String baseStr = event.getValue("base").getAsString().trim();
+
+        long straightMultiplier, baseMultiplier;
+        try {
+            straightMultiplier = Long.parseLong(straightStr);
+            baseMultiplier = Long.parseLong(baseStr);
+        } catch (NumberFormatException e) {
+            event.reply("數值格式錯誤，請輸入有效數字").setEphemeral(true).queue();
+            return;
+        }
+
+        if (straightMultiplier < 0 || baseMultiplier < 0) {
+            event.reply("倍率不可為負數").setEphemeral(true).queue();
+            return;
+        }
+
+        DiceGame2Config oldConfig = adminPanelService.getDiceGame2Config(guildId);
+        Result<DiceGame2Config, DomainError> result =
+                adminPanelService.updateDiceGame2Config(guildId, null, null,
+                        straightMultiplier, baseMultiplier, null, null);
+
+        if (result.isErr()) {
+            event.reply("更新失敗：" + result.getError().message()).setEphemeral(true).queue();
+            return;
+        }
+
+        DiceGame2Config newConfig = result.getValue();
+        event.reply(String.format(
+                "✅ 骰子遊戲 2 獎勵倍率更新成功！\n" +
+                        "順子倍率：💰 %,d → %,d\n" +
+                        "基礎倍率：💰 %,d → %,d",
+                oldConfig.straightMultiplier(), newConfig.straightMultiplier(),
+                oldConfig.baseMultiplier(), newConfig.baseMultiplier()
+        )).setEphemeral(true).queue();
+    }
+
+    private void handleGame2BonusesModal(ModalInteractionEvent event) {
+        long guildId = event.getGuild().getIdLong();
+
+        String lowStr = event.getValue("low").getAsString().trim();
+        String highStr = event.getValue("high").getAsString().trim();
+
+        long tripleLowBonus, tripleHighBonus;
+        try {
+            tripleLowBonus = Long.parseLong(lowStr);
+            tripleHighBonus = Long.parseLong(highStr);
+        } catch (NumberFormatException e) {
+            event.reply("數值格式錯誤，請輸入有效數字").setEphemeral(true).queue();
+            return;
+        }
+
+        if (tripleLowBonus < 0 || tripleHighBonus < 0) {
+            event.reply("獎勵金額不可為負數").setEphemeral(true).queue();
+            return;
+        }
+
+        DiceGame2Config oldConfig = adminPanelService.getDiceGame2Config(guildId);
+        Result<DiceGame2Config, DomainError> result =
+                adminPanelService.updateDiceGame2Config(guildId, null, null,
+                        null, null, tripleLowBonus, tripleHighBonus);
+
+        if (result.isErr()) {
+            event.reply("更新失敗：" + result.getError().message()).setEphemeral(true).queue();
+            return;
+        }
+
+        DiceGame2Config newConfig = result.getValue();
+        event.reply(String.format(
+                "✅ 骰子遊戲 2 豹子獎勵更新成功！\n" +
+                        "小豹子：💰 %,d → %,d\n" +
+                        "大豹子：💰 %,d → %,d",
+                oldConfig.tripleLowBonus(), newConfig.tripleLowBonus(),
+                oldConfig.tripleHighBonus(), newConfig.tripleHighBonus()
+        )).setEphemeral(true).queue();
+    }
+
+    // ===== Helper Methods =====
+
+    private String getSessionKey(long userId, long guildId) {
+        return guildId + ":" + userId;
+    }
+
+    private String getModeLabel(String mode) {
+        return switch (mode) {
+            case "add" -> "增加餘額";
+            case "deduct" -> "扣除餘額";
+            case "adjust" -> "設定餘額";
+            default -> mode;
+        };
+    }
+
+    private String getTokenModeLabel(String mode) {
+        return switch (mode) {
+            case "add" -> "增加代幣";
+            case "deduct" -> "扣除代幣";
+            case "adjust" -> "設定代幣";
+            default -> mode;
+        };
+    }
+
+    // ===== Session State =====
+
+    private enum ManagementType {
+        BALANCE, TOKEN
+    }
+
+    private static class SessionState {
+        ManagementType type;
+        Long selectedUserId;
+        String selectedUserMention;
+        String selectedMode;
+        Long currentValue;
+
+        SessionState(ManagementType type) {
+            this.type = type;
+        }
     }
 }

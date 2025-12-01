@@ -8,6 +8,7 @@ import ltdjms.discord.currency.persistence.NegativeBalanceException;
 import ltdjms.discord.currency.services.BalanceAdjustmentService;
 import ltdjms.discord.currency.services.BalanceService;
 import ltdjms.discord.currency.services.CurrencyConfigService;
+import ltdjms.discord.currency.services.CurrencyTransactionService;
 import ltdjms.discord.currency.services.DefaultBalanceService;
 import ltdjms.discord.currency.services.EmojiValidator;
 import ltdjms.discord.currency.services.NoOpEmojiValidator;
@@ -42,6 +43,9 @@ class EdgeCaseTests {
     @Mock
     private GuildCurrencyConfigRepository configRepository;
 
+    @Mock
+    private CurrencyTransactionService transactionService;
+
     // ============================================================
     // Invalid Amount Tests
     // ============================================================
@@ -54,7 +58,7 @@ class EdgeCaseTests {
 
         @BeforeEach
         void setUp() {
-            adjustmentService = new BalanceAdjustmentService(accountRepository, configRepository);
+            adjustmentService = new BalanceAdjustmentService(accountRepository, configRepository, transactionService);
         }
 
         @Test
@@ -225,7 +229,7 @@ class EdgeCaseTests {
         @BeforeEach
         void setUp() {
             balanceService = new DefaultBalanceService(accountRepository, configRepository);
-            adjustmentService = new BalanceAdjustmentService(accountRepository, configRepository);
+            adjustmentService = new BalanceAdjustmentService(accountRepository, configRepository, transactionService);
         }
 
         @Test
@@ -371,7 +375,7 @@ class EdgeCaseTests {
 
         @BeforeEach
         void setUp() {
-            adjustmentService = new BalanceAdjustmentService(accountRepository, configRepository);
+            adjustmentService = new BalanceAdjustmentService(accountRepository, configRepository, transactionService);
         }
 
         @Test

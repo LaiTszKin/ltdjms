@@ -29,7 +29,11 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
+import net.dv8tion.jda.api.interactions.DiscordLocale;
+import net.dv8tion.jda.api.interactions.commands.OptionMapping;
+
 import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.*;
 
 /**
  * Command handler tests focusing on game token transaction recording.
@@ -63,7 +67,10 @@ class DiceGameCommandHandlerTransactionTest {
             GameTokenTransactionService transactionService = mock(GameTokenTransactionService.class);
 
             DiceGame1Config config = new DiceGame1Config(
-                    TEST_GUILD_ID, tokenCost, Instant.now(), Instant.now());
+                    TEST_GUILD_ID, tokenCost, tokenCost,
+                    DiceGame1Config.DEFAULT_REWARD_PER_DICE_VALUE,
+                    java.time.Instant.now(), java.time.Instant.now()
+            );
             when(configRepository.findOrCreateDefault(TEST_GUILD_ID)).thenReturn(config);
 
             DiceGameResult gameResult = new DiceGameResult(
@@ -71,7 +78,8 @@ class DiceGameCommandHandlerTransactionTest {
                     List.of(1, 2, 3, 4, 5),
                     1_000_000L, 0L, 1_000_000L
             );
-            when(diceGameService.play(TEST_GUILD_ID, TEST_USER_ID)).thenReturn(gameResult);
+            when(diceGameService.play(eq(TEST_GUILD_ID), eq(TEST_USER_ID), any(DiceGame1Config.class), anyInt()))
+                    .thenReturn(gameResult);
 
             when(currencyConfigRepository.findByGuildId(TEST_GUILD_ID)).thenReturn(Optional.of(
                     new GuildCurrencyConfig(
@@ -90,7 +98,8 @@ class DiceGameCommandHandlerTransactionTest {
                     transactionService
             );
 
-            SlashCommandInteractionEvent event = createMockSlashEvent("dice-game-1");
+            // Now tokens are required - use createMockSlashEventWithTokens
+            SlashCommandInteractionEvent event = createMockSlashEventWithTokens("dice-game-1", tokenCost);
 
             // When
             handler.handle(event);
@@ -100,6 +109,261 @@ class DiceGameCommandHandlerTransactionTest {
                     TEST_GUILD_ID,
                     TEST_USER_ID,
                     -tokenCost,
+                    newTokenBalance,
+                    GameTokenTransaction.Source.DICE_GAME_1_PLAY,
+                    null
+            );
+        }
+
+        @Test
+        @DisplayName("should use player-specified tokens when provided and within valid range")
+        void shouldUsePlayerSpecifiedTokensWhenValid() {
+            // Given
+            long playerSpecifiedTokens = 7L;
+            long previousTokens = 20L;
+            long newTokenBalance = previousTokens - playerSpecifiedTokens;
+
+            StubGameTokenAccountRepository accountRepository =
+                    new StubGameTokenAccountRepository(previousTokens);
+            GameTokenService tokenService = new GameTokenService(accountRepository);
+            DiceGame1Service diceGameService = mock(DiceGame1Service.class);
+            ltdjms.discord.gametoken.persistence.DiceGame1ConfigRepository configRepository =
+                    mock(ltdjms.discord.gametoken.persistence.DiceGame1ConfigRepository.class);
+            GuildCurrencyConfigRepository currencyConfigRepository = mock(GuildCurrencyConfigRepository.class);
+            GameTokenTransactionService transactionService = mock(GameTokenTransactionService.class);
+
+            // Config allows 1-10 tokens
+            DiceGame1Config config = new DiceGame1Config(
+                    TEST_GUILD_ID, 1L, 10L,
+                    DiceGame1Config.DEFAULT_REWARD_PER_DICE_VALUE,
+                    java.time.Instant.now(), java.time.Instant.now()
+            );
+            when(configRepository.findOrCreateDefault(TEST_GUILD_ID)).thenReturn(config);
+
+            DiceGameResult gameResult = new DiceGameResult(
+                    TEST_GUILD_ID, TEST_USER_ID,
+                    List.of(1, 2, 3, 4, 5, 6, 1),
+                    1_000_000L, 0L, 1_000_000L
+            );
+            when(diceGameService.play(eq(TEST_GUILD_ID), eq(TEST_USER_ID), any(DiceGame1Config.class), anyInt()))
+                    .thenReturn(gameResult);
+
+            when(currencyConfigRepository.findByGuildId(TEST_GUILD_ID)).thenReturn(Optional.empty());
+
+            DiceGame1CommandHandler handler = new DiceGame1CommandHandler(
+                    tokenService,
+                    diceGameService,
+                    configRepository,
+                    currencyConfigRepository,
+                    transactionService
+            );
+
+            SlashCommandInteractionEvent event = createMockSlashEventWithTokens("dice-game-1", playerSpecifiedTokens);
+
+            // When
+            handler.handle(event);
+
+            // Then - verify player-specified token amount was used
+            verify(transactionService).recordTransaction(
+                    TEST_GUILD_ID,
+                    TEST_USER_ID,
+                    -playerSpecifiedTokens,
+                    newTokenBalance,
+                    GameTokenTransaction.Source.DICE_GAME_1_PLAY,
+                    null
+            );
+        }
+
+        @Test
+        @DisplayName("should reject tokens below minimum with warning message")
+        void shouldRejectTokensBelowMinimum() {
+            // Given
+            long playerSpecifiedTokens = 2L;  // Below minimum of 5
+            long previousTokens = 20L;
+
+            StubGameTokenAccountRepository accountRepository =
+                    new StubGameTokenAccountRepository(previousTokens);
+            GameTokenService tokenService = new GameTokenService(accountRepository);
+            DiceGame1Service diceGameService = mock(DiceGame1Service.class);
+            ltdjms.discord.gametoken.persistence.DiceGame1ConfigRepository configRepository =
+                    mock(ltdjms.discord.gametoken.persistence.DiceGame1ConfigRepository.class);
+            GuildCurrencyConfigRepository currencyConfigRepository = mock(GuildCurrencyConfigRepository.class);
+            GameTokenTransactionService transactionService = mock(GameTokenTransactionService.class);
+
+            // Config allows 5-10 tokens
+            DiceGame1Config config = new DiceGame1Config(
+                    TEST_GUILD_ID, 5L, 10L,
+                    DiceGame1Config.DEFAULT_REWARD_PER_DICE_VALUE,
+                    java.time.Instant.now(), java.time.Instant.now()
+            );
+            when(configRepository.findOrCreateDefault(TEST_GUILD_ID)).thenReturn(config);
+
+            DiceGame1CommandHandler handler = new DiceGame1CommandHandler(
+                    tokenService,
+                    diceGameService,
+                    configRepository,
+                    currencyConfigRepository,
+                    transactionService
+            );
+
+            SlashCommandInteractionEvent event = createMockSlashEventWithTokens("dice-game-1", playerSpecifiedTokens);
+
+            // When
+            handler.handle(event);
+
+            // Then - verify no transaction and no game played
+            verifyNoInteractions(transactionService);
+            verifyNoInteractions(diceGameService);
+            // Warning message sent as ephemeral reply
+            verify(event).reply(argThat((String msg) ->
+                    msg.contains("5") && msg.contains("10")));
+        }
+
+        @Test
+        @DisplayName("should reject tokens above maximum with warning message")
+        void shouldRejectTokensAboveMaximum() {
+            // Given
+            long playerSpecifiedTokens = 15L;  // Above maximum of 10
+            long previousTokens = 20L;
+
+            StubGameTokenAccountRepository accountRepository =
+                    new StubGameTokenAccountRepository(previousTokens);
+            GameTokenService tokenService = new GameTokenService(accountRepository);
+            DiceGame1Service diceGameService = mock(DiceGame1Service.class);
+            ltdjms.discord.gametoken.persistence.DiceGame1ConfigRepository configRepository =
+                    mock(ltdjms.discord.gametoken.persistence.DiceGame1ConfigRepository.class);
+            GuildCurrencyConfigRepository currencyConfigRepository = mock(GuildCurrencyConfigRepository.class);
+            GameTokenTransactionService transactionService = mock(GameTokenTransactionService.class);
+
+            // Config allows 5-10 tokens
+            DiceGame1Config config = new DiceGame1Config(
+                    TEST_GUILD_ID, 5L, 10L,
+                    DiceGame1Config.DEFAULT_REWARD_PER_DICE_VALUE,
+                    java.time.Instant.now(), java.time.Instant.now()
+            );
+            when(configRepository.findOrCreateDefault(TEST_GUILD_ID)).thenReturn(config);
+
+            DiceGame1CommandHandler handler = new DiceGame1CommandHandler(
+                    tokenService,
+                    diceGameService,
+                    configRepository,
+                    currencyConfigRepository,
+                    transactionService
+            );
+
+            SlashCommandInteractionEvent event = createMockSlashEventWithTokens("dice-game-1", playerSpecifiedTokens);
+
+            // When
+            handler.handle(event);
+
+            // Then - verify no transaction and no game played
+            verifyNoInteractions(transactionService);
+            verifyNoInteractions(diceGameService);
+            // Warning message sent as ephemeral reply
+            verify(event).reply(argThat((String msg) ->
+                    msg.contains("5") && msg.contains("10")));
+        }
+
+        @Test
+        @DisplayName("should reject missing tokens with error message prompting user to specify")
+        void shouldRejectMissingTokensWithErrorMessage() {
+            // Given
+            long previousTokens = 20L;
+
+            StubGameTokenAccountRepository accountRepository =
+                    new StubGameTokenAccountRepository(previousTokens);
+            GameTokenService tokenService = new GameTokenService(accountRepository);
+            DiceGame1Service diceGameService = mock(DiceGame1Service.class);
+            ltdjms.discord.gametoken.persistence.DiceGame1ConfigRepository configRepository =
+                    mock(ltdjms.discord.gametoken.persistence.DiceGame1ConfigRepository.class);
+            GuildCurrencyConfigRepository currencyConfigRepository = mock(GuildCurrencyConfigRepository.class);
+            GameTokenTransactionService transactionService = mock(GameTokenTransactionService.class);
+
+            // Config allows 1-10 tokens
+            DiceGame1Config config = new DiceGame1Config(
+                    TEST_GUILD_ID, 1L, 10L,
+                    DiceGame1Config.DEFAULT_REWARD_PER_DICE_VALUE,
+                    java.time.Instant.now(), java.time.Instant.now()
+            );
+            when(configRepository.findOrCreateDefault(TEST_GUILD_ID)).thenReturn(config);
+
+            DiceGame1CommandHandler handler = new DiceGame1CommandHandler(
+                    tokenService,
+                    diceGameService,
+                    configRepository,
+                    currencyConfigRepository,
+                    transactionService
+            );
+
+            // Event without tokens option
+            SlashCommandInteractionEvent event = createMockSlashEvent("dice-game-1");
+
+            // When
+            handler.handle(event);
+
+            // Then - verify no transaction and no game played
+            verifyNoInteractions(transactionService);
+            verifyNoInteractions(diceGameService);
+            // Error message sent as ephemeral reply prompting user to enter tokens
+            verify(event).reply(argThat((String msg) ->
+                    msg.contains("1") && msg.contains("10")));
+        }
+
+        @Test
+        @DisplayName("should roll correct number of dice based on tokens spent (1 dice per token)")
+        void shouldRollCorrectDiceCountBasedOnTokens() {
+            // Given
+            long tokensToSpend = 7L;
+            long previousTokens = 20L;
+            long newTokenBalance = previousTokens - tokensToSpend;
+
+            StubGameTokenAccountRepository accountRepository =
+                    new StubGameTokenAccountRepository(previousTokens);
+            GameTokenService tokenService = new GameTokenService(accountRepository);
+            DiceGame1Service diceGameService = mock(DiceGame1Service.class);
+            ltdjms.discord.gametoken.persistence.DiceGame1ConfigRepository configRepository =
+                    mock(ltdjms.discord.gametoken.persistence.DiceGame1ConfigRepository.class);
+            GuildCurrencyConfigRepository currencyConfigRepository = mock(GuildCurrencyConfigRepository.class);
+            GameTokenTransactionService transactionService = mock(GameTokenTransactionService.class);
+
+            // Config allows 1-10 tokens
+            DiceGame1Config config = new DiceGame1Config(
+                    TEST_GUILD_ID, 1L, 10L,
+                    DiceGame1Config.DEFAULT_REWARD_PER_DICE_VALUE,
+                    java.time.Instant.now(), java.time.Instant.now()
+            );
+            when(configRepository.findOrCreateDefault(TEST_GUILD_ID)).thenReturn(config);
+
+            // Return result with 7 dice (matching tokens spent)
+            DiceGameResult gameResult = new DiceGameResult(
+                    TEST_GUILD_ID, TEST_USER_ID,
+                    List.of(1, 2, 3, 4, 5, 6, 1),  // 7 dice
+                    1_000_000L, 0L, 1_000_000L
+            );
+            when(diceGameService.play(eq(TEST_GUILD_ID), eq(TEST_USER_ID), any(DiceGame1Config.class), eq((int) tokensToSpend)))
+                    .thenReturn(gameResult);
+
+            when(currencyConfigRepository.findByGuildId(TEST_GUILD_ID)).thenReturn(Optional.empty());
+
+            DiceGame1CommandHandler handler = new DiceGame1CommandHandler(
+                    tokenService,
+                    diceGameService,
+                    configRepository,
+                    currencyConfigRepository,
+                    transactionService
+            );
+
+            SlashCommandInteractionEvent event = createMockSlashEventWithTokens("dice-game-1", tokensToSpend);
+
+            // When
+            handler.handle(event);
+
+            // Then - verify service was called with correct dice count
+            verify(diceGameService).play(TEST_GUILD_ID, TEST_USER_ID, config, (int) tokensToSpend);
+            verify(transactionService).recordTransaction(
+                    TEST_GUILD_ID,
+                    TEST_USER_ID,
+                    -tokensToSpend,
                     newTokenBalance,
                     GameTokenTransaction.Source.DICE_GAME_1_PLAY,
                     null
@@ -115,7 +379,7 @@ class DiceGameCommandHandlerTransactionTest {
         @DisplayName("should record game token transaction when game 2 is played")
         void shouldRecordTransactionWhenGame2Played() {
             // Given
-            long tokenCost = 3L;
+            long tokenCost = 5L;  // Use default min tokens (5)
             long previousTokens = 20L;
             long newTokenBalance = previousTokens - tokenCost;
 
@@ -128,8 +392,7 @@ class DiceGameCommandHandlerTransactionTest {
             GuildCurrencyConfigRepository currencyConfigRepository = mock(GuildCurrencyConfigRepository.class);
             GameTokenTransactionService transactionService = mock(GameTokenTransactionService.class);
 
-            DiceGame2Config config = new DiceGame2Config(
-                    TEST_GUILD_ID, tokenCost, Instant.now(), Instant.now());
+            DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
             when(configRepository.findOrCreateDefault(TEST_GUILD_ID)).thenReturn(config);
 
             DiceGame2Result gameResult = new DiceGame2Result(
@@ -139,7 +402,8 @@ class DiceGameCommandHandlerTransactionTest {
                     List.of(), List.of(),
                     0L, 1_000_000L, 0L
             );
-            when(diceGameService.play(TEST_GUILD_ID, TEST_USER_ID)).thenReturn(gameResult);
+            when(diceGameService.play(eq(TEST_GUILD_ID), eq(TEST_USER_ID), any(DiceGame2Config.class), anyInt()))
+                    .thenReturn(gameResult);
 
             when(currencyConfigRepository.findByGuildId(TEST_GUILD_ID)).thenReturn(Optional.empty());
 
@@ -151,7 +415,8 @@ class DiceGameCommandHandlerTransactionTest {
                     transactionService
             );
 
-            SlashCommandInteractionEvent event = createMockSlashEvent("dice-game-2");
+            // Now tokens are required - use createMockSlashEventWithTokens
+            SlashCommandInteractionEvent event = createMockSlashEventWithTokens("dice-game-2", tokenCost);
 
             // When
             handler.handle(event);
@@ -165,6 +430,145 @@ class DiceGameCommandHandlerTransactionTest {
                     GameTokenTransaction.Source.DICE_GAME_2_PLAY,
                     null
             );
+        }
+
+        @Test
+        @DisplayName("should use player-specified tokens when provided and within valid range")
+        void shouldUsePlayerSpecifiedTokensWhenValid() {
+            // Given
+            long playerSpecifiedTokens = 30L;
+            long previousTokens = 100L;
+            long newTokenBalance = previousTokens - playerSpecifiedTokens;
+
+            StubGameTokenAccountRepository accountRepository =
+                    new StubGameTokenAccountRepository(previousTokens);
+            GameTokenService tokenService = new GameTokenService(accountRepository);
+            DiceGame2Service diceGameService = mock(DiceGame2Service.class);
+            ltdjms.discord.gametoken.persistence.DiceGame2ConfigRepository configRepository =
+                    mock(ltdjms.discord.gametoken.persistence.DiceGame2ConfigRepository.class);
+            GuildCurrencyConfigRepository currencyConfigRepository = mock(GuildCurrencyConfigRepository.class);
+            GameTokenTransactionService transactionService = mock(GameTokenTransactionService.class);
+
+            // Config allows 5-50 tokens, default is 5
+            DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
+            when(configRepository.findOrCreateDefault(TEST_GUILD_ID)).thenReturn(config);
+
+            DiceGame2Result gameResult = new DiceGame2Result(
+                    TEST_GUILD_ID, TEST_USER_ID,
+                    List.of(1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3),
+                    1_000_000L, 0L, 1_000_000L,
+                    List.of(), List.of(),
+                    0L, 1_000_000L, 0L
+            );
+            when(diceGameService.play(eq(TEST_GUILD_ID), eq(TEST_USER_ID), any(DiceGame2Config.class), anyInt()))
+                    .thenReturn(gameResult);
+
+            when(currencyConfigRepository.findByGuildId(TEST_GUILD_ID)).thenReturn(Optional.empty());
+
+            DiceGame2CommandHandler handler = new DiceGame2CommandHandler(
+                    tokenService,
+                    diceGameService,
+                    configRepository,
+                    currencyConfigRepository,
+                    transactionService
+            );
+
+            SlashCommandInteractionEvent event = createMockSlashEventWithTokens("dice-game-2", playerSpecifiedTokens);
+
+            // When
+            handler.handle(event);
+
+            // Then - verify player-specified token amount was used
+            verify(transactionService).recordTransaction(
+                    TEST_GUILD_ID,
+                    TEST_USER_ID,
+                    -playerSpecifiedTokens,
+                    newTokenBalance,
+                    GameTokenTransaction.Source.DICE_GAME_2_PLAY,
+                    null
+            );
+        }
+
+        @Test
+        @DisplayName("should reject tokens below minimum with warning message")
+        void shouldRejectTokensBelowMinimum() {
+            // Given
+            long playerSpecifiedTokens = 2L;  // Below minimum of 5
+            long previousTokens = 100L;
+
+            StubGameTokenAccountRepository accountRepository =
+                    new StubGameTokenAccountRepository(previousTokens);
+            GameTokenService tokenService = new GameTokenService(accountRepository);
+            DiceGame2Service diceGameService = mock(DiceGame2Service.class);
+            ltdjms.discord.gametoken.persistence.DiceGame2ConfigRepository configRepository =
+                    mock(ltdjms.discord.gametoken.persistence.DiceGame2ConfigRepository.class);
+            GuildCurrencyConfigRepository currencyConfigRepository = mock(GuildCurrencyConfigRepository.class);
+            GameTokenTransactionService transactionService = mock(GameTokenTransactionService.class);
+
+            // Config allows 5-50 tokens
+            DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
+            when(configRepository.findOrCreateDefault(TEST_GUILD_ID)).thenReturn(config);
+
+            DiceGame2CommandHandler handler = new DiceGame2CommandHandler(
+                    tokenService,
+                    diceGameService,
+                    configRepository,
+                    currencyConfigRepository,
+                    transactionService
+            );
+
+            SlashCommandInteractionEvent event = createMockSlashEventWithTokens("dice-game-2", playerSpecifiedTokens);
+
+            // When
+            handler.handle(event);
+
+            // Then - verify no transaction and no game played
+            verifyNoInteractions(transactionService);
+            verifyNoInteractions(diceGameService);
+            // Warning message sent as ephemeral reply
+            verify(event).reply(argThat((String msg) ->
+                    msg.contains("5") && msg.contains("50")));
+        }
+
+        @Test
+        @DisplayName("should reject tokens above maximum with warning message")
+        void shouldRejectTokensAboveMaximum() {
+            // Given
+            long playerSpecifiedTokens = 60L;  // Above maximum of 50
+            long previousTokens = 100L;
+
+            StubGameTokenAccountRepository accountRepository =
+                    new StubGameTokenAccountRepository(previousTokens);
+            GameTokenService tokenService = new GameTokenService(accountRepository);
+            DiceGame2Service diceGameService = mock(DiceGame2Service.class);
+            ltdjms.discord.gametoken.persistence.DiceGame2ConfigRepository configRepository =
+                    mock(ltdjms.discord.gametoken.persistence.DiceGame2ConfigRepository.class);
+            GuildCurrencyConfigRepository currencyConfigRepository = mock(GuildCurrencyConfigRepository.class);
+            GameTokenTransactionService transactionService = mock(GameTokenTransactionService.class);
+
+            // Config allows 5-50 tokens
+            DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
+            when(configRepository.findOrCreateDefault(TEST_GUILD_ID)).thenReturn(config);
+
+            DiceGame2CommandHandler handler = new DiceGame2CommandHandler(
+                    tokenService,
+                    diceGameService,
+                    configRepository,
+                    currencyConfigRepository,
+                    transactionService
+            );
+
+            SlashCommandInteractionEvent event = createMockSlashEventWithTokens("dice-game-2", playerSpecifiedTokens);
+
+            // When
+            handler.handle(event);
+
+            // Then - verify no transaction and no game played
+            verifyNoInteractions(transactionService);
+            verifyNoInteractions(diceGameService);
+            // Warning message sent as ephemeral reply
+            verify(event).reply(argThat((String msg) ->
+                    msg.contains("5") && msg.contains("50")));
         }
     }
 
@@ -184,6 +588,37 @@ class DiceGameCommandHandlerTransactionTest {
         when(event.getGuild()).thenReturn(guild);
         when(event.getUser()).thenReturn(user);
         when(event.isFromGuild()).thenReturn(true);
+        when(event.getOption("tokens")).thenReturn(null);
+        when(event.getUserLocale()).thenReturn(DiscordLocale.ENGLISH_US);
+
+        when(event.reply(anyString())).thenReturn(replyAction);
+        when(replyAction.setEphemeral(anyBoolean())).thenReturn(replyAction);
+        doAnswer(invocation -> null).when(replyAction).queue();
+
+        return event;
+    }
+
+    /**
+     * Creates a mocked SlashCommandInteractionEvent with a tokens option.
+     */
+    private SlashCommandInteractionEvent createMockSlashEventWithTokens(String commandName, long tokens) {
+        SlashCommandInteractionEvent event = mock(SlashCommandInteractionEvent.class);
+        Guild guild = mock(Guild.class);
+        User user = mock(User.class);
+        ReplyCallbackAction replyAction = mock(ReplyCallbackAction.class);
+        OptionMapping tokenOption = mock(OptionMapping.class);
+
+        when(guild.getIdLong()).thenReturn(TEST_GUILD_ID);
+        when(user.getIdLong()).thenReturn(TEST_USER_ID);
+
+        when(event.getName()).thenReturn(commandName);
+        when(event.getGuild()).thenReturn(guild);
+        when(event.getUser()).thenReturn(user);
+        when(event.isFromGuild()).thenReturn(true);
+        when(event.getUserLocale()).thenReturn(DiscordLocale.ENGLISH_US);
+
+        when(tokenOption.getAsLong()).thenReturn(tokens);
+        when(event.getOption("tokens")).thenReturn(tokenOption);
 
         when(event.reply(anyString())).thenReturn(replyAction);
         when(replyAction.setEphemeral(anyBoolean())).thenReturn(replyAction);

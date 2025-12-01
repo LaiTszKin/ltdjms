@@ -187,7 +187,9 @@ class GameTokenRepositoryIntegrationTest extends PostgresIntegrationTestBase {
             // Then
             assertThat(found).isPresent();
             assertThat(found.get().guildId()).isEqualTo(TEST_GUILD_ID);
-            assertThat(found.get().tokensPerPlay()).isEqualTo(DiceGame1Config.DEFAULT_TOKENS_PER_PLAY);
+            assertThat(found.get().minTokensPerPlay()).isEqualTo(DiceGame1Config.DEFAULT_MIN_TOKENS_PER_PLAY);
+            assertThat(found.get().maxTokensPerPlay()).isEqualTo(DiceGame1Config.DEFAULT_MAX_TOKENS_PER_PLAY);
+            assertThat(found.get().rewardPerDiceValue()).isEqualTo(DiceGame1Config.DEFAULT_REWARD_PER_DICE_VALUE);
         }
 
         @Test
@@ -208,7 +210,6 @@ class GameTokenRepositoryIntegrationTest extends PostgresIntegrationTestBase {
 
             // Then
             assertThat(created.guildId()).isEqualTo(TEST_GUILD_ID);
-            assertThat(created.tokensPerPlay()).isEqualTo(DiceGame1Config.DEFAULT_TOKENS_PER_PLAY);
 
             // When - second call finds existing
             DiceGame1Config found = configRepository.findOrCreateDefault(TEST_GUILD_ID);
@@ -218,33 +219,65 @@ class GameTokenRepositoryIntegrationTest extends PostgresIntegrationTestBase {
         }
 
         @Test
-        @DisplayName("should update tokens per play")
-        void shouldUpdateTokensPerPlay() {
+        @DisplayName("should update tokens per play range")
+        void shouldUpdateTokensPerPlayRange() {
             // Given
             configRepository.save(DiceGame1Config.createDefault(TEST_GUILD_ID));
 
             // When
-            DiceGame1Config updated = configRepository.updateTokensPerPlay(TEST_GUILD_ID, 5L);
+            DiceGame1Config updated = configRepository.updateTokensPerPlayRange(TEST_GUILD_ID, 2L, 8L);
 
             // Then
-            assertThat(updated.tokensPerPlay()).isEqualTo(5L);
+            assertThat(updated.minTokensPerPlay()).isEqualTo(2L);
+            assertThat(updated.maxTokensPerPlay()).isEqualTo(8L);
 
             // Verify persisted
             Optional<DiceGame1Config> found = configRepository.findByGuildId(TEST_GUILD_ID);
             assertThat(found).isPresent();
-            assertThat(found.get().tokensPerPlay()).isEqualTo(5L);
+            assertThat(found.get().minTokensPerPlay()).isEqualTo(2L);
+            assertThat(found.get().maxTokensPerPlay()).isEqualTo(8L);
         }
 
         @Test
-        @DisplayName("should reject negative tokens per play")
-        void shouldRejectNegativeTokensPerPlay() {
+        @DisplayName("should update reward per dice value")
+        void shouldUpdateRewardPerDiceValue() {
+            // Given
+            configRepository.save(DiceGame1Config.createDefault(TEST_GUILD_ID));
+
+            // When
+            DiceGame1Config updated = configRepository.updateRewardPerDiceValue(TEST_GUILD_ID, 300_000L);
+
+            // Then
+            assertThat(updated.rewardPerDiceValue()).isEqualTo(300_000L);
+
+            // Verify persisted
+            Optional<DiceGame1Config> found = configRepository.findByGuildId(TEST_GUILD_ID);
+            assertThat(found).isPresent();
+            assertThat(found.get().rewardPerDiceValue()).isEqualTo(300_000L);
+        }
+
+        @Test
+        @DisplayName("should reject negative min tokens")
+        void shouldRejectNegativeMinTokens() {
             // Given
             configRepository.save(DiceGame1Config.createDefault(TEST_GUILD_ID));
 
             // When/Then
-            assertThatThrownBy(() -> configRepository.updateTokensPerPlay(TEST_GUILD_ID, -1L))
+            assertThatThrownBy(() -> configRepository.updateTokensPerPlayRange(TEST_GUILD_ID, -1L, 10L))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("negative");
+        }
+
+        @Test
+        @DisplayName("should reject min greater than max")
+        void shouldRejectMinGreaterThanMax() {
+            // Given
+            configRepository.save(DiceGame1Config.createDefault(TEST_GUILD_ID));
+
+            // When/Then
+            assertThatThrownBy(() -> configRepository.updateTokensPerPlayRange(TEST_GUILD_ID, 10L, 5L))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("greater than");
         }
 
         @Test

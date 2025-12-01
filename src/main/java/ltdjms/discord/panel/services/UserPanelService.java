@@ -2,6 +2,7 @@ package ltdjms.discord.panel.services;
 
 import ltdjms.discord.currency.domain.BalanceView;
 import ltdjms.discord.currency.services.BalanceService;
+import ltdjms.discord.currency.services.CurrencyTransactionService;
 import ltdjms.discord.gametoken.services.GameTokenService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService.TransactionPage;
@@ -21,16 +22,19 @@ public class UserPanelService {
 
     private final BalanceService balanceService;
     private final GameTokenService gameTokenService;
-    private final GameTokenTransactionService transactionService;
+    private final GameTokenTransactionService gameTokenTransactionService;
+    private final CurrencyTransactionService currencyTransactionService;
 
     public UserPanelService(
             BalanceService balanceService,
             GameTokenService gameTokenService,
-            GameTokenTransactionService transactionService
+            GameTokenTransactionService gameTokenTransactionService,
+            CurrencyTransactionService currencyTransactionService
     ) {
         this.balanceService = balanceService;
         this.gameTokenService = gameTokenService;
-        this.transactionService = transactionService;
+        this.gameTokenTransactionService = gameTokenTransactionService;
+        this.currencyTransactionService = currencyTransactionService;
     }
 
     /**
@@ -81,7 +85,21 @@ public class UserPanelService {
      */
     public TransactionPage getTokenTransactionPage(long guildId, long userId, int page) {
         LOG.debug("Getting token transaction page for guildId={}, userId={}, page={}", guildId, userId, page);
-        return transactionService.getTransactionPage(guildId, userId, page,
+        return gameTokenTransactionService.getTransactionPage(guildId, userId, page,
                 GameTokenTransactionService.DEFAULT_PAGE_SIZE);
+    }
+
+    /**
+     * Gets a page of currency transaction history for a user.
+     *
+     * @param guildId  the Discord guild ID
+     * @param userId   the Discord user ID
+     * @param page     the page number (1-based)
+     * @return the currency transaction page
+     */
+    public CurrencyTransactionService.TransactionPage getCurrencyTransactionPage(long guildId, long userId, int page) {
+        LOG.debug("Getting currency transaction page for guildId={}, userId={}, page={}", guildId, userId, page);
+        return currencyTransactionService.getTransactionPage(guildId, userId, page,
+                CurrencyTransactionService.DEFAULT_PAGE_SIZE);
     }
 }

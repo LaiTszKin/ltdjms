@@ -2,8 +2,6 @@ package ltdjms.discord.shared.di;
 
 import dagger.Component;
 import ltdjms.discord.currency.bot.SlashCommandListener;
-import ltdjms.discord.currency.commands.BalanceAdjustmentCommandHandler;
-import ltdjms.discord.currency.commands.BalanceCommandHandler;
 import ltdjms.discord.currency.commands.CurrencyConfigCommandHandler;
 import ltdjms.discord.currency.persistence.GuildCurrencyConfigRepository;
 import ltdjms.discord.currency.persistence.MemberCurrencyAccountRepository;
@@ -11,8 +9,7 @@ import ltdjms.discord.currency.services.BalanceAdjustmentService;
 import ltdjms.discord.currency.services.BalanceService;
 import ltdjms.discord.currency.services.CurrencyConfigService;
 import ltdjms.discord.gametoken.commands.DiceGame1CommandHandler;
-import ltdjms.discord.gametoken.commands.DiceGame1ConfigCommandHandler;
-import ltdjms.discord.gametoken.commands.GameTokenAdjustCommandHandler;
+import ltdjms.discord.gametoken.commands.DiceGame2CommandHandler;
 import ltdjms.discord.gametoken.persistence.DiceGame1ConfigRepository;
 import ltdjms.discord.gametoken.persistence.GameTokenAccountRepository;
 import ltdjms.discord.gametoken.persistence.GameTokenTransactionRepository;
@@ -29,8 +26,12 @@ import javax.inject.Singleton;
 import javax.sql.DataSource;
 
 /**
- * Main Dagger component for the Discord Currency Bot application.
+ * Main Dagger component for the LTDJ management system application.
  * Provides all dependencies needed for the bot to operate.
+ *
+ * <p>Note: Legacy command handlers (BalanceCommandHandler, BalanceAdjustmentCommandHandler,
+ * GameTokenAdjustCommandHandler, DiceGame1ConfigCommandHandler, DiceGame2ConfigCommandHandler)
+ * have been removed. Their functionality is now available through /user-panel and /admin-panel.</p>
  */
 @Singleton
 @Component(modules = {
@@ -71,14 +72,11 @@ public interface AppComponent {
     GameTokenTransactionService gameTokenTransactionService();
 
     // Currency Command Handlers
-    BalanceCommandHandler balanceCommandHandler();
     CurrencyConfigCommandHandler currencyConfigCommandHandler();
-    BalanceAdjustmentCommandHandler balanceAdjustmentCommandHandler();
 
-    // Game Token Command Handlers
-    GameTokenAdjustCommandHandler gameTokenAdjustCommandHandler();
+    // Game Command Handlers
     DiceGame1CommandHandler diceGame1CommandHandler();
-    DiceGame1ConfigCommandHandler diceGame1ConfigCommandHandler();
+    DiceGame2CommandHandler diceGame2CommandHandler();
 
     // Panel Handlers
     UserPanelButtonHandler userPanelButtonHandler();

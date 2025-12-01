@@ -2,6 +2,8 @@ package ltdjms.discord.panel.services;
 
 import ltdjms.discord.currency.services.BalanceAdjustmentService;
 import ltdjms.discord.currency.services.BalanceService;
+import ltdjms.discord.gametoken.domain.DiceGame1Config;
+import ltdjms.discord.gametoken.domain.DiceGame2Config;
 import ltdjms.discord.gametoken.domain.GameTokenTransaction;
 import ltdjms.discord.gametoken.persistence.DiceGame1ConfigRepository;
 import ltdjms.discord.gametoken.persistence.DiceGame2ConfigRepository;
@@ -87,63 +89,128 @@ public class AdminPanelService {
     }
 
     /**
-     * Adjusts a member's game token balance.
+     * Adjusts a member's game token balance using mode-based adjustment.
+     *
+     * @param guildId the guild ID
+     * @param userId  the user ID
+     * @param mode    the adjustment mode: "add", "deduct", or "adjust"
+     * @param amount  the amount to add/deduct or target balance for "adjust" mode
+     * @return the result of the adjustment
      */
     public Result<TokenAdjustmentResult, DomainError> adjustTokens(
-            long guildId, long userId, long amount) {
-        LOG.debug("Admin panel adjusting tokens: guildId={}, userId={}, amount={}",
-                guildId, userId, amount);
+            long guildId, long userId, String mode, long amount) {
+        LOG.debug("Admin panel adjusting tokens: guildId={}, userId={}, mode={}, amount={}",
+                guildId, userId, mode, amount);
 
         long previousTokens = gameTokenService.getBalance(guildId, userId);
 
-        return gameTokenService.tryAdjustTokens(guildId, userId, amount)
+        long actualAdjustment = switch (mode) {
+            case "add" -> amount;
+            case "deduct" -> -amount;
+            case "adjust" -> amount - previousTokens;
+            default -> {
+                yield 0L;
+            }
+        };
+
+        if (mode.equals("adjust") && amount < 0) {
+            return Result.err(DomainError.invalidInput("目標代幣餘額不可為負數"));
+        }
+
+        return gameTokenService.tryAdjustTokens(guildId, userId, actualAdjustment)
                 .map(result -> {
                     transactionService.recordTransaction(
-                            guildId, userId, amount, result.newTokens(),
+                            guildId, userId, actualAdjustment, result.newTokens(),
                             GameTokenTransaction.Source.ADMIN_ADJUSTMENT,
                             null);
 
-                    return new TokenAdjustmentResult(previousTokens, result.newTokens(), amount);
+                    return new TokenAdjustmentResult(previousTokens, result.newTokens(), actualAdjustment);
                 });
     }
 
     /**
-     * Gets the current token cost for a dice game.
+     * Gets the full configuration for dice-game-1.
      */
-    public long getGameTokenCost(long guildId, String gameType) {
-        return switch (gameType) {
-            case "dice-game-1" -> diceGame1ConfigRepository.findOrCreateDefault(guildId).tokensPerPlay();
-            case "dice-game-2" -> diceGame2ConfigRepository.findOrCreateDefault(guildId).tokensPerPlay();
-            default -> throw new IllegalArgumentException("Unknown game type: " + gameType);
-        };
+    public DiceGame1Config getDiceGame1Config(long guildId) {
+        return diceGame1ConfigRepository.findOrCreateDefault(guildId);
     }
 
     /**
-     * Updates the token cost for a dice game.
+     * Gets the full configuration for dice-game-2.
      */
-    public Result<GameConfigUpdateResult, DomainError> updateGameTokenCost(
-            long guildId, String gameType, long newCost) {
-        LOG.debug("Admin panel updating game token cost: guildId={}, gameType={}, newCost={}",
-                guildId, gameType, newCost);
+    public DiceGame2Config getDiceGame2Config(long guildId) {
+        return diceGame2ConfigRepository.findOrCreateDefault(guildId);
+    }
 
-        if (newCost < 0) {
-            return Result.err(DomainError.invalidInput("Token cost cannot be negative"));
-        }
+    /**
+     * Updates dice-game-1 configuration.
+     */
+    public Result<DiceGame1Config, DomainError> updateDiceGame1Config(
+            long guildId, Long minTokens, Long maxTokens, Long rewardPerDice) {
+        LOG.debug("Admin panel updating dice-game-1 config: guildId={}, min={}, max={}, reward={}",
+                guildId, minTokens, maxTokens, rewardPerDice);
 
-        long previousCost = getGameTokenCost(guildId, gameType);
+        try {
+            DiceGame1Config current = diceGame1ConfigRepository.findOrCreateDefault(guildId);
+            DiceGame1Config updated = current;
 
-        switch (gameType) {
-            case "dice-game-1" -> diceGame1ConfigRepository.updateTokensPerPlay(guildId, newCost);
-            case "dice-game-2" -> diceGame2ConfigRepository.updateTokensPerPlay(guildId, newCost);
-            default -> {
-                return Result.err(DomainError.invalidInput("Unknown game type: " + gameType));
+            if (minTokens != null || maxTokens != null) {
+                long newMin = minTokens != null ? minTokens : current.minTokensPerPlay();
+                long newMax = maxTokens != null ? maxTokens : current.maxTokensPerPlay();
+                updated = diceGame1ConfigRepository.updateTokensPerPlayRange(guildId, newMin, newMax);
             }
+
+            if (rewardPerDice != null) {
+                updated = diceGame1ConfigRepository.updateRewardPerDiceValue(guildId, rewardPerDice);
+            }
+
+            LOG.info("Dice-game-1 config updated: guildId={}", guildId);
+            return Result.ok(updated);
+        } catch (IllegalArgumentException e) {
+            return Result.err(DomainError.invalidInput(e.getMessage()));
         }
+    }
 
-        LOG.info("Game token cost updated: guildId={}, gameType={}, previous={}, new={}",
-                guildId, gameType, previousCost, newCost);
+    /**
+     * Updates dice-game-2 configuration.
+     */
+    public Result<DiceGame2Config, DomainError> updateDiceGame2Config(
+            long guildId,
+            Long minTokens, Long maxTokens,
+            Long straightMultiplier, Long baseMultiplier,
+            Long tripleLowBonus, Long tripleHighBonus) {
+        LOG.debug("Admin panel updating dice-game-2 config: guildId={}, min={}, max={}, " +
+                        "straight={}, base={}, tripleLow={}, tripleHigh={}",
+                guildId, minTokens, maxTokens,
+                straightMultiplier, baseMultiplier, tripleLowBonus, tripleHighBonus);
 
-        return Result.ok(new GameConfigUpdateResult(gameType, previousCost, newCost));
+        try {
+            DiceGame2Config current = diceGame2ConfigRepository.findOrCreateDefault(guildId);
+            DiceGame2Config updated = current;
+
+            if (minTokens != null || maxTokens != null) {
+                long newMin = minTokens != null ? minTokens : current.minTokensPerPlay();
+                long newMax = maxTokens != null ? maxTokens : current.maxTokensPerPlay();
+                updated = diceGame2ConfigRepository.updateTokensPerPlayRange(guildId, newMin, newMax);
+            }
+
+            if (straightMultiplier != null || baseMultiplier != null) {
+                long newStraight = straightMultiplier != null ? straightMultiplier : updated.straightMultiplier();
+                long newBase = baseMultiplier != null ? baseMultiplier : updated.baseMultiplier();
+                updated = diceGame2ConfigRepository.updateMultipliers(guildId, newStraight, newBase);
+            }
+
+            if (tripleLowBonus != null || tripleHighBonus != null) {
+                long newLow = tripleLowBonus != null ? tripleLowBonus : updated.tripleLowBonus();
+                long newHigh = tripleHighBonus != null ? tripleHighBonus : updated.tripleHighBonus();
+                updated = diceGame2ConfigRepository.updateTripleBonuses(guildId, newLow, newHigh);
+            }
+
+            LOG.info("Dice-game-2 config updated: guildId={}", guildId);
+            return Result.ok(updated);
+        } catch (IllegalArgumentException e) {
+            return Result.err(DomainError.invalidInput(e.getMessage()));
+        }
     }
 
     public record BalanceAdjustmentResult(long previousBalance, long newBalance, long adjustment) {
@@ -170,17 +237,4 @@ public class AdminPanelService {
         }
     }
 
-    public record GameConfigUpdateResult(String gameType, long previousCost, long newCost) {
-        public String formatMessage() {
-            String gameName = switch (gameType) {
-                case "dice-game-1" -> "骰子遊戲 1";
-                case "dice-game-2" -> "骰子遊戲 2";
-                default -> gameType;
-            };
-            return String.format(
-                    "已更新 %s 的遊戲代幣消耗\n調整前：🎮 %,d\n調整後：🎮 %,d",
-                    gameName, previousCost, newCost
-            );
-        }
-    }
 }

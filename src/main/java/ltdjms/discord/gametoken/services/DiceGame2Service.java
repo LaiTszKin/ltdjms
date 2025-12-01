@@ -2,6 +2,7 @@ package ltdjms.discord.gametoken.services;
 
 import ltdjms.discord.currency.domain.MemberCurrencyAccount;
 import ltdjms.discord.currency.persistence.MemberCurrencyAccountRepository;
+import ltdjms.discord.gametoken.domain.DiceGame2Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,48 +14,25 @@ import java.util.Random;
  * Service for the dice-game-2 mini-game.
  * Handles dice rolling, reward calculation with straights and triples, and currency distribution.
  *
+ * <p>The number of dice rolled is determined by the number of tokens spent:
+ * 1 token = 3 dice.</p>
+ *
  * <p>Reward rules:</p>
  * <ul>
- *   <li>15 dice rolls (1-6 each)</li>
- *   <li>Straights (consecutive increasing sequence of length >= 3): sum × 100,000</li>
+ *   <li>Straights (consecutive increasing sequence of length >= 3): sum × straightMultiplier</li>
  *   <li>Triples (exactly 3 consecutive same values):
  *     <ul>
- *       <li>Sum < 10 (values 1-3): 1,500,000 bonus</li>
- *       <li>Sum >= 10 (values 4-6): 2,500,000 bonus</li>
+ *       <li>Sum < 10 (values 1-3): tripleLowBonus</li>
+ *       <li>Sum >= 10 (values 4-6): tripleHighBonus</li>
  *     </ul>
  *   </li>
  *   <li>4+ consecutive same values: NOT a triple, counted as non-straight</li>
- *   <li>Non-straight/non-triple dice: sum × 20,000</li>
+ *   <li>Non-straight/non-triple dice: sum × baseMultiplier</li>
  * </ul>
  */
 public class DiceGame2Service {
 
     private static final Logger LOG = LoggerFactory.getLogger(DiceGame2Service.class);
-
-    /**
-     * Number of dice rolls per game.
-     */
-    public static final int ROLLS_PER_GAME = 15;
-
-    /**
-     * Multiplier for dice values in a straight segment.
-     */
-    public static final long STRAIGHT_MULTIPLIER = 100_000L;
-
-    /**
-     * Multiplier for non-straight, non-triple dice values.
-     */
-    public static final long NON_STRAIGHT_MULTIPLIER = 20_000L;
-
-    /**
-     * Bonus for a triple where sum < 10 (values 1, 2, or 3).
-     */
-    public static final long TRIPLE_LOW_BONUS = 1_500_000L;
-
-    /**
-     * Bonus for a triple where sum >= 10 (values 4, 5, or 6).
-     */
-    public static final long TRIPLE_HIGH_BONUS = 2_500_000L;
 
     private final MemberCurrencyAccountRepository currencyRepository;
     private final Random random;
@@ -72,22 +50,26 @@ public class DiceGame2Service {
     }
 
     /**
-     * Plays the dice game for a member.
-     * Rolls 15 dice and calculates the total reward based on straights, triples, and remaining dice.
+     * Plays the dice game for a member using the provided configuration and token amount.
+     * Rolls dice (3 per token) and calculates the total reward based on straights, triples, and remaining dice.
      * The reward is added to the member's currency account.
      *
-     * @param guildId the Discord guild ID
-     * @param userId  the Discord user ID
+     * @param guildId   the Discord guild ID
+     * @param userId    the Discord user ID
+     * @param config    the game configuration containing multipliers and bonuses
+     * @param diceCount the number of dice to roll (equals tokensSpent * 3)
      * @return the game result
      */
-    public DiceGame2Result play(long guildId, long userId) {
-        LOG.debug("Playing dice-game-2 for guildId={}, userId={}", guildId, userId);
+    public DiceGame2Result play(long guildId, long userId, DiceGame2Config config, int diceCount) {
+        LOG.debug("Playing dice-game-2 for guildId={}, userId={}, diceCount={}, straightMult={}, baseMult={}, tripleLow={}, tripleHigh={}",
+                guildId, userId, diceCount, config.straightMultiplier(), config.baseMultiplier(),
+                config.tripleLowBonus(), config.tripleHighBonus());
 
         // Roll dice
-        List<Integer> diceRolls = rollDice();
+        List<Integer> diceRolls = rollDice(diceCount);
 
-        // Analyze the rolls
-        RewardAnalysis analysis = analyzeRolls(diceRolls);
+        // Analyze the rolls with configured multipliers
+        RewardAnalysis analysis = analyzeRolls(diceRolls, config);
 
         // Calculate total reward
         long totalReward = analysis.totalReward();
@@ -120,25 +102,28 @@ public class DiceGame2Service {
     }
 
     /**
-     * Rolls the dice for a game.
+     * Rolls the specified number of dice for a game.
      *
+     * @param count the number of dice to roll
      * @return list of dice values (1-6)
      */
-    List<Integer> rollDice() {
-        List<Integer> rolls = new ArrayList<>(ROLLS_PER_GAME);
-        for (int i = 0; i < ROLLS_PER_GAME; i++) {
+    List<Integer> rollDice(int count) {
+        List<Integer> rolls = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
             rolls.add(random.nextInt(6) + 1);  // 1-6
         }
         return rolls;
     }
 
     /**
-     * Analyzes the dice rolls to identify straights, triples, and calculate rewards.
+     * Analyzes the dice rolls to identify straights, triples, and calculate rewards
+     * using configured multipliers.
      *
      * @param diceRolls the list of dice values
+     * @param config    the game configuration
      * @return the analysis result
      */
-    RewardAnalysis analyzeRolls(List<Integer> diceRolls) {
+    RewardAnalysis analyzeRolls(List<Integer> diceRolls, DiceGame2Config config) {
         boolean[] usedInStraight = new boolean[diceRolls.size()];
         boolean[] usedInTriple = new boolean[diceRolls.size()];
 
@@ -149,11 +134,11 @@ public class DiceGame2Service {
         // Must not overlap with straights
         List<List<Integer>> tripleSegments = findTriples(diceRolls, usedInStraight, usedInTriple);
 
-        // Calculate rewards
-        long straightReward = calculateStraightReward(straightSegments);
-        long tripleReward = calculateTripleReward(tripleSegments);
+        // Calculate rewards using configured multipliers
+        long straightReward = calculateStraightReward(straightSegments, config.straightMultiplier());
+        long tripleReward = calculateTripleReward(tripleSegments, config.tripleLowBonus(), config.tripleHighBonus());
         long nonStraightSum = calculateNonStraightSum(diceRolls, usedInStraight, usedInTriple);
-        long nonStraightReward = nonStraightSum * NON_STRAIGHT_MULTIPLIER;
+        long nonStraightReward = nonStraightSum * config.baseMultiplier();
 
         long totalReward = straightReward + nonStraightReward + tripleReward;
 
@@ -242,29 +227,29 @@ public class DiceGame2Service {
     }
 
     /**
-     * Calculates the reward for straight segments.
+     * Calculates the reward for straight segments using configured multiplier.
      */
-    private long calculateStraightReward(List<List<Integer>> straightSegments) {
+    private long calculateStraightReward(List<List<Integer>> straightSegments, long straightMultiplier) {
         long sum = 0;
         for (List<Integer> segment : straightSegments) {
             for (int value : segment) {
                 sum += value;
             }
         }
-        return sum * STRAIGHT_MULTIPLIER;
+        return sum * straightMultiplier;
     }
 
     /**
-     * Calculates the reward for triple segments.
+     * Calculates the reward for triple segments using configured bonuses.
      */
-    private long calculateTripleReward(List<List<Integer>> tripleSegments) {
+    private long calculateTripleReward(List<List<Integer>> tripleSegments, long tripleLowBonus, long tripleHighBonus) {
         long reward = 0;
         for (List<Integer> segment : tripleSegments) {
             int sum = segment.stream().mapToInt(Integer::intValue).sum();
             if (sum < 10) {
-                reward += TRIPLE_LOW_BONUS;
+                reward += tripleLowBonus;
             } else {
-                reward += TRIPLE_HIGH_BONUS;
+                reward += tripleHighBonus;
             }
         }
         return reward;

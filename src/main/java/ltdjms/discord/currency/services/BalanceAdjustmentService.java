@@ -1,5 +1,6 @@
 package ltdjms.discord.currency.services;
 
+import ltdjms.discord.currency.domain.CurrencyTransaction;
 import ltdjms.discord.currency.domain.GuildCurrencyConfig;
 import ltdjms.discord.currency.domain.MemberCurrencyAccount;
 import ltdjms.discord.currency.persistence.GuildCurrencyConfigRepository;
@@ -20,12 +21,15 @@ public class BalanceAdjustmentService {
 
     private final MemberCurrencyAccountRepository accountRepository;
     private final GuildCurrencyConfigRepository configRepository;
+    private final CurrencyTransactionService transactionService;
 
     public BalanceAdjustmentService(
             MemberCurrencyAccountRepository accountRepository,
-            GuildCurrencyConfigRepository configRepository) {
+            GuildCurrencyConfigRepository configRepository,
+            CurrencyTransactionService transactionService) {
         this.accountRepository = accountRepository;
         this.configRepository = configRepository;
+        this.transactionService = transactionService;
     }
 
     /**
@@ -121,6 +125,16 @@ public class BalanceAdjustmentService {
                 config.currencyIcon()
         );
 
+        // Record transaction after successful adjustment
+        transactionService.recordTransaction(
+                guildId,
+                userId,
+                amount,
+                updated.balance(),
+                CurrencyTransaction.Source.ADMIN_ADJUSTMENT,
+                null
+        );
+
         LOG.info("Balance adjusted: guildId={}, userId={}, previous={}, new={}, adjustment={}",
                 guildId, userId, previousBalance, updated.balance(), amount);
 
@@ -185,6 +199,16 @@ public class BalanceAdjustmentService {
                 delta,
                 config.currencyName(),
                 config.currencyIcon()
+        );
+
+        // Record transaction after successful adjustment
+        transactionService.recordTransaction(
+                guildId,
+                userId,
+                delta,
+                updated.balance(),
+                CurrencyTransaction.Source.ADMIN_ADJUSTMENT,
+                null
         );
 
         LOG.info("Balance adjusted to target: guildId={}, userId={}, previous={}, new={}, adjustment={}",

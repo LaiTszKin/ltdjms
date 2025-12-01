@@ -4,15 +4,37 @@
 
 一般使用者與開發者可以只閱讀 `docs/`，就能在不依賴任何本機草稿檔（例如 `specs/`）的情況下理解與使用本專案。
 
+## 系統概觀（文字架構圖）
+
+以下是從 Discord 使用者到資料庫的大致請求路徑（簡化）：
+
+```text
+Discord 使用者
+   ↓ Slash 指令／按鈕互動
+Discord API / Gateway
+   ↓
+JDA Bot (DiscordCurrencyBot)
+   ↓
+SlashCommandListener / Button Handlers
+   ↓
+Command Handlers (balance / dice-game-1 / admin-panel / ...)
+   ↓
+Services (BalanceService / GameTokenService / UserPanelService / ...)
+   ↓
+Repositories (Jdbc*/Jooq*Repository)
+   ↓
+PostgreSQL (currency_bot 資料庫)
+```
+
 ## 文件導覽
 
 ### 1. 給伺服器管理員與一般成員
 
 - `getting-started/quickstart.md`  
-  從 0 開始安裝、啟動並把 Bot 邀請到自己的 Discord 伺服器的快速入門指南，包含環境需求、Discord Developer Portal 設定與啟動指令。
+  從 0 開始安裝、啟動並把 Bot 邀請到自己的 Discord 伺服器的快速入門指南，包含環境需求、Discord Developer Portal 設定與啟動指令，以及如何使用 `/user-panel` 與 `/admin-panel` 做基本驗證。
 
 - `api/slash-commands.md`  
-  所有已實作的 slash commands（例如 `/balance`、`/currency-config`、`/dice-game-1`、`/user-panel`、`/admin-panel` 等）的權限需求、參數、使用範例與回應說明。
+  所有已實作的 slash commands（例如 `/currency-config`、`/dice-game-1`、`/dice-game-2`、`/user-panel`、`/admin-panel`）的權限需求、參數、使用範例與回應說明。舊指令（如 `/balance`、`/adjust-balance` 等）已整合進面板與遊戲指令，不再對外提供。
 
 ### 2. 給後端／Bot 開發者
 
@@ -58,4 +80,3 @@
   1. `getting-started/quickstart.md`
   2. `development/configuration.md`
   3. `operations/deployment-and-maintenance.md`
-

@@ -2,17 +2,21 @@ package ltdjms.discord.shared.di;
 
 import dagger.Module;
 import dagger.Provides;
+import ltdjms.discord.currency.domain.CurrencyTransactionRepository;
 import ltdjms.discord.currency.persistence.GuildCurrencyConfigRepository;
+import ltdjms.discord.currency.persistence.JdbcCurrencyTransactionRepository;
 import ltdjms.discord.currency.persistence.JooqGuildCurrencyConfigRepository;
 import ltdjms.discord.currency.persistence.JooqMemberCurrencyAccountRepository;
 import ltdjms.discord.currency.persistence.MemberCurrencyAccountRepository;
 import org.jooq.DSLContext;
 
 import javax.inject.Singleton;
+import javax.sql.DataSource;
 
 /**
  * Dagger module providing currency repository dependencies.
- * Uses JOOQ-based implementations for all repositories.
+ * Uses JOOQ-based implementations for account/config repositories,
+ * and JDBC-based implementation for transaction repository.
  */
 @Module
 public class CurrencyRepositoryModule {
@@ -27,5 +31,11 @@ public class CurrencyRepositoryModule {
     @Singleton
     public GuildCurrencyConfigRepository provideGuildCurrencyConfigRepository(DSLContext dsl) {
         return new JooqGuildCurrencyConfigRepository(dsl);
+    }
+
+    @Provides
+    @Singleton
+    public CurrencyTransactionRepository provideCurrencyTransactionRepository(DataSource dataSource) {
+        return new JdbcCurrencyTransactionRepository(dataSource);
     }
 }

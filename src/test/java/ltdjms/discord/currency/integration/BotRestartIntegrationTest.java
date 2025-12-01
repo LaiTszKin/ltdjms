@@ -1,14 +1,17 @@
 package ltdjms.discord.currency.integration;
 
 import ltdjms.discord.currency.domain.BalanceView;
+import ltdjms.discord.currency.domain.CurrencyTransactionRepository;
 import ltdjms.discord.currency.domain.GuildCurrencyConfig;
 import ltdjms.discord.currency.persistence.GuildCurrencyConfigRepository;
+import ltdjms.discord.currency.persistence.JdbcCurrencyTransactionRepository;
 import ltdjms.discord.currency.persistence.JdbcGuildCurrencyConfigRepository;
 import ltdjms.discord.currency.persistence.JdbcMemberCurrencyAccountRepository;
 import ltdjms.discord.currency.persistence.MemberCurrencyAccountRepository;
 import ltdjms.discord.currency.services.BalanceAdjustmentService;
 import ltdjms.discord.currency.services.BalanceAdjustmentService.BalanceAdjustmentResult;
 import ltdjms.discord.currency.services.CurrencyConfigService;
+import ltdjms.discord.currency.services.CurrencyTransactionService;
 import ltdjms.discord.currency.services.DefaultBalanceService;
 import ltdjms.discord.currency.services.EmojiValidator;
 import ltdjms.discord.currency.services.NoOpEmojiValidator;
@@ -29,6 +32,14 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
     private static final long TEST_GUILD_ID = 123456789012345678L;
     private static final long TEST_USER_ID = 987654321098765432L;
 
+    private BalanceAdjustmentService createAdjustmentService(
+            MemberCurrencyAccountRepository accountRepo,
+            GuildCurrencyConfigRepository configRepo) {
+        CurrencyTransactionRepository transactionRepo = new JdbcCurrencyTransactionRepository(dataSource);
+        CurrencyTransactionService transactionService = new CurrencyTransactionService(transactionRepo);
+        return new BalanceAdjustmentService(accountRepo, configRepo, transactionService);
+    }
+
     // ============================================================
     // Balance Preservation Tests
     // ============================================================
@@ -44,7 +55,7 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
             GuildCurrencyConfigRepository configRepo1 = new JdbcGuildCurrencyConfigRepository(dataSource);
             MemberCurrencyAccountRepository accountRepo1 = new JdbcMemberCurrencyAccountRepository(dataSource);
             DefaultBalanceService balanceService1 = new DefaultBalanceService(accountRepo1, configRepo1);
-            BalanceAdjustmentService adjustmentService1 = new BalanceAdjustmentService(accountRepo1, configRepo1);
+            BalanceAdjustmentService adjustmentService1 = createAdjustmentService(accountRepo1, configRepo1);
 
             // Create account and set balance
             balanceService1.getBalance(TEST_GUILD_ID, TEST_USER_ID); // Creates account
@@ -74,7 +85,7 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
 
             GuildCurrencyConfigRepository configRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
             MemberCurrencyAccountRepository accountRepo = new JdbcMemberCurrencyAccountRepository(dataSource);
-            BalanceAdjustmentService adjustmentService = new BalanceAdjustmentService(accountRepo, configRepo);
+            BalanceAdjustmentService adjustmentService = createAdjustmentService(accountRepo, configRepo);
 
             adjustmentService.adjustBalance(TEST_GUILD_ID, user1, 100L);
             adjustmentService.adjustBalance(TEST_GUILD_ID, user2, 250L);
@@ -100,7 +111,7 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
 
             GuildCurrencyConfigRepository configRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
             MemberCurrencyAccountRepository accountRepo = new JdbcMemberCurrencyAccountRepository(dataSource);
-            BalanceAdjustmentService adjustmentService = new BalanceAdjustmentService(accountRepo, configRepo);
+            BalanceAdjustmentService adjustmentService = createAdjustmentService(accountRepo, configRepo);
 
             adjustmentService.adjustBalance(guild1, TEST_USER_ID, 300L);
             adjustmentService.adjustBalance(guild2, TEST_USER_ID, 600L);
@@ -187,7 +198,7 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
             // Given
             GuildCurrencyConfigRepository configRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
             MemberCurrencyAccountRepository accountRepo = new JdbcMemberCurrencyAccountRepository(dataSource);
-            BalanceAdjustmentService adjustmentService = new BalanceAdjustmentService(accountRepo, configRepo);
+            BalanceAdjustmentService adjustmentService = createAdjustmentService(accountRepo, configRepo);
 
             // Initial adjustment
             BalanceAdjustmentResult result1 = adjustmentService.adjustBalance(TEST_GUILD_ID, TEST_USER_ID, 100L);
@@ -208,7 +219,7 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
             // Given
             GuildCurrencyConfigRepository configRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
             MemberCurrencyAccountRepository accountRepo = new JdbcMemberCurrencyAccountRepository(dataSource);
-            BalanceAdjustmentService adjustmentService = new BalanceAdjustmentService(accountRepo, configRepo);
+            BalanceAdjustmentService adjustmentService = createAdjustmentService(accountRepo, configRepo);
 
             // Multiple sequential adjustments
             adjustmentService.adjustBalance(TEST_GUILD_ID, TEST_USER_ID, 100L);
@@ -218,7 +229,7 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
             // Simulate restart between adjustments
             GuildCurrencyConfigRepository newConfigRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
             MemberCurrencyAccountRepository newAccountRepo = new JdbcMemberCurrencyAccountRepository(dataSource);
-            BalanceAdjustmentService newAdjustmentService = new BalanceAdjustmentService(newAccountRepo, newConfigRepo);
+            BalanceAdjustmentService newAdjustmentService = createAdjustmentService(newAccountRepo, newConfigRepo);;
 
             // Continue adjustments after restart
             newAdjustmentService.adjustBalance(TEST_GUILD_ID, TEST_USER_ID, 80L);
@@ -235,7 +246,7 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
             // Given - initial setup
             GuildCurrencyConfigRepository configRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
             MemberCurrencyAccountRepository accountRepo = new JdbcMemberCurrencyAccountRepository(dataSource);
-            BalanceAdjustmentService adjustmentService = new BalanceAdjustmentService(accountRepo, configRepo);
+            BalanceAdjustmentService adjustmentService = createAdjustmentService(accountRepo, configRepo);
             DefaultBalanceService balanceService = new DefaultBalanceService(accountRepo, configRepo);
 
             // Initial adjustment
@@ -248,7 +259,7 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
             GuildCurrencyConfigRepository newConfigRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
             MemberCurrencyAccountRepository newAccountRepo = new JdbcMemberCurrencyAccountRepository(dataSource);
             DefaultBalanceService newBalanceService = new DefaultBalanceService(newAccountRepo, newConfigRepo);
-            BalanceAdjustmentService newAdjustmentService = new BalanceAdjustmentService(newAccountRepo, newConfigRepo);
+            BalanceAdjustmentService newAdjustmentService = createAdjustmentService(newAccountRepo, newConfigRepo);;
 
             // Check balance after restart
             assertThat(newBalanceService.getBalance(TEST_GUILD_ID, TEST_USER_ID).balance()).isEqualTo(1000L);
@@ -277,7 +288,7 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
             MemberCurrencyAccountRepository accountRepo = new JdbcMemberCurrencyAccountRepository(dataSource);
             EmojiValidator emojiValidator = new NoOpEmojiValidator();
             CurrencyConfigService configService = new CurrencyConfigService(configRepo, emojiValidator);
-            BalanceAdjustmentService adjustmentService = new BalanceAdjustmentService(accountRepo, configRepo);
+            BalanceAdjustmentService adjustmentService = createAdjustmentService(accountRepo, configRepo);
             DefaultBalanceService balanceService = new DefaultBalanceService(accountRepo, configRepo);
 
             configService.updateConfig(TEST_GUILD_ID, "鑽石", "💎");
@@ -309,7 +320,7 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
             MemberCurrencyAccountRepository accountRepo = new JdbcMemberCurrencyAccountRepository(dataSource);
             EmojiValidator emojiValidator = new NoOpEmojiValidator();
             CurrencyConfigService configService = new CurrencyConfigService(configRepo, emojiValidator);
-            BalanceAdjustmentService adjustmentService = new BalanceAdjustmentService(accountRepo, configRepo);
+            BalanceAdjustmentService adjustmentService = createAdjustmentService(accountRepo, configRepo);
 
             adjustmentService.adjustBalance(TEST_GUILD_ID, TEST_USER_ID, 500L);
             configService.updateConfig(TEST_GUILD_ID, "Ruby", "❤️");

@@ -2,11 +2,13 @@ package ltdjms.discord.shared.di;
 
 import dagger.Module;
 import dagger.Provides;
+import ltdjms.discord.currency.domain.CurrencyTransactionRepository;
 import ltdjms.discord.currency.persistence.GuildCurrencyConfigRepository;
 import ltdjms.discord.currency.persistence.MemberCurrencyAccountRepository;
 import ltdjms.discord.currency.services.BalanceAdjustmentService;
 import ltdjms.discord.currency.services.BalanceService;
 import ltdjms.discord.currency.services.CurrencyConfigService;
+import ltdjms.discord.currency.services.CurrencyTransactionService;
 import ltdjms.discord.currency.services.DefaultBalanceService;
 import ltdjms.discord.currency.services.EmojiValidator;
 import ltdjms.discord.currency.services.JdaEmojiValidator;
@@ -43,9 +45,17 @@ public class CurrencyServiceModule {
 
     @Provides
     @Singleton
+    public CurrencyTransactionService provideCurrencyTransactionService(
+            CurrencyTransactionRepository transactionRepository) {
+        return new CurrencyTransactionService(transactionRepository);
+    }
+
+    @Provides
+    @Singleton
     public BalanceAdjustmentService provideBalanceAdjustmentService(
             MemberCurrencyAccountRepository accountRepository,
-            GuildCurrencyConfigRepository configRepository) {
-        return new BalanceAdjustmentService(accountRepository, configRepository);
+            GuildCurrencyConfigRepository configRepository,
+            CurrencyTransactionService transactionService) {
+        return new BalanceAdjustmentService(accountRepository, configRepository, transactionService);
     }
 }

@@ -1,22 +1,28 @@
 # 模組說明：遊戲代幣與骰子小遊戲
 
-本文件介紹遊戲代幣帳戶、小遊戲服務與相關指令，協助你理解 `/game-token-adjust`、`/dice-game-1`、`/dice-game-2` 及其設定指令的實作。
+本文件介紹遊戲代幣帳戶、小遊戲服務與相關指令，協助你理解 `/dice-game-1`、`/dice-game-2` 以及管理面板中與遊戲相關的操作。舊版的 `/game-token-adjust`、`/dice-game-1-config`、`/dice-game-2-config` 指令已不再註冊為獨立 slash commands，其核心邏輯仍由服務層與管理面板重用。
 
 ## 1. 功能概觀
 
 遊戲代幣系統提供：
 
 - 每位成員在每個伺服器一個獨立的遊戲代幣帳戶。
-- 管理員可以調整成員代幣餘額。
+- 管理員可以透過管理面板調整成員代幣餘額。
 - 小遊戲會消耗代幣並以伺服器貨幣作為獎勵。
 - 所有代幣異動都記錄在交易流水中，可於 `/user-panel` 查詢。
 
-相關指令：
+主要對外指令：
+
+- `/dice-game-1`
+- `/dice-game-2`
+- `/user-panel`（顯示代幣餘額與流水入口）
+- `/admin-panel`（提供遊戲代幣與遊戲設定管理）
+
+歷史指令（目前不再註冊為 slash commands，但仍有對應 handler 或服務邏輯）：
 
 - `/game-token-adjust`
-- `/dice-game-1`、`/dice-game-1-config`
-- `/dice-game-2`、`/dice-game-2-config`
-- `/user-panel`（顯示代幣餘額與流水入口）
+- `/dice-game-1-config`
+- `/dice-game-2-config`
 
 ## 2. 資料模型
 
@@ -123,20 +129,7 @@
 
 ## 4. 指令與服務的整合流程
 
-### 4.1 `/game-token-adjust`
-
-Handler：`GameTokenAdjustCommandHandler`
-
-流程：
-
-1. 解析參數：
-   - `member`：目標成員
-   - `amount`：正數代表增加、負數代表扣除，不能為 0
-2. 呼叫 `GameTokenService.tryAdjustTokens`：
-   - 若成功，取得 `TokenAdjustmentResult`，格式化訊息回覆。
-   - 若失敗（例如餘額不足），由 `BotErrorHandler.handleDomainError` 回覆錯誤。
-
-### 4.2 `/dice-game-1`
+### 4.1 `/dice-game-1`
 
 Handler：`DiceGame1CommandHandler`
 
@@ -152,24 +145,7 @@ Handler：`DiceGame1CommandHandler`
 
 若任何一步失敗（例如代幣不足、資料庫錯誤），會透過 `Result` + `DomainError` 模式回傳並由 `BotErrorHandler` 處理。
 
-### 4.3 `/dice-game-1-config` 與 `/dice-game-2-config`
-
-Handler：`DiceGame1ConfigCommandHandler`、`DiceGame2ConfigCommandHandler`
-
-共同流程：
-
-1. 解析選填參數 `token-cost`：
-   - 若省略：讀取目前設定並顯示。
-   - 若有值：檢查是否為非負整數。
-2. 呼叫對應的 config repository 更新設定。
-3. 回覆更新後的 `tokensPerPlay`。
-
-錯誤處理：
-
-- 非法輸入（例如負數）會回傳 invalid input 錯誤。
-- 資料庫錯誤會回傳 persistence failure 錯誤。
-
-### 4.4 `/dice-game-2`
+### 4.2 `/dice-game-2`
 
 Handler：`DiceGame2CommandHandler`
 
@@ -177,6 +153,18 @@ Handler：`DiceGame2CommandHandler`
 
 - `DiceGame2Service` 計算結果。
 - `DiceGame2ConfigRepository` 取得設定。
+
+### 4.3 管理面板中的遊戲代幣與設定管理
+
+透過 `/admin-panel`，管理員可以不直接操作上述指令與 repository，而是透過 GUI 進行：
+
+- 「遊戲代幣管理」：
+  - 內部呼叫 `GameTokenService.tryAdjustTokens` 與 `GameTokenTransactionService.recordTransaction`。
+  - 取代舊版 `/game-token-adjust` 指令。
+
+- 「遊戲設定管理」：
+  - 內部使用 `DiceGame1ConfigRepository`、`DiceGame2ConfigRepository` 讀寫各遊戲的 `tokensPerPlay` 等設定。
+  - 取代舊版 `/dice-game-1-config`、`/dice-game-2-config` 指令。
 
 ## 5. 與貨幣系統的關係
 
@@ -209,4 +197,3 @@ Handler：`DiceGame2CommandHandler`
    - 參考 `src/test/java/ltdjms/discord/gametoken/services/*` 與 `src/test/java/ltdjms/discord/gametoken/unit/*` 的測試方式，為新遊戲邏輯補上對應測試。
 
 掌握以上結構與建議後，你應該可以順利擴充更多以遊戲代幣為基礎的遊戲或功能。
-

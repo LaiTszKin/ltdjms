@@ -1,7 +1,9 @@
 package ltdjms.discord.currency.integration;
 
 import ltdjms.discord.currency.domain.BalanceView;
+import ltdjms.discord.currency.domain.CurrencyTransactionRepository;
 import ltdjms.discord.currency.persistence.GuildCurrencyConfigRepository;
+import ltdjms.discord.currency.persistence.JdbcCurrencyTransactionRepository;
 import ltdjms.discord.currency.persistence.JdbcGuildCurrencyConfigRepository;
 import ltdjms.discord.currency.persistence.JdbcMemberCurrencyAccountRepository;
 import ltdjms.discord.currency.persistence.MemberCurrencyAccountRepository;
@@ -9,6 +11,7 @@ import ltdjms.discord.currency.persistence.NegativeBalanceException;
 import ltdjms.discord.currency.services.BalanceAdjustmentService;
 import ltdjms.discord.currency.services.BalanceAdjustmentService.BalanceAdjustmentResult;
 import ltdjms.discord.currency.services.CurrencyConfigService;
+import ltdjms.discord.currency.services.CurrencyTransactionService;
 import ltdjms.discord.currency.services.DefaultBalanceService;
 import ltdjms.discord.currency.services.EmojiValidator;
 import ltdjms.discord.currency.services.NoOpEmojiValidator;
@@ -38,7 +41,9 @@ class BalanceAdjustmentCommandIntegrationTest extends PostgresIntegrationTestBas
     void setUp() {
         configRepository = new JdbcGuildCurrencyConfigRepository(dataSource);
         accountRepository = new JdbcMemberCurrencyAccountRepository(dataSource);
-        adjustmentService = new BalanceAdjustmentService(accountRepository, configRepository);
+        CurrencyTransactionRepository transactionRepository = new JdbcCurrencyTransactionRepository(dataSource);
+        CurrencyTransactionService transactionService = new CurrencyTransactionService(transactionRepository);
+        adjustmentService = new BalanceAdjustmentService(accountRepository, configRepository, transactionService);
         balanceService = new DefaultBalanceService(accountRepository, configRepository);
         EmojiValidator emojiValidator = new NoOpEmojiValidator();
         configService = new CurrencyConfigService(configRepository, emojiValidator);

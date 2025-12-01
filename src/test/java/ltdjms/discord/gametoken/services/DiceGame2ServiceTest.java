@@ -2,6 +2,7 @@ package ltdjms.discord.gametoken.services;
 
 import ltdjms.discord.currency.domain.MemberCurrencyAccount;
 import ltdjms.discord.currency.persistence.MemberCurrencyAccountRepository;
+import ltdjms.discord.gametoken.domain.DiceGame2Config;
 import ltdjms.discord.gametoken.services.DiceGame2Service.DiceGame2Result;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
@@ -22,7 +23,7 @@ import static org.assertj.core.api.Assertions.*;
  * Uses a predictable Random implementation to avoid mocking restrictions.
  *
  * Reward rules:
- * - 15 dice rolls (1-6 each)
+ * - Dice count is determined by tokens spent (1 token = 3 dice)
  * - If no straights (length >= 3), total sum × 20,000
  * - Straights (consecutive increasing, length >= 3): sum of dice in straight × 100,000
  * - Non-straight dice (excluding triples): sum × 20,000
@@ -35,6 +36,7 @@ class DiceGame2ServiceTest {
 
     private static final long TEST_GUILD_ID = 123456789012345678L;
     private static final long TEST_USER_ID = 987654321098765432L;
+    private static final int DEFAULT_DICE_COUNT = 15; // 5 tokens × 3 dice per token
 
     /**
      * A predictable Random that returns values from a predefined sequence.
@@ -116,8 +118,8 @@ class DiceGame2ServiceTest {
     class BasicDiceRolling {
 
         @Test
-        @DisplayName("should roll exactly 15 dice")
-        void shouldRollExactly15Dice() {
+        @DisplayName("should roll specified number of dice")
+        void shouldRollSpecifiedNumberOfDice() {
             // Given - predictable random that returns 15 values
             List<Integer> randomValues = List.of(0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 0, 1, 2);
             PredictableRandom random = new PredictableRandom(randomValues);
@@ -125,7 +127,7 @@ class DiceGame2ServiceTest {
             DiceGame2Service service = new DiceGame2Service(repository, random);
 
             // When
-            List<Integer> rolls = service.rollDice();
+            List<Integer> rolls = service.rollDice(15);
 
             // Then
             assertThat(rolls).hasSize(15);
@@ -141,10 +143,27 @@ class DiceGame2ServiceTest {
             DiceGame2Service service = new DiceGame2Service(repository, random);
 
             // When
-            List<Integer> rolls = service.rollDice();
+            List<Integer> rolls = service.rollDice(15);
 
             // Then
             assertThat(rolls.subList(0, 6)).containsExactly(1, 2, 3, 4, 5, 6);
+        }
+
+        @Test
+        @DisplayName("should roll different number of dice based on parameter")
+        void shouldRollDifferentNumberBasedOnParameter() {
+            // Given
+            List<Integer> randomValues = List.of(0, 1, 2, 3, 4, 5, 0, 1, 2);
+            PredictableRandom random = new PredictableRandom(randomValues);
+            StubCurrencyRepository repository = new StubCurrencyRepository(0L);
+            DiceGame2Service service = new DiceGame2Service(repository, random);
+
+            // When - 3 tokens = 9 dice
+            List<Integer> rolls = service.rollDice(9);
+
+            // Then
+            assertThat(rolls).hasSize(9);
+            assertThat(rolls).containsExactly(1, 2, 3, 4, 5, 6, 1, 2, 3);
         }
     }
 
@@ -161,9 +180,10 @@ class DiceGame2ServiceTest {
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
             DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
-            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID);
+            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID, config, DEFAULT_DICE_COUNT);
 
             // Then - total = 1+3+5+1+3+5+1+3+5+1+3+5+1+3+6 = 46, reward = 46 × 20,000 = 920,000
             assertThat(result.diceRolls()).containsExactly(1, 3, 5, 1, 3, 5, 1, 3, 5, 1, 3, 5, 1, 3, 6);
@@ -181,9 +201,10 @@ class DiceGame2ServiceTest {
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
             DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
-            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID);
+            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID, config, DEFAULT_DICE_COUNT);
 
             // Then - all 15 ones form a single group of length 15 (>3), so no triples
             // Total = 15 × 1 = 15, reward = 15 × 20,000 = 300,000
@@ -206,9 +227,10 @@ class DiceGame2ServiceTest {
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
             DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
-            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID);
+            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID, config, DEFAULT_DICE_COUNT);
 
             // Then
             assertThat(result.diceRolls()).containsExactly(1, 2, 3, 6, 6, 5, 4, 1, 6, 5, 4, 1, 6, 5, 4);
@@ -228,9 +250,10 @@ class DiceGame2ServiceTest {
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
             DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
-            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID);
+            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID, config, DEFAULT_DICE_COUNT);
 
             // Then
             assertThat(result.totalReward()).isEqualTo(1_700_000L);
@@ -247,9 +270,10 @@ class DiceGame2ServiceTest {
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
             DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
-            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID);
+            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID, config, DEFAULT_DICE_COUNT);
 
             // Then
             assertThat(result.totalReward()).isEqualTo(2_220_000L);
@@ -271,9 +295,10 @@ class DiceGame2ServiceTest {
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
             DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
-            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID);
+            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID, config, DEFAULT_DICE_COUNT);
 
             // Then
             assertThat(result.totalReward()).isEqualTo(2_700_000L);
@@ -296,9 +321,10 @@ class DiceGame2ServiceTest {
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
             DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
-            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID);
+            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID, config, DEFAULT_DICE_COUNT);
 
             // Then
             assertThat(result.diceRolls()).containsExactly(1, 1, 1, 6, 5, 4, 3, 6, 5, 4, 3, 6, 5, 4, 3);
@@ -317,9 +343,10 @@ class DiceGame2ServiceTest {
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
             DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
-            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID);
+            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID, config, DEFAULT_DICE_COUNT);
 
             // Then
             assertThat(result.totalReward()).isEqualTo(3_300_000L);
@@ -336,9 +363,10 @@ class DiceGame2ServiceTest {
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
             DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
-            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID);
+            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID, config, DEFAULT_DICE_COUNT);
 
             // Then
             assertThat(result.totalReward()).isEqualTo(3_960_000L);
@@ -353,32 +381,21 @@ class DiceGame2ServiceTest {
         @Test
         @DisplayName("4.1.6: four consecutive same values should NOT be a triple")
         void fourConsecutiveShouldNotBeTriple() {
-            // Given - rolls: 1,1,1,1,5,6,3,4,5,6,3,4,5,6,3
-            // The 1,1,1,1 is length 4, so NOT a triple
-            // Non-straight: 1+1+1+1+3+3+3 = 13
-            // Straights: 5,6 (length 2, not counted), 3,4,5,6 twice (each sum = 18)
-            // Wait, let me recalculate: 1,1,1,1,5,6,3,4,5,6,3,4,5,6,3
-            // Straights: positions 7-10 (3,4,5,6 sum=18), positions 10-13 (actually overlapping...)
-            // Let me simplify: no overlapping straights
-            // Actually: 3,4,5,6 at positions 6-9 (sum=18)
-            // Non-straight: 1,1,1,1,5,6,3,4,5,6,3 minus the straight... this is getting complex
-            // Let me use a simpler example
+            // Given - rolls: 1,1,1,1,3,5,3,5,3,5,3,5,3,5,3
             List<Integer> randomValues = List.of(0, 0, 0, 0, 2, 4, 2, 4, 2, 4, 2, 4, 2, 4, 2);
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
             DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
-            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID);
+            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID, config, DEFAULT_DICE_COUNT);
 
             // Then - rolls: 1,1,1,1,3,5,3,5,3,5,3,5,3,5,3
             // 1,1,1,1 is length 4, not a triple
             // No straights
-            // Total sum = 4 + 11×3 + ... wait: 1+1+1+1+3+5+3+5+3+5+3+5+3+5+3 = 4 + 3×5 + 5×4 = 4+15+20 = 39...
-            // Actually: 1,1,1,1,3,5,3,5,3,5,3,5,3,5,3 = 4×1 + 5×3 + 4×5 + 2 more 3s = 4+15+20 = 39? Let me count again
-            // 1+1+1+1 = 4
-            // 3+5+3+5+3+5+3+5+3+5+3 = 3×6 + 5×5 = 18+25 = 43
-            // Total = 4 + 43 = 47
+            // Total sum = 4×1 + 5×3 + 4×5 + 2×3 = 4 + 15 + 20 + 6 = ... let me recount
+            // 1+1+1+1+3+5+3+5+3+5+3+5+3+5+3 = 4 + 43 = 47
             // Reward = 47 × 20,000 = 940,000
             assertThat(result.tripleSegments()).isEmpty();
             assertThat(result.totalReward()).isEqualTo(940_000L);
@@ -392,9 +409,10 @@ class DiceGame2ServiceTest {
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
             DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
-            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID);
+            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID, config, DEFAULT_DICE_COUNT);
 
             // Then - no triples (5 consecutive 2s is >3)
             // Total = 2×5 + 3×5 + 5×5 = 10+15+25 = 50
@@ -422,9 +440,10 @@ class DiceGame2ServiceTest {
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
             DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
-            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID);
+            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID, config, DEFAULT_DICE_COUNT);
 
             // Then
             assertThat(result.diceRolls()).containsExactly(1, 2, 3, 4, 5, 6, 1, 1, 1, 2, 2, 2, 1, 3, 6);
@@ -436,23 +455,15 @@ class DiceGame2ServiceTest {
         @Test
         @DisplayName("should handle straight followed immediately by triple")
         void shouldHandleStraightFollowedByTriple() {
-            // Given - rolls: 1,2,3,3,3,3,6,5,4,6,5,4,6,5,4
-            // Straight: 1,2,3 at positions 0-2, sum = 6
-            // 3,3,3,3 at positions 3-6 is length 4, NOT a triple
-            // Non-straight: 3+3+3+3+6+5+4+6+5+4+6+5+4 = 12+54 = 66... wait that's wrong
-            // Let me recalculate: positions 3-5 are 3,3,3,3 but that's 4 values starting at index 2
-            // Rolls: 1,2,3,3,3,3,6,5,4,6,5,4,6,5,4
-            // Actually 3,3,3,3 is at indices 2-5... no wait, index 0=1, 1=2, 2=3, 3=3, 4=3, 5=3
-            // So straight is 1,2,3 (indices 0-2), then 3,3,3 (indices 3-5) is exactly 3!
-            // But wait, the 3 at index 2 is part of the straight...
-            // This is getting confusing. Let me use clearer values.
+            // Given - rolls: 1,2,3,5,5,5,6,5,4,6,5,4,6,5,4
             List<Integer> randomValues = List.of(0, 1, 2, 4, 4, 4, 5, 4, 3, 5, 4, 3, 5, 4, 3);
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
             DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
-            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID);
+            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID, config, DEFAULT_DICE_COUNT);
 
             // Then - rolls: 1,2,3,5,5,5,6,5,4,6,5,4,6,5,4
             // Straight: 1,2,3 (sum=6)
@@ -474,9 +485,10 @@ class DiceGame2ServiceTest {
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
             DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
-            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID);
+            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID, config, DEFAULT_DICE_COUNT);
 
             // Then
             assertThat(result.totalReward()).isEqualTo(4_580_000L);
@@ -496,9 +508,10 @@ class DiceGame2ServiceTest {
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
             DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
-            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID);
+            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID, config, DEFAULT_DICE_COUNT);
 
             // Then - 15 consecutive 6s is length 15 (>3), not a triple
             // Total = 15 × 6 = 90, reward = 90 × 20,000 = 1,800,000
@@ -518,9 +531,10 @@ class DiceGame2ServiceTest {
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
             DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
-            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID);
+            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID, config, DEFAULT_DICE_COUNT);
 
             // Then
             assertThat(result.totalReward()).isEqualTo(3_180_000L);
@@ -537,13 +551,57 @@ class DiceGame2ServiceTest {
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
             DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
-            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID);
+            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID, config, DEFAULT_DICE_COUNT);
 
             // Then
             assertThat(result.tripleSegments()).hasSize(1);
             assertThat(result.totalReward()).isEqualTo(3_220_000L);
+        }
+    }
+
+    @Nested
+    @DisplayName("Variable dice count")
+    class VariableDiceCount {
+
+        @Test
+        @DisplayName("should roll 9 dice for 3 tokens (1 token = 3 dice)")
+        void shouldRollNineDiceForThreeTokens() {
+            // Given
+            List<Integer> randomValues = List.of(0, 1, 2, 3, 4, 5, 0, 1, 2);
+            PredictableRandom random = new PredictableRandom(randomValues);
+            StubCurrencyRepository repository = new StubCurrencyRepository(0L);
+            DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
+
+            // When - 3 tokens = 9 dice
+            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID, config, 9);
+
+            // Then
+            assertThat(result.diceRolls()).hasSize(9);
+            assertThat(result.diceRolls()).containsExactly(1, 2, 3, 4, 5, 6, 1, 2, 3);
+        }
+
+        @Test
+        @DisplayName("should calculate rewards correctly with variable dice count")
+        void shouldCalculateRewardsWithVariableDiceCount() {
+            // Given - 6 dice (2 tokens)
+            List<Integer> randomValues = List.of(0, 1, 2, 3, 4, 5);
+            PredictableRandom random = new PredictableRandom(randomValues);
+            StubCurrencyRepository repository = new StubCurrencyRepository(0L);
+            DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
+
+            // When
+            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID, config, 6);
+
+            // Then - straight 1,2,3,4,5,6 (sum=21)
+            // Reward: 21 × 100,000 = 2,100,000
+            assertThat(result.diceRolls()).containsExactly(1, 2, 3, 4, 5, 6);
+            assertThat(result.totalReward()).isEqualTo(2_100_000L);
+            assertThat(result.straightSegments()).hasSize(1);
         }
     }
 
@@ -591,9 +649,10 @@ class DiceGame2ServiceTest {
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(1_000_000L);
             DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
-            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID);
+            DiceGame2Result result = service.play(TEST_GUILD_ID, TEST_USER_ID, config, DEFAULT_DICE_COUNT);
 
             // Then
             assertThat(result.previousBalance()).isEqualTo(1_000_000L);

@@ -74,6 +74,7 @@ public final class CommandLocalizations {
         OPTION_NAME_LOCALIZATIONS.put("member", Map.of(DiscordLocale.CHINESE_TAIWAN, "成員"));
         OPTION_NAME_LOCALIZATIONS.put("amount", Map.of(DiscordLocale.CHINESE_TAIWAN, "數量"));
         OPTION_NAME_LOCALIZATIONS.put("token-cost", Map.of(DiscordLocale.CHINESE_TAIWAN, "代幣消耗"));
+        OPTION_NAME_LOCALIZATIONS.put("tokens", Map.of(DiscordLocale.CHINESE_TAIWAN, "代幣數量"));
 
         // Initialize option description localizations
         OPTION_DESCRIPTION_LOCALIZATIONS = new HashMap<>();
@@ -89,6 +90,8 @@ public final class CommandLocalizations {
                 Map.of(DiscordLocale.CHINESE_TAIWAN, "增加/扣除的數量，或調整模式下的目標餘額"));
         OPTION_DESCRIPTION_LOCALIZATIONS.put("token-cost",
                 Map.of(DiscordLocale.CHINESE_TAIWAN, "每次遊玩所需的遊戲代幣數量"));
+        OPTION_DESCRIPTION_LOCALIZATIONS.put("tokens",
+                Map.of(DiscordLocale.CHINESE_TAIWAN, "本局投入的遊戲代幣數量（選填）"));
 
         // Initialize choice localizations
         CHOICE_LOCALIZATIONS = new HashMap<>();

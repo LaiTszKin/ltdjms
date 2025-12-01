@@ -15,7 +15,24 @@ public interface DiceGame1ConfigRepository {
 
     DiceGame1Config findOrCreateDefault(long guildId);
 
-    DiceGame1Config updateTokensPerPlay(long guildId, long tokensPerPlay);
+    /**
+     * Updates the token range for a guild's dice-game-1 configuration.
+     *
+     * @param guildId   the guild ID
+     * @param minTokens the minimum tokens per play
+     * @param maxTokens the maximum tokens per play
+     * @return the updated configuration
+     */
+    DiceGame1Config updateTokensPerPlayRange(long guildId, long minTokens, long maxTokens);
+
+    /**
+     * Updates the reward per dice value for a guild's dice-game-1 configuration.
+     *
+     * @param guildId            the guild ID
+     * @param rewardPerDiceValue the new reward per dice value
+     * @return the updated configuration
+     */
+    DiceGame1Config updateRewardPerDiceValue(long guildId, long rewardPerDiceValue);
 
     boolean deleteByGuildId(long guildId);
 }

@@ -1,6 +1,6 @@
 # 模組說明：伺服器貨幣系統
 
-本文件介紹 Discord 伺服器貨幣系統的主要元件與流程，協助開發者理解 `/balance`、`/currency-config`、`/adjust-balance` 等指令的實作方式。
+本文件介紹 Discord 伺服器貨幣系統的主要元件與流程，協助開發者理解 `/currency-config`、面板指令（`/user-panel`、`/admin-panel`）與底層餘額調整服務的實作方式。舊版的 `/balance`、`/adjust-balance` 指令已不再註冊為獨立 slash commands，其核心邏輯仍保留在服務層與相關 handler 中，供面板與測試重用。
 
 ## 1. 功能概觀
 
@@ -8,16 +8,19 @@
 
 - 為每個伺服器設定獨立的貨幣名稱與圖示。
 - 為每個成員在每個伺服器建立不會為負的貨幣帳戶。
-- 讓管理員透過指令或管理面板調整成員餘額。
-- 讓成員隨時透過 `/balance` 查詢自己的餘額。
+- 讓管理員透過管理面板調整成員餘額。
+- 讓成員隨時透過 `/user-panel` 查詢自己的餘額。
 
-相關指令：
+相關對外指令：
 
-- `/balance`
 - `/currency-config`
-- `/adjust-balance`
 - `/user-panel`（以面板形式顯示餘額）
 - `/admin-panel`（圖形化餘額管理）
+
+歷史指令（目前不再註冊為 slash commands，但仍有對應 handler 與測試）：
+
+- `/balance`
+- `/adjust-balance`
 
 ## 2. 主要程式結構
 
@@ -79,39 +82,27 @@
 
 這些服務都會使用 `Result<T, DomainError>` 表示成功或失敗，避免直接拋出業務例外。
 
-### 2.4 指令處理器（commands）
+### 2.4 指令處理器與面板（commands + panels）
 
-- `BalanceCommandHandler` – `/balance`
 - `CurrencyConfigCommandHandler` – `/currency-config`
-- `BalanceAdjustmentCommandHandler` – `/adjust-balance`
+- `UserPanelCommandHandler` – `/user-panel`
+- `AdminPanelCommandHandler` – `/admin-panel`
 
 這些 handler 全由 Dagger 注入對應的 services，並遵守以下模式：
 
 1. 從 `SlashCommandInteractionEvent` 解析參數。
-2. 呼叫對應 service，取得 `Result<*, DomainError>`。
+2. 呼叫對應 service，取得 `Result<*, DomainError>` 或自訂 view 類型。
 3. 對 `Err` 情況呼叫 `BotErrorHandler.handleDomainError`。
-4. 對 `Ok` 情況格式化並回覆 Discord 訊息。
+4. 對 `Ok` 情況格式化並回覆 Discord 訊息（文字或 Embed）。
 
-## 3. `/balance` 執行流程
+歷史 handler：
 
-以下示意成員呼叫 `/balance` 時的關鍵步驟：
+- `BalanceCommandHandler` – 舊版 `/balance`
+- `BalanceAdjustmentCommandHandler` – 舊版 `/adjust-balance`
 
-1. `SlashCommandListener` 依指令名稱將事件交給 `BalanceCommandHandler`。
-2. `BalanceCommandHandler`：
-   - 從事件中取得 `guildId` 與 `userId`。
-   - 呼叫 `balanceService.tryGetBalance(guildId, userId)`。
-3. `BalanceService`：
-   - 透過 `MemberCurrencyAccountRepository` 查詢或建立帳戶。
-   - 取得伺服器貨幣設定（`GuildCurrencyConfigRepository`）。
-   - 組裝成 `BalanceView`。
-4. 成功時：
-   - `BalanceCommandHandler` 呼叫 `balanceView.formatMessage()` 取得字串訊息。
-   - 回覆給使用者。
-5. 若伺服器尚未設定貨幣或遇到其他業務錯誤：
-   - service 會回傳 `Result.err(DomainError)`。
-   - handler 透過 `BotErrorHandler.handleDomainError` 回覆錯誤訊息（多為 ephemeral）。
+這兩個 handler 的行為仍有對應測試，但預設不再由 `SlashCommandListener` 註冊為 slash commands；管理員調整餘額現在改由 `/admin-panel` 中的 Modal 完成。
 
-## 4. `/currency-config` 執行流程
+## 3. `/currency-config` 執行流程
 
 1. 管理員呼叫 `/currency-config`，可帶入：
    - `name`：新貨幣名稱（選填）
@@ -125,30 +116,7 @@
 4. 成功時，handler 組裝成功訊息（包含名稱與圖示）回覆。
 5. 若參數無效或發生資料庫錯誤，回傳對應 `DomainError`，由 `BotErrorHandler` 轉成錯誤訊息。
 
-## 5. `/adjust-balance` 執行流程與驗證
-
-1. 管理員呼叫 `/adjust-balance`，必填參數：
-   - `mode`：`add` / `deduct` / `adjust`
-   - `member`：目標成員
-   - `amount`：調整金額或目標餘額
-2. `BalanceAdjustmentCommandHandler`：
-   - 驗證必要參數是否存在。
-   - 將 `mode` 轉成對 `BalanceAdjustmentService` 的呼叫：
-     - `add` 模式：要求 `amount > 0`，呼叫 `tryAdjustBalance(guildId, userId, amount)`。
-     - `deduct` 模式：要求 `amount > 0`，呼叫 `tryAdjustBalance(guildId, userId, -amount)`。
-     - `adjust` 模式：要求 `amount >= 0`，呼叫 `tryAdjustBalanceTo(guildId, userId, amount)`。
-3. `BalanceAdjustmentService`：
-   - 檢查調整後餘額是否為負；若會為負，回傳 `DomainError.insufficientBalance`。
-   - 檢查是否超過單次調整上限。
-   - 成功時回傳 `BalanceAdjustmentResult`。
-4. Handler 將結果格式化成使用者可讀的訊息，例如：
-
-   ```text
-   Added 💰 500 金幣 to @成員
-   New balance: 💰 1,000 金幣
-   ```
-
-## 6. 面板與貨幣系統的關聯
+## 4. 面板與貨幣系統的關聯
 
 貨幣系統的 service 也被用在面板功能中：
 
@@ -162,7 +130,7 @@
 
 這讓面板可以重用既有業務邏輯，而不需直接操作 repository。
 
-## 7. 開發建議
+## 5. 開發建議
 
 若你要在貨幣系統上新增功能（例如排行榜、批次發獎勵等），建議遵循以下原則：
 
@@ -182,4 +150,3 @@
    - 盡量為新的 service 行為補上對應的單元／整合測試。
 
 掌握以上結構與原則後，你應該可以相對順利地擴充或調整貨幣系統的行為。
-

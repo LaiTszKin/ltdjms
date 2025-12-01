@@ -1,4 +1,4 @@
--- Discord Currency Bot Database Schema
+-- LTDJ management system Database Schema
 -- Version: 1.0.0
 
 -- Guild currency configuration table
@@ -79,12 +79,17 @@ CREATE TRIGGER update_game_token_account_updated_at
 -- Dice game 1 configuration table
 CREATE TABLE IF NOT EXISTS dice_game1_config (
     guild_id BIGINT PRIMARY KEY,
-    tokens_per_play BIGINT NOT NULL DEFAULT 1,
+    min_tokens_per_play BIGINT NOT NULL DEFAULT 1,
+    max_tokens_per_play BIGINT NOT NULL DEFAULT 10,
+    reward_per_dice_value BIGINT NOT NULL DEFAULT 250000,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 
-    -- Ensure tokens_per_play is never negative
-    CONSTRAINT tokens_per_play_non_negative CHECK (tokens_per_play >= 0)
+    -- Ensure tokens values are never negative
+    CONSTRAINT dice_game1_min_tokens_non_negative CHECK (min_tokens_per_play >= 0),
+    CONSTRAINT dice_game1_max_tokens_non_negative CHECK (max_tokens_per_play >= 0),
+    CONSTRAINT dice_game1_reward_non_negative CHECK (reward_per_dice_value >= 0),
+    CONSTRAINT dice_game1_min_max_order CHECK (min_tokens_per_play <= max_tokens_per_play)
 );
 
 -- Trigger for dice_game1_config
@@ -97,12 +102,23 @@ CREATE TRIGGER update_dice_game1_config_updated_at
 -- Dice game 2 configuration table
 CREATE TABLE IF NOT EXISTS dice_game2_config (
     guild_id BIGINT PRIMARY KEY,
-    tokens_per_play BIGINT NOT NULL DEFAULT 1,
+    min_tokens_per_play BIGINT NOT NULL DEFAULT 5,
+    max_tokens_per_play BIGINT NOT NULL DEFAULT 50,
+    straight_multiplier BIGINT NOT NULL DEFAULT 100000,
+    base_multiplier BIGINT NOT NULL DEFAULT 20000,
+    triple_low_bonus BIGINT NOT NULL DEFAULT 1500000,
+    triple_high_bonus BIGINT NOT NULL DEFAULT 2500000,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 
-    -- Ensure tokens_per_play is never negative
-    CONSTRAINT dice_game2_tokens_per_play_non_negative CHECK (tokens_per_play >= 0)
+    -- Ensure tokens values are never negative
+    CONSTRAINT dice_game2_min_tokens_non_negative CHECK (min_tokens_per_play >= 0),
+    CONSTRAINT dice_game2_max_tokens_non_negative CHECK (max_tokens_per_play >= 0),
+    CONSTRAINT dice_game2_straight_multiplier_non_negative CHECK (straight_multiplier >= 0),
+    CONSTRAINT dice_game2_base_multiplier_non_negative CHECK (base_multiplier >= 0),
+    CONSTRAINT dice_game2_triple_low_bonus_non_negative CHECK (triple_low_bonus >= 0),
+    CONSTRAINT dice_game2_triple_high_bonus_non_negative CHECK (triple_high_bonus >= 0),
+    CONSTRAINT dice_game2_min_max_order CHECK (min_tokens_per_play <= max_tokens_per_play)
 );
 
 -- Trigger for dice_game2_config
@@ -134,3 +150,26 @@ CREATE INDEX IF NOT EXISTS idx_game_token_transaction_guild_user
 -- Index for looking up all transactions in a guild
 CREATE INDEX IF NOT EXISTS idx_game_token_transaction_guild
     ON game_token_transaction (guild_id, created_at DESC);
+
+-- Currency transaction history table
+CREATE TABLE IF NOT EXISTS currency_transaction (
+    id BIGSERIAL PRIMARY KEY,
+    guild_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    amount BIGINT NOT NULL,
+    balance_after BIGINT NOT NULL,
+    source VARCHAR(50) NOT NULL,
+    description VARCHAR(255),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+
+    -- Ensure balance_after is never negative
+    CONSTRAINT currency_transaction_balance_non_negative CHECK (balance_after >= 0)
+);
+
+-- Index for looking up currency transactions by user in a guild (most common query)
+CREATE INDEX IF NOT EXISTS idx_currency_transaction_guild_user
+    ON currency_transaction (guild_id, user_id, created_at DESC);
+
+-- Index for looking up all currency transactions in a guild
+CREATE INDEX IF NOT EXISTS idx_currency_transaction_guild
+    ON currency_transaction (guild_id, created_at DESC);
