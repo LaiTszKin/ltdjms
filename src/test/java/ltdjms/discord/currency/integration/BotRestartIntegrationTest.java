@@ -15,6 +15,7 @@ import ltdjms.discord.currency.services.CurrencyTransactionService;
 import ltdjms.discord.currency.services.DefaultBalanceService;
 import ltdjms.discord.currency.services.EmojiValidator;
 import ltdjms.discord.currency.services.NoOpEmojiValidator;
+import ltdjms.discord.shared.events.DomainEventPublisher;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -37,7 +38,8 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
             GuildCurrencyConfigRepository configRepo) {
         CurrencyTransactionRepository transactionRepo = new JdbcCurrencyTransactionRepository(dataSource);
         CurrencyTransactionService transactionService = new CurrencyTransactionService(transactionRepo);
-        return new BalanceAdjustmentService(accountRepo, configRepo, transactionService);
+        DomainEventPublisher eventPublisher = new DomainEventPublisher();
+        return new BalanceAdjustmentService(accountRepo, configRepo, transactionService, eventPublisher);
     }
 
     // ============================================================

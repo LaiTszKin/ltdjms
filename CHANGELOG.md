@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.8.0] - 2025-12-03
+
+### Added
+- 新增 Domain Event 系統，包含 `DomainEvent` 介面、`DomainEventPublisher` 與基礎事件實作。
+- 新增 `BalanceChangedEvent` 與 `GameTokenChangedEvent`，分別在貨幣餘額與遊戲代幣變動時觸發。
+- 新增 `UserPanelUpdateListener`，訂閱餘額與代幣變更事件，並自動更新已開啟的 `/user-panel` 面板 Embed，實現即時數據刷新。
+- 在 `GameTokenService` 與 `DiceGame2Service` 中整合事件發布機制。
+
+### Changed
+- 調整 `GameTokenService` 建構子，注入 `DomainEventPublisher`。
+- 調整 `DiceGame2Service` 建構子，注入 `CurrencyTransactionService` 與 `DomainEventPublisher`，確保遊戲結果能正確發布事件與紀錄交易。
+
 ## [0.7.2] - 2025-12-01
 
 ### Changed

@@ -1,8 +1,12 @@
 package ltdjms.discord.gametoken.services;
 
+import ltdjms.discord.currency.domain.CurrencyTransaction;
 import ltdjms.discord.currency.domain.MemberCurrencyAccount;
 import ltdjms.discord.currency.persistence.MemberCurrencyAccountRepository;
+import ltdjms.discord.currency.services.CurrencyTransactionService;
 import ltdjms.discord.gametoken.domain.DiceGame2Config;
+import ltdjms.discord.shared.events.BalanceChangedEvent;
+import ltdjms.discord.shared.events.DomainEventPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,17 +39,28 @@ public class DiceGame2Service {
     private static final Logger LOG = LoggerFactory.getLogger(DiceGame2Service.class);
 
     private final MemberCurrencyAccountRepository currencyRepository;
+    private final CurrencyTransactionService transactionService;
+    private final DomainEventPublisher eventPublisher;
     private final Random random;
 
-    public DiceGame2Service(MemberCurrencyAccountRepository currencyRepository) {
-        this(currencyRepository, new Random());
+    public DiceGame2Service(
+            MemberCurrencyAccountRepository currencyRepository,
+            CurrencyTransactionService transactionService,
+            DomainEventPublisher eventPublisher) {
+        this(currencyRepository, transactionService, eventPublisher, new Random());
     }
 
     /**
      * Constructor with injectable Random for testing.
      */
-    public DiceGame2Service(MemberCurrencyAccountRepository currencyRepository, Random random) {
+    public DiceGame2Service(
+            MemberCurrencyAccountRepository currencyRepository,
+            CurrencyTransactionService transactionService,
+            DomainEventPublisher eventPublisher,
+            Random random) {
         this.currencyRepository = currencyRepository;
+        this.transactionService = transactionService;
+        this.eventPublisher = eventPublisher;
         this.random = random;
     }
 
@@ -80,6 +95,21 @@ public class DiceGame2Service {
         long newBalance = currencyRepository.findByGuildIdAndUserId(guildId, userId)
                 .map(MemberCurrencyAccount::balance)
                 .orElse(previousBalance + totalReward);
+
+        // Record transaction
+        if (totalReward > 0) {
+            transactionService.recordTransaction(
+                    guildId,
+                    userId,
+                    totalReward,
+                    newBalance,
+                    CurrencyTransaction.Source.DICE_GAME_2_WIN,
+                    null
+            );
+        }
+        
+        // Publish event
+        eventPublisher.publish(new BalanceChangedEvent(guildId, userId, newBalance));
 
         DiceGame2Result result = new DiceGame2Result(
                 guildId,

@@ -3,6 +3,7 @@ package ltdjms.discord.panel.commands;
 import ltdjms.discord.gametoken.domain.DiceGame1Config;
 import ltdjms.discord.gametoken.domain.DiceGame2Config;
 import ltdjms.discord.panel.services.AdminPanelService;
+import ltdjms.discord.panel.services.AdminPanelSessionManager;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 import net.dv8tion.jda.api.EmbedBuilder;
@@ -65,12 +66,15 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     public static final String SELECT_GAME_SETTING = "admin_select_game_setting";
 
     private final AdminPanelService adminPanelService;
+    private final AdminPanelSessionManager adminPanelSessionManager;
 
     // Session state for user selections (keyed by interactionId or uniqueId)
     private final Map<String, SessionState> sessionStates = new ConcurrentHashMap<>();
 
-    public AdminPanelButtonHandler(AdminPanelService adminPanelService) {
+    public AdminPanelButtonHandler(AdminPanelService adminPanelService,
+                                   AdminPanelSessionManager adminPanelSessionManager) {
         this.adminPanelService = adminPanelService;
+        this.adminPanelSessionManager = adminPanelSessionManager;
     }
 
     @Override
@@ -608,23 +612,7 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         DiceGame1Config config = adminPanelService.getDiceGame1Config(guildId);
         String currencyIcon = adminPanelService.getCurrencyConfig(guildId).currencyIcon();
 
-        MessageEmbed embed = new EmbedBuilder()
-                .setTitle("🎲 摘星手設定")
-                .setColor(EMBED_COLOR)
-                .addField("代幣範圍",
-                        String.format("最小：🎮 %,d\n最大：🎮 %,d",
-                                config.minTokensPerPlay(),
-                                config.maxTokensPerPlay()),
-                        true)
-                .addField("獎勵設定",
-                        String.format("單骰獎勵倍率：%s %,d\n（1 點 = %,d、6 點 = %,d）",
-                                currencyIcon,
-                                config.rewardPerDiceValue(),
-                                config.rewardPerDiceValue(),
-                                config.rewardPerDiceValue() * 6),
-                        true)
-                .setFooter("選擇要調整的設定類別")
-                .build();
+        MessageEmbed embed = buildDiceGame1SettingsEmbed(config, currencyIcon);
 
         StringSelectMenu settingSelect = StringSelectMenu.create(SELECT_GAME_SETTING)
                 .setPlaceholder("選擇要調整的設定")
@@ -645,26 +633,7 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         DiceGame2Config config = adminPanelService.getDiceGame2Config(guildId);
         String currencyIcon = adminPanelService.getCurrencyConfig(guildId).currencyIcon();
 
-        MessageEmbed embed = new EmbedBuilder()
-                .setTitle("🎲 神龍擺尾設定")
-                .setColor(EMBED_COLOR)
-                .addField("代幣範圍",
-                        String.format("最小：🎮 %,d\n最大：🎮 %,d",
-                                config.minTokensPerPlay(),
-                                config.maxTokensPerPlay()),
-                        true)
-                .addField("獎勵倍率",
-                        String.format("順子倍率：%s %,d\n基礎倍率：%s %,d",
-                                currencyIcon, config.straightMultiplier(),
-                                currencyIcon, config.baseMultiplier()),
-                        true)
-                .addField("豹子獎勵",
-                        String.format("小豹子（<10）：%s %,d\n大豹子（≥10）：%s %,d",
-                                currencyIcon, config.tripleLowBonus(),
-                                currencyIcon, config.tripleHighBonus()),
-                        false)
-                .setFooter("選擇要調整的設定類別")
-                .build();
+        MessageEmbed embed = buildDiceGame2SettingsEmbed(config, currencyIcon);
 
         StringSelectMenu settingSelect = StringSelectMenu.create(SELECT_GAME_SETTING)
                 .setPlaceholder("選擇要調整的設定")
@@ -852,6 +821,49 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
                 .build();
     }
 
+    private MessageEmbed buildDiceGame1SettingsEmbed(DiceGame1Config config, String currencyIcon) {
+        return new EmbedBuilder()
+                .setTitle("🎲 摘星手設定")
+                .setColor(EMBED_COLOR)
+                .addField("代幣範圍",
+                        String.format("最小：🎮 %,d\n最大：🎮 %,d",
+                                config.minTokensPerPlay(),
+                                config.maxTokensPerPlay()),
+                        true)
+                .addField("獎勵設定",
+                        String.format("單骰獎勵倍率：%s %,d\n（1 點 = %,d、6 點 = %,d）",
+                                currencyIcon,
+                                config.rewardPerDiceValue(),
+                                config.rewardPerDiceValue(),
+                                config.rewardPerDiceValue() * 6),
+                        true)
+                .setFooter("選擇要調整的設定類別")
+                .build();
+    }
+
+    private MessageEmbed buildDiceGame2SettingsEmbed(DiceGame2Config config, String currencyIcon) {
+        return new EmbedBuilder()
+                .setTitle("🎲 神龍擺尾設定")
+                .setColor(EMBED_COLOR)
+                .addField("代幣範圍",
+                        String.format("最小：🎮 %,d\n最大：🎮 %,d",
+                                config.minTokensPerPlay(),
+                                config.maxTokensPerPlay()),
+                        true)
+                .addField("獎勵倍率",
+                        String.format("順子倍率：%s %,d\n基礎倍率：%s %,d",
+                                currencyIcon, config.straightMultiplier(),
+                                currencyIcon, config.baseMultiplier()),
+                        true)
+                .addField("豹子獎勵",
+                        String.format("小豹子（<10）：%s %,d\n大豹子（≥10）：%s %,d",
+                                currencyIcon, config.tripleLowBonus(),
+                                currencyIcon, config.tripleHighBonus()),
+                        false)
+                .setFooter("選擇要調整的設定類別")
+                .build();
+    }
+
     // ===== Main Panel =====
 
     private void showMainPanel(ButtonInteractionEvent event) {
@@ -927,6 +939,28 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
 
         AdminPanelService.BalanceAdjustmentResult adjustResult = result.getValue();
         String currencyIcon = adminPanelService.getCurrencyConfig(guildId).currencyIcon();
+
+        // Update session state and refresh UI
+        String sessionKey = getSessionKey(event.getUser().getIdLong(), guildId);
+        SessionState state = sessionStates.get(sessionKey);
+
+        if (state != null && state.selectedUserId != null && state.selectedUserId == userId) {
+            state.currentValue = adjustResult.newBalance();
+            MessageEmbed newEmbed = buildBalanceManagementEmbed(
+                    state.selectedUserMention,
+                    state.currentValue,
+                    state.selectedMode,
+                    currencyIcon
+            );
+            long adminId = event.getUser().getIdLong();
+            adminPanelSessionManager.updatePanel(guildId, adminId, hook ->
+                    hook.editOriginalEmbeds(newEmbed).queue(
+                            msg -> LOG.trace("Updated admin panel balance embed for guildId={}, adminId={}",
+                                    guildId, adminId),
+                            error -> LOG.warn("Failed to edit admin panel balance embed", error)
+                    ));
+        }
+
         event.reply(String.format(
                 "✅ 餘額調整成功！\n<@%d> 的餘額：\n調整前：%s %,d\n調整後：%s %,d",
                 userId, currencyIcon, adjustResult.previousBalance(), currencyIcon, adjustResult.newBalance()
@@ -977,6 +1011,27 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         }
 
         AdminPanelService.TokenAdjustmentResult adjustResult = result.getValue();
+
+        // Update session state and refresh UI
+        String sessionKey = getSessionKey(event.getUser().getIdLong(), guildId);
+        SessionState state = sessionStates.get(sessionKey);
+
+        if (state != null && state.selectedUserId != null && state.selectedUserId == userId) {
+            state.currentValue = adjustResult.newTokens();
+            MessageEmbed newEmbed = buildTokenManagementEmbed(
+                    state.selectedUserMention,
+                    state.currentValue,
+                    state.selectedMode
+            );
+            long adminId = event.getUser().getIdLong();
+            adminPanelSessionManager.updatePanel(guildId, adminId, hook ->
+                    hook.editOriginalEmbeds(newEmbed).queue(
+                            msg -> LOG.trace("Updated admin panel token embed for guildId={}, adminId={}",
+                                    guildId, adminId),
+                            error -> LOG.warn("Failed to edit admin panel token embed", error)
+                    ));
+        }
+
         event.reply(String.format(
                 "✅ 遊戲代幣調整成功！\n<@%d> 的代幣：\n調整前：🎮 %,d\n調整後：🎮 %,d",
                 userId, adjustResult.previousTokens(), adjustResult.newTokens()
@@ -1019,6 +1074,17 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         }
 
         DiceGame1Config newConfig = result.getValue();
+        String currencyIcon = adminPanelService.getCurrencyConfig(guildId).currencyIcon();
+
+        MessageEmbed newEmbed = buildDiceGame1SettingsEmbed(newConfig, currencyIcon);
+        long adminId = event.getUser().getIdLong();
+        adminPanelSessionManager.updatePanel(guildId, adminId, hook ->
+                hook.editOriginalEmbeds(newEmbed).queue(
+                        msg -> LOG.trace("Updated dice-game-1 token range embed for guildId={}, adminId={}",
+                                guildId, adminId),
+                        error -> LOG.warn("Failed to edit dice-game-1 token range embed", error)
+                ));
+
         event.reply(String.format(
                 "✅ 摘星手代幣範圍更新成功！\n" +
                         "最小：🎮 %,d → %,d\n" +
@@ -1057,6 +1123,16 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
 
         DiceGame1Config newConfig = result.getValue();
         String currencyIcon = adminPanelService.getCurrencyConfig(guildId).currencyIcon();
+
+        MessageEmbed newEmbed = buildDiceGame1SettingsEmbed(newConfig, currencyIcon);
+        long adminId = event.getUser().getIdLong();
+        adminPanelSessionManager.updatePanel(guildId, adminId, hook ->
+                hook.editOriginalEmbeds(newEmbed).queue(
+                        msg -> LOG.trace("Updated dice-game-1 reward embed for guildId={}, adminId={}",
+                                guildId, adminId),
+                        error -> LOG.warn("Failed to edit dice-game-1 reward embed", error)
+                ));
+
         event.reply(String.format(
                 "✅ 摘星手獎勵設定更新成功！\n" +
                         "單骰倍率：%s %,d → %,d",
@@ -1101,6 +1177,17 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         }
 
         DiceGame2Config newConfig = result.getValue();
+        String currencyIcon = adminPanelService.getCurrencyConfig(guildId).currencyIcon();
+
+        MessageEmbed newEmbed = buildDiceGame2SettingsEmbed(newConfig, currencyIcon);
+        long adminId = event.getUser().getIdLong();
+        adminPanelSessionManager.updatePanel(guildId, adminId, hook ->
+                hook.editOriginalEmbeds(newEmbed).queue(
+                        msg -> LOG.trace("Updated dice-game-2 token range embed for guildId={}, adminId={}",
+                                guildId, adminId),
+                        error -> LOG.warn("Failed to edit dice-game-2 token range embed", error)
+                ));
+
         event.reply(String.format(
                 "✅ 神龍擺尾代幣範圍更新成功！\n" +
                         "最小：🎮 %,d → %,d\n" +
@@ -1142,6 +1229,16 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
 
         DiceGame2Config newConfig = result.getValue();
         String currencyIcon = adminPanelService.getCurrencyConfig(guildId).currencyIcon();
+
+        MessageEmbed newEmbed = buildDiceGame2SettingsEmbed(newConfig, currencyIcon);
+        long adminId = event.getUser().getIdLong();
+        adminPanelSessionManager.updatePanel(guildId, adminId, hook ->
+                hook.editOriginalEmbeds(newEmbed).queue(
+                        msg -> LOG.trace("Updated dice-game-2 multipliers embed for guildId={}, adminId={}",
+                                guildId, adminId),
+                        error -> LOG.warn("Failed to edit dice-game-2 multipliers embed", error)
+                ));
+
         event.reply(String.format(
                 "✅ 神龍擺尾獎勵倍率更新成功！\n" +
                         "順子倍率：%s %,d → %,d\n" +
@@ -1183,6 +1280,16 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
 
         DiceGame2Config newConfig = result.getValue();
         String currencyIcon = adminPanelService.getCurrencyConfig(guildId).currencyIcon();
+
+        MessageEmbed newEmbed = buildDiceGame2SettingsEmbed(newConfig, currencyIcon);
+        long adminId = event.getUser().getIdLong();
+        adminPanelSessionManager.updatePanel(guildId, adminId, hook ->
+                hook.editOriginalEmbeds(newEmbed).queue(
+                        msg -> LOG.trace("Updated dice-game-2 bonuses embed for guildId={}, adminId={}",
+                                guildId, adminId),
+                        error -> LOG.warn("Failed to edit dice-game-2 bonuses embed", error)
+                ));
+
         event.reply(String.format(
                 "✅ 神龍擺尾豹子獎勵更新成功！\n" +
                         "小豹子：%s %,d → %,d\n" +

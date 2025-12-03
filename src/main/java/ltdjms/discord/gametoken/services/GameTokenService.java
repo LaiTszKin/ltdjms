@@ -5,6 +5,8 @@ import ltdjms.discord.gametoken.persistence.GameTokenAccountRepository;
 import ltdjms.discord.gametoken.persistence.InsufficientTokensException;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
+import ltdjms.discord.shared.events.DomainEventPublisher;
+import ltdjms.discord.shared.events.GameTokenChangedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,9 +19,11 @@ public class GameTokenService {
     private static final Logger LOG = LoggerFactory.getLogger(GameTokenService.class);
 
     private final GameTokenAccountRepository accountRepository;
+    private final DomainEventPublisher eventPublisher;
 
-    public GameTokenService(GameTokenAccountRepository accountRepository) {
+    public GameTokenService(GameTokenAccountRepository accountRepository, DomainEventPublisher eventPublisher) {
         this.accountRepository = accountRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -53,6 +57,9 @@ public class GameTokenService {
 
         // Apply adjustment
         GameTokenAccount updated = accountRepository.adjustTokens(guildId, userId, amount);
+
+        // Publish event
+        eventPublisher.publish(new GameTokenChangedEvent(guildId, userId, updated.tokens()));
 
         TokenAdjustmentResult result = new TokenAdjustmentResult(
                 guildId,
@@ -94,7 +101,12 @@ public class GameTokenService {
         if (tokens <= 0) {
             throw new IllegalArgumentException("Tokens to deduct must be positive: " + tokens);
         }
-        return accountRepository.adjustTokens(guildId, userId, -tokens);
+        GameTokenAccount updated = accountRepository.adjustTokens(guildId, userId, -tokens);
+        
+        // Publish event
+        eventPublisher.publish(new GameTokenChangedEvent(guildId, userId, updated.tokens()));
+        
+        return updated;
     }
 
     /**
@@ -121,6 +133,9 @@ public class GameTokenService {
         }
 
         GameTokenAccount updated = adjustResult.getValue();
+        
+        // Publish event
+        eventPublisher.publish(new GameTokenChangedEvent(guildId, userId, updated.tokens()));
 
         TokenAdjustmentResult result = new TokenAdjustmentResult(
                 guildId,
@@ -148,7 +163,14 @@ public class GameTokenService {
         if (tokens <= 0) {
             return Result.err(DomainError.invalidInput("Tokens to deduct must be positive: " + tokens));
         }
-        return accountRepository.tryAdjustTokens(guildId, userId, -tokens);
+        Result<GameTokenAccount, DomainError> result = accountRepository.tryAdjustTokens(guildId, userId, -tokens);
+        
+        if (result.isOk()) {
+            // Publish event
+            eventPublisher.publish(new GameTokenChangedEvent(guildId, userId, result.getValue().tokens()));
+        }
+        
+        return result;
     }
 
     /**

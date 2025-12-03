@@ -8,6 +8,8 @@ import ltdjms.discord.currency.persistence.MemberCurrencyAccountRepository;
 import ltdjms.discord.currency.persistence.NegativeBalanceException;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
+import ltdjms.discord.shared.events.BalanceChangedEvent;
+import ltdjms.discord.shared.events.DomainEventPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,14 +24,17 @@ public class BalanceAdjustmentService {
     private final MemberCurrencyAccountRepository accountRepository;
     private final GuildCurrencyConfigRepository configRepository;
     private final CurrencyTransactionService transactionService;
+    private final DomainEventPublisher eventPublisher;
 
     public BalanceAdjustmentService(
             MemberCurrencyAccountRepository accountRepository,
             GuildCurrencyConfigRepository configRepository,
-            CurrencyTransactionService transactionService) {
+            CurrencyTransactionService transactionService,
+            DomainEventPublisher eventPublisher) {
         this.accountRepository = accountRepository;
         this.configRepository = configRepository;
         this.transactionService = transactionService;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -59,6 +64,9 @@ public class BalanceAdjustmentService {
 
         // Apply adjustment
         MemberCurrencyAccount updated = accountRepository.adjustBalance(guildId, userId, amount);
+
+        // Publish event
+        eventPublisher.publish(new BalanceChangedEvent(guildId, userId, updated.balance()));
 
         // Get currency config for display
         GuildCurrencyConfig config = configRepository.findByGuildId(guildId)
@@ -110,6 +118,9 @@ public class BalanceAdjustmentService {
         }
 
         MemberCurrencyAccount updated = adjustResult.getValue();
+        
+        // Publish event
+        eventPublisher.publish(new BalanceChangedEvent(guildId, userId, updated.balance()));
 
         // Get currency config for display
         GuildCurrencyConfig config = configRepository.findByGuildId(guildId)
@@ -187,6 +198,9 @@ public class BalanceAdjustmentService {
 
         MemberCurrencyAccount updated = adjustResult.getValue();
 
+        // Publish event
+        eventPublisher.publish(new BalanceChangedEvent(guildId, userId, updated.balance()));
+
         // Get currency config for display
         GuildCurrencyConfig config = configRepository.findByGuildId(guildId)
                 .orElse(GuildCurrencyConfig.createDefault(guildId));
@@ -258,6 +272,9 @@ public class BalanceAdjustmentService {
 
         // Apply adjustment
         MemberCurrencyAccount updated = accountRepository.adjustBalance(guildId, userId, delta);
+
+        // Publish event
+        eventPublisher.publish(new BalanceChangedEvent(guildId, userId, updated.balance()));
 
         // Get currency config for display
         GuildCurrencyConfig config = configRepository.findByGuildId(guildId)

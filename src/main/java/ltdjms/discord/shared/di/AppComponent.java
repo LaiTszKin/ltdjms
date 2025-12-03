@@ -20,6 +20,8 @@ import ltdjms.discord.panel.commands.AdminPanelButtonHandler;
 import ltdjms.discord.panel.commands.UserPanelButtonHandler;
 import ltdjms.discord.shared.DatabaseConfig;
 import ltdjms.discord.shared.EnvironmentConfig;
+import ltdjms.discord.shared.events.DomainEventPublisher;
+import ltdjms.discord.panel.services.UserPanelUpdateListener;
 import org.jooq.DSLContext;
 
 import javax.inject.Singleton;
@@ -40,13 +42,18 @@ import javax.sql.DataSource;
         CurrencyServiceModule.class,
         GameTokenRepositoryModule.class,
         GameTokenServiceModule.class,
-        CommandHandlerModule.class
+        CommandHandlerModule.class,
+        EventModule.class
 })
 public interface AppComponent {
 
     // Configuration
     EnvironmentConfig environmentConfig();
     DatabaseConfig databaseConfig();
+    
+    // Events
+    DomainEventPublisher domainEventPublisher();
+    UserPanelUpdateListener userPanelUpdateListener();
 
     // Database
     DataSource dataSource();

@@ -32,6 +32,9 @@ public class DiscordCurrencyBot {
         // Build Dagger component with environment config
         this.appComponent = AppComponentFactory.create(envConfig);
 
+        // Register domain event listeners
+        this.appComponent.domainEventPublisher().register(this.appComponent.userPanelUpdateListener());
+
         // Get database config from Dagger
         this.databaseConfig = appComponent.databaseConfig();
         DataSource dataSource = appComponent.dataSource();

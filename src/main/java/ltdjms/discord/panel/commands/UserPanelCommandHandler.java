@@ -2,6 +2,7 @@ package ltdjms.discord.panel.commands;
 
 import ltdjms.discord.currency.bot.BotErrorHandler;
 import ltdjms.discord.currency.bot.SlashCommandListener;
+import ltdjms.discord.panel.services.PanelSessionManager;
 import ltdjms.discord.panel.services.UserPanelService;
 import ltdjms.discord.panel.services.UserPanelView;
 import ltdjms.discord.shared.DomainError;
@@ -31,9 +32,11 @@ public class UserPanelCommandHandler implements SlashCommandListener.CommandHand
     private static final Color EMBED_COLOR = new Color(0x5865F2); // Discord blurple
 
     private final UserPanelService userPanelService;
+    private final PanelSessionManager panelSessionManager;
 
-    public UserPanelCommandHandler(UserPanelService userPanelService) {
+    public UserPanelCommandHandler(UserPanelService userPanelService, PanelSessionManager panelSessionManager) {
         this.userPanelService = userPanelService;
+        this.panelSessionManager = panelSessionManager;
     }
 
     @Override
@@ -59,7 +62,10 @@ public class UserPanelCommandHandler implements SlashCommandListener.CommandHand
                         Button.secondary(BUTTON_TOKEN_HISTORY, "📜 查看遊戲代幣流水")
                 )
                 .setEphemeral(true)
-                .queue();
+                .queue(hook -> {
+                    // Register session for real-time updates upon successful reply
+                    panelSessionManager.registerSession(guildId, userId, hook, event.getUser().getAsMention());
+                });
 
         BotErrorHandler.logSuccess(event, String.format("currency=%d, tokens=%d",
                 panelView.currencyBalance(), panelView.gameTokens()));

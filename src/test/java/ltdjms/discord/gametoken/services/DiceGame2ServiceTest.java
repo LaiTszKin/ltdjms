@@ -1,11 +1,15 @@
 package ltdjms.discord.gametoken.services;
 
+import ltdjms.discord.currency.domain.CurrencyTransaction;
 import ltdjms.discord.currency.domain.MemberCurrencyAccount;
 import ltdjms.discord.currency.persistence.MemberCurrencyAccountRepository;
+import ltdjms.discord.currency.services.CurrencyTransactionService;
 import ltdjms.discord.gametoken.domain.DiceGame2Config;
 import ltdjms.discord.gametoken.services.DiceGame2Service.DiceGame2Result;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
+import ltdjms.discord.shared.events.DomainEvent;
+import ltdjms.discord.shared.events.DomainEventPublisher;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -51,6 +55,52 @@ class DiceGame2ServiceTest {
         @Override
         public int nextInt(int bound) {
             return values.next();
+        }
+    }
+
+    /**
+     * A stub transaction service for testing.
+     */
+    static class StubCurrencyTransactionService extends CurrencyTransactionService {
+        private CurrencyTransaction lastTransaction;
+        private int recordCallCount = 0;
+
+        StubCurrencyTransactionService() {
+            super(null); // No repository needed for stub
+        }
+
+        @Override
+        public CurrencyTransaction recordTransaction(
+                long guildId,
+                long userId,
+                long amount,
+                long balanceAfter,
+                CurrencyTransaction.Source source,
+                String description
+        ) {
+            recordCallCount++;
+            lastTransaction = new CurrencyTransaction(
+                    1L, guildId, userId, amount, balanceAfter, source, description, Instant.now()
+            );
+            return lastTransaction;
+        }
+
+        CurrencyTransaction getLastTransaction() {
+            return lastTransaction;
+        }
+
+        int getRecordCallCount() {
+            return recordCallCount;
+        }
+    }
+    
+    /**
+     * A stub event publisher for testing.
+     */
+    static class StubDomainEventPublisher extends DomainEventPublisher {
+        @Override
+        public void publish(DomainEvent event) {
+            // no-op
         }
     }
 
@@ -124,7 +174,7 @@ class DiceGame2ServiceTest {
             List<Integer> randomValues = List.of(0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 0, 1, 2);
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Service service = new DiceGame2Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher(), random);
 
             // When
             List<Integer> rolls = service.rollDice(15);
@@ -140,7 +190,7 @@ class DiceGame2ServiceTest {
             List<Integer> randomValues = List.of(0, 1, 2, 3, 4, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0);
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Service service = new DiceGame2Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher(), random);
 
             // When
             List<Integer> rolls = service.rollDice(15);
@@ -156,7 +206,7 @@ class DiceGame2ServiceTest {
             List<Integer> randomValues = List.of(0, 1, 2, 3, 4, 5, 0, 1, 2);
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Service service = new DiceGame2Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher(), random);
 
             // When - 3 tokens = 9 dice
             List<Integer> rolls = service.rollDice(9);
@@ -179,7 +229,8 @@ class DiceGame2ServiceTest {
             List<Integer> randomValues = List.of(0, 2, 4, 0, 2, 4, 0, 2, 4, 0, 2, 4, 0, 2, 5);
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame2Service service = new DiceGame2Service(repository, random);
+            StubCurrencyTransactionService transactionService = new StubCurrencyTransactionService();
+            DiceGame2Service service = new DiceGame2Service(repository, transactionService, new StubDomainEventPublisher(), random);
             DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
@@ -188,6 +239,10 @@ class DiceGame2ServiceTest {
             // Then - total = 1+3+5+1+3+5+1+3+5+1+3+5+1+3+6 = 46, reward = 46 × 20,000 = 920,000
             assertThat(result.diceRolls()).containsExactly(1, 3, 5, 1, 3, 5, 1, 3, 5, 1, 3, 5, 1, 3, 6);
             assertThat(result.totalReward()).isEqualTo(920_000L);
+            
+            // Verify transaction
+            assertThat(transactionService.getRecordCallCount()).isEqualTo(1);
+            assertThat(transactionService.getLastTransaction().source()).isEqualTo(CurrencyTransaction.Source.DICE_GAME_2_WIN);
         }
 
         @Test
@@ -200,7 +255,7 @@ class DiceGame2ServiceTest {
             List<Integer> randomValues = List.of(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Service service = new DiceGame2Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher(), random);
             DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
@@ -226,7 +281,7 @@ class DiceGame2ServiceTest {
             List<Integer> randomValues = List.of(0, 1, 2, 5, 5, 4, 3, 0, 5, 4, 3, 0, 5, 4, 3);
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Service service = new DiceGame2Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher(), random);
             DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
@@ -249,7 +304,7 @@ class DiceGame2ServiceTest {
             List<Integer> randomValues = List.of(0, 1, 2, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Service service = new DiceGame2Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher(), random);
             DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
@@ -269,7 +324,7 @@ class DiceGame2ServiceTest {
             List<Integer> randomValues = List.of(3, 4, 5, 0, 2, 4, 0, 2, 4, 0, 2, 4, 0, 2, 4);
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Service service = new DiceGame2Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher(), random);
             DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
@@ -294,7 +349,7 @@ class DiceGame2ServiceTest {
             List<Integer> randomValues = List.of(0, 1, 2, 5, 3, 4, 5, 0, 2, 4, 0, 2, 4, 1, 3);
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Service service = new DiceGame2Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher(), random);
             DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
@@ -320,7 +375,7 @@ class DiceGame2ServiceTest {
             List<Integer> randomValues = List.of(0, 0, 0, 5, 4, 3, 2, 5, 4, 3, 2, 5, 4, 3, 2);
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Service service = new DiceGame2Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher(), random);
             DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
@@ -342,7 +397,7 @@ class DiceGame2ServiceTest {
             List<Integer> randomValues = List.of(4, 4, 4, 0, 2, 5, 0, 2, 5, 0, 2, 5, 0, 2, 5);
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Service service = new DiceGame2Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher(), random);
             DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
@@ -362,7 +417,7 @@ class DiceGame2ServiceTest {
             List<Integer> randomValues = List.of(0, 0, 0, 5, 1, 1, 1, 5, 2, 5, 3, 5, 4, 5, 5);
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Service service = new DiceGame2Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher(), random);
             DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
@@ -385,7 +440,7 @@ class DiceGame2ServiceTest {
             List<Integer> randomValues = List.of(0, 0, 0, 0, 2, 4, 2, 4, 2, 4, 2, 4, 2, 4, 2);
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Service service = new DiceGame2Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher(), random);
             DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
@@ -408,7 +463,7 @@ class DiceGame2ServiceTest {
             List<Integer> randomValues = List.of(1, 1, 1, 1, 1, 2, 4, 2, 4, 2, 4, 2, 4, 2, 4);
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Service service = new DiceGame2Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher(), random);
             DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
@@ -439,7 +494,7 @@ class DiceGame2ServiceTest {
             List<Integer> randomValues = List.of(0, 1, 2, 3, 4, 5, 0, 0, 0, 1, 1, 1, 0, 2, 5);
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Service service = new DiceGame2Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher(), random);
             DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
@@ -459,7 +514,7 @@ class DiceGame2ServiceTest {
             List<Integer> randomValues = List.of(0, 1, 2, 4, 4, 4, 5, 4, 3, 5, 4, 3, 5, 4, 3);
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Service service = new DiceGame2Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher(), random);
             DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
@@ -484,7 +539,7 @@ class DiceGame2ServiceTest {
             List<Integer> randomValues = List.of(0, 0, 0, 2, 4, 5, 5, 5, 2, 4, 0, 2, 4, 0, 2);
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Service service = new DiceGame2Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher(), random);
             DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
@@ -507,7 +562,7 @@ class DiceGame2ServiceTest {
             List<Integer> randomValues = List.of(5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5);
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Service service = new DiceGame2Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher(), random);
             DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
@@ -530,7 +585,7 @@ class DiceGame2ServiceTest {
             List<Integer> randomValues = List.of(0, 1, 2, 3, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5);
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Service service = new DiceGame2Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher(), random);
             DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
@@ -550,7 +605,7 @@ class DiceGame2ServiceTest {
             List<Integer> randomValues = List.of(3, 3, 3, 0, 2, 4, 0, 2, 4, 0, 2, 4, 0, 2, 4);
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Service service = new DiceGame2Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher(), random);
             DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
@@ -573,7 +628,7 @@ class DiceGame2ServiceTest {
             List<Integer> randomValues = List.of(0, 1, 2, 3, 4, 5, 0, 1, 2);
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Service service = new DiceGame2Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher(), random);
             DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When - 3 tokens = 9 dice
@@ -591,7 +646,7 @@ class DiceGame2ServiceTest {
             List<Integer> randomValues = List.of(0, 1, 2, 3, 4, 5);
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Service service = new DiceGame2Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher(), random);
             DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
@@ -648,7 +703,7 @@ class DiceGame2ServiceTest {
             List<Integer> randomValues = List.of(0, 2, 4, 0, 2, 4, 0, 2, 4, 0, 2, 4, 0, 2, 5);
             PredictableRandom random = new PredictableRandom(randomValues);
             StubCurrencyRepository repository = new StubCurrencyRepository(1_000_000L);
-            DiceGame2Service service = new DiceGame2Service(repository, random);
+            DiceGame2Service service = new DiceGame2Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher(), random);
             DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
@@ -669,7 +724,7 @@ class DiceGame2ServiceTest {
         void shouldComplete500GamesWithin200ms() {
             // Given
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame2Service service = new DiceGame2Service(repository);
+            DiceGame2Service service = new DiceGame2Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher());
             DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When
@@ -691,7 +746,7 @@ class DiceGame2ServiceTest {
         void shouldAnalyzeRewardsEfficientlyForLargeDiceCounts() {
             // Given
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame2Service service = new DiceGame2Service(repository);
+            DiceGame2Service service = new DiceGame2Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher());
             DiceGame2Config config = DiceGame2Config.createDefault(TEST_GUILD_ID);
 
             // When - play with 60 dice (simulating 20 tokens spent)

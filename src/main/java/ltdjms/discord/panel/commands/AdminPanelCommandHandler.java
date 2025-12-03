@@ -2,6 +2,7 @@ package ltdjms.discord.panel.commands;
 
 import ltdjms.discord.currency.bot.SlashCommandListener;
 import ltdjms.discord.panel.services.AdminPanelService;
+import ltdjms.discord.panel.services.AdminPanelSessionManager;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
@@ -27,9 +28,12 @@ public class AdminPanelCommandHandler implements SlashCommandListener.CommandHan
     public static final String BUTTON_GAME_MANAGEMENT = "admin_panel_games";
 
     private final AdminPanelService adminPanelService;
+    private final AdminPanelSessionManager adminPanelSessionManager;
 
-    public AdminPanelCommandHandler(AdminPanelService adminPanelService) {
+    public AdminPanelCommandHandler(AdminPanelService adminPanelService,
+                                    AdminPanelSessionManager adminPanelSessionManager) {
         this.adminPanelService = adminPanelService;
+        this.adminPanelSessionManager = adminPanelSessionManager;
     }
 
     @Override
@@ -48,10 +52,12 @@ public class AdminPanelCommandHandler implements SlashCommandListener.CommandHan
                         Button.primary(BUTTON_GAME_MANAGEMENT, "🎲 遊戲設定管理")
                 )
                 .setEphemeral(true)
-                .queue();
-
-        LOG.info("Admin panel opened for guildId={} by userId={}",
-                guildId, event.getUser().getIdLong());
+                .queue(hook -> {
+                    long adminId = event.getUser().getIdLong();
+                    // 註冊管理面板 session，之後可以透過 hook 安全地更新這則 ephemeral 面板訊息
+                    adminPanelSessionManager.registerSession(guildId, adminId, hook);
+                    LOG.info("Admin panel opened for guildId={} by userId={}", guildId, adminId);
+                });
     }
 
     private MessageEmbed buildMainPanelEmbed(String currencyIcon) {

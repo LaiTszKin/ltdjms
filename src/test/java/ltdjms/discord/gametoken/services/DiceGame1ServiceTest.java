@@ -1,11 +1,15 @@
 package ltdjms.discord.gametoken.services;
 
+import ltdjms.discord.currency.domain.CurrencyTransaction;
 import ltdjms.discord.currency.domain.MemberCurrencyAccount;
 import ltdjms.discord.currency.persistence.MemberCurrencyAccountRepository;
+import ltdjms.discord.currency.services.CurrencyTransactionService;
 import ltdjms.discord.gametoken.domain.DiceGame1Config;
 import ltdjms.discord.gametoken.services.DiceGame1Service.DiceGameResult;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
+import ltdjms.discord.shared.events.DomainEvent;
+import ltdjms.discord.shared.events.DomainEventPublisher;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -40,6 +44,52 @@ class DiceGame1ServiceTest {
         @Override
         public int nextInt(int bound) {
             return values.next();
+        }
+    }
+
+    /**
+     * A stub transaction service for testing.
+     */
+    static class StubCurrencyTransactionService extends CurrencyTransactionService {
+        private CurrencyTransaction lastTransaction;
+        private int recordCallCount = 0;
+
+        StubCurrencyTransactionService() {
+            super(null); // No repository needed for stub
+        }
+
+        @Override
+        public CurrencyTransaction recordTransaction(
+                long guildId,
+                long userId,
+                long amount,
+                long balanceAfter,
+                CurrencyTransaction.Source source,
+                String description
+        ) {
+            recordCallCount++;
+            lastTransaction = new CurrencyTransaction(
+                    1L, guildId, userId, amount, balanceAfter, source, description, Instant.now()
+            );
+            return lastTransaction;
+        }
+
+        CurrencyTransaction getLastTransaction() {
+            return lastTransaction;
+        }
+
+        int getRecordCallCount() {
+            return recordCallCount;
+        }
+    }
+    
+    /**
+     * A stub event publisher for testing.
+     */
+    static class StubDomainEventPublisher extends DomainEventPublisher {
+        @Override
+        public void publish(DomainEvent event) {
+            // no-op
         }
     }
 
@@ -112,7 +162,7 @@ class DiceGame1ServiceTest {
             // Given - predictable random that returns 0, 1, 2, 3, 4 (resulting in dice values 1, 2, 3, 4, 5)
             PredictableRandom random = new PredictableRandom(List.of(0, 1, 2, 3, 4));
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame1Service service = new DiceGame1Service(repository, random);
+            DiceGame1Service service = new DiceGame1Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher(), random);
 
             // When
             List<Integer> rolls = service.rollDice(5);
@@ -128,7 +178,7 @@ class DiceGame1ServiceTest {
             // Given
             PredictableRandom random = new PredictableRandom(List.of(0, 1, 2));
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame1Service service = new DiceGame1Service(repository, random);
+            DiceGame1Service service = new DiceGame1Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher(), random);
 
             // When
             List<Integer> rolls = service.rollDice(3);
@@ -148,7 +198,7 @@ class DiceGame1ServiceTest {
         void shouldCalculateCorrectTotalReward() {
             // Given
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame1Service service = new DiceGame1Service(repository);
+            DiceGame1Service service = new DiceGame1Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher());
             List<Integer> rolls = List.of(1, 2, 3, 4, 5);
             // Expected: 1*250000 + 2*250000 + 3*250000 + 4*250000 + 5*250000 = 15*250000 = 3,750,000
 
@@ -164,7 +214,7 @@ class DiceGame1ServiceTest {
         void shouldCalculateMaxReward() {
             // Given
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame1Service service = new DiceGame1Service(repository);
+            DiceGame1Service service = new DiceGame1Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher());
             List<Integer> rolls = List.of(6, 6, 6, 6, 6);
             // Expected: 6*250000 * 5 = 7,500,000
 
@@ -180,7 +230,7 @@ class DiceGame1ServiceTest {
         void shouldCalculateMinReward() {
             // Given
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame1Service service = new DiceGame1Service(repository);
+            DiceGame1Service service = new DiceGame1Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher());
             List<Integer> rolls = List.of(1, 1, 1, 1, 1);
             // Expected: 1*250000 * 5 = 1,250,000
 
@@ -196,7 +246,7 @@ class DiceGame1ServiceTest {
         void shouldCalculateRewardWithConfiguredMultiplier() {
             // Given
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame1Service service = new DiceGame1Service(repository);
+            DiceGame1Service service = new DiceGame1Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher());
             List<Integer> rolls = List.of(1, 2, 3, 4, 5);
             long customMultiplier = 500_000L;  // Double the default
             // Expected: (1+2+3+4+5) * 500000 = 15 * 500000 = 7,500,000
@@ -219,7 +269,8 @@ class DiceGame1ServiceTest {
             // Given - predictable random returns 0,1,2,3,4 resulting in dice 1,2,3,4,5
             PredictableRandom random = new PredictableRandom(List.of(0, 1, 2, 3, 4));
             StubCurrencyRepository repository = new StubCurrencyRepository(1000L);
-            DiceGame1Service service = new DiceGame1Service(repository, random);
+            StubCurrencyTransactionService transactionService = new StubCurrencyTransactionService();
+            DiceGame1Service service = new DiceGame1Service(repository, transactionService, new StubDomainEventPublisher(), random);
             DiceGame1Config config = DiceGame1Config.createDefault(TEST_GUILD_ID);
 
             // When
@@ -229,6 +280,13 @@ class DiceGame1ServiceTest {
             assertThat(result.diceRolls()).containsExactly(1, 2, 3, 4, 5);
             assertThat(result.totalReward()).isEqualTo(3_750_000L);
             assertThat(result.previousBalance()).isEqualTo(1000L);
+            
+            // Verify transaction
+            assertThat(transactionService.getRecordCallCount()).isEqualTo(1);
+            CurrencyTransaction tx = transactionService.getLastTransaction();
+            assertThat(tx.amount()).isEqualTo(3_750_000L);
+            assertThat(tx.balanceAfter()).isEqualTo(3_751_000L);
+            assertThat(tx.source()).isEqualTo(CurrencyTransaction.Source.DICE_GAME_1_WIN);
         }
 
         @Test
@@ -238,7 +296,7 @@ class DiceGame1ServiceTest {
             // Random returns all 5s, resulting in dice all showing 6
             PredictableRandom random = new PredictableRandom(List.of(5, 5, 5, 5, 5));
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame1Service service = new DiceGame1Service(repository, random);
+            DiceGame1Service service = new DiceGame1Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher(), random);
             DiceGame1Config config = DiceGame1Config.createDefault(TEST_GUILD_ID);
 
             // When
@@ -254,7 +312,7 @@ class DiceGame1ServiceTest {
             // Given - predictable random returns 0,1,2,3,4 resulting in dice 1,2,3,4,5
             PredictableRandom random = new PredictableRandom(List.of(0, 1, 2, 3, 4));
             StubCurrencyRepository repository = new StubCurrencyRepository(1000L);
-            DiceGame1Service service = new DiceGame1Service(repository, random);
+            DiceGame1Service service = new DiceGame1Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher(), random);
 
             DiceGame1Config config = DiceGame1Config.createDefault(TEST_GUILD_ID)
                     .withRewardPerDiceValue(100_000L);  // Lower than default
@@ -275,7 +333,7 @@ class DiceGame1ServiceTest {
             // Given - high roller configuration with 1M per dice value
             PredictableRandom random = new PredictableRandom(List.of(5, 5, 5, 5, 5)); // all 6s
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame1Service service = new DiceGame1Service(repository, random);
+            DiceGame1Service service = new DiceGame1Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher(), random);
 
             DiceGame1Config highRollerConfig = DiceGame1Config.createDefault(TEST_GUILD_ID)
                     .withRewardPerDiceValue(1_000_000L);
@@ -294,7 +352,8 @@ class DiceGame1ServiceTest {
             // Given - special event with free plays but no reward
             PredictableRandom random = new PredictableRandom(List.of(0, 1, 2, 3, 4));
             StubCurrencyRepository repository = new StubCurrencyRepository(5000L);
-            DiceGame1Service service = new DiceGame1Service(repository, random);
+            StubCurrencyTransactionService transactionService = new StubCurrencyTransactionService();
+            DiceGame1Service service = new DiceGame1Service(repository, transactionService, new StubDomainEventPublisher(), random);
 
             DiceGame1Config zeroRewardConfig = new DiceGame1Config(
                     TEST_GUILD_ID, 1L, 10L, 0L,
@@ -308,6 +367,9 @@ class DiceGame1ServiceTest {
             assertThat(result.totalReward()).isEqualTo(0L);
             assertThat(result.previousBalance()).isEqualTo(5000L);
             assertThat(result.newBalance()).isEqualTo(5000L);
+            
+            // Verify NO transaction recorded
+            assertThat(transactionService.getRecordCallCount()).isEqualTo(0);
         }
 
         @Test
@@ -316,7 +378,7 @@ class DiceGame1ServiceTest {
             // Given - 7 tokens = 7 dice
             PredictableRandom random = new PredictableRandom(List.of(0, 1, 2, 3, 4, 5, 0)); // 7 values
             StubCurrencyRepository repository = new StubCurrencyRepository(1000L);
-            DiceGame1Service service = new DiceGame1Service(repository, random);
+            DiceGame1Service service = new DiceGame1Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher(), random);
             DiceGame1Config config = DiceGame1Config.createDefault(TEST_GUILD_ID);
 
             // When
@@ -367,7 +429,7 @@ class DiceGame1ServiceTest {
         void shouldComplete1000GamesWithin100ms() {
             // Given
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame1Service service = new DiceGame1Service(repository);
+            DiceGame1Service service = new DiceGame1Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher());
             DiceGame1Config config = DiceGame1Config.createDefault(TEST_GUILD_ID);
 
             // When
@@ -389,7 +451,7 @@ class DiceGame1ServiceTest {
         void shouldCalculateRewardsEfficientlyForLargeDiceCounts() {
             // Given
             StubCurrencyRepository repository = new StubCurrencyRepository(0L);
-            DiceGame1Service service = new DiceGame1Service(repository);
+            DiceGame1Service service = new DiceGame1Service(repository, new StubCurrencyTransactionService(), new StubDomainEventPublisher());
             DiceGame1Config config = DiceGame1Config.createDefault(TEST_GUILD_ID);
 
             // When - play with 100 dice (simulating high-roller scenario)

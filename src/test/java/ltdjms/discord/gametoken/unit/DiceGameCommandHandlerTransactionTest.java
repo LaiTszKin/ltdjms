@@ -17,6 +17,7 @@ import ltdjms.discord.gametoken.services.GameTokenService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
+import ltdjms.discord.shared.events.DomainEventPublisher;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
@@ -59,7 +60,7 @@ class DiceGameCommandHandlerTransactionTest {
 
             StubGameTokenAccountRepository accountRepository =
                     new StubGameTokenAccountRepository(previousTokens);
-            GameTokenService tokenService = new GameTokenService(accountRepository);
+            GameTokenService tokenService = new GameTokenService(accountRepository, mock(DomainEventPublisher.class));
             DiceGame1Service diceGameService = mock(DiceGame1Service.class);
             ltdjms.discord.gametoken.persistence.DiceGame1ConfigRepository configRepository =
                     mock(ltdjms.discord.gametoken.persistence.DiceGame1ConfigRepository.class);
@@ -125,7 +126,7 @@ class DiceGameCommandHandlerTransactionTest {
 
             StubGameTokenAccountRepository accountRepository =
                     new StubGameTokenAccountRepository(previousTokens);
-            GameTokenService tokenService = new GameTokenService(accountRepository);
+            GameTokenService tokenService = new GameTokenService(accountRepository, mock(DomainEventPublisher.class));
             DiceGame1Service diceGameService = mock(DiceGame1Service.class);
             ltdjms.discord.gametoken.persistence.DiceGame1ConfigRepository configRepository =
                     mock(ltdjms.discord.gametoken.persistence.DiceGame1ConfigRepository.class);
@@ -183,7 +184,7 @@ class DiceGameCommandHandlerTransactionTest {
 
             StubGameTokenAccountRepository accountRepository =
                     new StubGameTokenAccountRepository(previousTokens);
-            GameTokenService tokenService = new GameTokenService(accountRepository);
+            GameTokenService tokenService = new GameTokenService(accountRepository, mock(DomainEventPublisher.class));
             DiceGame1Service diceGameService = mock(DiceGame1Service.class);
             ltdjms.discord.gametoken.persistence.DiceGame1ConfigRepository configRepository =
                     mock(ltdjms.discord.gametoken.persistence.DiceGame1ConfigRepository.class);
@@ -228,7 +229,7 @@ class DiceGameCommandHandlerTransactionTest {
 
             StubGameTokenAccountRepository accountRepository =
                     new StubGameTokenAccountRepository(previousTokens);
-            GameTokenService tokenService = new GameTokenService(accountRepository);
+            GameTokenService tokenService = new GameTokenService(accountRepository, mock(DomainEventPublisher.class));
             DiceGame1Service diceGameService = mock(DiceGame1Service.class);
             ltdjms.discord.gametoken.persistence.DiceGame1ConfigRepository configRepository =
                     mock(ltdjms.discord.gametoken.persistence.DiceGame1ConfigRepository.class);
@@ -272,7 +273,7 @@ class DiceGameCommandHandlerTransactionTest {
 
             StubGameTokenAccountRepository accountRepository =
                     new StubGameTokenAccountRepository(previousTokens);
-            GameTokenService tokenService = new GameTokenService(accountRepository);
+            GameTokenService tokenService = new GameTokenService(accountRepository, mock(DomainEventPublisher.class));
             DiceGame1Service diceGameService = mock(DiceGame1Service.class);
             ltdjms.discord.gametoken.persistence.DiceGame1ConfigRepository configRepository =
                     mock(ltdjms.discord.gametoken.persistence.DiceGame1ConfigRepository.class);
@@ -319,7 +320,7 @@ class DiceGameCommandHandlerTransactionTest {
 
             StubGameTokenAccountRepository accountRepository =
                     new StubGameTokenAccountRepository(previousTokens);
-            GameTokenService tokenService = new GameTokenService(accountRepository);
+            GameTokenService tokenService = new GameTokenService(accountRepository, mock(DomainEventPublisher.class));
             DiceGame1Service diceGameService = mock(DiceGame1Service.class);
             ltdjms.discord.gametoken.persistence.DiceGame1ConfigRepository configRepository =
                     mock(ltdjms.discord.gametoken.persistence.DiceGame1ConfigRepository.class);
@@ -385,7 +386,7 @@ class DiceGameCommandHandlerTransactionTest {
 
             StubGameTokenAccountRepository accountRepository =
                     new StubGameTokenAccountRepository(previousTokens);
-            GameTokenService tokenService = new GameTokenService(accountRepository);
+            GameTokenService tokenService = new GameTokenService(accountRepository, mock(DomainEventPublisher.class));
             DiceGame2Service diceGameService = mock(DiceGame2Service.class);
             ltdjms.discord.gametoken.persistence.DiceGame2ConfigRepository configRepository =
                     mock(ltdjms.discord.gametoken.persistence.DiceGame2ConfigRepository.class);
@@ -442,7 +443,7 @@ class DiceGameCommandHandlerTransactionTest {
 
             StubGameTokenAccountRepository accountRepository =
                     new StubGameTokenAccountRepository(previousTokens);
-            GameTokenService tokenService = new GameTokenService(accountRepository);
+            GameTokenService tokenService = new GameTokenService(accountRepository, mock(DomainEventPublisher.class));
             DiceGame2Service diceGameService = mock(DiceGame2Service.class);
             ltdjms.discord.gametoken.persistence.DiceGame2ConfigRepository configRepository =
                     mock(ltdjms.discord.gametoken.persistence.DiceGame2ConfigRepository.class);
@@ -498,7 +499,7 @@ class DiceGameCommandHandlerTransactionTest {
 
             StubGameTokenAccountRepository accountRepository =
                     new StubGameTokenAccountRepository(previousTokens);
-            GameTokenService tokenService = new GameTokenService(accountRepository);
+            GameTokenService tokenService = new GameTokenService(accountRepository, mock(DomainEventPublisher.class));
             DiceGame2Service diceGameService = mock(DiceGame2Service.class);
             ltdjms.discord.gametoken.persistence.DiceGame2ConfigRepository configRepository =
                     mock(ltdjms.discord.gametoken.persistence.DiceGame2ConfigRepository.class);
@@ -539,7 +540,7 @@ class DiceGameCommandHandlerTransactionTest {
 
             StubGameTokenAccountRepository accountRepository =
                     new StubGameTokenAccountRepository(previousTokens);
-            GameTokenService tokenService = new GameTokenService(accountRepository);
+            GameTokenService tokenService = new GameTokenService(accountRepository, mock(DomainEventPublisher.class));
             DiceGame2Service diceGameService = mock(DiceGame2Service.class);
             ltdjms.discord.gametoken.persistence.DiceGame2ConfigRepository configRepository =
                     mock(ltdjms.discord.gametoken.persistence.DiceGame2ConfigRepository.class);

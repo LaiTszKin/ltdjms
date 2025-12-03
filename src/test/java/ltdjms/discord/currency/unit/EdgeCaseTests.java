@@ -12,6 +12,7 @@ import ltdjms.discord.currency.services.CurrencyTransactionService;
 import ltdjms.discord.currency.services.DefaultBalanceService;
 import ltdjms.discord.currency.services.EmojiValidator;
 import ltdjms.discord.currency.services.NoOpEmojiValidator;
+import ltdjms.discord.shared.events.DomainEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -45,6 +46,9 @@ class EdgeCaseTests {
 
     @Mock
     private CurrencyTransactionService transactionService;
+    
+    @Mock
+    private DomainEventPublisher eventPublisher;
 
     // ============================================================
     // Invalid Amount Tests
@@ -58,7 +62,8 @@ class EdgeCaseTests {
 
         @BeforeEach
         void setUp() {
-            adjustmentService = new BalanceAdjustmentService(accountRepository, configRepository, transactionService);
+            adjustmentService = new BalanceAdjustmentService(
+                    accountRepository, configRepository, transactionService, eventPublisher);
         }
 
         @Test
@@ -229,7 +234,8 @@ class EdgeCaseTests {
         @BeforeEach
         void setUp() {
             balanceService = new DefaultBalanceService(accountRepository, configRepository);
-            adjustmentService = new BalanceAdjustmentService(accountRepository, configRepository, transactionService);
+            adjustmentService = new BalanceAdjustmentService(
+                    accountRepository, configRepository, transactionService, eventPublisher);
         }
 
         @Test
@@ -375,7 +381,8 @@ class EdgeCaseTests {
 
         @BeforeEach
         void setUp() {
-            adjustmentService = new BalanceAdjustmentService(accountRepository, configRepository, transactionService);
+            adjustmentService = new BalanceAdjustmentService(
+                    accountRepository, configRepository, transactionService, eventPublisher);
         }
 
         @Test

@@ -7,6 +7,8 @@ import ltdjms.discord.gametoken.services.GameTokenService;
 import ltdjms.discord.gametoken.services.GameTokenService.TokenAdjustmentResult;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
+import ltdjms.discord.shared.events.DomainEventPublisher;
+import ltdjms.discord.shared.events.GameTokenChangedEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -32,12 +34,15 @@ class GameTokenServiceTest {
 
     @Mock
     private GameTokenAccountRepository accountRepository;
+    
+    @Mock
+    private DomainEventPublisher eventPublisher;
 
     private GameTokenService tokenService;
 
     @BeforeEach
     void setUp() {
-        tokenService = new GameTokenService(accountRepository);
+        tokenService = new GameTokenService(accountRepository, eventPublisher);
     }
 
     @Test
@@ -88,6 +93,9 @@ class GameTokenServiceTest {
         assertThat(result.previousTokens()).isEqualTo(100L);
         assertThat(result.newTokens()).isEqualTo(150L);
         assertThat(result.adjustment()).isEqualTo(50L);
+        
+        // Verify event
+        verify(eventPublisher).publish(new GameTokenChangedEvent(TEST_GUILD_ID, TEST_USER_ID, 150L));
     }
 
     @Test
@@ -108,6 +116,9 @@ class GameTokenServiceTest {
         assertThat(result.previousTokens()).isEqualTo(100L);
         assertThat(result.newTokens()).isEqualTo(50L);
         assertThat(result.adjustment()).isEqualTo(-50L);
+        
+        // Verify event
+        verify(eventPublisher).publish(new GameTokenChangedEvent(TEST_GUILD_ID, TEST_USER_ID, 50L));
     }
 
     @Test
@@ -124,6 +135,9 @@ class GameTokenServiceTest {
         // When/Then
         assertThatThrownBy(() -> tokenService.adjustTokens(TEST_GUILD_ID, TEST_USER_ID, -50L))
                 .isInstanceOf(InsufficientTokensException.class);
+        
+        // Verify NO event
+        verifyNoInteractions(eventPublisher);
     }
 
     @Test
@@ -172,6 +186,9 @@ class GameTokenServiceTest {
         // Then
         assertThat(result.tokens()).isEqualTo(70L);
         verify(accountRepository).adjustTokens(TEST_GUILD_ID, TEST_USER_ID, -30L);
+        
+        // Verify event
+        verify(eventPublisher).publish(new GameTokenChangedEvent(TEST_GUILD_ID, TEST_USER_ID, 70L));
     }
 
     @Test
@@ -249,6 +266,9 @@ class GameTokenServiceTest {
             assertThat(result.getValue().previousTokens()).isEqualTo(100L);
             assertThat(result.getValue().newTokens()).isEqualTo(150L);
             assertThat(result.getValue().adjustment()).isEqualTo(50L);
+            
+            // Verify event
+            verify(eventPublisher).publish(new GameTokenChangedEvent(TEST_GUILD_ID, TEST_USER_ID, 150L));
         }
 
         @Test
@@ -271,6 +291,9 @@ class GameTokenServiceTest {
             assertThat(result.getValue().previousTokens()).isEqualTo(100L);
             assertThat(result.getValue().newTokens()).isEqualTo(50L);
             assertThat(result.getValue().adjustment()).isEqualTo(-50L);
+            
+            // Verify event
+            verify(eventPublisher).publish(new GameTokenChangedEvent(TEST_GUILD_ID, TEST_USER_ID, 50L));
         }
 
         @Test
@@ -292,6 +315,9 @@ class GameTokenServiceTest {
             // Then
             assertThat(result.isErr()).isTrue();
             assertThat(result.getError().category()).isEqualTo(DomainError.Category.INSUFFICIENT_TOKENS);
+            
+            // Verify NO event
+            verifyNoInteractions(eventPublisher);
         }
 
         @Test
@@ -336,6 +362,9 @@ class GameTokenServiceTest {
             // Then
             assertThat(result.isOk()).isTrue();
             assertThat(result.getValue().tokens()).isEqualTo(70L);
+            
+            // Verify event
+            verify(eventPublisher).publish(new GameTokenChangedEvent(TEST_GUILD_ID, TEST_USER_ID, 70L));
         }
 
         @Test
@@ -379,6 +408,9 @@ class GameTokenServiceTest {
             // Then
             assertThat(result.isErr()).isTrue();
             assertThat(result.getError().category()).isEqualTo(DomainError.Category.INSUFFICIENT_TOKENS);
+            
+            // Verify NO event
+            verifyNoInteractions(eventPublisher);
         }
     }
 }

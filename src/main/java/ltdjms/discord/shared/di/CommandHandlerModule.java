@@ -21,8 +21,11 @@ import ltdjms.discord.panel.commands.AdminPanelButtonHandler;
 import ltdjms.discord.panel.commands.AdminPanelCommandHandler;
 import ltdjms.discord.panel.commands.UserPanelButtonHandler;
 import ltdjms.discord.panel.commands.UserPanelCommandHandler;
+import ltdjms.discord.panel.services.AdminPanelSessionManager;
 import ltdjms.discord.panel.services.AdminPanelService;
+import ltdjms.discord.panel.services.PanelSessionManager;
 import ltdjms.discord.panel.services.UserPanelService;
+import ltdjms.discord.panel.services.UserPanelUpdateListener;
 
 import javax.inject.Singleton;
 
@@ -79,8 +82,29 @@ public class CommandHandlerModule {
 
     @Provides
     @Singleton
-    public UserPanelCommandHandler provideUserPanelCommandHandler(UserPanelService userPanelService) {
-        return new UserPanelCommandHandler(userPanelService);
+    public PanelSessionManager providePanelSessionManager() {
+        return new PanelSessionManager();
+    }
+
+    @Provides
+    @Singleton
+    public AdminPanelSessionManager provideAdminPanelSessionManager() {
+        return new AdminPanelSessionManager();
+    }
+    @Provides
+    @Singleton
+    public UserPanelUpdateListener provideUserPanelUpdateListener(
+            PanelSessionManager sessionManager,
+            UserPanelService userPanelService) {
+        return new UserPanelUpdateListener(sessionManager, userPanelService);
+    }
+
+    @Provides
+    @Singleton
+    public UserPanelCommandHandler provideUserPanelCommandHandler(
+            UserPanelService userPanelService,
+            PanelSessionManager panelSessionManager) {
+        return new UserPanelCommandHandler(userPanelService, panelSessionManager);
     }
 
     @Provides
@@ -107,14 +131,18 @@ public class CommandHandlerModule {
 
     @Provides
     @Singleton
-    public AdminPanelCommandHandler provideAdminPanelCommandHandler(AdminPanelService adminPanelService) {
-        return new AdminPanelCommandHandler(adminPanelService);
+    public AdminPanelCommandHandler provideAdminPanelCommandHandler(
+            AdminPanelService adminPanelService,
+            AdminPanelSessionManager adminPanelSessionManager) {
+        return new AdminPanelCommandHandler(adminPanelService, adminPanelSessionManager);
     }
 
     @Provides
     @Singleton
-    public AdminPanelButtonHandler provideAdminPanelButtonHandler(AdminPanelService adminPanelService) {
-        return new AdminPanelButtonHandler(adminPanelService);
+    public AdminPanelButtonHandler provideAdminPanelButtonHandler(
+            AdminPanelService adminPanelService,
+            AdminPanelSessionManager adminPanelSessionManager) {
+        return new AdminPanelButtonHandler(adminPanelService, adminPanelSessionManager);
     }
 
     @Provides

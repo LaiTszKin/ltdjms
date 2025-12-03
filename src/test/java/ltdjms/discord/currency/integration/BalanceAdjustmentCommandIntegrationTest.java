@@ -15,6 +15,7 @@ import ltdjms.discord.currency.services.CurrencyTransactionService;
 import ltdjms.discord.currency.services.DefaultBalanceService;
 import ltdjms.discord.currency.services.EmojiValidator;
 import ltdjms.discord.currency.services.NoOpEmojiValidator;
+import ltdjms.discord.shared.events.DomainEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -43,7 +44,8 @@ class BalanceAdjustmentCommandIntegrationTest extends PostgresIntegrationTestBas
         accountRepository = new JdbcMemberCurrencyAccountRepository(dataSource);
         CurrencyTransactionRepository transactionRepository = new JdbcCurrencyTransactionRepository(dataSource);
         CurrencyTransactionService transactionService = new CurrencyTransactionService(transactionRepository);
-        adjustmentService = new BalanceAdjustmentService(accountRepository, configRepository, transactionService);
+        DomainEventPublisher eventPublisher = new DomainEventPublisher();
+        adjustmentService = new BalanceAdjustmentService(accountRepository, configRepository, transactionService, eventPublisher);
         balanceService = new DefaultBalanceService(accountRepository, configRepository);
         EmojiValidator emojiValidator = new NoOpEmojiValidator();
         configService = new CurrencyConfigService(configRepository, emojiValidator);

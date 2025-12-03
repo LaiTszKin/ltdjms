@@ -12,6 +12,7 @@ import ltdjms.discord.currency.services.CurrencyTransactionService;
 import ltdjms.discord.currency.services.DefaultBalanceService;
 import ltdjms.discord.currency.services.EmojiValidator;
 import ltdjms.discord.currency.services.JdaEmojiValidator;
+import ltdjms.discord.shared.events.DomainEventPublisher;
 
 import javax.inject.Singleton;
 
@@ -55,7 +56,8 @@ public class CurrencyServiceModule {
     public BalanceAdjustmentService provideBalanceAdjustmentService(
             MemberCurrencyAccountRepository accountRepository,
             GuildCurrencyConfigRepository configRepository,
-            CurrencyTransactionService transactionService) {
-        return new BalanceAdjustmentService(accountRepository, configRepository, transactionService);
+            CurrencyTransactionService transactionService,
+            DomainEventPublisher eventPublisher) {
+        return new BalanceAdjustmentService(accountRepository, configRepository, transactionService, eventPublisher);
     }
 }

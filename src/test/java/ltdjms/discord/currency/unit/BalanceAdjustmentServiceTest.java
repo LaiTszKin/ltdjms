@@ -11,6 +11,8 @@ import ltdjms.discord.currency.services.BalanceAdjustmentService.BalanceAdjustme
 import ltdjms.discord.currency.services.CurrencyTransactionService;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
+import ltdjms.discord.shared.events.BalanceChangedEvent;
+import ltdjms.discord.shared.events.DomainEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -45,11 +47,15 @@ class BalanceAdjustmentServiceTest {
     @Mock
     private CurrencyTransactionService transactionService;
 
+    @Mock
+    private DomainEventPublisher eventPublisher;
+
     private BalanceAdjustmentService adjustmentService;
 
     @BeforeEach
     void setUp() {
-        adjustmentService = new BalanceAdjustmentService(accountRepository, configRepository, transactionService);
+        adjustmentService = new BalanceAdjustmentService(
+                accountRepository, configRepository, transactionService, eventPublisher);
     }
 
     @Test
@@ -71,6 +77,9 @@ class BalanceAdjustmentServiceTest {
         assertThat(result.previousBalance()).isEqualTo(100L);
         assertThat(result.newBalance()).isEqualTo(150L);
         assertThat(result.adjustment()).isEqualTo(50L);
+        
+        // Verify event published
+        verify(eventPublisher).publish(new BalanceChangedEvent(TEST_GUILD_ID, TEST_USER_ID, 150L));
     }
 
     @Test
@@ -92,6 +101,9 @@ class BalanceAdjustmentServiceTest {
         assertThat(result.previousBalance()).isEqualTo(100L);
         assertThat(result.newBalance()).isEqualTo(50L);
         assertThat(result.adjustment()).isEqualTo(-50L);
+        
+        // Verify event published
+        verify(eventPublisher).publish(new BalanceChangedEvent(TEST_GUILD_ID, TEST_USER_ID, 50L));
     }
 
     @Test
@@ -108,6 +120,9 @@ class BalanceAdjustmentServiceTest {
         // When/Then
         assertThatThrownBy(() -> adjustmentService.adjustBalance(TEST_GUILD_ID, TEST_USER_ID, -100L))
                 .isInstanceOf(NegativeBalanceException.class);
+        
+        // Verify NO event published
+        verifyNoInteractions(eventPublisher);
     }
 
     @Test
@@ -195,6 +210,9 @@ class BalanceAdjustmentServiceTest {
             assertThat(result.previousBalance()).isEqualTo(120L);
             assertThat(result.newBalance()).isEqualTo(500L);
             assertThat(result.adjustment()).isEqualTo(380L);
+            
+            // Verify event
+            verify(eventPublisher).publish(new BalanceChangedEvent(TEST_GUILD_ID, TEST_USER_ID, 500L));
         }
 
         @Test
@@ -294,6 +312,9 @@ class BalanceAdjustmentServiceTest {
             assertThat(result.getValue().previousBalance()).isEqualTo(100L);
             assertThat(result.getValue().newBalance()).isEqualTo(150L);
             assertThat(result.getValue().adjustment()).isEqualTo(50L);
+            
+            // Verify event
+            verify(eventPublisher).publish(new BalanceChangedEvent(TEST_GUILD_ID, TEST_USER_ID, 150L));
         }
 
         @Test
@@ -338,6 +359,9 @@ class BalanceAdjustmentServiceTest {
             // Then
             assertThat(result.isErr()).isTrue();
             assertThat(result.getError().category()).isEqualTo(DomainError.Category.INSUFFICIENT_BALANCE);
+            
+            // Verify NO event
+            verifyNoInteractions(eventPublisher);
         }
 
         @Test
@@ -464,6 +488,9 @@ class BalanceAdjustmentServiceTest {
                     eq(CurrencyTransaction.Source.ADMIN_ADJUSTMENT),
                     isNull()
             );
+            
+            // Verify event
+            verify(eventPublisher).publish(new BalanceChangedEvent(TEST_GUILD_ID, TEST_USER_ID, 500L));
         }
     }
 }

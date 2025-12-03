@@ -32,7 +32,11 @@ public record CurrencyTransaction(
      */
     public enum Source {
         /** Currency added/adjusted by an administrator via /adjust-balance or admin panel */
-        ADMIN_ADJUSTMENT("管理員調整");
+        ADMIN_ADJUSTMENT("管理員調整"),
+        /** Reward from winning Dice Game 1 */
+        DICE_GAME_1_WIN("骰子遊戲 1 獎勵"),
+        /** Reward from winning Dice Game 2 */
+        DICE_GAME_2_WIN("骰子遊戲 2 獎勵");
 
         private final String displayName;
 
