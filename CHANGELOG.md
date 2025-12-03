@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.8.1] - 2025-12-03
+
+### Added
+- 添加github workflow ci.yml，用於在每次 push 時自動執行編譯與測試，確保程式碼品質。
+
 ## [0.8.0] - 2025-12-03
 
 ### Added
