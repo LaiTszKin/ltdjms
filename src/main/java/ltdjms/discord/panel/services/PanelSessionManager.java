@@ -8,11 +8,17 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 /**
  * Manages active user panel sessions to allow real-time updates.
  */
 public class PanelSessionManager {
+
+    /**
+     * Data class holding session context for panel updates.
+     */
+    public record SessionContext(InteractionHook hook, String userMention, long userId) {}
 
     private static final Logger LOG = LoggerFactory.getLogger(PanelSessionManager.class);
     // 15 minutes TTL (interaction tokens expire after 15 mins)
@@ -57,6 +63,65 @@ public class PanelSessionManager {
                 }
             }
         }
+    }
+
+    /**
+     * Updates all panels for a guild. Used when guild-wide settings change
+     * (e.g., currency name/icon changes).
+     *
+     * @param guildId  the Discord guild ID
+     * @param consumer action to perform on each InteractionHook and user mention
+     */
+    public void updatePanelsByGuild(long guildId, BiConsumer<InteractionHook, String> consumer) {
+        String guildPrefix = guildId + ":";
+        sessions.entrySet().removeIf(entry -> {
+            String key = entry.getKey();
+            if (!key.startsWith(guildPrefix)) {
+                return false;
+            }
+            PanelSession session = entry.getValue();
+            if (isExpired(session)) {
+                LOG.debug("Removed expired session for key={}", key);
+                return true;
+            }
+            try {
+                consumer.accept(session.hook(), session.userMention());
+            } catch (Exception e) {
+                LOG.warn("Failed to update session for key={}. Removing session.", key, e);
+                return true;
+            }
+            return false;
+        });
+    }
+
+    /**
+     * Updates all panels for a guild with full session context (including userId).
+     * Used when guild-wide settings change and the updater needs user IDs.
+     *
+     * @param guildId  the Discord guild ID
+     * @param consumer action to perform on each session context
+     */
+    public void updatePanelsByGuildWithContext(long guildId, Consumer<SessionContext> consumer) {
+        String guildPrefix = guildId + ":";
+        sessions.entrySet().removeIf(entry -> {
+            String key = entry.getKey();
+            if (!key.startsWith(guildPrefix)) {
+                return false;
+            }
+            PanelSession session = entry.getValue();
+            if (isExpired(session)) {
+                LOG.debug("Removed expired session for key={}", key);
+                return true;
+            }
+            try {
+                long userId = Long.parseLong(key.substring(guildPrefix.length()));
+                consumer.accept(new SessionContext(session.hook(), session.userMention(), userId));
+            } catch (Exception e) {
+                LOG.warn("Failed to update session for key={}. Removing session.", key, e);
+                return true;
+            }
+            return false;
+        });
     }
 
     private boolean isExpired(PanelSession session) {

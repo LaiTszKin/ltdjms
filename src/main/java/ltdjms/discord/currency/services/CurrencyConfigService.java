@@ -6,6 +6,8 @@ import ltdjms.discord.currency.persistence.RepositoryException;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 import ltdjms.discord.shared.Unit;
+import ltdjms.discord.shared.events.CurrencyConfigChangedEvent;
+import ltdjms.discord.shared.events.DomainEventPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,10 +32,15 @@ public class CurrencyConfigService {
 
     private final GuildCurrencyConfigRepository configRepository;
     private final EmojiValidator emojiValidator;
+    private final DomainEventPublisher eventPublisher;
 
-    public CurrencyConfigService(GuildCurrencyConfigRepository configRepository, EmojiValidator emojiValidator) {
+    public CurrencyConfigService(
+            GuildCurrencyConfigRepository configRepository,
+            EmojiValidator emojiValidator,
+            DomainEventPublisher eventPublisher) {
         this.configRepository = configRepository;
         this.emojiValidator = emojiValidator;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -146,6 +153,10 @@ public class CurrencyConfigService {
 
             LOG.info("Updated currency config: guildId={}, name={}, icon={}",
                     guildId, saved.currencyName(), saved.currencyIcon());
+
+            // Publish event after successful save
+            eventPublisher.publish(new CurrencyConfigChangedEvent(
+                    guildId, saved.currencyName(), saved.currencyIcon()));
 
             return Result.ok(saved);
         } catch (RepositoryException e) {

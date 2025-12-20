@@ -40,8 +40,9 @@ public class CurrencyServiceModule {
     @Singleton
     public CurrencyConfigService provideCurrencyConfigService(
             GuildCurrencyConfigRepository configRepository,
-            EmojiValidator emojiValidator) {
-        return new CurrencyConfigService(configRepository, emojiValidator);
+            EmojiValidator emojiValidator,
+            DomainEventPublisher eventPublisher) {
+        return new CurrencyConfigService(configRepository, emojiValidator, eventPublisher);
     }
 
     @Provides

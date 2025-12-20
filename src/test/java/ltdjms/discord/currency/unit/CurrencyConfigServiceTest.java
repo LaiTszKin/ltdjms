@@ -7,6 +7,7 @@ import ltdjms.discord.currency.services.CurrencyConfigService;
 import ltdjms.discord.currency.services.EmojiValidator;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
+import ltdjms.discord.shared.events.DomainEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -38,11 +39,14 @@ class CurrencyConfigServiceTest {
     @Mock
     private EmojiValidator emojiValidator;
 
+    @Mock
+    private DomainEventPublisher eventPublisher;
+
     private CurrencyConfigService configService;
 
     @BeforeEach
     void setUp() {
-        configService = new CurrencyConfigService(configRepository, emojiValidator);
+        configService = new CurrencyConfigService(configRepository, emojiValidator, eventPublisher);
     }
 
     @Test

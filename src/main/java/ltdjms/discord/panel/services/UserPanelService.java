@@ -6,6 +6,7 @@ import ltdjms.discord.currency.services.CurrencyTransactionService;
 import ltdjms.discord.gametoken.services.GameTokenService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService.TransactionPage;
+import ltdjms.discord.redemption.services.RedemptionService;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 import org.slf4j.Logger;
@@ -24,17 +25,20 @@ public class UserPanelService {
     private final GameTokenService gameTokenService;
     private final GameTokenTransactionService gameTokenTransactionService;
     private final CurrencyTransactionService currencyTransactionService;
+    private final RedemptionService redemptionService;
 
     public UserPanelService(
             BalanceService balanceService,
             GameTokenService gameTokenService,
             GameTokenTransactionService gameTokenTransactionService,
-            CurrencyTransactionService currencyTransactionService
+            CurrencyTransactionService currencyTransactionService,
+            RedemptionService redemptionService
     ) {
         this.balanceService = balanceService;
         this.gameTokenService = gameTokenService;
         this.gameTokenTransactionService = gameTokenTransactionService;
         this.currencyTransactionService = currencyTransactionService;
+        this.redemptionService = redemptionService;
     }
 
     /**
@@ -101,5 +105,18 @@ public class UserPanelService {
         LOG.debug("Getting currency transaction page for guildId={}, userId={}, page={}", guildId, userId, page);
         return currencyTransactionService.getTransactionPage(guildId, userId, page,
                 CurrencyTransactionService.DEFAULT_PAGE_SIZE);
+    }
+
+    /**
+     * Redeems a code for a user.
+     *
+     * @param code    the redemption code string
+     * @param guildId the Discord guild ID
+     * @param userId  the Discord user ID
+     * @return Result containing the redemption result or an error
+     */
+    public Result<RedemptionService.RedemptionResult, DomainError> redeemCode(String code, long guildId, long userId) {
+        LOG.debug("Redeeming code for guildId={}, userId={}", guildId, userId);
+        return redemptionService.redeemCode(code, guildId, userId);
     }
 }

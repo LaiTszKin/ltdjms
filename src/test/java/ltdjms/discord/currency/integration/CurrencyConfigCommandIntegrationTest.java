@@ -10,6 +10,7 @@ import ltdjms.discord.currency.services.CurrencyConfigService;
 import ltdjms.discord.currency.services.DefaultBalanceService;
 import ltdjms.discord.currency.services.EmojiValidator;
 import ltdjms.discord.currency.services.NoOpEmojiValidator;
+import ltdjms.discord.shared.events.DomainEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,7 +39,8 @@ class CurrencyConfigCommandIntegrationTest extends PostgresIntegrationTestBase {
         configRepository = new JdbcGuildCurrencyConfigRepository(dataSource);
         accountRepository = new JdbcMemberCurrencyAccountRepository(dataSource);
         emojiValidator = new NoOpEmojiValidator();
-        configService = new CurrencyConfigService(configRepository, emojiValidator);
+        DomainEventPublisher eventPublisher = new DomainEventPublisher();
+        configService = new CurrencyConfigService(configRepository, emojiValidator, eventPublisher);
         balanceService = new DefaultBalanceService(accountRepository, configRepository);
     }
 

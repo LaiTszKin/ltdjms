@@ -9,6 +9,7 @@ import ltdjms.discord.gametoken.services.GameTokenTransactionService.Transaction
 import ltdjms.discord.panel.commands.UserPanelButtonHandler;
 import ltdjms.discord.panel.services.UserPanelService;
 import ltdjms.discord.panel.services.UserPanelView;
+import ltdjms.discord.redemption.services.RedemptionService;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +36,7 @@ class UserPanelServiceTest {
     private GameTokenService gameTokenService;
     private GameTokenTransactionService gameTokenTransactionService;
     private CurrencyTransactionService currencyTransactionService;
+    private RedemptionService redemptionService;
     private UserPanelService userPanelService;
 
     @BeforeEach
@@ -43,8 +45,10 @@ class UserPanelServiceTest {
         gameTokenService = mock(GameTokenService.class);
         gameTokenTransactionService = mock(GameTokenTransactionService.class);
         currencyTransactionService = mock(CurrencyTransactionService.class);
+        redemptionService = mock(RedemptionService.class);
         userPanelService = new UserPanelService(
-                balanceService, gameTokenService, gameTokenTransactionService, currencyTransactionService);
+                balanceService, gameTokenService, gameTokenTransactionService,
+                currencyTransactionService, redemptionService);
     }
 
     @Nested

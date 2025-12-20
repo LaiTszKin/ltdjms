@@ -13,6 +13,8 @@ import ltdjms.discord.gametoken.services.GameTokenService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
+import ltdjms.discord.shared.events.DiceGameConfigChangedEvent;
+import ltdjms.discord.shared.events.DomainEventPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,6 +33,7 @@ public class AdminPanelService {
     private final DiceGame1ConfigRepository diceGame1ConfigRepository;
     private final DiceGame2ConfigRepository diceGame2ConfigRepository;
     private final CurrencyConfigService currencyConfigService;
+    private final DomainEventPublisher eventPublisher;
 
     public AdminPanelService(
             BalanceService balanceService,
@@ -39,7 +42,8 @@ public class AdminPanelService {
             GameTokenTransactionService transactionService,
             DiceGame1ConfigRepository diceGame1ConfigRepository,
             DiceGame2ConfigRepository diceGame2ConfigRepository,
-            CurrencyConfigService currencyConfigService
+            CurrencyConfigService currencyConfigService,
+            DomainEventPublisher eventPublisher
     ) {
         this.balanceService = balanceService;
         this.balanceAdjustmentService = balanceAdjustmentService;
@@ -48,6 +52,7 @@ public class AdminPanelService {
         this.diceGame1ConfigRepository = diceGame1ConfigRepository;
         this.diceGame2ConfigRepository = diceGame2ConfigRepository;
         this.currencyConfigService = currencyConfigService;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -180,6 +185,11 @@ public class AdminPanelService {
             }
 
             LOG.info("Dice-game-1 config updated: guildId={}", guildId);
+
+            // Publish event after successful update
+            eventPublisher.publish(new DiceGameConfigChangedEvent(
+                    guildId, DiceGameConfigChangedEvent.GameType.DICE_GAME_1));
+
             return Result.ok(updated);
         } catch (IllegalArgumentException e) {
             return Result.err(DomainError.invalidInput(e.getMessage()));
@@ -222,6 +232,11 @@ public class AdminPanelService {
             }
 
             LOG.info("Dice-game-2 config updated: guildId={}", guildId);
+
+            // Publish event after successful update
+            eventPublisher.publish(new DiceGameConfigChangedEvent(
+                    guildId, DiceGameConfigChangedEvent.GameType.DICE_GAME_2));
+
             return Result.ok(updated);
         } catch (IllegalArgumentException e) {
             return Result.err(DomainError.invalidInput(e.getMessage()));

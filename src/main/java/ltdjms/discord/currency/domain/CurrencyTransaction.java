@@ -36,7 +36,9 @@ public record CurrencyTransaction(
         /** Reward from winning Dice Game 1 */
         DICE_GAME_1_WIN("骰子遊戲 1 獎勵"),
         /** Reward from winning Dice Game 2 */
-        DICE_GAME_2_WIN("骰子遊戲 2 獎勵");
+        DICE_GAME_2_WIN("骰子遊戲 2 獎勵"),
+        /** Currency granted from redeeming a redemption code */
+        REDEMPTION_CODE("兌換碼獎勵");
 
         private final String displayName;
 

@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.9.0] - 2025-12-20
+
+### Added
+- 新增產品定義模組，允許管理員為每個伺服器建立可兌換的產品（貨幣或遊戲代幣獎勵）
+- 新增兌換系統模組，支援生成唯一兌換碼、驗證兌換並自動發放獎勵
+- 新增 `product` 與 `redemption_code` 資料表，以及對應的領域模型、服務層與持久層
+- 新增 `AdminProductPanelHandler`，在管理面板中整合產品管理功能
+- 新增資料庫遷移 `V004__add_product_and_redemption_code.sql`
+- 新增產品與兌換相關的單元測試、整合測試與事件測試
+- 更新架構文檔、資料模型說明與模組文件
+
+### Changed
+- 在 `CurrencyTransaction` 與 `GameTokenTransaction` 中新增 `REDEMPTION_CODE` 交易類型
+- 更新 `CurrencyConfigService` 以發布貨幣設定變更事件
+- 更新管理面板主選單，新增「📦 商品與兌換碼管理」按鈕
+
 ## [0.8.1] - 2025-12-03
 
 ### Added

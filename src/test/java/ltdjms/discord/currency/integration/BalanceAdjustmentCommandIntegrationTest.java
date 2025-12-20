@@ -48,7 +48,7 @@ class BalanceAdjustmentCommandIntegrationTest extends PostgresIntegrationTestBas
         adjustmentService = new BalanceAdjustmentService(accountRepository, configRepository, transactionService, eventPublisher);
         balanceService = new DefaultBalanceService(accountRepository, configRepository);
         EmojiValidator emojiValidator = new NoOpEmojiValidator();
-        configService = new CurrencyConfigService(configRepository, emojiValidator);
+        configService = new CurrencyConfigService(configRepository, emojiValidator, eventPublisher);
     }
 
     @Test

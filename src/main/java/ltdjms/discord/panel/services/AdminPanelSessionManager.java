@@ -73,6 +73,35 @@ public class AdminPanelSessionManager {
         LOG.debug("Cleared admin panel session for key={}", key);
     }
 
+    /**
+     * Updates all admin panels for a guild. Used when guild-wide settings change
+     * (e.g., game configuration, currency settings, product changes).
+     *
+     * @param guildId  the Discord guild ID
+     * @param consumer action to perform on each InteractionHook
+     */
+    public void updatePanelsByGuild(long guildId, Consumer<InteractionHook> consumer) {
+        String guildPrefix = guildId + ":";
+        sessions.entrySet().removeIf(entry -> {
+            String key = entry.getKey();
+            if (!key.startsWith(guildPrefix)) {
+                return false;
+            }
+            Session session = entry.getValue();
+            if (isExpired(session)) {
+                LOG.debug("Removed expired admin panel session for key={}", key);
+                return true;
+            }
+            try {
+                consumer.accept(session.hook());
+            } catch (Exception e) {
+                LOG.warn("Failed to update admin panel session for key={}. Removing session.", key, e);
+                return true;
+            }
+            return false;
+        });
+    }
+
     private boolean isExpired(Session session) {
         return Instant.now().isAfter(session.createdAt().plusSeconds(TTL_SECONDS));
     }

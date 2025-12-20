@@ -16,6 +16,7 @@ import ltdjms.discord.panel.commands.AdminPanelButtonHandler;
 import ltdjms.discord.panel.services.AdminPanelService;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
+import ltdjms.discord.shared.events.DomainEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -41,6 +42,7 @@ class AdminPanelServiceTest {
     private DiceGame1ConfigRepository diceGame1ConfigRepository;
     private DiceGame2ConfigRepository diceGame2ConfigRepository;
     private CurrencyConfigService currencyConfigService;
+    private DomainEventPublisher eventPublisher;
     private AdminPanelService adminPanelService;
 
     @BeforeEach
@@ -52,6 +54,7 @@ class AdminPanelServiceTest {
         diceGame1ConfigRepository = mock(DiceGame1ConfigRepository.class);
         diceGame2ConfigRepository = mock(DiceGame2ConfigRepository.class);
         currencyConfigService = mock(CurrencyConfigService.class);
+        eventPublisher = mock(DomainEventPublisher.class);
 
         adminPanelService = new AdminPanelService(
                 balanceService,
@@ -60,7 +63,8 @@ class AdminPanelServiceTest {
                 transactionService,
                 diceGame1ConfigRepository,
                 diceGame2ConfigRepository,
-                currencyConfigService
+                currencyConfigService,
+                eventPublisher
         );
     }
 

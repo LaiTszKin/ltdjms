@@ -873,23 +873,38 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         sessionStates.remove(sessionKey);
 
         String currencyIcon = adminPanelService.getCurrencyConfig(guildId).currencyIcon();
-        MessageEmbed embed = new EmbedBuilder()
+        MessageEmbed embed = buildMainPanelEmbed(currencyIcon);
+        List<ActionRow> components = buildMainPanelComponents(currencyIcon);
+
+        event.editMessageEmbeds(embed)
+                .setComponents(components)
+                .queue();
+    }
+
+    MessageEmbed buildMainPanelEmbed(String currencyIcon) {
+        return new EmbedBuilder()
                 .setTitle("🔧 管理面板")
                 .setDescription("選擇要管理的項目：")
                 .setColor(EMBED_COLOR)
                 .addField(currencyIcon + " 使用者餘額管理", "調整成員的貨幣餘額", false)
                 .addField("🎮 遊戲代幣管理", "調整成員的遊戲代幣餘額", false)
                 .addField("🎲 遊戲設定管理", "調整遊戲的代幣消耗設定", false)
+                .addField("📦 商品與兌換碼管理", "建立商品、生成兌換碼、查詢兌換狀態", false)
                 .setFooter("點擊下方按鈕進入對應功能")
                 .build();
+    }
 
-        event.editMessageEmbeds(embed)
-                .setComponents(ActionRow.of(
+    List<ActionRow> buildMainPanelComponents(String currencyIcon) {
+        return List.of(
+                ActionRow.of(
                         Button.primary(BUTTON_BALANCE, currencyIcon + " 使用者餘額管理"),
-                        Button.primary(BUTTON_TOKENS, "🎮 遊戲代幣管理"),
-                        Button.primary(BUTTON_GAMES, "🎲 遊戲設定管理")
-                ))
-                .queue();
+                        Button.primary(BUTTON_TOKENS, "🎮 遊戲代幣管理")
+                ),
+                ActionRow.of(
+                        Button.primary(BUTTON_GAMES, "🎲 遊戲設定管理"),
+                        Button.primary(AdminProductPanelHandler.BUTTON_PRODUCTS, "📦 商品與兌換碼管理")
+                )
+        );
     }
 
     // ===== Modal Handlers =====

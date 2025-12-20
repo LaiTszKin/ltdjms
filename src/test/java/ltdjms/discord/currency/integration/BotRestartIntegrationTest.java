@@ -143,13 +143,15 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
             // Given
             GuildCurrencyConfigRepository configRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
             EmojiValidator emojiValidator = new NoOpEmojiValidator();
-            CurrencyConfigService configService = new CurrencyConfigService(configRepo, emojiValidator);
+            DomainEventPublisher eventPublisher = new DomainEventPublisher();
+            CurrencyConfigService configService = new CurrencyConfigService(configRepo, emojiValidator, eventPublisher);
 
             configService.updateConfig(TEST_GUILD_ID, "龍幣", "🐉");
 
             // When - simulate restart
             GuildCurrencyConfigRepository newConfigRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
-            CurrencyConfigService newConfigService = new CurrencyConfigService(newConfigRepo, emojiValidator);
+            DomainEventPublisher newEventPublisher = new DomainEventPublisher();
+            CurrencyConfigService newConfigService = new CurrencyConfigService(newConfigRepo, emojiValidator, newEventPublisher);
 
             // Then
             GuildCurrencyConfig preserved = newConfigService.getConfig(TEST_GUILD_ID);
@@ -166,14 +168,16 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
 
             GuildCurrencyConfigRepository configRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
             EmojiValidator emojiValidator = new NoOpEmojiValidator();
-            CurrencyConfigService configService = new CurrencyConfigService(configRepo, emojiValidator);
+            DomainEventPublisher eventPublisher = new DomainEventPublisher();
+            CurrencyConfigService configService = new CurrencyConfigService(configRepo, emojiValidator, eventPublisher);
 
             configService.updateConfig(guild1, "金幣", "💰");
             configService.updateConfig(guild2, "星星", "⭐");
 
             // When - simulate restart
             GuildCurrencyConfigRepository newConfigRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
-            CurrencyConfigService newConfigService = new CurrencyConfigService(newConfigRepo, emojiValidator);
+            DomainEventPublisher newEventPublisher = new DomainEventPublisher();
+            CurrencyConfigService newConfigService = new CurrencyConfigService(newConfigRepo, emojiValidator, newEventPublisher);
 
             // Then
             GuildCurrencyConfig config1 = newConfigService.getConfig(guild1);
@@ -289,7 +293,8 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
             GuildCurrencyConfigRepository configRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
             MemberCurrencyAccountRepository accountRepo = new JdbcMemberCurrencyAccountRepository(dataSource);
             EmojiValidator emojiValidator = new NoOpEmojiValidator();
-            CurrencyConfigService configService = new CurrencyConfigService(configRepo, emojiValidator);
+            DomainEventPublisher eventPublisher = new DomainEventPublisher();
+            CurrencyConfigService configService = new CurrencyConfigService(configRepo, emojiValidator, eventPublisher);
             BalanceAdjustmentService adjustmentService = createAdjustmentService(accountRepo, configRepo);
             DefaultBalanceService balanceService = new DefaultBalanceService(accountRepo, configRepo);
 
@@ -321,7 +326,8 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
             GuildCurrencyConfigRepository configRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
             MemberCurrencyAccountRepository accountRepo = new JdbcMemberCurrencyAccountRepository(dataSource);
             EmojiValidator emojiValidator = new NoOpEmojiValidator();
-            CurrencyConfigService configService = new CurrencyConfigService(configRepo, emojiValidator);
+            DomainEventPublisher eventPublisher = new DomainEventPublisher();
+            CurrencyConfigService configService = new CurrencyConfigService(configRepo, emojiValidator, eventPublisher);
             BalanceAdjustmentService adjustmentService = createAdjustmentService(accountRepo, configRepo);
 
             adjustmentService.adjustBalance(TEST_GUILD_ID, TEST_USER_ID, 500L);
@@ -330,7 +336,8 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
             // Simulate restart
             GuildCurrencyConfigRepository newConfigRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
             MemberCurrencyAccountRepository newAccountRepo = new JdbcMemberCurrencyAccountRepository(dataSource);
-            CurrencyConfigService newConfigService = new CurrencyConfigService(newConfigRepo, emojiValidator);
+            DomainEventPublisher newEventPublisher = new DomainEventPublisher();
+            CurrencyConfigService newConfigService = new CurrencyConfigService(newConfigRepo, emojiValidator, newEventPublisher);
             DefaultBalanceService newBalanceService = new DefaultBalanceService(newAccountRepo, newConfigRepo);
 
             // Update config after restart

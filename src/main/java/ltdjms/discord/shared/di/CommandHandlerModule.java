@@ -19,13 +19,18 @@ import ltdjms.discord.gametoken.services.GameTokenService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService;
 import ltdjms.discord.panel.commands.AdminPanelButtonHandler;
 import ltdjms.discord.panel.commands.AdminPanelCommandHandler;
+import ltdjms.discord.panel.commands.AdminProductPanelHandler;
 import ltdjms.discord.panel.commands.UserPanelButtonHandler;
 import ltdjms.discord.panel.commands.UserPanelCommandHandler;
 import ltdjms.discord.panel.services.AdminPanelSessionManager;
 import ltdjms.discord.panel.services.AdminPanelService;
+import ltdjms.discord.panel.services.AdminPanelUpdateListener;
 import ltdjms.discord.panel.services.PanelSessionManager;
 import ltdjms.discord.panel.services.UserPanelService;
 import ltdjms.discord.panel.services.UserPanelUpdateListener;
+import ltdjms.discord.product.services.ProductService;
+import ltdjms.discord.redemption.services.RedemptionService;
+import ltdjms.discord.shared.events.DomainEventPublisher;
 
 import javax.inject.Singleton;
 
@@ -75,9 +80,11 @@ public class CommandHandlerModule {
             BalanceService balanceService,
             GameTokenService gameTokenService,
             GameTokenTransactionService gameTokenTransactionService,
-            CurrencyTransactionService currencyTransactionService) {
+            CurrencyTransactionService currencyTransactionService,
+            RedemptionService redemptionService) {
         return new UserPanelService(
-                balanceService, gameTokenService, gameTokenTransactionService, currencyTransactionService);
+                balanceService, gameTokenService, gameTokenTransactionService,
+                currencyTransactionService, redemptionService);
     }
 
     @Provides
@@ -97,6 +104,14 @@ public class CommandHandlerModule {
             PanelSessionManager sessionManager,
             UserPanelService userPanelService) {
         return new UserPanelUpdateListener(sessionManager, userPanelService);
+    }
+
+    @Provides
+    @Singleton
+    public AdminPanelUpdateListener provideAdminPanelUpdateListener(
+            AdminPanelSessionManager sessionManager,
+            AdminProductPanelHandler adminProductPanelHandler) {
+        return new AdminPanelUpdateListener(sessionManager, adminProductPanelHandler);
     }
 
     @Provides
@@ -122,11 +137,12 @@ public class CommandHandlerModule {
             GameTokenTransactionService transactionService,
             DiceGame1ConfigRepository diceGame1ConfigRepository,
             DiceGame2ConfigRepository diceGame2ConfigRepository,
-            CurrencyConfigService currencyConfigService) {
+            CurrencyConfigService currencyConfigService,
+            DomainEventPublisher eventPublisher) {
         return new AdminPanelService(
                 balanceService, balanceAdjustmentService, gameTokenService,
                 transactionService, diceGame1ConfigRepository, diceGame2ConfigRepository,
-                currencyConfigService);
+                currencyConfigService, eventPublisher);
     }
 
     @Provides
@@ -143,6 +159,15 @@ public class CommandHandlerModule {
             AdminPanelService adminPanelService,
             AdminPanelSessionManager adminPanelSessionManager) {
         return new AdminPanelButtonHandler(adminPanelService, adminPanelSessionManager);
+    }
+
+    @Provides
+    @Singleton
+    public AdminProductPanelHandler provideAdminProductPanelHandler(
+            ProductService productService,
+            RedemptionService redemptionService,
+            AdminPanelSessionManager adminPanelSessionManager) {
+        return new AdminProductPanelHandler(productService, redemptionService, adminPanelSessionManager);
     }
 
     @Provides

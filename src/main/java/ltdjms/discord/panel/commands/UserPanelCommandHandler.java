@@ -10,6 +10,7 @@ import ltdjms.discord.shared.Result;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,9 +58,14 @@ public class UserPanelCommandHandler implements SlashCommandListener.CommandHand
         MessageEmbed embed = buildPanelEmbed(panelView, event.getUser().getAsMention());
 
         event.replyEmbeds(embed)
-                .addActionRow(
-                        Button.secondary(BUTTON_CURRENCY_HISTORY, panelView.getCurrencyHistoryButtonLabel()),
-                        Button.secondary(BUTTON_TOKEN_HISTORY, "📜 查看遊戲代幣流水")
+                .addComponents(
+                        ActionRow.of(
+                                Button.secondary(BUTTON_CURRENCY_HISTORY, panelView.getCurrencyHistoryButtonLabel()),
+                                Button.secondary(BUTTON_TOKEN_HISTORY, "📜 查看遊戲代幣流水")
+                        ),
+                        ActionRow.of(
+                                Button.success(UserPanelButtonHandler.BUTTON_REDEEM, "🎫 兌換碼")
+                        )
                 )
                 .setEphemeral(true)
                 .queue(hook -> {
@@ -78,7 +84,7 @@ public class UserPanelCommandHandler implements SlashCommandListener.CommandHand
                 .setColor(EMBED_COLOR)
                 .addField(view.getCurrencyFieldName(), view.formatCurrencyField(), true)
                 .addField(view.getGameTokensFieldName(), view.formatGameTokensField(), true)
-                .setFooter("點擊下方按鈕查看流水紀錄")
+                .setFooter("點擊下方按鈕查看流水紀錄或兌換碼")
                 .build();
     }
 }

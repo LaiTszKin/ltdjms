@@ -16,8 +16,14 @@ import ltdjms.discord.gametoken.persistence.GameTokenTransactionRepository;
 import ltdjms.discord.gametoken.services.DiceGame1Service;
 import ltdjms.discord.gametoken.services.GameTokenService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService;
+import ltdjms.discord.product.domain.ProductRepository;
+import ltdjms.discord.product.services.ProductService;
+import ltdjms.discord.redemption.domain.RedemptionCodeRepository;
+import ltdjms.discord.redemption.services.RedemptionService;
 import ltdjms.discord.panel.commands.AdminPanelButtonHandler;
+import ltdjms.discord.panel.commands.AdminProductPanelHandler;
 import ltdjms.discord.panel.commands.UserPanelButtonHandler;
+import ltdjms.discord.panel.services.AdminPanelUpdateListener;
 import ltdjms.discord.shared.DatabaseConfig;
 import ltdjms.discord.shared.EnvironmentConfig;
 import ltdjms.discord.shared.events.DomainEventPublisher;
@@ -42,6 +48,8 @@ import javax.sql.DataSource;
         CurrencyServiceModule.class,
         GameTokenRepositoryModule.class,
         GameTokenServiceModule.class,
+        ProductRepositoryModule.class,
+        ProductServiceModule.class,
         CommandHandlerModule.class,
         EventModule.class
 })
@@ -54,6 +62,7 @@ public interface AppComponent {
     // Events
     DomainEventPublisher domainEventPublisher();
     UserPanelUpdateListener userPanelUpdateListener();
+    AdminPanelUpdateListener adminPanelUpdateListener();
 
     // Database
     DataSource dataSource();
@@ -78,6 +87,12 @@ public interface AppComponent {
     DiceGame1Service diceGame1Service();
     GameTokenTransactionService gameTokenTransactionService();
 
+    // Product and Redemption
+    ProductRepository productRepository();
+    RedemptionCodeRepository redemptionCodeRepository();
+    ProductService productService();
+    RedemptionService redemptionService();
+
     // Currency Command Handlers
     CurrencyConfigCommandHandler currencyConfigCommandHandler();
 
@@ -88,6 +103,7 @@ public interface AppComponent {
     // Panel Handlers
     UserPanelButtonHandler userPanelButtonHandler();
     AdminPanelButtonHandler adminPanelButtonHandler();
+    AdminProductPanelHandler adminProductPanelHandler();
 
     // Slash Command Listener
     SlashCommandListener slashCommandListener();

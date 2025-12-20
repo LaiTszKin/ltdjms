@@ -67,7 +67,13 @@ flowchart LR
   遊戲代幣與小遊戲：代幣帳戶、代幣調整、骰子遊戲 1/2 設定與服務，以及代幣交易紀錄。
 
 - `panel/`  
-  使用者面板與管理面板：`/user-panel`、`/admin-panel` 指令與各種按鈕、Modal 處理邏輯。
+   使用者面板與管理面板：`/user-panel`、`/admin-panel` 指令與各種按鈕、Modal 處理邏輯。
+
+- `product/`  
+   產品定義與管理：產品資料模型、產品服務與相關資料庫操作。
+
+- `redemption/`  
+   兌換系統：兌換碼生成、驗證與兌換邏輯，以及與產品的整合。
 
 - `shared/`
   共用基礎設施：資料庫連線設定、Flyway schema migration、`Result<T, E>` 型別、`DomainError`、設定載入與 Dagger DI 定義。
@@ -136,15 +142,15 @@ flowchart LR
 
 1. 管理員輸入 `/admin-panel`。
 2. `SlashCommandListener` 呼叫 `AdminPanelCommandHandler.handle`：
-   - 回覆一個僅管理員可見的 Embed（管理面板首頁）
-   - 附加三個按鈕：「使用者餘額管理」、「遊戲代幣管理」、「遊戲設定管理」
-3. 使用者點擊其中一個按鈕：
-   - JDA 觸發 `AdminPanelButtonHandler.onButtonInteraction`
-   - 根據 button ID 顯示對應的表單（Modal）或次級面板
-4. 管理員在 Modal 中填寫資訊並送出：
-   - `AdminPanelButtonHandler.onModalInteraction` 將表單資料轉換為 service 呼叫
-   - 例如呼叫 `AdminPanelService.adjustBalance` 或 `adjustTokens`
-   - 再依結果回覆成功或錯誤訊息
+    - 回覆一個僅管理員可見的 Embed（管理面板首頁）
+    - 附加按鈕包括：「使用者餘額管理」、「遊戲代幣管理」、「遊戲設定管理」、「產品管理」
+3. 使用者點擊「產品管理」按鈕：
+    - JDA 觸發 `AdminPanelButtonHandler.onButtonInteraction`
+    - 顯示產品列表或新增產品的表單（Modal）
+4. 管理員在 Modal 中填寫產品資訊並送出：
+    - `AdminPanelButtonHandler.onModalInteraction` 呼叫 `AdminProductPanelHandler` 處理
+    - 透過 `ProductService` 新增產品，並自動生成兌換碼（若需要）
+    - 再依結果回覆成功或錯誤訊息
 
 ### 5.3 `/user-panel` 指令
 
@@ -198,5 +204,7 @@ Command handler 通常遵守以下模式：
 - `docs/modules/currency-system.md`
 - `docs/modules/game-tokens-and-games.md`
 - `docs/modules/panels.md`
+- `docs/modules/product.md`
+- `docs/modules/redemption.md`
 
 了解現有模組的分層與模式後，再依樣擴充會更順手。

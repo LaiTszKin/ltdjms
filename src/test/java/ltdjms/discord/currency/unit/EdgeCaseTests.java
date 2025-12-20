@@ -294,7 +294,7 @@ class EdgeCaseTests {
         @BeforeEach
         void setUp() {
             EmojiValidator emojiValidator = new NoOpEmojiValidator();
-            configService = new CurrencyConfigService(configRepository, emojiValidator);
+            configService = new CurrencyConfigService(configRepository, emojiValidator, eventPublisher);
         }
 
         @Test

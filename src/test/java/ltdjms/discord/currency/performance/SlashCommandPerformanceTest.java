@@ -67,7 +67,7 @@ class SlashCommandPerformanceTest extends PostgresIntegrationTestBase {
         balanceService = new DefaultBalanceService(accountRepo, configRepo);
         adjustmentService = new BalanceAdjustmentService(accountRepo, configRepo, transactionService, eventPublisher);
         EmojiValidator emojiValidator = new NoOpEmojiValidator();
-        configService = new CurrencyConfigService(configRepo, emojiValidator);
+        configService = new CurrencyConfigService(configRepo, emojiValidator, eventPublisher);
         metrics = new SlashCommandMetrics();
         random = new Random(42); // Fixed seed for reproducibility
     }

@@ -1,6 +1,7 @@
 package ltdjms.discord.currency.bot;
 
 import ltdjms.discord.panel.commands.AdminPanelButtonHandler;
+import ltdjms.discord.panel.commands.AdminProductPanelHandler;
 import ltdjms.discord.panel.commands.UserPanelButtonHandler;
 import ltdjms.discord.shared.DatabaseConfig;
 import ltdjms.discord.shared.DatabaseMigrationRunner;
@@ -13,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
+import java.util.List;
 
 /**
  * Main entry point for the LTDJ management system.
@@ -34,6 +36,7 @@ public class DiscordCurrencyBot {
 
         // Register domain event listeners
         this.appComponent.domainEventPublisher().register(this.appComponent.userPanelUpdateListener());
+        this.appComponent.domainEventPublisher().register(this.appComponent.adminPanelUpdateListener());
 
         // Get database config from Dagger
         this.databaseConfig = appComponent.databaseConfig();
@@ -50,12 +53,20 @@ public class DiscordCurrencyBot {
         // Get button interaction handlers from Dagger
         UserPanelButtonHandler userPanelButtonHandler = appComponent.userPanelButtonHandler();
         AdminPanelButtonHandler adminPanelButtonHandler = appComponent.adminPanelButtonHandler();
+        AdminProductPanelHandler adminProductPanelHandler = appComponent.adminProductPanelHandler();
 
         // Build JDA instance with default non-privileged gateway intents to avoid
         // DISALLOWED_INTENTS (4014) errors when the bot token does not have
         // privileged intents such as GUILD_MEMBERS enabled.
+        List<Object> eventListeners = buildEventListeners(
+                slashCommandListener,
+                userPanelButtonHandler,
+                adminPanelButtonHandler,
+                adminProductPanelHandler
+        );
+
         this.jda = JDABuilder.createLight(envConfig.getDiscordBotToken())
-                .addEventListeners(slashCommandListener, userPanelButtonHandler, adminPanelButtonHandler)
+                .addEventListeners(eventListeners.toArray())
                 .build();
 
         // Wait for JDA to be ready
@@ -117,5 +128,22 @@ public class DiscordCurrencyBot {
             LOG.error("Failed to start LTDJ management system", e);
             System.exit(1);
         }
+    }
+
+    /**
+     * 封裝事件監聽器的組合，便於測試與維護。
+     */
+    static List<Object> buildEventListeners(
+            SlashCommandListener slashCommandListener,
+            UserPanelButtonHandler userPanelButtonHandler,
+            AdminPanelButtonHandler adminPanelButtonHandler,
+            AdminProductPanelHandler adminProductPanelHandler
+    ) {
+        return List.of(
+                slashCommandListener,
+                userPanelButtonHandler,
+                adminPanelButtonHandler,
+                adminProductPanelHandler
+        );
     }
 }

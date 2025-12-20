@@ -51,7 +51,13 @@ PostgreSQL (currency_bot 資料庫)
   遊戲代幣與骰子小遊戲模組的說明，包括代幣帳戶、交易紀錄與骰子遊戲 1 / 2 的規則與服務邏輯。
 
 - `modules/panels.md`  
-  `/user-panel` 與 `/admin-panel` 面板的互動流程、按鈕與 Modal 設計，以及如何整合各服務。
+   `/user-panel` 與 `/admin-panel` 面板的互動流程、按鈕與 Modal 設計，以及如何整合各服務。
+
+- `modules/product.md`  
+   產品定義模組的設計與實作概觀，包括產品管理相關的服務與資料模型。
+
+- `modules/redemption.md`  
+   兌換系統模組的說明，包括兌換碼生成、驗證與兌換流程，以及與產品模組的整合。
 
 ### 3. 給維運／DevOps
 
