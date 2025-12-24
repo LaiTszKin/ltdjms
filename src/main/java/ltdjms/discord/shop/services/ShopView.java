@@ -16,6 +16,7 @@ public class ShopView {
 
     private static final Color EMBED_COLOR = new Color(0x5865F2);
     private static final int PAGE_SIZE = 5;
+    private static final String DIVIDER = "────────────────────────────────────";
 
     public static final String BUTTON_PREV_PAGE = "shop_prev_";
     public static final String BUTTON_NEXT_PAGE = "shop_next_";
@@ -44,18 +45,26 @@ public class ShopView {
                 .setColor(EMBED_COLOR);
 
         StringBuilder sb = new StringBuilder();
-        for (Product product : products) {
-            sb.append("**").append(product.name()).append("**");
+        int startNumber = (currentPage - 1) * PAGE_SIZE + 1;
+        for (int i = 0; i < products.size(); i++) {
+            Product product = products.get(i);
+            int number = startNumber + i;
+
+            if (i > 0) {
+                sb.append("\n").append(DIVIDER).append("\n");
+            }
+
+            sb.append("**").append(number).append(". ").append(product.name()).append("**");
 
             if (product.description() != null && !product.description().isBlank()) {
-                sb.append("\n").append(product.description());
+                sb.append("\n商品描述：").append(product.description());
             }
 
             if (product.hasReward()) {
                 sb.append("\n獎勵：").append(product.formatReward());
             }
 
-            sb.append("\n\n");
+            sb.append("\n");
         }
 
         builder.setDescription(sb.toString());

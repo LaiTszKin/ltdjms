@@ -350,11 +350,143 @@ make docker-build # 建置 Docker 映像
 ```
 
 ### CI/CD 整合
-GitHub Actions 自動執行：
-- 單元測試與整合測試
-- 程式碼風格檢查
-- 覆蓋率報告產生
-- 相依套件漏洞掃描
+
+GitHub Actions 自動執行以下工作流程：
+
+#### 1. CI Pipeline（持續整合）
+
+| 工作流程 | 觸發條件 | 執行內容 |
+|----------|----------|----------|
+| `build.yml` | push / PR | Maven 建置、單元測試、程式碼風格檢查 |
+| `integration-test.yml` | push / PR | 整合測試（使用 Testcontainers） |
+| `security-scan.yml` | 每週 / PR | 相依套件漏洞掃描（Snyk/Dependabot） |
+
+#### 2. CI Pipeline 流程圖
+
+```mermaid
+flowchart LR
+    A[Push / PR] --> B{檢查類型?}
+    B -->|PR| C[執行單元測試]
+    B -->|Push to main| C
+    C --> D[mvn clean compile]
+    D --> E[mvn spotless:check]
+    E --> F[mvn test]
+    F --> G[mvn verify]
+    G --> H{測試通過?}
+    H -->|否| I[標記失敗\n通知作者]
+    H -->|是| J[產生 JaCoCo 報告]
+    J --> K[上傳覆蓋率到 Codecov]
+```
+
+#### 3. 主要 GitHub Actions 工作流程
+
+**`.github/workflows/build.yml`：**
+
+```yaml
+name: Build and Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - name: Cache Maven packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+      - name: Build with Maven
+        run: mvn clean package -DskipTests
+      - name: Run tests
+        run: mvn test
+      - name: Check code style
+        run: mvn spotless:check
+```
+
+**`.github/workflows/integration-test.yml`：**
+
+```yaml
+name: Integration Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  integration-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+      - name: Run integration tests
+        run: mvn verify -Pintegration-test
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/currency_bot
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+```
+
+#### 4. CI 品質閘門
+
+PR 必須通過以下檢查才能合併：
+
+| 檢查 | 通過標準 | 說明 |
+|------|----------|------|
+| **單元測試** | 100% 通過 | `mvn test` |
+| **整合測試** | 100% 通過 | `mvn verify -Pintegration-test` |
+| **程式碼風格** | 無警告 | `mvn spotless:check` |
+| **測試覆蓋率** | > 80% | JaCoCo 報告 |
+| **安全性掃描** | 無高風險漏洞 | Dependabot |
+
+#### 5. 發布流程
+
+```mermaid
+flowchart TB
+    A[PR 合併到 main] --> B[GitHub Release]
+    B --> C{建立 tag?}
+    C -->|是| D[產生 CHANGELOG]
+    D --> E[建立 GitHub Release]
+    E --> F[觸發 Docker Build]
+    F --> G[推送到 Registry]
+    G --> H[更新部署]
+```
+
+#### 6. 常見 CI 問題排除
+
+| 問題 | 可能原因 | 解決方式 |
+|------|----------|----------|
+| Maven 依賴下載超時 | 網路問題 | 檢查 cache 或使用鏡像 |
+| 測試失敗（本地通過） | 環境差異 | 確認 Java 版本與資料庫配置 |
+| Spotless 格式化失敗 | 程式碼格式問題 | 執行 `mvn spotless:apply` |
+| Testcontainers 失敗 | Docker 權限問題 | 確認 Docker daemon 執行中 |
+
+---
 
 ## 最佳實踐
 

@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.9.1] - 2025-12-24
+
+### Fixed
+- 改善商店介面顯示格式：新增商品編號與分隔線，優化商品描述文字格式
+
+### Added
+- 新增 Mermaid 架構圖展示系統架構、模組關係、資料庫 Schema
+- 新增 IDE 設定文件（VS Code / IntelliJ IDEA）
+- 新增共用模組設計文件（DI、Result<T,E>、Domain Events）
+- 新增監控與維護文件
+
 ## [0.9.0] - 2025-12-20
 
 ### Added

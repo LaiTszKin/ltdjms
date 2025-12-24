@@ -197,6 +197,12 @@ Command handler 通常遵守以下模式：
 
 這套 metrics 機制目前主要以 Logback console log 為輸出目標，但設計上與 command handler 解耦，未來若需要接入外部監控系統（如 Prometheus、雲端監控服務）時，可在不改動 handler 的前提下擴充 `SlashCommandMetrics` 的實作。
 
+## 8. 架構圖參考
+
+本文件的文字描述可搭配以下視覺化圖表閱讀：
+
+- **[系統架構圖](component-diagram.md)** - 完整的 Mermaid 架構圖、模組關係圖、資料庫 schema 圖與互動流程圖
+
 ---
 
 若你打算新增新的 slash command 或面板功能，建議先閱讀：

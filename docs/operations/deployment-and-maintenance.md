@@ -169,16 +169,71 @@ export DATABASE_PASSWORD=postgres
 
 LTDJMS 本身未內建 HTTP 健康檢查端點，但你可以藉由以下方式監控：
 
-- **容器層級**：
-  - 使用 Docker / 容器平台的 restart policy（例如 `restart: always`）。
-  - 監控容器是否持續重啟，若有異常重啟次數增加，需檢查日誌。
+### 5.1 監控策略
 
-- **Discord 層級**：
-  - 觀察 Bot 是否在線（online）且 slash commands 是否可用。
-  - 透過簡單的監控 Bot（例如另一個監控 Bot 或外部服務）定期呼叫 `/user-panel`（檢查一般指令）或 `/admin-panel`（檢查管理指令）等自訂指令檢查回應。
+| 監控層級 | 監控方式 | 檢查項目 |
+|----------|----------|----------|
+| **容器層級** | Docker restart policy | 容器狀態、重啟次數 |
+| **Discord 層級** | Bot 在線狀態 | 指令可用性、回應延遲 |
+| **資料庫層級** | PostgreSQL 監控 | 連線數、慢查詢、儲存空間 |
+| **應用程式層級** | 日誌分析 | 錯誤率、指令執行時間 |
 
-- **資料庫層級**：
-  - 監控 PostgreSQL 的連線數、慢查詢與儲存空間。
+### 5.2 容器層級監控
+
+使用 Docker restart policy：
+
+```yaml
+# docker-compose.yml
+services:
+  bot:
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+```
+
+監控容器狀態：
+
+```bash
+# 查看容器狀態
+docker ps -a | grep ltdjms
+
+# 查看容器資源使用
+docker stats ltdjms-bot
+
+# 查看容器重啟次數
+docker inspect ltdjms-bot --format '{{.RestartCount}}'
+```
+
+### 5.3 Discord 層級監控
+
+- **Bot 在線狀態**：檢查 Discord 伺服器成員列表中 Bot 是否顯示為 online
+- **指令可用性**：定期執行 `/user-panel` 確認指令回應正常
+- **延遲監控**：透過 JDA 的 `getResponseTime()` 追蹤 API 回應時間
+
+### 5.4 資料庫層級監控
+
+```bash
+# 檢查 PostgreSQL 連線數
+psql -c "SELECT count(*) FROM pg_stat_activity;"
+
+# 檢查慢查詢
+psql -c "SELECT query, calls, mean_time FROM pg_stat_statements ORDER BY mean_time DESC LIMIT 10;"
+
+# 檢查資料庫大小
+psql -c "SELECT pg_size_pretty(pg_database_size('currency_bot'));"
+```
+
+### 5.5 監控文件參考
+
+詳細的監控與日誌管理說明，請參考 **[監控與日誌](monitoring.md)** 文件，涵蓋：
+
+- 日誌系統配置
+- 監控指標定義
+- 異常告警規則
+- 故障排除指南
 
 ## 6. 日誌與問題排查
 
