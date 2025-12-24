@@ -4,7 +4,9 @@ import dagger.Module;
 import dagger.Provides;
 import ltdjms.discord.product.domain.ProductRepository;
 import ltdjms.discord.product.persistence.JdbcProductRepository;
+import ltdjms.discord.redemption.domain.ProductRedemptionTransactionRepository;
 import ltdjms.discord.redemption.domain.RedemptionCodeRepository;
+import ltdjms.discord.redemption.persistence.JdbcProductRedemptionTransactionRepository;
 import ltdjms.discord.redemption.persistence.JdbcRedemptionCodeRepository;
 
 import javax.inject.Singleton;
@@ -26,5 +28,11 @@ public class ProductRepositoryModule {
     @Singleton
     public RedemptionCodeRepository provideRedemptionCodeRepository(DataSource dataSource) {
         return new JdbcRedemptionCodeRepository(dataSource);
+    }
+
+    @Provides
+    @Singleton
+    public ProductRedemptionTransactionRepository provideProductRedemptionTransactionRepository(DataSource dataSource) {
+        return new JdbcProductRedemptionTransactionRepository(dataSource);
     }
 }

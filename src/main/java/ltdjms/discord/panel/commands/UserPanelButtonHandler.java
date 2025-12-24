@@ -6,6 +6,8 @@ import ltdjms.discord.gametoken.domain.GameTokenTransaction;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService.TransactionPage;
 import ltdjms.discord.panel.services.UserPanelService;
 import ltdjms.discord.panel.services.UserPanelView;
+import ltdjms.discord.redemption.domain.ProductRedemptionTransaction;
+import ltdjms.discord.redemption.services.ProductRedemptionTransactionService;
 import ltdjms.discord.redemption.services.RedemptionService;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
@@ -44,6 +46,10 @@ public class UserPanelButtonHandler extends ListenerAdapter {
     public static final String BUTTON_PREFIX_CURRENCY_HISTORY = "user_panel_currency_history";
     public static final String BUTTON_PREFIX_CURRENCY_PAGE = "user_panel_currency_page_";
 
+    // Button ID prefix for product redemption history pagination
+    public static final String BUTTON_PREFIX_PRODUCT_REDEMPTION_HISTORY = "user_panel_product_redemption_history";
+    public static final String BUTTON_PREFIX_PRODUCT_REDEMPTION_PAGE = "user_panel_product_redemption_page_";
+
     // Redemption button and modal
     public static final String BUTTON_REDEEM = "user_panel_redeem";
     public static final String MODAL_REDEEM = "user_panel_modal_redeem";
@@ -51,9 +57,13 @@ public class UserPanelButtonHandler extends ListenerAdapter {
     public static final String BUTTON_BACK_TO_PANEL = "user_panel_back";
 
     private final UserPanelService userPanelService;
+    private final ProductRedemptionTransactionService productRedemptionTransactionService;
 
-    public UserPanelButtonHandler(UserPanelService userPanelService) {
+    public UserPanelButtonHandler(
+            UserPanelService userPanelService,
+            ProductRedemptionTransactionService productRedemptionTransactionService) {
         this.userPanelService = userPanelService;
+        this.productRedemptionTransactionService = productRedemptionTransactionService;
     }
 
     @Override
@@ -97,6 +107,14 @@ public class UserPanelButtonHandler extends ListenerAdapter {
             } else if (buttonId.equals(BUTTON_REDEEM)) {
                 // Open redemption modal
                 openRedemptionModal(event);
+            } else if (buttonId.equals(BUTTON_PREFIX_PRODUCT_REDEMPTION_HISTORY)) {
+                // Show first page of product redemption history
+                showProductRedemptionHistoryPage(event, guildId, userId, 1);
+            } else if (buttonId.startsWith(BUTTON_PREFIX_PRODUCT_REDEMPTION_PAGE)) {
+                // Parse page number from button ID for product redemption history
+                String pageStr = buttonId.substring(BUTTON_PREFIX_PRODUCT_REDEMPTION_PAGE.length());
+                int page = Integer.parseInt(pageStr);
+                showProductRedemptionHistoryPage(event, guildId, userId, page);
             } else if (buttonId.equals(BUTTON_BACK_TO_PANEL)) {
                 // Navigate back to main panel
                 showMainPanel(event, guildId, userId);
@@ -183,7 +201,8 @@ public class UserPanelButtonHandler extends ListenerAdapter {
                 .setComponents(
                         ActionRow.of(
                                 Button.secondary(BUTTON_PREFIX_CURRENCY_HISTORY, "💰 查看貨幣流水"),
-                                Button.secondary(BUTTON_PREFIX_HISTORY, "📜 查看遊戲代幣流水")
+                                Button.secondary(BUTTON_PREFIX_HISTORY, "📜 查看遊戲代幣流水"),
+                                Button.secondary(BUTTON_PREFIX_PRODUCT_REDEMPTION_HISTORY, "🛒 查看商品流水")
                         ),
                         ActionRow.of(
                                 Button.success(BUTTON_REDEEM, "🎫 兌換碼")
@@ -321,6 +340,67 @@ public class UserPanelButtonHandler extends ListenerAdapter {
         if (page.hasNextPage()) {
             buttons.add(Button.secondary(
                     BUTTON_PREFIX_CURRENCY_PAGE + (page.currentPage() + 1),
+                    "下一頁 ➡️"
+            ));
+        }
+
+        return buttons;
+    }
+
+    private void showProductRedemptionHistoryPage(ButtonInteractionEvent event, long guildId, long userId, int page) {
+        ProductRedemptionTransactionService.TransactionPage transactionPage =
+                userPanelService.getProductRedemptionTransactionPage(guildId, userId, page);
+
+        MessageEmbed embed = buildProductRedemptionHistoryEmbed(transactionPage);
+        List<Button> buttons = buildProductRedemptionPaginationButtons(transactionPage);
+
+        event.editMessageEmbeds(embed)
+                .setActionRow(buttons)
+                .queue();
+
+        LOG.debug("Showed product redemption history page {} for guildId={}, userId={}",
+                page, guildId, userId);
+    }
+
+    private MessageEmbed buildProductRedemptionHistoryEmbed(ProductRedemptionTransactionService.TransactionPage page) {
+        EmbedBuilder builder = new EmbedBuilder()
+                .setTitle("🛒 商品流水")
+                .setColor(EMBED_COLOR);
+
+        if (page.isEmpty()) {
+            builder.setDescription("目前沒有任何商品兌換紀錄");
+        } else {
+            StringBuilder sb = new StringBuilder();
+            for (ProductRedemptionTransaction tx : page.transactions()) {
+                sb.append(tx.getShortTimestamp())
+                        .append(" ")
+                        .append(tx.formatForDisplay())
+                        .append("\n");
+            }
+            builder.setDescription(sb.toString());
+        }
+
+        builder.setFooter(page.formatPageIndicator());
+
+        return builder.build();
+    }
+
+    private List<Button> buildProductRedemptionPaginationButtons(ProductRedemptionTransactionService.TransactionPage page) {
+        List<Button> buttons = new ArrayList<>();
+
+        // Add back to panel button
+        buttons.add(Button.secondary(BUTTON_BACK_TO_PANEL, "🔙 返回主頁"));
+
+        if (page.hasPreviousPage()) {
+            buttons.add(Button.secondary(
+                    BUTTON_PREFIX_PRODUCT_REDEMPTION_PAGE + (page.currentPage() - 1),
+                    "⬅️ 上一頁"
+            ));
+        }
+
+        if (page.hasNextPage()) {
+            buttons.add(Button.secondary(
+                    BUTTON_PREFIX_PRODUCT_REDEMPTION_PAGE + (page.currentPage() + 1),
                     "下一頁 ➡️"
             ));
         }

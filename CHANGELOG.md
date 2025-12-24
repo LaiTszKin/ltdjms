@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.10.0] - 2025-12-25
+
+### Added
+- **可重複使用兌換碼**：新增 `quantity` 欄位支援單一兌換碼可兌換多次（預設 1 次，範圍 1-1000）
+- **商品兌換交易記錄**：新增 `product_redemption_transaction` 資料表與 `ProductRedemptionTransaction` 領域模型，記錄每次兌換的完整資訊
+- **商品兌換歷史查詢**：使用者面板新增「🛒 查看商品流水」按鈕，支援分頁瀏覽個人商品兌換歷史
+- **即時面板更新**：新增 `ProductRedemptionCompletedEvent` 與 `ProductRedemptionUpdateListener`，實現兌換完成後自動刷新使用者面板
+- 管理面板新增「每個碼可兌換數量」輸入欄位，支援生成可重複使用兌換碼
+
+### Changed
+- `RedemptionCode` 新增 `quantity` 欄位與商業規則驗證（MIN_QUANTITY=1, MAX_QUANTITY=1000）
+- `RedemptionService.generateCodes()` 方法新增 `quantity` 參數
+- `RedemptionService.redeemCode()` 現在會建立交易記錄並發布領域事件
+- 使用者面板主頁新增「🛒 查看商品流水」按鈕
+
+### Technical
+- 新增 `V007__add_redemption_code_quantity.sql` 資料庫遷移
+- 新增 `V008__create_product_redemption_transaction.sql` 資料庫遷移
+- 新增 `ProductRedemptionTransactionRepository` 介面與 `JdbcProductRedemptionTransactionRepository` 實作
+- 新增 `ProductRedemptionTransactionService` 服務層，負責交易記錄管理
+- 新增 `ProductRedemptionUpdateListener` 事件監聽器，實現面板即時更新
+- 完整文檔更新：資料模型、時序圖、事件系統、面板與兌換模組
+
 ## [0.9.2] - 2025-12-25
 
 ### Added

@@ -245,6 +245,7 @@
 | `code` | VARCHAR(32) | 兌換碼，唯一，長度上限 32 字元 |
 | `product_id` | BIGINT | 對應產品 ID（可為 NULL，當產品被刪除時） |
 | `guild_id` | BIGINT | Discord 伺服器 ID |
+| `quantity` | INT | V007 新增：可兌換次數，預設 1，範圍 1-1000 |
 | `expires_at` | TIMESTAMPTZ | 到期時間（可選，NULL 表示永不過期） |
 | `redeemed_by` | BIGINT | 兌換使用者 ID（若已兌換） |
 | `redeemed_at` | TIMESTAMPTZ | 兌換時間（若已兌換） |
@@ -260,6 +261,8 @@
 - `UNIQUE (code)` 兌換碼唯一
 - `FOREIGN KEY (product_id) REFERENCES product(id) ON DELETE SET NULL` 參考產品，產品刪除時設為 NULL
 - `CHECK ((redeemed_by IS NULL AND redeemed_at IS NULL) OR (redeemed_by IS NOT NULL AND redeemed_at IS NOT NULL))` 兌換一致性
+- V007 新增：`CHECK (quantity > 0)` 數量必須為正
+- V007 新增：`CHECK (quantity <= 1000)` 數量上限約束
 
 索引：
 
@@ -300,7 +303,53 @@
 
 - `RedemptionCodesGeneratedEvent`：批量生成兌換碼時發布，用於通知管理員面板即時更新統計
 
-## 4. 時間戳與更新觸發器
+### 4.3 `product_redemption_transaction`（V008 新增）
+
+儲存商品兌換交易記錄，記錄每次兌換的完整資訊。
+
+| 欄位 | 類型 | 說明 |
+|------|------|------|
+| `id` | BIGSERIAL (PK) | 交易記錄 ID |
+| `guild_id` | BIGINT | Discord 伺服器 ID |
+| `user_id` | BIGINT | Discord 使用者 ID |
+| `product_id` | BIGINT | 產品 ID（快照，即使產品刪除仍保留） |
+| `product_name` | VARCHAR(100) | 產品名稱快照（防止產品刪除後無法顯示） |
+| `redemption_code` | VARCHAR(32) | 使用的兌換碼 |
+| `quantity` | INT | 兌換的數量，範圍 1-1000 |
+| `reward_type` | VARCHAR(20) | 獎勵類型（CURRENCY 或 TOKEN，無自動獎勵為 NULL） |
+| `reward_amount` | BIGINT | 獎勵總額（quantity × 產品單位獎勵數量，可為 NULL） |
+| `created_at` | TIMESTAMPTZ | 兌換時間 |
+
+主鍵：
+
+- `PRIMARY KEY (id)`
+
+約束：
+
+- `CHECK (quantity > 0)` 數量必須為正
+- `CHECK (quantity <= 1000)` 數量上限約束
+
+索引：
+
+- `idx_user_guild_created (user_id, guild_id, created_at DESC)` 依使用者和伺服器查詢最新交易（用於分頁顯示）
+- `idx_product (product_id)` 依產品查詢交易（用於統計）
+
+對應的領域模型：
+
+- `ltdjms.discord.redemption.domain.ProductRedemptionTransaction`
+- `ltdjms.discord.redemption.services.ProductRedemptionTransactionService`
+
+常見用途：
+
+- `/user-panel` 的「查看商品兌換歷史」功能查詢此表
+- 記錄完整的兌換歷史，包括產品名稱快照（即使產品被刪除仍可顯示）
+- 管理員查看產品的兌換統計
+
+對應的領域事件：
+
+- `ProductRedemptionCompletedEvent`：兌換成功後發布，用於觸發面板即時更新
+
+## 5. 時間戳與更新觸發器
 
 `schema.sql` 中定義了一個共用的函式與多個 trigger，用來自動更新 `updated_at` 欄位：
 

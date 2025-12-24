@@ -9,6 +9,7 @@ import ltdjms.discord.gametoken.services.GameTokenTransactionService.Transaction
 import ltdjms.discord.panel.commands.UserPanelButtonHandler;
 import ltdjms.discord.panel.services.UserPanelService;
 import ltdjms.discord.panel.services.UserPanelView;
+import ltdjms.discord.redemption.services.ProductRedemptionTransactionService;
 import ltdjms.discord.redemption.services.RedemptionService;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
@@ -37,6 +38,7 @@ class UserPanelServiceTest {
     private GameTokenTransactionService gameTokenTransactionService;
     private CurrencyTransactionService currencyTransactionService;
     private RedemptionService redemptionService;
+    private ProductRedemptionTransactionService productRedemptionTransactionService;
     private UserPanelService userPanelService;
 
     @BeforeEach
@@ -46,9 +48,10 @@ class UserPanelServiceTest {
         gameTokenTransactionService = mock(GameTokenTransactionService.class);
         currencyTransactionService = mock(CurrencyTransactionService.class);
         redemptionService = mock(RedemptionService.class);
+        productRedemptionTransactionService = mock(ProductRedemptionTransactionService.class);
         userPanelService = new UserPanelService(
                 balanceService, gameTokenService, gameTokenTransactionService,
-                currencyTransactionService, redemptionService);
+                currencyTransactionService, redemptionService, productRedemptionTransactionService);
     }
 
     @Nested

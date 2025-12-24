@@ -40,6 +40,7 @@ class RedemptionCodeTest {
             assertThat(code.isRedeemed()).isFalse();
             assertThat(code.isExpired()).isFalse();
             assertThat(code.isValid()).isTrue();
+            assertThat(code.quantity()).isEqualTo(1); // Default quantity
         }
 
         @Test
@@ -115,7 +116,7 @@ class RedemptionCodeTest {
             Instant now = Instant.now();
             RedemptionCode code = new RedemptionCode(
                     1L, "ABCD1234EFGH5678", TEST_PRODUCT_ID, TEST_GUILD_ID,
-                    null, TEST_USER_ID, now, now, null);
+                    null, TEST_USER_ID, now, now, null, 1);
 
             // When/Then
             assertThatThrownBy(() -> code.withRedeemed(TEST_USER_ID))
@@ -153,7 +154,7 @@ class RedemptionCodeTest {
             Instant redeemedAt = now.minusSeconds(100);
             RedemptionCode code = new RedemptionCode(
                     1L, "ABCD1234EFGH5678", null, TEST_GUILD_ID,
-                    null, TEST_USER_ID, redeemedAt, now, now);
+                    null, TEST_USER_ID, redeemedAt, now, now, 1);
 
             // When/Then
             assertThatThrownBy(() -> code.withInvalidated())
@@ -169,7 +170,7 @@ class RedemptionCodeTest {
             Instant redeemedAt = now.minusSeconds(100);
             RedemptionCode code = new RedemptionCode(
                     1L, "ABCD1234EFGH5678", null, TEST_GUILD_ID,
-                    null, TEST_USER_ID, redeemedAt, now, now);
+                    null, TEST_USER_ID, redeemedAt, now, now, 1);
 
             // Then
             assertThat(code.isInvalidated()).isTrue();
@@ -185,7 +186,7 @@ class RedemptionCodeTest {
             Instant redeemedAt = now.minusSeconds(50);
             RedemptionCode code = new RedemptionCode(
                     1L, "ABCD1234EFGH5678", null, TEST_GUILD_ID,
-                    null, TEST_USER_ID, redeemedAt, createdAt, now);
+                    null, TEST_USER_ID, redeemedAt, createdAt, now, 1);
 
             // Then
             assertThat(code.isInvalidated()).isTrue();
@@ -286,7 +287,7 @@ class RedemptionCodeTest {
             Instant now = Instant.now();
             RedemptionCode code = new RedemptionCode(
                     1L, "ABCD1234", TEST_PRODUCT_ID, TEST_GUILD_ID,
-                    null, null, null, now, null);
+                    null, null, null, now, null, 1);
 
             // Then
             assertThat(code.getMaskedCode()).isEqualTo("ABCD1234");

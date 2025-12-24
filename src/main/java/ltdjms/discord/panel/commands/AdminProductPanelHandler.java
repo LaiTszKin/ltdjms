@@ -569,6 +569,14 @@ public class AdminProductPanelHandler extends ListenerAdapter {
                 .setMaxLength(3)
                 .build();
 
+        TextInput quantityInput = TextInput.create("quantity", "每個碼可兌換數量", TextInputStyle.SHORT)
+                .setPlaceholder("每個兌換碼可兌換的商品數量（1-1000，預設為 1）")
+                .setValue("1")
+                .setRequired(true)
+                .setMinLength(1)
+                .setMaxLength(4)
+                .build();
+
         TextInput expiresInput = TextInput.create("expires", "到期日期", TextInputStyle.SHORT)
                 .setPlaceholder("格式：YYYY-MM-DD（留空表示永不過期）")
                 .setRequired(false)
@@ -578,6 +586,7 @@ public class AdminProductPanelHandler extends ListenerAdapter {
         Modal modal = Modal.create(MODAL_GENERATE_CODES + session.productId, "生成兌換碼")
                 .addComponents(
                         ActionRow.of(countInput),
+                        ActionRow.of(quantityInput),
                         ActionRow.of(expiresInput)
                 )
                 .build();
@@ -590,6 +599,7 @@ public class AdminProductPanelHandler extends ListenerAdapter {
         long productId = Long.parseLong(modalId.substring(MODAL_GENERATE_CODES.length()));
 
         String countStr = event.getValue("count").getAsString().trim();
+        String quantityStr = event.getValue("quantity").getAsString().trim();
         String expiresStr = getModalValueOrNull(event, "expires");
 
         int count;
@@ -597,6 +607,14 @@ public class AdminProductPanelHandler extends ListenerAdapter {
             count = Integer.parseInt(countStr);
         } catch (NumberFormatException e) {
             event.reply("數量格式錯誤，請輸入有效數字").setEphemeral(true).queue();
+            return;
+        }
+
+        int quantity;
+        try {
+            quantity = Integer.parseInt(quantityStr);
+        } catch (NumberFormatException e) {
+            event.reply("兌換數量格式錯誤，請輸入有效數字").setEphemeral(true).queue();
             return;
         }
 
@@ -612,7 +630,7 @@ public class AdminProductPanelHandler extends ListenerAdapter {
         }
 
         Result<List<RedemptionCode>, DomainError> result = redemptionService.generateCodes(
-                productId, count, expiresAt);
+                productId, count, expiresAt, quantity);
 
         if (result.isErr()) {
             event.reply("生成失敗：" + result.getError().message()).setEphemeral(true).queue();
@@ -628,6 +646,10 @@ public class AdminProductPanelHandler extends ListenerAdapter {
             sb.append(code.code()).append("\n");
         }
         sb.append("```");
+
+        if (quantity > 1) {
+            sb.append("\n每個碼可兌換數量：").append(quantity);
+        }
 
         if (expiresAt != null) {
             sb.append("\n到期日期：").append(expiresStr);
@@ -691,6 +713,8 @@ public class AdminProductPanelHandler extends ListenerAdapter {
                 } else {
                     sb.append(" 🟢 可使用");
                 }
+                // 顯示 quantity 資訊
+                sb.append(" (數量:").append(code.quantity()).append(")");
                 sb.append("\n");
             }
             builder.setDescription(sb.toString());

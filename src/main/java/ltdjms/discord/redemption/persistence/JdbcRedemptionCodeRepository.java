@@ -29,8 +29,8 @@ public class JdbcRedemptionCodeRepository implements RedemptionCodeRepository {
     @Override
     public RedemptionCode save(RedemptionCode code) {
         String sql = "INSERT INTO redemption_code " +
-                "(code, product_id, guild_id, expires_at, redeemed_by, redeemed_at, created_at) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id";
+                "(code, product_id, guild_id, expires_at, redeemed_by, redeemed_at, created_at, quantity) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id";
 
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -42,6 +42,7 @@ public class JdbcRedemptionCodeRepository implements RedemptionCodeRepository {
             setNullableLong(stmt, 5, code.redeemedBy());
             setNullableTimestamp(stmt, 6, code.redeemedAt());
             stmt.setTimestamp(7, Timestamp.from(code.createdAt()));
+            stmt.setInt(8, code.quantity());
 
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
@@ -55,7 +56,8 @@ public class JdbcRedemptionCodeRepository implements RedemptionCodeRepository {
                             code.redeemedBy(),
                             code.redeemedAt(),
                             code.createdAt(),
-                            code.invalidatedAt()
+                            code.invalidatedAt(),
+                            code.quantity()
                     );
                     LOG.debug("Saved redemption code: id={}, productId={}", id, code.productId());
                     return saved;
@@ -76,8 +78,8 @@ public class JdbcRedemptionCodeRepository implements RedemptionCodeRepository {
         }
 
         String sql = "INSERT INTO redemption_code " +
-                "(code, product_id, guild_id, expires_at, redeemed_by, redeemed_at, created_at) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id";
+                "(code, product_id, guild_id, expires_at, redeemed_by, redeemed_at, created_at, quantity) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id";
 
         List<RedemptionCode> savedCodes = new ArrayList<>(codes.size());
 
@@ -92,6 +94,7 @@ public class JdbcRedemptionCodeRepository implements RedemptionCodeRepository {
                     setNullableLong(stmt, 5, code.redeemedBy());
                     setNullableTimestamp(stmt, 6, code.redeemedAt());
                     stmt.setTimestamp(7, Timestamp.from(code.createdAt()));
+                    stmt.setInt(8, code.quantity());
 
                     try (ResultSet rs = stmt.executeQuery()) {
                         if (rs.next()) {
@@ -105,7 +108,8 @@ public class JdbcRedemptionCodeRepository implements RedemptionCodeRepository {
                                     code.redeemedBy(),
                                     code.redeemedAt(),
                                     code.createdAt(),
-                                    code.invalidatedAt()
+                                    code.invalidatedAt(),
+                                    code.quantity()
                             ));
                         }
                     }
@@ -158,7 +162,7 @@ public class JdbcRedemptionCodeRepository implements RedemptionCodeRepository {
 
     @Override
     public Optional<RedemptionCode> findByCode(String code) {
-        String sql = "SELECT id, code, product_id, guild_id, expires_at, redeemed_by, redeemed_at, created_at, invalidated_at " +
+        String sql = "SELECT id, code, product_id, guild_id, expires_at, redeemed_by, redeemed_at, created_at, invalidated_at, quantity " +
                 "FROM redemption_code WHERE code = ?";
 
         try (Connection conn = dataSource.getConnection();
@@ -180,7 +184,7 @@ public class JdbcRedemptionCodeRepository implements RedemptionCodeRepository {
 
     @Override
     public Optional<RedemptionCode> findById(long id) {
-        String sql = "SELECT id, code, product_id, guild_id, expires_at, redeemed_by, redeemed_at, created_at, invalidated_at " +
+        String sql = "SELECT id, code, product_id, guild_id, expires_at, redeemed_by, redeemed_at, created_at, invalidated_at, quantity " +
                 "FROM redemption_code WHERE id = ?";
 
         try (Connection conn = dataSource.getConnection();
@@ -220,7 +224,7 @@ public class JdbcRedemptionCodeRepository implements RedemptionCodeRepository {
 
     @Override
     public List<RedemptionCode> findByProductId(long productId, int limit, int offset) {
-        String sql = "SELECT id, code, product_id, guild_id, expires_at, redeemed_by, redeemed_at, created_at, invalidated_at " +
+        String sql = "SELECT id, code, product_id, guild_id, expires_at, redeemed_by, redeemed_at, created_at, invalidated_at, quantity " +
                 "FROM redemption_code WHERE product_id = ? " +
                 "ORDER BY created_at DESC LIMIT ? OFFSET ?";
 
@@ -392,7 +396,8 @@ public class JdbcRedemptionCodeRepository implements RedemptionCodeRepository {
                 redeemedBy,
                 redeemedAt,
                 rs.getTimestamp("created_at").toInstant(),
-                invalidatedAt
+                invalidatedAt,
+                rs.getInt("quantity")
         );
     }
 
@@ -449,7 +454,7 @@ public class JdbcRedemptionCodeRepository implements RedemptionCodeRepository {
                 ")";
 
         // Simplified query for invalidated codes - find codes where product_id is NULL
-        String simplifiedSql = "SELECT id, code, product_id, guild_id, expires_at, redeemed_by, redeemed_at, created_at, invalidated_at " +
+        String simplifiedSql = "SELECT id, code, product_id, guild_id, expires_at, redeemed_by, redeemed_at, created_at, invalidated_at, quantity " +
                 "FROM redemption_code " +
                 "WHERE invalidated_at IS NOT NULL " +
                 "ORDER BY invalidated_at DESC";

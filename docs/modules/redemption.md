@@ -4,15 +4,17 @@
 
 ## 1. 概述
 
-兌換模組提供完整的兌換碼管理系統，允許管理員為產品生成唯一兌換碼，使用者輸入代碼即可兌換並獲得對應獎勵。系統支援到期時間設定、一碼一兌，並記錄兌換歷史。
+兌換模組提供完整的兌換碼管理系統，允許管理員為產品生成唯一兌換碼，使用者輸入代碼即可兌換並獲得對應獎勵。系統支援到期時間設定、可重複使用兌換碼，並記錄完整的兌換歷史。
 
 主要功能：
 - 兌換碼生成與管理
 - 代碼驗證與兌換
+- 可重複使用兌換碼（V007 新增 `quantity` 欄位）
 - 到期時間支援
 - 自動獎勵發放
-- 兌換歷史追蹤
+- 完整兌換歷史追蹤（V008 新增 `product_redemption_transaction`）
 - 產品刪除時自動失效關聯的兌換碼
+- 即時面板更新（V008 新增 `ProductRedemptionCompletedEvent`）
 
 ## 2. 領域模型
 
@@ -27,6 +29,7 @@ public record RedemptionCode(
     String code,
     Long productId,        // 對應產品 ID（可為 NULL，當產品被刪除時）
     long guildId,
+    int quantity,          // V007 新增：可兌換次數，預設為 1
     Instant expiresAt,
     Long redeemedBy,
     Instant redeemedAt,
@@ -35,6 +38,8 @@ public record RedemptionCode(
 ) {
     public static final int CODE_LENGTH = 16;
     public static final String CODE_CHARACTERS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+    public static final int MIN_QUANTITY = 1;
+    public static final int MAX_QUANTITY = 1000;
 
     // 商業規則驗證
     public RedemptionCode {
@@ -44,6 +49,15 @@ public record RedemptionCode(
         }
         if (code.length() > 32) {
             throw new IllegalArgumentException("code must not exceed 32 characters");
+        }
+        // V007 新增：quantity 驗證
+        if (quantity < MIN_QUANTITY) {
+            throw new IllegalArgumentException(
+                "quantity must be at least " + MIN_QUANTITY);
+        }
+        if (quantity > MAX_QUANTITY) {
+            throw new IllegalArgumentException(
+                "quantity must not exceed " + MAX_QUANTITY);
         }
         // 確保 redeemed_by 和 redeemed_at 一致
         if ((redeemedBy == null) != (redeemedAt == null)) {
@@ -57,6 +71,14 @@ public record RedemptionCode(
      */
     public boolean isRedeemed() {
         return redeemedBy != null;
+    }
+
+    /**
+     * V007 新增：檢查是否仍可兌換（基於 quantity）
+     * 注意：此方法只在單次兌換模式下有效，多次兌換需搭配交易記錄判斷
+     */
+    public boolean hasRemainingUses() {
+        return !isRedeemed();
     }
 
     /**
@@ -194,6 +216,118 @@ public class RedemptionCodeGenerator {
 - 長度：16 字元
 - 字元集：`ABCDEFGHJKMNPQRSTUVWXYZ23456789`（排除易混淆字元 0/O、1/I/L）
 - 生成時會檢查資料庫確保唯一性，最多重試 10 次
+
+### 2.4 ProductRedemptionTransaction（V008 新增）
+
+商品兌換交易紀錄，記錄每次兌換的完整資訊。
+
+```java
+// src/main/java/ltdjms/discord/redemption/domain/ProductRedemptionTransaction.java
+public record ProductRedemptionTransaction(
+    Long id,
+    long guildId,
+    long userId,
+    long productId,
+    String productName,      // 產品名稱快照（防止產品刪除後無法顯示）
+    String redemptionCode,   // 使用的兌換碼
+    int quantity,            // V007 新增：兌換的數量
+    RewardType rewardType,   // 獎勵類型（CURRENCY 或 TOKEN，無自動獎勵為 null）
+    Long rewardAmount,       // 獎勵總額（quantity × 產品單位獎勵數量）
+    Instant createdAt
+) {
+    public enum RewardType {
+        CURRENCY("貨幣"),
+        TOKEN("代幣");
+
+        private final String displayName;
+
+        RewardType(String displayName) {
+            this.displayName = displayName;
+        }
+
+        public String getDisplayName() {
+            return displayName;
+        }
+    }
+
+    // 商業規則驗證
+    public ProductRedemptionTransaction {
+        Objects.requireNonNull(productName, "productName must not be null");
+        if (productName.isBlank() || productName.length() > 100) {
+            throw new IllegalArgumentException("productName must be 1-100 characters");
+        }
+        Objects.requireNonNull(redemptionCode, "redemptionCode must not be null");
+        if (quantity <= 0 || quantity > 1000) {
+            throw new IllegalArgumentException("quantity must be 1-1000");
+        }
+        // 獎勵類型和金額的一致性檢查
+        if ((rewardType != null) != (rewardAmount != null)) {
+            throw new IllegalArgumentException(
+                "rewardType and rewardAmount must both be specified or both be null");
+        }
+    }
+
+    /**
+     * 檢查是否有自動獎勵
+     */
+    public boolean hasReward() {
+        return rewardType != null && rewardAmount != null;
+    }
+
+    /**
+     * 格式化顯示字串
+     */
+    public String formatForDisplay() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("**").append(productName).append("**");
+        if (quantity > 1) {
+            sb.append(" x").append(quantity);
+        }
+        if (hasReward()) {
+            sb.append(" | ").append(rewardType.getDisplayName())
+                .append(" +").append(String.format("%,d", rewardAmount));
+        } else {
+            sb.append(" | 無自動獎勵");
+        }
+        sb.append(" | `").append(getMaskedCode()).append("`");
+        return sb.toString();
+    }
+
+    /**
+     * 取得遮蔽後的兌換碼（前 4 碼 + 後 4 碼）
+     */
+    public String getMaskedCode() {
+        if (redemptionCode.length() <= 8) {
+            return redemptionCode;
+        }
+        return redemptionCode.substring(0, 4) + "****"
+            + redemptionCode.substring(redemptionCode.length() - 4);
+    }
+}
+```
+
+關鍵設計：
+- **產品名稱快照**：即使產品被刪除，交易記錄仍可顯示產品資訊
+- **遮蔽代碼**：顯示時只顯示前後 4 碼，保護代碼隱私
+- **完整性驗證**：quantity、rewardType、rewardAmount 的商業規則驗證
+
+### 2.5 商品兌換數量與交易記錄關係
+
+```mermaid
+flowchart LR
+    Code[兌換碼 RedemptionCode] -->|quantity = N| Tx[交易記錄 ProductRedemptionTransaction]
+    Tx -->|每次兌換 quantity = 1| History[兌換歷史]
+    History -->|可累計| Stats[統計資訊]
+
+    Code -.->|V007| Qty["quantity: 1-1000<br/>可重複使用"]
+    Tx -.->|V008| Snap["productName 快照<br/>防止刪除後遺失"]
+```
+
+**V007/V008 整合流程**：
+1. 管理員生成兌換碼時指定 `quantity`（預設 1）
+2. 使用者兌換時，系統建立 `ProductRedemptionTransaction` 記錄
+3. 交易記錄保存產品名稱快照，確保歷史可追溯
+4. 系統發布 `ProductRedemptionCompletedEvent` 觸發面板更新
 
 ## 3. 服務層
 
@@ -412,10 +546,76 @@ public class RedemptionService {
 
 主要方法：
 - `generateCodes`: 為產品生成多個兌換碼（最多 100 個）
-- `redeemCode`: 驗證並兌換代碼，包含完整的狀態檢查
+- `redeemCode`: 驗證並兌換代碼，包含完整的狀態檢查，建立交易記錄
 - `findByCode`: 查詢代碼
 - `getCodePage`: 取得分頁代碼列表
 - `getCodeStats`: 取得代碼統計資訊
+
+### 3.2 ProductRedemptionTransactionService（V008 新增）
+
+負責商品兌換交易記錄的業務邏輯。
+
+```java
+// src/main/java/ltdjms/discord/redemption/services/ProductRedemptionTransactionService.java
+public class ProductRedemptionTransactionService {
+    private final ProductRedemptionTransactionRepository transactionRepository;
+    private final DomainEventPublisher eventPublisher;
+
+    /**
+     * 記錄商品兌換交易
+     */
+    public Result<ProductRedemptionTransaction, DomainError> recordTransaction(
+        long guildId,
+        long userId,
+        long productId,
+        String productName,
+        String redemptionCode,
+        int quantity,
+        ProductRedemptionTransaction.RewardType rewardType,
+        Long rewardAmount
+    ) {
+        var transaction = ProductRedemptionTransaction.create(
+            guildId, userId, productId, productName, redemptionCode,
+            quantity, rewardType, rewardAmount
+        );
+
+        var saved = transactionRepository.save(transaction);
+
+        // 發布事件以觸發面板即時更新
+        eventPublisher.publish(new ProductRedemptionCompletedEvent(
+            guildId, userId, saved, Instant.now()
+        ));
+
+        return Result.ok(saved);
+    }
+
+    /**
+     * 取得使用者的商品兌換歷史
+     */
+    public Result<List<ProductRedemptionTransaction>, DomainError> getUserTransactions(
+        long guildId, long userId, int limit, int offset
+    ) {
+        return transactionRepository.findByGuildAndUser(
+            guildId, userId, limit, offset
+        );
+    }
+
+    /**
+     * 取得使用者的商品兌換總數
+     */
+    public Result<Long, DomainError> getUserTransactionCount(
+        long guildId, long userId
+    ) {
+        return transactionRepository.countByGuildAndUser(guildId, userId);
+    }
+}
+```
+
+主要功能：
+- **記錄交易**：每次兌換成功後建立交易記錄
+- **查詢歷史**：支援分頁查詢使用者的兌換歷史
+- **事件發布**：建立交易記錄後發布 `ProductRedemptionCompletedEvent`
+- **統計數量**：取得使用者的總兌換次數
 
 **兌換碼驗證流程**：
 

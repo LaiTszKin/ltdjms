@@ -16,7 +16,8 @@ public record RedemptionCode(
         Long redeemedBy,
         Instant redeemedAt,
         Instant createdAt,
-        Instant invalidatedAt
+        Instant invalidatedAt,
+        int quantity
 ) {
     /**
      * Length of the generated redemption code.
@@ -42,6 +43,13 @@ public record RedemptionCode(
             throw new IllegalArgumentException(
                     "redeemedBy and redeemedAt must both be specified or both be null");
         }
+        // Validate quantity
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("quantity must be positive");
+        }
+        if (quantity > 1000) {
+            throw new IllegalArgumentException("quantity must not exceed 1000");
+        }
     }
 
     /**
@@ -55,6 +63,21 @@ public record RedemptionCode(
      * @return a new RedemptionCode instance
      */
     public static RedemptionCode create(String code, long productId, long guildId, Instant expiresAt) {
+        return create(code, productId, guildId, expiresAt, 1);
+    }
+
+    /**
+     * Creates a new redemption code for a product with specified quantity.
+     * The ID will be null until the code is persisted.
+     *
+     * @param code      the redemption code string
+     * @param productId the ID of the product this code redeems
+     * @param guildId   the Discord guild ID
+     * @param expiresAt the expiration time (can be null for no expiration)
+     * @param quantity  the quantity of products this code redeems
+     * @return a new RedemptionCode instance
+     */
+    public static RedemptionCode create(String code, long productId, long guildId, Instant expiresAt, int quantity) {
         return new RedemptionCode(
                 null,
                 code.toUpperCase(),
@@ -64,7 +87,8 @@ public record RedemptionCode(
                 null,
                 null,
                 Instant.now(),
-                null
+                null,
+                quantity
         );
     }
 
@@ -87,7 +111,8 @@ public record RedemptionCode(
                 userId,
                 Instant.now(),
                 this.createdAt,
-                this.invalidatedAt
+                this.invalidatedAt,
+                this.quantity
         );
     }
 
@@ -146,7 +171,8 @@ public record RedemptionCode(
                 this.redeemedBy,
                 this.redeemedAt,
                 this.createdAt,
-                Instant.now()
+                Instant.now(),
+                this.quantity
         );
     }
 

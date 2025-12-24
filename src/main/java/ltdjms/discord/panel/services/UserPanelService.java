@@ -6,6 +6,7 @@ import ltdjms.discord.currency.services.CurrencyTransactionService;
 import ltdjms.discord.gametoken.services.GameTokenService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService.TransactionPage;
+import ltdjms.discord.redemption.services.ProductRedemptionTransactionService;
 import ltdjms.discord.redemption.services.RedemptionService;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
@@ -26,19 +27,22 @@ public class UserPanelService {
     private final GameTokenTransactionService gameTokenTransactionService;
     private final CurrencyTransactionService currencyTransactionService;
     private final RedemptionService redemptionService;
+    private final ProductRedemptionTransactionService productRedemptionTransactionService;
 
     public UserPanelService(
             BalanceService balanceService,
             GameTokenService gameTokenService,
             GameTokenTransactionService gameTokenTransactionService,
             CurrencyTransactionService currencyTransactionService,
-            RedemptionService redemptionService
+            RedemptionService redemptionService,
+            ProductRedemptionTransactionService productRedemptionTransactionService
     ) {
         this.balanceService = balanceService;
         this.gameTokenService = gameTokenService;
         this.gameTokenTransactionService = gameTokenTransactionService;
         this.currencyTransactionService = currencyTransactionService;
         this.redemptionService = redemptionService;
+        this.productRedemptionTransactionService = productRedemptionTransactionService;
     }
 
     /**
@@ -118,5 +122,21 @@ public class UserPanelService {
     public Result<RedemptionService.RedemptionResult, DomainError> redeemCode(String code, long guildId, long userId) {
         LOG.debug("Redeeming code for guildId={}, userId={}", guildId, userId);
         return redemptionService.redeemCode(code, guildId, userId);
+    }
+
+    /**
+     * 取得使用者的商品兌換交易分頁紀錄。
+     *
+     * @param guildId Discord 伺服器 ID
+     * @param userId  Discord 使用者 ID
+     * @param page    頁碼（從 1 開始）
+     * @return 商品兌換交易分頁紀錄
+     */
+    public ProductRedemptionTransactionService.TransactionPage getProductRedemptionTransactionPage(
+            long guildId, long userId, int page) {
+        LOG.debug("Getting product redemption transaction page for guildId={}, userId={}, page={}",
+                guildId, userId, page);
+        return productRedemptionTransactionService.getTransactionPage(guildId, userId, page,
+                ProductRedemptionTransactionService.DEFAULT_PAGE_SIZE);
     }
 }

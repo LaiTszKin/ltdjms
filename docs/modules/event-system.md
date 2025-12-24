@@ -37,6 +37,7 @@ public interface DomainEvent {
 |---------|---------|--------|------|
 | `ProductChangedEvent` | 產品建立、更新、刪除 | `AdminPanelUpdateListener` | 通知管理員面板刷新產品列表 |
 | `RedemptionCodesGeneratedEvent` | 兌換碼批量生成 | `AdminPanelUpdateListener` | 通知管理員面板更新代碼統計 |
+| `ProductRedemptionCompletedEvent` | V008 新增：商品兌換完成 | `ProductRedemptionUpdateListener` | 通知使用者面板刷新兌換歷史 |
 
 ## 3. 事件定義
 
@@ -144,6 +145,58 @@ public record RedemptionCodesGeneratedEvent(
 **發布位置**：
 - `RedemptionService.generateCodes()`: 批次生成兌換碼後
 
+### 3.3 ProductRedemptionCompletedEvent（V008 新增）
+
+當商品兌換完成時發布。
+
+```java
+// src/main/java/ltdjms/discord/shared/events/ProductRedemptionCompletedEvent.java
+public record ProductRedemptionCompletedEvent(
+    long guildId,                        // Discord 伺服器 ID
+    long userId,                         // 使用者 ID
+    ProductRedemptionTransaction transaction,  // 商品兌換交易記錄
+    Instant timestamp                    // 發生時間
+) implements DomainEvent {
+
+    public ProductRedemptionCompletedEvent {
+        if (timestamp == null) {
+            timestamp = Instant.now();
+        }
+    }
+
+    @Override
+    public Instant occurredAt() {
+        return timestamp;
+    }
+
+    @Override
+    public String eventType() {
+        return "ProductRedemptionCompleted";
+    }
+
+    /**
+     * 取得交易記錄中的產品名稱
+     */
+    public String getProductName() {
+        return transaction.productName();
+    }
+
+    /**
+     * 取得獎勵資訊字串
+     */
+    public String getRewardInfo() {
+        return transaction.formatForDisplay();
+    }
+}
+```
+
+**發布位置**：
+- `ProductRedemptionTransactionService.recordTransaction()`: 記錄兌換交易後
+
+**用途**：
+- 通知 `ProductRedemptionUpdateListener` 刷新使用者面板的兌換歷史顯示
+- 確保使用者即時看到自己的最新兌換記錄
+
 ## 4. 事件發布器
 
 ### 4.1 DomainEventPublisher 介面
@@ -227,6 +280,11 @@ public interface ProductChangedListener {
 public interface RedemptionCodesGeneratedListener {
     void onRedemptionCodesGenerated(RedemptionCodesGeneratedEvent event);
 }
+
+// V008 新增：商品兌換完成監聽器
+public interface ProductRedemptionCompletedListener {
+    void onProductRedemptionCompleted(ProductRedemptionCompletedEvent event);
+}
 ```
 
 ### 5.2 AdminPanelUpdateListener
@@ -278,6 +336,46 @@ public class AdminPanelUpdateListener
     }
 }
 ```
+
+### 5.3 ProductRedemptionUpdateListener（V008 新增）
+
+商品兌換完成監聽器，負責即時更新使用者面板的兌換歷史顯示。
+
+```java
+// src/main/java/ltdjms/discord/panel/services/ProductRedemptionUpdateListener.java
+public class ProductRedemptionUpdateListener
+    implements ProductRedemptionCompletedListener {
+
+    private final UserPanelService userPanelService;
+
+    @Override
+    public void onProductRedemptionCompleted(ProductRedemptionCompletedEvent event) {
+        LOG.info("Received ProductRedemptionCompletedEvent: guildId={}, userId={}, product={}",
+            event.guildId(), event.userId(), event.getProductName());
+
+        // 查找該使用者所有開啟的面板
+        List<UserPanelSession> sessions = userPanelService.findSessionsByUser(
+            event.guildId(), event.userId()
+        );
+
+        for (UserPanelSession session : sessions) {
+            try {
+                // 如果面板正在顯示兌換歷史，刷新顯示
+                if (session.currentView() == UserPanelView.Type.REDEMPTION_HISTORY) {
+                    userPanelService.refreshRedemptionHistory(session);
+                }
+            } catch (Exception e) {
+                LOG.error("Failed to refresh user panel for session: " + session.id(), e);
+            }
+        }
+    }
+}
+```
+
+**設計特點**：
+- 只刷新正在顯示兌換歷史的面板，避免不必要的更新
+- 使用者可立即看到自己的最新兌換記錄
+- 刷新失敗不會影響兌換流程本身
 
 ## 6. 依賴注入設定
 
@@ -362,6 +460,38 @@ sequenceDiagram
     end
 
     Service-->>Admin: 生成成功
+```
+
+### 7.3 商品兌換完成事件流程（V008 新增）
+
+```mermaid
+sequenceDiagram
+    participant User as 使用者
+    participant Service as RedemptionService
+    participant TxService as ProductRedemptionTransactionService
+    participant Publisher as DomainEventPublisher
+    participant Listener as ProductRedemptionUpdateListener
+    participant Panel as UserPanel
+
+    User->>Service: redeemCode(code)
+    Service->>Service: 驗證代碼有效性
+    Service->>Service: 發放獎勵
+    Service->>TxService: recordTransaction(...)
+    TxService->>TxService: 建立 ProductRedemptionTransaction
+    TxService->>Publisher: publish(ProductRedemptionCompletedEvent)
+
+    Publisher->>Listener: onProductRedemptionCompleted(event)
+
+    Listener->>Panel: 查找使用者的面板
+    Panel-->>Listener: sessions
+
+    alt 面板正在顯示兌換歷史
+        Listener->>Panel: refreshRedemptionHistory(session)
+        Panel->>Panel: 重新載入交易記錄
+        Panel-->>User: 顯示更新後的歷史
+    end
+
+    Service-->>User: 兌換成功
 ```
 
 ## 8. 錯誤處理

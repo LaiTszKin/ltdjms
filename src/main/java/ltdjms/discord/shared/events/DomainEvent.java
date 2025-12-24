@@ -10,7 +10,8 @@ public sealed interface DomainEvent permits
         CurrencyConfigChangedEvent,
         DiceGameConfigChangedEvent,
         ProductChangedEvent,
-        RedemptionCodesGeneratedEvent {
+        RedemptionCodesGeneratedEvent,
+        ProductRedemptionCompletedEvent {
     /**
      * @return the Discord guild ID where the event occurred
      */

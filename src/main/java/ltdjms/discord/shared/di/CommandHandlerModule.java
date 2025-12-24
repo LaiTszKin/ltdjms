@@ -26,11 +26,13 @@ import ltdjms.discord.panel.services.AdminPanelSessionManager;
 import ltdjms.discord.panel.services.AdminPanelService;
 import ltdjms.discord.panel.services.AdminPanelUpdateListener;
 import ltdjms.discord.panel.services.PanelSessionManager;
+import ltdjms.discord.panel.services.ProductRedemptionUpdateListener;
 import ltdjms.discord.panel.services.UserPanelService;
 import ltdjms.discord.panel.services.UserPanelUpdateListener;
+import ltdjms.discord.redemption.services.ProductRedemptionTransactionService;
+import ltdjms.discord.redemption.services.RedemptionService;
 import ltdjms.discord.product.services.ProductService;
 import ltdjms.discord.product.domain.ProductRepository;
-import ltdjms.discord.redemption.services.RedemptionService;
 import ltdjms.discord.shared.events.DomainEventPublisher;
 import ltdjms.discord.shop.commands.ShopButtonHandler;
 import ltdjms.discord.shop.commands.ShopCommandHandler;
@@ -85,10 +87,11 @@ public class CommandHandlerModule {
             GameTokenService gameTokenService,
             GameTokenTransactionService gameTokenTransactionService,
             CurrencyTransactionService currencyTransactionService,
-            RedemptionService redemptionService) {
+            RedemptionService redemptionService,
+            ProductRedemptionTransactionService productRedemptionTransactionService) {
         return new UserPanelService(
                 balanceService, gameTokenService, gameTokenTransactionService,
-                currencyTransactionService, redemptionService);
+                currencyTransactionService, redemptionService, productRedemptionTransactionService);
     }
 
     @Provides
@@ -120,6 +123,13 @@ public class CommandHandlerModule {
 
     @Provides
     @Singleton
+    public ProductRedemptionUpdateListener provideProductRedemptionUpdateListener(
+            PanelSessionManager sessionManager) {
+        return new ProductRedemptionUpdateListener(sessionManager);
+    }
+
+    @Provides
+    @Singleton
     public UserPanelCommandHandler provideUserPanelCommandHandler(
             UserPanelService userPanelService,
             PanelSessionManager panelSessionManager) {
@@ -128,8 +138,10 @@ public class CommandHandlerModule {
 
     @Provides
     @Singleton
-    public UserPanelButtonHandler provideUserPanelButtonHandler(UserPanelService userPanelService) {
-        return new UserPanelButtonHandler(userPanelService);
+    public UserPanelButtonHandler provideUserPanelButtonHandler(
+            UserPanelService userPanelService,
+            ProductRedemptionTransactionService productRedemptionTransactionService) {
+        return new UserPanelButtonHandler(userPanelService, productRedemptionTransactionService);
     }
 
     @Provides

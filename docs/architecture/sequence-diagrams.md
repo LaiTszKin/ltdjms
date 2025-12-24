@@ -276,7 +276,76 @@ sequenceDiagram
 
 ---
 
-## 6. 錯誤處理模式
+## 6. 商品兌換完整流程（V008 新增）
+
+當使用者使用兌換碼並建立交易記錄時：
+
+```mermaid
+sequenceDiagram
+    actor User as 使用者
+    participant Handler as RedemptionCommandHandler
+    participant Service as RedemptionService
+    participant RCodeRepo as RedemptionCodeRepository
+    participant PRepo as ProductRepository
+    participant TxService as ProductRedemptionTransactionService
+    participant TxRepo as ProductRedemptionTransactionRepository
+    participant EventBus as DomainEventPublisher
+    participant PanelListener as ProductRedemptionUpdateListener
+    participant BalanceSvc as BalanceAdjustmentService
+    participant DB as 資料庫
+
+    User->>Handler: 輸入兌換碼
+    Handler->>Service: redeemCode(code, guildId, userId)
+
+    Service->>RCodeRepo: findByCode(code)
+    RCodeRepo-->>Service: Optional<RedemptionCode>
+
+    alt 代碼無效或不可用
+        Service-->>Handler: Result.err(錯誤訊息)
+        Handler-->>User: 顯示錯誤訊息
+    else 代碼可用
+        Service->>PRepo: findById(productId)
+        PRepo-->>Service: Optional<Product>
+
+        Service->>RCodeRepo: update(withRedeemed(userId))
+        RCodeRepo->>DB: UPDATE redemption_code<br/>SET redeemed_by = ?, redeemed_at = NOW()
+
+        alt 產品有獎勵
+            Service->>BalanceSvc: tryAdjustBalance(guildId, userId, amount)
+            BalanceSvc-->>Service: Result.ok(adjustment)
+        end
+
+        Service->>TxService: recordTransaction(guildId, userId, productId, productName, code, quantity, rewardType, rewardAmount)
+        TxService->>TxRepo: save(ProductRedemptionTransaction)
+        TxRepo->>DB: INSERT INTO product_redemption_transaction<br/>(guild_id, user_id, product_id,<br/>product_name, redemption_code,<br/>quantity, reward_type, reward_amount)
+        DB-->>TxRepo: savedTransaction
+        TxRepo-->>TxService: ProductRedemptionTransaction
+
+        TxService->>EventBus: publish(ProductRedemptionCompletedEvent)
+        EventBus-->>PanelListener: 接收事件
+
+        alt 使用者面板正在顯示兌換歷史
+            PanelListener->>PanelListener: refreshRedemptionHistory(session)
+            PanelListener-->>User: 面板自動更新
+        end
+
+        TxService-->>Service: Result.ok(transaction)
+
+        Service-->>Handler: Result.ok(RedemptionResult)
+        Handler-->>User: 顯示成功訊息與獎勵
+    end
+```
+
+**關鍵點**（V008 新增）：
+1. **交易記錄**：每次兌換都會建立 `ProductRedemptionTransaction` 記錄
+2. **產品名稱快照**：交易記錄保存 `product_name`，即使產品被刪除仍可顯示
+3. **事件發布**：發布 `ProductRedemptionCompletedEvent` 觸發面板即時更新
+4. **遮蔽代碼**：顯示時只顯示前後 4 碼（如 `ABCD****1234`）
+5. **面板更新**：如果使用者正在查看兌換歷史，面板會自動刷新
+
+---
+
+## 7. 錯誤處理模式
 
 系統統一使用 `Result<T, DomainError>` 處理錯誤：
 

@@ -8,7 +8,9 @@ import ltdjms.discord.gametoken.services.GameTokenService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService;
 import ltdjms.discord.product.domain.ProductRepository;
 import ltdjms.discord.product.services.ProductService;
+import ltdjms.discord.redemption.domain.ProductRedemptionTransactionRepository;
 import ltdjms.discord.redemption.domain.RedemptionCodeRepository;
+import ltdjms.discord.redemption.services.ProductRedemptionTransactionService;
 import ltdjms.discord.redemption.services.RedemptionCodeGenerator;
 import ltdjms.discord.redemption.services.RedemptionService;
 import ltdjms.discord.shared.events.DomainEventPublisher;
@@ -32,6 +34,13 @@ public class ProductServiceModule {
 
     @Provides
     @Singleton
+    public ProductRedemptionTransactionService provideProductRedemptionTransactionService(
+            ProductRedemptionTransactionRepository productRedemptionTransactionRepository) {
+        return new ProductRedemptionTransactionService(productRedemptionTransactionRepository);
+    }
+
+    @Provides
+    @Singleton
     public RedemptionCodeGenerator provideRedemptionCodeGenerator() {
         return new RedemptionCodeGenerator();
     }
@@ -46,6 +55,7 @@ public class ProductServiceModule {
             GameTokenService gameTokenService,
             CurrencyTransactionService currencyTransactionService,
             GameTokenTransactionService gameTokenTransactionService,
+            ProductRedemptionTransactionService productRedemptionTransactionService,
             DomainEventPublisher eventPublisher) {
         return new RedemptionService(
                 codeRepository,
@@ -55,6 +65,7 @@ public class ProductServiceModule {
                 gameTokenService,
                 currencyTransactionService,
                 gameTokenTransactionService,
+                productRedemptionTransactionService,
                 eventPublisher);
     }
 }

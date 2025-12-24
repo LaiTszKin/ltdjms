@@ -29,6 +29,7 @@ public class UserPanelCommandHandler implements SlashCommandListener.CommandHand
     // Button IDs for interaction handling
     public static final String BUTTON_TOKEN_HISTORY = "user_panel_token_history";
     public static final String BUTTON_CURRENCY_HISTORY = "user_panel_currency_history";
+    public static final String BUTTON_PRODUCT_REDEMPTION_HISTORY = "user_panel_product_redemption_history";
 
     private static final Color EMBED_COLOR = new Color(0x5865F2); // Discord blurple
 
@@ -61,7 +62,8 @@ public class UserPanelCommandHandler implements SlashCommandListener.CommandHand
                 .addComponents(
                         ActionRow.of(
                                 Button.secondary(BUTTON_CURRENCY_HISTORY, panelView.getCurrencyHistoryButtonLabel()),
-                                Button.secondary(BUTTON_TOKEN_HISTORY, "📜 查看遊戲代幣流水")
+                                Button.secondary(BUTTON_TOKEN_HISTORY, "📜 查看遊戲代幣流水"),
+                                Button.secondary(BUTTON_PRODUCT_REDEMPTION_HISTORY, "🛒 查看商品流水")
                         ),
                         ActionRow.of(
                                 Button.success(UserPanelButtonHandler.BUTTON_REDEEM, "🎫 兌換碼")

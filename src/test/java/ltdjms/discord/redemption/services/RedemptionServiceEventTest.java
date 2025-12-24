@@ -48,6 +48,7 @@ class RedemptionServiceEventTest {
                 mock(ltdjms.discord.gametoken.services.GameTokenService.class),
                 mock(ltdjms.discord.currency.services.CurrencyTransactionService.class),
                 mock(ltdjms.discord.gametoken.services.GameTokenTransactionService.class),
+                mock(ProductRedemptionTransactionService.class),
                 eventPublisher
         );
     }
