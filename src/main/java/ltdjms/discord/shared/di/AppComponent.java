@@ -28,6 +28,7 @@ import ltdjms.discord.shared.DatabaseConfig;
 import ltdjms.discord.shared.EnvironmentConfig;
 import ltdjms.discord.shared.events.DomainEventPublisher;
 import ltdjms.discord.panel.services.UserPanelUpdateListener;
+import ltdjms.discord.shop.commands.ShopButtonHandler;
 import org.jooq.DSLContext;
 
 import javax.inject.Singleton;
@@ -104,6 +105,9 @@ public interface AppComponent {
     UserPanelButtonHandler userPanelButtonHandler();
     AdminPanelButtonHandler adminPanelButtonHandler();
     AdminProductPanelHandler adminProductPanelHandler();
+
+    // Shop Handlers
+    ShopButtonHandler shopButtonHandler();
 
     // Slash Command Listener
     SlashCommandListener slashCommandListener();

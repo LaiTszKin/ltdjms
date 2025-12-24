@@ -42,6 +42,7 @@ public final class CommandLocalizations {
         COMMAND_NAME_LOCALIZATIONS.put("dice-game-2-config", Map.of(DiscordLocale.CHINESE_TAIWAN, "神龍擺尾設定"));
         COMMAND_NAME_LOCALIZATIONS.put("user-panel", Map.of(DiscordLocale.CHINESE_TAIWAN, "個人面板"));
         COMMAND_NAME_LOCALIZATIONS.put("admin-panel", Map.of(DiscordLocale.CHINESE_TAIWAN, "管理面板"));
+        COMMAND_NAME_LOCALIZATIONS.put("shop", Map.of(DiscordLocale.CHINESE_TAIWAN, "商店"));
 
         // Initialize command description localizations
         COMMAND_DESCRIPTION_LOCALIZATIONS = new HashMap<>();
@@ -65,6 +66,8 @@ public final class CommandLocalizations {
                 Map.of(DiscordLocale.CHINESE_TAIWAN, "查看您的貨幣餘額、遊戲代幣與流水紀錄"));
         COMMAND_DESCRIPTION_LOCALIZATIONS.put("admin-panel",
                 Map.of(DiscordLocale.CHINESE_TAIWAN, "管理成員餘額、遊戲代幣與遊戲設定"));
+        COMMAND_DESCRIPTION_LOCALIZATIONS.put("shop",
+                Map.of(DiscordLocale.CHINESE_TAIWAN, "瀏覽伺服器可購買的商品"));
 
         // Initialize option name localizations
         OPTION_NAME_LOCALIZATIONS = new HashMap<>();

@@ -38,7 +38,7 @@ class SlashCommandListenerTest {
     void setUp() {
         // Create listener with null handlers for command definition tests
         // (handlers are not used when building command definitions)
-        listener = new SlashCommandListener(null, null, null, null, null);
+        listener = new SlashCommandListener(null, null, null, null, null, null);
     }
 
     @Nested
@@ -46,11 +46,11 @@ class SlashCommandListenerTest {
     class BuildAllCommandDefinitionsTests {
 
         @Test
-        @DisplayName("should return exactly 5 command definitions")
+        @DisplayName("should return exactly 6 command definitions")
         void shouldReturnExpectedNumberOfCommands() {
             List<SlashCommandData> commands = listener.buildAllCommandDefinitions();
 
-            assertThat(commands).hasSize(5);
+            assertThat(commands).hasSize(6);
         }
 
         @Test
@@ -66,7 +66,8 @@ class SlashCommandListenerTest {
                     "dice-game-1",
                     "dice-game-2",
                     "user-panel",
-                    "admin-panel"
+                    "admin-panel",
+                    "shop"
             );
         }
 
@@ -145,15 +146,16 @@ class SlashCommandListenerTest {
             assertThat(SlashCommandListener.CMD_DICE_GAME_2).isEqualTo("dice-game-2");
             assertThat(SlashCommandListener.CMD_USER_PANEL).isEqualTo("user-panel");
             assertThat(SlashCommandListener.CMD_ADMIN_PANEL).isEqualTo("admin-panel");
+            assertThat(SlashCommandListener.CMD_SHOP).isEqualTo("shop");
         }
 
         @Test
-        @DisplayName("should have exactly 5 command constants matching definitions")
+        @DisplayName("should have exactly 6 command constants matching definitions")
         void shouldHaveMatchingCommandCount() {
             List<SlashCommandData> commands = listener.buildAllCommandDefinitions();
 
-            // There should be exactly 5 commands
-            assertThat(commands).hasSize(5);
+            // There should be exactly 6 commands
+            assertThat(commands).hasSize(6);
 
             // Each command constant should have a matching definition
             Set<String> commandNames = commands.stream()
@@ -165,7 +167,8 @@ class SlashCommandListenerTest {
                     SlashCommandListener.CMD_DICE_GAME_1,
                     SlashCommandListener.CMD_DICE_GAME_2,
                     SlashCommandListener.CMD_USER_PANEL,
-                    SlashCommandListener.CMD_ADMIN_PANEL
+                    SlashCommandListener.CMD_ADMIN_PANEL,
+                    SlashCommandListener.CMD_SHOP
             );
         }
     }

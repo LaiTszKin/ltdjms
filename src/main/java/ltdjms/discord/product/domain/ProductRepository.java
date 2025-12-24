@@ -50,6 +50,16 @@ public interface ProductRepository {
     List<Product> findByGuildId(long guildId);
 
     /**
+     * Finds products for a guild with pagination.
+     *
+     * @param guildId the Discord guild ID
+     * @param page    zero-based page number
+     * @param size    the number of items per page
+     * @return a list of products for the specified page
+     */
+    List<Product> findByGuildIdPaginated(long guildId, int page, int size);
+
+    /**
      * Counts the number of products for a guild.
      *
      * @param guildId the Discord guild ID

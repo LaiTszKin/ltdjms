@@ -430,25 +430,49 @@ public class AdminProductPanelHandler extends ListenerAdapter {
                             .setMaxLength(100)
                             .build();
 
+                    String description = product.description();
                     TextInput descInput = TextInput.create("description", "商品描述", TextInputStyle.PARAGRAPH)
-                            .setValue(product.description() != null ? product.description() : "")
+                            .setPlaceholder("輸入商品描述（選填）")
                             .setRequired(false)
                             .setMaxLength(500)
                             .build();
+                    if (description != null && !description.isBlank()) {
+                        descInput = TextInput.create("description", "商品描述", TextInputStyle.PARAGRAPH)
+                                .setValue(description)
+                                .setRequired(false)
+                                .setMaxLength(500)
+                                .build();
+                    }
 
+                    String rewardTypeValue = product.rewardType() != null ? product.rewardType().name() : "";
                     TextInput rewardTypeInput = TextInput.create("reward_type", "獎勵類型", TextInputStyle.SHORT)
                             .setPlaceholder("CURRENCY 或 TOKEN（留空表示無自動獎勵）")
-                            .setValue(product.rewardType() != null ? product.rewardType().name() : "")
                             .setRequired(false)
                             .setMaxLength(20)
                             .build();
+                    if (!rewardTypeValue.isBlank()) {
+                        rewardTypeInput = TextInput.create("reward_type", "獎勵類型", TextInputStyle.SHORT)
+                                .setPlaceholder("CURRENCY 或 TOKEN（留空表示無自動獎勵）")
+                                .setValue(rewardTypeValue)
+                                .setRequired(false)
+                                .setMaxLength(20)
+                                .build();
+                    }
 
+                    String rewardAmountValue = product.rewardAmount() != null ? String.valueOf(product.rewardAmount()) : "";
                     TextInput rewardAmountInput = TextInput.create("reward_amount", "獎勵數量", TextInputStyle.SHORT)
                             .setPlaceholder("輸入獎勵數量")
-                            .setValue(product.rewardAmount() != null ? String.valueOf(product.rewardAmount()) : "")
                             .setRequired(false)
                             .setMaxLength(15)
                             .build();
+                    if (!rewardAmountValue.isBlank()) {
+                        rewardAmountInput = TextInput.create("reward_amount", "獎勵數量", TextInputStyle.SHORT)
+                                .setPlaceholder("輸入獎勵數量")
+                                .setValue(rewardAmountValue)
+                                .setRequired(false)
+                                .setMaxLength(15)
+                                .build();
+                    }
 
                     Modal modal = Modal.create(MODAL_EDIT_PRODUCT + productId, "編輯商品")
                             .addComponents(

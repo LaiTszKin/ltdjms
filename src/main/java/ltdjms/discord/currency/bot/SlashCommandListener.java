@@ -5,6 +5,7 @@ import ltdjms.discord.gametoken.commands.DiceGame1CommandHandler;
 import ltdjms.discord.gametoken.commands.DiceGame2CommandHandler;
 import ltdjms.discord.panel.commands.AdminPanelCommandHandler;
 import ltdjms.discord.panel.commands.UserPanelCommandHandler;
+import ltdjms.discord.shop.commands.ShopCommandHandler;
 import ltdjms.discord.shared.localization.CommandLocalizations;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.Permission;
@@ -35,12 +36,14 @@ public class SlashCommandListener extends ListenerAdapter {
     public static final String CMD_DICE_GAME_2 = "dice-game-2";
     public static final String CMD_USER_PANEL = "user-panel";
     public static final String CMD_ADMIN_PANEL = "admin-panel";
+    public static final String CMD_SHOP = "shop";
 
     private final CurrencyConfigCommandHandler configHandler;
     private final DiceGame1CommandHandler diceGame1Handler;
     private final DiceGame2CommandHandler diceGame2Handler;
     private final UserPanelCommandHandler userPanelHandler;
     private final AdminPanelCommandHandler adminPanelHandler;
+    private final ShopCommandHandler shopHandler;
     private final SlashCommandMetrics metrics;
 
     public SlashCommandListener(
@@ -48,9 +51,10 @@ public class SlashCommandListener extends ListenerAdapter {
             DiceGame1CommandHandler diceGame1Handler,
             DiceGame2CommandHandler diceGame2Handler,
             UserPanelCommandHandler userPanelHandler,
-            AdminPanelCommandHandler adminPanelHandler) {
+            AdminPanelCommandHandler adminPanelHandler,
+            ShopCommandHandler shopHandler) {
         this(configHandler, diceGame1Handler, diceGame2Handler,
-                userPanelHandler, adminPanelHandler, new SlashCommandMetrics());
+                userPanelHandler, adminPanelHandler, shopHandler, new SlashCommandMetrics());
     }
 
     public SlashCommandListener(
@@ -59,12 +63,14 @@ public class SlashCommandListener extends ListenerAdapter {
             DiceGame2CommandHandler diceGame2Handler,
             UserPanelCommandHandler userPanelHandler,
             AdminPanelCommandHandler adminPanelHandler,
+            ShopCommandHandler shopHandler,
             SlashCommandMetrics metrics) {
         this.configHandler = configHandler;
         this.diceGame1Handler = diceGame1Handler;
         this.diceGame2Handler = diceGame2Handler;
         this.userPanelHandler = userPanelHandler;
         this.adminPanelHandler = adminPanelHandler;
+        this.shopHandler = shopHandler;
         this.metrics = metrics;
     }
 
@@ -132,7 +138,12 @@ public class SlashCommandListener extends ListenerAdapter {
                 Commands.slash(CMD_ADMIN_PANEL, "Manage member balances, game tokens, and game settings")
                         .setNameLocalizations(CommandLocalizations.getNameLocalizations(CMD_ADMIN_PANEL))
                         .setDescriptionLocalizations(CommandLocalizations.getDescriptionLocalizations(CMD_ADMIN_PANEL))
-                        .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.ADMINISTRATOR))
+                        .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.ADMINISTRATOR)),
+
+                // /shop - available to all users
+                Commands.slash(CMD_SHOP, "Browse available products in the shop")
+                        .setNameLocalizations(CommandLocalizations.getNameLocalizations(CMD_SHOP))
+                        .setDescriptionLocalizations(CommandLocalizations.getDescriptionLocalizations(CMD_SHOP))
         );
     }
 
@@ -246,6 +257,7 @@ public class SlashCommandListener extends ListenerAdapter {
                 case CMD_DICE_GAME_2 -> diceGame2Handler.handle(event);
                 case CMD_USER_PANEL -> userPanelHandler.handle(event);
                 case CMD_ADMIN_PANEL -> handleWithAdminCheck(event, adminPanelHandler);
+                case CMD_SHOP -> shopHandler.handle(event);
                 default -> {
                     LOG.warn("Unknown command received: {}", commandName);
                     event.reply("Unknown command.").setEphemeral(true).queue();

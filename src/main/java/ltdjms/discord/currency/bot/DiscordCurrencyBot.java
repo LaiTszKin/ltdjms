@@ -8,6 +8,7 @@ import ltdjms.discord.shared.DatabaseMigrationRunner;
 import ltdjms.discord.shared.EnvironmentConfig;
 import ltdjms.discord.shared.di.AppComponent;
 import ltdjms.discord.shared.di.AppComponentFactory;
+import ltdjms.discord.shop.commands.ShopButtonHandler;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import org.slf4j.Logger;
@@ -54,6 +55,7 @@ public class DiscordCurrencyBot {
         UserPanelButtonHandler userPanelButtonHandler = appComponent.userPanelButtonHandler();
         AdminPanelButtonHandler adminPanelButtonHandler = appComponent.adminPanelButtonHandler();
         AdminProductPanelHandler adminProductPanelHandler = appComponent.adminProductPanelHandler();
+        ShopButtonHandler shopButtonHandler = appComponent.shopButtonHandler();
 
         // Build JDA instance with default non-privileged gateway intents to avoid
         // DISALLOWED_INTENTS (4014) errors when the bot token does not have
@@ -62,7 +64,8 @@ public class DiscordCurrencyBot {
                 slashCommandListener,
                 userPanelButtonHandler,
                 adminPanelButtonHandler,
-                adminProductPanelHandler
+                adminProductPanelHandler,
+                shopButtonHandler
         );
 
         this.jda = JDABuilder.createLight(envConfig.getDiscordBotToken())
@@ -137,13 +140,15 @@ public class DiscordCurrencyBot {
             SlashCommandListener slashCommandListener,
             UserPanelButtonHandler userPanelButtonHandler,
             AdminPanelButtonHandler adminPanelButtonHandler,
-            AdminProductPanelHandler adminProductPanelHandler
+            AdminProductPanelHandler adminProductPanelHandler,
+            ShopButtonHandler shopButtonHandler
     ) {
         return List.of(
                 slashCommandListener,
                 userPanelButtonHandler,
                 adminPanelButtonHandler,
-                adminProductPanelHandler
+                adminProductPanelHandler,
+                shopButtonHandler
         );
     }
 }

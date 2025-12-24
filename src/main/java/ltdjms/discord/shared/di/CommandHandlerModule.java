@@ -29,8 +29,12 @@ import ltdjms.discord.panel.services.PanelSessionManager;
 import ltdjms.discord.panel.services.UserPanelService;
 import ltdjms.discord.panel.services.UserPanelUpdateListener;
 import ltdjms.discord.product.services.ProductService;
+import ltdjms.discord.product.domain.ProductRepository;
 import ltdjms.discord.redemption.services.RedemptionService;
 import ltdjms.discord.shared.events.DomainEventPublisher;
+import ltdjms.discord.shop.commands.ShopButtonHandler;
+import ltdjms.discord.shop.commands.ShopCommandHandler;
+import ltdjms.discord.shop.services.ShopService;
 
 import javax.inject.Singleton;
 
@@ -172,14 +176,33 @@ public class CommandHandlerModule {
 
     @Provides
     @Singleton
+    public ShopService provideShopService(ProductRepository productRepository) {
+        return new ShopService(productRepository);
+    }
+
+    @Provides
+    @Singleton
+    public ShopCommandHandler provideShopCommandHandler(ShopService shopService) {
+        return new ShopCommandHandler(shopService);
+    }
+
+    @Provides
+    @Singleton
+    public ShopButtonHandler provideShopButtonHandler(ShopService shopService) {
+        return new ShopButtonHandler(shopService);
+    }
+
+    @Provides
+    @Singleton
     public SlashCommandListener provideSlashCommandListener(
             CurrencyConfigCommandHandler configHandler,
             DiceGame1CommandHandler diceGame1Handler,
             DiceGame2CommandHandler diceGame2Handler,
             UserPanelCommandHandler userPanelHandler,
-            AdminPanelCommandHandler adminPanelHandler) {
+            AdminPanelCommandHandler adminPanelHandler,
+            ShopCommandHandler shopHandler) {
         return new SlashCommandListener(
                 configHandler, diceGame1Handler, diceGame2Handler,
-                userPanelHandler, adminPanelHandler);
+                userPanelHandler, adminPanelHandler, shopHandler);
     }
 }

@@ -184,6 +184,36 @@ public class JdbcProductRepository implements ProductRepository {
     }
 
     @Override
+    public List<Product> findByGuildIdPaginated(long guildId, int page, int size) {
+        String sql = "SELECT id, guild_id, name, description, reward_type, reward_amount, " +
+                "created_at, updated_at FROM product WHERE guild_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?";
+
+        List<Product> products = new ArrayList<>();
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setLong(1, guildId);
+            stmt.setInt(2, size);
+            stmt.setInt(3, page * size);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    products.add(mapRow(rs));
+                }
+            }
+
+            LOG.debug("Found {} products for guildId={}, page={}, size={}",
+                    products.size(), guildId, page, size);
+            return products;
+
+        } catch (SQLException e) {
+            LOG.error("Failed to find products paginated for guildId={}", guildId, e);
+            throw new RepositoryException("Failed to find products", e);
+        }
+    }
+
+    @Override
     public long countByGuildId(long guildId) {
         String sql = "SELECT COUNT(*) FROM product WHERE guild_id = ?";
 
