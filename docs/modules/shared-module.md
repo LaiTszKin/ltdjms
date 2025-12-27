@@ -415,20 +415,93 @@ public class CommandLocalizations {
 }
 ```
 
-## 8. 開發建議
+## 8. Discord API 抽象層
 
-### 8.1 新增 Service 時的 DI 配置
+雖然 Discord API 抽象層的程式碼位於 `ltdjms.discord.discord` 套件下，但它也是重要的跨模組基礎設施，提供統一的 Discord 介面抽象。
+
+### 8.1 核心抽象介面
+
+| 介面 | 職責 |
+|------|------|
+| `DiscordInteraction` | 統一的 Discord 互動回應介面 |
+| `DiscordContext` | 從 Discord 事件提取上下文資訊 |
+| `DiscordEmbedBuilder` | Discord Embed 建構器抽象 |
+| `DiscordSessionManager` | 跨互動的 Session 管理器 |
+
+### 8.2 依賴注入配置
+
+Discord 抽象層的元件透過 `DiscordModule` 註冊到 Dagger 2 容器：
+
+```java
+// src/main/java/ltdjms/discord/shared/di/DiscordModule.java
+@Module
+public class DiscordModule {
+
+    @Provides
+    @Singleton
+    public DiscordEmbedBuilder provideDiscordEmbedBuilder() {
+        return new JdaDiscordEmbedBuilder();
+    }
+}
+```
+
+**在 `AppComponent` 中使用**：
+
+```java
+@Component(modules = {
+    // ... 其他模組
+    DiscordModule.class  // 新增 Discord 抽象層模組
+})
+public interface AppComponent {
+    DiscordEmbedBuilder discordEmbedBuilder();
+    // ... 其他依賴
+}
+```
+
+### 8.3 與 Command Handler 的整合
+
+Command Handler 應該使用 Adapter 來取得抽象介面：
+
+```java
+public class BalanceCommandHandler {
+    private final DiscordEmbedBuilder embedBuilder;
+
+    public void handle(SlashCommandInteractionEvent event) {
+        // 使用 Adapter 轉換
+        DiscordInteraction interaction = SlashCommandAdapter.fromSlashEvent(event);
+        DiscordContext context = SlashCommandAdapter.toContext(event);
+
+        // 使用抽象介面進行業務邏輯
+        long guildId = context.getGuildId();
+        long userId = context.getUserId();
+
+        // 使用 EmbedBuilder 建構回應
+        MessageEmbed embed = embedBuilder.setTitle("餘額").build();
+        interaction.replyEmbed(embed);
+    }
+}
+```
+
+### 8.4 詳細文件
+
+Discord API 抽象層的完整說明請參閱：[Discord API 抽象層文件](discord-api-abstraction.md)
+
+---
+
+## 9. 開發建議
+
+### 9.1 新增 Service 時的 DI 配置
 
 1. 在對應的 `*ServiceModule` 中新增 `@Provides` 方法
 2. 將 Service 新增到 `AppComponent` 介面
 3. 在 `AppComponentImpl`（若有）中實作
 
-### 8.2 新增 Repository 時的 DI 配置
+### 9.2 新增 Repository 時的 DI 配置
 
 1. 在對應的 `*RepositoryModule` 中新增 `@Binds` 方法
 2. 將 Repository 介面新增到 `AppComponent` 介面
 
-### 8.3 新增領域事件
+### 9.3 新增領域事件
 
 1. 建立新的 `*Event` 類別，实现 `DomainEvent` 介面
 2. 在 `EventModule` 中註冊事件監聽器

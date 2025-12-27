@@ -4,6 +4,21 @@
 
 指令定義可在 `src/main/java/ltdjms/discord/currency/bot/SlashCommandListener.java` 中找到，本文件是該程式行為的文件化版本。
 
+## Discord API 抽象層
+
+從 v0.12.0 起，所有指令處理器使用統一的 Discord API 抽象層，而非直接依賴 JDA API。這提供了：
+
+- **解耦**：業務邏輯與 Discord API 實作分離
+- **可測試性**：使用 Mock 實作進行單元測試，無需依賴 JDA
+- **擴展性**：未來可輕鬆替換 Discord API 實作（如 Discord4J）
+
+抽象層包含：
+- `DiscordInteraction`：統一的互動回應介面
+- `DiscordContext`：事件上下文提取介面
+- `DiscordEmbedBuilder`：視圖元件建構器
+- `DiscordSessionManager`：Session 管理介面
+- `DiscordButtonEvent`/`DiscordModalEvent`：特定事件類型抽象
+
 ## 指令總覽
 
 | 指令 | 權限 | 模組 | 說明 |

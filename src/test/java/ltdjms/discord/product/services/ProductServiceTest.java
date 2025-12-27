@@ -151,6 +151,90 @@ class ProductServiceTest {
             assertThat(result.isErr()).isTrue();
             assertThat(result.getError().message()).contains("大於 0");
         }
+
+        @Test
+        @DisplayName("should reject name exceeding 100 characters")
+        void shouldRejectNameExceeding100Characters() {
+            // When
+            String longName = "a".repeat(101);
+            Result<Product, DomainError> result = productService.createProduct(
+                    TEST_GUILD_ID, longName, "desc", null, null, null);
+
+            // Then
+            assertThat(result.isErr()).isTrue();
+            assertThat(result.getError().message()).contains("不能超過 100 個字元");
+        }
+
+        @Test
+        @DisplayName("should reject zero or negative currency price")
+        void shouldRejectZeroOrNegativeCurrencyPrice() {
+            // Given
+            when(productRepository.existsByGuildIdAndName(anyLong(), anyString())).thenReturn(false);
+
+            // When
+            Result<Product, DomainError> result = productService.createProduct(
+                    TEST_GUILD_ID, "Test", "desc", null, null, 0L);
+
+            // Then
+            assertThat(result.isErr()).isTrue();
+            assertThat(result.getError().message()).contains("貨幣價格必須大於 0");
+        }
+
+        @Test
+        @DisplayName("should create product with currency price")
+        void shouldCreateProductWithCurrencyPrice() {
+            // Given
+            when(productRepository.existsByGuildIdAndName(TEST_GUILD_ID, "Premium Product")).thenReturn(false);
+            when(productRepository.save(any(Product.class))).thenAnswer(invocation -> {
+                Product p = invocation.getArgument(0);
+                return new Product(1L, p.guildId(), p.name(), p.description(),
+                        p.rewardType(), p.rewardAmount(), p.currencyPrice(), p.createdAt(), p.updatedAt());
+            });
+
+            // When
+            Result<Product, DomainError> result = productService.createProduct(
+                    TEST_GUILD_ID, "Premium Product", "Premium", null, null, 500L);
+
+            // Then
+            assertThat(result.isOk()).isTrue();
+            assertThat(result.getValue().currencyPrice()).isEqualTo(500L);
+            assertThat(result.getValue().hasCurrencyPrice()).isTrue();
+        }
+
+        @Test
+        @DisplayName("should handle persistence failure on create")
+        void shouldHandlePersistenceFailureOnCreate() {
+            // Given
+            when(productRepository.existsByGuildIdAndName(anyLong(), anyString())).thenReturn(false);
+            when(productRepository.save(any(Product.class)))
+                    .thenThrow(new RuntimeException("Database error"));
+
+            // When
+            Result<Product, DomainError> result = productService.createProduct(
+                    TEST_GUILD_ID, "Test", "desc", null, null, null);
+
+            // Then
+            assertThat(result.isErr()).isTrue();
+            assertThat(result.getError().category()).isEqualTo(DomainError.Category.PERSISTENCE_FAILURE);
+        }
+
+        @Test
+        @DisplayName("should publish event on successful create")
+        void shouldPublishEventOnSuccessfulCreate() {
+            // Given
+            when(productRepository.existsByGuildIdAndName(TEST_GUILD_ID, "Test Product")).thenReturn(false);
+            when(productRepository.save(any(Product.class))).thenAnswer(invocation -> {
+                Product p = invocation.getArgument(0);
+                return new Product(1L, p.guildId(), p.name(), p.description(),
+                        p.rewardType(), p.rewardAmount(), p.currencyPrice(), p.createdAt(), p.updatedAt());
+            });
+
+            // When
+            productService.createProduct(TEST_GUILD_ID, "Test Product", "desc", null, null, null);
+
+            // Then
+            verify(eventPublisher).publish(any(ltdjms.discord.shared.events.ProductChangedEvent.class));
+        }
     }
 
     @Nested
@@ -215,6 +299,112 @@ class ProductServiceTest {
             assertThat(result.isErr()).isTrue();
             assertThat(result.getError().message()).contains("已存在");
         }
+
+        @Test
+        @DisplayName("should reject update with blank name")
+        void shouldRejectUpdateWithBlankName() {
+            // When
+            Result<Product, DomainError> result = productService.updateProduct(
+                    1L, "   ", "desc", null, null, null);
+
+            // Then
+            assertThat(result.isErr()).isTrue();
+            assertThat(result.getError().message()).contains("空");
+        }
+
+        @Test
+        @DisplayName("should reject update with name exceeding 100 characters")
+        void shouldRejectUpdateWithNameExceeding100Characters() {
+            // When - name length check happens before repository lookup
+            String longName = "a".repeat(101);
+            Result<Product, DomainError> result = productService.updateProduct(
+                    1L, longName, "desc", null, null, null);
+
+            // Then
+            assertThat(result.isErr()).isTrue();
+            assertThat(result.getError().message()).contains("不能超過 100 個字元");
+        }
+
+        @Test
+        @DisplayName("should reject update with inconsistent reward settings")
+        void shouldRejectUpdateWithInconsistentRewardSettings() {
+            // Given
+            Instant now = Instant.now();
+            Product existing = new Product(1L, TEST_GUILD_ID, "Old", null,
+                    null, null, null, now, now);
+
+            when(productRepository.findById(1L)).thenReturn(Optional.of(existing));
+
+            // When
+            Result<Product, DomainError> result = productService.updateProduct(
+                    1L, "New", "desc", Product.RewardType.CURRENCY, null, null);
+
+            // Then
+            assertThat(result.isErr()).isTrue();
+            assertThat(result.getError().message()).contains("同時");
+        }
+
+        @Test
+        @DisplayName("should reject update with zero or negative currency price")
+        void shouldRejectUpdateWithZeroOrNegativeCurrencyPrice() {
+            // Given
+            Instant now = Instant.now();
+            Product existing = new Product(1L, TEST_GUILD_ID, "Old", null,
+                    null, null, null, now, now);
+
+            when(productRepository.findById(1L)).thenReturn(Optional.of(existing));
+
+            // When
+            Result<Product, DomainError> result = productService.updateProduct(
+                    1L, "New", "desc", null, null, 0L);
+
+            // Then
+            assertThat(result.isErr()).isTrue();
+            assertThat(result.getError().message()).contains("貨幣價格必須大於 0");
+        }
+
+        @Test
+        @DisplayName("should handle persistence failure on update")
+        void shouldHandlePersistenceFailureOnUpdate() {
+            // Given
+            Instant now = Instant.now();
+            Product existing = new Product(1L, TEST_GUILD_ID, "Old", null,
+                    null, null, null, now, now);
+
+            when(productRepository.findById(1L)).thenReturn(Optional.of(existing));
+            when(productRepository.existsByGuildIdAndNameExcludingId(anyLong(), anyString(), anyLong()))
+                    .thenReturn(false);
+            when(productRepository.update(any(Product.class)))
+                    .thenThrow(new RuntimeException("Database error"));
+
+            // When
+            Result<Product, DomainError> result = productService.updateProduct(
+                    1L, "New", "desc", null, null, null);
+
+            // Then
+            assertThat(result.isErr()).isTrue();
+            assertThat(result.getError().category()).isEqualTo(DomainError.Category.PERSISTENCE_FAILURE);
+        }
+
+        @Test
+        @DisplayName("should publish event on successful update")
+        void shouldPublishEventOnSuccessfulUpdate() {
+            // Given
+            Instant now = Instant.now();
+            Product existing = new Product(1L, TEST_GUILD_ID, "Old", null,
+                    null, null, null, now, now);
+
+            when(productRepository.findById(1L)).thenReturn(Optional.of(existing));
+            when(productRepository.existsByGuildIdAndNameExcludingId(TEST_GUILD_ID, "New", 1L))
+                    .thenReturn(false);
+            when(productRepository.update(any(Product.class))).thenAnswer(i -> i.getArgument(0));
+
+            // When
+            productService.updateProduct(1L, "New", "desc", null, null, null);
+
+            // Then
+            verify(eventPublisher).publish(any(ltdjms.discord.shared.events.ProductChangedEvent.class));
+        }
     }
 
     @Nested
@@ -277,6 +467,65 @@ class ProductServiceTest {
             assertThat(result.getError().message()).contains("找不到");
             verify(redemptionCodeRepository, never()).invalidateByProductId(anyLong());
         }
+
+        @Test
+        @DisplayName("should handle delete when repository returns false")
+        void shouldHandleDeleteWhenRepositoryReturnsFalse() {
+            // Given
+            Instant now = Instant.now();
+            Product existing = new Product(1L, TEST_GUILD_ID, "Test", null,
+                    null, null, null, now, now);
+
+            when(productRepository.findById(1L)).thenReturn(Optional.of(existing));
+            when(redemptionCodeRepository.invalidateByProductId(1L)).thenReturn(0);
+            when(productRepository.deleteById(1L)).thenReturn(false);
+
+            // When
+            Result<Unit, DomainError> result = productService.deleteProduct(1L);
+
+            // Then
+            assertThat(result.isErr()).isTrue();
+            assertThat(result.getError().message()).contains("刪除商品失敗");
+        }
+
+        @Test
+        @DisplayName("should handle persistence failure on delete")
+        void shouldHandlePersistenceFailureOnDelete() {
+            // Given
+            Instant now = Instant.now();
+            Product existing = new Product(1L, TEST_GUILD_ID, "Test", null,
+                    null, null, null, now, now);
+
+            when(productRepository.findById(1L)).thenReturn(Optional.of(existing));
+            when(redemptionCodeRepository.invalidateByProductId(1L))
+                    .thenThrow(new RuntimeException("Database error"));
+
+            // When
+            Result<Unit, DomainError> result = productService.deleteProduct(1L);
+
+            // Then
+            assertThat(result.isErr()).isTrue();
+            assertThat(result.getError().category()).isEqualTo(DomainError.Category.PERSISTENCE_FAILURE);
+        }
+
+        @Test
+        @DisplayName("should publish event on successful delete")
+        void shouldPublishEventOnSuccessfulDelete() {
+            // Given
+            Instant now = Instant.now();
+            Product existing = new Product(1L, TEST_GUILD_ID, "Test", null,
+                    null, null, null, now, now);
+
+            when(productRepository.findById(1L)).thenReturn(Optional.of(existing));
+            when(redemptionCodeRepository.invalidateByProductId(1L)).thenReturn(0);
+            when(productRepository.deleteById(1L)).thenReturn(true);
+
+            // When
+            productService.deleteProduct(1L);
+
+            // Then
+            verify(eventPublisher).publish(any(ltdjms.discord.shared.events.ProductChangedEvent.class));
+        }
     }
 
     @Nested
@@ -312,6 +561,74 @@ class ProductServiceTest {
 
             // Then
             assertThat(count).isEqualTo(5L);
+        }
+
+        @Test
+        @DisplayName("should get product by ID when exists")
+        void shouldGetProductByIdWhenExists() {
+            // Given
+            Instant now = Instant.now();
+            Product product = new Product(1L, TEST_GUILD_ID, "Test", null,
+                    null, null, null, now, now);
+            when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+
+            // When
+            Optional<Product> result = productService.getProduct(1L);
+
+            // Then
+            assertThat(result).isPresent();
+            assertThat(result.get().id()).isEqualTo(1L);
+        }
+
+        @Test
+        @DisplayName("should return empty when product not found")
+        void shouldReturnEmptyWhenProductNotFound() {
+            // Given
+            when(productRepository.findById(999L)).thenReturn(Optional.empty());
+
+            // When
+            Optional<Product> result = productService.getProduct(999L);
+
+            // Then
+            assertThat(result).isEmpty();
+        }
+
+        @Test
+        @DisplayName("should get products for purchase filtering by currency price")
+        void shouldGetProductsForPurchaseFilteringByCurrencyPrice() {
+            // Given
+            Instant now = Instant.now();
+            Product productWithPrice = new Product(1L, TEST_GUILD_ID, "Paid", null,
+                    null, null, 500L, now, now);
+            Product productWithoutPrice = new Product(2L, TEST_GUILD_ID, "Free", null,
+                    null, null, null, now, now);
+
+            when(productRepository.findByGuildId(TEST_GUILD_ID))
+                    .thenReturn(List.of(productWithPrice, productWithoutPrice));
+
+            // When
+            List<Product> result = productService.getProductsForPurchase(TEST_GUILD_ID);
+
+            // Then
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).id()).isEqualTo(1L);
+        }
+
+        @Test
+        @DisplayName("should return empty list when no products have currency price")
+        void shouldReturnEmptyListWhenNoProductsHaveCurrencyPrice() {
+            // Given
+            Instant now = Instant.now();
+            Product product = new Product(1L, TEST_GUILD_ID, "Free", null,
+                    null, null, null, now, now);
+
+            when(productRepository.findByGuildId(TEST_GUILD_ID)).thenReturn(List.of(product));
+
+            // When
+            List<Product> result = productService.getProductsForPurchase(TEST_GUILD_ID);
+
+            // Then
+            assertThat(result).isEmpty();
         }
     }
 }
