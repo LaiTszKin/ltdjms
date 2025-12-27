@@ -250,7 +250,109 @@ void testEmbedBuilder_withLongText_truncatesCorrectly() {
 
 ---
 
-## 7. 本文件與實際執行情況
+## 7. 代碼格式化（Spotless）
+
+本專案使用 Spotless Maven Plugin 自動化代碼格式檢查和格式化，確保代碼庫遵循統一的 Google Java Format 風格。
+
+### 7.1 Spotless Maven Goals 參考
+
+| Goal | 說明 | 何時使用 |
+|------|------|----------|
+| `spotless:check` | 檢查格式，違規時失敗 | CI/CD、提交前 |
+| `spotless:apply` | 自動修正格式問題 | 開發過程、修正違規 |
+
+### 7.2 使用 Make 執行格式檢查
+
+```bash
+# 格式化代碼
+make format
+
+# 檢查格式
+make format-check
+
+# 執行測試（包含格式檢查）
+make test
+```
+
+### 7.3 IDE 整合
+
+#### IntelliJ IDEA
+
+**方法一：Spotless Applier Plugin（推薦）**
+
+1. 安裝插件：
+   - `File` → `Settings` → `Plugins` → 搜尋 "Spotless Applier"
+   - 或訪問 [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/22455-spotless-applier)
+
+2. 使用方式：
+   - 右鍵檔案 → `Spotless: Format Current File`
+   - 右鍵專案 → `Spotless: Format Project`
+
+**方法二：外部工具**
+
+1. 建立外部工具：
+   ```
+   File → Settings → Tools → External Tools → +
+   Name: Spotless Apply
+   Program: mvn
+   Arguments: spotless:apply
+   Working directory: $ProjectFileDir$
+   ```
+
+2. 設定快捷鍵（可選）：
+   ```
+   Keymap → 搜尋 "Spotless Apply" → 設定快捷鍵（如 Cmd+Shift+F）
+   ```
+
+#### VS Code
+
+本專案已配置 `.vscode/tasks.json`，可直接使用 Maven tasks：
+
+1. 執行格式化：
+   - `Cmd+Shift+P` → "Tasks: Run Task" → "Spotless: Apply"
+   - `Cmd+Shift+P` → "Tasks: Run Task" → "Spotless: Check"
+
+2. 格式規則已與命令行完全同步，確保一致性。
+
+### 7.4 常見工作流程範例
+
+#### 開發新功能
+
+```bash
+# 1. 開發功能
+# ... 編寫代碼 ...
+
+# 2. 格式化代碼
+make format
+
+# 3. 執行測試
+make test
+
+# 4. 提交
+git add .
+git commit -m "feat: new feature"
+```
+
+#### 修復格式違規
+
+```bash
+# 1. CI/CD 失敗，提示格式違規
+# Running 'mvn spotless:check'
+
+# 2. 修正格式
+make format
+
+# 3. 驗證修正
+make format-check
+
+# 4. 提交修正
+git add .
+git commit -m "chore: fix code format"
+```
+
+---
+
+## 8. 本文件與實際執行情況
 
 此文件僅說明測試策略與指令，**不會自動執行任何測試**。  
 實際開發時請依下列指令在本機或 CI 中執行測試：

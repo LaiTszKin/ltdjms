@@ -1,5 +1,10 @@
 package ltdjms.discord.shared.di;
 
+import javax.inject.Singleton;
+import javax.sql.DataSource;
+
+import org.jooq.DSLContext;
+
 import dagger.Component;
 import ltdjms.discord.currency.bot.SlashCommandListener;
 import ltdjms.discord.currency.commands.CurrencyConfigCommandHandler;
@@ -16,112 +21,130 @@ import ltdjms.discord.gametoken.persistence.GameTokenTransactionRepository;
 import ltdjms.discord.gametoken.services.DiceGame1Service;
 import ltdjms.discord.gametoken.services.GameTokenService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService;
-import ltdjms.discord.product.domain.ProductRepository;
-import ltdjms.discord.product.services.ProductService;
-import ltdjms.discord.redemption.domain.RedemptionCodeRepository;
-import ltdjms.discord.redemption.services.RedemptionService;
 import ltdjms.discord.panel.commands.AdminPanelButtonHandler;
 import ltdjms.discord.panel.commands.AdminProductPanelHandler;
 import ltdjms.discord.panel.commands.UserPanelButtonHandler;
 import ltdjms.discord.panel.services.AdminPanelUpdateListener;
+import ltdjms.discord.panel.services.UserPanelUpdateListener;
+import ltdjms.discord.product.domain.ProductRepository;
+import ltdjms.discord.product.services.ProductService;
+import ltdjms.discord.redemption.domain.RedemptionCodeRepository;
+import ltdjms.discord.redemption.services.RedemptionService;
 import ltdjms.discord.shared.DatabaseConfig;
 import ltdjms.discord.shared.EnvironmentConfig;
 import ltdjms.discord.shared.cache.CacheInvalidationListener;
 import ltdjms.discord.shared.cache.CacheKeyGenerator;
 import ltdjms.discord.shared.cache.CacheService;
 import ltdjms.discord.shared.events.DomainEventPublisher;
-import ltdjms.discord.panel.services.UserPanelUpdateListener;
 import ltdjms.discord.shop.commands.ShopButtonHandler;
 import ltdjms.discord.shop.commands.ShopSelectMenuHandler;
 import ltdjms.discord.shop.services.CurrencyPurchaseService;
-import org.jooq.DSLContext;
-
-import javax.inject.Singleton;
-import javax.sql.DataSource;
 
 /**
- * Main Dagger component for the LTDJ management system application.
- * Provides all dependencies needed for the bot to operate.
+ * Main Dagger component for the LTDJ management system application. Provides all dependencies
+ * needed for the bot to operate.
  *
  * <p>Note: Legacy command handlers (BalanceCommandHandler, BalanceAdjustmentCommandHandler,
- * GameTokenAdjustCommandHandler, DiceGame1ConfigCommandHandler, DiceGame2ConfigCommandHandler)
- * have been removed. Their functionality is now available through /user-panel and /admin-panel.</p>
+ * GameTokenAdjustCommandHandler, DiceGame1ConfigCommandHandler, DiceGame2ConfigCommandHandler) have
+ * been removed. Their functionality is now available through /user-panel and /admin-panel.
  */
 @Singleton
-@Component(modules = {
-        DatabaseModule.class,
-        CacheModule.class,
-        CurrencyRepositoryModule.class,
-        CurrencyServiceModule.class,
-        GameTokenRepositoryModule.class,
-        GameTokenServiceModule.class,
-        ProductRepositoryModule.class,
-        ProductServiceModule.class,
-        CommandHandlerModule.class,
-        EventModule.class
-})
+@Component(
+    modules = {
+      DatabaseModule.class,
+      CacheModule.class,
+      CurrencyRepositoryModule.class,
+      CurrencyServiceModule.class,
+      GameTokenRepositoryModule.class,
+      GameTokenServiceModule.class,
+      ProductRepositoryModule.class,
+      ProductServiceModule.class,
+      CommandHandlerModule.class,
+      EventModule.class
+    })
 public interface AppComponent {
 
-    // Configuration
-    EnvironmentConfig environmentConfig();
-    DatabaseConfig databaseConfig();
+  // Configuration
+  EnvironmentConfig environmentConfig();
 
-    // Cache
-    CacheService cacheService();
-    CacheKeyGenerator cacheKeyGenerator();
-    CacheInvalidationListener cacheInvalidationListener();
+  DatabaseConfig databaseConfig();
 
-    // Events
-    DomainEventPublisher domainEventPublisher();
-    UserPanelUpdateListener userPanelUpdateListener();
-    AdminPanelUpdateListener adminPanelUpdateListener();
+  // Cache
+  CacheService cacheService();
 
-    // Database
-    DataSource dataSource();
-    DSLContext dslContext();
+  CacheKeyGenerator cacheKeyGenerator();
 
-    // Currency Repositories
-    MemberCurrencyAccountRepository memberCurrencyAccountRepository();
-    GuildCurrencyConfigRepository guildCurrencyConfigRepository();
+  CacheInvalidationListener cacheInvalidationListener();
 
-    // Game Token Repositories
-    GameTokenAccountRepository gameTokenAccountRepository();
-    DiceGame1ConfigRepository diceGame1ConfigRepository();
-    GameTokenTransactionRepository gameTokenTransactionRepository();
+  // Events
+  DomainEventPublisher domainEventPublisher();
 
-    // Currency Services
-    BalanceService balanceService();
-    CurrencyConfigService currencyConfigService();
-    BalanceAdjustmentService balanceAdjustmentService();
+  UserPanelUpdateListener userPanelUpdateListener();
 
-    // Game Token Services
-    GameTokenService gameTokenService();
-    DiceGame1Service diceGame1Service();
-    GameTokenTransactionService gameTokenTransactionService();
+  AdminPanelUpdateListener adminPanelUpdateListener();
 
-    // Product and Redemption
-    ProductRepository productRepository();
-    RedemptionCodeRepository redemptionCodeRepository();
-    ProductService productService();
-    RedemptionService redemptionService();
+  // Database
+  DataSource dataSource();
 
-    // Currency Command Handlers
-    CurrencyConfigCommandHandler currencyConfigCommandHandler();
+  DSLContext dslContext();
 
-    // Game Command Handlers
-    DiceGame1CommandHandler diceGame1CommandHandler();
-    DiceGame2CommandHandler diceGame2CommandHandler();
+  // Currency Repositories
+  MemberCurrencyAccountRepository memberCurrencyAccountRepository();
 
-    // Panel Handlers
-    UserPanelButtonHandler userPanelButtonHandler();
-    AdminPanelButtonHandler adminPanelButtonHandler();
-    AdminProductPanelHandler adminProductPanelHandler();
+  GuildCurrencyConfigRepository guildCurrencyConfigRepository();
 
-    // Shop Handlers
-    ShopButtonHandler shopButtonHandler();
-    ShopSelectMenuHandler shopSelectMenuHandler();
-    CurrencyPurchaseService currencyPurchaseService();
+  // Game Token Repositories
+  GameTokenAccountRepository gameTokenAccountRepository();
 
-    // Slash Command Listener
-    SlashCommandListener slashCommandListener();
+  DiceGame1ConfigRepository diceGame1ConfigRepository();
+
+  GameTokenTransactionRepository gameTokenTransactionRepository();
+
+  // Currency Services
+  BalanceService balanceService();
+
+  CurrencyConfigService currencyConfigService();
+
+  BalanceAdjustmentService balanceAdjustmentService();
+
+  // Game Token Services
+  GameTokenService gameTokenService();
+
+  DiceGame1Service diceGame1Service();
+
+  GameTokenTransactionService gameTokenTransactionService();
+
+  // Product and Redemption
+  ProductRepository productRepository();
+
+  RedemptionCodeRepository redemptionCodeRepository();
+
+  ProductService productService();
+
+  RedemptionService redemptionService();
+
+  // Currency Command Handlers
+  CurrencyConfigCommandHandler currencyConfigCommandHandler();
+
+  // Game Command Handlers
+  DiceGame1CommandHandler diceGame1CommandHandler();
+
+  DiceGame2CommandHandler diceGame2CommandHandler();
+
+  // Panel Handlers
+  UserPanelButtonHandler userPanelButtonHandler();
+
+  AdminPanelButtonHandler adminPanelButtonHandler();
+
+  AdminProductPanelHandler adminProductPanelHandler();
+
+  // Shop Handlers
+  ShopButtonHandler shopButtonHandler();
+
+  ShopSelectMenuHandler shopSelectMenuHandler();
+
+  CurrencyPurchaseService currencyPurchaseService();
+
+  // Slash Command Listener
+  SlashCommandListener slashCommandListener();
 }

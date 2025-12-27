@@ -1,5 +1,7 @@
 package ltdjms.discord.shared.di;
 
+import javax.inject.Singleton;
+
 import dagger.Module;
 import dagger.Provides;
 import ltdjms.discord.currency.domain.CurrencyTransactionRepository;
@@ -16,56 +18,58 @@ import ltdjms.discord.shared.cache.CacheKeyGenerator;
 import ltdjms.discord.shared.cache.CacheService;
 import ltdjms.discord.shared.events.DomainEventPublisher;
 
-import javax.inject.Singleton;
-
-/**
- * Dagger module providing currency service dependencies.
- */
+/** Dagger module providing currency service dependencies. */
 @Module
 public class CurrencyServiceModule {
 
-    @Provides
-    @Singleton
-    public EmojiValidator provideEmojiValidator() {
-        return new JdaEmojiValidator();
-    }
+  @Provides
+  @Singleton
+  public EmojiValidator provideEmojiValidator() {
+    return new JdaEmojiValidator();
+  }
 
-    @Provides
-    @Singleton
-    public BalanceService provideBalanceService(
-            MemberCurrencyAccountRepository accountRepository,
-            GuildCurrencyConfigRepository configRepository,
-            CacheService cacheService,
-            CacheKeyGenerator cacheKeyGenerator) {
-        return new DefaultBalanceService(accountRepository, configRepository, cacheService, cacheKeyGenerator);
-    }
+  @Provides
+  @Singleton
+  public BalanceService provideBalanceService(
+      MemberCurrencyAccountRepository accountRepository,
+      GuildCurrencyConfigRepository configRepository,
+      CacheService cacheService,
+      CacheKeyGenerator cacheKeyGenerator) {
+    return new DefaultBalanceService(
+        accountRepository, configRepository, cacheService, cacheKeyGenerator);
+  }
 
-    @Provides
-    @Singleton
-    public CurrencyConfigService provideCurrencyConfigService(
-            GuildCurrencyConfigRepository configRepository,
-            EmojiValidator emojiValidator,
-            DomainEventPublisher eventPublisher) {
-        return new CurrencyConfigService(configRepository, emojiValidator, eventPublisher);
-    }
+  @Provides
+  @Singleton
+  public CurrencyConfigService provideCurrencyConfigService(
+      GuildCurrencyConfigRepository configRepository,
+      EmojiValidator emojiValidator,
+      DomainEventPublisher eventPublisher) {
+    return new CurrencyConfigService(configRepository, emojiValidator, eventPublisher);
+  }
 
-    @Provides
-    @Singleton
-    public CurrencyTransactionService provideCurrencyTransactionService(
-            CurrencyTransactionRepository transactionRepository) {
-        return new CurrencyTransactionService(transactionRepository);
-    }
+  @Provides
+  @Singleton
+  public CurrencyTransactionService provideCurrencyTransactionService(
+      CurrencyTransactionRepository transactionRepository) {
+    return new CurrencyTransactionService(transactionRepository);
+  }
 
-    @Provides
-    @Singleton
-    public BalanceAdjustmentService provideBalanceAdjustmentService(
-            MemberCurrencyAccountRepository accountRepository,
-            GuildCurrencyConfigRepository configRepository,
-            CurrencyTransactionService transactionService,
-            DomainEventPublisher eventPublisher,
-            CacheService cacheService,
-            CacheKeyGenerator cacheKeyGenerator) {
-        return new BalanceAdjustmentService(accountRepository, configRepository, transactionService, eventPublisher,
-                cacheService, cacheKeyGenerator);
-    }
+  @Provides
+  @Singleton
+  public BalanceAdjustmentService provideBalanceAdjustmentService(
+      MemberCurrencyAccountRepository accountRepository,
+      GuildCurrencyConfigRepository configRepository,
+      CurrencyTransactionService transactionService,
+      DomainEventPublisher eventPublisher,
+      CacheService cacheService,
+      CacheKeyGenerator cacheKeyGenerator) {
+    return new BalanceAdjustmentService(
+        accountRepository,
+        configRepository,
+        transactionService,
+        eventPublisher,
+        cacheService,
+        cacheKeyGenerator);
+  }
 }

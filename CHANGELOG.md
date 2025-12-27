@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.13.1] - 2025-12-28
+
+### Changed
+- 新增 Spotless Maven Plugin 自動化程式碼格式檢查
+- 新增 make format 與 make format-check 指令
+- 更新開發文件，新增 Spotless 使用說明與 IDE 整合指南
+- 格式化全專案 Java 檔案以符合 Google Java Format 標準
+
 ## [0.13.0] - 2025-12-27
 
 ### Added
