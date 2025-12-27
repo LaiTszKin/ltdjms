@@ -1,5 +1,16 @@
 package ltdjms.discord.panel.unit;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.util.Collections;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+
 import ltdjms.discord.currency.domain.BalanceView;
 import ltdjms.discord.currency.services.BalanceService;
 import ltdjms.discord.currency.services.CurrencyTransactionService;
@@ -13,270 +24,262 @@ import ltdjms.discord.redemption.services.ProductRedemptionTransactionService;
 import ltdjms.discord.redemption.services.RedemptionService;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
 
-import java.util.Collections;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
-/**
- * Unit tests for UserPanelService.
- * Tests the service logic without JDA event handling.
- */
+/** Unit tests for UserPanelService. Tests the service logic without JDA event handling. */
 class UserPanelServiceTest {
 
-    private static final long TEST_GUILD_ID = 123456789012345678L;
-    private static final long TEST_USER_ID = 987654321098765432L;
+  private static final long TEST_GUILD_ID = 123456789012345678L;
+  private static final long TEST_USER_ID = 987654321098765432L;
 
-    private BalanceService balanceService;
-    private GameTokenService gameTokenService;
-    private GameTokenTransactionService gameTokenTransactionService;
-    private CurrencyTransactionService currencyTransactionService;
-    private RedemptionService redemptionService;
-    private ProductRedemptionTransactionService productRedemptionTransactionService;
-    private UserPanelService userPanelService;
+  private BalanceService balanceService;
+  private GameTokenService gameTokenService;
+  private GameTokenTransactionService gameTokenTransactionService;
+  private CurrencyTransactionService currencyTransactionService;
+  private RedemptionService redemptionService;
+  private ProductRedemptionTransactionService productRedemptionTransactionService;
+  private UserPanelService userPanelService;
 
-    @BeforeEach
-    void setUp() {
-        balanceService = mock(BalanceService.class);
-        gameTokenService = mock(GameTokenService.class);
-        gameTokenTransactionService = mock(GameTokenTransactionService.class);
-        currencyTransactionService = mock(CurrencyTransactionService.class);
-        redemptionService = mock(RedemptionService.class);
-        productRedemptionTransactionService = mock(ProductRedemptionTransactionService.class);
-        userPanelService = new UserPanelService(
-                balanceService, gameTokenService, gameTokenTransactionService,
-                currencyTransactionService, redemptionService, productRedemptionTransactionService);
+  @BeforeEach
+  void setUp() {
+    balanceService = mock(BalanceService.class);
+    gameTokenService = mock(GameTokenService.class);
+    gameTokenTransactionService = mock(GameTokenTransactionService.class);
+    currencyTransactionService = mock(CurrencyTransactionService.class);
+    redemptionService = mock(RedemptionService.class);
+    productRedemptionTransactionService = mock(ProductRedemptionTransactionService.class);
+    userPanelService =
+        new UserPanelService(
+            balanceService,
+            gameTokenService,
+            gameTokenTransactionService,
+            currencyTransactionService,
+            redemptionService,
+            productRedemptionTransactionService);
+  }
+
+  @Nested
+  @DisplayName("getUserPanelView")
+  class GetUserPanelView {
+
+    @Test
+    @DisplayName("should return view with currency balance and game tokens when both exist")
+    void shouldReturnViewWithBothBalances() {
+      // Given
+      BalanceView balanceView = new BalanceView(TEST_GUILD_ID, TEST_USER_ID, 1000L, "Gold", "💰");
+      when(balanceService.tryGetBalance(TEST_GUILD_ID, TEST_USER_ID))
+          .thenReturn(Result.ok(balanceView));
+      when(gameTokenService.getBalance(TEST_GUILD_ID, TEST_USER_ID)).thenReturn(50L);
+
+      // When
+      Result<UserPanelView, DomainError> result =
+          userPanelService.getUserPanelView(TEST_GUILD_ID, TEST_USER_ID);
+
+      // Then
+      assertThat(result.isOk()).isTrue();
+      UserPanelView view = result.getValue();
+      assertThat(view.guildId()).isEqualTo(TEST_GUILD_ID);
+      assertThat(view.userId()).isEqualTo(TEST_USER_ID);
+      assertThat(view.currencyBalance()).isEqualTo(1000L);
+      assertThat(view.currencyName()).isEqualTo("Gold");
+      assertThat(view.currencyIcon()).isEqualTo("💰");
+      assertThat(view.gameTokens()).isEqualTo(50L);
     }
 
-    @Nested
-    @DisplayName("getUserPanelView")
-    class GetUserPanelView {
+    @Test
+    @DisplayName("should return view with zero game tokens when account does not exist")
+    void shouldReturnViewWithZeroGameTokens() {
+      // Given
+      BalanceView balanceView =
+          new BalanceView(TEST_GUILD_ID, TEST_USER_ID, 500L, "Diamonds", "💎");
+      when(balanceService.tryGetBalance(TEST_GUILD_ID, TEST_USER_ID))
+          .thenReturn(Result.ok(balanceView));
+      when(gameTokenService.getBalance(TEST_GUILD_ID, TEST_USER_ID)).thenReturn(0L);
 
-        @Test
-        @DisplayName("should return view with currency balance and game tokens when both exist")
-        void shouldReturnViewWithBothBalances() {
-            // Given
-            BalanceView balanceView = new BalanceView(TEST_GUILD_ID, TEST_USER_ID, 1000L, "Gold", "💰");
-            when(balanceService.tryGetBalance(TEST_GUILD_ID, TEST_USER_ID)).thenReturn(Result.ok(balanceView));
-            when(gameTokenService.getBalance(TEST_GUILD_ID, TEST_USER_ID)).thenReturn(50L);
+      // When
+      Result<UserPanelView, DomainError> result =
+          userPanelService.getUserPanelView(TEST_GUILD_ID, TEST_USER_ID);
 
-            // When
-            Result<UserPanelView, DomainError> result = userPanelService.getUserPanelView(TEST_GUILD_ID, TEST_USER_ID);
-
-            // Then
-            assertThat(result.isOk()).isTrue();
-            UserPanelView view = result.getValue();
-            assertThat(view.guildId()).isEqualTo(TEST_GUILD_ID);
-            assertThat(view.userId()).isEqualTo(TEST_USER_ID);
-            assertThat(view.currencyBalance()).isEqualTo(1000L);
-            assertThat(view.currencyName()).isEqualTo("Gold");
-            assertThat(view.currencyIcon()).isEqualTo("💰");
-            assertThat(view.gameTokens()).isEqualTo(50L);
-        }
-
-        @Test
-        @DisplayName("should return view with zero game tokens when account does not exist")
-        void shouldReturnViewWithZeroGameTokens() {
-            // Given
-            BalanceView balanceView = new BalanceView(TEST_GUILD_ID, TEST_USER_ID, 500L, "Diamonds", "💎");
-            when(balanceService.tryGetBalance(TEST_GUILD_ID, TEST_USER_ID)).thenReturn(Result.ok(balanceView));
-            when(gameTokenService.getBalance(TEST_GUILD_ID, TEST_USER_ID)).thenReturn(0L);
-
-            // When
-            Result<UserPanelView, DomainError> result = userPanelService.getUserPanelView(TEST_GUILD_ID, TEST_USER_ID);
-
-            // Then
-            assertThat(result.isOk()).isTrue();
-            assertThat(result.getValue().gameTokens()).isEqualTo(0L);
-        }
-
-        @Test
-        @DisplayName("should propagate error when balance service fails")
-        void shouldPropagateErrorWhenBalanceServiceFails() {
-            // Given
-            DomainError error = DomainError.persistenceFailure("Database connection failed", null);
-            when(balanceService.tryGetBalance(TEST_GUILD_ID, TEST_USER_ID)).thenReturn(Result.err(error));
-
-            // When
-            Result<UserPanelView, DomainError> result = userPanelService.getUserPanelView(TEST_GUILD_ID, TEST_USER_ID);
-
-            // Then
-            assertThat(result.isErr()).isTrue();
-            assertThat(result.getError().category()).isEqualTo(DomainError.Category.PERSISTENCE_FAILURE);
-        }
+      // Then
+      assertThat(result.isOk()).isTrue();
+      assertThat(result.getValue().gameTokens()).isEqualTo(0L);
     }
 
-    @Nested
-    @DisplayName("UserPanelView formatting")
-    class UserPanelViewFormatting {
+    @Test
+    @DisplayName("should propagate error when balance service fails")
+    void shouldPropagateErrorWhenBalanceServiceFails() {
+      // Given
+      DomainError error = DomainError.persistenceFailure("Database connection failed", null);
+      when(balanceService.tryGetBalance(TEST_GUILD_ID, TEST_USER_ID)).thenReturn(Result.err(error));
 
-        @Test
-        @DisplayName("should format embed title correctly")
-        void shouldFormatEmbedTitleCorrectly() {
-            // Given
-            UserPanelView view = new UserPanelView(
-                    TEST_GUILD_ID, TEST_USER_ID, 1000L, "Gold", "💰", 50L);
+      // When
+      Result<UserPanelView, DomainError> result =
+          userPanelService.getUserPanelView(TEST_GUILD_ID, TEST_USER_ID);
 
-            // When
-            String title = view.getEmbedTitle();
+      // Then
+      assertThat(result.isErr()).isTrue();
+      assertThat(result.getError().category()).isEqualTo(DomainError.Category.PERSISTENCE_FAILURE);
+    }
+  }
 
-            // Then
-            assertThat(title).isEqualTo("個人面板");
-        }
+  @Nested
+  @DisplayName("UserPanelView formatting")
+  class UserPanelViewFormatting {
 
-        @Test
-        @DisplayName("should format currency field correctly")
-        void shouldFormatCurrencyFieldCorrectly() {
-            // Given
-            UserPanelView view = new UserPanelView(
-                    TEST_GUILD_ID, TEST_USER_ID, 1234567L, "Gold", "💰", 50L);
+    @Test
+    @DisplayName("should format embed title correctly")
+    void shouldFormatEmbedTitleCorrectly() {
+      // Given
+      UserPanelView view = new UserPanelView(TEST_GUILD_ID, TEST_USER_ID, 1000L, "Gold", "💰", 50L);
 
-            // When
-            String currencyField = view.formatCurrencyField();
+      // When
+      String title = view.getEmbedTitle();
 
-            // Then
-            assertThat(currencyField).contains("💰");
-            assertThat(currencyField).contains("1,234,567");
-            assertThat(currencyField).contains("Gold");
-        }
-
-        @Test
-        @DisplayName("should format game tokens field correctly")
-        void shouldFormatGameTokensFieldCorrectly() {
-            // Given
-            UserPanelView view = new UserPanelView(
-                    TEST_GUILD_ID, TEST_USER_ID, 1000L, "Gold", "💰", 999L);
-
-            // When
-            String tokenField = view.formatGameTokensField();
-
-            // Then
-            assertThat(tokenField).contains("🎮");
-            assertThat(tokenField).contains("999");
-            assertThat(tokenField).contains("遊戲代幣");
-        }
-
-        @Test
-        @DisplayName("should format zero balances correctly")
-        void shouldFormatZeroBalancesCorrectly() {
-            // Given
-            UserPanelView view = new UserPanelView(
-                    TEST_GUILD_ID, TEST_USER_ID, 0L, "Coins", "🪙", 0L);
-
-            // When
-            String currencyField = view.formatCurrencyField();
-            String tokenField = view.formatGameTokensField();
-
-            // Then
-            assertThat(currencyField).contains("0");
-            assertThat(tokenField).contains("0");
-        }
-
-        @Test
-        @DisplayName("should include currency name in currency field name")
-        void shouldIncludeCurrencyNameInFieldName() {
-            // Given - user has custom currency "星幣" with icon "✨"
-            UserPanelView view = new UserPanelView(
-                    TEST_GUILD_ID, TEST_USER_ID, 1000L, "星幣", "✨", 50L);
-
-            // When
-            String fieldName = view.getCurrencyFieldName();
-
-            // Then - field name should include the custom currency name
-            assertThat(fieldName).contains("星幣");
-            assertThat(fieldName).contains("餘額");
-        }
-
-        @Test
-        @DisplayName("should return currency icon for button display")
-        void shouldReturnCurrencyIconForButton() {
-            // Given - user has custom currency with icon "✨"
-            UserPanelView view = new UserPanelView(
-                    TEST_GUILD_ID, TEST_USER_ID, 1000L, "星幣", "✨", 50L);
-
-            // When
-            String buttonLabel = view.getCurrencyHistoryButtonLabel();
-
-            // Then - button label should use the custom currency icon
-            assertThat(buttonLabel).contains("✨");
-            assertThat(buttonLabel).contains("流水");
-        }
+      // Then
+      assertThat(title).isEqualTo("個人面板");
     }
 
-    @Nested
-    @DisplayName("getTokenTransactionPage")
-    class GetTokenTransactionPage {
+    @Test
+    @DisplayName("should format currency field correctly")
+    void shouldFormatCurrencyFieldCorrectly() {
+      // Given
+      UserPanelView view =
+          new UserPanelView(TEST_GUILD_ID, TEST_USER_ID, 1234567L, "Gold", "💰", 50L);
 
-        @Test
-        @DisplayName("should return transaction page from transaction service")
-        void shouldReturnTransactionPage() {
-            // Given
-            TransactionPage expectedPage = new TransactionPage(
-                    Collections.emptyList(), 1, 1, 0, 10);
-            when(gameTokenTransactionService.getTransactionPage(TEST_GUILD_ID, TEST_USER_ID, 1, 10))
-                    .thenReturn(expectedPage);
+      // When
+      String currencyField = view.formatCurrencyField();
 
-            // When
-            TransactionPage result = userPanelService.getTokenTransactionPage(TEST_GUILD_ID, TEST_USER_ID, 1);
-
-            // Then
-            assertThat(result).isEqualTo(expectedPage);
-        }
+      // Then
+      assertThat(currencyField).contains("💰");
+      assertThat(currencyField).contains("1,234,567");
+      assertThat(currencyField).contains("Gold");
     }
 
-    @Nested
-    @DisplayName("getCurrencyTransactionPage")
-    class GetCurrencyTransactionPage {
+    @Test
+    @DisplayName("should format game tokens field correctly")
+    void shouldFormatGameTokensFieldCorrectly() {
+      // Given
+      UserPanelView view =
+          new UserPanelView(TEST_GUILD_ID, TEST_USER_ID, 1000L, "Gold", "💰", 999L);
 
-        @Test
-        @DisplayName("should return currency transaction page from transaction service")
-        void shouldReturnCurrencyTransactionPage() {
-            // Given
-            CurrencyTransactionService.TransactionPage expectedPage =
-                    new CurrencyTransactionService.TransactionPage(
-                            Collections.emptyList(), 1, 1, 0, 10);
-            when(currencyTransactionService.getTransactionPage(TEST_GUILD_ID, TEST_USER_ID, 1, 10))
-                    .thenReturn(expectedPage);
+      // When
+      String tokenField = view.formatGameTokensField();
 
-            // When
-            CurrencyTransactionService.TransactionPage result =
-                    userPanelService.getCurrencyTransactionPage(TEST_GUILD_ID, TEST_USER_ID, 1);
-
-            // Then
-            assertThat(result).isEqualTo(expectedPage);
-        }
+      // Then
+      assertThat(tokenField).contains("🎮");
+      assertThat(tokenField).contains("999");
+      assertThat(tokenField).contains("遊戲代幣");
     }
 
-    @Nested
-    @DisplayName("UserPanelButtonHandler constants")
-    class UserPanelButtonHandlerConstants {
+    @Test
+    @DisplayName("should format zero balances correctly")
+    void shouldFormatZeroBalancesCorrectly() {
+      // Given
+      UserPanelView view = new UserPanelView(TEST_GUILD_ID, TEST_USER_ID, 0L, "Coins", "🪙", 0L);
 
-        @Test
-        @DisplayName("should define back to panel button ID")
-        void shouldDefineBackToPanelButtonId() {
-            // Verify the constant is defined and has the expected value
-            assertThat(UserPanelButtonHandler.BUTTON_BACK_TO_PANEL)
-                    .isEqualTo("user_panel_back");
-        }
+      // When
+      String currencyField = view.formatCurrencyField();
+      String tokenField = view.formatGameTokensField();
 
-        @Test
-        @DisplayName("should define button prefix for token pages")
-        void shouldDefineTokenPageButtonPrefix() {
-            assertThat(UserPanelButtonHandler.BUTTON_PREFIX_TOKEN_PAGE)
-                    .isEqualTo("user_panel_token_page_");
-        }
-
-        @Test
-        @DisplayName("should define button prefix for currency pages")
-        void shouldDefineCurrencyPageButtonPrefix() {
-            assertThat(UserPanelButtonHandler.BUTTON_PREFIX_CURRENCY_PAGE)
-                    .isEqualTo("user_panel_currency_page_");
-        }
+      // Then
+      assertThat(currencyField).contains("0");
+      assertThat(tokenField).contains("0");
     }
+
+    @Test
+    @DisplayName("should include currency name in currency field name")
+    void shouldIncludeCurrencyNameInFieldName() {
+      // Given - user has custom currency "星幣" with icon "✨"
+      UserPanelView view = new UserPanelView(TEST_GUILD_ID, TEST_USER_ID, 1000L, "星幣", "✨", 50L);
+
+      // When
+      String fieldName = view.getCurrencyFieldName();
+
+      // Then - field name should include the custom currency name
+      assertThat(fieldName).contains("星幣");
+      assertThat(fieldName).contains("餘額");
+    }
+
+    @Test
+    @DisplayName("should return currency icon for button display")
+    void shouldReturnCurrencyIconForButton() {
+      // Given - user has custom currency with icon "✨"
+      UserPanelView view = new UserPanelView(TEST_GUILD_ID, TEST_USER_ID, 1000L, "星幣", "✨", 50L);
+
+      // When
+      String buttonLabel = view.getCurrencyHistoryButtonLabel();
+
+      // Then - button label should use the custom currency icon
+      assertThat(buttonLabel).contains("✨");
+      assertThat(buttonLabel).contains("流水");
+    }
+  }
+
+  @Nested
+  @DisplayName("getTokenTransactionPage")
+  class GetTokenTransactionPage {
+
+    @Test
+    @DisplayName("should return transaction page from transaction service")
+    void shouldReturnTransactionPage() {
+      // Given
+      TransactionPage expectedPage = new TransactionPage(Collections.emptyList(), 1, 1, 0, 10);
+      when(gameTokenTransactionService.getTransactionPage(TEST_GUILD_ID, TEST_USER_ID, 1, 10))
+          .thenReturn(expectedPage);
+
+      // When
+      TransactionPage result =
+          userPanelService.getTokenTransactionPage(TEST_GUILD_ID, TEST_USER_ID, 1);
+
+      // Then
+      assertThat(result).isEqualTo(expectedPage);
+    }
+  }
+
+  @Nested
+  @DisplayName("getCurrencyTransactionPage")
+  class GetCurrencyTransactionPage {
+
+    @Test
+    @DisplayName("should return currency transaction page from transaction service")
+    void shouldReturnCurrencyTransactionPage() {
+      // Given
+      CurrencyTransactionService.TransactionPage expectedPage =
+          new CurrencyTransactionService.TransactionPage(Collections.emptyList(), 1, 1, 0, 10);
+      when(currencyTransactionService.getTransactionPage(TEST_GUILD_ID, TEST_USER_ID, 1, 10))
+          .thenReturn(expectedPage);
+
+      // When
+      CurrencyTransactionService.TransactionPage result =
+          userPanelService.getCurrencyTransactionPage(TEST_GUILD_ID, TEST_USER_ID, 1);
+
+      // Then
+      assertThat(result).isEqualTo(expectedPage);
+    }
+  }
+
+  @Nested
+  @DisplayName("UserPanelButtonHandler constants")
+  class UserPanelButtonHandlerConstants {
+
+    @Test
+    @DisplayName("should define back to panel button ID")
+    void shouldDefineBackToPanelButtonId() {
+      // Verify the constant is defined and has the expected value
+      assertThat(UserPanelButtonHandler.BUTTON_BACK_TO_PANEL).isEqualTo("user_panel_back");
+    }
+
+    @Test
+    @DisplayName("should define button prefix for token pages")
+    void shouldDefineTokenPageButtonPrefix() {
+      assertThat(UserPanelButtonHandler.BUTTON_PREFIX_TOKEN_PAGE)
+          .isEqualTo("user_panel_token_page_");
+    }
+
+    @Test
+    @DisplayName("should define button prefix for currency pages")
+    void shouldDefineCurrencyPageButtonPrefix() {
+      assertThat(UserPanelButtonHandler.BUTTON_PREFIX_CURRENCY_PAGE)
+          .isEqualTo("user_panel_currency_page_");
+    }
+  }
 }

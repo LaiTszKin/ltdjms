@@ -1,8 +1,14 @@
-.PHONY: build test clean run docker-build docker-up docker-down docker-logs db-up db-down docker-dev
+.PHONY: build test clean run docker-build docker-up docker-down docker-logs db-up db-down docker-dev format format-check
 
 # Maven commands
 build:
 	mvn clean package -DskipTests
+
+format:
+	mvn spotless:apply
+
+format-check:
+	mvn spotless:check
 
 test:
 	mvn test
@@ -60,6 +66,8 @@ dev: db-up
 help:
 	@echo "Available targets:"
 	@echo "  build            - Build the project (skip tests)"
+	@echo "  format           - Format code with Spotless"
+	@echo "  format-check     - Check code format with Spotless"
 	@echo "  test             - Run unit tests"
 	@echo "  test-integration - Run all tests including integration"
 	@echo "  verify           - Clean build and run all tests with coverage check"

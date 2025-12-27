@@ -6,7 +6,7 @@
 
     <groupId>ltdjms</groupId>
     <artifactId>ltdjms</artifactId>
-    <version>0.13.0</version>
+    <version>0.13.1</version>
     <packaging>jar</packaging>
 
     <name>LTDJ Management System</name>
@@ -37,6 +37,9 @@
         <mockito.version>5.14.2</mockito.version>
         <assertj.version>3.26.3</assertj.version>
         <testcontainers.version>1.20.4</testcontainers.version>
+
+        <!-- Code formatting -->
+        <spotless.version>3.1.0</spotless.version>
     </properties>
 
     <dependencies>
@@ -327,6 +330,32 @@
                         <version>${postgresql.version}</version>
                     </dependency>
                 </dependencies>
+            </plugin>
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>${spotless.version}</version>
+                <configuration>
+                    <java>
+                        <googleJavaFormat>
+                            <style>GOOGLE</style>
+                            <reflowLongStrings>true</reflowLongStrings>
+                        </googleJavaFormat>
+                        <removeUnusedImports />
+                        <importOrder>
+                            <order>java|javax,org,com,,#</order>
+                        </importOrder>
+                    </java>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>spotless-check</id>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <phase>verify</phase>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
