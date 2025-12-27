@@ -31,6 +31,12 @@
   - `EnvironmentConfig`、`DotEnvLoader`、`Result` 等核心元件的單元測試。
   - DI 組態測試（例如 `AppComponentLoadTest`）。
 
+- **Discord API 抽象層（discord）**
+  - `domain/`：抽象介面的行為測試（例如 `DiscordContextTest`、`DiscordInteractionTest`）。
+  - `adapter/`：Adapter 層的單元測試（例如 `SlashCommandAdapterTest`）。
+  - `mock/`：Mock 實作的驗證測試（例如 `MockDiscordInteractionTest`）。
+  - `services/`：JDA 實作的單元測試與整合測試（例如 `JdaDiscordContextTest`、`InteractionSessionManagerTest`）。
+
 ## 2. 常用測試指令
 
 所有指令皆在專案根目錄執行。
@@ -114,10 +120,137 @@ mvn clean verify
 - **將預期錯誤視為正常情境測試**  
   - 由於專案使用 `Result<T, DomainError>`，請記得也測試錯誤情境（如餘額不足、輸入無效等），確保 `DomainError.Category` 使用正確。
 
-- **維持測試命名一致性**  
+- **維持測試命名一致性**
   - 測試類別與方法命名盡量與現有風格一致，便於未來維護與搜尋。
 
-## 6. 本文件與實際執行情況
+## 6. 使用 Discord API 抽象層 Mock 進行單元測試
+
+Discord API 抽象層提供 Mock 實作，讓您可以在不啟動 Discord Bot 的情況下測試 Command Handler 和 Service 的邏輯。
+
+### 6.1 使用 MockDiscordInteraction 測試 Handler
+
+**傳統方式（需要 Mock JDA 事件）**：
+
+```java
+@Test
+void testBalanceCommand_withSufficientBalance_returnsEmbed() {
+    // 需要 Mock 複雜的 JDA 事件
+    SlashCommandInteractionEvent mockEvent = mock(SlashCommandInteractionEvent.class);
+    when(mockEvent.getGuild()).thenReturn(mockGuild);
+    when(mockEvent.getUser()).thenReturn(mockUser);
+    when(mockEvent.getHook()).thenReturn(mockHook);
+
+    // ... 更多的 Mock 設定
+}
+```
+
+**使用 Discord 抽象層 Mock**：
+
+```java
+@Test
+void testBalanceCommand_withSufficientBalance_returnsEmbed() {
+    // Arrange
+    MockDiscordInteraction mockInteraction = new MockDiscordInteraction(123L, 456L);
+    MockDiscordContext mockContext = new MockDiscordContext(123L, 456L, 789L);
+    MockDiscordEmbedBuilder mockBuilder = new MockDiscordEmbedBuilder();
+
+    BalanceService balanceService = mock(BalanceService.class);
+    when(balanceService.getBalance(123L, 456L))
+        .thenReturn(Result.ok(new BalanceView("1000", "500")));
+
+    BalanceCommandHandler handler = new BalanceCommandHandler(
+        balanceService, mockBuilder
+    );
+
+    // Act
+    handler.handleInternal(mockInteraction, mockContext);
+
+    // Assert
+    assertTrue(mockInteraction.isReplied());
+    assertEquals(1, mockBuilder.getBuildCount());
+    verify(balanceService).getBalance(123L, 456L);
+}
+```
+
+### 6.2 測試錯誤處理
+
+```java
+@Test
+void testBalanceCommand_withServiceError_returnsErrorMessage() {
+    // Arrange
+    MockDiscordInteraction mockInteraction = new MockDiscordInteraction(123L, 456L);
+    MockDiscordContext mockContext = new MockDiscordContext(123L, 456L, 789L);
+
+    BalanceService balanceService = mock(BalanceService.class);
+    when(balanceService.getBalance(123L, 456L))
+        .thenReturn(Result.err(DomainError.persistenceFailure("DB 錯誤", null)));
+
+    BalanceCommandHandler handler = new BalanceCommandHandler(balanceService, embedBuilder);
+
+    // Act
+    handler.handleInternal(mockInteraction, mockContext);
+
+    // Assert
+    assertTrue(mockInteraction.isReplied());
+    assertTrue(mockInteraction.getLastMessage().contains("錯誤"));
+}
+```
+
+### 6.3 測試 Session 管理
+
+```java
+@Test
+void testUserPanel_withSessionCreation_sessionPersisted() {
+    // Arrange
+    DiscordSessionManager<PanelSessionType> sessionManager =
+        new InteractionSessionManager<>();
+
+    MockDiscordInteraction mockInteraction = new MockDiscordInteraction(123L, 456L);
+    MockDiscordContext mockContext = new MockDiscordContext(123L, 456L, 789L);
+
+    UserPanelService service = new UserPanelService(sessionManager, ...);
+
+    // Act
+    service.createUserPanel(mockInteraction, mockContext);
+
+    // Assert
+    Optional<Session<PanelSessionType>> sessionOpt =
+        sessionManager.getSession(PanelSessionType.USER_PANEL, 123L, 456L);
+
+    assertTrue(sessionOpt.isPresent());
+    assertFalse(sessionOpt.get().isExpired());
+}
+```
+
+### 6.4 測試 DiscordEmbedBuilder
+
+```java
+@Test
+void testEmbedBuilder_withLongText_truncatesCorrectly() {
+    // Arrange
+    DiscordEmbedBuilder builder = new JdaDiscordEmbedBuilder();
+
+    // Act
+    String longText = "A".repeat(300); // 超過標題限制
+    MessageEmbed embed = builder.setTitle(longText).build();
+
+    // Assert
+    assertEquals(256 + "...".length(), embed.getTitle().length());
+}
+```
+
+### 6.5 優勢總結
+
+| 優勢 | 說明 |
+|------|------|
+| **簡化 Mock 設定** | 不需要 Mock 複雜的 JDA 事件物件 |
+| **更清晰的測試意圖** | 專注於業務邏輯，非 JDA 細節 |
+| **更快的測試執行** | 不需要初始化 JDA 與 Discord 連線 |
+| **更好的可維護性** | JDA API 變更不影響測試程式碼 |
+
+---
+
+## 7. 本文件與實際執行情況
 
 此文件僅說明測試策略與指令，**不會自動執行任何測試**。  
 實際開發時請依下列指令在本機或 CI 中執行測試：

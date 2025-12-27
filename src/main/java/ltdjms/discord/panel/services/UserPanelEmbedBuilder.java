@@ -1,6 +1,7 @@
 package ltdjms.discord.panel.services;
 
-import net.dv8tion.jda.api.EmbedBuilder;
+import ltdjms.discord.discord.domain.DiscordEmbedBuilder;
+import ltdjms.discord.discord.services.JdaDiscordEmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
@@ -11,6 +12,8 @@ import java.util.List;
 /**
  * Static utility class for building user panel embeds and components.
  * Ensures consistent rendering across command and button handlers.
+ *
+ * <p>已重構使用 DiscordEmbedBuilder 抽象介面，提供統一的 Embed 建構方式。
  */
 public final class UserPanelEmbedBuilder {
 
@@ -23,12 +26,16 @@ public final class UserPanelEmbedBuilder {
     /**
      * Builds the main panel embed for displaying user account information.
      *
+     * <p>使用 DiscordEmbedBuilder 抽象介面建構 Embed，自動處理長度限制。
+     *
      * @param view        the user panel view containing account data
      * @param userMention the Discord mention string for the user (e.g., "@User")
      * @return the formatted embed message
      */
     public static MessageEmbed buildPanelEmbed(UserPanelView view, String userMention) {
-        return new EmbedBuilder()
+        DiscordEmbedBuilder builder = new JdaDiscordEmbedBuilder();
+
+        return builder
                 .setTitle(view.getEmbedTitle())
                 .setDescription(userMention + " 的帳戶資訊")
                 .setColor(EMBED_COLOR)

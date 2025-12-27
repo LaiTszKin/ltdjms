@@ -4,6 +4,58 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.13.0] - 2025-12-27
+
+### Added
+- **Discord API 抽象層**：新增統一的 Discord 介面抽象，解除與 JDA 的強耦合
+  - `DiscordInteraction`：統一的互動回應介面
+  - `DiscordContext`：事件上下文提取介面
+  - `DiscordEmbedBuilder`：視圖建構器（含自動截斷與分頁）
+  - `DiscordSessionManager`：跨互動 Session 管理器（泛型設計，TTL 15 分鐘）
+  - `DiscordError`：Discord API 特定錯誤類型（INTERACTION_TIMEOUT、HOOK_EXPIRED 等）
+
+### Added
+- **JDA 實作層**：提供 JDA 5.2.2 的抽象介面實作
+  - `JdaDiscordInteraction`：包裝 GenericInteractionCreateEvent
+  - `JdaDiscordContext`：從 JDA 事件提取上下文
+  - `JdaDiscordEmbedBuilder`：使用 EmbedBuilder 建構 Embed
+  - `InteractionSessionManager`：基於 InteractionHook 的 Session 管理
+
+### Added
+- **Mock 實作層**：提供單元測試用 Mock 實作
+  - `MockDiscordInteraction`：模擬互動回應
+  - `MockDiscordContext`：模擬上下文提取
+  - `MockDiscordEmbedBuilder`：驗證 Embed 建構邏輯
+
+### Added
+- **Adapter 轉接器**：JDA 事件到抽象介面的轉接器
+  - `SlashCommandAdapter`：Slash 指令轉接
+  - `ButtonInteractionAdapter`：按鈕互動轉接
+  - `ModalInteractionAdapter`：Modal 表單轉接
+
+### Changed
+- `BalanceCommandHandler`：更新使用 Discord 抽象層
+- `BotErrorHandler`：新增 `handleDomainError(DiscordInteraction, DomainError)` 方法
+- `DomainError`：新增 Discord 相關錯誤類型（DISCORD_INTERACTION_TIMEOUT 等）
+- `UserPanelEmbedBuilder`、`AdminPanelSessionManager`：使用抽象層 EmbedBuilder
+
+### Technical
+- 新增 `DiscordModule` DI 模組，提供 Discord 抽象層依賴注入
+- pom.xml 維持 Java 17 + JDA 5.2.2 + Dagger 2.52 + JUnit 5.11.3 + Mockito 5.14.2
+- 完整測試覆蓋：新增 25+ 個測試類別（單元測試 + 整合測試）
+
+### Documentation
+- **docs/modules/discord-api-abstraction.md**：644 行完整模組文檔（含類別圖、時序圖、使用範例）
+- **docs/development/testing.md**：新增「使用 Discord API 抽象層 Mock 進行單元測試」章節
+- **docs/architecture/overview.md**：更新架構圖與模組說明
+- **docs/modules/shared-module.md**：新增 Discord 抽象層整合說明
+- **docs/api/slash-commands.md**：新增 Discord API 抽象層說明
+
+### Testing
+- 新增 Discord 抽象層測試：domain、adapter、services、mock 各層完整覆蓋
+- 測試策略更新：說明如何使用 Mock 進行單元測試
+- 相關 Handler 測試更新：使用 Mock 實作簡化測試
+
 ## [0.12.0] - 2025-12-25
 
 ### Added

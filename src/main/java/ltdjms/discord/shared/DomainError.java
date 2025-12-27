@@ -21,7 +21,19 @@ public record DomainError(Category category, String message, Throwable cause) {
         /** Database or persistence layer failure */
         PERSISTENCE_FAILURE,
         /** Unexpected system failure (bugs, external system issues) */
-        UNEXPECTED_FAILURE
+        UNEXPECTED_FAILURE,
+        /** Discord API interaction timeout (3 second limit) */
+        DISCORD_INTERACTION_TIMEOUT,
+        /** Discord InteractionHook expired (15 minute limit) */
+        DISCORD_HOOK_EXPIRED,
+        /** Discord message unknown or deleted */
+        DISCORD_UNKNOWN_MESSAGE,
+        /** Discord API rate limit exceeded */
+        DISCORD_RATE_LIMITED,
+        /** Discord bot missing required permissions */
+        DISCORD_MISSING_PERMISSIONS,
+        /** Discord invalid component ID */
+        DISCORD_INVALID_COMPONENT_ID
     }
 
     public DomainError {

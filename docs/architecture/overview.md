@@ -12,20 +12,30 @@ flowchart LR
   Discord["Discord API / Gateway"]
   Bot["JDA Bot\n(DiscordCurrencyBot)"]
   Listener["SlashCommandListener\n+ Button Handlers"]
+  Adapter["Discord Adapter\n(SlashCommandAdapter, etc.)"]
   Handler["Command Handlers\n(currency-config, dice-game-1, user-panel, ... )"]
   Service["Domain Services\n(BalanceService, GameTokenService, ...)"]
   Repo["Repositories\n(Jdbc*/Jooq*Repository)"]
+  Cache["Redis Cache\n(Optional)"]
   DB["PostgreSQL\n(currency_bot)"]
 
-  User --> Discord --> Bot --> Listener --> Handler --> Service --> Repo --> DB
-  Repo --> Service --> Handler --> Listener --> Bot --> Discord --> User
+  User --> Discord --> Bot --> Listener --> Adapter --> Handler --> Service --> Repo
+  Repo --> Cache
+  Cache --> DB
+  DB --> Repo --> Service --> Handler --> Adapter --> Listener --> Bot --> Discord --> User
 ```
+
+**圖例說明**：
+- **Discord Adapter**：JDA 事件與抽象介面間的轉接層（`SlashCommandAdapter`、`ButtonInteractionAdapter` 等）
+- **Redis Cache**：可選的快取層，Redis 不可用時自動降級為直連資料庫
 
 ### 1.1 主要技術堆疊
 
 - **JDA 5.x**：與 Discord 溝通的 Java Discord API。
+- **Discord API 抽象層**：統一的 Discord 介面抽象，解除 JDA 耦合並提升可測試性（詳細說明：`docs/modules/discord-api-abstraction.md`）。
 - **Dagger 2**：依賴注入框架，透過 `AppComponent` 組裝所有服務與 Repository。
 - **PostgreSQL**：資料儲存，schema 定義在 `src/main/resources/db/schema.sql`。
+- **Redis（可選）**：分散式快取，Redis 不可用時自動降級為 NoOp 快取（詳細說明：`docs/architecture/cache-architecture.md`）。
 - **Flyway**：資料庫 migration 管理，migration 檔案位於 `src/main/resources/db/migration/`。
 - **JDBC / jOOQ**：資料存取層，提供型別安全的 SQL 操作。
 - **Typesafe Config**：設定載入與合併（環境變數、`.env`、`application.conf` 等）。
@@ -60,20 +70,30 @@ flowchart LR
 
 在 `src/main/java/ltdjms/discord` 下，主要模組分為：
 
-- `currency/`  
+- `discord/`
+  **Discord API 抽象層**：統一的 Discord 介面抽象，提供與 JDA 解耦的互動處理能力。詳細說明請參閱 [Discord API 抽象層文件](../modules/discord-api-abstraction.md)。
+  - `domain/`：抽象介面定義（`DiscordInteraction`、`DiscordContext`、`DiscordEmbedBuilder`、`DiscordSessionManager` 等）
+  - `services/`：JDA 實作（`JdaDiscordInteraction`、`JdaDiscordContext`、`JdaDiscordEmbedBuilder` 等）
+  - `mock/`：測試用 Mock 實作（`MockDiscordInteraction`、`MockDiscordContext` 等）
+  - `adapter/`：JDA 事件適配器（`SlashCommandAdapter`、`ButtonInteractionAdapter`、`ModalInteractionAdapter`）
+
+- `currency/`
   伺服器貨幣系統：帳戶、餘額查詢、餘額調整、貨幣設定與相關指令 handler。
 
-- `gametoken/`  
+- `gametoken/`
   遊戲代幣與小遊戲：代幣帳戶、代幣調整、骰子遊戲 1/2 設定與服務，以及代幣交易紀錄。
 
-- `panel/`  
+- `panel/`
    使用者面板與管理面板：`/user-panel`、`/admin-panel` 指令與各種按鈕、Modal 處理邏輯。
 
-- `product/`  
+- `product/`
    產品定義與管理：產品資料模型、產品服務與相關資料庫操作。
 
-- `redemption/`  
+- `redemption/`
    兌換系統：兌換碼生成、驗證與兌換邏輯，以及與產品的整合。
+
+- `shop/`
+   商店模組：貨幣購買功能與商店管理。
 
 - `shared/`
   共用基礎設施：資料庫連線設定、Flyway schema migration、`Result<T, E>` 型別、`DomainError`、設定載入與 Dagger DI 定義。
@@ -207,10 +227,13 @@ Command handler 通常遵守以下模式：
 
 若你打算新增新的 slash command 或面板功能，建議先閱讀：
 
-- `docs/modules/currency-system.md`
-- `docs/modules/game-tokens-and-games.md`
-- `docs/modules/panels.md`
-- `docs/modules/product.md`
-- `docs/modules/redemption.md`
+- `docs/modules/discord-api-abstraction.md` - **Discord API 抽象層**（重要：了解如何與 Discord 互動）
+- `docs/modules/shared-module.md` - 共用模組（Result 模式、DomainError 等）
+- `docs/modules/currency-system.md` - 貨幣系統
+- `docs/modules/game-tokens-and-games.md` - 遊戲代幣與遊戲
+- `docs/modules/panels.md` - 使用者與管理面板
+- `docs/modules/product.md` - 產品管理
+- `docs/modules/redemption.md` - 兌換碼系統
+- `docs/modules/shop.md` - 商店與貨幣購買
 
 了解現有模組的分層與模式後，再依樣擴充會更順手。

@@ -141,6 +141,181 @@ class RedemptionServiceTest {
             assertThat(result.isErr()).isTrue();
             assertThat(result.getError().message()).contains("找不到");
         }
+
+        @Test
+        @DisplayName("should generate codes with quantity")
+        void shouldGenerateCodesWithQuantity() {
+            // Given
+            Instant now = Instant.now();
+            Product product = new Product(Long.valueOf(TEST_PRODUCT_ID), TEST_GUILD_ID, "Test", null,
+                    null, null, null, now, now);
+
+            when(productRepository.findById(TEST_PRODUCT_ID)).thenReturn(Optional.of(product));
+            when(codeGenerator.generate())
+                    .thenReturn("ABCD1234EFGH5678")
+                    .thenReturn("WXYZ9876MNPQ3456");
+            when(codeRepository.existsByCode(any())).thenReturn(false);
+            when(codeRepository.saveAll(anyList())).thenAnswer(invocation -> {
+                List<RedemptionCode> codes = invocation.getArgument(0);
+                return codes.stream()
+                        .map(c -> new RedemptionCode(1L, c.code(), c.productId(), c.guildId(),
+                                c.expiresAt(), null, null, c.createdAt(), c.invalidatedAt(), c.quantity()))
+                        .toList();
+            });
+
+            // When
+            Result<List<RedemptionCode>, DomainError> result =
+                    redemptionService.generateCodes(TEST_PRODUCT_ID, 2, null, 5);
+
+            // Then
+            assertThat(result.isOk()).isTrue();
+            assertThat(result.getValue()).hasSize(2);
+            assertThat(result.getValue().get(0).quantity()).isEqualTo(5);
+        }
+
+        @Test
+        @DisplayName("should reject zero or negative quantity")
+        void shouldRejectZeroOrNegativeQuantity() {
+            // When
+            Result<List<RedemptionCode>, DomainError> result =
+                    redemptionService.generateCodes(TEST_PRODUCT_ID, 5, null, 0);
+
+            // Then
+            assertThat(result.isErr()).isTrue();
+            assertThat(result.getError().message()).contains("大於 0");
+        }
+
+        @Test
+        @DisplayName("should reject quantity exceeding maximum")
+        void shouldRejectQuantityExceedingMaximum() {
+            // When
+            Result<List<RedemptionCode>, DomainError> result =
+                    redemptionService.generateCodes(TEST_PRODUCT_ID, 5, null, 1001);
+
+            // Then
+            assertThat(result.isErr()).isTrue();
+            assertThat(result.getError().message()).contains("1000");
+        }
+    }
+
+    @Nested
+    @DisplayName("findByCode")
+    class FindByCodeTests {
+
+        @Test
+        @DisplayName("should find code by string")
+        void shouldFindCodeByString() {
+            // Given
+            Instant now = Instant.now();
+            RedemptionCode code = new RedemptionCode(1L, "ABCD1234EFGH5678", TEST_PRODUCT_ID,
+                    TEST_GUILD_ID, null, null, null, now, null, 1);
+            when(codeRepository.findByCode(anyString())).thenReturn(Optional.of(code));
+
+            // When
+            Optional<RedemptionCode> result = redemptionService.findByCode("  ABCD1234eFgH5678  ");
+
+            // Then
+            assertThat(result).isPresent();
+            assertThat(result.get().code()).isEqualTo("ABCD1234EFGH5678");
+        }
+
+        @Test
+        @DisplayName("should return empty for null code")
+        void shouldReturnEmptyForNullCode() {
+            // When
+            Optional<RedemptionCode> result = redemptionService.findByCode(null);
+
+            // Then
+            assertThat(result).isEmpty();
+        }
+
+        @Test
+        @DisplayName("should return empty for blank code")
+        void shouldReturnEmptyForBlankCode() {
+            // When
+            Optional<RedemptionCode> result = redemptionService.findByCode("   ");
+
+            // Then
+            assertThat(result).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("getCodePage")
+    class GetCodePageTests {
+
+        @Test
+        @DisplayName("should return code page")
+        void shouldReturnCodePage() {
+            // Given
+            Instant now = Instant.now();
+            List<RedemptionCode> codes = List.of(
+                    new RedemptionCode(1L, "CODE1", TEST_PRODUCT_ID, TEST_GUILD_ID, null, null, null, now, null, 1),
+                    new RedemptionCode(2L, "CODE2", TEST_PRODUCT_ID, TEST_GUILD_ID, null, null, null, now, null, 1)
+            );
+
+            when(codeRepository.findByProductId(anyLong(), anyInt(), anyInt())).thenReturn(codes);
+            when(codeRepository.countByProductId(TEST_PRODUCT_ID)).thenReturn(15L);
+
+            // When
+            RedemptionService.CodePage result = redemptionService.getCodePage(TEST_PRODUCT_ID, 1, 10);
+
+            // Then
+            assertThat(result.codes()).hasSize(2);
+            assertThat(result.currentPage()).isEqualTo(1);
+            assertThat(result.totalPages()).isEqualTo(2);
+            assertThat(result.totalCount()).isEqualTo(15);
+            assertThat(result.hasNextPage()).isTrue();
+            assertThat(result.hasPreviousPage()).isFalse();
+        }
+
+        @Test
+        @DisplayName("should clamp page number to minimum")
+        void shouldClampPageNumberToMinimum() {
+            // Given
+            when(codeRepository.findByProductId(anyLong(), anyInt(), anyInt())).thenReturn(List.of());
+            when(codeRepository.countByProductId(TEST_PRODUCT_ID)).thenReturn(0L);
+
+            // When
+            RedemptionService.CodePage result = redemptionService.getCodePage(TEST_PRODUCT_ID, 0, 10);
+
+            // Then
+            assertThat(result.currentPage()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("should clamp page size to minimum")
+        void shouldClampPageSizeToMinimum() {
+            // Given - pageSize < 1 gets clamped to 10 (see implementation)
+            when(codeRepository.findByProductId(anyLong(), anyInt(), anyInt())).thenReturn(List.of());
+            when(codeRepository.countByProductId(TEST_PRODUCT_ID)).thenReturn(0L);
+
+            // When
+            RedemptionService.CodePage result = redemptionService.getCodePage(TEST_PRODUCT_ID, 1, 0);
+
+            // Then - pageSize is clamped to 10 in the implementation
+            assertThat(result.pageSize()).isEqualTo(10);
+        }
+    }
+
+    @Nested
+    @DisplayName("getCodeStats")
+    class GetCodeStatsTests {
+
+        @Test
+        @DisplayName("should return code stats")
+        void shouldReturnCodeStats() {
+            // Given
+            RedemptionCodeRepository.CodeStats stats = new RedemptionCodeRepository.CodeStats(10, 5, 3, 2);
+            when(codeRepository.getStatsByProductId(TEST_PRODUCT_ID)).thenReturn(stats);
+
+            // When
+            RedemptionCodeRepository.CodeStats result = redemptionService.getCodeStats(TEST_PRODUCT_ID);
+
+            // Then
+            assertThat(result.totalCount()).isEqualTo(10);
+            assertThat(result.redeemedCount()).isEqualTo(5);
+        }
     }
 
     @Nested
