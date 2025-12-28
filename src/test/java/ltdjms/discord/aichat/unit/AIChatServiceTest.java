@@ -2,6 +2,7 @@ package ltdjms.discord.aichat.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -16,6 +17,7 @@ import ltdjms.discord.aichat.domain.AIServiceConfig;
 import ltdjms.discord.aichat.services.AIChatService;
 import ltdjms.discord.aichat.services.AIClient;
 import ltdjms.discord.aichat.services.DefaultAIChatService;
+import ltdjms.discord.aichat.services.StreamingResponseHandler;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 
@@ -36,7 +38,7 @@ class AIChatServiceTest {
             "gpt-3.5-turbo",
             List.of(
                 new AIChatResponse.Choice(
-                    0, new AIChatResponse.Choice.AIMessage("assistant", "AI 回應"), "stop")),
+                    0, new AIChatResponse.Choice.AIMessage("assistant", "AI 回應", null), "stop")),
             new AIChatResponse.Usage(10, 20, 30));
 
     AIClient mockClient = mock(AIClient.class);
@@ -68,7 +70,7 @@ class AIChatServiceTest {
             "gpt-3.5-turbo",
             List.of(
                 new AIChatResponse.Choice(
-                    0, new AIChatResponse.Choice.AIMessage("assistant", "你好！"), "stop")),
+                    0, new AIChatResponse.Choice.AIMessage("assistant", "你好！", null), "stop")),
             new AIChatResponse.Usage(10, 20, 30));
 
     AIClient mockClient = mock(AIClient.class);
@@ -128,7 +130,7 @@ class AIChatServiceTest {
             List.of(
                 new AIChatResponse.Choice(
                     0,
-                    new AIChatResponse.Choice.AIMessage("assistant", longContent.toString()),
+                    new AIChatResponse.Choice.AIMessage("assistant", longContent.toString(), null),
                     "stop")),
             new AIChatResponse.Usage(10, 20, 30));
 
@@ -173,5 +175,50 @@ class AIChatServiceTest {
     // Then
     assertThat(result.isErr()).isTrue();
     assertThat(result.getError().category()).isEqualTo(DomainError.Category.AI_RESPONSE_EMPTY);
+  }
+
+  @Test
+  void testGenerateStreamingResponse_reasoningAndContent_shouldRemainSeparated() {
+    // Given
+    AIServiceConfig config =
+        new AIServiceConfig("https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30);
+
+    AIClient mockClient = mock(AIClient.class);
+    doAnswer(
+            invocation -> {
+              StreamingResponseHandler handler = invocation.getArgument(1);
+              handler.onChunk("推理", false, null, StreamingResponseHandler.ChunkType.REASONING);
+              handler.onChunk("答案", false, null, StreamingResponseHandler.ChunkType.CONTENT);
+              handler.onChunk("", true, null, StreamingResponseHandler.ChunkType.CONTENT);
+              return null;
+            })
+        .when(mockClient)
+        .sendStreamingRequest(any(AIChatRequest.class), any(StreamingResponseHandler.class));
+
+    AIChatService service = new DefaultAIChatService(config, mockClient, null);
+
+    // When
+    List<String> chunks = new java.util.ArrayList<>();
+    List<StreamingResponseHandler.ChunkType> types = new java.util.ArrayList<>();
+    service.generateStreamingResponse(
+        "channel123",
+        "user456",
+        "測試訊息",
+        (chunk, isComplete, error, type) -> {
+          if (error != null) {
+            throw new AssertionError("不應該收到錯誤");
+          }
+          if (chunk != null && !chunk.isEmpty()) {
+            chunks.add(chunk);
+            types.add(type);
+          }
+        });
+
+    // Then
+    assertThat(chunks).containsExactly("推理", "答案");
+    assertThat(types)
+        .containsExactly(
+            StreamingResponseHandler.ChunkType.REASONING,
+            StreamingResponseHandler.ChunkType.CONTENT);
   }
 }

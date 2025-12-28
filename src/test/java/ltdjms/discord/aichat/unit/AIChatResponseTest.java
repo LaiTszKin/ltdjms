@@ -115,7 +115,7 @@ class AIChatResponseTest {
             "gpt-3.5-turbo",
             List.of(
                 new AIChatResponse.Choice(
-                    0, new AIChatResponse.Choice.AIMessage("assistant", "回應內容"), "stop")),
+                    0, new AIChatResponse.Choice.AIMessage("assistant", "回應內容", null), "stop")),
             new AIChatResponse.Usage(10, 20, 30));
 
     // 執行

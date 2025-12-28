@@ -180,7 +180,11 @@ public final class AIClient {
 
       if (statusCode != 200) {
         LOGGER.warn("AI streaming request failed: status={}, duration_ms={}", statusCode, duration);
-        handler.onChunk("", false, mapHttpError(statusCode, response.body()));
+        handler.onChunk(
+            "",
+            false,
+            mapHttpError(statusCode, response.body()),
+            StreamingResponseHandler.ChunkType.CONTENT);
         return;
       }
 
@@ -195,7 +199,8 @@ public final class AIClient {
           "",
           false,
           new DomainError(
-              DomainError.Category.AI_RESPONSE_INVALID, "Failed to serialize AI request", e));
+              DomainError.Category.AI_RESPONSE_INVALID, "Failed to serialize AI request", e),
+          StreamingResponseHandler.ChunkType.CONTENT);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       LOGGER.error("AI streaming request interrupted", e);
@@ -203,14 +208,16 @@ public final class AIClient {
           "",
           false,
           new DomainError(
-              DomainError.Category.AI_SERVICE_TIMEOUT, "AI streaming request interrupted", e));
+              DomainError.Category.AI_SERVICE_TIMEOUT, "AI streaming request interrupted", e),
+          StreamingResponseHandler.ChunkType.CONTENT);
     } catch (IOException e) {
       LOGGER.error("AI streaming request failed", e);
       handler.onChunk(
           "",
           false,
           new DomainError(
-              DomainError.Category.AI_SERVICE_UNAVAILABLE, "AI streaming request failed", e));
+              DomainError.Category.AI_SERVICE_UNAVAILABLE, "AI streaming request failed", e),
+          StreamingResponseHandler.ChunkType.CONTENT);
     } finally {
       MDC.clear();
     }
@@ -233,22 +240,29 @@ public final class AIClient {
 
               // 檢查結束標記
               if ("[DONE]".equals(data)) {
-                handler.onChunk("", true, null);
+                handler.onChunk("", true, null, StreamingResponseHandler.ChunkType.CONTENT);
                 return;
               }
 
               // 解析 JSON
               AIChatStreamChunk chunk = OBJECT_MAPPER.readValue(data, AIChatStreamChunk.class);
 
-              // 提取內容
+              // 先提取 reasoning_content（如果有）
+              String reasoningContent = chunk.extractReasoningContent();
+              if (reasoningContent != null && !reasoningContent.isEmpty()) {
+                handler.onChunk(
+                    reasoningContent, false, null, StreamingResponseHandler.ChunkType.REASONING);
+              }
+
+              // 再提取 content（如果有）
               String content = chunk.extractContent();
               if (content != null && !content.isEmpty()) {
-                handler.onChunk(content, false, null);
+                handler.onChunk(content, false, null, StreamingResponseHandler.ChunkType.CONTENT);
               }
 
               // 檢查是否結束
               if (chunk.isFinished()) {
-                handler.onChunk("", true, null);
+                handler.onChunk("", true, null, StreamingResponseHandler.ChunkType.CONTENT);
               }
             }
           } catch (JsonProcessingException e) {
@@ -257,7 +271,8 @@ public final class AIClient {
                 "",
                 false,
                 new DomainError(
-                    DomainError.Category.AI_RESPONSE_INVALID, "Failed to parse SSE response", e));
+                    DomainError.Category.AI_RESPONSE_INVALID, "Failed to parse SSE response", e),
+                StreamingResponseHandler.ChunkType.CONTENT);
           }
         });
   }

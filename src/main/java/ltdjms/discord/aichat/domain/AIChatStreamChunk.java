@@ -41,9 +41,12 @@ public record AIChatStreamChunk(
      * 增量內容。
      *
      * @param content 新增的文本內容
+     * @param reasoningContent 新增的推理內容
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record Delta(@JsonProperty("content") String content) {}
+    public record Delta(
+        @JsonProperty("content") String content,
+        @JsonProperty("reasoning_content") String reasoningContent) {}
   }
 
   /** 提取第一個選擇的增量內容。 */
@@ -56,6 +59,18 @@ public record AIChatStreamChunk(
       return null;
     }
     return choice.delta().content();
+  }
+
+  /** 提取第一個選擇的推理增量內容。 */
+  public String extractReasoningContent() {
+    if (choices == null || choices.isEmpty()) {
+      return null;
+    }
+    StreamChoice choice = choices.get(0);
+    if (choice.delta() == null) {
+      return null;
+    }
+    return choice.delta().reasoningContent();
   }
 
   /** 檢查是否已結束（finish_reason 為 stop）。 */

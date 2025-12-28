@@ -20,6 +20,7 @@ import ltdjms.discord.aichat.domain.AIChatResponse;
 import ltdjms.discord.aichat.domain.AIServiceConfig;
 import ltdjms.discord.aichat.services.AIClient;
 import ltdjms.discord.aichat.services.StreamingResponseHandler;
+import ltdjms.discord.aichat.services.StreamingResponseHandler.ChunkType;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 
@@ -186,7 +187,7 @@ class AIChatIntegrationTest {
         request,
         new StreamingResponseHandler() {
           @Override
-          public void onChunk(String chunk, boolean isComplete, DomainError error) {
+          public void onChunk(String chunk, boolean isComplete, DomainError error, ChunkType type) {
             if (error != null) {
               completedFuture.completeExceptionally(new RuntimeException(error.message()));
               return;
@@ -235,7 +236,7 @@ class AIChatIntegrationTest {
 
     client.sendStreamingRequest(
         request,
-        (chunk, isComplete, error) -> {
+        (chunk, isComplete, error, type) -> {
           if (error != null) {
             errorFuture.complete(error);
           }
@@ -275,7 +276,7 @@ class AIChatIntegrationTest {
 
     client.sendStreamingRequest(
         request,
-        (chunk, isComplete, error) -> {
+        (chunk, isComplete, error, type) -> {
           if (error != null) {
             errorFuture.complete(error);
           }

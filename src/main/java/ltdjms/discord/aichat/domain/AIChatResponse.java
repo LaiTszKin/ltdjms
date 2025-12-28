@@ -42,10 +42,13 @@ public record AIChatResponse(
      *
      * @param role 角色 ("assistant")
      * @param content 回應內容
+     * @param reasoningContent 推理內容
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record AIMessage(
-        @JsonProperty("role") String role, @JsonProperty("content") String content) {}
+        @JsonProperty("role") String role,
+        @JsonProperty("content") String content,
+        @JsonProperty("reasoning_content") String reasoningContent) {}
   }
 
   /**

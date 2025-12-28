@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ltdjms.discord.aichat.services.AIChatService;
+import ltdjms.discord.aichat.services.StreamingResponseHandler;
 import ltdjms.discord.shared.DomainError;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
@@ -12,6 +13,7 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 public class AIChatMentionListener extends ListenerAdapter {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AIChatMentionListener.class);
+  private static final String SPOILER_PREFIX = "-# ";
 
   private final AIChatService aiChatService;
 
@@ -72,7 +74,7 @@ public class AIChatMentionListener extends ListenerAdapter {
                   channelId,
                   userId,
                   userMessage,
-                  (chunk, isComplete, error) -> {
+                  (chunk, isComplete, error, type) -> {
                     if (error != null) {
                       // 編輯初始訊息為錯誤訊息
                       thinkingMessage.editMessage(getErrorMessage(error)).queue();
@@ -81,13 +83,20 @@ public class AIChatMentionListener extends ListenerAdapter {
                     }
 
                     if (chunk != null && !chunk.isEmpty()) {
+                      String formattedChunk = chunk;
+
+                      // 根據類型格式化
+                      if (type == StreamingResponseHandler.ChunkType.REASONING) {
+                        formattedChunk = formatAsSpoiler(chunk);
+                      }
+
                       if (isFirstChunk[0]) {
                         // 編輯初始訊息為第一個片段
-                        thinkingMessage.editMessage(chunk).queue();
+                        thinkingMessage.editMessage(formattedChunk).queue();
                         isFirstChunk[0] = false;
                       } else {
                         // 發送新片段
-                        channel.sendMessage(chunk).queue();
+                        channel.sendMessage(formattedChunk).queue();
                       }
                     }
 
@@ -108,5 +117,22 @@ public class AIChatMentionListener extends ListenerAdapter {
       case AI_RESPONSE_INVALID -> ":warning: AI 回應格式錯誤";
       default -> ":warning: 發生錯誤：" + error.message();
     };
+  }
+
+  /**
+   * 將內容格式化為 Discord 小字體（spoiler）。
+   *
+   * @param content 原始內容
+   * @return 格式化後的內容（帶 `-# ` 前綴）
+   */
+  private String formatAsSpoiler(String content) {
+    if (content == null || content.isEmpty()) {
+      return content;
+    }
+    // 防止重複添加前綴
+    if (content.startsWith(SPOILER_PREFIX)) {
+      return content;
+    }
+    return SPOILER_PREFIX + content;
   }
 }

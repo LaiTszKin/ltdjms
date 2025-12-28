@@ -109,35 +109,56 @@ public final class DefaultAIChatService implements AIChatService {
 
       // Build streaming AI request
       AIChatRequest request = AIChatRequest.createStreamingUserMessage(userMessage, config);
-      MessageChunkAccumulator accumulator = new MessageChunkAccumulator();
+      MessageChunkAccumulator reasoningAccumulator = new MessageChunkAccumulator();
+      MessageChunkAccumulator contentAccumulator = new MessageChunkAccumulator();
       StringBuilder fullContent = new StringBuilder();
+      StreamingResponseHandler.ChunkType[] lastChunkType = {null};
 
       aiClient.sendStreamingRequest(
           request,
-          (delta, isComplete, error) -> {
+          (delta, isComplete, error, type) -> {
             if (error != null) {
               LOGGER.error("Stream error: {}", error.message());
-              handler.onChunk("", isComplete, error);
+              handler.onChunk("", isComplete, error, type);
               return;
             }
 
-            fullContent.append(delta);
+            if (type == StreamingResponseHandler.ChunkType.CONTENT && delta != null) {
+              fullContent.append(delta);
+            }
+
+            if (lastChunkType[0] != null && type != lastChunkType[0]) {
+              flushAccumulator(lastChunkType[0], reasoningAccumulator, contentAccumulator, handler);
+            }
+
+            MessageChunkAccumulator accumulator =
+                type == StreamingResponseHandler.ChunkType.REASONING
+                    ? reasoningAccumulator
+                    : contentAccumulator;
 
             // 累積並獲取準備發送的片段
             List<String> chunksToSend = accumulator.accumulate(delta);
 
             // 發送每個片段
             for (String chunk : chunksToSend) {
-              handler.onChunk(chunk, false, null);
+              handler.onChunk(chunk, false, null, type);
             }
+
+            lastChunkType[0] = type;
 
             // 流結束時發送剩餘內容
             if (isComplete) {
-              String remaining = accumulator.drain();
-              if (!remaining.isEmpty()) {
-                handler.onChunk(remaining, false, null);
-              }
-              handler.onChunk("", true, null);
+              flushAccumulator(
+                  StreamingResponseHandler.ChunkType.REASONING,
+                  reasoningAccumulator,
+                  contentAccumulator,
+                  handler);
+              flushAccumulator(
+                  StreamingResponseHandler.ChunkType.CONTENT,
+                  reasoningAccumulator,
+                  contentAccumulator,
+                  handler);
+              handler.onChunk("", true, null, type);
 
               LOGGER.info("Streaming AI response completed");
 
@@ -161,9 +182,33 @@ public final class DefaultAIChatService implements AIChatService {
       handler.onChunk(
           "",
           false,
-          new DomainError(DomainError.Category.UNEXPECTED_FAILURE, "Failed to start streaming", e));
+          new DomainError(DomainError.Category.UNEXPECTED_FAILURE, "Failed to start streaming", e),
+          StreamingResponseHandler.ChunkType.CONTENT);
     } finally {
       MDC.clear();
+    }
+  }
+
+  /**
+   * 將指定類型的累積內容送出並清空緩衝。
+   *
+   * @param type 片段類型
+   * @param reasoningAccumulator 推理內容累積器
+   * @param contentAccumulator 回應內容累積器
+   * @param handler 流式回應處理器
+   */
+  private void flushAccumulator(
+      StreamingResponseHandler.ChunkType type,
+      MessageChunkAccumulator reasoningAccumulator,
+      MessageChunkAccumulator contentAccumulator,
+      StreamingResponseHandler handler) {
+    MessageChunkAccumulator accumulator =
+        type == StreamingResponseHandler.ChunkType.REASONING
+            ? reasoningAccumulator
+            : contentAccumulator;
+    String remaining = accumulator.drain();
+    if (!remaining.isEmpty()) {
+      handler.onChunk(remaining, false, null, type);
     }
   }
 }

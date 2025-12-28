@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.14.4] - 2025-12-28
+
+### Added
+- AI 聊天流式回應支援區分推理內容（reasoning_content）與實際回應內容
+- StreamingResponseHandler.ChunkType 枚舉用於區分片段類型（REASONING, CONTENT）
+- AIChatStreamChunk.extractReasoningContent() 方法用於提取推理增量內容
+- 推理內容在 Discord 中以小字體格式（-# 前綴）顯示
+
+### Changed
+- StreamingResponseHandler.onChunk 方法新增 type 參數（保持向後兼容）
+- AIChatResponse.AIMessage 與 AIChatStreamChunk.Delta 新增 reasoningContent 欄位
+- DefaultAIChatService 使用雙累積器（reasoningAccumulator, contentAccumulator）分離處理
+
+### Testing
+- 新增 AIChatStreamChunkTest 單元測試（6 個測試案例）
+- AIChatServiceTest 新增 reasoning 與 content 分離驗證測試
+- AIClientTest 新增 reasoning content SSE 解析測試
+- 更新 AIChatIntegrationTest 以支援四參數 onChunk 方法
+
 ## [0.14.3] - 2025-12-28
 
 ### Added
