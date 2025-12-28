@@ -1,4 +1,4 @@
-.PHONY: build test clean run docker-build docker-up docker-down docker-logs db-up db-down docker-dev format format-check
+.PHONY: build test clean run docker-build docker-up docker-down docker-logs db-up db-down docker-dev format format-check setup-env
 
 # Maven commands
 build:
@@ -62,6 +62,10 @@ dev: db-up
 	@echo "PostgreSQL is running on localhost:5432"
 	@echo "Run 'make run' to start the bot after building"
 
+# Environment setup
+setup-env:
+	@./scripts/sync-env.sh
+
 # Help
 help:
 	@echo "Available targets:"
@@ -74,6 +78,7 @@ help:
 	@echo "  coverage-check   - Run tests and enforce 80% coverage threshold"
 	@echo "  coverage         - Generate code coverage report"
 	@echo "  clean            - Clean build artifacts"
+	@echo "  setup-env        - Sync .env with .env.example (backup to .env.bak)"
 	@echo "  run              - Run the bot locally"
 	@echo "  update           - Build Docker image"
 	@echo "  start            - Start all services with Docker Compose (no rebuild)"

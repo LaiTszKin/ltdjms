@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.14.2] - 2025-12-28
+
+### Changed
+- 新增環境變數同步腳本 (`scripts/sync-env.sh`)，自動同步 .env 與 .env.example
+- Makefile 新增 `make setup-env` 指令
+
 ## [0.14.1] - 2025-12-28
 
 ### Fixed
