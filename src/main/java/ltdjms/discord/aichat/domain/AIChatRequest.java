@@ -29,22 +29,65 @@ public record AIChatRequest(
 
   /** 創建使用者訊息請求（非流式）。 */
   public static AIChatRequest createUserMessage(String content, AIServiceConfig config) {
+    return createUserMessage(content, config, SystemPrompt.empty());
+  }
+
+  /**
+   * 創建使用者訊息請求（非流式），帶有系統提示詞。
+   *
+   * @param content 使用者訊息內容
+   * @param config AI 服務配置
+   * @param systemPrompt 系統提示詞
+   * @return AI 聊天請求
+   */
+  public static AIChatRequest createUserMessage(
+      String content, AIServiceConfig config, SystemPrompt systemPrompt) {
     // 如果訊息為空，使用預設問候語
     String messageContent = (content == null || content.isBlank()) ? "你好" : content;
 
-    return new AIChatRequest(
-        config.model(),
-        List.of(new AIMessage("user", messageContent)),
-        config.temperature(),
-        false);
+    List<AIMessage> messages = new java.util.ArrayList<>();
+
+    // 添加系統提示詞（如果不為空）
+    String systemContent = systemPrompt.toCombinedString();
+    if (!systemContent.isBlank()) {
+      messages.add(new AIMessage("system", systemContent));
+    }
+
+    // 添加使用者訊息
+    messages.add(new AIMessage("user", messageContent));
+
+    return new AIChatRequest(config.model(), messages, config.temperature(), false);
   }
 
   /** 創建使用者訊息請求（流式輸出）。 */
   public static AIChatRequest createStreamingUserMessage(String content, AIServiceConfig config) {
+    return createStreamingUserMessage(content, config, SystemPrompt.empty());
+  }
+
+  /**
+   * 創建使用者訊息請求（流式輸出），帶有系統提示詞。
+   *
+   * @param content 使用者訊息內容
+   * @param config AI 服務配置
+   * @param systemPrompt 系統提示詞
+   * @return AI 聊天請求
+   */
+  public static AIChatRequest createStreamingUserMessage(
+      String content, AIServiceConfig config, SystemPrompt systemPrompt) {
     // 如果訊息為空，使用預設問候語
     String messageContent = (content == null || content.isBlank()) ? "你好" : content;
 
-    return new AIChatRequest(
-        config.model(), List.of(new AIMessage("user", messageContent)), config.temperature(), true);
+    List<AIMessage> messages = new java.util.ArrayList<>();
+
+    // 添加系統提示詞（如果不為空）
+    String systemContent = systemPrompt.toCombinedString();
+    if (!systemContent.isBlank()) {
+      messages.add(new AIMessage("system", systemContent));
+    }
+
+    // 添加使用者訊息
+    messages.add(new AIMessage("user", messageContent));
+
+    return new AIChatRequest(config.model(), messages, config.temperature(), true);
   }
 }

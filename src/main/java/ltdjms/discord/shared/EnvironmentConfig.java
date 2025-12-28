@@ -46,6 +46,8 @@ public final class EnvironmentConfig {
   private static final String ENV_AI_SERVICE_MODEL = "AI_SERVICE_MODEL";
   private static final String ENV_AI_SERVICE_TEMPERATURE = "AI_SERVICE_TEMPERATURE";
   private static final String ENV_AI_SERVICE_TIMEOUT_SECONDS = "AI_SERVICE_TIMEOUT_SECONDS";
+  private static final String ENV_PROMPTS_DIR_PATH = "PROMPTS_DIR_PATH";
+  private static final String ENV_PROMPT_MAX_SIZE_BYTES = "PROMPT_MAX_SIZE_BYTES";
 
   // Config paths for Typesafe Config
   private static final String CFG_DISCORD_BOT_TOKEN = "discord.bot.token";
@@ -63,6 +65,8 @@ public final class EnvironmentConfig {
   private static final String CFG_AI_SERVICE_MODEL = "ai.service.model";
   private static final String CFG_AI_SERVICE_TEMPERATURE = "ai.service.temperature";
   private static final String CFG_AI_SERVICE_TIMEOUT_SECONDS = "ai.service.timeout-seconds";
+  private static final String CFG_PROMPTS_DIR_PATH = "prompts.dir.path";
+  private static final String CFG_PROMPT_MAX_SIZE = "prompts.max-size";
 
   // Default values
   private static final String DEFAULT_REDIS_URI = "redis://localhost:6379";
@@ -78,6 +82,8 @@ public final class EnvironmentConfig {
   private static final String DEFAULT_AI_SERVICE_MODEL = "gpt-3.5-turbo";
   private static final double DEFAULT_AI_SERVICE_TEMPERATURE = 0.7;
   private static final int DEFAULT_AI_SERVICE_TIMEOUT_SECONDS = 30;
+  private static final String DEFAULT_PROMPTS_DIR_PATH = "./prompts";
+  private static final long DEFAULT_PROMPT_MAX_SIZE_BYTES = 1048576L; // 1MB
 
   private final Config config;
   private final Map<String, String> dotEnvValues;
@@ -120,6 +126,8 @@ public final class EnvironmentConfig {
     defaults.put(CFG_AI_SERVICE_MODEL, DEFAULT_AI_SERVICE_MODEL);
     defaults.put(CFG_AI_SERVICE_TEMPERATURE, DEFAULT_AI_SERVICE_TEMPERATURE);
     defaults.put(CFG_AI_SERVICE_TIMEOUT_SECONDS, DEFAULT_AI_SERVICE_TIMEOUT_SECONDS);
+    defaults.put(CFG_PROMPTS_DIR_PATH, DEFAULT_PROMPTS_DIR_PATH);
+    defaults.put(CFG_PROMPT_MAX_SIZE, DEFAULT_PROMPT_MAX_SIZE_BYTES);
     Config defaultsConfig = ConfigFactory.parseMap(defaults);
 
     // Load application.conf/properties (standard Typesafe Config behavior)
@@ -143,6 +151,8 @@ public final class EnvironmentConfig {
     mapEnvToConfig(dotEnvMapped, ENV_AI_SERVICE_MODEL, CFG_AI_SERVICE_MODEL);
     mapEnvToConfigDouble(dotEnvMapped, ENV_AI_SERVICE_TEMPERATURE, CFG_AI_SERVICE_TEMPERATURE);
     mapEnvToConfigInt(dotEnvMapped, ENV_AI_SERVICE_TIMEOUT_SECONDS, CFG_AI_SERVICE_TIMEOUT_SECONDS);
+    mapEnvToConfig(dotEnvMapped, ENV_PROMPTS_DIR_PATH, CFG_PROMPTS_DIR_PATH);
+    mapEnvToConfigLong(dotEnvMapped, ENV_PROMPT_MAX_SIZE_BYTES, CFG_PROMPT_MAX_SIZE);
     Config dotEnvConfig = ConfigFactory.parseMap(dotEnvMapped);
 
     // Build system env vars as config (highest priority)
@@ -164,6 +174,8 @@ public final class EnvironmentConfig {
     mapSysEnvToConfigDouble(sysEnvMapped, ENV_AI_SERVICE_TEMPERATURE, CFG_AI_SERVICE_TEMPERATURE);
     mapSysEnvToConfigInt(
         sysEnvMapped, ENV_AI_SERVICE_TIMEOUT_SECONDS, CFG_AI_SERVICE_TIMEOUT_SECONDS);
+    mapSysEnvToConfig(sysEnvMapped, ENV_PROMPTS_DIR_PATH, CFG_PROMPTS_DIR_PATH);
+    mapSysEnvToConfigLong(sysEnvMapped, ENV_PROMPT_MAX_SIZE_BYTES, CFG_PROMPT_MAX_SIZE);
     Config sysEnvConfig = ConfigFactory.parseMap(sysEnvMapped);
 
     // Layer configs: sysEnv > dotEnv > application > defaults
@@ -475,5 +487,28 @@ public final class EnvironmentConfig {
       return config.getInt(key);
     }
     return defaultValue;
+  }
+
+  /**
+   * Gets the prompts directory path.
+   *
+   * <p>This is the directory containing external prompt markdown files that are loaded on every AI
+   * request.
+   *
+   * @return the prompts directory path (relative or absolute)
+   */
+  public String getPromptsDirPath() {
+    return config.getString(CFG_PROMPTS_DIR_PATH);
+  }
+
+  /**
+   * Gets the maximum size of a single prompt file in bytes.
+   *
+   * <p>Files exceeding this size will be skipped with a warning log.
+   *
+   * @return the maximum file size in bytes (default: 1MB)
+   */
+  public long getPromptMaxSizeBytes() {
+    return config.getBytes(CFG_PROMPT_MAX_SIZE);
   }
 }

@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.15.0] - 2025-12-29
+
+### Added
+- **AI Chat**: 外部提示詞載入器功能
+  - 從 `prompts/` 目錄載入 .md 檔案作為系統提示詞
+  - 新增 `PromptLoader` 服務介面與 `DefaultPromptLoader` 實作
+  - 新增領域模型：`PromptSection`、`SystemPrompt`、`PromptLoadError`
+  - 支援配置：`PROMPTS_DIR_PATH`、`PROMPT_MAX_SIZE_BYTES`
+  - Docker Compose 自動掛載 prompts/ 目錄（唯讀）
+
+### Changed
+- AI Chat 服務現在支援動態載入外部提示詞檔案
+- 若 `prompts/` 目錄不存在或為空，使用空提示詞（向後相容）
+
+### Documentation
+- 新增 `specs/004-external-prompts-loader/` 完整規格文件
+- 更新 `docs/architecture/ai-chat-flow.md`（新增提示詞載入流程圖）
+- 更新 `docs/development/configuration.md`（新增配置說明）
+- 更新 `docs/getting-started/quickstart.md`（新增提示詞目錄初始化）
+- 更新 `docs/modules/aichat.md`（新增 PromptLoader 說明）
+- 新增範例提示詞檔案：`prompts/personality.md`、`prompts/rules.md`
+
 ## [0.14.4] - 2025-12-28
 
 ### Added

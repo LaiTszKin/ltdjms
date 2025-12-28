@@ -43,7 +43,17 @@ public record DomainError(Category category, String message, Throwable cause) {
     /** AI response empty */
     AI_RESPONSE_EMPTY,
     /** AI response invalid */
-    AI_RESPONSE_INVALID
+    AI_RESPONSE_INVALID,
+    /** Prompts directory not found */
+    PROMPT_DIR_NOT_FOUND,
+    /** Prompt file exceeds size limit */
+    PROMPT_FILE_TOO_LARGE,
+    /** Prompt file read failed */
+    PROMPT_READ_FAILED,
+    /** Prompt file has invalid encoding */
+    PROMPT_INVALID_ENCODING,
+    /** Prompt loading failed */
+    PROMPT_LOAD_FAILED
   }
 
   public DomainError {

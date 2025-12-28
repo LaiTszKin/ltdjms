@@ -164,6 +164,13 @@ public final class BotErrorHandler {
       case PERSISTENCE_FAILURE -> handleDatabaseError(event, error.cause());
 
       case UNEXPECTED_FAILURE -> handleUnexpectedError(event, error.cause());
+
+      case PROMPT_DIR_NOT_FOUND,
+          PROMPT_FILE_TOO_LARGE,
+          PROMPT_READ_FAILED,
+          PROMPT_INVALID_ENCODING,
+          PROMPT_LOAD_FAILED ->
+          handleUnexpectedError(event, error.cause());
     }
   }
 
@@ -194,6 +201,11 @@ public final class BotErrorHandler {
       case AI_SERVICE_UNAVAILABLE -> ":warning: AI 服務暫時無法使用";
       case AI_RESPONSE_EMPTY -> ":question: AI 沒有產生回應";
       case AI_RESPONSE_INVALID -> ":warning: AI 回應格式錯誤";
+      case PROMPT_DIR_NOT_FOUND -> ":information_source: 提示詞資料夾不存在";
+      case PROMPT_FILE_TOO_LARGE -> ":warning: 提示詞檔案過大";
+      case PROMPT_READ_FAILED -> ":warning: 提示詞讀取失敗";
+      case PROMPT_INVALID_ENCODING -> ":warning: 提示詞編碼錯誤";
+      case PROMPT_LOAD_FAILED -> ":warning: 提示詞載入失敗";
     };
   }
 
@@ -332,6 +344,37 @@ public final class BotErrorHandler {
       case AI_RESPONSE_INVALID -> {
         LOG.error("AI response invalid for guild={} user={}: {}", guildId, userId, error.message());
         interaction.reply(":warning: AI 回應格式錯誤");
+      }
+
+      case PROMPT_DIR_NOT_FOUND -> {
+        LOG.warn(
+            "Prompts directory not found for guild={} user={}: {}",
+            guildId,
+            userId,
+            error.message());
+        interaction.reply(":information_source: 提示詞資料夾不存在");
+      }
+
+      case PROMPT_FILE_TOO_LARGE -> {
+        LOG.warn(
+            "Prompt file too large for guild={} user={}: {}", guildId, userId, error.message());
+        interaction.reply(":warning: 提示詞檔案過大");
+      }
+
+      case PROMPT_READ_FAILED -> {
+        LOG.error("Prompt read failed for guild={} user={}: {}", guildId, userId, error.message());
+        interaction.reply(":warning: 提示詞讀取失敗");
+      }
+
+      case PROMPT_INVALID_ENCODING -> {
+        LOG.warn(
+            "Prompt invalid encoding for guild={} user={}: {}", guildId, userId, error.message());
+        interaction.reply(":warning: 提示詞編碼錯誤");
+      }
+
+      case PROMPT_LOAD_FAILED -> {
+        LOG.error("Prompt load failed for guild={} user={}: {}", guildId, userId, error.message());
+        interaction.reply(":warning: 提示詞載入失敗");
       }
     }
   }

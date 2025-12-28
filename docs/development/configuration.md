@@ -117,6 +117,22 @@
   - 驗證範圍：`1` - `120`
   - 說明：AI 服務連線逾時秒數（不限制推理時間）
 
+### 2.6 提示詞載入器設定（V015 新增）
+
+以下設定對應外部提示詞載入功能：
+
+- `PROMPTS_DIR_PATH`
+  - 預設：`./prompts`
+  - 對應 config key：`aichat.prompts-dir-path`
+  - 說明：提示詞檔案所在目錄的相對或絕對路徑
+  - 目錄結構：包含 `.md` 檔案的資料夾（如 `personality.md`、`rules.md`）
+
+- `PROMPT_MAX_SIZE_BYTES`
+  - 預設：`1048576`（1 MB）
+  - 對應 config key：`aichat.prompt-max-size-bytes`
+  - 驗證範圍：`1024` - `10485760`（1 KB - 10 MB）
+  - 說明：單一提示詞檔案的大小上限（位元組）
+
 **AI 服務供應商範例**：
 
 | 供應商 | BASE_URL | MODEL |
@@ -155,6 +171,10 @@ AI_SERVICE_MODEL=gpt-3.5-turbo
 AI_SERVICE_TEMPERATURE=0.7
 AI_SERVICE_MAX_TOKENS=500
 AI_SERVICE_TIMEOUT_SECONDS=30
+
+# 提示詞載入器 (V015 新增)
+PROMPTS_DIR_PATH=./prompts
+PROMPT_MAX_SIZE_BYTES=1048576
 ```
 
 `DotEnvLoader` 會從指定目錄（預設為 `user.dir`）讀取 `.env`，並將其中的 key 映射到對應的 config key。
@@ -198,6 +218,9 @@ aichat {
   temperature = ${?AI_SERVICE_TEMPERATURE}
   max-tokens = ${?AI_SERVICE_MAX_TOKENS}
   timeout-seconds = ${?AI_SERVICE_TIMEOUT_SECONDS}
+
+  prompts-dir-path = ${?PROMPTS_DIR_PATH}
+  prompt-max-size-bytes = ${?PROMPT_MAX_SIZE_BYTES}
 }
 ```
 
@@ -248,6 +271,7 @@ export DB_PASSWORD=...
 - 若 `EnvironmentConfig` 未取得有效的 `DISCORD_BOT_TOKEN`，會直接丟出錯誤並中止啟動。
 - 若 `EnvironmentConfig` 未取得有效的 `AI_SERVICE_API_KEY`（V010 新增），會直接丟出錯誤並中止啟動。
 - 若 AI 服務配置參數超出有效範圍（如 `AI_SERVICE_TEMPERATURE` > 2.0），會直接丟出錯誤並中止啟動。
+- 若提示詞載入器配置參數超出有效範圍（如 `PROMPT_MAX_SIZE_BYTES` > 10485760），會直接丟出錯誤並中止啟動。
 - 若資料庫連線設定錯誤，會在建立 `DataSource` 或執行 schema migration 時發生例外。
 
 建議在部署前先於目標環境實際啟動一次，並檢查日誌以確認：

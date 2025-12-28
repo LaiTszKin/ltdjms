@@ -117,6 +117,40 @@ export DB_PASSWORD="postgres"
 - `DB_POOL_MAX_LIFETIME`
 - `REDIS_URI`（預設：`redis://localhost:6379`）
 
+### 4.3 初始化提示詞資料夾（V015 新增）
+
+AI Chat 功能會從 `prompts/` 目錄載入外部提示詞檔案。建立並初始化此目錄：
+
+```bash
+mkdir -p prompts
+```
+
+建立範例提示詞檔案：
+
+**`prompts/personality.md`**：
+```markdown
+# 機器人人格
+
+你是一個友善且有幫助的 AI 助手，名為「龍騰電競智能助手」。
+
+## 特點
+- 禮貌且友善
+- 提供準確的資訊
+- 承認不知道的事情
+```
+
+**`prompts/rules.md`**：
+```markdown
+# 使用規則
+
+1. 使用繁體中文回應
+2. 簡潔明確，避免冗長
+3. 不生成有害或不當內容
+4. 保護使用者隱私
+```
+
+> 提示：若 `prompts/` 目錄不存在或為空，AI Chat 功能仍會正常運作，僅不會使用自訂系統提示詞。
+
 詳細說明可參考 `docs/development/configuration.md`。
 
 ## 5. 使用 Docker Compose 啟動（推薦）

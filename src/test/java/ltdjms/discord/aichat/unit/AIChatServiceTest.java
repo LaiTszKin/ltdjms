@@ -14,9 +14,11 @@ import org.junit.jupiter.api.Test;
 import ltdjms.discord.aichat.domain.AIChatRequest;
 import ltdjms.discord.aichat.domain.AIChatResponse;
 import ltdjms.discord.aichat.domain.AIServiceConfig;
+import ltdjms.discord.aichat.domain.SystemPrompt;
 import ltdjms.discord.aichat.services.AIChatService;
 import ltdjms.discord.aichat.services.AIClient;
 import ltdjms.discord.aichat.services.DefaultAIChatService;
+import ltdjms.discord.aichat.services.PromptLoader;
 import ltdjms.discord.aichat.services.StreamingResponseHandler;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
@@ -44,7 +46,10 @@ class AIChatServiceTest {
     AIClient mockClient = mock(AIClient.class);
     when(mockClient.sendChatRequest(any(AIChatRequest.class))).thenReturn(Result.ok(mockResponse));
 
-    AIChatService service = new DefaultAIChatService(config, mockClient, null);
+    PromptLoader mockPromptLoader = mock(PromptLoader.class);
+    when(mockPromptLoader.loadPrompts()).thenReturn(Result.ok(SystemPrompt.empty()));
+
+    AIChatService service = new DefaultAIChatService(config, mockClient, null, mockPromptLoader);
 
     // When
     Result<List<String>, DomainError> result =
@@ -76,7 +81,10 @@ class AIChatServiceTest {
     AIClient mockClient = mock(AIClient.class);
     when(mockClient.sendChatRequest(any(AIChatRequest.class))).thenReturn(Result.ok(mockResponse));
 
-    AIChatService service = new DefaultAIChatService(config, mockClient, null);
+    PromptLoader mockPromptLoader = mock(PromptLoader.class);
+    when(mockPromptLoader.loadPrompts()).thenReturn(Result.ok(SystemPrompt.empty()));
+
+    AIChatService service = new DefaultAIChatService(config, mockClient, null, mockPromptLoader);
 
     // When
     Result<List<String>, DomainError> result =
@@ -98,7 +106,10 @@ class AIChatServiceTest {
     when(mockClient.sendChatRequest(any(AIChatRequest.class)))
         .thenReturn(Result.err(DomainError.unexpectedFailure("AI service unavailable", null)));
 
-    AIChatService service = new DefaultAIChatService(config, mockClient, null);
+    PromptLoader mockPromptLoader = mock(PromptLoader.class);
+    when(mockPromptLoader.loadPrompts()).thenReturn(Result.ok(SystemPrompt.empty()));
+
+    AIChatService service = new DefaultAIChatService(config, mockClient, null, mockPromptLoader);
 
     // When
     Result<List<String>, DomainError> result =
@@ -137,7 +148,10 @@ class AIChatServiceTest {
     AIClient mockClient = mock(AIClient.class);
     when(mockClient.sendChatRequest(any(AIChatRequest.class))).thenReturn(Result.ok(mockResponse));
 
-    AIChatService service = new DefaultAIChatService(config, mockClient, null);
+    PromptLoader mockPromptLoader = mock(PromptLoader.class);
+    when(mockPromptLoader.loadPrompts()).thenReturn(Result.ok(SystemPrompt.empty()));
+
+    AIChatService service = new DefaultAIChatService(config, mockClient, null, mockPromptLoader);
 
     // When
     Result<List<String>, DomainError> result =
@@ -166,7 +180,10 @@ class AIChatServiceTest {
     AIClient mockClient = mock(AIClient.class);
     when(mockClient.sendChatRequest(any(AIChatRequest.class))).thenReturn(Result.ok(mockResponse));
 
-    AIChatService service = new DefaultAIChatService(config, mockClient, null);
+    PromptLoader mockPromptLoader = mock(PromptLoader.class);
+    when(mockPromptLoader.loadPrompts()).thenReturn(Result.ok(SystemPrompt.empty()));
+
+    AIChatService service = new DefaultAIChatService(config, mockClient, null, mockPromptLoader);
 
     // When
     Result<List<String>, DomainError> result =
@@ -195,7 +212,10 @@ class AIChatServiceTest {
         .when(mockClient)
         .sendStreamingRequest(any(AIChatRequest.class), any(StreamingResponseHandler.class));
 
-    AIChatService service = new DefaultAIChatService(config, mockClient, null);
+    PromptLoader mockPromptLoader = mock(PromptLoader.class);
+    when(mockPromptLoader.loadPrompts()).thenReturn(Result.ok(SystemPrompt.empty()));
+
+    AIChatService service = new DefaultAIChatService(config, mockClient, null, mockPromptLoader);
 
     // When
     List<String> chunks = new java.util.ArrayList<>();

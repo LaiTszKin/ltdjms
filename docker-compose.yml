@@ -45,6 +45,7 @@ services:
       AI_SERVICE_MODEL: ${AI_SERVICE_MODEL}
       AI_SERVICE_TEMPERATURE: ${AI_SERVICE_TEMPERATURE}
       AI_SERVICE_TIMEOUT_SECONDS: ${AI_SERVICE_TIMEOUT_SECONDS}
+      PROMPTS_DIR_PATH: /app/prompts
       DB_URL: jdbc:postgresql://postgres:5432/currency_bot
       DB_USERNAME: postgres
       DB_PASSWORD: postgres
@@ -55,6 +56,8 @@ services:
         -XX:InitialRAMPercentage=50.0
         -XX:+UseG1GC
     entrypoint: ["/bin/bash", "-c", "java $$JAVA_OPTS -jar app.jar"]
+    volumes:
+      - ./prompts:/app/prompts:ro
     restart: unless-stopped
 
 volumes:

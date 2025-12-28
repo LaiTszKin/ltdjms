@@ -9,6 +9,8 @@ import ltdjms.discord.aichat.domain.AIServiceConfig;
 import ltdjms.discord.aichat.services.AIChatService;
 import ltdjms.discord.aichat.services.AIClient;
 import ltdjms.discord.aichat.services.DefaultAIChatService;
+import ltdjms.discord.aichat.services.DefaultPromptLoader;
+import ltdjms.discord.aichat.services.PromptLoader;
 import ltdjms.discord.shared.EnvironmentConfig;
 import ltdjms.discord.shared.events.DomainEventPublisher;
 
@@ -36,9 +38,18 @@ public class AIChatModule {
 
   @Provides
   @Singleton
+  public PromptLoader providePromptLoader(EnvironmentConfig envConfig) {
+    return new DefaultPromptLoader(envConfig);
+  }
+
+  @Provides
+  @Singleton
   public AIChatService provideAIChatService(
-      AIServiceConfig config, AIClient aiClient, DomainEventPublisher eventPublisher) {
-    return new DefaultAIChatService(config, aiClient, eventPublisher);
+      AIServiceConfig config,
+      AIClient aiClient,
+      DomainEventPublisher eventPublisher,
+      PromptLoader promptLoader) {
+    return new DefaultAIChatService(config, aiClient, eventPublisher, promptLoader);
   }
 
   @Provides

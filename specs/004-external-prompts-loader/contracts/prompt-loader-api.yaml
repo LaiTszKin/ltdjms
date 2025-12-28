@@ -1,0 +1,198 @@
+openapi: 3.0.3
+info:
+  title: Prompt Loader Internal API
+  description: |
+    內部 API 契約定義，用於提示詞載入服務（PromptLoader）的介面規範。
+
+    此 API 非公開的 HTTP API，而是 Java 內部服務介面的程式碼級契約定義。
+  version: 1.0.0
+  contact:
+    name: LTDJMS Development Team
+
+paths:
+  /internal/prompt-loader/load:
+    get:
+      summary: 載入系統提示詞
+      description: |
+        從配置的 prompts 資料夾載入所有 .md 檔案，合併為單一系統提示詞。
+
+        此操作在每次 AI 請求時執行，實現即時提示詞更新。
+      operationId: loadPrompts
+      tags:
+        - PromptLoader
+      responses:
+        '200':
+          description: 成功載入提示詞
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemPrompt'
+              examples:
+                single_file:
+                  summary: 單一檔案載入成功
+                  value:
+                    sections:
+                      - title: "BOT PERSONALITY"
+                        content: "You are a helpful assistant."
+                multiple_files:
+                  summary: 多個檔案載入成功
+                  value:
+                    sections:
+                      - title: "PERSONALITY"
+                        content: "You are friendly and helpful."
+                      - title: "RULES"
+                        content: "- Be concise\n- Be accurate"
+                empty:
+                  summary: prompts 資料夾不存在或為空
+                  value:
+                    sections: []
+        '400':
+          description: 載入失敗（檔案讀取錯誤、編碼錯誤等）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainError'
+              examples:
+                directory_not_found:
+                  summary: prompts 資料夾不存在
+                  value:
+                    category: "PROMPT_DIR_NOT_FOUND"
+                    message: "Prompts directory not found: ./prompts"
+                file_too_large:
+                  summary: 檔案超過大小限制
+                  value:
+                    category: "PROMPT_FILE_TOO_LARGE"
+                    message: "Prompt file exceeds size limit: ./prompts/large.md (max: 1048576 bytes)"
+                invalid_encoding:
+                  summary: 檔案編碼無效
+                  value:
+                    category: "PROMPT_INVALID_ENCODING"
+                    message: "Prompt file is not valid UTF-8: ./prompts/bad-encoding.md"
+                read_failed:
+                  summary: 檔案讀取失敗
+                  value:
+                    category: "PROMPT_READ_FAILED"
+                    message: "Failed to read prompt file: ./prompts/no-permission.md"
+
+components:
+  schemas:
+    PromptSection:
+      type: object
+      description: 提示詞區間，代表單一 markdown 檔案的內容與標題
+      required:
+        - title
+        - content
+      properties:
+        title:
+          type: string
+          description: |
+            區間標題（檔案名稱標準化後的大寫格式）
+
+            規則：
+            - 移除 .md 副檔名
+            - 替換連字符（-）和底線（_）為空格
+            - 轉換為大寫
+          example: "BOT PERSONALITY"
+          maxLength: 255
+        content:
+          type: string
+          description: markdown 檔案的原始內容
+          example: "You are a helpful assistant.\n\n## Guidelines\n- Be concise"
+          maxLength: 1048576  # 1MB
+
+    SystemPrompt:
+      type: object
+      description: 完整的系統提示詞，由多個提示詞區間組成
+      required:
+        - sections
+      properties:
+        sections:
+          type: array
+          description: 提示詞區間列表（按檔案名字母順序排列）
+          items:
+            $ref: '#/components/schemas/PromptSection'
+          minItems: 0
+          maxItems: 100
+
+    DomainError:
+      type: object
+      description: 領域錯誤，表示載入過程中的失敗情況
+      required:
+        - category
+        - message
+      properties:
+        category:
+          type: string
+          description: 錯誤類別
+          enum:
+            - PROMPT_DIR_NOT_FOUND
+            - PROMPT_FILE_TOO_LARGE
+            - PROMPT_READ_FAILED
+            - PROMPT_INVALID_ENCODING
+            - PROMPT_LOAD_FAILED
+          example: "PROMPT_DIR_NOT_FOUND"
+        message:
+          type: string
+          description: 人類可讀的錯誤訊息
+          example: "Prompts directory not found: ./prompts"
+        cause:
+          type: string
+          description: 底層異常的訊息（如果存在）
+          example: "java.nio.file.NoSuchFileException: ./prompts"
+
+    PromptLoadResult:
+      type: object
+      description: 提示詞載入操作的結果
+      required:
+        - systemPrompt
+        - loadedCount
+        - skippedFiles
+      properties:
+        systemPrompt:
+          $ref: '#/components/schemas/SystemPrompt'
+        loadedCount:
+          type: integer
+          description: 成功載入的檔案數量
+          minimum: 0
+          example: 3
+        skippedFiles:
+          type: array
+          description: 跳過的檔案路徑列表
+          items:
+            type: string
+          example: ["./prompts/bad-encoding.md", "./prompts/too-large.md"]
+
+  examples:
+    FullLoadSuccess:
+      value:
+        systemPrompt:
+          sections:
+            - title: "PERSONALITY"
+              content: "You are friendly."
+            - title: "RULES"
+              content: "Be helpful."
+        loadedCount: 2
+        skippedFiles: []
+
+    PartialLoadSuccess:
+      value:
+        systemPrompt:
+          sections:
+            - title: "PERSONALITY"
+              content: "You are friendly."
+        loadedCount: 1
+        skippedFiles:
+          - "./prompts/bad-encoding.md"
+
+    CompleteFailure:
+      value:
+        systemPrompt:
+          sections: []
+        loadedCount: 0
+        skippedFiles:
+          - "./prompts/bad-encoding.md"
+          - "./prompts/no-permission.md"
+
+tags:
+  - name: PromptLoader
+    description: 提示詞載入服務介面

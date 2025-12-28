@@ -439,7 +439,114 @@ flowchart TD
 
 ---
 
-## 9. 相關文件
+## 9. 提示詞載入流程（V015 新增）
+
+### 9.1 提示詞載入時序圖
+
+```mermaid
+sequenceDiagram
+    participant Bot as DiscordCurrencyBot
+    participant Module as AIChatModule
+    participant Loader as DefaultPromptLoader
+    participant FS as FileSystem
+    participant AI as AIClient
+
+    Bot->>Module: 建構 AIChatModule
+    Module->>Loader: 注入 PromptLoader
+    activate Loader
+
+    Loader->>FS: 檢查目錄是否存在
+    FS-->>Loader: 目錄存在/不存在
+
+    alt 目錄存在
+        Loader->>FS: 掃描 .md 檔案
+        FS-->>Loader: 檔案列表
+
+        loop 每個 .md 檔案
+            Loader->>FS: 讀取檔案內容
+            alt 檔案大小 > 限制
+                Loader->>Loader: 記錄 WARN，跳過
+            else 讀取成功
+                Loader->>Loader: 建立 PromptSection
+            end
+        end
+
+        alt 至少有一個 PromptSection
+            Loader->>Loader: 組裝 SystemPrompt
+            Loader-->>Module: Result.ok(SystemPrompt)
+        else 無有效檔案
+            Loader-->>Module: Result.err(EMPTY_DIRECTORY)
+        end
+    else 目錄不存在
+        Loader-->>Module: Result.err(DIRECTORY_NOT_FOUND)
+    end
+
+    deactivate Loader
+
+    Module->>AI: 建立 AIClient（含 SystemPrompt）
+```
+
+### 9.2 提示詞載入流程圖
+
+```mermaid
+flowchart TD
+    Start([服務啟動]) --> InitPromptLoader[初始化 PromptLoader]
+    InitPromptLoader --> CheckDir{prompts/<br/>目錄存在?}
+
+    CheckDir -->|否| DirNotFound[記錄 WARN 日誌<br/>使用空提示詞]
+    CheckDir -->|是| ScanFiles[掃描目錄中的 .md 檔案]
+
+    ScanFiles --> HasFiles{有 .md 檔案?}
+    HasFiles -->|否| EmptyDir[記錄 WARN 日誌<br/>使用空提示詞]
+
+    HasFiles -->|是| ProcessFiles[處理每個檔案]
+    ProcessFiles --> LoadFile[載入檔案內容]
+
+    LoadFile --> CheckSize{檔案大小<br/>超過限制?}
+    CheckSize -->|是| SkipFile[記錄 WARN 日誌<br/>跳過此檔案]
+    CheckSize -->|否| ParseSection[建立 PromptSection]
+
+    SkipFile --> NextFile{還有檔案?}
+    ParseSection --> AddSection[加入 sections 清單]
+    AddSection --> NextFile
+
+    NextFile -->|是| ProcessFiles
+    NextFile -->|否| HasSections{有有效<br/>PromptSection?}
+
+    HasSections -->|否| EmptyDir
+    HasSections -->|是| BuildPrompt[建立 SystemPrompt]
+
+    BuildPrompt --> FormatPrompt[格式化為單一字串]
+    FormatPrompt --> InjectClient[注入至 AIClient]
+
+    DirNotFound --> Ready([服務就緒])
+    EmptyDir --> Ready
+    InjectClient --> Ready
+
+    style Start fill:#e1f5e1
+    style Ready fill:#e1f5e1
+    style DirNotFound fill:#fff4e1
+    style EmptyDir fill:#fff4e1
+    style BuildPrompt fill:#e1f0ff
+```
+
+### 9.3 提示詞載入錯誤處理
+
+| 錯誤類型 | 觸發條件 | 日誌等級 | 系統行為 |
+|---------|---------|----------|----------|
+| `DIRECTORY_NOT_FOUND` | `PROMPTS_DIR_PATH` 目錄不存在 | WARN | 使用空提示詞，服務正常啟動 |
+| `FILE_TOO_LARGE` | 單一檔案超過 `PROMPT_MAX_SIZE_BYTES` | WARN | 跳過該檔案，繼續處理其他檔案 |
+| `READ_FAILED` | 檔案讀取失敗（權限問題等） | ERROR | 跳過該檔案，繼續處理其他檔案 |
+| `EMPTY_DIRECTORY` | 目錄為空或無 `.md` 檔案 | WARN | 使用空提示詞，服務正常啟動 |
+
+**設計原則**：
+- **寬容失敗**：提示詞載入失敗不應阻止服務啟動
+- **部分載入**：部分檔案失敗不影響其他有效檔案的載入
+- **日誌記錄**：所有錯誤都會記錄日誌，方便問題排查
+
+---
+
+## 10. 相關文件
 
 | 文件 | 說明 |
 |------|------|
@@ -449,3 +556,5 @@ flowchart TD
 | [AI Chat 實作計畫](../../specs/003-ai-chat/plan.md) | 實作計畫與技術決策 |
 | [AI Chat API 契約](../../specs/003-ai-chat/contracts/openapi.yaml) | AI 服務 API 規格 |
 | [AI Chat 快速入門](../../specs/003-ai-chat/quickstart.md) | 快速開始指南 |
+| [外部提示詞載入器規格](../../specs/004-external-prompts-loader/spec.md) | V015 新增功能規格 |
+| [外部提示詞載入器實作計畫](../../specs/004-external-prompts-loader/plan.md) | V015 實作計畫 |

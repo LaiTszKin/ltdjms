@@ -9,6 +9,7 @@ import org.slf4j.MDC;
 import ltdjms.discord.aichat.domain.AIChatRequest;
 import ltdjms.discord.aichat.domain.AIChatResponse;
 import ltdjms.discord.aichat.domain.AIServiceConfig;
+import ltdjms.discord.aichat.domain.SystemPrompt;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 import ltdjms.discord.shared.events.AIMessageEvent;
@@ -22,6 +23,7 @@ public final class DefaultAIChatService implements AIChatService {
   private final AIServiceConfig config;
   private final AIClient aiClient;
   private final DomainEventPublisher eventPublisher;
+  private final PromptLoader promptLoader;
 
   /**
    * 創建 DefaultAIChatService。
@@ -29,12 +31,17 @@ public final class DefaultAIChatService implements AIChatService {
    * @param config AI 服務配置
    * @param aiClient AI HTTP 客戶端
    * @param eventPublisher 事件發布器 (可為 null)
+   * @param promptLoader 提示詞載入器
    */
   public DefaultAIChatService(
-      AIServiceConfig config, AIClient aiClient, DomainEventPublisher eventPublisher) {
+      AIServiceConfig config,
+      AIClient aiClient,
+      DomainEventPublisher eventPublisher,
+      PromptLoader promptLoader) {
     this.config = config;
     this.aiClient = aiClient;
     this.eventPublisher = eventPublisher;
+    this.promptLoader = promptLoader;
   }
 
   @Override
@@ -48,8 +55,12 @@ public final class DefaultAIChatService implements AIChatService {
     try {
       LOGGER.info("Generating AI response for user message: {}", userMessage);
 
-      // Build AI request
-      AIChatRequest request = AIChatRequest.createUserMessage(userMessage, config);
+      // 載入系統提示詞
+      Result<SystemPrompt, DomainError> promptResult = promptLoader.loadPrompts();
+      SystemPrompt systemPrompt = promptResult.getOrElse(SystemPrompt.empty());
+
+      // Build AI request with system prompt
+      AIChatRequest request = AIChatRequest.createUserMessage(userMessage, config, systemPrompt);
 
       // Call AI service
       Result<AIChatResponse, DomainError> responseResult = aiClient.sendChatRequest(request);
@@ -107,8 +118,13 @@ public final class DefaultAIChatService implements AIChatService {
     try {
       LOGGER.info("Generating streaming AI response for user message: {}", userMessage);
 
-      // Build streaming AI request
-      AIChatRequest request = AIChatRequest.createStreamingUserMessage(userMessage, config);
+      // 載入系統提示詞
+      Result<SystemPrompt, DomainError> promptResult = promptLoader.loadPrompts();
+      SystemPrompt systemPrompt = promptResult.getOrElse(SystemPrompt.empty());
+
+      // Build streaming AI request with system prompt
+      AIChatRequest request =
+          AIChatRequest.createStreamingUserMessage(userMessage, config, systemPrompt);
       MessageChunkAccumulator reasoningAccumulator = new MessageChunkAccumulator();
       MessageChunkAccumulator contentAccumulator = new MessageChunkAccumulator();
       StringBuilder fullContent = new StringBuilder();
