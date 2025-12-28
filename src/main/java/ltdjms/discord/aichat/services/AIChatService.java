@@ -18,4 +18,15 @@ public interface AIChatService {
    */
   Result<List<String>, DomainError> generateResponse(
       String channelId, String userId, String userMessage);
+
+  /**
+   * 生成流式 AI 回應內容。
+   *
+   * @param channelId Discord 頻道 ID
+   * @param userId 使用者 ID
+   * @param userMessage 使用者訊息
+   * @param handler 流式回應處理器
+   */
+  void generateStreamingResponse(
+      String channelId, String userId, String userMessage, StreamingResponseHandler handler);
 }

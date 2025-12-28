@@ -2,6 +2,38 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.14.3] - 2025-12-28
+
+### Added
+- **AI 聊天流式回應**：新增 SSE (Server-Sent Events) 流式輸出功能，改善 AI 回應的用戶體驗
+  - `StreamingResponseHandler`：函數式接口，處理增量回應片段（chunk）、完成狀態與錯誤
+  - `AIChatStreamChunk`：領域模型，解析 SSE 格式的流式回應數據塊（符合 OpenAI API 標準）
+  - `MessageChunkAccumulator`：智能分段累積器
+    - 優先級 1：段落分割（`\n\n`）- 保持語意完整性
+    - 優先級 2：強制分割（1980 字元）- 兜底策略避免 Discord 限制
+  - `AIChatService.generateStreamingResponse()`：新增流式回應方法
+  - `AIClient.sendStreamingRequest()`：處理 SSE 流與錯誤映射
+  - `AIClient.processSSEStream()`：解析 SSE 格式（`data: {...}` 與 `[DONE]` 標記）
+  - `AIChatMentionListener`：改用流式回應，顯示「:thought_balloon: AI 正在思考...」提示訊息
+
+### Changed
+- `AIChatRequest`：新增 `stream` 欄位（Boolean），支援流式與非流式請求
+- `AIChatRequest.createUserMessage()`：預設 `stream=false`
+- `AIChatRequest.createStreamingUserMessage()`：新建構工廠方法，設定 `stream=true`
+
+### Testing
+- `MessageChunkAccumulatorTest`：新增單元測試（8 個測試案例）
+  - 段落分割、單換行處理、強制分割、空增量、優先級驗證
+- `AIChatIntegrationTest`：新增流式回應整合測試（3 個測試案例）
+  - 成功流程（SSE 多片段累積）
+  - 認證錯誤（401 → `AI_SERVICE_AUTH_FAILED`）
+  - 速率限制錯誤（429 → `AI_SERVICE_RATE_LIMITED`）
+
+### Technical
+- 向後相容：保留原有 `generateResponse()` 方法（非流式）
+- 事件驅動：流式回應完成後仍發布 `AIMessageEvent`
+- 錯誤處理：HTTP 狀態碼映射至 `DomainError` 類別
+
 ## [0.14.2] - 2025-12-28
 
 ### Changed

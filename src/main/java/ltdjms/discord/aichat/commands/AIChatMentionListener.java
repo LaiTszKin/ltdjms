@@ -1,13 +1,10 @@
 package ltdjms.discord.aichat.commands;
 
-import java.util.List;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ltdjms.discord.aichat.services.AIChatService;
 import ltdjms.discord.shared.DomainError;
-import ltdjms.discord.shared.Result;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 
@@ -62,27 +59,42 @@ public class AIChatMentionListener extends ListenerAdapter {
 
     LOGGER.info("Bot mentioned by user {} in channel {}: {}", userId, channelId, userMessage);
 
-    // Generate AI response asynchronously
-    event
-        .getGuild()
-        .retrieveOwner()
+    // Generate AI streaming response
+    // 先發送初始提示訊息
+    channel
+        .sendMessage(":thought_balloon: AI 正在思考...")
         .queue(
-            owner -> {
-              Result<List<String>, DomainError> result =
-                  aiChatService.generateResponse(channelId, userId, userMessage);
+            thinkingMessage -> {
+              // 使用陣列來追蹤是否為第一個片段
+              boolean[] isFirstChunk = {true};
 
-              if (result.isOk()) {
-                for (String reply : result.getValue()) {
-                  channel.sendMessage(reply).queue();
-                }
-                LOGGER.info("AI response sent successfully");
-              } else {
-                // Error - send user-friendly error message
-                DomainError error = result.getError();
-                String errorMessage = getErrorMessage(error);
-                channel.sendMessage(errorMessage).queue();
-                LOGGER.warn("AI response error: {} - {}", error.category(), error.message());
-              }
+              aiChatService.generateStreamingResponse(
+                  channelId,
+                  userId,
+                  userMessage,
+                  (chunk, isComplete, error) -> {
+                    if (error != null) {
+                      // 編輯初始訊息為錯誤訊息
+                      thinkingMessage.editMessage(getErrorMessage(error)).queue();
+                      LOGGER.warn("AI streaming error: {} - {}", error.category(), error.message());
+                      return;
+                    }
+
+                    if (chunk != null && !chunk.isEmpty()) {
+                      if (isFirstChunk[0]) {
+                        // 編輯初始訊息為第一個片段
+                        thinkingMessage.editMessage(chunk).queue();
+                        isFirstChunk[0] = false;
+                      } else {
+                        // 發送新片段
+                        channel.sendMessage(chunk).queue();
+                      }
+                    }
+
+                    if (isComplete) {
+                      LOGGER.info("AI streaming completed");
+                    }
+                  });
             });
   }
 

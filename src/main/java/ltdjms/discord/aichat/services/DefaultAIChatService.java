@@ -95,4 +95,75 @@ public final class DefaultAIChatService implements AIChatService {
       MDC.clear();
     }
   }
+
+  @Override
+  public void generateStreamingResponse(
+      String channelId, String userId, String userMessage, StreamingResponseHandler handler) {
+
+    MDC.put("channel_id", channelId);
+    MDC.put("user_id", userId);
+    MDC.put("model", config.model());
+
+    try {
+      LOGGER.info("Generating streaming AI response for user message: {}", userMessage);
+
+      // Build streaming AI request
+      AIChatRequest request = AIChatRequest.createStreamingUserMessage(userMessage, config);
+      MessageChunkAccumulator accumulator = new MessageChunkAccumulator();
+      StringBuilder fullContent = new StringBuilder();
+
+      aiClient.sendStreamingRequest(
+          request,
+          (delta, isComplete, error) -> {
+            if (error != null) {
+              LOGGER.error("Stream error: {}", error.message());
+              handler.onChunk("", isComplete, error);
+              return;
+            }
+
+            fullContent.append(delta);
+
+            // 累積並獲取準備發送的片段
+            List<String> chunksToSend = accumulator.accumulate(delta);
+
+            // 發送每個片段
+            for (String chunk : chunksToSend) {
+              handler.onChunk(chunk, false, null);
+            }
+
+            // 流結束時發送剩餘內容
+            if (isComplete) {
+              String remaining = accumulator.drain();
+              if (!remaining.isEmpty()) {
+                handler.onChunk(remaining, false, null);
+              }
+              handler.onChunk("", true, null);
+
+              LOGGER.info("Streaming AI response completed");
+
+              // 發布事件
+              if (eventPublisher != null) {
+                AIMessageEvent event =
+                    new AIMessageEvent(
+                        0, // guildId - will be set by listener
+                        channelId,
+                        userId,
+                        userMessage,
+                        fullContent.toString(),
+                        java.time.Instant.now());
+                eventPublisher.publish(event);
+              }
+            }
+          });
+
+    } catch (Exception e) {
+      LOGGER.error("Failed to start streaming", e);
+      handler.onChunk(
+          "",
+          false,
+          new DomainError(DomainError.Category.UNEXPECTED_FAILURE, "Failed to start streaming", e));
+    } finally {
+      MDC.clear();
+    }
+  }
 }

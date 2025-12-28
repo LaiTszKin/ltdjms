@@ -2,6 +2,11 @@ package ltdjms.discord.aichat.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,6 +19,7 @@ import ltdjms.discord.aichat.domain.AIChatRequest;
 import ltdjms.discord.aichat.domain.AIChatResponse;
 import ltdjms.discord.aichat.domain.AIServiceConfig;
 import ltdjms.discord.aichat.services.AIClient;
+import ltdjms.discord.aichat.services.StreamingResponseHandler;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 
@@ -149,5 +155,137 @@ class AIChatIntegrationTest {
 
     // Then
     assertThat(result.isErr()).isTrue();
+  }
+
+  @Test
+  void testStreamingFlow_success_shouldStreamChunks() throws Exception {
+    // Given - 模擬 SSE 流式回應
+    wireMockServer.stubFor(
+        WireMock.post(WireMock.urlEqualTo("/v1/chat/completions"))
+            .willReturn(
+                WireMock.aResponse()
+                    .withStatus(200)
+                    .withHeader("Content-Type", "text/event-stream")
+                    .withBody(
+                        "data:"
+                            + " {\"id\":\"chatcmpl-123\",\"object\":\"chat.completion.chunk\",\"created\":1677652288,\"model\":\"gpt-3.5-turbo\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Hello\"},\"finish_reason\":null}]}\n"
+                            + "data:"
+                            + " {\"id\":\"chatcmpl-123\",\"object\":\"chat.completion.chunk\",\"created\":1677652288,\"model\":\"gpt-3.5-turbo\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\""
+                            + " world\"},\"finish_reason\":null}]}\n"
+                            + "data:"
+                            + " {\"id\":\"chatcmpl-123\",\"object\":\"chat.completion.chunk\",\"created\":1677652288,\"model\":\"gpt-3.5-turbo\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n"
+                            + "data: [DONE]\n")));
+
+    AIChatRequest request = AIChatRequest.createStreamingUserMessage("測試訊息", config);
+
+    // When - 使用 CompletableFuture 收集回應
+    List<String> chunks = new ArrayList<>();
+    CompletableFuture<Boolean> completedFuture = new CompletableFuture<>();
+
+    client.sendStreamingRequest(
+        request,
+        new StreamingResponseHandler() {
+          @Override
+          public void onChunk(String chunk, boolean isComplete, DomainError error) {
+            if (error != null) {
+              completedFuture.completeExceptionally(new RuntimeException(error.message()));
+              return;
+            }
+            if (chunk != null && !chunk.isEmpty()) {
+              chunks.add(chunk);
+            }
+            if (isComplete) {
+              completedFuture.complete(true);
+            }
+          }
+        });
+
+    // 等待流結束
+    Boolean completed = completedFuture.get(5, TimeUnit.SECONDS);
+
+    // Then
+    assertThat(completed).isTrue();
+    assertThat(chunks).containsExactly("Hello", " world");
+  }
+
+  @Test
+  void testStreamingFlow_authError_shouldReturnError() throws Exception {
+    // Given
+    wireMockServer.stubFor(
+        WireMock.post(WireMock.urlEqualTo("/v1/chat/completions"))
+            .willReturn(
+                WireMock.aResponse()
+                    .withStatus(401)
+                    .withHeader("Content-Type", "application/json")
+                    .withBody(
+                        """
+                        {
+                          "error": {
+                            "message": "Invalid API key",
+                            "type": "invalid_request_error",
+                            "code": "invalid_api_key"
+                          }
+                        }
+                        """)));
+
+    AIChatRequest request = AIChatRequest.createStreamingUserMessage("測試訊息", config);
+
+    // When
+    CompletableFuture<DomainError> errorFuture = new CompletableFuture<>();
+
+    client.sendStreamingRequest(
+        request,
+        (chunk, isComplete, error) -> {
+          if (error != null) {
+            errorFuture.complete(error);
+          }
+        });
+
+    // 等待錯誤
+    DomainError error = errorFuture.get(5, TimeUnit.SECONDS);
+
+    // Then
+    assertThat(error).isNotNull();
+    assertThat(error.category()).isEqualTo(DomainError.Category.AI_SERVICE_AUTH_FAILED);
+  }
+
+  @Test
+  void testStreamingFlow_rateLimitError_shouldReturnError() throws Exception {
+    // Given
+    wireMockServer.stubFor(
+        WireMock.post(WireMock.urlEqualTo("/v1/chat/completions"))
+            .willReturn(
+                WireMock.aResponse()
+                    .withStatus(429)
+                    .withHeader("Content-Type", "application/json")
+                    .withBody(
+                        """
+                        {
+                          "error": {
+                            "message": "Rate limit exceeded",
+                            "type": "rate_limit_error"
+                          }
+                        }
+                        """)));
+
+    AIChatRequest request = AIChatRequest.createStreamingUserMessage("測試訊息", config);
+
+    // When
+    CompletableFuture<DomainError> errorFuture = new CompletableFuture<>();
+
+    client.sendStreamingRequest(
+        request,
+        (chunk, isComplete, error) -> {
+          if (error != null) {
+            errorFuture.complete(error);
+          }
+        });
+
+    // 等待錯誤
+    DomainError error = errorFuture.get(5, TimeUnit.SECONDS);
+
+    // Then
+    assertThat(error).isNotNull();
+    assertThat(error.category()).isEqualTo(DomainError.Category.AI_SERVICE_RATE_LIMITED);
   }
 }
