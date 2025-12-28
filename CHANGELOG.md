@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.15.2] - 2025-12-29
+
+### Fixed
+- 修正 AI Chat reasoning 訊息刪除競態條件問題
+- 新增 ReasoningMessageTracker 確保所有 reasoning 訊息在收到 content 時正確刪除
+
 ## [0.15.1] - 2025-12-29
 
 ### Changed

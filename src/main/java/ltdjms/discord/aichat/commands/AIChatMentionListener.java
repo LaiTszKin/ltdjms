@@ -1,11 +1,17 @@
 package ltdjms.discord.aichat.commands;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ltdjms.discord.aichat.services.AIChatService;
 import ltdjms.discord.aichat.services.StreamingResponseHandler;
 import ltdjms.discord.shared.DomainError;
+import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 
@@ -14,6 +20,82 @@ public class AIChatMentionListener extends ListenerAdapter {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AIChatMentionListener.class);
   private static final String SPOILER_PREFIX = "-# ";
+
+  /** Reasoning 訊息追蹤器，用於追蹤並刪除所有 reasoning 訊息。 */
+  static class ReasoningMessageTracker {
+    private Message initialMessage; // 初始「思考中」訊息（可能被編輯為 reasoning）
+    private final List<Message> reasoningMessages = new ArrayList<>();
+    private final AtomicBoolean deletionRequested = new AtomicBoolean(false);
+
+    void setInitialMessage(Message message) {
+      if (message == null) {
+        return;
+      }
+      if (deletionRequested.get()) {
+        deleteMessage(message, null);
+        return;
+      }
+      this.initialMessage = message;
+    }
+
+    void addReasoningMessage(Message message) {
+      if (message == null) {
+        return;
+      }
+      if (deletionRequested.get()) {
+        deleteMessage(message, null);
+        return;
+      }
+      reasoningMessages.add(message);
+    }
+
+    void deleteAll(Runnable completionCallback) {
+      deletionRequested.set(true);
+      List<Message> allMessages = new ArrayList<>();
+      if (initialMessage != null) {
+        allMessages.add(initialMessage);
+      }
+      allMessages.addAll(reasoningMessages);
+      reasoningMessages.clear();
+      initialMessage = null;
+
+      if (allMessages.isEmpty()) {
+        completionCallback.run();
+        return;
+      }
+
+      AtomicInteger deletedCount = new AtomicInteger(0);
+      int totalMessages = allMessages.size();
+
+      for (Message message : allMessages) {
+        deleteMessage(
+            message, () -> checkCompletion(deletedCount, totalMessages, completionCallback));
+      }
+    }
+
+    private void deleteMessage(Message message, Runnable completionCallback) {
+      message
+          .delete()
+          .queue(
+              (v) -> {
+                if (completionCallback != null) {
+                  completionCallback.run();
+                }
+              },
+              (e) -> {
+                LOGGER.warn("刪除 reasoning 訊息失敗: {}", e.getMessage());
+                if (completionCallback != null) {
+                  completionCallback.run();
+                }
+              });
+    }
+
+    private void checkCompletion(AtomicInteger count, int total, Runnable callback) {
+      if (count.incrementAndGet() == total) {
+        callback.run();
+      }
+    }
+  }
 
   private final AIChatService aiChatService;
 
@@ -67,8 +149,13 @@ public class AIChatMentionListener extends ListenerAdapter {
         .sendMessage(":thought_balloon: AI 正在思考...")
         .queue(
             thinkingMessage -> {
-              // 使用陣列來追蹤是否為第一個片段
-              boolean[] isFirstChunk = {true};
+              // 新增追蹤器和狀態變數
+              final ReasoningMessageTracker reasoningTracker = new ReasoningMessageTracker();
+              reasoningTracker.setInitialMessage(thinkingMessage);
+
+              final boolean[] isFirstChunk = {true};
+              final boolean[] hasReasoning = {false};
+              final AtomicBoolean reasoningDeleted = new AtomicBoolean(false);
 
               aiChatService.generateStreamingResponse(
                   channelId,
@@ -85,18 +172,41 @@ public class AIChatMentionListener extends ListenerAdapter {
                     if (chunk != null && !chunk.isEmpty()) {
                       String formattedChunk = chunk;
 
-                      // 根據類型格式化
-                      if (type == StreamingResponseHandler.ChunkType.REASONING) {
-                        formattedChunk = formatAsSpoiler(chunk);
+                      // 處理 CONTENT 類型片段
+                      if (type == StreamingResponseHandler.ChunkType.CONTENT) {
+                        // 首次收到 CONTENT 時刪除所有 reasoning
+                        if (hasReasoning[0] && reasoningDeleted.compareAndSet(false, true)) {
+                          reasoningTracker.deleteAll(
+                              () -> {
+                                LOGGER.debug("已刪除所有 reasoning 訊息");
+                              });
+                        }
+
+                        if (isFirstChunk[0]) {
+                          thinkingMessage.editMessage(formattedChunk).queue();
+                          isFirstChunk[0] = false;
+                        } else {
+                          channel.sendMessage(formattedChunk).queue();
+                        }
+                        return;
                       }
 
-                      if (isFirstChunk[0]) {
-                        // 編輯初始訊息為第一個片段
-                        thinkingMessage.editMessage(formattedChunk).queue();
-                        isFirstChunk[0] = false;
-                      } else {
-                        // 發送新片段
-                        channel.sendMessage(formattedChunk).queue();
+                      // 處理 REASONING 類型片段
+                      if (type == StreamingResponseHandler.ChunkType.REASONING) {
+                        formattedChunk = formatAsSpoiler(chunk);
+                        hasReasoning[0] = true;
+
+                        if (isFirstChunk[0]) {
+                          // 編輯初始訊息為第一個 reasoning 片段
+                          thinkingMessage.editMessage(formattedChunk).queue();
+                          isFirstChunk[0] = false;
+                        } else {
+                          // 發送新的 reasoning 訊息並追蹤
+                          channel
+                              .sendMessage(formattedChunk)
+                              .queue(
+                                  sentMessage -> reasoningTracker.addReasoningMessage(sentMessage));
+                        }
                       }
                     }
 
