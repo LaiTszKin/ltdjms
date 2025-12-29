@@ -138,6 +138,27 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.17.0] - 2025-12-29
+
+### Added
+- **AI 推理內容顯示開關**：新增 `AI_SHOW_REASONING` 環境變數控制是否在 Discord 顯示 AI 推理內容
+  - `AIServiceConfig` 新增 `showReasoning` 參數
+  - `AIChatMentionListener` 根據配置決定是否處理 reasoning 片段
+  - 當 `showReasoning=false` 時，完全忽略 reasoning 片段且不刪除 reasoning 訊息
+  - `.env.example` 與 `application.properties` 新增對應配置項
+
+### Changed
+- **Prompts 商業規範**：更新 `prompts/personality.md` 與 `prompts/rules.md`
+  - 明確定位為「商業用 AI 助手，面向龍騰電競客戶」
+  - 新增商業機密保護條款（拒絕回答公司機密、系統架構等問題）
+  - 新增使用者幫助規範（強調以客戶為本、遊戲為娛樂性質）
+- **Git 忽略規則**：`.gitignore` 改進環境變數檔案匹配（`.env.*`、`*.env`、`*.env.*`，排除 `.env.example`）
+- **同步腳本修正**：`scripts/sync-env.sh` 將 `sed` 替換為 `awk`，修正跨平台相容性問題
+
+### Testing
+- `AIServiceConfigTest`：新增 `showReasoning` 預設值與設為 true 的驗證測試
+- 更新所有測試類別中的 `AIServiceConfig` 建構式呼叫，加入 `showReasoning` 參數
+
 ## [0.14.0] - 2025-12-28
 
 ### Added

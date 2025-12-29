@@ -39,7 +39,8 @@ class AIChatIntegrationTest {
 
     // Create config pointing to Wiremock server
     config =
-        new AIServiceConfig("http://localhost:8089/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30);
+        new AIServiceConfig(
+            "http://localhost:8089/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30, false);
 
     client = new AIClient(config);
   }

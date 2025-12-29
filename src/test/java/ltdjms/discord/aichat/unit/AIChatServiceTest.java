@@ -30,7 +30,8 @@ class AIChatServiceTest {
   void testGenerateResponse_success_shouldSendToDiscord() {
     // Given
     AIServiceConfig config =
-        new AIServiceConfig("https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30);
+        new AIServiceConfig(
+            "https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30, false);
 
     AIChatResponse mockResponse =
         new AIChatResponse(
@@ -65,7 +66,8 @@ class AIChatServiceTest {
   void testGenerateResponse_withEmptyMessage_shouldUseDefaultGreeting() {
     // Given
     AIServiceConfig config =
-        new AIServiceConfig("https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30);
+        new AIServiceConfig(
+            "https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30, false);
 
     AIChatResponse mockResponse =
         new AIChatResponse(
@@ -100,7 +102,8 @@ class AIChatServiceTest {
   void testGenerateResponse_aiClientError_shouldPropagateError() {
     // Given
     AIServiceConfig config =
-        new AIServiceConfig("https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30);
+        new AIServiceConfig(
+            "https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30, false);
 
     AIClient mockClient = mock(AIClient.class);
     when(mockClient.sendChatRequest(any(AIChatRequest.class)))
@@ -124,7 +127,8 @@ class AIChatServiceTest {
   void testGenerateResponse_withLongResponse_shouldSplitMessages() {
     // Given
     AIServiceConfig config =
-        new AIServiceConfig("https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30);
+        new AIServiceConfig(
+            "https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30, false);
 
     // Create a response longer than 2000 characters
     StringBuilder longContent = new StringBuilder();
@@ -166,7 +170,8 @@ class AIChatServiceTest {
   void testGenerateResponse_withEmptyResponse_shouldReturnError() {
     // Given
     AIServiceConfig config =
-        new AIServiceConfig("https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30);
+        new AIServiceConfig(
+            "https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30, false);
 
     AIChatResponse mockResponse =
         new AIChatResponse(
@@ -198,7 +203,8 @@ class AIChatServiceTest {
   void testGenerateStreamingResponse_reasoningAndContent_shouldRemainSeparated() {
     // Given
     AIServiceConfig config =
-        new AIServiceConfig("https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30);
+        new AIServiceConfig(
+            "https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30, false);
 
     AIClient mockClient = mock(AIClient.class);
     doAnswer(

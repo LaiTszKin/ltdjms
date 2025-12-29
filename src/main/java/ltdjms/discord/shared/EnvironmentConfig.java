@@ -48,6 +48,7 @@ public final class EnvironmentConfig {
   private static final String ENV_AI_SERVICE_TIMEOUT_SECONDS = "AI_SERVICE_TIMEOUT_SECONDS";
   private static final String ENV_PROMPTS_DIR_PATH = "PROMPTS_DIR_PATH";
   private static final String ENV_PROMPT_MAX_SIZE_BYTES = "PROMPT_MAX_SIZE_BYTES";
+  private static final String ENV_AI_SHOW_REASONING = "AI_SHOW_REASONING";
 
   // Config paths for Typesafe Config
   private static final String CFG_DISCORD_BOT_TOKEN = "discord.bot.token";
@@ -67,6 +68,7 @@ public final class EnvironmentConfig {
   private static final String CFG_AI_SERVICE_TIMEOUT_SECONDS = "ai.service.timeout-seconds";
   private static final String CFG_PROMPTS_DIR_PATH = "prompts.dir.path";
   private static final String CFG_PROMPT_MAX_SIZE = "prompts.max-size";
+  private static final String CFG_AI_SHOW_REASONING = "ai.show-reasoning";
 
   // Default values
   private static final String DEFAULT_REDIS_URI = "redis://localhost:6379";
@@ -84,6 +86,7 @@ public final class EnvironmentConfig {
   private static final int DEFAULT_AI_SERVICE_TIMEOUT_SECONDS = 30;
   private static final String DEFAULT_PROMPTS_DIR_PATH = "./prompts";
   private static final long DEFAULT_PROMPT_MAX_SIZE_BYTES = 1048576L; // 1MB
+  private static final boolean DEFAULT_AI_SHOW_REASONING = false;
 
   private final Config config;
   private final Map<String, String> dotEnvValues;
@@ -128,6 +131,7 @@ public final class EnvironmentConfig {
     defaults.put(CFG_AI_SERVICE_TIMEOUT_SECONDS, DEFAULT_AI_SERVICE_TIMEOUT_SECONDS);
     defaults.put(CFG_PROMPTS_DIR_PATH, DEFAULT_PROMPTS_DIR_PATH);
     defaults.put(CFG_PROMPT_MAX_SIZE, DEFAULT_PROMPT_MAX_SIZE_BYTES);
+    defaults.put(CFG_AI_SHOW_REASONING, DEFAULT_AI_SHOW_REASONING);
     Config defaultsConfig = ConfigFactory.parseMap(defaults);
 
     // Load application.conf/properties (standard Typesafe Config behavior)
@@ -153,6 +157,7 @@ public final class EnvironmentConfig {
     mapEnvToConfigInt(dotEnvMapped, ENV_AI_SERVICE_TIMEOUT_SECONDS, CFG_AI_SERVICE_TIMEOUT_SECONDS);
     mapEnvToConfig(dotEnvMapped, ENV_PROMPTS_DIR_PATH, CFG_PROMPTS_DIR_PATH);
     mapEnvToConfigLong(dotEnvMapped, ENV_PROMPT_MAX_SIZE_BYTES, CFG_PROMPT_MAX_SIZE);
+    mapEnvToConfigBoolean(dotEnvMapped, ENV_AI_SHOW_REASONING, CFG_AI_SHOW_REASONING);
     Config dotEnvConfig = ConfigFactory.parseMap(dotEnvMapped);
 
     // Build system env vars as config (highest priority)
@@ -176,6 +181,7 @@ public final class EnvironmentConfig {
         sysEnvMapped, ENV_AI_SERVICE_TIMEOUT_SECONDS, CFG_AI_SERVICE_TIMEOUT_SECONDS);
     mapSysEnvToConfig(sysEnvMapped, ENV_PROMPTS_DIR_PATH, CFG_PROMPTS_DIR_PATH);
     mapSysEnvToConfigLong(sysEnvMapped, ENV_PROMPT_MAX_SIZE_BYTES, CFG_PROMPT_MAX_SIZE);
+    mapSysEnvToConfigBoolean(sysEnvMapped, ENV_AI_SHOW_REASONING, CFG_AI_SHOW_REASONING);
     Config sysEnvConfig = ConfigFactory.parseMap(sysEnvMapped);
 
     // Layer configs: sysEnv > dotEnv > application > defaults
@@ -262,6 +268,29 @@ public final class EnvironmentConfig {
         target.put(configPath, Long.parseLong(value));
       } catch (NumberFormatException e) {
         LOG.warn("Invalid long value for {}: {}, using default", envKey, value);
+      }
+    }
+  }
+
+  private void mapEnvToConfigBoolean(Map<String, Object> target, String envKey, String configPath) {
+    String value = dotEnvValues.get(envKey);
+    if (value != null && !value.isBlank()) {
+      try {
+        target.put(configPath, Boolean.parseBoolean(value));
+      } catch (Exception e) {
+        LOG.warn("Invalid boolean value for {}: {}, using default", envKey, value);
+      }
+    }
+  }
+
+  private void mapSysEnvToConfigBoolean(
+      Map<String, Object> target, String envKey, String configPath) {
+    String value = System.getenv(envKey);
+    if (value != null && !value.isBlank()) {
+      try {
+        target.put(configPath, Boolean.parseBoolean(value));
+      } catch (Exception e) {
+        LOG.warn("Invalid boolean value for {}: {}, using default", envKey, value);
       }
     }
   }
@@ -510,5 +539,14 @@ public final class EnvironmentConfig {
    */
   public long getPromptMaxSizeBytes() {
     return config.getBytes(CFG_PROMPT_MAX_SIZE);
+  }
+
+  /**
+   * 取得是否顯示 AI 推理內容。
+   *
+   * @return true 顯示，false 隱藏
+   */
+  public boolean getAIShowReasoning() {
+    return config.getBoolean(CFG_AI_SHOW_REASONING);
   }
 }

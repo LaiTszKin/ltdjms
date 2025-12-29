@@ -150,11 +150,12 @@ main() {
         if echo "$example_keys" | grep -qx "$key"; then
             local value
             value=$(get_env_value .env "$key")
-            # 使用 sed 替換值（處理包含特殊字符的情況）
-            local delimiter
-            delimiter=$(echo "$value" | md5sum | cut -c1-1)
-            sed -i.bak "s${delimiter}^${key}=.*${delimiter}${key}=${value}${delimiter}" "$temp_file"
-            rm -f "${temp_file}.bak"
+            # 使用 awk 替換值（更安全且跨平台兼容）
+            awk -F= -v k="$key" -v v="$value" '
+                $1 == k { print k "=" v; next }
+                { print }
+            ' "$temp_file" > "${temp_file}.tmp"
+            mv "${temp_file}.tmp" "$temp_file"
         fi
     done <<< "$env_keys"
 

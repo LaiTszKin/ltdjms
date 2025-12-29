@@ -13,9 +13,15 @@ import ltdjms.discord.shared.Unit;
  * @param model 模型名稱 (例如: gpt-3.5-turbo)
  * @param temperature 溫度 (0.0-2.0，控制回應隨機性)
  * @param timeoutSeconds 連線逾時秒數（僅用於建立連線，不限制推理時間）
+ * @param showReasoning 是否顯示推理內容（預設: false）
  */
 public record AIServiceConfig(
-    String baseUrl, String apiKey, String model, double temperature, int timeoutSeconds) {
+    String baseUrl,
+    String apiKey,
+    String model,
+    double temperature,
+    int timeoutSeconds,
+    boolean showReasoning) {
 
   /** 從 EnvironmentConfig 建立配置。 */
   public static AIServiceConfig from(EnvironmentConfig env) {
@@ -24,7 +30,8 @@ public record AIServiceConfig(
         env.getAIServiceApiKey(),
         env.getAIServiceModel(),
         env.getAIServiceTemperature(),
-        env.getAIServiceTimeoutSeconds());
+        env.getAIServiceTimeoutSeconds(),
+        env.getAIShowReasoning());
   }
 
   /** 驗證配置。 */

@@ -2,6 +2,7 @@ package ltdjms.discord.aichat.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -147,6 +148,38 @@ class AIServiceConfigTest {
     assertThat(result.getError().category()).isEqualTo(DomainError.Category.INVALID_INPUT);
   }
 
+  @Test
+  @DisplayName("showReasoning 預設值應為 false")
+  void testDefaultShowReasoning_shouldBeFalse() {
+    // Given
+    EnvironmentConfig env =
+        createTestEnv("https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30);
+    Mockito.when(env.getAIShowReasoning()).thenReturn(false);
+
+    // When
+    AIServiceConfig config = AIServiceConfig.from(env);
+
+    // Then
+    assertThat(config.showReasoning()).isFalse();
+  }
+
+  @Test
+  @DisplayName("showReasoning 設為 true 應通過驗證")
+  void testShowReasoningTrue_shouldPassValidation() {
+    // Given
+    EnvironmentConfig env =
+        createTestEnv("https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30);
+    Mockito.when(env.getAIShowReasoning()).thenReturn(true);
+
+    // When
+    AIServiceConfig config = AIServiceConfig.from(env);
+    Result<Unit, DomainError> result = config.validate();
+
+    // Then
+    assertThat(result.isOk()).isTrue();
+    assertThat(config.showReasoning()).isTrue();
+  }
+
   private EnvironmentConfig createTestEnv(
       String baseUrl, String apiKey, String model, double temperature, int timeoutSeconds) {
     EnvironmentConfig mock = Mockito.mock(EnvironmentConfig.class);
@@ -155,6 +188,7 @@ class AIServiceConfigTest {
     Mockito.when(mock.getAIServiceModel()).thenReturn(model);
     Mockito.when(mock.getAIServiceTemperature()).thenReturn(temperature);
     Mockito.when(mock.getAIServiceTimeoutSeconds()).thenReturn(timeoutSeconds);
+    Mockito.when(mock.getAIShowReasoning()).thenReturn(false); // 新增預設值
     return mock;
   }
 }

@@ -100,17 +100,22 @@ public class AIChatMentionListener extends ListenerAdapter {
 
   private final AIChatService aiChatService;
   private final AIChannelRestrictionService channelRestrictionService;
+  private final boolean showReasoning;
 
   /**
    * 創建 AIChatMentionListener。
    *
    * @param aiChatService AI 聊天服務
    * @param channelRestrictionService AI 頻道限制服務
+   * @param showReasoning 是否顯示推理內容
    */
   public AIChatMentionListener(
-      AIChatService aiChatService, AIChannelRestrictionService channelRestrictionService) {
+      AIChatService aiChatService,
+      AIChannelRestrictionService channelRestrictionService,
+      boolean showReasoning) {
     this.aiChatService = aiChatService;
     this.channelRestrictionService = channelRestrictionService;
+    this.showReasoning = showReasoning;
   }
 
   @Override
@@ -188,8 +193,10 @@ public class AIChatMentionListener extends ListenerAdapter {
 
                       // 處理 CONTENT 類型片段
                       if (type == StreamingResponseHandler.ChunkType.CONTENT) {
-                        // 首次收到 CONTENT 時刪除所有 reasoning
-                        if (hasReasoning[0] && reasoningDeleted.compareAndSet(false, true)) {
+                        // 僅在啟用 reasoning 顯示時才需要刪除
+                        if (showReasoning
+                            && hasReasoning[0]
+                            && reasoningDeleted.compareAndSet(false, true)) {
                           reasoningTracker.deleteAll(
                               () -> {
                                 LOGGER.debug("已刪除所有 reasoning 訊息");
@@ -207,6 +214,11 @@ public class AIChatMentionListener extends ListenerAdapter {
 
                       // 處理 REASONING 類型片段
                       if (type == StreamingResponseHandler.ChunkType.REASONING) {
+                        // 當 showReasoning 為 false 時，完全忽略 reasoning 片段
+                        if (!showReasoning) {
+                          return;
+                        }
+
                         formattedChunk = formatAsSpoiler(chunk);
                         hasReasoning[0] = true;
 

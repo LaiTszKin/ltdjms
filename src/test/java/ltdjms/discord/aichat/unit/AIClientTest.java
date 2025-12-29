@@ -29,7 +29,8 @@ class AIClientTest {
   void testSendChatRequest_success_shouldReturnResponse() throws Exception {
     // Given
     AIServiceConfig config =
-        new AIServiceConfig("https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30);
+        new AIServiceConfig(
+            "https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30, false);
 
     @SuppressWarnings("unchecked")
     HttpResponse<String> mockResponse = mock(HttpResponse.class);
@@ -79,7 +80,8 @@ class AIClientTest {
   void testSendChatRequest_http401_shouldReturnAuthError() throws Exception {
     // Given
     AIServiceConfig config =
-        new AIServiceConfig("https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30);
+        new AIServiceConfig(
+            "https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30, false);
 
     @SuppressWarnings("unchecked")
     HttpResponse<String> mockResponse = mock(HttpResponse.class);
@@ -105,7 +107,8 @@ class AIClientTest {
   void testSendChatRequest_shouldNotSetRequestTimeout() throws Exception {
     // Given
     AIServiceConfig config =
-        new AIServiceConfig("https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30);
+        new AIServiceConfig(
+            "https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30, false);
 
     @SuppressWarnings("unchecked")
     HttpResponse<String> mockResponse = mock(HttpResponse.class);
@@ -157,7 +160,8 @@ class AIClientTest {
   void testSendChatRequest_http429_shouldReturnRateLimitedError() throws Exception {
     // Given
     AIServiceConfig config =
-        new AIServiceConfig("https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30);
+        new AIServiceConfig(
+            "https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30, false);
 
     @SuppressWarnings("unchecked")
     HttpResponse<String> mockResponse = mock(HttpResponse.class);
@@ -184,7 +188,8 @@ class AIClientTest {
   void testSendChatRequest_http500_shouldReturnUnavailableError() throws Exception {
     // Given
     AIServiceConfig config =
-        new AIServiceConfig("https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30);
+        new AIServiceConfig(
+            "https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30, false);
 
     @SuppressWarnings("unchecked")
     HttpResponse<String> mockResponse = mock(HttpResponse.class);
@@ -210,7 +215,8 @@ class AIClientTest {
   void testSendChatRequest_timeout_shouldReturnTimeoutError() throws Exception {
     // Given
     AIServiceConfig config =
-        new AIServiceConfig("https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30);
+        new AIServiceConfig(
+            "https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30, false);
 
     HttpClient mockHttpClient = mock(HttpClient.class);
     when(mockHttpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
@@ -231,7 +237,8 @@ class AIClientTest {
   void testSendStreamingRequest_withReasoningContent_shouldExtractBothTypes() throws Exception {
     // Given
     AIServiceConfig config =
-        new AIServiceConfig("https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30);
+        new AIServiceConfig(
+            "https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30, false);
 
     @SuppressWarnings("unchecked")
     HttpResponse<java.util.stream.Stream<String>> mockResponse = mock(HttpResponse.class);
@@ -271,7 +278,7 @@ class AIClientTest {
         });
 
     // Then
-    assertThat(capturedChunks).hasSize(4); // reasoning, content, complete(DONE), complete(finished)
+    assertThat(capturedChunks).hasSize(3); // reasoning, content, complete(DONE)
     assertThat(capturedTypes.get(0)).isEqualTo(StreamingResponseHandler.ChunkType.REASONING);
     assertThat(capturedChunks.get(0)).isEqualTo("讓我思考");
     assertThat(capturedTypes.get(1)).isEqualTo(StreamingResponseHandler.ChunkType.CONTENT);
@@ -284,7 +291,8 @@ class AIClientTest {
       throws Exception {
     // Given
     AIServiceConfig config =
-        new AIServiceConfig("https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30);
+        new AIServiceConfig(
+            "https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30, false);
 
     @SuppressWarnings("unchecked")
     HttpResponse<java.util.stream.Stream<String>> mockResponse = mock(HttpResponse.class);

@@ -74,7 +74,10 @@ public class AIChatModule {
   @Provides
   @Singleton
   public AIChatMentionListener provideAIChatMentionListener(
-      AIChatService aiChatService, AIChannelRestrictionService channelRestrictionService) {
-    return new AIChatMentionListener(aiChatService, channelRestrictionService);
+      AIChatService aiChatService,
+      AIChannelRestrictionService channelRestrictionService,
+      AIServiceConfig config) {
+    return new AIChatMentionListener(
+        aiChatService, channelRestrictionService, config.showReasoning());
   }
 }

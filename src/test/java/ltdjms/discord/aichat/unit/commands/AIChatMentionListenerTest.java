@@ -54,7 +54,7 @@ class AIChatMentionListenerTest {
   void setUp() {
     aiChatService = mock(AIChatService.class);
     channelRestrictionService = mock(AIChannelRestrictionService.class);
-    listener = new AIChatMentionListener(aiChatService, channelRestrictionService);
+    listener = new AIChatMentionListener(aiChatService, channelRestrictionService, false);
 
     event = mock(MessageReceivedEvent.class);
     jda = mock(JDA.class);
