@@ -15,6 +15,7 @@ import ltdjms.discord.panel.services.AdminPanelService;
 import ltdjms.discord.panel.services.AdminPanelSessionManager;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
+import ltdjms.discord.shared.Unit;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
@@ -49,9 +50,17 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
   public static final String BUTTON_BACK = "admin_panel_back";
   public static final String BUTTON_OPEN_BALANCE_MODAL = "admin_open_balance_modal";
   public static final String BUTTON_OPEN_TOKEN_MODAL = "admin_open_token_modal";
+
+  // AI 頻道限制按鈕（aichat 模組）
   public static final String BUTTON_AI_CHANNEL_CONFIG = "admin_panel_ai_channel";
   public static final String BUTTON_AI_ADD_CHANNEL = "admin_ai_add_channel";
   public static final String BUTTON_AI_REMOVE_CHANNEL = "admin_ai_remove_channel";
+
+  // AI Agent 配置按鈕（aiagent 模組）
+  public static final String BUTTON_AI_AGENT_CONFIG = "admin_panel_ai_agent";
+  public static final String BUTTON_AI_AGENT_ENABLE = "admin_ai_agent_enable";
+  public static final String BUTTON_AI_AGENT_DISABLE = "admin_ai_agent_disable";
+  public static final String BUTTON_AI_AGENT_REMOVE = "admin_ai_agent_remove";
 
   // Modal IDs
   public static final String MODAL_BALANCE_ADJUST = "admin_modal_balance_adjust";
@@ -69,8 +78,13 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
   public static final String SELECT_TOKEN_USER = "admin_select_token_user";
   public static final String SELECT_TOKEN_MODE = "admin_select_token_mode";
   public static final String SELECT_GAME_SETTING = "admin_select_game_setting";
+
+  // AI 頻道限制 Select Menu（aichat 模組）
   public static final String SELECT_AI_ADD_CHANNEL = "admin_select_ai_add_channel";
   public static final String SELECT_AI_REMOVE_CHANNEL = "admin_select_ai_remove_channel";
+
+  // AI Agent 配置 Select Menu（aiagent 模組）
+  public static final String SELECT_AI_AGENT_CHANNEL = "admin_select_ai_agent_channel";
 
   private final AdminPanelService adminPanelService;
   private final AdminPanelSessionManager adminPanelSessionManager;
@@ -108,9 +122,13 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         case BUTTON_TOKENS -> showTokenManagement(event);
         case BUTTON_GAMES -> showGameManagement(event);
         case BUTTON_AI_CHANNEL_CONFIG -> showAIChannelConfig(event);
+        case BUTTON_AI_AGENT_CONFIG -> showAIAgentConfig(event);
         case BUTTON_BACK -> showMainPanel(event);
         case BUTTON_OPEN_BALANCE_MODAL -> openBalanceModal(event);
         case BUTTON_OPEN_TOKEN_MODAL -> openTokenModal(event);
+        case BUTTON_AI_AGENT_ENABLE -> handleAIAgentEnable(event);
+        case BUTTON_AI_AGENT_DISABLE -> handleAIAgentDisable(event);
+        case BUTTON_AI_AGENT_REMOVE -> handleAIAgentRemove(event);
         default -> LOG.warn("Unknown admin panel button: {}", buttonId);
       }
     } catch (Exception e) {
@@ -143,6 +161,8 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         handleAddChannelSelect(event, guildId);
       } else if (selectId.equals(SELECT_AI_REMOVE_CHANNEL)) {
         handleRemoveChannelSelect(event, guildId);
+      } else if (selectId.equals(SELECT_AI_AGENT_CHANNEL)) {
+        handleAIAgentChannelSelect(event, guildId);
       }
     } catch (Exception e) {
       LOG.error("Error handling entity select: {}", selectId, e);
@@ -926,6 +946,8 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         .addField("🎮 遊戲代幣管理", "調整成員的遊戲代幣餘額", false)
         .addField("🎲 遊戲設定管理", "調整遊戲的代幣消耗設定", false)
         .addField("📦 商品與兌換碼管理", "建立商品、生成兌換碼、查詢兌換狀態", false)
+        .addField("🤖 AI 頻道設定", "設定允許使用 AI 功能的頻道", false)
+        .addField("🤖 AI Agent 配置", "管理哪些頻道啟用 AI Agent 模式", false)
         .setFooter("點擊下方按鈕進入對應功能")
         .build();
   }
@@ -937,7 +959,10 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
             Button.primary(BUTTON_TOKENS, "🎮 遊戲代幣管理")),
         ActionRow.of(
             Button.primary(BUTTON_GAMES, "🎲 遊戲設定管理"),
-            Button.primary(AdminProductPanelHandler.BUTTON_PRODUCTS, "📦 商品與兌換碼管理")));
+            Button.primary(AdminProductPanelHandler.BUTTON_PRODUCTS, "📦 商品與兌換碼管理")),
+        ActionRow.of(
+            Button.primary(BUTTON_AI_CHANNEL_CONFIG, "🤖 AI 頻道設定"),
+            Button.primary(BUTTON_AI_AGENT_CONFIG, "🤖 AI Agent 配置")));
   }
 
   // ===== Modal Handlers =====
@@ -1605,6 +1630,195 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
             default -> "❌ " + error.message();
           };
       event.reply(errorMessage).setEphemeral(true).queue();
+    }
+  }
+
+  // ===== AI Agent 配置處理 =====
+
+  private void showAIAgentConfig(ButtonInteractionEvent event) {
+    long guildId = event.getGuild().getIdLong();
+    Result<java.util.List<Long>, DomainError> result =
+        adminPanelService.getEnabledAgentChannels(guildId);
+
+    if (result.isOk()) {
+      java.util.List<Long> enabledChannels = result.getValue();
+      EmbedBuilder embed = new EmbedBuilder();
+      embed.setColor(EMBED_COLOR);
+      embed.setTitle("🤖 AI Agent 頻道配置");
+      embed.setDescription("管理哪些頻道啟用 AI Agent 模式");
+
+      if (enabledChannels.isEmpty()) {
+        embed.addField("已啟用頻道", "目前沒有啟用 AI Agent 的頻道", false);
+      } else {
+        StringBuilder sb = new StringBuilder();
+        for (Long channelId : enabledChannels) {
+          sb.append("<#").append(channelId).append(">\n");
+        }
+        embed.addField("已啟用頻道 (" + enabledChannels.size() + ")", sb.toString(), false);
+      }
+
+      EntitySelectMenu channelSelect =
+          EntitySelectMenu.create(SELECT_AI_AGENT_CHANNEL, EntitySelectMenu.SelectTarget.CHANNEL)
+              .setPlaceholder("選擇頻道進行操作")
+              .setRequiredRange(1, 1)
+              .build();
+
+      event
+          .editMessageEmbeds(embed.build())
+          .setComponents(
+              ActionRow.of(channelSelect), ActionRow.of(Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")))
+          .queue();
+    } else {
+      event.reply("❌ 獲取 AI Agent 頻道配置失敗：" + result.getError().message()).setEphemeral(true).queue();
+    }
+  }
+
+  private void handleAIAgentChannelSelect(EntitySelectInteractionEvent event, long guildId) {
+    if (event.getValues().isEmpty()) {
+      event.reply("⚠️ 請選擇一個頻道").setEphemeral(true).queue();
+      return;
+    }
+
+    long channelId = event.getValues().get(0).getIdLong();
+    boolean isEnabled = adminPanelService.isAgentEnabled(guildId, channelId);
+
+    EmbedBuilder embed = new EmbedBuilder();
+    embed.setColor(EMBED_COLOR);
+    embed.setTitle("🤖 AI Agent 頻道設定");
+    embed.setDescription("頻道：<#" + channelId + ">\n" + "狀態：" + (isEnabled ? "✅ 已啟用" : "❌ 未啟用"));
+
+    String statusMessage =
+        isEnabled ? "此頻道的 AI Agent 模式已啟用，AI 可以在此頻道調用系統工具" : "此頻道的 AI Agent 模式已停用，AI 將無法調用工具";
+
+    embed.addField("目前狀態", statusMessage, false);
+
+    Button enableBtn = Button.success(BUTTON_AI_AGENT_ENABLE, "✅ 啟用 AI Agent");
+    Button disableBtn = Button.danger(BUTTON_AI_AGENT_DISABLE, "❌ 停用 AI Agent");
+    Button removeBtn = Button.secondary(BUTTON_AI_AGENT_REMOVE, "🗑️ 移除配置");
+    Button backBtn = Button.secondary(BUTTON_BACK, "⬅️ 返回");
+
+    event
+        .editMessageEmbeds(embed.build())
+        .setComponents(ActionRow.of(enableBtn, disableBtn, removeBtn), ActionRow.of(backBtn))
+        .queue();
+  }
+
+  private void handleAIAgentEnable(ButtonInteractionEvent event) {
+    // 從之前的 embed 中獲取頻道 ID（透過 parsing 描述）
+    String description = event.getMessage().getEmbeds().get(0).getDescription();
+    long channelId = extractChannelIdFromDescription(description);
+
+    if (channelId == 0) {
+      event.reply("⚠️ 無法獲取頻道資訊，請重新操作").setEphemeral(true).queue();
+      return;
+    }
+
+    long guildId = event.getGuild().getIdLong();
+    Result<Unit, DomainError> result = adminPanelService.enableAgentChannel(guildId, channelId);
+
+    if (result.isOk()) {
+      event.reply("✅ 已啟用頻道的 AI Agent 模式").setEphemeral(true).queue();
+      // 更新 AI Agent 配置頁面（就地更新原面板）
+      showAIAgentConfigAfterAction(event, guildId);
+    } else {
+      event.reply("❌ 啟用失敗：" + result.getError().message()).setEphemeral(true).queue();
+    }
+  }
+
+  private void handleAIAgentDisable(ButtonInteractionEvent event) {
+    String description = event.getMessage().getEmbeds().get(0).getDescription();
+    long channelId = extractChannelIdFromDescription(description);
+
+    if (channelId == 0) {
+      event.reply("⚠️ 無法獲取頻道資訊，請重新操作").setEphemeral(true).queue();
+      return;
+    }
+
+    long guildId = event.getGuild().getIdLong();
+    Result<Unit, DomainError> result = adminPanelService.disableAgentChannel(guildId, channelId);
+
+    if (result.isOk()) {
+      event.reply("✅ 已停用頻道的 AI Agent 模式").setEphemeral(true).queue();
+      // 更新 AI Agent 配置頁面（就地更新原面板）
+      showAIAgentConfigAfterAction(event, guildId);
+    } else {
+      event.reply("❌ 停用失敗：" + result.getError().message()).setEphemeral(true).queue();
+    }
+  }
+
+  private void handleAIAgentRemove(ButtonInteractionEvent event) {
+    String description = event.getMessage().getEmbeds().get(0).getDescription();
+    long channelId = extractChannelIdFromDescription(description);
+
+    if (channelId == 0) {
+      event.reply("⚠️ 無法獲取頻道資訊，請重新操作").setEphemeral(true).queue();
+      return;
+    }
+
+    long guildId = event.getGuild().getIdLong();
+    Result<Unit, DomainError> result = adminPanelService.removeAgentChannel(guildId, channelId);
+
+    if (result.isOk()) {
+      event.reply("✅ 已移除頻道的 AI Agent 配置").setEphemeral(true).queue();
+      // 更新 AI Agent 配置頁面（就地更新原面板）
+      showAIAgentConfigAfterAction(event, guildId);
+    } else {
+      event.reply("❌ 移除失敗：" + result.getError().message()).setEphemeral(true).queue();
+    }
+  }
+
+  private long extractChannelIdFromDescription(String description) {
+    if (description == null) return 0;
+    // 描述格式: "頻道：<#123456789>\n..."
+    int start = description.indexOf("<#");
+    if (start == -1) return 0;
+    int end = description.indexOf(">", start);
+    if (end == -1) return 0;
+    try {
+      return Long.parseLong(description.substring(start + 2, end));
+    } catch (NumberFormatException e) {
+      return 0;
+    }
+  }
+
+  private void showAIAgentConfigAfterAction(ButtonInteractionEvent event, long guildId) {
+    // 就地更新原本的 AI Agent 配置頁面，避免刪除並重新發送
+    Result<java.util.List<Long>, DomainError> result =
+        adminPanelService.getEnabledAgentChannels(guildId);
+
+    if (result.isOk()) {
+      java.util.List<Long> enabledChannels = result.getValue();
+      EmbedBuilder embed = new EmbedBuilder();
+      embed.setColor(EMBED_COLOR);
+      embed.setTitle("🤖 AI Agent 頻道配置");
+      embed.setDescription("管理哪些頻道啟用 AI Agent 模式");
+
+      if (enabledChannels.isEmpty()) {
+        embed.addField("已啟用頻道", "目前沒有啟用 AI Agent 的頻道", false);
+      } else {
+        StringBuilder sb = new StringBuilder();
+        for (Long channelId : enabledChannels) {
+          sb.append("<#").append(channelId).append(">\n");
+        }
+        embed.addField("已啟用頻道 (" + enabledChannels.size() + ")", sb.toString(), false);
+      }
+
+      EntitySelectMenu channelSelect =
+          EntitySelectMenu.create(SELECT_AI_AGENT_CHANNEL, EntitySelectMenu.SelectTarget.CHANNEL)
+              .setPlaceholder("選擇頻道進行操作")
+              .setRequiredRange(1, 1)
+              .build();
+
+      event
+          .getMessage()
+          .editMessageEmbeds(embed.build())
+          .setComponents(
+              ActionRow.of(channelSelect), ActionRow.of(Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")))
+          .queue(
+              success -> LOG.trace("Updated AI agent config panel for guildId={}", guildId),
+              failure -> LOG.warn("Failed to update AI agent config panel", failure));
+    } else {
+      LOG.warn("Failed to fetch AI agent channel config: {}", result.getError().message());
     }
   }
 

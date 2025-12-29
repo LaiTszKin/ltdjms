@@ -11,7 +11,8 @@ public sealed interface DomainEvent
         ProductChangedEvent,
         RedemptionCodesGeneratedEvent,
         ProductRedemptionCompletedEvent,
-        AIMessageEvent {
+        AIMessageEvent,
+        AIAgentChannelConfigChangedEvent {
   /**
    * @return the Discord guild ID where the event occurred
    */

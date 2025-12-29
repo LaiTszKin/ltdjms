@@ -31,21 +31,7 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-Based on `.specify/memory/constitution.md` v1.0.0:
-
-- [ ] **I. Test-Driven Development**: Feature MUST start with failing tests, achieve 80% coverage
-- [ ] **II. Domain-Driven Design**: Feature MUST respect layered architecture (domain/persistence/services/commands)
-- [ ] **III. Configuration Flexibility**: All new config MUST be externalizable (env/.env/conf)
-- [ ] **IV. Database Schema Management**: Schema changes MUST use Flyway migrations
-- [ ] **V. Observability**: New operations MUST include structured logging and metrics
-- [ ] **VI. Dependency Injection**: All new components MUST use Dagger 2 injection
-- [ ] **VII. Error Handling**: All errors MUST use `Result<T, DomainError>` pattern with user-friendly Discord messages
-
-**Development Standards Compliance**:
-- [ ] Code uses Java 17+ features appropriately
-- [ ] Public APIs include Javadoc
-- [ ] Documentation updates planned (docs/modules/, docs/api/)
-- [ ] Follows Conventional Commits format
+[Gates determined based on constitution file]
 
 ## Project Structure
 

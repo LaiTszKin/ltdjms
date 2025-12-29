@@ -231,8 +231,12 @@ public final class AIClient {
    */
   private void processSSEStream(
       java.util.stream.Stream<String> lines, StreamingResponseHandler handler) {
+    final boolean[] completed = {false};
     lines.forEach(
         line -> {
+          if (completed[0]) {
+            return;
+          }
           try {
             // SSE 格式: "data: {...}"
             if (line.startsWith("data: ")) {
@@ -240,7 +244,7 @@ public final class AIClient {
 
               // 檢查結束標記
               if ("[DONE]".equals(data)) {
-                handler.onChunk("", true, null, StreamingResponseHandler.ChunkType.CONTENT);
+                emitCompleteOnce(handler, completed);
                 return;
               }
 
@@ -262,7 +266,7 @@ public final class AIClient {
 
               // 檢查是否結束
               if (chunk.isFinished()) {
-                handler.onChunk("", true, null, StreamingResponseHandler.ChunkType.CONTENT);
+                emitCompleteOnce(handler, completed);
               }
             }
           } catch (JsonProcessingException e) {
@@ -275,6 +279,14 @@ public final class AIClient {
                 StreamingResponseHandler.ChunkType.CONTENT);
           }
         });
+  }
+
+  private void emitCompleteOnce(StreamingResponseHandler handler, boolean[] completed) {
+    if (completed[0]) {
+      return;
+    }
+    completed[0] = true;
+    handler.onChunk("", true, null, StreamingResponseHandler.ChunkType.CONTENT);
   }
 
   /**

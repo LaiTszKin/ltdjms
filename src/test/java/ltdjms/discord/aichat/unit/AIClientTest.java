@@ -287,6 +287,50 @@ class AIClientTest {
   }
 
   @Test
+  void testSendStreamingRequest_finishReasonAndDone_shouldOnlyCompleteOnce() throws Exception {
+    // Given
+    AIServiceConfig config =
+        new AIServiceConfig(
+            "https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30, false);
+
+    @SuppressWarnings("unchecked")
+    HttpResponse<java.util.stream.Stream<String>> mockResponse = mock(HttpResponse.class);
+    when(mockResponse.statusCode()).thenReturn(200);
+
+    // 模擬同時包含 finish_reason=stop 與 [DONE] 的 SSE 流
+    String sseData =
+        """
+        data: {"id":"test","object":"chat.completion.chunk","created":1234567890,"model":"gpt-4","choices":[{"index":0,"delta":{"content":"Hello"},"finish_reason":null}]}
+
+        data: {"id":"test","object":"chat.completion.chunk","created":1234567890,"model":"gpt-4","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}
+
+        data: [DONE]
+
+        """;
+    when(mockResponse.body()).thenReturn(java.util.stream.Stream.of(sseData.split("\n")));
+
+    HttpClient mockHttpClient = mock(HttpClient.class);
+    when(mockHttpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+        .thenReturn(mockResponse);
+
+    AIClient client = new AIClient(config, mockHttpClient);
+    AIChatRequest request = AIChatRequest.createStreamingUserMessage("測試訊息", config);
+
+    List<Boolean> capturedCompletes = new ArrayList<>();
+
+    // When
+    client.sendStreamingRequest(
+        request,
+        (chunk, isComplete, error, type) -> {
+          capturedCompletes.add(isComplete);
+        });
+
+    // Then
+    long completeCount = capturedCompletes.stream().filter(Boolean::booleanValue).count();
+    assertThat(completeCount).isEqualTo(1);
+  }
+
+  @Test
   void testSendStreamingRequest_withoutReasoningContent_shouldOnlyExtractContent()
       throws Exception {
     // Given
