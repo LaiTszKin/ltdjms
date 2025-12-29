@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import ltdjms.discord.aiagent.services.AIAgentChannelConfigService;
 import ltdjms.discord.aichat.services.AIChannelRestrictionService;
 import ltdjms.discord.currency.services.BalanceAdjustmentService;
 import ltdjms.discord.currency.services.BalanceService;
@@ -37,6 +38,7 @@ class AdminPanelServiceEventTest {
   private CurrencyConfigService currencyConfigService;
   private DomainEventPublisher eventPublisher;
   private AIChannelRestrictionService aiChannelRestrictionService;
+  private AIAgentChannelConfigService aiAgentChannelConfigService;
   private AdminPanelService service;
 
   @BeforeEach
@@ -50,6 +52,7 @@ class AdminPanelServiceEventTest {
     currencyConfigService = mock(CurrencyConfigService.class);
     eventPublisher = mock(DomainEventPublisher.class);
     aiChannelRestrictionService = mock(AIChannelRestrictionService.class);
+    aiAgentChannelConfigService = mock(AIAgentChannelConfigService.class);
 
     service =
         new AdminPanelService(
@@ -61,7 +64,8 @@ class AdminPanelServiceEventTest {
             diceGame2ConfigRepository,
             currencyConfigService,
             eventPublisher,
-            aiChannelRestrictionService);
+            aiChannelRestrictionService,
+            aiAgentChannelConfigService);
   }
 
   @Test

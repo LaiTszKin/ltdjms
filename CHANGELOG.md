@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.18.0] - 2025-12-30
+
+### Added
+- **AI Agent Tools 功能**：AI 可在特定頻道調用系統工具執行實際操作
+  - 工具註冊中心：動態註冊和管理可被 AI 調用的系統工具
+  - 頻道級別控制：管理員可透過管理面板控制哪些頻道啟用 AI Agent 模式
+  - 序列化執行：使用 FIFO 佇列確保工具調用按順序執行
+  - 審計日誌：記錄所有工具調用的完整歷史
+  - 實作工具：`create_channel`（創建頻道）、`create_category`（創建類別）
+  - 管理面板新增「🔧 AI Agent 設定」頁面
+- 資料庫遷移 V011：新增 `ai_agent_channel_config`、`ai_tool_execution_log` 表
+- 新增 `docs/modules/aiagent.md` 模組架構文件
+- 事件驅動快取失效：`AIAgentChannelConfigChangedEvent`
+
+### Changed
+- 更新 `docs/api/slash-commands.md`：新增 AI Agent Tools 使用指南
+- 更新 `docs/architecture/overview.md`：新增 AI Agent 模組說明
+
+### Technical Details
+- 新增模組：`ltdjms.discord.aiagent`
+  - `domain/`：工具定義、執行結果、頻道配置模型
+  - `services/`：工具註冊中心、執行器、配置服務
+  - `persistence/`：工具執行日誌與配置持久化
+  - `commands/`：工具調用監聽器
+  - `services/tools/`：具體工具實作
+- 測試覆蓋：8 個新增單元測試類別
+
 ## [0.16.0] - 2025-12-29
 
 ### Added

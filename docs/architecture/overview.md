@@ -102,6 +102,15 @@ flowchart LR
    - `commands/`：AI 聊天提及監聽器
    - 詳細說明請參閱 [AI Chat 模組文件](../modules/aichat.md)
 
+- `aiagent/`
+   AI Agent 模組（V017 新增）：提供 AI 工具調用功能，允許 AI 在特定頻道調用系統工具執行實際操作。
+   - `domain/`：工具定義、執行結果、頻道配置模型
+   - `services/`：工具註冊中心、執行器、配置服務
+   - `persistence/`：工具執行日誌與配置持久化
+   - `commands/`：工具調用監聽器
+   - `services/tools/`：具體工具實作（創建頻道、創建類別）
+   - 詳細說明請參閱 [AI Agent 模組文件](../modules/aiagent.md)
+
 - `shared/`
   共用基礎設施：資料庫連線設定、Flyway schema migration、`Result<T, E>` 型別、`DomainError`、設定載入與 Dagger DI 定義。
 
@@ -272,6 +281,7 @@ Command handler 通常遵守以下模式：
 - `docs/modules/discord-api-abstraction.md` - **Discord API 抽象層**（重要：了解如何與 Discord 互動）
 - `docs/modules/shared-module.md` - 共用模組（Result 模式、DomainError 等）
 - `docs/modules/aichat.md` - **AI Chat 模組**（V010 新增：提及觸發的 AI 聊天功能）
+- `docs/modules/aiagent.md` - **AI Agent 模組**（V017 新增：AI 工具調用功能）
 - `docs/modules/currency-system.md` - 貨幣系統
 - `docs/modules/game-tokens-and-games.md` - 遊戲代幣與遊戲
 - `docs/modules/panels.md` - 使用者與管理面板

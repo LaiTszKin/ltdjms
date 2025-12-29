@@ -6,9 +6,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
+import ltdjms.discord.aiagent.services.AIAgentChannelConfigService;
+import ltdjms.discord.aiagent.services.ToolRegistry;
 import ltdjms.discord.aichat.domain.AIChatRequest;
 import ltdjms.discord.aichat.domain.AIChatResponse;
 import ltdjms.discord.aichat.domain.AIServiceConfig;
+import ltdjms.discord.aichat.domain.PromptSection;
 import ltdjms.discord.aichat.domain.SystemPrompt;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
@@ -24,9 +27,38 @@ public final class DefaultAIChatService implements AIChatService {
   private final AIClient aiClient;
   private final DomainEventPublisher eventPublisher;
   private final PromptLoader promptLoader;
+  private final AIAgentChannelConfigService agentConfigService;
+  private final ToolRegistry toolRegistry;
+
+  private static final String AGENT_PROMPT_TITLE = "AI 工具調用";
 
   /**
    * 創建 DefaultAIChatService。
+   *
+   * @param config AI 服務配置
+   * @param aiClient AI HTTP 客戶端
+   * @param eventPublisher 事件發布器 (可為 null)
+   * @param promptLoader 提示詞載入器
+   * @param agentConfigService AI Agent 配置服務（可為 null）
+   * @param toolRegistry 工具註冊中心（可為 null）
+   */
+  public DefaultAIChatService(
+      AIServiceConfig config,
+      AIClient aiClient,
+      DomainEventPublisher eventPublisher,
+      PromptLoader promptLoader,
+      AIAgentChannelConfigService agentConfigService,
+      ToolRegistry toolRegistry) {
+    this.config = config;
+    this.aiClient = aiClient;
+    this.eventPublisher = eventPublisher;
+    this.promptLoader = promptLoader;
+    this.agentConfigService = agentConfigService;
+    this.toolRegistry = toolRegistry;
+  }
+
+  /**
+   * 創建 DefaultAIChatService（不含 AI Agent 功能）。
    *
    * @param config AI 服務配置
    * @param aiClient AI HTTP 客戶端
@@ -38,15 +70,12 @@ public final class DefaultAIChatService implements AIChatService {
       AIClient aiClient,
       DomainEventPublisher eventPublisher,
       PromptLoader promptLoader) {
-    this.config = config;
-    this.aiClient = aiClient;
-    this.eventPublisher = eventPublisher;
-    this.promptLoader = promptLoader;
+    this(config, aiClient, eventPublisher, promptLoader, null, null);
   }
 
   @Override
   public Result<List<String>, DomainError> generateResponse(
-      String channelId, String userId, String userMessage) {
+      long guildId, String channelId, String userId, String userMessage) {
 
     MDC.put("channel_id", channelId);
     MDC.put("user_id", userId);
@@ -58,9 +87,10 @@ public final class DefaultAIChatService implements AIChatService {
       // 載入系統提示詞
       Result<SystemPrompt, DomainError> promptResult = promptLoader.loadPrompts();
       SystemPrompt systemPrompt = promptResult.getOrElse(SystemPrompt.empty());
+      SystemPrompt effectivePrompt = buildEffectivePrompt(guildId, channelId, systemPrompt);
 
       // Build AI request with system prompt
-      AIChatRequest request = AIChatRequest.createUserMessage(userMessage, config, systemPrompt);
+      AIChatRequest request = AIChatRequest.createUserMessage(userMessage, config, effectivePrompt);
 
       // Call AI service
       Result<AIChatResponse, DomainError> responseResult = aiClient.sendChatRequest(request);
@@ -88,12 +118,7 @@ public final class DefaultAIChatService implements AIChatService {
       if (eventPublisher != null) {
         AIMessageEvent event =
             new AIMessageEvent(
-                0, // guildId - will be set by listener
-                channelId,
-                userId,
-                userMessage,
-                content,
-                java.time.Instant.now());
+                guildId, channelId, userId, userMessage, content, java.time.Instant.now());
         eventPublisher.publish(event);
       }
 
@@ -109,7 +134,11 @@ public final class DefaultAIChatService implements AIChatService {
 
   @Override
   public void generateStreamingResponse(
-      String channelId, String userId, String userMessage, StreamingResponseHandler handler) {
+      long guildId,
+      String channelId,
+      String userId,
+      String userMessage,
+      StreamingResponseHandler handler) {
 
     MDC.put("channel_id", channelId);
     MDC.put("user_id", userId);
@@ -121,10 +150,11 @@ public final class DefaultAIChatService implements AIChatService {
       // 載入系統提示詞
       Result<SystemPrompt, DomainError> promptResult = promptLoader.loadPrompts();
       SystemPrompt systemPrompt = promptResult.getOrElse(SystemPrompt.empty());
+      SystemPrompt effectivePrompt = buildEffectivePrompt(guildId, channelId, systemPrompt);
 
       // Build streaming AI request with system prompt
       AIChatRequest request =
-          AIChatRequest.createStreamingUserMessage(userMessage, config, systemPrompt);
+          AIChatRequest.createStreamingUserMessage(userMessage, config, effectivePrompt);
       MessageChunkAccumulator reasoningAccumulator = new MessageChunkAccumulator();
       MessageChunkAccumulator contentAccumulator = new MessageChunkAccumulator();
       StringBuilder fullContent = new StringBuilder();
@@ -182,7 +212,7 @@ public final class DefaultAIChatService implements AIChatService {
               if (eventPublisher != null) {
                 AIMessageEvent event =
                     new AIMessageEvent(
-                        0, // guildId - will be set by listener
+                        guildId,
                         channelId,
                         userId,
                         userMessage,
@@ -226,5 +256,60 @@ public final class DefaultAIChatService implements AIChatService {
     if (!remaining.isEmpty()) {
       handler.onChunk(remaining, false, null, type);
     }
+  }
+
+  private SystemPrompt buildEffectivePrompt(
+      long guildId, String channelId, SystemPrompt basePrompt) {
+    if (agentConfigService == null || toolRegistry == null) {
+      return basePrompt;
+    }
+
+    long channelIdLong;
+    try {
+      channelIdLong = Long.parseLong(channelId);
+    } catch (NumberFormatException e) {
+      LOGGER.warn("無法解析頻道 ID，略過 AI Agent 工具提示詞附加: {}", channelId);
+      return basePrompt;
+    }
+
+    if (!agentConfigService.isAgentEnabled(guildId, channelIdLong)) {
+      return basePrompt;
+    }
+
+    if (toolRegistry.getAllTools().isEmpty()) {
+      LOGGER.debug("AI Agent 已啟用但未註冊任何工具，略過工具提示詞附加");
+      return basePrompt;
+    }
+
+    String toolPromptContent = buildToolPromptContent(toolRegistry.getToolsPrompt());
+    PromptSection toolSection = new PromptSection(AGENT_PROMPT_TITLE, toolPromptContent);
+
+    List<PromptSection> merged = new java.util.ArrayList<>(basePrompt.sections());
+    merged.add(toolSection);
+
+    LOGGER.debug(
+        "已附加 AI Agent 工具提示詞: guildId={}, channelId={}, tools={}",
+        guildId,
+        channelIdLong,
+        toolRegistry.getAllTools().size());
+
+    return SystemPrompt.of(merged);
+  }
+
+  private String buildToolPromptContent(String toolsPromptJson) {
+    return """
+    當你需要執行伺服器管理操作時，必須使用工具調用。
+
+    規則：
+    1. 若需要使用工具，請忽略其他格式要求，只輸出單一 JSON 物件。
+    2. 僅輸出 JSON，不要加入任何額外文字、標題或 Markdown。
+    3. JSON 格式固定為：{"tool": "<工具名稱>", "parameters": { ... }}
+    4. 若缺少必要參數，請先向使用者提問再進行工具調用。
+    5. 僅能使用下列提供的工具定義。
+
+    可用工具（JSON Schema）：
+    %s
+    """
+        .formatted(toolsPromptJson == null ? "[]" : toolsPromptJson);
   }
 }

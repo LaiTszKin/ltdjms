@@ -12,6 +12,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import ltdjms.discord.aiagent.services.AIAgentChannelConfigService;
 import ltdjms.discord.aichat.commands.AIChatMentionListener;
 import ltdjms.discord.aichat.services.AIChannelRestrictionService;
 import ltdjms.discord.aichat.services.AIChatService;
@@ -40,6 +41,7 @@ class AIChatMentionListenerTest {
 
   private AIChatService aiChatService;
   private AIChannelRestrictionService channelRestrictionService;
+  private AIAgentChannelConfigService agentConfigService;
   private AIChatMentionListener listener;
   private MessageReceivedEvent event;
   private JDA jda;
@@ -54,7 +56,10 @@ class AIChatMentionListenerTest {
   void setUp() {
     aiChatService = mock(AIChatService.class);
     channelRestrictionService = mock(AIChannelRestrictionService.class);
-    listener = new AIChatMentionListener(aiChatService, channelRestrictionService, false);
+    agentConfigService = mock(AIAgentChannelConfigService.class);
+    listener =
+        new AIChatMentionListener(
+            aiChatService, channelRestrictionService, agentConfigService, false);
 
     event = mock(MessageReceivedEvent.class);
     jda = mock(JDA.class);

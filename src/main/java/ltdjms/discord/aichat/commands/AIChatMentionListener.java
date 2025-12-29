@@ -8,11 +8,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ltdjms.discord.aiagent.services.AIAgentChannelConfigService;
+import ltdjms.discord.aiagent.services.ToolCallRequestParser;
 import ltdjms.discord.aichat.services.AIChannelRestrictionService;
 import ltdjms.discord.aichat.services.AIChatService;
+import ltdjms.discord.aichat.services.MessageSplitter;
 import ltdjms.discord.aichat.services.StreamingResponseHandler;
 import ltdjms.discord.shared.DomainError;
 import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.channel.unions.MessageChannelUnion;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 
@@ -100,6 +104,7 @@ public class AIChatMentionListener extends ListenerAdapter {
 
   private final AIChatService aiChatService;
   private final AIChannelRestrictionService channelRestrictionService;
+  private final AIAgentChannelConfigService agentConfigService;
   private final boolean showReasoning;
 
   /**
@@ -112,9 +117,11 @@ public class AIChatMentionListener extends ListenerAdapter {
   public AIChatMentionListener(
       AIChatService aiChatService,
       AIChannelRestrictionService channelRestrictionService,
+      AIAgentChannelConfigService agentConfigService,
       boolean showReasoning) {
     this.aiChatService = aiChatService;
     this.channelRestrictionService = channelRestrictionService;
+    this.agentConfigService = agentConfigService;
     this.showReasoning = showReasoning;
   }
 
@@ -158,7 +165,10 @@ public class AIChatMentionListener extends ListenerAdapter {
 
     String channelIdStr = event.getChannel().getId();
     String userId = event.getAuthor().getId();
+    long userIdLong = event.getAuthor().getIdLong();
     var channel = event.getChannel();
+    boolean agentEnabled =
+        agentConfigService != null && agentConfigService.isAgentEnabled(guildId, channelId);
 
     LOGGER.info("Bot mentioned by user {} in channel {}: {}", userId, channelIdStr, userMessage);
 
@@ -168,6 +178,19 @@ public class AIChatMentionListener extends ListenerAdapter {
         .sendMessage(":thought_balloon: AI 正在思考...")
         .queue(
             thinkingMessage -> {
+              if (agentEnabled) {
+                handleAgentStreamingResponse(
+                    guildId,
+                    channelIdStr,
+                    channelId,
+                    userId,
+                    userIdLong,
+                    userMessage,
+                    channel,
+                    thinkingMessage);
+                return;
+              }
+
               // 新增追蹤器和狀態變數
               final ReasoningMessageTracker reasoningTracker = new ReasoningMessageTracker();
               reasoningTracker.setInitialMessage(thinkingMessage);
@@ -177,6 +200,7 @@ public class AIChatMentionListener extends ListenerAdapter {
               final AtomicBoolean reasoningDeleted = new AtomicBoolean(false);
 
               aiChatService.generateStreamingResponse(
+                  guildId,
                   channelIdStr,
                   userId,
                   userMessage,
@@ -241,6 +265,75 @@ public class AIChatMentionListener extends ListenerAdapter {
                     }
                   });
             });
+  }
+
+  private void handleAgentStreamingResponse(
+      long guildId,
+      String channelIdStr,
+      long channelId,
+      String userId,
+      long userIdLong,
+      String userMessage,
+      MessageChannelUnion channel,
+      Message thinkingMessage) {
+    StringBuilder contentBuffer = new StringBuilder();
+    AtomicBoolean completed = new AtomicBoolean(false);
+
+    aiChatService.generateStreamingResponse(
+        guildId,
+        channelIdStr,
+        userId,
+        userMessage,
+        (chunk, isComplete, error, type) -> {
+          if (error != null) {
+            thinkingMessage.editMessage(getErrorMessage(error)).queue();
+            LOGGER.warn("AI streaming error: {} - {}", error.category(), error.message());
+            return;
+          }
+
+          if (type == StreamingResponseHandler.ChunkType.CONTENT
+              && chunk != null
+              && !chunk.isEmpty()) {
+            contentBuffer.append(chunk);
+          }
+
+          if (!isComplete || !completed.compareAndSet(false, true)) {
+            return;
+          }
+
+          String fullContent = contentBuffer.toString().trim();
+          if (fullContent.isEmpty()) {
+            thinkingMessage.editMessage(":question: AI 沒有產生回應").queue();
+            return;
+          }
+
+          boolean hasToolCall =
+              ToolCallRequestParser.parse(fullContent, guildId, channelId, userIdLong).isPresent();
+          if (hasToolCall) {
+            thinkingMessage
+                .delete()
+                .queue(
+                    v -> LOGGER.debug("已刪除工具調用訊息"),
+                    e -> LOGGER.warn("刪除工具調用訊息失敗: {}", e.getMessage()));
+            return;
+          }
+
+          sendBufferedContent(channel, thinkingMessage, fullContent);
+          LOGGER.info("AI streaming completed");
+        });
+  }
+
+  private void sendBufferedContent(
+      MessageChannelUnion channel, Message thinkingMessage, String content) {
+    List<String> parts = MessageSplitter.split(content);
+    if (parts.isEmpty()) {
+      return;
+    }
+
+    thinkingMessage.editMessage(parts.get(0)).queue();
+    for (int i = 1; i < parts.size(); i++) {
+      channel.sendMessage(parts.get(i)).queue();
+    }
   }
 
   private String getErrorMessage(DomainError error) {

@@ -10,10 +10,15 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
+import ltdjms.discord.aiagent.domain.ToolDefinition;
+import ltdjms.discord.aiagent.services.AIAgentChannelConfigService;
+import ltdjms.discord.aiagent.services.ToolRegistry;
 import ltdjms.discord.aichat.domain.AIChatRequest;
 import ltdjms.discord.aichat.domain.AIChatResponse;
 import ltdjms.discord.aichat.domain.AIServiceConfig;
+import ltdjms.discord.aichat.domain.PromptSection;
 import ltdjms.discord.aichat.domain.SystemPrompt;
 import ltdjms.discord.aichat.services.AIChatService;
 import ltdjms.discord.aichat.services.AIClient;
@@ -54,7 +59,7 @@ class AIChatServiceTest {
 
     // When
     Result<List<String>, DomainError> result =
-        service.generateResponse("channel123", "user456", "測試訊息");
+        service.generateResponse(1L, "channel123", "user456", "測試訊息");
 
     // Then
     assertThat(result.isOk()).isTrue();
@@ -90,7 +95,7 @@ class AIChatServiceTest {
 
     // When
     Result<List<String>, DomainError> result =
-        service.generateResponse("channel123", "user456", "");
+        service.generateResponse(1L, "channel123", "user456", "");
 
     // Then
     assertThat(result.isOk()).isTrue();
@@ -116,7 +121,7 @@ class AIChatServiceTest {
 
     // When
     Result<List<String>, DomainError> result =
-        service.generateResponse("channel123", "user456", "測試訊息");
+        service.generateResponse(1L, "channel123", "user456", "測試訊息");
 
     // Then
     assertThat(result.isErr()).isTrue();
@@ -159,7 +164,7 @@ class AIChatServiceTest {
 
     // When
     Result<List<String>, DomainError> result =
-        service.generateResponse("channel123", "user456", "測試訊息");
+        service.generateResponse(1L, "channel123", "user456", "測試訊息");
 
     // Then
     assertThat(result.isOk()).isTrue();
@@ -192,7 +197,7 @@ class AIChatServiceTest {
 
     // When
     Result<List<String>, DomainError> result =
-        service.generateResponse("channel123", "user456", "測試訊息");
+        service.generateResponse(1L, "channel123", "user456", "測試訊息");
 
     // Then
     assertThat(result.isErr()).isTrue();
@@ -227,6 +232,7 @@ class AIChatServiceTest {
     List<String> chunks = new java.util.ArrayList<>();
     List<StreamingResponseHandler.ChunkType> types = new java.util.ArrayList<>();
     service.generateStreamingResponse(
+        1L,
         "channel123",
         "user456",
         "測試訊息",
@@ -246,5 +252,102 @@ class AIChatServiceTest {
         .containsExactly(
             StreamingResponseHandler.ChunkType.REASONING,
             StreamingResponseHandler.ChunkType.CONTENT);
+  }
+
+  @Test
+  void testGenerateResponse_agentEnabled_shouldAppendToolPrompt() {
+    // Given
+    AIServiceConfig config =
+        new AIServiceConfig(
+            "https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30, false);
+
+    AIChatResponse mockResponse =
+        new AIChatResponse(
+            "chatcmpl-123",
+            "chat.completion",
+            1677652288L,
+            "gpt-3.5-turbo",
+            List.of(
+                new AIChatResponse.Choice(
+                    0, new AIChatResponse.Choice.AIMessage("assistant", "AI 回應", null), "stop")),
+            new AIChatResponse.Usage(10, 20, 30));
+
+    AIClient mockClient = mock(AIClient.class);
+    when(mockClient.sendChatRequest(any(AIChatRequest.class))).thenReturn(Result.ok(mockResponse));
+
+    PromptLoader mockPromptLoader = mock(PromptLoader.class);
+    SystemPrompt basePrompt = SystemPrompt.of(new PromptSection("BASE", "基礎提示"));
+    when(mockPromptLoader.loadPrompts()).thenReturn(Result.ok(basePrompt));
+
+    AIAgentChannelConfigService agentConfigService = mock(AIAgentChannelConfigService.class);
+    when(agentConfigService.isAgentEnabled(1L, 456L)).thenReturn(true);
+
+    ToolRegistry toolRegistry = mock(ToolRegistry.class);
+    when(toolRegistry.getAllTools()).thenReturn(List.of(mock(ToolDefinition.class)));
+    when(toolRegistry.getToolsPrompt()).thenReturn("[{\"name\":\"create_channel\"}]");
+
+    AIChatService service =
+        new DefaultAIChatService(
+            config, mockClient, null, mockPromptLoader, agentConfigService, toolRegistry);
+
+    // When
+    Result<List<String>, DomainError> result =
+        service.generateResponse(1L, "456", "user456", "測試訊息");
+
+    // Then
+    assertThat(result.isOk()).isTrue();
+    ArgumentCaptor<AIChatRequest> captor = ArgumentCaptor.forClass(AIChatRequest.class);
+    verify(mockClient).sendChatRequest(captor.capture());
+    String systemContent = captor.getValue().messages().get(0).content();
+    assertThat(systemContent).contains("AI 工具調用");
+    assertThat(systemContent).contains("create_channel");
+  }
+
+  @Test
+  void testGenerateResponse_agentDisabled_shouldNotAppendToolPrompt() {
+    // Given
+    AIServiceConfig config =
+        new AIServiceConfig(
+            "https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30, false);
+
+    AIChatResponse mockResponse =
+        new AIChatResponse(
+            "chatcmpl-123",
+            "chat.completion",
+            1677652288L,
+            "gpt-3.5-turbo",
+            List.of(
+                new AIChatResponse.Choice(
+                    0, new AIChatResponse.Choice.AIMessage("assistant", "AI 回應", null), "stop")),
+            new AIChatResponse.Usage(10, 20, 30));
+
+    AIClient mockClient = mock(AIClient.class);
+    when(mockClient.sendChatRequest(any(AIChatRequest.class))).thenReturn(Result.ok(mockResponse));
+
+    PromptLoader mockPromptLoader = mock(PromptLoader.class);
+    SystemPrompt basePrompt = SystemPrompt.of(new PromptSection("BASE", "基礎提示"));
+    when(mockPromptLoader.loadPrompts()).thenReturn(Result.ok(basePrompt));
+
+    AIAgentChannelConfigService agentConfigService = mock(AIAgentChannelConfigService.class);
+    when(agentConfigService.isAgentEnabled(1L, 456L)).thenReturn(false);
+
+    ToolRegistry toolRegistry = mock(ToolRegistry.class);
+    when(toolRegistry.getAllTools()).thenReturn(List.of(mock(ToolDefinition.class)));
+    when(toolRegistry.getToolsPrompt()).thenReturn("[{\"name\":\"create_channel\"}]");
+
+    AIChatService service =
+        new DefaultAIChatService(
+            config, mockClient, null, mockPromptLoader, agentConfigService, toolRegistry);
+
+    // When
+    Result<List<String>, DomainError> result =
+        service.generateResponse(1L, "456", "user456", "測試訊息");
+
+    // Then
+    assertThat(result.isOk()).isTrue();
+    ArgumentCaptor<AIChatRequest> captor = ArgumentCaptor.forClass(AIChatRequest.class);
+    verify(mockClient).sendChatRequest(captor.capture());
+    String systemContent = captor.getValue().messages().get(0).content();
+    assertThat(systemContent).doesNotContain("AI 工具調用");
   }
 }

@@ -5,6 +5,8 @@ import javax.sql.DataSource;
 
 import dagger.Module;
 import dagger.Provides;
+import ltdjms.discord.aiagent.services.AIAgentChannelConfigService;
+import ltdjms.discord.aiagent.services.ToolRegistry;
 import ltdjms.discord.aichat.commands.AIChatMentionListener;
 import ltdjms.discord.aichat.domain.AIServiceConfig;
 import ltdjms.discord.aichat.persistence.AIChannelRestrictionRepository;
@@ -53,8 +55,11 @@ public class AIChatModule {
       AIServiceConfig config,
       AIClient aiClient,
       DomainEventPublisher eventPublisher,
-      PromptLoader promptLoader) {
-    return new DefaultAIChatService(config, aiClient, eventPublisher, promptLoader);
+      PromptLoader promptLoader,
+      AIAgentChannelConfigService agentConfigService,
+      ToolRegistry toolRegistry) {
+    return new DefaultAIChatService(
+        config, aiClient, eventPublisher, promptLoader, agentConfigService, toolRegistry);
   }
 
   @Provides
@@ -76,8 +81,9 @@ public class AIChatModule {
   public AIChatMentionListener provideAIChatMentionListener(
       AIChatService aiChatService,
       AIChannelRestrictionService channelRestrictionService,
+      AIAgentChannelConfigService agentConfigService,
       AIServiceConfig config) {
     return new AIChatMentionListener(
-        aiChatService, channelRestrictionService, config.showReasoning());
+        aiChatService, channelRestrictionService, agentConfigService, config.showReasoning());
   }
 }

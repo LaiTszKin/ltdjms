@@ -30,6 +30,16 @@ class AdminPanelCommandHandlerTest {
   }
 
   @Test
+  @DisplayName("主選單應包含 AI 頻道與 AI Agent 設定入口")
+  void mainPanelShouldIncludeAIEntries() {
+    MessageEmbed embed = handler.buildMainPanelEmbed("💰");
+
+    List<String> fieldNames = embed.getFields().stream().map(MessageEmbed.Field::getName).toList();
+
+    assertThat(fieldNames).contains("🤖 AI 頻道設定", "🤖 AI Agent 配置");
+  }
+
+  @Test
   @DisplayName("主選單按鈕應包含商品管理按鈕")
   void mainPanelButtonsShouldContainProductButton() {
     List<Button> buttons = handler.buildMainActionButtons("💰");
@@ -37,5 +47,17 @@ class AdminPanelCommandHandlerTest {
     assertThat(buttons)
         .extracting(Button::getId)
         .contains(AdminProductPanelHandler.BUTTON_PRODUCTS);
+  }
+
+  @Test
+  @DisplayName("主選單按鈕應包含 AI 頻道與 AI Agent 設定")
+  void mainPanelButtonsShouldContainAIButtons() {
+    List<Button> buttons = handler.buildMainActionButtons("💰");
+
+    assertThat(buttons)
+        .extracting(Button::getId)
+        .contains(
+            AdminPanelCommandHandler.BUTTON_AI_CHANNEL_CONFIG,
+            AdminPanelCommandHandler.BUTTON_AI_AGENT_CONFIG);
   }
 }

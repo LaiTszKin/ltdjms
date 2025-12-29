@@ -15,6 +15,7 @@ import ltdjms.discord.shared.DatabaseMigrationRunner;
 import ltdjms.discord.shared.EnvironmentConfig;
 import ltdjms.discord.shared.di.AppComponent;
 import ltdjms.discord.shared.di.AppComponentFactory;
+import ltdjms.discord.shared.di.JDAProvider;
 import ltdjms.discord.shop.commands.ShopButtonHandler;
 import ltdjms.discord.shop.commands.ShopSelectMenuHandler;
 import net.dv8tion.jda.api.JDA;
@@ -44,6 +45,10 @@ public class DiscordCurrencyBot {
     this.appComponent
         .domainEventPublisher()
         .register(this.appComponent.cacheInvalidationListener());
+    this.appComponent
+        .domainEventPublisher()
+        .register(this.appComponent.agentConfigCacheInvalidationListener());
+    this.appComponent.domainEventPublisher().register(this.appComponent.toolCallListener());
 
     // Get database config from Dagger
     this.databaseConfig = appComponent.databaseConfig();
@@ -85,6 +90,9 @@ public class DiscordCurrencyBot {
 
     // Wait for JDA to be ready
     jda.awaitReady();
+
+    // 設置 JDA 到 Provider，讓 AI Agent 工具可以訪問
+    JDAProvider.setJda(jda);
 
     // Register slash commands globally
     slashCommandListener.registerCommands(jda);

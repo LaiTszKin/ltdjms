@@ -6,6 +6,8 @@ import javax.sql.DataSource;
 import org.jooq.DSLContext;
 
 import dagger.Component;
+import ltdjms.discord.aiagent.commands.ToolCallListener;
+import ltdjms.discord.aiagent.services.AgentConfigCacheInvalidationListener;
 import ltdjms.discord.aichat.commands.AIChatMentionListener;
 import ltdjms.discord.aichat.services.AIChatService;
 import ltdjms.discord.currency.bot.SlashCommandListener;
@@ -63,7 +65,8 @@ import ltdjms.discord.shop.services.CurrencyPurchaseService;
       ProductServiceModule.class,
       CommandHandlerModule.class,
       EventModule.class,
-      AIChatModule.class
+      AIChatModule.class,
+      AIAgentModule.class
     })
 public interface AppComponent {
 
@@ -78,6 +81,11 @@ public interface AppComponent {
   CacheKeyGenerator cacheKeyGenerator();
 
   CacheInvalidationListener cacheInvalidationListener();
+
+  // AI Agent
+  AgentConfigCacheInvalidationListener agentConfigCacheInvalidationListener();
+
+  ToolCallListener toolCallListener();
 
   // Events
   DomainEventPublisher domainEventPublisher();

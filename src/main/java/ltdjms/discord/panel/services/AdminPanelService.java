@@ -5,6 +5,7 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ltdjms.discord.aiagent.services.AIAgentChannelConfigService;
 import ltdjms.discord.aichat.domain.AllowedChannel;
 import ltdjms.discord.aichat.services.AIChannelRestrictionService;
 import ltdjms.discord.currency.domain.GuildCurrencyConfig;
@@ -41,6 +42,7 @@ public class AdminPanelService {
   private final CurrencyConfigService currencyConfigService;
   private final DomainEventPublisher eventPublisher;
   private final AIChannelRestrictionService aiChannelRestrictionService;
+  private final AIAgentChannelConfigService aiAgentChannelConfigService;
 
   public AdminPanelService(
       BalanceService balanceService,
@@ -51,7 +53,8 @@ public class AdminPanelService {
       DiceGame2ConfigRepository diceGame2ConfigRepository,
       CurrencyConfigService currencyConfigService,
       DomainEventPublisher eventPublisher,
-      AIChannelRestrictionService aiChannelRestrictionService) {
+      AIChannelRestrictionService aiChannelRestrictionService,
+      AIAgentChannelConfigService aiAgentChannelConfigService) {
     this.balanceService = balanceService;
     this.balanceAdjustmentService = balanceAdjustmentService;
     this.gameTokenService = gameTokenService;
@@ -61,6 +64,7 @@ public class AdminPanelService {
     this.currencyConfigService = currencyConfigService;
     this.eventPublisher = eventPublisher;
     this.aiChannelRestrictionService = aiChannelRestrictionService;
+    this.aiAgentChannelConfigService = aiAgentChannelConfigService;
   }
 
   /**
@@ -336,5 +340,68 @@ public class AdminPanelService {
   public Result<Unit, DomainError> removeAllowedChannel(long guildId, long channelId) {
     LOG.info("Admin panel removing allowed channel: guildId={}, channelId={}", guildId, channelId);
     return aiChannelRestrictionService.removeAllowedChannel(guildId, channelId);
+  }
+
+  // ========== AI Agent 頻道配置管理 ==========
+
+  /**
+   * 獲取伺服器中已啟用 AI Agent 模式的頻道列表。
+   *
+   * @param guildId 伺服器 ID
+   * @return 已啟用的頻道 ID 列表
+   */
+  public Result<java.util.List<Long>, DomainError> getEnabledAgentChannels(long guildId) {
+    LOG.debug("Admin panel getting enabled agent channels for guildId={}", guildId);
+    return aiAgentChannelConfigService.getEnabledChannels(guildId);
+  }
+
+  /**
+   * 檢查頻道是否啟用 AI Agent 模式。
+   *
+   * @param guildId 伺服器 ID
+   * @param channelId 頻道 ID
+   * @return 是否啟用
+   */
+  public boolean isAgentEnabled(long guildId, long channelId) {
+    return aiAgentChannelConfigService.isAgentEnabled(guildId, channelId);
+  }
+
+  /**
+   * 啟用頻道的 AI Agent 模式。
+   *
+   * @param guildId 伺服器 ID
+   * @param channelId 頻道 ID
+   * @return 成功返回 Unit，失敗返回錯誤
+   */
+  public Result<Unit, DomainError> enableAgentChannel(long guildId, long channelId) {
+    LOG.info(
+        "Admin panel enabling agent for channel: guildId={}, channelId={}", guildId, channelId);
+    return aiAgentChannelConfigService.setAgentEnabled(guildId, channelId, true);
+  }
+
+  /**
+   * 停用頻道的 AI Agent 模式。
+   *
+   * @param guildId 伺服器 ID
+   * @param channelId 頻道 ID
+   * @return 成功返回 Unit，失敗返回錯誤
+   */
+  public Result<Unit, DomainError> disableAgentChannel(long guildId, long channelId) {
+    LOG.info(
+        "Admin panel disabling agent for channel: guildId={}, channelId={}", guildId, channelId);
+    return aiAgentChannelConfigService.setAgentEnabled(guildId, channelId, false);
+  }
+
+  /**
+   * 移除頻道的 AI Agent 配置。
+   *
+   * @param guildId 伺服器 ID
+   * @param channelId 頻道 ID
+   * @return 成功返回 Unit，失敗返回錯誤
+   */
+  public Result<Unit, DomainError> removeAgentChannel(long guildId, long channelId) {
+    LOG.info(
+        "Admin panel removing agent channel config: guildId={}, channelId={}", guildId, channelId);
+    return aiAgentChannelConfigService.removeChannel(guildId, channelId);
   }
 }
