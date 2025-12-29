@@ -3,6 +3,7 @@ package ltdjms.discord.panel.commands;
 import java.awt.Color;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
@@ -48,6 +49,9 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
   public static final String BUTTON_BACK = "admin_panel_back";
   public static final String BUTTON_OPEN_BALANCE_MODAL = "admin_open_balance_modal";
   public static final String BUTTON_OPEN_TOKEN_MODAL = "admin_open_token_modal";
+  public static final String BUTTON_AI_CHANNEL_CONFIG = "admin_panel_ai_channel";
+  public static final String BUTTON_AI_ADD_CHANNEL = "admin_ai_add_channel";
+  public static final String BUTTON_AI_REMOVE_CHANNEL = "admin_ai_remove_channel";
 
   // Modal IDs
   public static final String MODAL_BALANCE_ADJUST = "admin_modal_balance_adjust";
@@ -65,6 +69,8 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
   public static final String SELECT_TOKEN_USER = "admin_select_token_user";
   public static final String SELECT_TOKEN_MODE = "admin_select_token_mode";
   public static final String SELECT_GAME_SETTING = "admin_select_game_setting";
+  public static final String SELECT_AI_ADD_CHANNEL = "admin_select_ai_add_channel";
+  public static final String SELECT_AI_REMOVE_CHANNEL = "admin_select_ai_remove_channel";
 
   private final AdminPanelService adminPanelService;
   private final AdminPanelSessionManager adminPanelSessionManager;
@@ -101,6 +107,7 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         case BUTTON_BALANCE -> showBalanceManagement(event);
         case BUTTON_TOKENS -> showTokenManagement(event);
         case BUTTON_GAMES -> showGameManagement(event);
+        case BUTTON_AI_CHANNEL_CONFIG -> showAIChannelConfig(event);
         case BUTTON_BACK -> showMainPanel(event);
         case BUTTON_OPEN_BALANCE_MODAL -> openBalanceModal(event);
         case BUTTON_OPEN_TOKEN_MODAL -> openTokenModal(event);
@@ -132,6 +139,10 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         handleBalanceUserSelect(event, sessionKey, guildId);
       } else if (selectId.equals(SELECT_TOKEN_USER)) {
         handleTokenUserSelect(event, sessionKey, guildId);
+      } else if (selectId.equals(SELECT_AI_ADD_CHANNEL)) {
+        handleAddChannelSelect(event, guildId);
+      } else if (selectId.equals(SELECT_AI_REMOVE_CHANNEL)) {
+        handleRemoveChannelSelect(event, guildId);
       }
     } catch (Exception e) {
       LOG.error("Error handling entity select: {}", selectId, e);
@@ -1423,6 +1434,178 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
       case "adjust" -> "設定代幣";
       default -> mode;
     };
+  }
+
+  // ===== AI 頻道設定管理 =====
+
+  /** 顯示 AI 頻道設定頁面。 */
+  private void showAIChannelConfig(ButtonInteractionEvent event) {
+    long guildId = event.getGuild().getIdLong();
+
+    var channelsResult = adminPanelService.getAllowedChannels(guildId);
+    MessageEmbed embed;
+
+    if (channelsResult.isOk()) {
+      var channels = channelsResult.getValue();
+      embed = buildAIChannelConfigEmbed(guildId, channels);
+    } else {
+      embed = buildAIChannelConfigEmbed(guildId, Set.of());
+    }
+
+    EntitySelectMenu addChannelSelect =
+        EntitySelectMenu.create(SELECT_AI_ADD_CHANNEL, EntitySelectMenu.SelectTarget.CHANNEL)
+            .setPlaceholder("新增允許的頻道")
+            .setRequiredRange(1, 1)
+            .build();
+
+    EntitySelectMenu removeChannelSelect =
+        EntitySelectMenu.create(SELECT_AI_REMOVE_CHANNEL, EntitySelectMenu.SelectTarget.CHANNEL)
+            .setPlaceholder("移除允許的頻道")
+            .setRequiredRange(1, 1)
+            .build();
+
+    event
+        .editMessageEmbeds(embed)
+        .setComponents(
+            ActionRow.of(addChannelSelect),
+            ActionRow.of(removeChannelSelect),
+            ActionRow.of(Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")))
+        .queue();
+  }
+
+  /** 建立 AI 頻道設定的 Embed。 */
+  private MessageEmbed buildAIChannelConfigEmbed(
+      long guildId, Set<ltdjms.discord.aichat.domain.AllowedChannel> channels) {
+    var embedBuilder = new EmbedBuilder().setTitle("🤖 AI 頻道設定").setColor(EMBED_COLOR);
+
+    if (channels.isEmpty()) {
+      embedBuilder
+          .setDescription("**未設定任何頻道限制**")
+          .addField("狀態", "AI 可在所有頻道使用", false)
+          .addField("說明", "使用下方的選單新增允許的頻道以啟用限制模式", false);
+    } else {
+      StringBuilder channelList = new StringBuilder();
+      for (var channel : channels) {
+        channelList.append(
+            String.format("<#%d> - %s\n", channel.channelId(), channel.channelName()));
+      }
+
+      embedBuilder
+          .setDescription("**已啟用頻道限制**")
+          .addField("允許的頻道", channelList.toString(), false)
+          .addField("總計", channels.size() + " 個頻道", false);
+    }
+
+    return embedBuilder.build();
+  }
+
+  /** 處理新增頻道選擇。 */
+  private void handleAddChannelSelect(EntitySelectInteractionEvent event, long guildId) {
+    var selectedChannels = event.getMentions().getChannels();
+    if (selectedChannels.isEmpty()) {
+      event.reply("請選擇一個頻道").setEphemeral(true).queue();
+      return;
+    }
+
+    var selectedChannel = selectedChannels.get(0);
+    long channelId = selectedChannel.getIdLong();
+    String channelName = selectedChannel.getName();
+
+    var result = adminPanelService.addAllowedChannel(guildId, channelId, channelName);
+
+    if (result.isOk()) {
+      event.reply("✅ 已新增頻道 **" + channelName + "** 到允許清單").setEphemeral(true).queue();
+
+      // 更新面板顯示
+      var updatedChannels = adminPanelService.getAllowedChannels(guildId);
+      if (updatedChannels.isOk()) {
+        MessageEmbed embed = buildAIChannelConfigEmbed(guildId, updatedChannels.getValue());
+
+        EntitySelectMenu addChannelSelect =
+            EntitySelectMenu.create(SELECT_AI_ADD_CHANNEL, EntitySelectMenu.SelectTarget.CHANNEL)
+                .setPlaceholder("新增允許的頻道")
+                .setRequiredRange(1, 1)
+                .build();
+
+        EntitySelectMenu removeChannelSelect =
+            EntitySelectMenu.create(SELECT_AI_REMOVE_CHANNEL, EntitySelectMenu.SelectTarget.CHANNEL)
+                .setPlaceholder("移除允許的頻道")
+                .setRequiredRange(1, 1)
+                .build();
+
+        event
+            .getMessage()
+            .editMessageEmbeds(embed)
+            .setComponents(
+                ActionRow.of(addChannelSelect),
+                ActionRow.of(removeChannelSelect),
+                ActionRow.of(Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")))
+            .queue();
+      }
+    } else {
+      DomainError error = result.getError();
+      String errorMessage =
+          switch (error.category()) {
+            case DUPLICATE_CHANNEL -> "⚠️ 此頻道已在允許清單中";
+            case INSUFFICIENT_PERMISSIONS -> "⚠️ 機器人在此頻道沒有足夠的權限";
+            default -> "❌ " + error.message();
+          };
+      event.reply(errorMessage).setEphemeral(true).queue();
+    }
+  }
+
+  /** 處理移除頻道選擇。 */
+  private void handleRemoveChannelSelect(EntitySelectInteractionEvent event, long guildId) {
+    var selectedChannels = event.getMentions().getChannels();
+    if (selectedChannels.isEmpty()) {
+      event.reply("請選擇一個頻道").setEphemeral(true).queue();
+      return;
+    }
+
+    var selectedChannel = selectedChannels.get(0);
+    long channelId = selectedChannel.getIdLong();
+    String channelName = selectedChannel.getName();
+
+    var result = adminPanelService.removeAllowedChannel(guildId, channelId);
+
+    if (result.isOk()) {
+      event.reply("✅ 已從允許清單移除頻道 **" + channelName + "**").setEphemeral(true).queue();
+
+      // 更新面板顯示
+      var updatedChannels = adminPanelService.getAllowedChannels(guildId);
+      if (updatedChannels.isOk()) {
+        MessageEmbed embed = buildAIChannelConfigEmbed(guildId, updatedChannels.getValue());
+
+        EntitySelectMenu addChannelSelect =
+            EntitySelectMenu.create(SELECT_AI_ADD_CHANNEL, EntitySelectMenu.SelectTarget.CHANNEL)
+                .setPlaceholder("新增允許的頻道")
+                .setRequiredRange(1, 1)
+                .build();
+
+        EntitySelectMenu removeChannelSelect =
+            EntitySelectMenu.create(SELECT_AI_REMOVE_CHANNEL, EntitySelectMenu.SelectTarget.CHANNEL)
+                .setPlaceholder("移除允許的頻道")
+                .setRequiredRange(1, 1)
+                .build();
+
+        event
+            .getMessage()
+            .editMessageEmbeds(embed)
+            .setComponents(
+                ActionRow.of(addChannelSelect),
+                ActionRow.of(removeChannelSelect),
+                ActionRow.of(Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")))
+            .queue();
+      }
+    } else {
+      DomainError error = result.getError();
+      String errorMessage =
+          switch (error.category()) {
+            case CHANNEL_NOT_FOUND -> "⚠️ 此頻道不在允許清單中";
+            default -> "❌ " + error.message();
+          };
+      event.reply(errorMessage).setEphemeral(true).queue();
+    }
   }
 
   // ===== Session State =====

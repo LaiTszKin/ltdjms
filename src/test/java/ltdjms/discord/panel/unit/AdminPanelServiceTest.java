@@ -10,6 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import ltdjms.discord.aichat.services.AIChannelRestrictionService;
 import ltdjms.discord.currency.domain.BalanceView;
 import ltdjms.discord.currency.domain.GuildCurrencyConfig;
 import ltdjms.discord.currency.services.BalanceAdjustmentService;
@@ -42,6 +43,7 @@ class AdminPanelServiceTest {
   private DiceGame2ConfigRepository diceGame2ConfigRepository;
   private CurrencyConfigService currencyConfigService;
   private DomainEventPublisher eventPublisher;
+  private AIChannelRestrictionService aiChannelRestrictionService;
   private AdminPanelService adminPanelService;
 
   @BeforeEach
@@ -54,6 +56,7 @@ class AdminPanelServiceTest {
     diceGame2ConfigRepository = mock(DiceGame2ConfigRepository.class);
     currencyConfigService = mock(CurrencyConfigService.class);
     eventPublisher = mock(DomainEventPublisher.class);
+    aiChannelRestrictionService = mock(AIChannelRestrictionService.class);
 
     adminPanelService =
         new AdminPanelService(
@@ -64,7 +67,8 @@ class AdminPanelServiceTest {
             diceGame1ConfigRepository,
             diceGame2ConfigRepository,
             currencyConfigService,
-            eventPublisher);
+            eventPublisher,
+            aiChannelRestrictionService);
   }
 
   @Nested

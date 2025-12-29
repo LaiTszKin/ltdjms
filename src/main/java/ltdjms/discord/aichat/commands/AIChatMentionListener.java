@@ -8,6 +8,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ltdjms.discord.aichat.services.AIChannelRestrictionService;
 import ltdjms.discord.aichat.services.AIChatService;
 import ltdjms.discord.aichat.services.StreamingResponseHandler;
 import ltdjms.discord.shared.DomainError;
@@ -98,14 +99,18 @@ public class AIChatMentionListener extends ListenerAdapter {
   }
 
   private final AIChatService aiChatService;
+  private final AIChannelRestrictionService channelRestrictionService;
 
   /**
    * 創建 AIChatMentionListener。
    *
    * @param aiChatService AI 聊天服務
+   * @param channelRestrictionService AI 頻道限制服務
    */
-  public AIChatMentionListener(AIChatService aiChatService) {
+  public AIChatMentionListener(
+      AIChatService aiChatService, AIChannelRestrictionService channelRestrictionService) {
     this.aiChatService = aiChatService;
+    this.channelRestrictionService = channelRestrictionService;
   }
 
   @Override
@@ -117,6 +122,15 @@ public class AIChatMentionListener extends ListenerAdapter {
 
     // Ignore DMs
     if (!event.isFromGuild()) {
+      return;
+    }
+
+    // Early channel check: silently ignore if channel not allowed
+    long guildId = event.getGuild().getIdLong();
+    long channelId = event.getChannel().getIdLong();
+    if (!channelRestrictionService.isChannelAllowed(guildId, channelId)) {
+      LOGGER.debug(
+          "Channel {} not in allowed list for guild {}, ignoring mention", channelId, guildId);
       return;
     }
 
@@ -137,11 +151,11 @@ public class AIChatMentionListener extends ListenerAdapter {
     // If message is empty, use default greeting
     String userMessage = (originalUserMessage.isBlank()) ? "你好" : originalUserMessage;
 
-    String channelId = event.getChannel().getId();
+    String channelIdStr = event.getChannel().getId();
     String userId = event.getAuthor().getId();
     var channel = event.getChannel();
 
-    LOGGER.info("Bot mentioned by user {} in channel {}: {}", userId, channelId, userMessage);
+    LOGGER.info("Bot mentioned by user {} in channel {}: {}", userId, channelIdStr, userMessage);
 
     // Generate AI streaming response
     // 先發送初始提示訊息
@@ -158,7 +172,7 @@ public class AIChatMentionListener extends ListenerAdapter {
               final AtomicBoolean reasoningDeleted = new AtomicBoolean(false);
 
               aiChatService.generateStreamingResponse(
-                  channelId,
+                  channelIdStr,
                   userId,
                   userMessage,
                   (chunk, isComplete, error, type) -> {

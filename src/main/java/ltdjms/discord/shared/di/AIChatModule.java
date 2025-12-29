@@ -1,13 +1,18 @@
 package ltdjms.discord.shared.di;
 
 import javax.inject.Singleton;
+import javax.sql.DataSource;
 
 import dagger.Module;
 import dagger.Provides;
 import ltdjms.discord.aichat.commands.AIChatMentionListener;
 import ltdjms.discord.aichat.domain.AIServiceConfig;
+import ltdjms.discord.aichat.persistence.AIChannelRestrictionRepository;
+import ltdjms.discord.aichat.persistence.JdbcAIChannelRestrictionRepository;
+import ltdjms.discord.aichat.services.AIChannelRestrictionService;
 import ltdjms.discord.aichat.services.AIChatService;
 import ltdjms.discord.aichat.services.AIClient;
+import ltdjms.discord.aichat.services.DefaultAIChannelRestrictionService;
 import ltdjms.discord.aichat.services.DefaultAIChatService;
 import ltdjms.discord.aichat.services.DefaultPromptLoader;
 import ltdjms.discord.aichat.services.PromptLoader;
@@ -54,7 +59,22 @@ public class AIChatModule {
 
   @Provides
   @Singleton
-  public AIChatMentionListener provideAIChatMentionListener(AIChatService aiChatService) {
-    return new AIChatMentionListener(aiChatService);
+  public AIChannelRestrictionRepository provideAIChannelRestrictionRepository(
+      DataSource dataSource) {
+    return new JdbcAIChannelRestrictionRepository(dataSource);
+  }
+
+  @Provides
+  @Singleton
+  public AIChannelRestrictionService provideAIChannelRestrictionService(
+      AIChannelRestrictionRepository repository) {
+    return new DefaultAIChannelRestrictionService(repository);
+  }
+
+  @Provides
+  @Singleton
+  public AIChatMentionListener provideAIChatMentionListener(
+      AIChatService aiChatService, AIChannelRestrictionService channelRestrictionService) {
+    return new AIChatMentionListener(aiChatService, channelRestrictionService);
   }
 }

@@ -29,6 +29,7 @@ public class AdminPanelCommandHandler implements SlashCommandListener.CommandHan
   public static final String BUTTON_TOKEN_MANAGEMENT = "admin_panel_tokens";
   public static final String BUTTON_GAME_MANAGEMENT = "admin_panel_games";
   public static final String BUTTON_PRODUCT_MANAGEMENT = AdminProductPanelHandler.BUTTON_PRODUCTS;
+  public static final String BUTTON_AI_CHANNEL_CONFIG = "admin_panel_ai_channel";
 
   private final AdminPanelService adminPanelService;
   private final AdminPanelSessionManager adminPanelSessionManager;
@@ -71,6 +72,7 @@ public class AdminPanelCommandHandler implements SlashCommandListener.CommandHan
         .addField("🎮 遊戲代幣管理", "調整成員的遊戲代幣餘額", false)
         .addField("🎲 遊戲設定管理", "調整遊戲的代幣消耗設定", false)
         .addField("📦 商品與兌換碼管理", "建立商品、生成兌換碼、查詢兌換狀態", false)
+        .addField("🤖 AI 頻道設定", "設定允許使用 AI 功能的頻道", false)
         .setFooter("點擊下方按鈕進入對應功能")
         .build();
   }
@@ -81,6 +83,7 @@ public class AdminPanelCommandHandler implements SlashCommandListener.CommandHan
         Button.primary(BUTTON_BALANCE_MANAGEMENT, currencyIcon + " 使用者餘額管理"),
         Button.primary(BUTTON_TOKEN_MANAGEMENT, "🎮 遊戲代幣管理"),
         Button.primary(BUTTON_GAME_MANAGEMENT, "🎲 遊戲設定管理"),
-        Button.primary(BUTTON_PRODUCT_MANAGEMENT, "📦 商品與兌換碼管理"));
+        Button.primary(BUTTON_PRODUCT_MANAGEMENT, "📦 商品與兌換碼管理"),
+        Button.primary(BUTTON_AI_CHANNEL_CONFIG, "🤖 AI 頻道設定"));
   }
 }

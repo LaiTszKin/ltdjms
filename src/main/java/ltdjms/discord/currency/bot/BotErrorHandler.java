@@ -206,6 +206,10 @@ public final class BotErrorHandler {
       case PROMPT_READ_FAILED -> ":warning: 提示詞讀取失敗";
       case PROMPT_INVALID_ENCODING -> ":warning: 提示詞編碼錯誤";
       case PROMPT_LOAD_FAILED -> ":warning: 提示詞載入失敗";
+      case CHANNEL_NOT_ALLOWED -> error.message();
+      case DUPLICATE_CHANNEL -> error.message();
+      case INSUFFICIENT_PERMISSIONS -> error.message();
+      case CHANNEL_NOT_FOUND -> error.message();
     };
   }
 
@@ -375,6 +379,28 @@ public final class BotErrorHandler {
       case PROMPT_LOAD_FAILED -> {
         LOG.error("Prompt load failed for guild={} user={}: {}", guildId, userId, error.message());
         interaction.reply(":warning: 提示詞載入失敗");
+      }
+
+      case CHANNEL_NOT_ALLOWED -> {
+        LOG.debug(
+            "Channel not allowed for AI in guild={} user={}: {}", guildId, userId, error.message());
+        // 不回應給使用者
+      }
+
+      case DUPLICATE_CHANNEL -> {
+        LOG.warn("Duplicate channel in guild={} user={}: {}", guildId, userId, error.message());
+        interaction.reply("❌ " + error.message());
+      }
+
+      case INSUFFICIENT_PERMISSIONS -> {
+        LOG.warn(
+            "Insufficient permissions for guild={} user={}: {}", guildId, userId, error.message());
+        interaction.reply("❌ " + error.message());
+      }
+
+      case CHANNEL_NOT_FOUND -> {
+        LOG.warn("Channel not found in guild={} user={}: {}", guildId, userId, error.message());
+        interaction.reply("❌ " + error.message());
       }
     }
   }

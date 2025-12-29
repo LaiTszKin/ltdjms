@@ -53,7 +53,15 @@ public record DomainError(Category category, String message, Throwable cause) {
     /** Prompt file has invalid encoding */
     PROMPT_INVALID_ENCODING,
     /** Prompt loading failed */
-    PROMPT_LOAD_FAILED
+    PROMPT_LOAD_FAILED,
+    /** Channel not in allowed list for AI usage */
+    CHANNEL_NOT_ALLOWED,
+    /** Channel already exists in allowed list */
+    DUPLICATE_CHANNEL,
+    /** Bot lacks required permissions in channel */
+    INSUFFICIENT_PERMISSIONS,
+    /** Channel not found or deleted from Discord server */
+    CHANNEL_NOT_FOUND
   }
 
   public DomainError {

@@ -1,8 +1,12 @@
 package ltdjms.discord.panel.services;
 
+import java.util.Set;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ltdjms.discord.aichat.domain.AllowedChannel;
+import ltdjms.discord.aichat.services.AIChannelRestrictionService;
 import ltdjms.discord.currency.domain.GuildCurrencyConfig;
 import ltdjms.discord.currency.services.BalanceAdjustmentService;
 import ltdjms.discord.currency.services.BalanceService;
@@ -16,6 +20,7 @@ import ltdjms.discord.gametoken.services.GameTokenService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
+import ltdjms.discord.shared.Unit;
 import ltdjms.discord.shared.events.DiceGameConfigChangedEvent;
 import ltdjms.discord.shared.events.DomainEventPublisher;
 
@@ -35,6 +40,7 @@ public class AdminPanelService {
   private final DiceGame2ConfigRepository diceGame2ConfigRepository;
   private final CurrencyConfigService currencyConfigService;
   private final DomainEventPublisher eventPublisher;
+  private final AIChannelRestrictionService aiChannelRestrictionService;
 
   public AdminPanelService(
       BalanceService balanceService,
@@ -44,7 +50,8 @@ public class AdminPanelService {
       DiceGame1ConfigRepository diceGame1ConfigRepository,
       DiceGame2ConfigRepository diceGame2ConfigRepository,
       CurrencyConfigService currencyConfigService,
-      DomainEventPublisher eventPublisher) {
+      DomainEventPublisher eventPublisher,
+      AIChannelRestrictionService aiChannelRestrictionService) {
     this.balanceService = balanceService;
     this.balanceAdjustmentService = balanceAdjustmentService;
     this.gameTokenService = gameTokenService;
@@ -53,6 +60,7 @@ public class AdminPanelService {
     this.diceGame2ConfigRepository = diceGame2ConfigRepository;
     this.currencyConfigService = currencyConfigService;
     this.eventPublisher = eventPublisher;
+    this.aiChannelRestrictionService = aiChannelRestrictionService;
   }
 
   /**
@@ -284,5 +292,49 @@ public class AdminPanelService {
       return String.format(
           "%s %,d 遊戲代幣\n調整前：🎮 %,d\n調整後：🎮 %,d", action, displayAmount, previousTokens, newTokens);
     }
+  }
+
+  // ========== AI 頻道設定管理 ==========
+
+  /**
+   * 獲取伺服器的所有允許頻道。
+   *
+   * @param guildId 伺服器 ID
+   * @return 允許頻道集合（空集合表示無限制模式）
+   */
+  public Result<Set<AllowedChannel>, DomainError> getAllowedChannels(long guildId) {
+    LOG.debug("Admin panel getting allowed channels for guildId={}", guildId);
+    return aiChannelRestrictionService.getAllowedChannels(guildId);
+  }
+
+  /**
+   * 新增允許頻道。
+   *
+   * @param guildId 伺服器 ID
+   * @param channelId 頻道 ID
+   * @param channelName 頻道名稱（用於顯示）
+   * @return 成功返回頻道，失敗返回錯誤
+   */
+  public Result<AllowedChannel, DomainError> addAllowedChannel(
+      long guildId, long channelId, String channelName) {
+    LOG.info(
+        "Admin panel adding allowed channel: guildId={}, channelId={}, channelName={}",
+        guildId,
+        channelId,
+        channelName);
+    AllowedChannel channel = new AllowedChannel(channelId, channelName);
+    return aiChannelRestrictionService.addAllowedChannel(guildId, channel);
+  }
+
+  /**
+   * 移除允許頻道。
+   *
+   * @param guildId 伺服器 ID
+   * @param channelId 頻道 ID
+   * @return 成功返回 Unit，失敗返回錯誤
+   */
+  public Result<Unit, DomainError> removeAllowedChannel(long guildId, long channelId) {
+    LOG.info("Admin panel removing allowed channel: guildId={}, channelId={}", guildId, channelId);
+    return aiChannelRestrictionService.removeAllowedChannel(guildId, channelId);
   }
 }

@@ -4,6 +4,8 @@
 
 AI Chat 模組提供 Discord 機器人的 AI 聊天功能。當使用者在 Discord 頻道中提及機器人時，機器人會使用 AI 服務生成並發送回應訊息。
 
+**AI 頻道限制功能**（V016 新增）：管理員可以限制 AI 功能僅在特定頻道使用，未設定的情況下 AI 可在所有頻道使用（無限制模式）。
+
 ## 架構
 
 ### 分層設計
@@ -16,7 +18,10 @@ ltdjms.discord.aichat/
 │   ├── AIChatResponse.java
 │   ├── PromptSection.java        # 提示詞區間
 │   ├── SystemPrompt.java         # 完整系統提示詞
-│   └── PromptLoadError.java      # 載入錯誤類型
+│   ├── PromptLoadError.java      # 載入錯誤類型
+│   ├── AIChannelRestriction.java # AI 頻道限制聚合根（V016）
+│   ├── AllowedChannel.java       # 允許頻道值物件（V016）
+│   └── AIChannelRestrictionChangedEvent.java # 頻道限制變更事件（V016）
 ├── services/         # 服務層
 │   ├── AIChatService.java (interface)
 │   ├── DefaultAIChatService.java
@@ -25,7 +30,12 @@ ltdjms.discord.aichat/
 │   ├── DefaultPromptLoader.java  # 檔案系統實作
 │   ├── MessageChunkAccumulator.java
 │   ├── MessageSplitter.java
-│   └── StreamingResponseHandler.java
+│   ├── StreamingResponseHandler.java
+│   ├── AIChannelRestrictionService.java # AI 頻道限制服務介面（V016）
+│   └── DefaultAIChannelRestrictionService.java # AI 頻道限制服務實作（V016）
+├── persistence/      # 持久化層（V016）
+│   ├── AIChannelRestrictionRepository.java
+│   └── JdbcAIChannelRestrictionRepository.java
 └── commands/         # JDA 事件處理
     └── AIChatMentionListener.java
 ```
@@ -272,5 +282,154 @@ mvn test -Dtest='ltdjms.discord.aichat.integration.*'
 - [AI Chat 快速入門](../../specs/003-ai-chat/quickstart.md)
 - [外部提示詞載入器規格](../../specs/004-external-prompts-loader/spec.md)（V015 新增）
 - [外部提示詞載入器實作計畫](../../specs/004-external-prompts-loader/plan.md)（V015 新增）
+- [AI 頻道限制規格](../../specs/005-ai-channel-restriction/spec.md)（V016 新增）
+- [AI 頻道限制實作計畫](../../specs/005-ai-channel-restriction/plan.md)（V016 新增）
 - [系統架構](../architecture/overview.md)
 - [AI Chat 流程架構](../architecture/ai-chat-flow.md)
+
+---
+
+## AI 頻道限制功能（V016）
+
+### 概述
+
+AI 頻道限制功能允許管理員控制 AI 功能可以在哪些頻道中使用。
+
+**核心特性**：
+- **無限制模式**（預設）：未設定任何頻道時，AI 可在所有頻道使用
+- **限制模式**：設定允許頻道清單後，AI 僅在清單中的頻道回應
+- **獨立設定**：每個 Discord 伺服器有獨立的頻道限制設定
+- **即時生效**：設定變更後立即生效，無需重啟機器人
+
+### 領域模型
+
+#### AIChannelRestriction
+
+聚合根，代表一個 Discord 伺服器的 AI 頻道限制配置：
+
+```java
+public record AIChannelRestriction(
+    long guildId,
+    Set<AllowedChannel> allowedChannels
+) {
+    // 空集合 = 無限制模式
+    public boolean isUnrestricted();
+
+    // 檢查頻道是否被允許
+    public boolean isChannelAllowed(long channelId);
+
+    // 新增/移除頻道
+    public AIChannelRestriction withChannelAdded(AllowedChannel channel);
+    public AIChannelRestriction withChannelRemoved(long channelId);
+}
+```
+
+#### AllowedChannel
+
+值物件，代表一個被授權使用 AI 功能的頻道：
+
+```java
+public record AllowedChannel(
+    long channelId,
+    String channelName  // 冗餘儲存以便顯示
+) {
+    public static AllowedChannel from(TextChannel channel);
+}
+```
+
+### 服務介面
+
+#### AIChannelRestrictionService
+
+```java
+public interface AIChannelRestrictionService {
+    // 檢查頻道是否被允許
+    boolean isChannelAllowed(long guildId, long channelId);
+
+    // 獲取伺服器的所有允許頻道
+    Result<Set<AllowedChannel>, DomainError> getAllowedChannels(long guildId);
+
+    // 新增允許頻道
+    Result<AllowedChannel, DomainError> addAllowedChannel(long guildId, AllowedChannel channel);
+
+    // 移除允許頻道
+    Result<Unit, DomainError> removeAllowedChannel(long guildId, long channelId);
+}
+```
+
+### 資料庫架構
+
+```sql
+CREATE TABLE ai_channel_restriction (
+    guild_id BIGINT NOT NULL,
+    channel_id BIGINT NOT NULL,
+    channel_name TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (guild_id, channel_id)
+);
+
+CREATE INDEX idx_ai_channel_restriction_guild_id
+    ON ai_channel_restriction(guild_id);
+```
+
+**設計決策**：
+- 複合主鍵 `(guild_id, channel_id)` 確保同一伺服器無重複頻道
+- 頻道名稱冗餘儲存以避免每次查詢需呼叫 Discord API
+- `guild_id` 索引優化「查詢伺服器所有允許頻道」操作
+
+### 使用方式
+
+#### 透過管理面板設定
+
+1. 執行 `/admin-panel` 指令
+2. 點擊「🤖 AI 頻道設定」按鈕
+3. 使用「➕ 新增頻道」或「➖ 移除頻道」選單操作
+
+#### 行為說明
+
+| 操作 | 行為 |
+|------|------|
+| 未設定任何頻道 | AI 在所有頻道可用（無限制模式） |
+| 新增第一個頻道 | 切換到限制模式，僅該頻道可使用 AI |
+| 新增多個頻道 | 這些頻道都可使用 AI |
+| 移除所有頻道 | 恢復無限制模式 |
+| 移除頻道時進行中的對話 | 正在進行的對話繼續完成，新設定僅對後續請求生效 |
+
+### 錯誤處理
+
+| 錯誤類別 | 說明 |
+|---------|------|
+| `DUPLICATE_CHANNEL` | 嘗試新增已在清單中的頻道 |
+| `CHANNEL_NOT_FOUND` | 嘗試移除不存在於清單的頻道 |
+| `INSUFFICIENT_PERMISSIONS` | 機器人在該頻道沒有發言權限 |
+
+### 日誌
+
+AI 頻道限制功能使用結構化日誌：
+
+```java
+// 新增頻道
+INFO l.d.a.s.DefaultAIChannelRestrictionService - Adding allowed channel: guildId=123, channelId=456, channelName=ai-chat
+
+// 移除頻道
+INFO l.d.a.s.DefaultAIChannelRestrictionService - Removing allowed channel: guildId=123, channelId=456
+
+// 權限驗證失敗
+WARN l.d.a.s.DefaultAIChannelRestrictionService - Failed to add allowed channel: guildId=123, channelId=789, error=機器人在該頻道沒有發言權限
+```
+
+### 測試
+
+```bash
+# 執行 AI 頻道限制整合測試
+mvn test -Dtest=AIChannelRestrictionIntegrationTest
+```
+
+**測試覆蓋範圍**：
+- 新增與移除頻道流程
+- 頻道檢查流程
+- 已刪除頻道的清理
+- 無限制模式（空清單）
+- 多伺服器獨立設定
+

@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.16.0] - 2025-12-29
+
+### Added
+- **AI 頻道限制功能**：管理員可透過管理面板限制 AI 功能僅在特定頻道使用
+  - 新增 `AIChannelRestriction` 領域模型與 `AllowedChannel` 值物件
+  - 新增 `AIChannelRestrictionService` 與 JDBC Repository 實作
+  - `AIChatMentionListener` 整合頻道檢查邏輯
+  - 管理面板新增「🤖 AI 頻道設定」頁面，支援新增/移除頻道操作
+  - 新增 `ai_channel_restriction` 資料表（Flyway V010 遷移）
+
+### Changed
+- **無限制模式（預設）**：未設定任何頻道時，AI 可在所有頻道使用
+- **限制模式**：設定允許頻道清單後，AI 僅在清單中的頻道回應
+- **獨立設定**：每個 Discord 伺服器有獨立的頻道限制配置
+- **即時生效**：設定變更後立即生效，無需重啟機器人
+
+### Fixed
+- AI Chat 使用規則：新增必須使用 markdown 格式回應使用者的規則
+
+### Technical
+- 新增 `AIChannelRestrictionChangedEvent` 領域事件，發布於頻道設定變更時
+- 新增頻道限制相關錯誤類型：`DUPLICATE_CHANNEL`、`CHANNEL_NOT_FOUND`、`INSUFFICIENT_PERMISSIONS`
+- 完整測試覆蓋：新增 5 個單元測試類別與 1 個整合測試類別
+
+### Documentation
+- **specs/005-ai-channel-restriction/**：完整規格文件（spec.md、plan.md、tasks.md、data-model.md、quickstart.md、research.md）
+- **docs/api/slash-commands.md**：更新管理面板說明，新增 AI 頻道設定操作指引
+- **docs/modules/aichat.md**：新增 AI 頻道限制功能章節，包含領域模型、服務介面、資料庫架構與使用方式
+
 ## [0.15.2] - 2025-12-29
 
 ### Fixed

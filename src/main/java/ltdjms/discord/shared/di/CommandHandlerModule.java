@@ -4,6 +4,7 @@ import javax.inject.Singleton;
 
 import dagger.Module;
 import dagger.Provides;
+import ltdjms.discord.aichat.services.AIChannelRestrictionService;
 import ltdjms.discord.currency.bot.SlashCommandListener;
 import ltdjms.discord.currency.commands.CurrencyConfigCommandHandler;
 import ltdjms.discord.currency.persistence.GuildCurrencyConfigRepository;
@@ -166,7 +167,8 @@ public class CommandHandlerModule {
       DiceGame1ConfigRepository diceGame1ConfigRepository,
       DiceGame2ConfigRepository diceGame2ConfigRepository,
       CurrencyConfigService currencyConfigService,
-      DomainEventPublisher eventPublisher) {
+      DomainEventPublisher eventPublisher,
+      AIChannelRestrictionService aiChannelRestrictionService) {
     return new AdminPanelService(
         balanceService,
         balanceAdjustmentService,
@@ -175,7 +177,8 @@ public class CommandHandlerModule {
         diceGame1ConfigRepository,
         diceGame2ConfigRepository,
         currencyConfigService,
-        eventPublisher);
+        eventPublisher,
+        aiChannelRestrictionService);
   }
 
   @Provides

@@ -6,7 +6,7 @@
 
     <groupId>ltdjms</groupId>
     <artifactId>ltdjms</artifactId>
-    <version>0.15.2</version>
+    <version>0.16.0</version>
     <packaging>jar</packaging>
 
     <name>LTDJ Management System</name>
