@@ -39,12 +39,25 @@ public final class AIAgentTools {
               new ToolParameter(
                   "permissions", ToolParameter.ParamType.ARRAY, "權限設定列表", false, null)));
 
+  /** 列出頻道工具。 */
+  public static final ToolDefinition LIST_CHANNELS =
+      new ToolDefinition(
+          "list_channels",
+          "獲取 Discord 伺服器中的所有頻道資訊，包括頻道名稱、ID 和類型。支援按頻道類型篩選。",
+          List.of(
+              new ToolParameter(
+                  "type",
+                  ToolParameter.ParamType.STRING,
+                  "頻道類型篩選（可選值：text, voice, category, forum, media, stage）。不提供則返回所有類型。",
+                  false,
+                  null)));
+
   /**
    * 獲取所有已註冊的工具。
    *
    * @return 工具定義列表
    */
   public static List<ToolDefinition> all() {
-    return List.of(CREATE_CHANNEL, CREATE_CATEGORY);
+    return List.of(CREATE_CHANNEL, CREATE_CATEGORY, LIST_CHANNELS);
   }
 }

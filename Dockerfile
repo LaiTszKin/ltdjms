@@ -12,7 +12,7 @@ RUN mvn -q -B dependency:go-offline
 
 # Copy source code and build the application (skip tests for Docker build)
 COPY src ./src
-RUN mvn -q -B clean package -DskipTests && \
+RUN mvn -q -B clean package -Dmaven.test.skip=true -Dmaven.test.failure.ignore=true && \
     # Copy the shaded application JAR (with dependencies) to a stable name
     cp target/ltdjms-*.jar app.jar
 

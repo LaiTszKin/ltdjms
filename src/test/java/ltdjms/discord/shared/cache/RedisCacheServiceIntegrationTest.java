@@ -2,6 +2,7 @@ package ltdjms.discord.shared.cache;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.time.Instant;
 import java.util.Optional;
 
 import org.junit.jupiter.api.AfterEach;
@@ -24,6 +25,8 @@ class RedisCacheServiceIntegrationTest {
       new GenericContainer<>(DockerImageName.parse("redis:7-alpine")).withExposedPorts(6379);
 
   private RedisCacheService cacheService;
+
+  private record InstantPayload(String id, Instant timestamp) {}
 
   @BeforeEach
   void setUp() {
@@ -132,6 +135,21 @@ class RedisCacheServiceIntegrationTest {
 
       assertTrue(result.isPresent());
       assertEquals(750L, result.get());
+    }
+
+    @Test
+    @DisplayName("應能序列化包含 Instant 的物件")
+    void shouldSerializeInstantPayload() {
+      String key = "test:instant:123";
+      InstantPayload payload =
+          new InstantPayload("payload-1", Instant.parse("2025-12-30T06:00:00Z"));
+
+      cacheService.put(key, payload, 60);
+
+      Optional<InstantPayload> result = cacheService.get(key, InstantPayload.class);
+
+      assertTrue(result.isPresent());
+      assertEquals(payload, result.get());
     }
 
     @Test

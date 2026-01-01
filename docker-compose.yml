@@ -45,6 +45,7 @@ services:
       AI_SERVICE_MODEL: ${AI_SERVICE_MODEL}
       AI_SERVICE_TEMPERATURE: ${AI_SERVICE_TEMPERATURE}
       AI_SERVICE_TIMEOUT_SECONDS: ${AI_SERVICE_TIMEOUT_SECONDS}
+      AI_SHOW_REASONING: ${AI_SHOW_REASONING}
       PROMPTS_DIR_PATH: /app/prompts
       DB_URL: jdbc:postgresql://postgres:5432/currency_bot
       DB_USERNAME: postgres

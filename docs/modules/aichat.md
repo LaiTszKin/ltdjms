@@ -433,3 +433,213 @@ mvn test -Dtest=AIChannelRestrictionIntegrationTest
 - 無限制模式（空清單）
 - 多伺服器獨立設定
 
+---
+
+## LangChain4J 整合（V007 新增）
+
+### 概述
+
+從 V007 版本開始，AI Chat 模組已遷移到使用 **LangChain4J** 框架（版本 0.35.0），取代原有的自建 AI 服務層。此遷移大幅降低了代碼複雜度，同時保持所有現有功能完全向後相容。
+
+### 主要變更
+
+#### 服務實作替換
+
+| 原有實作 | LangChain4J 實作 | 狀態 |
+|---------|-----------------|------|
+| `AIClient` | `StreamingChatModel` | ✅ 已替換 |
+| `DefaultAIChatService` | `LangChain4jAIChatService` | ✅ 已替換 |
+| 手動 HTTP 請求 | LangChain4J `AiServices` | ✅ 已替換 |
+
+#### 核心組件
+
+##### LangChain4jAIChatService
+
+新的 AI 聊天服務實作，使用 LangChain4J 的 `AiServices` 創建 AI 服務：
+
+```java
+@Singleton
+public class LangChain4jAIChatService implements AIChatService {
+    private final StreamingChatModel chatModel;
+    private final PersistentChatMemoryProvider chatMemoryProvider;
+    private final SystemPrompt systemPrompt;
+    private final MessageSplitter messageSplitter;
+
+    // 實作 AIChatService 介面的所有方法
+}
+```
+
+**功能特性**：
+- 串流回應處理（`TokenStream` → `StreamingResponseHandler`）
+- 會話記憶管理（整合 Redis + PostgreSQL）
+- 異常到 `DomainError` 的映射（`LangChain4jExceptionMapper`）
+- 推理內容支援（已預留結構，待框架升級）
+
+##### LangChain4jAgentService
+
+LangChain4J AI Agent 服務介面，使用註解定義 AI 行為：
+
+```java
+public interface LangChain4jAgentService {
+    @SystemMessage("你是 LTDJ 管理系統的 AI 助手...")
+    TokenStream chat(
+        @MemoryId String conversationId,
+        @UserMessage String userMessage
+    );
+}
+```
+
+### 配置變更
+
+#### 環境變數
+
+LangChain4J 使用新的環境變數名稱（與原配置相容）：
+
+```bash
+# AI 服務配置（LangChain4J）
+AI_BASE_URL=https://api.openai.com/v1
+AI_API_KEY=your_api_key_here
+AI_MODEL_NAME=gpt-4o-mini
+AI_LOG_REQUESTS=true
+AI_LOG_RESPONSES=true
+AI_TIMEOUT_SECONDS=30
+AI_MAX_RETRIES=2
+```
+
+#### 相容性說明
+
+舊的環境變數名稱仍然支援：
+- `AI_SERVICE_BASE_URL` → `AI_BASE_URL`
+- `AI_SERVICE_API_KEY` → `AI_API_KEY`
+- `AI_SERVICE_MODEL` → `AI_MODEL_NAME`
+
+### 會話記憶管理
+
+#### PersistentChatMemoryProvider
+
+整合 Redis + PostgreSQL 的會話記憶提供者：
+
+**功能**：
+- Redis 快取（30 分鐘 TTL）
+- PostgreSQL 持久化存儲
+- Token 限制歷史裁剪
+- 工具調用結果歷史記錄
+
+**會話 ID 策略**：
+- `{guildId}:{channelId}:{userId}` - 用戶特定會話
+- `{guildId}:{channelId}` - 頻道共享會話
+
+#### RedisPostgresChatMemoryStore
+
+ChatMemoryStore 實作，處理訊息的持久化：
+
+```java
+public class RedisPostgresChatMemoryStore implements ChatMemoryStore {
+    // Redis 優先，PostgreSQL 後備
+    // 同時更新兩個存儲
+}
+```
+
+### 工具調用（AI Agent）
+
+#### LangChain4J 工具類
+
+使用 `@Tool` 註解定義 AI 工具：
+
+| 工具類 | 功能 |
+|-------|------|
+| `LangChain4jCreateChannelTool` | 創建 Discord 頻道 |
+| `LangChain4jCreateCategoryTool` | 創建 Discord 類別 |
+| `LangChain4jListChannelsTool` | 列出頻道資訊 |
+
+#### 工具執行上下文
+
+使用 ThreadLocal 存儲執行上下文：
+
+```java
+ToolExecutionContext.setContext(guildId, channelId, userId);
+try {
+    // AI 執行工具
+} finally {
+    ToolExecutionContext.clearContext();
+}
+```
+
+### 審計日誌
+
+#### ToolExecutionInterceptor
+
+工具執行審計攔截器，記錄所有工具調用：
+
+```java
+public final class ToolExecutionInterceptor {
+    public void onToolExecutionStarted(String toolName, Map<String, Object> parameters);
+    public String onToolExecutionCompleted(String result);
+    public String onToolExecutionFailed(String error);
+}
+```
+
+**功能**：
+- 記錄工具執行開始
+- 記錄工具執行成功/失敗
+- 發布 `LangChain4jToolExecutedEvent` 事件
+- 保存到 `ai_tool_execution_log` 表
+
+#### LangChain4jToolExecutedEvent
+
+工具執行完成事件：
+
+```java
+public record LangChain4jToolExecutedEvent(
+    long guildId,
+    long channelId,
+    long userId,
+    String toolName,
+    String result,
+    boolean success,
+    Instant timestamp
+) implements DomainEvent {}
+```
+
+### 限制與已知問題
+
+#### LangChain4J 0.35.0 API 限制
+
+- `onPartialThinking()` 方法不存在
+- `returnThinking(true)` 配置無法使用
+- 推理內容 (`reasoning_content`) 處理已預留結構
+
+#### 解決方案
+
+目前使用 `onPartialResponse()` 處理所有回應內容，待框架升級後啟用推理內容分離。
+
+### 測試
+
+#### 單元測試
+
+```bash
+# 執行 LangChain4J 相關單元測試
+mvn test -Dtest=LangChain4jAIChatServiceTest
+mvn test -Dtest=LangChain4jExceptionMapperTest
+mvn test -Dtest=PersistentChatMemoryProviderTest
+mvn test -Dtest=RedisPostgresChatMemoryStoreTest
+```
+
+#### 工具測試
+
+```bash
+# 執行工具類單元測試
+mvn test -Dtest=LangChain4jCreateChannelToolTest
+mvn test -Dtest=LangChain4jCreateCategoryToolTest
+mvn test -Dtest=LangChain4jListChannelsToolTest
+```
+
+### 相關文件
+
+- [LangChain4J AI 功能規格](../../specs/007-langchain4j-ai/spec.md)
+- [LangChain4J 實作計畫](../../specs/007-langchain4j-ai/plan.md)
+- [LangChain4J 研究文檔](../../specs/007-langchain4j-ai/research.md)
+- [LangChain4J 快速入門](../../specs/007-langchain4j-ai/quickstart.md)
+- [LangChain4J 任務列表](../../specs/007-langchain4j-ai/tasks.md)
+
+---

@@ -1,8 +1,12 @@
 package ltdjms.discord.aichat.domain;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+
+import ltdjms.discord.aiagent.domain.ConversationMessage;
+import ltdjms.discord.aiagent.domain.MessageRole;
 
 /**
  * AI 聊天請求模型，符合 OpenAI Chat Completions API 格式。
@@ -89,5 +93,46 @@ public record AIChatRequest(
     messages.add(new AIMessage("user", messageContent));
 
     return new AIChatRequest(config.model(), messages, config.temperature(), true);
+  }
+
+  /**
+   * 創建帶對話歷史的請求（用於多輪工具調用）。
+   *
+   * @param history 對話歷史
+   * @param config AI 服務配置
+   * @param systemPrompt 系統提示詞
+   * @return AI 聊天請求（流式輸出）
+   */
+  public static AIChatRequest createWithHistory(
+      List<ConversationMessage> history, AIServiceConfig config, SystemPrompt systemPrompt) {
+    List<AIMessage> messages = new ArrayList<>();
+
+    // 添加系統提示詞
+    String systemContent = systemPrompt.toCombinedString();
+    if (!systemContent.isBlank()) {
+      messages.add(new AIMessage("system", systemContent));
+    }
+
+    // 轉換對話歷史為 AIMessage 格式
+    for (ConversationMessage msg : history) {
+      String role = mapRoleToAPI(msg.role());
+      messages.add(new AIMessage(role, msg.content()));
+    }
+
+    return new AIChatRequest(config.model(), messages, config.temperature(), true);
+  }
+
+  /**
+   * 將對話角色映射到 API 格式。
+   *
+   * @param role 對話角色
+   * @return API 角色字串
+   */
+  private static String mapRoleToAPI(MessageRole role) {
+    return switch (role) {
+      case USER -> "user";
+      case ASSISTANT -> "assistant";
+      case TOOL -> "user"; // 工具結果作為用戶訊息傳回 AI
+    };
   }
 }

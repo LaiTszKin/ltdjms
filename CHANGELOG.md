@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.19.0] - 2026-01-02
+
+### Added
+- **LangChain4J 框架整合**：AI 服務重構使用 LangChain4J 1.10.0
+  - LangChain4jAIChatService 取代原有 DefaultAIChatService
+  - LangChain4jAgentService 支援工具調用與串流回應
+  - PersistentChatMemoryProvider 整合 Redis + PostgreSQL 會話記憶
+  - ToolExecutionContext ThreadLocal 上下文傳遞機制
+  - ToolExecutionInterceptor 工具執行審計日誌
+  - LangChain4jToolExecutedEvent 領域事件
+- **AI Agent 工具擴充**：
+  - LangChain4jListRolesTool：獲取伺服器所有角色資訊
+  - 使用 @Tool 註解取代原有 Tool 介面實作
+- **會話持久化**：
+  - ConversationRepository 與 ConversationMessageRepository
+  - 支援會話 ID 策略：用戶特定 / 頻道共享
+  - Token 限制歷史裁剪
+- **環境變數**：
+  - AI_LOG_REQUESTS、AI_LOG_RESPONSES 除錯選項
+  - AI_MAX_RETRIES 最大重試次數
+- V012 資料庫遷移：新增 agent_conversation_persistence 表
+- prompts/agent.md AI Agent 系統提示詞
+
+### Changed
+- AI 服務內部實作重構為 LangChain4J，公開介面保持不變
+- StreamingResponseHandler 新增 ChunkType 枚舉（向後相容）
+- 環境變數預設值：gpt-3.5-turbo → gpt-4o-mini
+- .env.example 新增 DeepSeek URL 範例
+
+### Technical
+- 新增 LangChain4J 依賴 (langchain4j 1.10.0, langchain4j-open-ai 1.10.0)
+- 新增 Jackson datatypes (jackson-datatype-jdk8 2.17.2)
+- 測試覆蓋：新增 15+ 個單元測試、3 個整合測試
+
 ## [0.18.0] - 2025-12-30
 
 ### Added

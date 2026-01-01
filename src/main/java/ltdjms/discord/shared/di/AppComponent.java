@@ -6,7 +6,8 @@ import javax.sql.DataSource;
 import org.jooq.DSLContext;
 
 import dagger.Component;
-import ltdjms.discord.aiagent.commands.ToolCallListener;
+import ltdjms.discord.aiagent.commands.AgentCompletionListener;
+import ltdjms.discord.aiagent.commands.ToolExecutionListener;
 import ltdjms.discord.aiagent.services.AgentConfigCacheInvalidationListener;
 import ltdjms.discord.aichat.commands.AIChatMentionListener;
 import ltdjms.discord.aichat.services.AIChatService;
@@ -85,7 +86,9 @@ public interface AppComponent {
   // AI Agent
   AgentConfigCacheInvalidationListener agentConfigCacheInvalidationListener();
 
-  ToolCallListener toolCallListener();
+  AgentCompletionListener agentCompletionListener();
+
+  ToolExecutionListener toolExecutionListener();
 
   // Events
   DomainEventPublisher domainEventPublisher();

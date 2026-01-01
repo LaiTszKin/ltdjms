@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Map;
 
 import ltdjms.discord.aiagent.domain.ChannelPermission;
+import ltdjms.discord.aiagent.domain.PermissionSetting;
+import ltdjms.discord.aiagent.domain.PermissionSetting.PermissionEnum;
 import net.dv8tion.jda.api.Permission;
 
 /**
@@ -210,5 +212,49 @@ public final class PermissionParser {
         || lowerDesc.contains("mod")
         || lowerDesc.contains("admin")
         || lowerDesc.contains("manage");
+  }
+
+  /**
+   * 將 PermissionEnum 轉換為 JDA Permission。
+   *
+   * @param permissionEnum 權限枚舉
+   * @return JDA Permission，如果不匹配則返回 null
+   */
+  private static Permission toJdaPermission(PermissionEnum permissionEnum) {
+    return switch (permissionEnum) {
+      case ADMINISTRATOR -> Permission.ADMINISTRATOR;
+      case MANAGE_CHANNELS -> Permission.MANAGE_CHANNEL;
+      case MANAGE_ROLES -> Permission.MANAGE_ROLES;
+      case MANAGE_SERVER -> Permission.MANAGE_SERVER;
+      case VIEW_CHANNEL -> Permission.VIEW_CHANNEL;
+      case MESSAGE_SEND -> Permission.MESSAGE_SEND;
+      case MESSAGE_HISTORY -> Permission.MESSAGE_HISTORY;
+      case VOICE_CONNECT -> Permission.VOICE_CONNECT;
+      case VOICE_SPEAK -> Permission.VOICE_SPEAK;
+      case PRIORITY_SPEAKER -> Permission.PRIORITY_SPEAKER;
+    };
+  }
+
+  /**
+   * 將 PermissionSetting 轉換為 ChannelPermission。
+   *
+   * @param setting 權限設定
+   * @return 頻道權限
+   */
+  public static ChannelPermission parse(PermissionSetting setting) {
+    EnumSet<Permission> permissions = EnumSet.noneOf(Permission.class);
+
+    if (setting.allowSet() != null) {
+      for (PermissionEnum permEnum : setting.allowSet()) {
+        Permission jdaPerm = toJdaPermission(permEnum);
+        if (jdaPerm != null) {
+          permissions.add(jdaPerm);
+        }
+      }
+    }
+
+    return permissions.isEmpty()
+        ? ChannelPermission.readOnly(setting.roleId())
+        : new ChannelPermission(setting.roleId(), permissions);
   }
 }

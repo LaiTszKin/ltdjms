@@ -6,20 +6,14 @@ import javax.sql.DataSource;
 import dagger.Module;
 import dagger.Provides;
 import ltdjms.discord.aiagent.services.AIAgentChannelConfigService;
-import ltdjms.discord.aiagent.services.ToolRegistry;
 import ltdjms.discord.aichat.commands.AIChatMentionListener;
 import ltdjms.discord.aichat.domain.AIServiceConfig;
 import ltdjms.discord.aichat.persistence.AIChannelRestrictionRepository;
 import ltdjms.discord.aichat.persistence.JdbcAIChannelRestrictionRepository;
 import ltdjms.discord.aichat.services.AIChannelRestrictionService;
 import ltdjms.discord.aichat.services.AIChatService;
-import ltdjms.discord.aichat.services.AIClient;
 import ltdjms.discord.aichat.services.DefaultAIChannelRestrictionService;
-import ltdjms.discord.aichat.services.DefaultAIChatService;
-import ltdjms.discord.aichat.services.DefaultPromptLoader;
-import ltdjms.discord.aichat.services.PromptLoader;
 import ltdjms.discord.shared.EnvironmentConfig;
-import ltdjms.discord.shared.events.DomainEventPublisher;
 
 /** Dagger module providing AI chat service dependencies. */
 @Module
@@ -35,31 +29,6 @@ public class AIChatModule {
           "Invalid AI service config: " + validation.getError().message());
     }
     return config;
-  }
-
-  @Provides
-  @Singleton
-  public AIClient provideAIClient(AIServiceConfig config) {
-    return new AIClient(config);
-  }
-
-  @Provides
-  @Singleton
-  public PromptLoader providePromptLoader(EnvironmentConfig envConfig) {
-    return new DefaultPromptLoader(envConfig);
-  }
-
-  @Provides
-  @Singleton
-  public AIChatService provideAIChatService(
-      AIServiceConfig config,
-      AIClient aiClient,
-      DomainEventPublisher eventPublisher,
-      PromptLoader promptLoader,
-      AIAgentChannelConfigService agentConfigService,
-      ToolRegistry toolRegistry) {
-    return new DefaultAIChatService(
-        config, aiClient, eventPublisher, promptLoader, agentConfigService, toolRegistry);
   }
 
   @Provides

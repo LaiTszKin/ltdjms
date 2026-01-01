@@ -2,6 +2,8 @@ package ltdjms.discord.shared.di;
 
 import javax.inject.Singleton;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import dagger.Module;
 import dagger.Provides;
 import ltdjms.discord.shared.EnvironmentConfig;
@@ -23,9 +25,9 @@ public class CacheModule {
 
   @Provides
   @Singleton
-  public CacheService provideCacheService(EnvironmentConfig config) {
+  public CacheService provideCacheService(EnvironmentConfig config, ObjectMapper objectMapper) {
     String redisUri = config.getRedisUri();
-    return new RedisCacheService(redisUri);
+    return new RedisCacheService(redisUri, objectMapper);
   }
 
   @Provides

@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 import java.util.Optional;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -25,8 +26,14 @@ import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 import ltdjms.discord.shared.Unit;
 import ltdjms.discord.shared.cache.CacheService;
+import ltdjms.discord.shared.di.JDAProvider;
 import ltdjms.discord.shared.events.AIAgentChannelConfigChangedEvent;
 import ltdjms.discord.shared.events.DomainEventPublisher;
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.channel.ChannelType;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 
 /**
  * 測試 {@link DefaultAIAgentChannelConfigService} 的服務邏輯。
@@ -47,13 +54,34 @@ class AIAgentChannelConfigServiceTest {
   private CacheService cacheService;
   private DomainEventPublisher eventPublisher;
   private AIAgentChannelConfigService service;
+  private JDA mockJda;
+  private Guild mockGuild;
+  private GuildChannel mockChannel;
 
   @BeforeEach
   void setUp() {
     repository = mock(AIAgentChannelConfigRepository.class);
     cacheService = mock(CacheService.class);
     eventPublisher = mock(DomainEventPublisher.class);
+
+    // 設置 JDA mock
+    mockJda = mock(JDA.class);
+    mockGuild = mock(Guild.class);
+    mockChannel = mock(TextChannel.class);
+
+    when(mockJda.getGuildById(TEST_GUILD_ID)).thenReturn(mockGuild);
+    when(mockGuild.getGuildChannelById(TEST_CHANNEL_ID)).thenReturn(mockChannel);
+    when(mockChannel.getType()).thenReturn(ChannelType.TEXT);
+    when(mockChannel.getIdLong()).thenReturn(TEST_CHANNEL_ID);
+
+    JDAProvider.setJda(mockJda);
+
     service = new DefaultAIAgentChannelConfigService(repository, cacheService, eventPublisher);
+  }
+
+  @AfterEach
+  void tearDown() {
+    JDAProvider.clear();
   }
 
   @Nested

@@ -457,3 +457,226 @@ private PermissionOverride parsePermissionSet(ChannelPermission perm) {
 - 支援工具執行超時控制
 - 支援工具執行結果回饋給 AI
 - 支援並行工具調用（可配置）
+
+---
+
+## LangChain4J 工具調用整合（V007 新增）
+
+### 概述
+
+從 V007 版本開始，AI Agent 模組已整合 **LangChain4J** 框架的工具調用功能。AI 現在可以通過 LangChain4J 的 `@Tool` 註解直接調用系統工具，無需手動解析 JSON 格式的工具調用請求。
+
+### 主要變更
+
+#### 原有方式 vs LangChain4J 方式
+
+| 特性 | 原有方式 | LangChain4J 方式 |
+|------|---------|-----------------|
+| 工具定義 | 實作 `Tool` 介面 | 使用 `@Tool` 註解 |
+| 調用方式 | 解析 AI 回應中的 JSON | LangChain4J 自動處理 |
+| 參數解析 | 手動解析 | 框架自動綁定 |
+| 上下文傳遞 | `ToolContext` | `ToolExecutionContext` (ThreadLocal) |
+
+### LangChain4J 工具實作
+
+#### LangChain4jCreateChannelTool
+
+創建 Discord 頻道工具，使用 LangChain4J `@Tool` 註解：
+
+```java
+public class LangChain4jCreateChannelTool {
+    private final Guild guild;
+    private final ToolExecutionInterceptor interceptor;
+
+    @Tool("創建一個新的 Discord 文字頻道")
+    public String createChannel(
+        @P("頻道名稱") String name,
+        @P("頻道描述（可選）") String description
+    ) {
+        // 工具執行邏輯
+        return "✅ 頻道已創建";
+    }
+}
+```
+
+**功能特性**：
+- 自動參數驗證（名稱長度、特殊字符）
+- ThreadLocal 上下文獲取（guildId、channelId、userId）
+- 審計日誌自動記錄
+- 事件自動發布
+
+#### LangChain4jCreateCategoryTool
+
+創建 Discord 類別工具：
+
+```java
+public class LangChain4jCreateCategoryTool {
+    @Tool("創建一個新的 Discord 類別")
+    public String createCategory(
+        @P("類別名稱") String name
+    ) {
+        // 實作邏輯
+    }
+}
+```
+
+#### LangChain4jListChannelsTool
+
+列出頻道資訊工具：
+
+```java
+public class LangChain4jListChannelsTool {
+    @Tool("列出 Discord 伺服器中的頻道資訊")
+    public String listChannels() {
+        // 實作邏輯
+    }
+}
+```
+
+### 工具執行上下文
+
+#### ToolExecutionContext
+
+使用 ThreadLocal 存儲工具執行上下文：
+
+```java
+public final class ToolExecutionContext {
+    private static final ThreadLocal<Context> CONTEXT = new ThreadLocal<>();
+
+    public static void setContext(long guildId, long channelId, long userId);
+    public static Context getContext();
+    public static void clearContext();
+    public static boolean isContextSet();
+
+    public record Context(long guildId, long channelId, long userId) {}
+}
+```
+
+**使用流程**：
+1. AI 請求到達前設置上下文
+2. AI 調用工具時，通過 ThreadLocal 獲取上下文
+3. 工具執行完成後清除上下文
+
+### 審計日誌
+
+#### ToolExecutionInterceptor
+
+工具執行審計攔截器：
+
+```java
+public final class ToolExecutionInterceptor {
+    public void onToolExecutionStarted(String toolName, Map<String, Object> parameters);
+    public String onToolExecutionCompleted(String result);
+    public String onToolExecutionFailed(String error);
+}
+```
+
+**功能**：
+- 記錄所有工具調用（成功和失敗）
+- 保存到 `ai_tool_execution_log` 表
+- 發布 `LangChain4jToolExecutedEvent` 事件
+- 返回友善的執行通知訊息
+
+#### LangChain4jToolExecutedEvent
+
+工具執行完成事件：
+
+```java
+public record LangChain4jToolExecutedEvent(
+    long guildId,
+    long channelId,
+    long userId,
+    String toolName,
+    String result,
+    boolean success,
+    Instant timestamp
+) implements DomainEvent {}
+```
+
+### 依賴注入配置
+
+#### AIAgentModule
+
+Dagger 模組配置，註冊 LangChain4J 組件：
+
+```java
+@Module
+public class AIAgentModule {
+    @Provides
+    @Singleton
+    public LangChain4jAgentService provideLangChain4jAgentService(
+        StreamingChatLanguageModel chatModel,
+        ChatMemoryProvider chatMemoryProvider,
+        List<Object> tools
+    );
+
+    @Provides
+    @Singleton
+    public ToolExecutionInterceptor provideToolExecutionInterceptor(
+        ToolExecutionLogRepository logRepository,
+        ObjectMapper objectMapper,
+        DomainEventPublisher eventPublisher
+    );
+}
+```
+
+### 使用方式
+
+#### AI 工具調用範例
+
+```
+使用者: @LTDJMSBot 請創建一個名為「公告」的頻道
+系統: [LangChain4J 自動識別需要調用 createChannel 工具]
+系統: [執行工具，創建頻道]
+系統: ✅ 工具「創建頻道」執行成功
+系統: 已為您創建名為「公告」的文字頻道
+```
+
+#### 工具執行通知
+
+工具執行完成後會顯示通知訊息：
+
+| 工具 | 成功訊息 | 失敗訊息 |
+|------|---------|---------|
+| createChannel | ✅ 工具「創建頻道」執行成功 | ❌ 工具「創建頻道」執行失敗：... |
+| createCategory | ✅ 工具「創建類別」執行成功 | ❌ 工具「創建類別」執行失敗：... |
+| listChannels | ✅ 工具「列出頻道」執行成功 | ❌ 工具「列出頻道」執行失敗：... |
+
+### 會話記憶整合
+
+#### PersistentChatMemoryProvider
+
+整合 Redis + PostgreSQL 的會話記憶提供者：
+
+**功能**：
+- Redis 快取（30 分鐘 TTL）
+- PostgreSQL 持久化存儲
+- Token 限制歷史裁剪
+- 工具調用結果歷史記錄
+
+**會話 ID 策略**：
+- `{guildId}:{channelId}:{userId}` - 用戶特定會話
+- `{guildId}:{channelId}` - 頻道共享會話
+
+### 測試
+
+#### 單元測試
+
+```bash
+# 執行 LangChain4J 工具單元測試
+mvn test -Dtest=LangChain4jCreateChannelToolTest
+mvn test -Dtest=LangChain4jCreateCategoryToolTest
+mvn test -Dtest=LangChain4jListChannelsToolTest
+mvn test -Dtest=PersistentChatMemoryProviderTest
+mvn test -Dtest=RedisPostgresChatMemoryStoreTest
+```
+
+### 相關文件
+
+- [LangChain4J AI 功能規格](../../specs/007-langchain4j-ai/spec.md)
+- [LangChain4J 實作計畫](../../specs/007-langchain4j-ai/plan.md)
+- [LangChain4J 研究文檔](../../specs/007-langchain4j-ai/research.md)
+- [LangChain4J 快速入門](../../specs/007-langchain4j-ai/quickstart.md)
+- [LangChain4J 任務列表](../../specs/007-langchain4j-ai/tasks.md)
+
+---

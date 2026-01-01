@@ -21,6 +21,9 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.SelfUser;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.ChannelType;
+import net.dv8tion.jda.api.entities.channel.concrete.ThreadChannel;
+import net.dv8tion.jda.api.entities.channel.unions.IThreadContainerUnion;
 import net.dv8tion.jda.api.entities.channel.unions.MessageChannelUnion;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.requests.restaction.MessageCreateAction;
@@ -138,6 +141,28 @@ class AIChatMentionListenerTest {
       listener.onMessageReceived(event);
 
       // Assert - 無限制模式應該觸發 AI 回應
+      verify(messageChannel).sendMessage(any(CharSequence.class));
+    }
+
+    @Test
+    @DisplayName("當訊息在討論串中，應以父頻道進行限制檢查")
+    void shouldUseParentChannelForRestrictionWhenThread() {
+      ThreadChannel threadChannel = mock(ThreadChannel.class);
+      IThreadContainerUnion parentChannel = mock(IThreadContainerUnion.class);
+
+      when(messageChannel.getType()).thenReturn(ChannelType.GUILD_PUBLIC_THREAD);
+      when(messageChannel.asThreadChannel()).thenReturn(threadChannel);
+      when(threadChannel.getParentChannel()).thenReturn(parentChannel);
+      when(parentChannel.getIdLong()).thenReturn(456L);
+      when(channelRestrictionService.isChannelAllowed(123L, 456L)).thenReturn(true);
+      when(guild.getIdLong()).thenReturn(123L);
+      when(messageChannel.getIdLong()).thenReturn(999L);
+      when(regularUser.getId()).thenReturn("789");
+      when(message.getContentRaw()).thenReturn("<@999> hello");
+
+      listener.onMessageReceived(event);
+
+      verify(channelRestrictionService).isChannelAllowed(123L, 456L);
       verify(messageChannel).sendMessage(any(CharSequence.class));
     }
 

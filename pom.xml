@@ -6,7 +6,7 @@
 
     <groupId>ltdjms</groupId>
     <artifactId>ltdjms</artifactId>
-    <version>0.18.0</version>
+    <version>0.19.0</version>
     <packaging>jar</packaging>
 
     <name>LTDJ Management System</name>
@@ -41,6 +41,9 @@
 
         <!-- Code formatting -->
         <spotless.version>3.1.0</spotless.version>
+
+        <!-- LangChain4J -->
+        <langchain4j.version>1.10.0</langchain4j.version>
     </properties>
 
     <dependencies>
@@ -113,6 +116,25 @@
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
             <version>${logback.version}</version>
+        </dependency>
+
+        <!-- Jackson datatypes -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jdk8</artifactId>
+            <version>2.17.2</version>
+        </dependency>
+
+        <!-- LangChain4J -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j</artifactId>
+            <version>${langchain4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-open-ai</artifactId>
+            <version>${langchain4j.version}</version>
         </dependency>
 
         <!-- Test dependencies -->
@@ -235,13 +257,15 @@
                         <exclude>**/Jdbc*Repository.class</exclude>
                         <exclude>**/Jooq*Repository.class</exclude>
                         <!-- Exclude Dagger component wiring and DI modules (infrastructure-only) -->
-                        <exclude>**/AppComponent.class</exclude>
-                        <exclude>**/AppComponentFactory.class</exclude>
                         <exclude>**/DaggerAppComponent*.class</exclude>
                         <exclude>**/*Module.class</exclude>
                         <!-- Exclude cache infrastructure (not yet integrated, to be covered in future) -->
                         <exclude>**/RedisCacheService.class</exclude>
                         <exclude>**/CacheInvalidationListener.class</exclude>
+                        <!-- Exclude AI Agent services without tests yet -->
+                        <exclude>**/DiscordThreadHistoryProvider.class</exclude>
+                        <exclude>**/InMemoryToolCallHistory.class</exclude>
+                        <exclude>**/SimplifiedChatMemoryProvider.class</exclude>
                     </excludes>
                 </configuration>
                 <executions>

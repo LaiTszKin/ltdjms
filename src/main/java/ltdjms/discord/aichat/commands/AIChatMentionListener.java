@@ -9,7 +9,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ltdjms.discord.aiagent.services.AIAgentChannelConfigService;
-import ltdjms.discord.aiagent.services.ToolCallRequestParser;
 import ltdjms.discord.aichat.services.AIChannelRestrictionService;
 import ltdjms.discord.aichat.services.AIChatService;
 import ltdjms.discord.aichat.services.MessageSplitter;
@@ -139,10 +138,15 @@ public class AIChatMentionListener extends ListenerAdapter {
 
     // Early channel check: silently ignore if channel not allowed
     long guildId = event.getGuild().getIdLong();
-    long channelId = event.getChannel().getIdLong();
-    if (!channelRestrictionService.isChannelAllowed(guildId, channelId)) {
+    MessageChannelUnion channel = event.getChannel();
+    long channelId = channel.getIdLong();
+    long restrictionChannelId = resolveRestrictionChannelId(channel);
+    if (!channelRestrictionService.isChannelAllowed(guildId, restrictionChannelId)) {
       LOGGER.debug(
-          "Channel {} not in allowed list for guild {}, ignoring mention", channelId, guildId);
+          "Channel {} (restriction check {}) not in allowed list for guild {}, ignoring mention",
+          channelId,
+          restrictionChannelId,
+          guildId);
       return;
     }
 
@@ -166,7 +170,6 @@ public class AIChatMentionListener extends ListenerAdapter {
     String channelIdStr = event.getChannel().getId();
     String userId = event.getAuthor().getId();
     long userIdLong = event.getAuthor().getIdLong();
-    var channel = event.getChannel();
     boolean agentEnabled =
         agentConfigService != null && agentConfigService.isAgentEnabled(guildId, channelId);
 
@@ -187,7 +190,8 @@ public class AIChatMentionListener extends ListenerAdapter {
                     userIdLong,
                     userMessage,
                     channel,
-                    thinkingMessage);
+                    thinkingMessage,
+                    event.getMessage().getIdLong());
                 return;
               }
 
@@ -275,15 +279,21 @@ public class AIChatMentionListener extends ListenerAdapter {
       long userIdLong,
       String userMessage,
       MessageChannelUnion channel,
-      Message thinkingMessage) {
+      Message thinkingMessage,
+      long messageId) {
     StringBuilder contentBuffer = new StringBuilder();
     AtomicBoolean completed = new AtomicBoolean(false);
+    final ReasoningMessageTracker reasoningTracker = new ReasoningMessageTracker();
+    reasoningTracker.setInitialMessage(thinkingMessage);
+    final boolean[] isFirstChunk = {true};
+    final boolean[] hasReasoning = {false};
 
     aiChatService.generateStreamingResponse(
         guildId,
         channelIdStr,
         userId,
         userMessage,
+        messageId,
         (chunk, isComplete, error, type) -> {
           if (error != null) {
             thinkingMessage.editMessage(getErrorMessage(error)).queue();
@@ -291,10 +301,23 @@ public class AIChatMentionListener extends ListenerAdapter {
             return;
           }
 
-          if (type == StreamingResponseHandler.ChunkType.CONTENT
-              && chunk != null
-              && !chunk.isEmpty()) {
-            contentBuffer.append(chunk);
+          if (chunk != null && !chunk.isEmpty()) {
+            if (type == StreamingResponseHandler.ChunkType.REASONING) {
+              if (showReasoning) {
+                String formattedChunk = formatAsSpoiler(chunk);
+                hasReasoning[0] = true;
+                if (isFirstChunk[0]) {
+                  thinkingMessage.editMessage(formattedChunk).queue();
+                  isFirstChunk[0] = false;
+                } else {
+                  channel
+                      .sendMessage(formattedChunk)
+                      .queue(sentMessage -> reasoningTracker.addReasoningMessage(sentMessage));
+                }
+              }
+            } else if (type == StreamingResponseHandler.ChunkType.CONTENT) {
+              contentBuffer.append(chunk);
+            }
           }
 
           if (!isComplete || !completed.compareAndSet(false, true)) {
@@ -307,18 +330,11 @@ public class AIChatMentionListener extends ListenerAdapter {
             return;
           }
 
-          boolean hasToolCall =
-              ToolCallRequestParser.parse(fullContent, guildId, channelId, userIdLong).isPresent();
-          if (hasToolCall) {
-            thinkingMessage
-                .delete()
-                .queue(
-                    v -> LOGGER.debug("已刪除工具調用訊息"),
-                    e -> LOGGER.warn("刪除工具調用訊息失敗: {}", e.getMessage()));
-            return;
+          if (showReasoning && hasReasoning[0]) {
+            sendBufferedContent(channel, null, fullContent);
+          } else {
+            sendBufferedContent(channel, thinkingMessage, fullContent);
           }
-
-          sendBufferedContent(channel, thinkingMessage, fullContent);
           LOGGER.info("AI streaming completed");
         });
   }
@@ -330,7 +346,11 @@ public class AIChatMentionListener extends ListenerAdapter {
       return;
     }
 
-    thinkingMessage.editMessage(parts.get(0)).queue();
+    if (thinkingMessage != null) {
+      thinkingMessage.editMessage(parts.get(0)).queue();
+    } else {
+      channel.sendMessage(parts.get(0)).queue();
+    }
     for (int i = 1; i < parts.size(); i++) {
       channel.sendMessage(parts.get(i)).queue();
     }
@@ -363,5 +383,26 @@ public class AIChatMentionListener extends ListenerAdapter {
       return content;
     }
     return SPOILER_PREFIX + content;
+  }
+
+  private long resolveRestrictionChannelId(MessageChannelUnion channel) {
+    if (channel == null) {
+      return -1L;
+    }
+
+    try {
+      var type = channel.getType();
+      if (type != null && type.isThread()) {
+        var threadChannel = channel.asThreadChannel();
+        var parentChannel = threadChannel.getParentChannel();
+        if (parentChannel != null) {
+          return parentChannel.getIdLong();
+        }
+      }
+    } catch (Exception e) {
+      LOGGER.warn("解析討論串父頻道失敗，改用討論串本身: {}", e.getMessage());
+    }
+
+    return channel.getIdLong();
   }
 }
