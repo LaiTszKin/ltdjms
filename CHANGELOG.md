@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.22.0] - 2026-01-03
+
+### Added
+- **aichat**: Prompt 分層載入功能
+  - 實作雙資料夾 prompt 系統（prompts/system/ 與 prompts/agent/）
+  - PromptLoader 介面新增 `agentEnabled` 參數支援條件載入
+  - system/ 資料夾內容永遠注入（基礎系統提示詞）
+  - agent/ 資料夾僅在 Agent 功能啟用時注入
+  - 支援檔案遷移至新的資料夾結構
+  - 與 AIAgentChannelConfigService 整合，根據頻道配置動態載入
+
+### Changed
+- **aichat**: 重構 prompt 載入邏輯
+  - DefaultPromptLoader 實作雙資料夾載入與合併
+  - LangChain4jAIChatService 根據 Agent 配置選擇載入模式
+  - agent/ 資料夾不存在時記錄警告但不影響運作
+
+### Documentation
+- 新增 `docs/plans/2026-01-02-prompt-separation-design.md` 設計文件
+- 新增 `docs/plans/2026-01-02-prompt-separation-implementation.md` 實作計劃
+- 更新 `docs/modules/aichat.md` 說明新的 prompt 結構
+
 ## [0.20.2] - 2026-01-02
 
 ### Fixed
