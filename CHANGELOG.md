@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.20.1] - 2026-01-02
+
+### Fixed
+- **AI Agent 權限工具文件**: 改善 `LangChain4jModifyChannelPermissionsTool` 的說明文件
+  - 釐清 `denyToAdd`（禁止）與 `allowToRemove`（移除允許）的使用差異
+  - 新增 Discord 權限三種狀態（明確允許、明確拒絕、中立）的概念說明
+  - 提供多個實際使用範例幫助 AI 準確判斷用戶意圖
+  - 修正 AI 對「禁止」與「不授予」權限的判斷邏輯
+
 ## [0.20.0] - 2026-01-02
 
 ### Added

@@ -57,19 +57,37 @@ public final class LangChain4jModifyChannelPermissionsTool {
       - 當需要為特定用戶或角色添加或移除頻道權限時使用
       - 需要修改現有權限覆寫時使用
       - 批量修改多個權限時使用
+      - 當用戶要求「禁止」、「不允許」、「拒絕」某個權限時使用
 
       返回資訊：
       - 修改是否成功
       - 修改前後的權限對比
       - 頻道和目標資訊
 
-      重要：
-      - 權限修改是基於現有權限的增量操作
-      - allowToAdd: 添加到「允許」集合的權限
-      - allowToRemove: 從「允許」集合移除的權限
-      - denyToAdd: 添加到「拒絕」集合的權限
-      - denyToRemove: 從「拒絕」集合移除的權限
+      權限系統概念（重要）：
+      Discord 權限系統有三種狀態：
+      1. 明確允許（✓）：使用 allowToAdd 添加，該角色/用戶擁有此權限
+      2. 明確拒絕（✗）：使用 denyToAdd 添加，該角色/用戶被禁止此權限（會覆蓋角色層級權限）
+      3. 中立（/）：不設置，使用角色層級的預設權限
+
+      參數使用指南：
+      - allowToAdd: 當用戶說「允許」、「給予」、「添加」權限時使用
+      - allowToRemove: 當用戶說「移除允許」（但不完全禁止）時使用
+      - denyToAdd: 當用戶說「禁止」、「不允許」、「拒絕」、「阻止」權限時使用（這是積極禁止）
+      - denyToRemove: 當用戶說「恢復」、「不再拒絕」權限時使用
+
+      關鍵差異：
+      - 「不授予」權限：不設置 allowToAdd（保持中立），但仍會使用角色層級權限
+      - 「禁止」權限：設置 denyToAdd（明確拒絕），會覆蓋角色層級權限
+
+      使用範例：
+      - 「禁止普通成員發言」→ denyToAdd: ["MESSAGE_SEND"]（而非 allowToRemove）
+      - 「只允許管理員發言」→ denyToAdd: ["MESSAGE_SEND"] for @everyone
+      - 「允許管理員發言」→ allowToAdd: ["MESSAGE_SEND"] for 管理員角色
+
+      重要限制：
       - 同一權限不能同時存在於「允許」和「拒絕」集合中
+      - 拒絕權限優級高於允許權限
       """)
   public String modifyChannelPermissions(
       @P(
@@ -115,6 +133,10 @@ public final class LangChain4jModifyChannelPermissionsTool {
                   """
                   要添加到「允許」集合的權限列表。
 
+                  **當用戶說「允許」、「給予」、「添加」權限時使用**
+
+                  這會明確允許該角色/用戶執行特定操作，即使角色層級沒有此權限。
+
                   權限名稱字串列表，支援的權限：
                   - ADMINISTRATOR: 管理員
                   - MANAGE_CHANNELS: 管理頻道
@@ -134,7 +156,8 @@ public final class LangChain4jModifyChannelPermissionsTool {
                   - MESSAGE_EXT_EMOJI: 使用外部表情
 
                   範例：
-                  - ["VIEW_CHANNEL", "MESSAGE_SEND"]：添加查看和發送訊息權限
+                  - ["VIEW_CHANNEL", "MESSAGE_SEND"]：允許查看和發送訊息
+                  - ["MESSAGE_SEND"]：允許發言（用於「允許某人發言」）
                   - []：不添加任何允許權限
                   """,
               required = false)
@@ -144,11 +167,22 @@ public final class LangChain4jModifyChannelPermissionsTool {
                   """
                   要從「允許」集合移除的權限列表。
 
+                  **注意：移除允許 ≠ 禁止。若要禁止權限，請使用 denyToAdd**
+
+                  當用戶說「移除允許」、「撤銷許可」時使用（但不是完全禁止）。
+
+                  移除明確允許後，該角色/用戶仍可能透過角色層級獲得該權限。
+                  這不會阻止他們執行操作，只是移除了頻道層級的特別許可。
+
                   權限名稱字串列表，格式同 allowToAdd。
 
                   範例：
-                  - ["MESSAGE_SEND"]：移除發送訊息權限
+                  - ["MESSAGE_SEND"]：移除發送訊息的明確允許（但若角色層級有此權限，仍可發言）
                   - []：不移除任何允許權限
+
+                  對比：
+                  - allowToRemove: 移除「特別許可」（角色層級權限仍有效）
+                  - denyToAdd: 完全「禁止」該權限（覆蓋所有來源）
                   """,
               required = false)
           List<String> allowToRemove,
@@ -157,11 +191,27 @@ public final class LangChain4jModifyChannelPermissionsTool {
                   """
                   要添加到「拒絕」集合的權限列表。
 
+                  **重要：這是「禁止」權限的正確方式**
+
+                  當用戶使用以下詞彙時，應使用此參數：
+                  - 「禁止」、「不允許」、「拒絕」、「阻止」
+                  - 「不能」、「無法」、「不讓」
+                  - 「限制」、「封鎖」
+
+                  Discord 權限系統中，明確拒絕（✗）會覆蓋角色層級的所有權限設定。
+                  這是唯一能真正阻止普通成員執行某操作的方式。
+
                   權限名稱字串列表，格式同 allowToAdd。
 
                   範例：
-                  - ["VOICE_CONNECT"]：拒絕連結語音頻道
+                  - ["MESSAGE_SEND"]：禁止發送訊息（用於「禁止發言」）
+                  - ["VIEW_CHANNEL"]：禁止查看頻道（用於「隱藏頻道」）
+                  - ["VOICE_CONNECT"]：禁止連結語音頻道
                   - []：不添加任何拒絕權限
+
+                  對比：
+                  - 若只想「不給予」權限：不設置 allowToAdd（仍可能透過角色層級獲得）
+                  - 若要「完全禁止」權限：設置 denyToAdd（會覆蓋所有來源的權限）
                   """,
               required = false)
           List<String> denyToAdd,
@@ -170,11 +220,21 @@ public final class LangChain4jModifyChannelPermissionsTool {
                   """
                   要從「拒絕」集合移除的權限列表。
 
+                  **當用戶說「恢復」、「不再拒絕」、「允許再次」權限時使用**
+
+                  移除明確拒絕後，該角色/用戶將不再被禁止該權限，
+                  會恢復使用角色層級的預設權限。
+
                   權限名稱字串列表，格式同 allowToAdd。
 
                   範例：
+                  - ["MESSAGE_SEND"]：移除發送訊息的拒絕（恢復為角色層級權限）
                   - ["VOICE_CONNECT"]：移除連結語音頻道的拒絕
                   - []：不移除任何拒絕權限
+
+                  對比：
+                  - denyToRemove: 移除「禁止」標記（恢復預設行為）
+                  - allowToAdd: 主動給予「許可」（明確允許）
                   """,
               required = false)
           List<String> denyToRemove,
