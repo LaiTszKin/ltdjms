@@ -85,13 +85,89 @@ JDA 事件監聽器，監聽使用者的機器人提及並觸發 AI 回應。
 - 組裝成完整的 `SystemPrompt`
 - 驗證檔案大小與格式
 
-**預設目錄結構**：
+**預設目錄結構（V017 之前）**：
 ```
 prompts/
 ├── personality.md    # 機器人人格定義
 ├── rules.md          # 使用規則
 └── custom.md         # 自訂提示詞（可選）
 ```
+
+#### Prompt 載入機制（V017 新增）
+
+**雙層 Prompt 系統**：V017 版本引入雙層提示詞架構，將基礎系統提示詞與 Agent 功能提示詞分離。
+
+##### 資料夾結構
+
+```
+prompts/
+├── system/              # 基礎系統提示詞（永遠注入）
+│   ├── intro.md        # 龍騰電競介紹
+│   ├── personality.md  # AI 個性設定
+│   └── rules.md        # 基礎規則
+└── agent/              # Agent 系統提示詞（條件注入）
+    ├── agent.md        # Agent 身分與職責
+    └── commands.md     # 工具使用說明
+```
+
+##### 載入行為
+
+| 情境 | 載入內容 |
+|------|----------|
+| Agent 啟用 | `system/` + `agent/` |
+| Agent 停用 | 僅 `system/` |
+| `system/` 不存在 | 錯誤（配置異常） |
+| `agent/` 不存在 | 記錄警告，繼續使用 `system/` |
+
+##### 實作細節
+
+**PromptLoader 介面**：
+```java
+public interface PromptLoader {
+    Result<SystemPrompt, DomainError> loadPrompts(boolean agentEnabled);
+}
+```
+
+**DefaultPromptLoader**：
+- `loadFromDirectory("system")`: 必備，失敗返回錯誤
+- `loadFromDirectory("agent")`: 可選，失敗記錄警告
+- `combinePrompts()`: 合併多個提示詞來源
+
+**LangChain4jAIChatService 整合**：
+```java
+boolean agentEnabled = isAgentEnabled(guildId, channelIdLong);
+SystemPrompt systemPrompt = loadSystemPromptOrEmpty(agentEnabled);
+```
+
+##### 標題正規化
+
+檔案名稱會被正規化為提示詞區間標題：
+- 移除 `.md` 副檔名
+- 替換連字符（`-`）與底線（`_`）為空格
+- ASCII 字母轉大寫
+- **保留其他語言字元**（如中文）
+
+範例：
+- `intro.md` → `INTRO`
+- `bot-rules_v2.md` → `BOT RULES V2`
+- `龍騰電競介紹.md` → `龍騰電競介紹`
+
+##### 配置
+
+環境變數（保持不變）：
+```bash
+PROMPTS_DIR_PATH=./prompts
+PROMPT_MAX_SIZE_BYTES=1048576
+```
+
+##### 錯誤處理
+
+| 錯誤情境 | 處理方式 |
+|---------|----------|
+| `system/` 不存在 | 返回 `UNEXPECTED_FAILURE` 錯誤 |
+| `agent/` 不存在且 Agent 啟用 | 記錄 WARN 日誌，僅使用 `system/` |
+| 檔案超過大小限制 | 跳過該檔案，記錄 WARN 日誌 |
+| 檔案讀取失敗 | 跳過該檔案，記錄 ERROR 日誌 |
 
 #### PromptSection
 
