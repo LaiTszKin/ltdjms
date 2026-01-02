@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.20.2] - 2026-01-02
+
+### Fixed
+- **Agent 工具開關功能未正確連接配置**：修正 AI Agent 工具未依頻道配置動態啟用的問題
+  - 系統原本已有 `AIAgentChannelConfigService` 控制哪些頻道啟用 Agent 模式，但工具註冊未正確連接此配置
+  - 新增 `AgentServiceFactory` 工廠介面，根據頻道配置決定是否註冊工具
+  - 當頻道未啟用 Agent 時，AI 現在會以純聊天模式回應，不調用任何工具
+- **串流輸出穩定性**：修正非 Agent 路徑逐 token 輸出造成的碎訊息與空白訊息例外
+  - 改用緩衝輸出機制，CONTENT 片段緩衝後一次送出
+  - 減少 Discord API 呼叫次數，改善用戶體驗
+
+### Technical
+- 測試覆蓋：新增 `TestAgentServiceFactory` 支援測試注入
+- 新增「Agent 工具開關」測試套件，驗證工具註冊開關邏輯
+
 ## [0.20.1] - 2026-01-02
 
 ### Fixed

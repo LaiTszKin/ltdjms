@@ -19,6 +19,7 @@ import dev.langchain4j.service.tool.ToolExecution;
 import ltdjms.discord.aiagent.domain.ConversationIdBuilder;
 import ltdjms.discord.aiagent.domain.ConversationMessage;
 import ltdjms.discord.aiagent.domain.MessageRole;
+import ltdjms.discord.aiagent.services.AIAgentChannelConfigService;
 import ltdjms.discord.aiagent.services.InMemoryToolCallHistory;
 import ltdjms.discord.aiagent.services.LangChain4jAgentService;
 import ltdjms.discord.aiagent.services.ToolExecutionContext;
@@ -97,6 +98,70 @@ public final class LangChain4jAIChatService implements AIChatService {
   private final LangChain4jListRolesTool listRolesTool;
   private final LangChain4jGetChannelPermissionsTool getChannelPermissionsTool;
   private final LangChain4jModifyChannelPermissionsTool modifyChannelPermissionsTool;
+  private final AIAgentChannelConfigService agentChannelConfigService;
+  private final AgentServiceFactory agentServiceFactory;
+
+  /** Agent 服務工廠，用於依頻道設定決定是否註冊工具。 */
+  @FunctionalInterface
+  public interface AgentServiceFactory {
+    LangChain4jAgentService create(boolean agentToolsEnabled);
+  }
+
+  /** 預設的 Agent 服務工廠：允許工具時才將工具註冊進 LangChain4j。 */
+  private static final class DefaultAgentServiceFactory implements AgentServiceFactory {
+
+    private final StreamingChatModel streamingChatModel;
+    private final ChatMemoryProvider chatMemoryProvider;
+    private final LangChain4jListChannelsTool listChannelsTool;
+    private final LangChain4jListCategoriesTool listCategoriesTool;
+    private final LangChain4jListRolesTool listRolesTool;
+    private final LangChain4jGetChannelPermissionsTool getChannelPermissionsTool;
+    private final LangChain4jModifyChannelPermissionsTool modifyChannelPermissionsTool;
+    private final LangChain4jCreateChannelTool createChannelTool;
+    private final LangChain4jCreateCategoryTool createCategoryTool;
+
+    DefaultAgentServiceFactory(
+        StreamingChatModel streamingChatModel,
+        ChatMemoryProvider chatMemoryProvider,
+        LangChain4jListChannelsTool listChannelsTool,
+        LangChain4jListCategoriesTool listCategoriesTool,
+        LangChain4jListRolesTool listRolesTool,
+        LangChain4jGetChannelPermissionsTool getChannelPermissionsTool,
+        LangChain4jModifyChannelPermissionsTool modifyChannelPermissionsTool,
+        LangChain4jCreateChannelTool createChannelTool,
+        LangChain4jCreateCategoryTool createCategoryTool) {
+      this.streamingChatModel = streamingChatModel;
+      this.chatMemoryProvider = chatMemoryProvider;
+      this.listChannelsTool = listChannelsTool;
+      this.listCategoriesTool = listCategoriesTool;
+      this.listRolesTool = listRolesTool;
+      this.getChannelPermissionsTool = getChannelPermissionsTool;
+      this.modifyChannelPermissionsTool = modifyChannelPermissionsTool;
+      this.createChannelTool = createChannelTool;
+      this.createCategoryTool = createCategoryTool;
+    }
+
+    @Override
+    public LangChain4jAgentService create(boolean agentToolsEnabled) {
+      var builder =
+          AiServices.builder(LangChain4jAgentService.class)
+              .streamingChatModel(streamingChatModel)
+              .chatMemoryProvider(chatMemoryProvider);
+
+      if (agentToolsEnabled) {
+        builder.tools(
+            createChannelTool,
+            createCategoryTool,
+            listChannelsTool,
+            listCategoriesTool,
+            listRolesTool,
+            getChannelPermissionsTool,
+            modifyChannelPermissionsTool);
+      }
+
+      return builder.build();
+    }
+  }
 
   /**
    * 建立 LangChain4J AI 聊天服務。
@@ -115,6 +180,7 @@ public final class LangChain4jAIChatService implements AIChatService {
    * @param listRolesTool 列出角色工具
    * @param getChannelPermissionsTool 獲取頻道權限工具
    * @param modifyChannelPermissionsTool 修改頻道權限工具
+   * @param agentChannelConfigService Agent 頻道配置服務（決定是否允許工具）
    */
   @Inject
   public LangChain4jAIChatService(
@@ -131,7 +197,45 @@ public final class LangChain4jAIChatService implements AIChatService {
       LangChain4jListCategoriesTool listCategoriesTool,
       LangChain4jListRolesTool listRolesTool,
       LangChain4jGetChannelPermissionsTool getChannelPermissionsTool,
-      LangChain4jModifyChannelPermissionsTool modifyChannelPermissionsTool) {
+      LangChain4jModifyChannelPermissionsTool modifyChannelPermissionsTool,
+      AIAgentChannelConfigService agentChannelConfigService) {
+    this(
+        config,
+        promptLoader,
+        eventPublisher,
+        streamingChatModel,
+        chatMemoryProvider,
+        toolExecutionInterceptor,
+        toolCallHistory,
+        createChannelTool,
+        createCategoryTool,
+        listChannelsTool,
+        listCategoriesTool,
+        listRolesTool,
+        getChannelPermissionsTool,
+        modifyChannelPermissionsTool,
+        agentChannelConfigService,
+        null);
+  }
+
+  /** 供測試注入自訂 AgentServiceFactory 的建構子。 */
+  public LangChain4jAIChatService(
+      AIServiceConfig config,
+      PromptLoader promptLoader,
+      DomainEventPublisher eventPublisher,
+      StreamingChatModel streamingChatModel,
+      ChatMemoryProvider chatMemoryProvider,
+      ToolExecutionInterceptor toolExecutionInterceptor,
+      InMemoryToolCallHistory toolCallHistory,
+      LangChain4jCreateChannelTool createChannelTool,
+      LangChain4jCreateCategoryTool createCategoryTool,
+      LangChain4jListChannelsTool listChannelsTool,
+      LangChain4jListCategoriesTool listCategoriesTool,
+      LangChain4jListRolesTool listRolesTool,
+      LangChain4jGetChannelPermissionsTool getChannelPermissionsTool,
+      LangChain4jModifyChannelPermissionsTool modifyChannelPermissionsTool,
+      AIAgentChannelConfigService agentChannelConfigService,
+      AgentServiceFactory agentServiceFactory) {
     this.config = config;
     this.promptLoader = promptLoader;
     this.eventPublisher = eventPublisher;
@@ -146,6 +250,20 @@ public final class LangChain4jAIChatService implements AIChatService {
     this.listRolesTool = listRolesTool;
     this.getChannelPermissionsTool = getChannelPermissionsTool;
     this.modifyChannelPermissionsTool = modifyChannelPermissionsTool;
+    this.agentChannelConfigService = agentChannelConfigService;
+    this.agentServiceFactory =
+        (agentServiceFactory != null)
+            ? agentServiceFactory
+            : new DefaultAgentServiceFactory(
+                streamingChatModel,
+                chatMemoryProvider,
+                listChannelsTool,
+                listCategoriesTool,
+                listRolesTool,
+                getChannelPermissionsTool,
+                modifyChannelPermissionsTool,
+                createChannelTool,
+                createCategoryTool);
     LOG.info(
         "LangChain4jAIChatService initialized with model: {}, tools: 7, reasoning: {}",
         config.model(),
@@ -210,19 +328,21 @@ public final class LangChain4jAIChatService implements AIChatService {
       long messageId,
       StreamingResponseHandler handler) {
     try {
+      long channelIdLong = parseChannelId(channelId);
+      boolean agentEnabled = isAgentEnabled(guildId, channelIdLong);
+
       // 創建會話 ID
       String conversationId = buildConversationId(guildId, channelId, userId);
 
       // 創建調用參數，傳遞 guildId、channelId、userId 給工具
       long guildIdLong = guildId;
-      long channelIdLong = Long.parseLong(channelId);
       long userIdLong = Long.parseLong(userId);
       InvocationParameters parameters =
           InvocationParameters.from(
               Map.of("guildId", guildIdLong, "channelId", channelIdLong, "userId", userIdLong));
 
       // 創建 AI Agent 服務
-      LangChain4jAgentService agentService = createAgentService(conversationId);
+      LangChain4jAgentService agentService = agentServiceFactory.create(agentEnabled);
 
       // 開始串流對話，傳遞調用參數
       TokenStream tokenStream = agentService.chat(conversationId, userMessage, parameters);
@@ -250,6 +370,9 @@ public final class LangChain4jAIChatService implements AIChatService {
           // 處理部分回應 (content)
           .onPartialResponse(
               token -> {
+                if (token == null || token.isBlank()) {
+                  return;
+                }
                 fullResponse.append(token);
                 try {
                   handler.onChunk(token, false, null, StreamingResponseHandler.ChunkType.CONTENT);
@@ -308,18 +431,19 @@ public final class LangChain4jAIChatService implements AIChatService {
       List<ConversationMessage> history,
       StreamingResponseHandler handler) {
     try {
+      long channelIdLong = parseChannelId(channelId);
+      boolean agentEnabled = isAgentEnabled(guildId, channelIdLong);
       String conversationId = buildConversationId(guildId, channelId, userId);
 
       // 創建調用參數，傳遞 guildId、channelId、userId 給工具
       long guildIdLong = guildId;
-      long channelIdLong = Long.parseLong(channelId);
       long userIdLong = Long.parseLong(userId);
       InvocationParameters parameters =
           InvocationParameters.from(
               Map.of("guildId", guildIdLong, "channelId", channelIdLong, "userId", userIdLong));
 
       // 創建 AI Agent 服務
-      LangChain4jAgentService agentService = createAgentService(conversationId);
+      LangChain4jAgentService agentService = agentServiceFactory.create(agentEnabled);
 
       // 獲取最後一條用戶訊息
       String lastUserMessage = getLastUserMessage(history);
@@ -391,36 +515,11 @@ public final class LangChain4jAIChatService implements AIChatService {
   }
 
   /**
-   * 創建 AI Agent 服務實例。
-   *
-   * <p>使用 LangChain4J 的 {@link AiServices} 動態創建 {@link LangChain4jAgentService} 的實現類。
-   *
-   * @param conversationId 會話 ID（用作 ChatMemory 的 memoryId）
-   * @return AI Agent 服務實例
-   */
-  private LangChain4jAgentService createAgentService(String conversationId) {
-    // 載入系統提示詞
-    SystemPrompt systemPrompt = loadSystemPromptOrEmpty();
-
-    return AiServices.builder(LangChain4jAgentService.class)
-        .streamingChatModel(streamingChatModel)
-        .chatMemoryProvider(chatMemoryProvider)
-        .tools(
-            createChannelTool,
-            createCategoryTool,
-            listChannelsTool,
-            listCategoriesTool,
-            listRolesTool,
-            getChannelPermissionsTool,
-            modifyChannelPermissionsTool)
-        .build();
-  }
-
-  /**
    * 載入系統提示詞，失敗時回退到空提示詞。
    *
    * @return 系統提示詞
    */
+  @SuppressWarnings("unused")
   private SystemPrompt loadSystemPromptOrEmpty() {
     Result<SystemPrompt, DomainError> result = promptLoader.loadPrompts();
     if (result.isErr()) {
@@ -428,6 +527,43 @@ public final class LangChain4jAIChatService implements AIChatService {
       return SystemPrompt.empty();
     }
     return result.getValue();
+  }
+
+  /**
+   * 嘗試解析頻道 ID，失敗時回傳 -1 並記錄警告。
+   *
+   * @param channelId 字串頻道 ID
+   * @return 解析後的 long 值，失敗則為 -1
+   */
+  private long parseChannelId(String channelId) {
+    try {
+      return Long.parseLong(channelId);
+    } catch (NumberFormatException e) {
+      LOG.warn("頻道 ID 解析失敗，預設停用 Agent 工具: {}", channelId);
+      return -1L;
+    }
+  }
+
+  /**
+   * 檢查當前頻道是否允許 Agent 工具。
+   *
+   * @param guildId 伺服器 ID
+   * @param channelIdLong 頻道 ID
+   * @return true 表示允許，false 則禁用工具
+   */
+  private boolean isAgentEnabled(long guildId, long channelIdLong) {
+    if (channelIdLong <= 0) {
+      return false;
+    }
+    if (agentChannelConfigService == null) {
+      LOG.warn("AIAgentChannelConfigService 未注入，為安全起見停用 Agent 工具");
+      return false;
+    }
+    boolean enabled = agentChannelConfigService.isAgentEnabled(guildId, channelIdLong);
+    if (!enabled) {
+      LOG.debug("Agent 工具在 guildId={}, channelId={} 未啟用，將以純聊天模式回應", guildId, channelIdLong);
+    }
+    return enabled;
   }
 
   /**

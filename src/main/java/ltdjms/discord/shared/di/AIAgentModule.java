@@ -384,7 +384,8 @@ public class AIAgentModule {
       LangChain4jListCategoriesTool listCategoriesTool,
       LangChain4jListRolesTool listRolesTool,
       LangChain4jGetChannelPermissionsTool getChannelPermissionsTool,
-      LangChain4jModifyChannelPermissionsTool modifyChannelPermissionsTool) {
+      LangChain4jModifyChannelPermissionsTool modifyChannelPermissionsTool,
+      AIAgentChannelConfigService agentChannelConfigService) {
     return new LangChain4jAIChatService(
         config,
         promptLoader,
@@ -399,7 +400,8 @@ public class AIAgentModule {
         listCategoriesTool,
         listRolesTool,
         getChannelPermissionsTool,
-        modifyChannelPermissionsTool);
+        modifyChannelPermissionsTool,
+        agentChannelConfigService);
   }
 
   /**

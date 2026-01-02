@@ -1,10 +1,15 @@
 package ltdjms.discord.aichat.unit.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -14,8 +19,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.service.TokenStream;
+import ltdjms.discord.aiagent.services.AIAgentChannelConfigService;
 import ltdjms.discord.aiagent.services.InMemoryToolCallHistory;
+import ltdjms.discord.aiagent.services.LangChain4jAgentService;
 import ltdjms.discord.aiagent.services.PersistentChatMemoryProvider;
 import ltdjms.discord.aiagent.services.ToolExecutionInterceptor;
 import ltdjms.discord.aiagent.services.tools.LangChain4jCreateCategoryTool;
@@ -62,6 +71,8 @@ class LangChain4jAIChatServiceTest {
   private LangChain4jListRolesTool mockListRolesTool;
   private LangChain4jGetChannelPermissionsTool mockGetChannelPermissionsTool;
   private LangChain4jModifyChannelPermissionsTool mockModifyChannelPermissionsTool;
+  private AIAgentChannelConfigService mockAgentChannelConfigService;
+  private TestAgentServiceFactory testAgentServiceFactory;
   private AIChatService service;
 
   @BeforeEach
@@ -84,6 +95,8 @@ class LangChain4jAIChatServiceTest {
     mockListRolesTool = mock(LangChain4jListRolesTool.class);
     mockGetChannelPermissionsTool = mock(LangChain4jGetChannelPermissionsTool.class);
     mockModifyChannelPermissionsTool = mock(LangChain4jModifyChannelPermissionsTool.class);
+    mockAgentChannelConfigService = mock(AIAgentChannelConfigService.class);
+    testAgentServiceFactory = new TestAgentServiceFactory();
 
     service =
         new LangChain4jAIChatService(
@@ -100,7 +113,9 @@ class LangChain4jAIChatServiceTest {
             mockListCategoriesTool,
             mockListRolesTool,
             mockGetChannelPermissionsTool,
-            mockModifyChannelPermissionsTool);
+            mockModifyChannelPermissionsTool,
+            mockAgentChannelConfigService,
+            testAgentServiceFactory);
   }
 
   @Nested
@@ -278,6 +293,49 @@ class LangChain4jAIChatServiceTest {
   }
 
   @Nested
+  @DisplayName("Agent 工具開關")
+  class AgentToggle {
+
+    @Test
+    @DisplayName("未啟用 Agent 時應關閉工具註冊")
+    void shouldDisableToolsWhenAgentNotEnabled() {
+      when(mockAgentChannelConfigService.isAgentEnabled(123L, 456L)).thenReturn(false);
+
+      service.generateStreamingResponse(
+          123L,
+          "456",
+          "789",
+          "測試訊息",
+          new StreamingResponseHandler() {
+            @Override
+            public void onChunk(
+                String chunk, boolean isComplete, DomainError error, ChunkType type) {}
+          });
+
+      assertFalse(testAgentServiceFactory.lastAgentToolsEnabled());
+    }
+
+    @Test
+    @DisplayName("啟用 Agent 時應開啟工具註冊")
+    void shouldEnableToolsWhenAgentEnabled() {
+      when(mockAgentChannelConfigService.isAgentEnabled(123L, 456L)).thenReturn(true);
+
+      service.generateStreamingResponse(
+          123L,
+          "456",
+          "789",
+          "測試訊息",
+          new StreamingResponseHandler() {
+            @Override
+            public void onChunk(
+                String chunk, boolean isComplete, DomainError error, ChunkType type) {}
+          });
+
+      assertTrue(testAgentServiceFactory.lastAgentToolsEnabled());
+    }
+  }
+
+  @Nested
   @DisplayName("錯誤處理")
   class ErrorHandling {
 
@@ -320,6 +378,43 @@ class LangChain4jAIChatServiceTest {
     @DisplayName("應正確初始化串流模型")
     void shouldInitializeStreamingModel() {
       assertNotNull(service);
+    }
+  }
+
+  /** 測試用的 Agent 服務工廠，記錄是否啟用工具並回傳無副作用的代理物件。 */
+  private static class TestAgentServiceFactory
+      implements LangChain4jAIChatService.AgentServiceFactory {
+    private Boolean lastAgentToolsEnabled;
+
+    @Override
+    public LangChain4jAgentService create(boolean agentToolsEnabled) {
+      this.lastAgentToolsEnabled = agentToolsEnabled;
+      return new LangChain4jAgentService() {
+        @Override
+        public TokenStream chat(
+            String memoryId, String userMessage, InvocationParameters parameters) {
+          return (TokenStream)
+              Proxy.newProxyInstance(
+                  TokenStream.class.getClassLoader(),
+                  new Class<?>[] {TokenStream.class},
+                  new TokenStreamInvocationHandler());
+        }
+      };
+    }
+
+    boolean lastAgentToolsEnabled() {
+      return Boolean.TRUE.equals(lastAgentToolsEnabled);
+    }
+  }
+
+  /** TokenStream 代理處理器：僅回傳自身以支援鏈式呼叫，避免觸發真正的串流。 */
+  private static class TokenStreamInvocationHandler implements InvocationHandler {
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] args) {
+      if (TokenStream.class.isAssignableFrom(method.getReturnType())) {
+        return proxy;
+      }
+      return null;
     }
   }
 }

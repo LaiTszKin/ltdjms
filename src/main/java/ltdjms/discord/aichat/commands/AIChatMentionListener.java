@@ -181,6 +181,10 @@ public class AIChatMentionListener extends ListenerAdapter {
         .sendMessage(":thought_balloon: AI 正在思考...")
         .queue(
             thinkingMessage -> {
+              // 非 Agent 路徑改為緩衝輸出，避免逐 token 碎訊息與空白訊息例外
+              StringBuilder contentBuffer = new StringBuilder();
+              AtomicBoolean completed = new AtomicBoolean(false);
+
               if (agentEnabled) {
                 handleAgentStreamingResponse(
                     guildId,
@@ -201,7 +205,6 @@ public class AIChatMentionListener extends ListenerAdapter {
 
               final boolean[] isFirstChunk = {true};
               final boolean[] hasReasoning = {false};
-              final AtomicBoolean reasoningDeleted = new AtomicBoolean(false);
 
               aiChatService.generateStreamingResponse(
                   guildId,
@@ -216,30 +219,7 @@ public class AIChatMentionListener extends ListenerAdapter {
                       return;
                     }
 
-                    if (chunk != null && !chunk.isEmpty()) {
-                      String formattedChunk = chunk;
-
-                      // 處理 CONTENT 類型片段
-                      if (type == StreamingResponseHandler.ChunkType.CONTENT) {
-                        // 僅在啟用 reasoning 顯示時才需要刪除
-                        if (showReasoning
-                            && hasReasoning[0]
-                            && reasoningDeleted.compareAndSet(false, true)) {
-                          reasoningTracker.deleteAll(
-                              () -> {
-                                LOGGER.debug("已刪除所有 reasoning 訊息");
-                              });
-                        }
-
-                        if (isFirstChunk[0]) {
-                          thinkingMessage.editMessage(formattedChunk).queue();
-                          isFirstChunk[0] = false;
-                        } else {
-                          channel.sendMessage(formattedChunk).queue();
-                        }
-                        return;
-                      }
-
+                    if (chunk != null && !chunk.isBlank()) {
                       // 處理 REASONING 類型片段
                       if (type == StreamingResponseHandler.ChunkType.REASONING) {
                         // 當 showReasoning 為 false 時，完全忽略 reasoning 片段
@@ -247,7 +227,7 @@ public class AIChatMentionListener extends ListenerAdapter {
                           return;
                         }
 
-                        formattedChunk = formatAsSpoiler(chunk);
+                        String formattedChunk = formatAsSpoiler(chunk);
                         hasReasoning[0] = true;
 
                         if (isFirstChunk[0]) {
@@ -261,12 +241,29 @@ public class AIChatMentionListener extends ListenerAdapter {
                               .queue(
                                   sentMessage -> reasoningTracker.addReasoningMessage(sentMessage));
                         }
+                      } else if (type == StreamingResponseHandler.ChunkType.CONTENT) {
+                        // 緩衝內容，待完成後一次送出，避免碎字與空白訊息
+                        contentBuffer.append(chunk);
                       }
                     }
 
-                    if (isComplete) {
-                      LOGGER.info("AI streaming completed");
+                    if (!isComplete || !completed.compareAndSet(false, true)) {
+                      return;
                     }
+
+                    String fullContent = contentBuffer.toString().trim();
+                    if (fullContent.isEmpty()) {
+                      thinkingMessage.editMessage(":question: AI 沒有產生回應").queue();
+                      return;
+                    }
+
+                    // 如果前面已顯示 reasoning，保留 reasoning 訊息；否則覆蓋初始 thinking
+                    if (showReasoning && hasReasoning[0]) {
+                      sendBufferedContent(channel, null, fullContent);
+                    } else {
+                      sendBufferedContent(channel, thinkingMessage, fullContent);
+                    }
+                    LOGGER.info("AI streaming completed");
                   });
             });
   }
