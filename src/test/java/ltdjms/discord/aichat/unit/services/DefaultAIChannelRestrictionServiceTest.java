@@ -14,6 +14,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import ltdjms.discord.aichat.domain.AIChannelRestriction;
 import ltdjms.discord.aichat.domain.AllowedChannel;
 import ltdjms.discord.aichat.persistence.AIChannelRestrictionRepository;
 import ltdjms.discord.aichat.services.AIChannelRestrictionService;
@@ -42,7 +43,8 @@ class DefaultAIChannelRestrictionServiceTest {
     @Test
     @DisplayName("當允許清單為空時，應返回 true（無限制模式）")
     void shouldReturnTrueWhenEmpty() {
-      when(repository.findByGuildId(123L)).thenReturn(Result.ok(Set.of()));
+      AIChannelRestriction restriction = new AIChannelRestriction(123L, Set.of());
+      when(repository.findRestrictionByGuildId(123L)).thenReturn(Result.ok(restriction));
 
       boolean allowed = service.isChannelAllowed(123L, 1001L);
 
@@ -53,7 +55,8 @@ class DefaultAIChannelRestrictionServiceTest {
     @DisplayName("當頻道在允許清單中時，應返回 true")
     void shouldReturnTrueWhenInList() {
       Set<AllowedChannel> channels = Set.of(new AllowedChannel(1001L, "general"));
-      when(repository.findByGuildId(123L)).thenReturn(Result.ok(channels));
+      AIChannelRestriction restriction = new AIChannelRestriction(123L, channels);
+      when(repository.findRestrictionByGuildId(123L)).thenReturn(Result.ok(restriction));
 
       boolean allowed = service.isChannelAllowed(123L, 1001L);
 
@@ -64,7 +67,8 @@ class DefaultAIChannelRestrictionServiceTest {
     @DisplayName("當頻道不在允許清單中時，應返回 false")
     void shouldReturnFalseWhenNotInList() {
       Set<AllowedChannel> channels = Set.of(new AllowedChannel(1001L, "general"));
-      when(repository.findByGuildId(123L)).thenReturn(Result.ok(channels));
+      AIChannelRestriction restriction = new AIChannelRestriction(123L, channels);
+      when(repository.findRestrictionByGuildId(123L)).thenReturn(Result.ok(restriction));
 
       boolean allowed = service.isChannelAllowed(123L, 1002L);
 
@@ -72,9 +76,25 @@ class DefaultAIChannelRestrictionServiceTest {
     }
 
     @Test
+    @DisplayName("當頻道未明確允許但其類別被允許時，應返回 true")
+    void shouldReturnTrueWhenCategoryAllowed() {
+      Set<AllowedChannel> channels = Set.of(new AllowedChannel(1001L, "general"));
+      AIChannelRestriction restriction =
+          new AIChannelRestriction(
+              123L,
+              channels,
+              Set.of(new ltdjms.discord.aichat.domain.AllowedCategory(2001L, "cat")));
+      when(repository.findRestrictionByGuildId(123L)).thenReturn(Result.ok(restriction));
+
+      boolean allowed = service.isChannelAllowed(123L, 9999L, 2001L);
+
+      assertTrue(allowed);
+    }
+
+    @Test
     @DisplayName("當資料庫查詢失敗時，應返回 false")
     void shouldReturnFalseWhenQueryFails() {
-      when(repository.findByGuildId(123L))
+      when(repository.findRestrictionByGuildId(123L))
           .thenReturn(Result.err(DomainError.persistenceFailure("DB error", null)));
 
       boolean allowed = service.isChannelAllowed(123L, 1001L);

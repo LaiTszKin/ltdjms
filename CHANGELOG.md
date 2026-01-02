@@ -250,6 +250,30 @@ All notable changes to this project will be documented in this file.
 - 更新所有文檔與測試，將「逾時」統一改為「連線逾時」
 - 更新 `.env.example` 與 `docker-compose.yml`
 
+## [0.21.0] - 2026-01-02
+
+### Added
+- **aichat**: AI 類別層級配置功能
+  - 新增 `AllowedCategory` 值物件表示允許的類別
+  - 新增 `AICategoryRestrictionChangedEvent` 領域事件
+  - 支援類別層級的權限設定與繼承
+  - 實作覆蓋模式（頻道設定優先於類別設定）
+  - 新增資料庫遷移 `V013__ai_category_restriction.sql`
+  - Repository 新增類別操作方法
+  - Service 層 `isChannelAllowed` 支援 categoryId 參數
+  - `AIChatMentionListener` 自動解析頻道所屬類別
+
+### Changed
+- **aichat**: `AIChannelRestriction` 聚合根擴展支援類別清單
+- **panel**: 更新管理面板相關處理器
+
+### Fixed
+- **currency**: 修正 `BotErrorHandler` 的錯誤處理邏輯
+- **shared**: 擴展 `DomainError` 支援類別相關錯誤類型
+
+### Database
+- 新增 `ai_category_restriction` 資料表儲存類別配置
+
 ## [Unreleased]
 
 ## [0.17.2] - 2025-12-29

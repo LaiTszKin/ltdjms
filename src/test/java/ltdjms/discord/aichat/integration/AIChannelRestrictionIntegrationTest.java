@@ -47,6 +47,7 @@ class AIChannelRestrictionIntegrationTest extends PostgresIntegrationTestBase {
     try (Connection conn = dataSource.getConnection();
         Statement stmt = conn.createStatement()) {
       stmt.execute("TRUNCATE TABLE ai_channel_restriction CASCADE");
+      stmt.execute("TRUNCATE TABLE ai_category_restriction CASCADE");
     } catch (Exception e) {
       // 資料表可能尚未建立，嘗試建立
       createTableIfNotExists(dataSource);
@@ -75,6 +76,22 @@ class AIChannelRestrictionIntegrationTest extends PostgresIntegrationTestBase {
           """
           CREATE INDEX IF NOT EXISTS idx_ai_channel_restriction_guild_id
               ON ai_channel_restriction(guild_id)
+          """);
+      stmt.execute(
+          """
+          CREATE TABLE IF NOT EXISTS ai_category_restriction (
+              guild_id BIGINT NOT NULL,
+              category_id BIGINT NOT NULL,
+              category_name TEXT NOT NULL,
+              created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+              updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+              PRIMARY KEY (guild_id, category_id)
+          )
+          """);
+      stmt.execute(
+          """
+          CREATE INDEX IF NOT EXISTS idx_ai_category_restriction_guild_id
+              ON ai_category_restriction(guild_id)
           """);
     } catch (Exception e) {
       throw new RuntimeException("Failed to create ai_channel_restriction table", e);
@@ -226,6 +243,22 @@ class AIChannelRestrictionIntegrationTest extends PostgresIntegrationTestBase {
       assertThat(allowed1).isTrue();
       assertThat(allowed2).isTrue();
       assertThat(allowed3).isFalse();
+    }
+
+    @Test
+    @DisplayName("當頻道未列入允許清單但其類別被允許時，應允許")
+    void shouldAllowWhenCategoryAllowed() throws Exception {
+      // Given - 類別允許但頻道未列出
+      service.addAllowedCategory(
+          TEST_GUILD_ID,
+          new ltdjms.discord.aichat.domain.AllowedCategory(999999999999999999L, "category-1"));
+
+      // When - 帶入對應類別 ID
+      boolean allowed =
+          service.isChannelAllowed(TEST_GUILD_ID, TEST_CHANNEL_3, 999999999999999999L);
+
+      // Then
+      assertThat(allowed).isTrue();
     }
 
     @Test

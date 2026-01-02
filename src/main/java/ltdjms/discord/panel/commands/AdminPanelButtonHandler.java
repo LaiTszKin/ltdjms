@@ -19,6 +19,7 @@ import ltdjms.discord.shared.Unit;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.ChannelType;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.EntitySelectInteractionEvent;
@@ -55,6 +56,8 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
   public static final String BUTTON_AI_CHANNEL_CONFIG = "admin_panel_ai_channel";
   public static final String BUTTON_AI_ADD_CHANNEL = "admin_ai_add_channel";
   public static final String BUTTON_AI_REMOVE_CHANNEL = "admin_ai_remove_channel";
+  public static final String BUTTON_AI_ADD_CATEGORY = "admin_ai_add_category";
+  public static final String BUTTON_AI_REMOVE_CATEGORY = "admin_ai_remove_category";
 
   // AI Agent 配置按鈕（aiagent 模組）
   public static final String BUTTON_AI_AGENT_CONFIG = "admin_panel_ai_agent";
@@ -82,6 +85,8 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
   // AI 頻道限制 Select Menu（aichat 模組）
   public static final String SELECT_AI_ADD_CHANNEL = "admin_select_ai_add_channel";
   public static final String SELECT_AI_REMOVE_CHANNEL = "admin_select_ai_remove_channel";
+  public static final String SELECT_AI_ADD_CATEGORY = "admin_select_ai_add_category";
+  public static final String SELECT_AI_REMOVE_CATEGORY = "admin_select_ai_remove_category";
 
   // AI Agent 配置 Select Menu（aiagent 模組）
   public static final String SELECT_AI_AGENT_CHANNEL = "admin_select_ai_agent_channel";
@@ -161,6 +166,10 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         handleAddChannelSelect(event, guildId);
       } else if (selectId.equals(SELECT_AI_REMOVE_CHANNEL)) {
         handleRemoveChannelSelect(event, guildId);
+      } else if (selectId.equals(SELECT_AI_ADD_CATEGORY)) {
+        handleAddCategorySelect(event, guildId);
+      } else if (selectId.equals(SELECT_AI_REMOVE_CATEGORY)) {
+        handleRemoveCategorySelect(event, guildId);
       } else if (selectId.equals(SELECT_AI_AGENT_CHANNEL)) {
         handleAIAgentChannelSelect(event, guildId);
       }
@@ -1468,13 +1477,22 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     long guildId = event.getGuild().getIdLong();
 
     var channelsResult = adminPanelService.getAllowedChannels(guildId);
+    var categoriesResult = adminPanelService.getAllowedCategories(guildId);
     MessageEmbed embed;
 
     if (channelsResult.isOk()) {
       var channels = channelsResult.getValue();
-      embed = buildAIChannelConfigEmbed(guildId, channels);
+      var categories =
+          categoriesResult.isOk()
+              ? categoriesResult.getValue()
+              : Set.<ltdjms.discord.aichat.domain.AllowedCategory>of();
+      embed = buildAIChannelConfigEmbed(guildId, channels, categories);
     } else {
-      embed = buildAIChannelConfigEmbed(guildId, Set.of());
+      var categories =
+          categoriesResult.isOk()
+              ? categoriesResult.getValue()
+              : Set.<ltdjms.discord.aichat.domain.AllowedCategory>of();
+      embed = buildAIChannelConfigEmbed(guildId, Set.of(), categories);
     }
 
     EntitySelectMenu addChannelSelect =
@@ -1489,21 +1507,39 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
             .setRequiredRange(1, 1)
             .build();
 
+    EntitySelectMenu addCategorySelect =
+        EntitySelectMenu.create(SELECT_AI_ADD_CATEGORY, EntitySelectMenu.SelectTarget.CHANNEL)
+            .setChannelTypes(ChannelType.CATEGORY)
+            .setPlaceholder("新增允許的類別")
+            .setRequiredRange(1, 1)
+            .build();
+
+    EntitySelectMenu removeCategorySelect =
+        EntitySelectMenu.create(SELECT_AI_REMOVE_CATEGORY, EntitySelectMenu.SelectTarget.CHANNEL)
+            .setChannelTypes(ChannelType.CATEGORY)
+            .setPlaceholder("移除允許的類別")
+            .setRequiredRange(1, 1)
+            .build();
+
     event
         .editMessageEmbeds(embed)
         .setComponents(
             ActionRow.of(addChannelSelect),
             ActionRow.of(removeChannelSelect),
+            ActionRow.of(addCategorySelect),
+            ActionRow.of(removeCategorySelect),
             ActionRow.of(Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")))
         .queue();
   }
 
   /** 建立 AI 頻道設定的 Embed。 */
   private MessageEmbed buildAIChannelConfigEmbed(
-      long guildId, Set<ltdjms.discord.aichat.domain.AllowedChannel> channels) {
+      long guildId,
+      Set<ltdjms.discord.aichat.domain.AllowedChannel> channels,
+      Set<ltdjms.discord.aichat.domain.AllowedCategory> categories) {
     var embedBuilder = new EmbedBuilder().setTitle("🤖 AI 頻道設定").setColor(EMBED_COLOR);
 
-    if (channels.isEmpty()) {
+    if (channels.isEmpty() && categories.isEmpty()) {
       embedBuilder
           .setDescription("**未設定任何頻道限制**")
           .addField("狀態", "AI 可在所有頻道使用", false)
@@ -1518,7 +1554,17 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
       embedBuilder
           .setDescription("**已啟用頻道限制**")
           .addField("允許的頻道", channelList.toString(), false)
-          .addField("總計", channels.size() + " 個頻道", false);
+          .addField("頻道總計", channels.size() + " 個頻道", false);
+    }
+
+    if (!categories.isEmpty()) {
+      StringBuilder categoryList = new StringBuilder();
+      for (var category : categories) {
+        categoryList.append(
+            String.format("📁 %s (ID: %d)\n", category.categoryName(), category.categoryId()));
+      }
+      embedBuilder.addField("允許的類別", categoryList.toString(), false);
+      embedBuilder.addField("類別總計", categories.size() + " 個類別", true);
     }
 
     return embedBuilder.build();
@@ -1543,8 +1589,11 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
 
       // 更新面板顯示
       var updatedChannels = adminPanelService.getAllowedChannels(guildId);
-      if (updatedChannels.isOk()) {
-        MessageEmbed embed = buildAIChannelConfigEmbed(guildId, updatedChannels.getValue());
+      var updatedCategories = adminPanelService.getAllowedCategories(guildId);
+      if (updatedChannels.isOk() && updatedCategories.isOk()) {
+        MessageEmbed embed =
+            buildAIChannelConfigEmbed(
+                guildId, updatedChannels.getValue(), updatedCategories.getValue());
 
         EntitySelectMenu addChannelSelect =
             EntitySelectMenu.create(SELECT_AI_ADD_CHANNEL, EntitySelectMenu.SelectTarget.CHANNEL)
@@ -1598,8 +1647,11 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
 
       // 更新面板顯示
       var updatedChannels = adminPanelService.getAllowedChannels(guildId);
-      if (updatedChannels.isOk()) {
-        MessageEmbed embed = buildAIChannelConfigEmbed(guildId, updatedChannels.getValue());
+      var updatedCategories = adminPanelService.getAllowedCategories(guildId);
+      if (updatedChannels.isOk() && updatedCategories.isOk()) {
+        MessageEmbed embed =
+            buildAIChannelConfigEmbed(
+                guildId, updatedChannels.getValue(), updatedCategories.getValue());
 
         EntitySelectMenu addChannelSelect =
             EntitySelectMenu.create(SELECT_AI_ADD_CHANNEL, EntitySelectMenu.SelectTarget.CHANNEL)
@@ -1627,6 +1679,162 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
       String errorMessage =
           switch (error.category()) {
             case CHANNEL_NOT_FOUND -> "⚠️ 此頻道不在允許清單中";
+            default -> "❌ " + error.message();
+          };
+      event.reply(errorMessage).setEphemeral(true).queue();
+    }
+  }
+
+  /** 處理新增類別選擇。 */
+  private void handleAddCategorySelect(EntitySelectInteractionEvent event, long guildId) {
+    var selectedChannels = event.getMentions().getChannels();
+    if (selectedChannels.isEmpty()) {
+      event.reply("請選擇一個類別").setEphemeral(true).queue();
+      return;
+    }
+
+    var category = selectedChannels.get(0);
+    if (category.getType() != ChannelType.CATEGORY) {
+      event.reply("請選擇類別類型").setEphemeral(true).queue();
+      return;
+    }
+
+    long categoryId = category.getIdLong();
+    String categoryName = category.getName();
+
+    var result = adminPanelService.addAllowedCategory(guildId, categoryId, categoryName);
+
+    if (result.isOk()) {
+      event.reply("✅ 已新增類別 **" + categoryName + "** 到允許清單").setEphemeral(true).queue();
+
+      var updatedChannels = adminPanelService.getAllowedChannels(guildId);
+      var updatedCategories = adminPanelService.getAllowedCategories(guildId);
+      if (updatedChannels.isOk() && updatedCategories.isOk()) {
+        MessageEmbed embed =
+            buildAIChannelConfigEmbed(
+                guildId, updatedChannels.getValue(), updatedCategories.getValue());
+
+        EntitySelectMenu addChannelSelect =
+            EntitySelectMenu.create(SELECT_AI_ADD_CHANNEL, EntitySelectMenu.SelectTarget.CHANNEL)
+                .setPlaceholder("新增允許的頻道")
+                .setRequiredRange(1, 1)
+                .build();
+
+        EntitySelectMenu removeChannelSelect =
+            EntitySelectMenu.create(SELECT_AI_REMOVE_CHANNEL, EntitySelectMenu.SelectTarget.CHANNEL)
+                .setPlaceholder("移除允許的頻道")
+                .setRequiredRange(1, 1)
+                .build();
+
+        EntitySelectMenu addCategorySelect =
+            EntitySelectMenu.create(SELECT_AI_ADD_CATEGORY, EntitySelectMenu.SelectTarget.CHANNEL)
+                .setChannelTypes(ChannelType.CATEGORY)
+                .setPlaceholder("新增允許的類別")
+                .setRequiredRange(1, 1)
+                .build();
+
+        EntitySelectMenu removeCategorySelect =
+            EntitySelectMenu.create(
+                    SELECT_AI_REMOVE_CATEGORY, EntitySelectMenu.SelectTarget.CHANNEL)
+                .setChannelTypes(ChannelType.CATEGORY)
+                .setPlaceholder("移除允許的類別")
+                .setRequiredRange(1, 1)
+                .build();
+
+        event
+            .getMessage()
+            .editMessageEmbeds(embed)
+            .setComponents(
+                ActionRow.of(addChannelSelect),
+                ActionRow.of(removeChannelSelect),
+                ActionRow.of(addCategorySelect),
+                ActionRow.of(removeCategorySelect),
+                ActionRow.of(Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")))
+            .queue();
+      }
+    } else {
+      DomainError error = result.getError();
+      String errorMessage =
+          switch (error.category()) {
+            case DUPLICATE_CATEGORY -> "⚠️ 此類別已在允許清單中";
+            default -> "❌ " + error.message();
+          };
+      event.reply(errorMessage).setEphemeral(true).queue();
+    }
+  }
+
+  /** 處理移除類別選擇。 */
+  private void handleRemoveCategorySelect(EntitySelectInteractionEvent event, long guildId) {
+    var selectedChannels = event.getMentions().getChannels();
+    if (selectedChannels.isEmpty()) {
+      event.reply("請選擇一個類別").setEphemeral(true).queue();
+      return;
+    }
+
+    var category = selectedChannels.get(0);
+    if (category.getType() != ChannelType.CATEGORY) {
+      event.reply("請選擇類別類型").setEphemeral(true).queue();
+      return;
+    }
+
+    long categoryId = category.getIdLong();
+    String categoryName = category.getName();
+
+    var result = adminPanelService.removeAllowedCategory(guildId, categoryId);
+
+    if (result.isOk()) {
+      event.reply("✅ 已從允許清單移除類別 **" + categoryName + "**").setEphemeral(true).queue();
+
+      var updatedChannels = adminPanelService.getAllowedChannels(guildId);
+      var updatedCategories = adminPanelService.getAllowedCategories(guildId);
+      if (updatedChannels.isOk() && updatedCategories.isOk()) {
+        MessageEmbed embed =
+            buildAIChannelConfigEmbed(
+                guildId, updatedChannels.getValue(), updatedCategories.getValue());
+
+        EntitySelectMenu addChannelSelect =
+            EntitySelectMenu.create(SELECT_AI_ADD_CHANNEL, EntitySelectMenu.SelectTarget.CHANNEL)
+                .setPlaceholder("新增允許的頻道")
+                .setRequiredRange(1, 1)
+                .build();
+
+        EntitySelectMenu removeChannelSelect =
+            EntitySelectMenu.create(SELECT_AI_REMOVE_CHANNEL, EntitySelectMenu.SelectTarget.CHANNEL)
+                .setPlaceholder("移除允許的頻道")
+                .setRequiredRange(1, 1)
+                .build();
+
+        EntitySelectMenu addCategorySelect =
+            EntitySelectMenu.create(SELECT_AI_ADD_CATEGORY, EntitySelectMenu.SelectTarget.CHANNEL)
+                .setChannelTypes(ChannelType.CATEGORY)
+                .setPlaceholder("新增允許的類別")
+                .setRequiredRange(1, 1)
+                .build();
+
+        EntitySelectMenu removeCategorySelect =
+            EntitySelectMenu.create(
+                    SELECT_AI_REMOVE_CATEGORY, EntitySelectMenu.SelectTarget.CHANNEL)
+                .setChannelTypes(ChannelType.CATEGORY)
+                .setPlaceholder("移除允許的類別")
+                .setRequiredRange(1, 1)
+                .build();
+
+        event
+            .getMessage()
+            .editMessageEmbeds(embed)
+            .setComponents(
+                ActionRow.of(addChannelSelect),
+                ActionRow.of(removeChannelSelect),
+                ActionRow.of(addCategorySelect),
+                ActionRow.of(removeCategorySelect),
+                ActionRow.of(Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")))
+            .queue();
+      }
+    } else {
+      DomainError error = result.getError();
+      String errorMessage =
+          switch (error.category()) {
+            case CATEGORY_NOT_FOUND -> "⚠️ 此類別不在允許清單中";
             default -> "❌ " + error.message();
           };
       event.reply(errorMessage).setEphemeral(true).queue();

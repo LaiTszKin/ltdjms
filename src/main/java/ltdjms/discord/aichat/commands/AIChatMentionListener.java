@@ -141,11 +141,14 @@ public class AIChatMentionListener extends ListenerAdapter {
     MessageChannelUnion channel = event.getChannel();
     long channelId = channel.getIdLong();
     long restrictionChannelId = resolveRestrictionChannelId(channel);
-    if (!channelRestrictionService.isChannelAllowed(guildId, restrictionChannelId)) {
+    long categoryId = resolveCategoryId(channel);
+    if (!channelRestrictionService.isChannelAllowed(guildId, restrictionChannelId, categoryId)) {
       LOGGER.debug(
-          "Channel {} (restriction check {}) not in allowed list for guild {}, ignoring mention",
+          "Channel {} (restriction check {}, category {}) not in allowed list for guild {},"
+              + " ignoring mention",
           channelId,
           restrictionChannelId,
+          categoryId,
           guildId);
       return;
     }
@@ -401,5 +404,38 @@ public class AIChatMentionListener extends ListenerAdapter {
     }
 
     return channel.getIdLong();
+  }
+
+  private long resolveCategoryId(MessageChannelUnion channel) {
+    if (channel == null) {
+      return 0L;
+    }
+
+    try {
+      // 對可分類頻道直接取得父類別
+      if (channel
+          instanceof
+          net.dv8tion.jda.api.entities.channel.attribute.ICategorizableChannel categorizable) {
+        var parent = categorizable.getParentCategory();
+        return parent != null ? parent.getIdLong() : 0L;
+      }
+
+      // 討論串使用父頻道，再取父頻道的類別
+      if (channel.getType() != null && channel.getType().isThread()) {
+        var thread = channel.asThreadChannel();
+        var parentChannel = thread.getParentChannel();
+        if (parentChannel
+            instanceof
+            net.dv8tion.jda.api.entities.channel.attribute.ICategorizableChannel
+                parentCategorizable) {
+          var parentCategory = parentCategorizable.getParentCategory();
+          return parentCategory != null ? parentCategory.getIdLong() : 0L;
+        }
+      }
+    } catch (Exception e) {
+      LOGGER.warn("解析頻道類別失敗，回退為 0: {}", e.getMessage());
+    }
+
+    return 0L;
   }
 }

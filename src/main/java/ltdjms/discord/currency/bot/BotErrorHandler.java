@@ -171,6 +171,16 @@ public final class BotErrorHandler {
           PROMPT_INVALID_ENCODING,
           PROMPT_LOAD_FAILED ->
           handleUnexpectedError(event, error.cause());
+
+      case CHANNEL_NOT_ALLOWED,
+          DUPLICATE_CHANNEL,
+          INSUFFICIENT_PERMISSIONS,
+          CHANNEL_NOT_FOUND,
+          DUPLICATE_CATEGORY,
+          CATEGORY_NOT_FOUND ->
+          replyWithError(event, error.message());
+
+      default -> replyWithError(event, GENERIC_ERROR_MESSAGE);
     }
   }
 
@@ -210,6 +220,9 @@ public final class BotErrorHandler {
       case DUPLICATE_CHANNEL -> error.message();
       case INSUFFICIENT_PERMISSIONS -> error.message();
       case CHANNEL_NOT_FOUND -> error.message();
+      case DUPLICATE_CATEGORY -> error.message();
+      case CATEGORY_NOT_FOUND -> error.message();
+      default -> GENERIC_ERROR_MESSAGE;
     };
   }
 
@@ -401,6 +414,25 @@ public final class BotErrorHandler {
       case CHANNEL_NOT_FOUND -> {
         LOG.warn("Channel not found in guild={} user={}: {}", guildId, userId, error.message());
         interaction.reply("❌ " + error.message());
+      }
+
+      case DUPLICATE_CATEGORY -> {
+        LOG.warn("Duplicate category in guild={} user={}: {}", guildId, userId, error.message());
+        interaction.reply("❌ " + error.message());
+      }
+
+      case CATEGORY_NOT_FOUND -> {
+        LOG.warn("Category not found in guild={} user={}: {}", guildId, userId, error.message());
+        interaction.reply("❌ " + error.message());
+      }
+
+      default -> {
+        LOG.error(
+            "Unhandled domain error for interaction in guild={} user={}: {}",
+            guildId,
+            userId,
+            error.message());
+        interaction.reply("❌ " + GENERIC_ERROR_MESSAGE);
       }
     }
   }

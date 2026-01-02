@@ -98,7 +98,7 @@ class AIChatMentionListenerTest {
     @DisplayName("當頻道被允許時，應觸發 AI 回應")
     void shouldTriggerAIResponseWhenChannelAllowed() {
       // Arrange
-      when(channelRestrictionService.isChannelAllowed(123L, 456L)).thenReturn(true);
+      when(channelRestrictionService.isChannelAllowed(123L, 456L, 0L)).thenReturn(true);
       when(guild.getIdLong()).thenReturn(123L);
       when(messageChannel.getIdLong()).thenReturn(456L);
       when(regularUser.getId()).thenReturn("789");
@@ -115,7 +115,7 @@ class AIChatMentionListenerTest {
     @DisplayName("當頻道不被允許時，不應觸發 AI 回應")
     void shouldNotTriggerAIResponseWhenChannelNotAllowed() {
       // Arrange
-      when(channelRestrictionService.isChannelAllowed(123L, 456L)).thenReturn(false);
+      when(channelRestrictionService.isChannelAllowed(123L, 456L, 0L)).thenReturn(false);
       when(guild.getIdLong()).thenReturn(123L);
       when(messageChannel.getIdLong()).thenReturn(456L);
       when(message.getContentRaw()).thenReturn("<@999> hello");
@@ -131,7 +131,7 @@ class AIChatMentionListenerTest {
     @DisplayName("當允許清單為空（無限制模式）時，應觸發 AI 回應")
     void shouldTriggerAIResponseWhenUnrestrictedMode() {
       // Arrange
-      when(channelRestrictionService.isChannelAllowed(123L, 456L)).thenReturn(true);
+      when(channelRestrictionService.isChannelAllowed(123L, 456L, 0L)).thenReturn(true);
       when(guild.getIdLong()).thenReturn(123L);
       when(messageChannel.getIdLong()).thenReturn(456L);
       when(regularUser.getId()).thenReturn("789");
@@ -154,7 +154,7 @@ class AIChatMentionListenerTest {
       when(messageChannel.asThreadChannel()).thenReturn(threadChannel);
       when(threadChannel.getParentChannel()).thenReturn(parentChannel);
       when(parentChannel.getIdLong()).thenReturn(456L);
-      when(channelRestrictionService.isChannelAllowed(123L, 456L)).thenReturn(true);
+      when(channelRestrictionService.isChannelAllowed(123L, 456L, 0L)).thenReturn(true);
       when(guild.getIdLong()).thenReturn(123L);
       when(messageChannel.getIdLong()).thenReturn(999L);
       when(regularUser.getId()).thenReturn("789");
@@ -162,7 +162,7 @@ class AIChatMentionListenerTest {
 
       listener.onMessageReceived(event);
 
-      verify(channelRestrictionService).isChannelAllowed(123L, 456L);
+      verify(channelRestrictionService).isChannelAllowed(123L, 456L, 0L);
       verify(messageChannel).sendMessage(any(CharSequence.class));
     }
 

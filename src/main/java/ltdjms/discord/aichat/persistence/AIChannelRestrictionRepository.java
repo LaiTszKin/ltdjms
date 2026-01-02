@@ -2,6 +2,8 @@ package ltdjms.discord.aichat.persistence;
 
 import java.util.Set;
 
+import ltdjms.discord.aichat.domain.AIChannelRestriction;
+import ltdjms.discord.aichat.domain.AllowedCategory;
 import ltdjms.discord.aichat.domain.AllowedChannel;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
@@ -23,6 +25,22 @@ public interface AIChannelRestrictionRepository {
   Result<Set<AllowedChannel>, DomainError> findByGuildId(long guildId);
 
   /**
+   * 查詢完整頻道與類別限制聚合。
+   *
+   * @param guildId 伺服器 ID
+   * @return AIChannelRestriction 聚合，空集合表示無限制模式
+   */
+  Result<AIChannelRestriction, DomainError> findRestrictionByGuildId(long guildId);
+
+  /**
+   * 查詢伺服器的允許類別集合。
+   *
+   * @param guildId 伺服器 ID
+   * @return 允許的類別集合（空集合表示未設定類別限制）
+   */
+  Result<Set<AllowedCategory>, DomainError> findAllowedCategories(long guildId);
+
+  /**
    * 新增允許頻道。
    *
    * @param guildId 伺服器 ID
@@ -32,6 +50,15 @@ public interface AIChannelRestrictionRepository {
   Result<AllowedChannel, DomainError> addChannel(long guildId, AllowedChannel channel);
 
   /**
+   * 新增允許類別。
+   *
+   * @param guildId 伺服器 ID
+   * @param category 允許的類別
+   * @return 成功返回類別，失敗返回錯誤（如重複類別）
+   */
+  Result<AllowedCategory, DomainError> addCategory(long guildId, AllowedCategory category);
+
+  /**
    * 移除允許頻道。
    *
    * @param guildId 伺服器 ID
@@ -39,6 +66,15 @@ public interface AIChannelRestrictionRepository {
    * @return 成功返回 Unit，失敗返回錯誤（如頻道不存在）
    */
   Result<Unit, DomainError> removeChannel(long guildId, long channelId);
+
+  /**
+   * 移除允許類別。
+   *
+   * @param guildId 伺服器 ID
+   * @param categoryId 類別 ID
+   * @return 成功返回 Unit，失敗返回錯誤（如類別不存在）
+   */
+  Result<Unit, DomainError> removeCategory(long guildId, long categoryId);
 
   /**
    * 批次刪除無效頻道。

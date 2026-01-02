@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ltdjms.discord.aiagent.services.AIAgentChannelConfigService;
+import ltdjms.discord.aichat.domain.AllowedCategory;
 import ltdjms.discord.aichat.domain.AllowedChannel;
 import ltdjms.discord.aichat.services.AIChannelRestrictionService;
 import ltdjms.discord.currency.domain.GuildCurrencyConfig;
@@ -312,6 +313,17 @@ public class AdminPanelService {
   }
 
   /**
+   * 獲取伺服器的所有允許類別。
+   *
+   * @param guildId 伺服器 ID
+   * @return 允許類別集合（空集合表示未設定類別限制）
+   */
+  public Result<Set<AllowedCategory>, DomainError> getAllowedCategories(long guildId) {
+    LOG.debug("Admin panel getting allowed categories for guildId={}", guildId);
+    return aiChannelRestrictionService.getAllowedCategories(guildId);
+  }
+
+  /**
    * 新增允許頻道。
    *
    * @param guildId 伺服器 ID
@@ -331,6 +343,25 @@ public class AdminPanelService {
   }
 
   /**
+   * 新增允許類別。
+   *
+   * @param guildId 伺服器 ID
+   * @param categoryId 類別 ID
+   * @param categoryName 類別名稱
+   * @return 成功返回類別，失敗返回錯誤
+   */
+  public Result<AllowedCategory, DomainError> addAllowedCategory(
+      long guildId, long categoryId, String categoryName) {
+    LOG.info(
+        "Admin panel adding allowed category: guildId={}, categoryId={}, categoryName={}",
+        guildId,
+        categoryId,
+        categoryName);
+    AllowedCategory category = new AllowedCategory(categoryId, categoryName);
+    return aiChannelRestrictionService.addAllowedCategory(guildId, category);
+  }
+
+  /**
    * 移除允許頻道。
    *
    * @param guildId 伺服器 ID
@@ -340,6 +371,19 @@ public class AdminPanelService {
   public Result<Unit, DomainError> removeAllowedChannel(long guildId, long channelId) {
     LOG.info("Admin panel removing allowed channel: guildId={}, channelId={}", guildId, channelId);
     return aiChannelRestrictionService.removeAllowedChannel(guildId, channelId);
+  }
+
+  /**
+   * 移除允許類別。
+   *
+   * @param guildId 伺服器 ID
+   * @param categoryId 類別 ID
+   * @return 成功返回 Unit，失敗返回錯誤
+   */
+  public Result<Unit, DomainError> removeAllowedCategory(long guildId, long categoryId) {
+    LOG.info(
+        "Admin panel removing allowed category: guildId={}, categoryId={}", guildId, categoryId);
+    return aiChannelRestrictionService.removeAllowedCategory(guildId, categoryId);
   }
 
   // ========== AI Agent 頻道配置管理 ==========

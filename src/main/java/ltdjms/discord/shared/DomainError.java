@@ -61,7 +61,11 @@ public record DomainError(Category category, String message, Throwable cause) {
     /** Bot lacks required permissions in channel */
     INSUFFICIENT_PERMISSIONS,
     /** Channel not found or deleted from Discord server */
-    CHANNEL_NOT_FOUND
+    CHANNEL_NOT_FOUND,
+    /** Category already exists in allowed list */
+    DUPLICATE_CATEGORY,
+    /** Category not found in allowed list */
+    CATEGORY_NOT_FOUND
   }
 
   public DomainError {
