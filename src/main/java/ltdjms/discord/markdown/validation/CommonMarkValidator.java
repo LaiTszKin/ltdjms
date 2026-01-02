@@ -41,7 +41,10 @@ public final class CommonMarkValidator implements MarkdownValidator {
 
     List<MarkdownError> errors = new ArrayList<>();
 
-    // 1. 解析階段 - 檢測語法錯誤
+    // 1. 檢查標題層級
+    checkHeadingLevels(markdown, errors);
+
+    // 2. 解析階段 - 檢測語法錯誤
     try {
       Node document = parser.parse(markdown);
       checkCodeBlocks(document, markdown, errors);
@@ -60,6 +63,31 @@ public final class CommonMarkValidator implements MarkdownValidator {
       return new ValidationResult.Valid(markdown);
     } else {
       return new ValidationResult.Invalid(errors);
+    }
+  }
+
+  /** 檢查標題層級是否超過 Discord 限制（H6） */
+  private void checkHeadingLevels(String markdown, List<MarkdownError> errors) {
+    String[] lines = markdown.split("\n");
+
+    for (int i = 0; i < lines.length; i++) {
+      String line = lines[i].trim();
+      if (line.startsWith("#")) {
+        int count = 0;
+        for (char c : line.toCharArray()) {
+          if (c == '#') {
+            count++;
+          } else {
+            break;
+          }
+        }
+
+        if (count > 6) {
+          errors.add(
+              new MarkdownError(
+                  ErrorType.HEADING_LEVEL_EXCEEDED, i + 1, 1, line, "減少標題層級到 ###### 或以下"));
+        }
+      }
     }
   }
 
