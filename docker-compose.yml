@@ -50,6 +50,11 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/currency_bot
       DB_USERNAME: postgres
       DB_PASSWORD: postgres
+      DB_POOL_MAX_SIZE: ${DB_POOL_MAX_SIZE}
+      DB_POOL_MIN_IDLE: ${DB_POOL_MIN_IDLE}
+      DB_POOL_CONNECTION_TIMEOUT: ${DB_POOL_CONNECTION_TIMEOUT}
+      DB_POOL_IDLE_TIMEOUT: ${DB_POOL_IDLE_TIMEOUT}
+      DB_POOL_MAX_LIFETIME: ${DB_POOL_MAX_LIFETIME}
       REDIS_URI: redis://redis:6379
       JAVA_OPTS: >-
         -XX:+UseContainerSupport
