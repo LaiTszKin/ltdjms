@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.20.0] - 2026-01-02
+
+### Added
+- **AI Agent 工具擴充**：新增 `LangChain4jModifyChannelPermissionsTool`，AI 可修改 Discord 頻道權限設定
+  - 支援為用戶或角色添加/移除允許權限（allowToAdd、allowToRemove）
+  - 支援為用戶或角色添加/移除拒絕權限（denyToAdd、denyToRemove）
+  - 使用 JDA 的 `upsertPermissionOverride()` 進行增量權限修改
+  - 返回修改前後的權限對比資訊
+  - 支援多種 Discord ID 格式解析（純數字、<#123>、<@&123>、<@123>）
+  - 支援 19 種 Discord 權限類型（ADMINISTRATOR、MANAGE_CHANNELS、VIEW_CHANNEL、MESSAGE_SEND 等）
+- **ModifyPermissionSetting Domain Model**：修改頻道權限設定資料傳輸物件
+  - PermissionEnum 枚舉對應 Discord 的 Permission 類別
+  - 支援可選權限集合（allowToAdd、allowToRemove、denyToAdd、denyToRemove）
+  - `isValid()` 方法驗證設定有效性
+- **DI 配置**：在 `AIAgentModule` 中註冊 `LangChain4jModifyChannelPermissionsTool`
+- **AIChatService 整合**：`LangChain4jAIChatService` 新增工具參數與註冊
+
+### Changed
+- `LangChain4jAIChatService` 建構函數新增 `modifyChannelPermissionsTool` 參數
+- 工具執行時從 `InvocationParameters` 獲取 `guildId`、`channelId`、`userId` 上下文
+
+### Technical
+- 完整測試覆蓋：新增單元測試（`LangChain4jModifyChannelPermissionsToolTest`）與整合測試（`LangChain4jModifyChannelPermissionsToolIntegrationTest`）
+- 測試涵蓋：參數驗證、錯誤處理、角色權限修改、用戶權限修改、ID 格式解析、權限從允許移到拒絕等情境
+- AIChatServiceTest 更新以支援新工具參數
+
+### Documentation
+- 新增 `docs/plans/2025-01-02-modify-channel-permissions-tool.md` 實作計畫文件
+
 ## [0.19.0] - 2026-01-02
 
 ### Added
