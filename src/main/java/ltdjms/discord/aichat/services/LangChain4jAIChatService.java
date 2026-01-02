@@ -515,13 +515,14 @@ public final class LangChain4jAIChatService implements AIChatService {
   }
 
   /**
-   * 載入系統提示詞，失敗時回退到空提示詞。
+   * 載入系統提示詞，根據 agentEnabled 決定是否包含 agent prompt。
    *
-   * @return 系統提示詞
+   * @param agentEnabled 是否啟用 Agent 功能
+   * @return 系統提示詞，載入失敗時返回空提示詞
    */
   @SuppressWarnings("unused")
-  private SystemPrompt loadSystemPromptOrEmpty() {
-    Result<SystemPrompt, DomainError> result = promptLoader.loadPrompts();
+  private SystemPrompt loadSystemPromptOrEmpty(boolean agentEnabled) {
+    Result<SystemPrompt, DomainError> result = promptLoader.loadPrompts(agentEnabled);
     if (result.isErr()) {
       LOG.warn("Failed to load system prompt, using empty prompt: {}", result.getError().message());
       return SystemPrompt.empty();

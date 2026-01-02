@@ -1,5 +1,9 @@
 package ltdjms.discord.aichat.services;
 
+import static java.nio.file.Files.exists;
+import static java.nio.file.Files.isDirectory;
+import static ltdjms.discord.shared.DomainError.unexpectedFailure;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,9 +24,10 @@ import ltdjms.discord.shared.EnvironmentConfig;
 import ltdjms.discord.shared.Result;
 
 /** 預設的提示詞載入器實作，從本地檔案系統載入 markdown 檔案。 */
-public class DefaultPromptLoader implements PromptLoader {
+public final class DefaultPromptLoader implements PromptLoader {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DefaultPromptLoader.class);
+  private static final Logger LOG = LoggerFactory.getLogger(DefaultPromptLoader.class);
+  private static final String MD_EXTENSION = ".md";
 
   private final EnvironmentConfig config;
 
@@ -31,79 +36,84 @@ public class DefaultPromptLoader implements PromptLoader {
   }
 
   @Override
-  public Result<SystemPrompt, DomainError> loadPrompts() {
-    Path promptsDir = Paths.get(config.getPromptsDirPath());
-    long maxSizeBytes = config.getPromptMaxSizeBytes();
+  public Result<SystemPrompt, DomainError> loadPrompts(boolean agentEnabled) {
+    // 1. 載入 system/ 資料夾（必備）
+    Result<SystemPrompt, DomainError> systemResult = loadFromDirectory("system");
+    if (systemResult.isErr()) {
+      return systemResult;
+    }
 
-    // 如果資料夾不存在，回傳空的 SystemPrompt
-    if (!Files.exists(promptsDir) || !Files.isDirectory(promptsDir)) {
-      LOGGER.info("Prompts directory not found: {}, using empty system prompt", promptsDir);
-      return Result.ok(SystemPrompt.empty());
+    // 2. 如果啟用 Agent，載入 agent/ 資料夾（可選）
+    SystemPrompt finalPrompt = systemResult.getValue();
+    if (agentEnabled) {
+      Result<SystemPrompt, DomainError> agentResult = loadFromDirectory("agent");
+      if (agentResult.isOk()) {
+        finalPrompt = combinePrompts(finalPrompt, agentResult.getValue());
+      } else {
+        // agent/ 不存在時記錄警告，但不影響運作
+        LOG.warn("Agent prompts directory not found, using base prompt only");
+      }
+    }
+
+    return Result.ok(finalPrompt);
+  }
+
+  /**
+   * 從指定子資料夾載入提示詞。
+   *
+   * @param subDir 子資料夾名稱（如 "system" 或 "agent"）
+   * @return 載入結果
+   */
+  private Result<SystemPrompt, DomainError> loadFromDirectory(String subDir) {
+    Path promptsDir = Paths.get(config.getPromptsDirPath());
+    Path targetDir = promptsDir.resolve(subDir);
+
+    if (!exists(targetDir) || !isDirectory(targetDir)) {
+      // system/ 是必備的，agent/ 是可選的
+      if ("system".equals(subDir)) {
+        return Result.err(
+            unexpectedFailure("Required prompts directory not found: " + subDir, null));
+      }
+      return Result.err(unexpectedFailure("Optional prompts directory not found: " + subDir, null));
     }
 
     List<PromptSection> sections = new ArrayList<>();
-    int loadedCount = 0;
-    int skippedCount = 0;
+    long maxSizeBytes = config.getPromptMaxSizeBytes();
 
-    try (Stream<Path> paths = Files.walk(promptsDir, 1)) {
-      List<Path> files =
-          paths
-              .filter(Files::isRegularFile)
-              .filter(p -> !p.getFileName().toString().startsWith("."))
-              .filter(p -> p.toString().endsWith(".md"))
-              .sorted()
-              .toList();
+    try (Stream<Path> stream = Files.list(targetDir)) {
+      stream
+          .filter(this::isValidPromptFile)
+          .sorted()
+          .forEach(
+              file -> {
+                try {
+                  // 檢查檔案大小
+                  long fileSize = Files.size(file);
+                  if (fileSize > maxSizeBytes) {
+                    LOG.warn(
+                        "Skipping prompt file exceeding size limit: {} ({} bytes, max: {} bytes)",
+                        file,
+                        fileSize,
+                        maxSizeBytes);
+                    return;
+                  }
 
-      for (Path file : files) {
-        try {
-          // 檢查檔案大小
-          long fileSize = Files.size(file);
-          if (fileSize > maxSizeBytes) {
-            LOGGER.warn(
-                "Skipping prompt file exceeding size limit: {} ({} bytes, max: {} bytes)",
-                file,
-                fileSize,
-                maxSizeBytes);
-            skippedCount++;
-            continue;
-          }
-
-          // 讀取檔案內容（UTF-8）
-          String content = Files.readString(file);
-
-          // 標準化檔案名稱為標題
-          String title = normalizeTitle(file);
-          sections.add(new PromptSection(title, content));
-          loadedCount++;
-
-        } catch (IOException e) {
-          LOGGER.warn("Skipping prompt file due to read error: {}", file, e);
-          skippedCount++;
-        }
-      }
-
-      // 設定 MDC 並記錄結果
-      MDC.put("prompts_dir", promptsDir.toString());
-      MDC.put("files_loaded", String.valueOf(loadedCount));
-      MDC.put("files_skipped", String.valueOf(skippedCount));
-
-      if (loadedCount > 0) {
-        LOGGER.info(
-            "Loaded {} prompt files from {} ({} skipped)", loadedCount, promptsDir, skippedCount);
-      } else if (files.isEmpty()) {
-        LOGGER.info("No markdown files found in prompts directory: {}", promptsDir);
-      } else {
-        LOGGER.warn("All prompt files were skipped in: {}", promptsDir);
-      }
-
+                  // 讀取檔案內容
+                  PromptSection section = loadPromptSection(file);
+                  sections.add(section);
+                } catch (IOException e) {
+                  LOG.error("Failed to load prompt file: {}", file, e);
+                }
+              });
     } catch (IOException e) {
-      LOGGER.error("Failed to walk prompts directory: {}", promptsDir, e);
-      return Result.err(DomainError.unexpectedFailure("Failed to load prompts", e));
-    } finally {
-      MDC.remove("prompts_dir");
-      MDC.remove("files_loaded");
-      MDC.remove("files_skipped");
+      return Result.err(unexpectedFailure("Failed to list prompts directory: " + subDir, e));
     }
+
+    // 記錄載入統計
+    MDC.put("directory", subDir);
+    MDC.put("fileCount", String.valueOf(sections.size()));
+    LOG.debug("Loaded {} prompt sections from {}/ directory", sections.size(), subDir);
+    MDC.clear();
 
     // 按字母順序排序
     sections.sort(Comparator.comparing(PromptSection::title));
@@ -111,28 +121,54 @@ public class DefaultPromptLoader implements PromptLoader {
     return Result.ok(new SystemPrompt(sections));
   }
 
-  /**
-   * 標準化檔案名稱為區間標題。
-   *
-   * <p>規則：移除 .md 副檔名 → 替換連字符和底線為空格 → 轉大寫
-   */
-  private String normalizeTitle(Path path) {
-    String fileName = path.getFileName().toString();
+  /** 合併多個提示詞。 */
+  private SystemPrompt combinePrompts(SystemPrompt base, SystemPrompt additional) {
+    List<PromptSection> sections = new ArrayList<>(base.sections());
+    sections.addAll(additional.sections());
+    return new SystemPrompt(sections);
+  }
 
+  private boolean isValidPromptFile(Path file) {
+    String fileName = file.getFileName().toString();
+    return Files.isRegularFile(file)
+        && fileName.endsWith(MD_EXTENSION)
+        && !fileName.startsWith(".");
+  }
+
+  private PromptSection loadPromptSection(Path file) throws IOException {
+    String fileName = file.getFileName().toString();
+    String title = normalizeTitle(fileName);
+
+    // 直接讀取整個檔案，保留原始換行符
+    String content = Files.readString(file);
+
+    return new PromptSection(title, content);
+  }
+
+  private String normalizeTitle(String fileName) {
     // 移除 .md 副檔名
-    if (fileName.endsWith(".md")) {
-      fileName = fileName.substring(0, fileName.length() - 3);
-    }
+    String title =
+        fileName.endsWith(MD_EXTENSION)
+            ? fileName.substring(0, fileName.length() - MD_EXTENSION.length())
+            : fileName;
 
     // 空檔名處理
-    if (fileName.isBlank()) {
+    if (title.isBlank()) {
       return "UNTITLED";
     }
 
     // 替換連字符和底線為空格
-    fileName = fileName.replace("-", " ").replace("_", " ");
+    title = title.replace("-", " ").replace("_", " ");
 
-    // 轉換為大寫
-    return fileName.toUpperCase();
+    // 只轉換 ASCII 字母為大寫，保留其他語言字元（如中文）
+    StringBuilder result = new StringBuilder();
+    for (char c : title.toCharArray()) {
+      if (c >= 'a' && c <= 'z') {
+        result.append(Character.toUpperCase(c));
+      } else {
+        result.append(c);
+      }
+    }
+    return result.toString();
   }
 }
