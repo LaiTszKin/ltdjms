@@ -66,19 +66,36 @@ public final class CommonMarkValidator implements MarkdownValidator {
     }
   }
 
-  /** 檢查標題層級是否超過 Discord 限制（H6） */
+  /** 檢查標題層級是否超過 Discord 限制（H6）以及標題格式是否正確 */
   private void checkHeadingLevels(String markdown, List<MarkdownError> errors) {
     String[] lines = markdown.split("\n");
 
     for (int i = 0; i < lines.length; i++) {
-      String line = lines[i].trim();
-      if (line.startsWith("#")) {
+      String line = lines[i];
+      String trimmedLine = line.trim();
+
+      if (trimmedLine.startsWith("#")) {
         int count = 0;
-        for (char c : line.toCharArray()) {
+        for (char c : trimmedLine.toCharArray()) {
           if (c == '#') {
             count++;
           } else {
             break;
+          }
+        }
+
+        // 只有 # 符號時視為合法（CommonMark 允許空標題）
+        if (count < trimmedLine.length()) {
+          // 檢查 # 後面是否有空格（CommonMark 規範要求）
+          char charAfterHash = trimmedLine.charAt(count);
+          if (charAfterHash != ' ' && charAfterHash != '\t') {
+            errors.add(
+                new MarkdownError(
+                    ErrorType.HEADING_FORMAT,
+                    i + 1,
+                    count + 1,
+                    line.length() > 50 ? line.substring(0, 50) + "..." : line,
+                    "在 # 符號後面加入空格，例如 ### " + trimmedLine.substring(count)));
           }
         }
 

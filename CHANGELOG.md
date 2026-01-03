@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.23.0] - 2026-01-03
+
+### Added
+- **markdown**: Markdown 格式驗證功能
+  - 定義 `MarkdownValidator` 介面與 `MarkdownValidationError` 類型
+  - 實作 `CommonMarkValidator` 支援程式碼區塊與列表格式驗證
+  - 實作 `MarkdownErrorFormatter` 提供結構化錯誤報告
+  - 實作 `MarkdownValidatingAIChatService` 裝飾器，自動驗證 AI 回應並重試
+  - 新增 Discord 特定驗證規則（標題層級限制）
+  - 支援配置選項控制驗證行為（啟用/停用、最大重試次數）
+  - 完整測試覆蓋：單元測試與整合測試
+
+### Changed
+- **aichat**: `LangChain4jAIChatService` 現在可選透過裝飾器啟用 Markdown 驗證
+- **infrastructure**: 新增 CommonMark 相關依賴（commonmark、ext-gfm-tables、ext-task-list-items）
+
+### Technical
+- 新增模組：`ltdjms.discord.markdown.validation`
+- 新增模組：`ltdjms.discord.markdown.error`
+- 新增 CommonMark 0.22.0 依賴
+- 新增 `MarkdownValidationConfig` 與 `AIServiceConfig` 整合
+
+### Documentation
+- 新增 `docs/plans/2026-01-03-markdown-validation-design.md` 設計文件
+
 ## [0.22.0] - 2026-01-03
 
 ### Added

@@ -38,6 +38,8 @@ public interface MarkdownValidator {
     UNCLOSED_CODE_BLOCK,
     /** 標題層級超過限制（Discord 限制為 H6） */
     HEADING_LEVEL_EXCEEDED,
+    /** 標題格式錯誤（如 ###abc 缺少空格） */
+    HEADING_FORMAT,
     /** 表格格式錯誤 */
     MALFORMED_TABLE,
     /** 缺少轉義字符 */

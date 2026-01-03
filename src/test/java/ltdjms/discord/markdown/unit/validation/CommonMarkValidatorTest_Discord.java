@@ -49,6 +49,56 @@ class CommonMarkValidatorTest_Discord {
   }
 
   @Test
+  @DisplayName("標題格式缺少空格應檢測為錯誤")
+  void headingWithoutSpace_shouldDetectError() {
+    String markdown =
+        """
+        ###abc
+        ##def
+        """;
+
+    MarkdownValidator.ValidationResult result = validator.validate(markdown);
+
+    assertInstanceOf(MarkdownValidator.ValidationResult.Invalid.class, result);
+    MarkdownValidator.ValidationResult.Invalid invalid =
+        (MarkdownValidator.ValidationResult.Invalid) result;
+
+    boolean hasHeadingFormatError =
+        invalid.errors().stream()
+            .anyMatch(e -> e.type() == MarkdownValidator.ErrorType.HEADING_FORMAT);
+    assertTrue(hasHeadingFormatError, "應檢測到標題格式錯誤");
+    assertEquals(2, invalid.errors().size(), "應檢測到兩個標題格式錯誤");
+  }
+
+  @Test
+  @DisplayName("標題格式正確應通過")
+  void headingWithSpace_shouldPass() {
+    String markdown =
+        """
+        ### abc
+        ## def
+        """;
+
+    MarkdownValidator.ValidationResult result = validator.validate(markdown);
+
+    assertInstanceOf(MarkdownValidator.ValidationResult.Valid.class, result);
+  }
+
+  @Test
+  @DisplayName("標題後面只有井號應通過")
+  void headingOnlyHashes_shouldPass() {
+    String markdown =
+        """
+        ###
+        ##
+        """;
+
+    MarkdownValidator.ValidationResult result = validator.validate(markdown);
+
+    assertInstanceOf(MarkdownValidator.ValidationResult.Valid.class, result);
+  }
+
+  @Test
   @DisplayName("正確的表格格式應通過")
   void validTable_shouldPass() {
     String markdown =
