@@ -30,6 +30,14 @@ public final class MarkdownErrorFormatter {
     report.append("## Markdown 格式驗證失敗\n\n");
     report.append("**重試次數: ").append(attempt).append("**\n");
     report.append("**錯誤總數: ").append(errors.size()).append("**\n\n");
+    report
+        .append("**原始用戶訊息**: `")
+        .append(truncate(originalPrompt, MAX_CONTEXT_LENGTH))
+        .append("`\n\n");
+
+    String responsePreview = truncate(fullResponse, 200);
+    report.append("### 最近一次回應摘要\n\n");
+    report.append("> ").append(responsePreview.replace("\n", "\n> ")).append("\n\n");
 
     // 錯誤明細區段（按類型分組）
     Map<MarkdownValidator.ErrorType, List<MarkdownValidator.MarkdownError>> groupedErrors =
@@ -78,5 +86,15 @@ public final class MarkdownErrorFormatter {
       case ESCAPE_CHARACTER_MISSING -> "缺少轉義字符";
       case DISCORD_RENDER_ISSUE -> "Discord 渲染問題";
     };
+  }
+
+  private String truncate(String text, int maxLength) {
+    if (text == null) {
+      return "";
+    }
+    if (text.length() <= maxLength) {
+      return text;
+    }
+    return text.substring(0, maxLength) + "...";
   }
 }

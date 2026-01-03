@@ -20,7 +20,15 @@ class AIChatRequestTest {
     // Given
     AIServiceConfig config =
         new AIServiceConfig(
-            "https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30, false, true, 5);
+            "https://api.openai.com/v1",
+            "test-api-key",
+            "gpt-3.5-turbo",
+            0.7,
+            30,
+            false,
+            true,
+            false,
+            5);
     AIChatRequest request = AIChatRequest.createUserMessage("你好，今天天氣如何？", config);
 
     // When
@@ -38,7 +46,15 @@ class AIChatRequestTest {
     // Given
     AIServiceConfig config =
         new AIServiceConfig(
-            "https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30, false, true, 5);
+            "https://api.openai.com/v1",
+            "test-api-key",
+            "gpt-3.5-turbo",
+            0.7,
+            30,
+            false,
+            true,
+            false,
+            5);
 
     // When
     AIChatRequest request = AIChatRequest.createUserMessage("測試訊息", config);
@@ -56,7 +72,15 @@ class AIChatRequestTest {
     // Given
     AIServiceConfig config =
         new AIServiceConfig(
-            "https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30, false, true, 5);
+            "https://api.openai.com/v1",
+            "test-api-key",
+            "gpt-3.5-turbo",
+            0.7,
+            30,
+            false,
+            true,
+            false,
+            5);
 
     // When
     AIChatRequest request = AIChatRequest.createUserMessage("", config);
@@ -71,7 +95,15 @@ class AIChatRequestTest {
     // Given
     AIServiceConfig config =
         new AIServiceConfig(
-            "https://api.openai.com/v1", "test-api-key", "gpt-3.5-turbo", 0.7, 30, false, true, 5);
+            "https://api.openai.com/v1",
+            "test-api-key",
+            "gpt-3.5-turbo",
+            0.7,
+            30,
+            false,
+            true,
+            false,
+            5);
 
     // When
     AIChatRequest request = AIChatRequest.createUserMessage(null, config);

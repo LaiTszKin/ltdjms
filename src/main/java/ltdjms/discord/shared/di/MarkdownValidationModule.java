@@ -61,6 +61,12 @@ public interface MarkdownValidationModule {
       return delegateService;
     }
 
-    return new MarkdownValidatingAIChatService(delegateService, validator, true, formatter);
+    return new MarkdownValidatingAIChatService(
+        delegateService,
+        validator,
+        true,
+        formatter,
+        config.maxMarkdownValidationRetries(),
+        config.streamingBypassValidation());
   }
 }

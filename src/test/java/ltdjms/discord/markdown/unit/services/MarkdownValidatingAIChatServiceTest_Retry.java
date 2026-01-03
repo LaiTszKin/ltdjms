@@ -31,7 +31,8 @@ class MarkdownValidatingAIChatServiceTest_Retry {
     mockDelegate = mock(AIChatService.class);
     mockValidator = mock(MarkdownValidator.class);
     formatter = new MarkdownErrorFormatter();
-    service = new MarkdownValidatingAIChatService(mockDelegate, mockValidator, true, formatter);
+    service =
+        new MarkdownValidatingAIChatService(mockDelegate, mockValidator, true, formatter, 5, false);
   }
 
   @Test

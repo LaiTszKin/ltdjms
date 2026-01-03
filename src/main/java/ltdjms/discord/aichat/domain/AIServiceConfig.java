@@ -15,6 +15,7 @@ import ltdjms.discord.shared.Unit;
  * @param timeoutSeconds 連線逾時秒數（僅用於建立連線，不限制推理時間）
  * @param showReasoning 是否顯示推理內容（預設: false）
  * @param enableMarkdownValidation 是否啟用 Markdown 格式驗證（預設: true）
+ * @param streamingBypassValidation 串流模式是否跳過驗證（預設: false）
  * @param maxMarkdownValidationRetries Markdown 驗證最大重試次數（預設: 5）
  */
 public record AIServiceConfig(
@@ -25,6 +26,7 @@ public record AIServiceConfig(
     int timeoutSeconds,
     boolean showReasoning,
     boolean enableMarkdownValidation,
+    boolean streamingBypassValidation,
     int maxMarkdownValidationRetries) {
 
   /** 從 EnvironmentConfig 建立配置。 */
@@ -37,6 +39,7 @@ public record AIServiceConfig(
         env.getAIServiceTimeoutSeconds(),
         env.getAIShowReasoning(),
         env.getAIMarkdownValidationEnabled(),
+        env.getAIMarkdownValidationStreamingBypass(),
         env.getAIMarkdownValidationMaxRetries());
   }
 

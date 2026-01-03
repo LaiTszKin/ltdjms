@@ -5,6 +5,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -51,6 +53,7 @@ class MarkdownValidationIntegrationTest {
           60,
           false,
           true, // enable markdown validation
+          false, // streaming bypass
           5);
 
   private static final AIServiceConfig TEST_CONFIG_DISABLED =
@@ -62,6 +65,7 @@ class MarkdownValidationIntegrationTest {
           60,
           false,
           false, // disable markdown validation
+          false, // streaming bypass
           5);
 
   @Mock private AIChatService mockDelegate;
@@ -88,7 +92,7 @@ class MarkdownValidationIntegrationTest {
     void shouldAssembleWithRealValidator() {
       // Given
       validatingService =
-          new MarkdownValidatingAIChatService(mockDelegate, validator, true, formatter);
+          new MarkdownValidatingAIChatService(mockDelegate, validator, true, formatter, 5, false);
 
       // Then - 無異常拋出
       assertThat(validatingService).isNotNull();
@@ -102,7 +106,7 @@ class MarkdownValidationIntegrationTest {
     @BeforeEach
     void setUpValidatingService() {
       validatingService =
-          new MarkdownValidatingAIChatService(mockDelegate, validator, true, formatter);
+          new MarkdownValidatingAIChatService(mockDelegate, validator, true, formatter, 5, false);
     }
 
     @Test
@@ -215,7 +219,7 @@ class MarkdownValidationIntegrationTest {
     void disabledValidationShouldDelegateDirectly() {
       // Given
       MarkdownValidatingAIChatService disabledService =
-          new MarkdownValidatingAIChatService(mockDelegate, validator, false, formatter);
+          new MarkdownValidatingAIChatService(mockDelegate, validator, false, formatter, 5, false);
 
       String anyResponse = "```\nunclosed block"; // 即使有錯誤也應該通過
       when(mockDelegate.generateResponse(anyLong(), anyString(), anyString(), anyString()))
@@ -240,7 +244,7 @@ class MarkdownValidationIntegrationTest {
     @BeforeEach
     void setUpValidatingService() {
       validatingService =
-          new MarkdownValidatingAIChatService(mockDelegate, validator, true, formatter);
+          new MarkdownValidatingAIChatService(mockDelegate, validator, true, formatter, 5, false);
     }
 
     @Test
@@ -270,40 +274,50 @@ class MarkdownValidationIntegrationTest {
     @BeforeEach
     void setUpValidatingService() {
       validatingService =
-          new MarkdownValidatingAIChatService(mockDelegate, validator, true, formatter);
+          new MarkdownValidatingAIChatService(mockDelegate, validator, true, formatter, 5, false);
     }
 
     @Test
-    @DisplayName("串流回應應該直接委派，不進行驗證")
-    void streamingResponseShouldDelegateDirectly() {
+    @DisplayName("串流回應預設應先驗證再回傳分段")
+    void streamingResponseShouldValidateAndEmit() {
       // Given
       ltdjms.discord.aichat.services.StreamingResponseHandler mockHandler =
           org.mockito.Mockito.mock(ltdjms.discord.aichat.services.StreamingResponseHandler.class);
+      when(mockDelegate.generateResponse(anyLong(), anyString(), anyString(), anyString()))
+          .thenReturn(Result.ok(List.of("合法回應")));
 
       // When
       validatingService.generateStreamingResponse(123L, "channel-1", "user-1", "測試", mockHandler);
 
-      // Then - 直接委派，不驗證
+      // Then - 透過 onChunk 回傳結果，且不使用委派的串流方法
       verify(mockDelegate, times(1))
+          .generateResponse(anyLong(), anyString(), anyString(), anyString());
+      verify(mockDelegate, never())
           .generateStreamingResponse(anyLong(), anyString(), anyString(), anyString(), any());
+      verify(mockHandler, times(1)).onChunk(eq("合法回應"), eq(true), isNull(), any());
     }
 
     @Test
-    @DisplayName("串流回應（帶 messageId）應該直接委派，不進行驗證")
-    void streamingResponseWithMessageIdShouldDelegateDirectly() {
+    @DisplayName("串流回應（帶 messageId）預設應驗證並回傳分段")
+    void streamingResponseWithMessageIdShouldValidateAndEmit() {
       // Given
       ltdjms.discord.aichat.services.StreamingResponseHandler mockHandler =
           org.mockito.Mockito.mock(ltdjms.discord.aichat.services.StreamingResponseHandler.class);
       long messageId = 999L;
+      when(mockDelegate.generateResponse(anyLong(), anyString(), anyString(), anyString()))
+          .thenReturn(Result.ok(List.of("合法回應 2")));
 
       // When
       validatingService.generateStreamingResponse(
           123L, "channel-1", "user-1", "測試", messageId, mockHandler);
 
-      // Then - 直接委派，不驗證
+      // Then - 透過 onChunk 回傳結果，且不使用委派的串流方法
       verify(mockDelegate, times(1))
+          .generateResponse(anyLong(), anyString(), anyString(), anyString());
+      verify(mockDelegate, never())
           .generateStreamingResponse(
               anyLong(), anyString(), anyString(), anyString(), eq(messageId), any());
+      verify(mockHandler, times(1)).onChunk(eq("合法回應 2"), eq(true), isNull(), any());
     }
 
     @Test
@@ -321,6 +335,23 @@ class MarkdownValidationIntegrationTest {
       // Then - 直接委派，不驗證
       verify(mockDelegate, times(1))
           .generateWithHistory(anyLong(), anyString(), anyString(), any(), any());
+    }
+
+    @Test
+    @DisplayName("啟用串流繞過時應直接委派原始串流")
+    void streamingBypassShouldDelegate() {
+      // Given
+      var bypassService =
+          new MarkdownValidatingAIChatService(mockDelegate, validator, true, formatter, 5, true);
+      ltdjms.discord.aichat.services.StreamingResponseHandler mockHandler =
+          org.mockito.Mockito.mock(ltdjms.discord.aichat.services.StreamingResponseHandler.class);
+
+      // When
+      bypassService.generateStreamingResponse(123L, "channel-1", "user-1", "測試", mockHandler);
+
+      // Then
+      verify(mockDelegate, times(1))
+          .generateStreamingResponse(anyLong(), anyString(), anyString(), anyString(), any());
     }
   }
 }

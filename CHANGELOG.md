@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.23.1] - 2026-01-03
+
+### Fixed
+- **markdown**: Streaming response validation now configurable
+  - Streaming responses previously bypassed markdown validation entirely
+  - Now validates by default with configurable bypass option (`AI_MARKDOWN_VALIDATION_STREAMING_BYPASS`)
+  - Added `AI_MARKDOWN_VALIDATION_MAX_RETRIES` for configurable retry attempts
+  - Enhanced error reporting includes original prompt and response preview
+  - Refactored validation logic into `validateAndGenerate` method
+
+### Technical
+- Updated `AIServiceConfig` to include `streamingBypassValidation` parameter
+- Updated `EnvironmentConfig` with new environment variables support
+- Updated `MarkdownValidatingAIChatService` constructor with new parameters
+- Updated all tests to include new constructor parameters
+
 ## [0.23.0] - 2026-01-03
 
 ### Added

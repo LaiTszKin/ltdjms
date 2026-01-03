@@ -18,70 +18,34 @@ import ltdjms.discord.shared.Result;
 public final class MarkdownValidatingAIChatService implements AIChatService {
 
   private static final Logger LOG = LoggerFactory.getLogger(MarkdownValidatingAIChatService.class);
-  private static final int MAX_RETRY_ATTEMPTS = 5;
 
   private final AIChatService delegate;
   private final MarkdownValidator validator;
   private final boolean enabled;
   private final MarkdownErrorFormatter errorFormatter;
+  private final int maxRetryAttempts;
+  private final boolean streamingBypassValidation;
 
   public MarkdownValidatingAIChatService(
       AIChatService delegate,
       MarkdownValidator validator,
       boolean enabled,
-      MarkdownErrorFormatter errorFormatter) {
+      MarkdownErrorFormatter errorFormatter,
+      int maxRetryAttempts,
+      boolean streamingBypassValidation) {
     this.delegate = delegate;
     this.validator = validator;
     this.enabled = enabled;
     this.errorFormatter = errorFormatter;
+    this.maxRetryAttempts = maxRetryAttempts;
+    this.streamingBypassValidation = streamingBypassValidation;
   }
 
   @Override
   public Result<List<String>, DomainError> generateResponse(
       long guildId, String channelId, String userId, String userMessage) {
 
-    if (!enabled) {
-      return delegate.generateResponse(guildId, channelId, userId, userMessage);
-    }
-
-    String originalPrompt = userMessage;
-    String currentPrompt = userMessage;
-    String lastResponse = null;
-    int attempt = 0;
-
-    while (attempt < MAX_RETRY_ATTEMPTS) {
-      attempt++;
-
-      Result<List<String>, DomainError> result =
-          delegate.generateResponse(guildId, channelId, userId, currentPrompt);
-
-      if (result.isErr()) {
-        return result;
-      }
-
-      String fullResponse = String.join("\n", result.getValue());
-      lastResponse = fullResponse;
-
-      ValidationResult validation = validator.validate(fullResponse);
-
-      if (validation instanceof ValidationResult.Valid) {
-        return result;
-      }
-
-      ValidationResult.Invalid invalid = (ValidationResult.Invalid) validation;
-      String errorReport =
-          errorFormatter.formatErrorReport(originalPrompt, invalid.errors(), attempt, fullResponse);
-
-      currentPrompt = buildRetryPrompt(originalPrompt, errorReport);
-      LOG.warn(
-          "Markdown validation failed (attempt {}/{}): {} errors",
-          attempt,
-          MAX_RETRY_ATTEMPTS,
-          invalid.errors().size());
-    }
-
-    LOG.warn("Markdown validation exceeded max attempts, returning last response");
-    return Result.ok(List.of(lastResponse));
+    return validateAndGenerate(guildId, channelId, userId, userMessage);
   }
 
   @Override
@@ -91,8 +55,24 @@ public final class MarkdownValidatingAIChatService implements AIChatService {
       String userId,
       String userMessage,
       StreamingResponseHandler handler) {
-    // 流式回應直接委派，不進行驗證
-    delegate.generateStreamingResponse(guildId, channelId, userId, userMessage, handler);
+    if (!enabled || streamingBypassValidation) {
+      delegate.generateStreamingResponse(guildId, channelId, userId, userMessage, handler);
+      return;
+    }
+
+    Result<List<String>, DomainError> result =
+        validateAndGenerate(guildId, channelId, userId, userMessage);
+
+    if (result.isErr()) {
+      handler.onChunk("", true, result.getError(), StreamingResponseHandler.ChunkType.CONTENT);
+      return;
+    }
+
+    List<String> messages = result.getValue();
+    for (int i = 0; i < messages.size(); i++) {
+      boolean isLast = (i == messages.size() - 1);
+      handler.onChunk(messages.get(i), isLast, null, StreamingResponseHandler.ChunkType.CONTENT);
+    }
   }
 
   @Override
@@ -103,8 +83,25 @@ public final class MarkdownValidatingAIChatService implements AIChatService {
       String userMessage,
       long messageId,
       StreamingResponseHandler handler) {
-    // 流式回應直接委派，不進行驗證
-    delegate.generateStreamingResponse(guildId, channelId, userId, userMessage, messageId, handler);
+    if (!enabled || streamingBypassValidation) {
+      delegate.generateStreamingResponse(
+          guildId, channelId, userId, userMessage, messageId, handler);
+      return;
+    }
+
+    Result<List<String>, DomainError> result =
+        validateAndGenerate(guildId, channelId, userId, userMessage);
+
+    if (result.isErr()) {
+      handler.onChunk("", true, result.getError(), StreamingResponseHandler.ChunkType.CONTENT);
+      return;
+    }
+
+    List<String> messages = result.getValue();
+    for (int i = 0; i < messages.size(); i++) {
+      boolean isLast = (i == messages.size() - 1);
+      handler.onChunk(messages.get(i), isLast, null, StreamingResponseHandler.ChunkType.CONTENT);
+    }
   }
 
   @Override
@@ -132,5 +129,52 @@ public final class MarkdownValidatingAIChatService implements AIChatService {
         請修正上述格式錯誤並重新生成回應。
         """,
         originalPrompt, errorReport);
+  }
+
+  private Result<List<String>, DomainError> validateAndGenerate(
+      long guildId, String channelId, String userId, String userMessage) {
+
+    if (!enabled) {
+      return delegate.generateResponse(guildId, channelId, userId, userMessage);
+    }
+
+    String originalPrompt = userMessage;
+    String currentPrompt = userMessage;
+    String lastResponse = null;
+    int attempt = 0;
+
+    while (attempt < maxRetryAttempts) {
+      attempt++;
+
+      Result<List<String>, DomainError> result =
+          delegate.generateResponse(guildId, channelId, userId, currentPrompt);
+
+      if (result.isErr()) {
+        return result;
+      }
+
+      String fullResponse = String.join("\n", result.getValue());
+      lastResponse = fullResponse;
+
+      ValidationResult validation = validator.validate(fullResponse);
+
+      if (validation instanceof ValidationResult.Valid) {
+        return result;
+      }
+
+      ValidationResult.Invalid invalid = (ValidationResult.Invalid) validation;
+      String errorReport =
+          errorFormatter.formatErrorReport(originalPrompt, invalid.errors(), attempt, fullResponse);
+
+      currentPrompt = buildRetryPrompt(originalPrompt, errorReport);
+      LOG.warn(
+          "Markdown validation failed (attempt {}/{}): {} errors",
+          attempt,
+          maxRetryAttempts,
+          invalid.errors().size());
+    }
+
+    LOG.warn("Markdown validation exceeded max attempts, returning last response");
+    return Result.ok(List.of(lastResponse));
   }
 }

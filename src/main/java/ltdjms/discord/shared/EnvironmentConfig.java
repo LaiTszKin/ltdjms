@@ -50,6 +50,8 @@ public final class EnvironmentConfig {
   private static final String ENV_PROMPT_MAX_SIZE_BYTES = "PROMPT_MAX_SIZE_BYTES";
   private static final String ENV_AI_SHOW_REASONING = "AI_SHOW_REASONING";
   private static final String ENV_AI_MARKDOWN_VALIDATION_ENABLED = "AI_MARKDOWN_VALIDATION_ENABLED";
+  private static final String ENV_AI_MARKDOWN_VALIDATION_STREAMING_BYPASS =
+      "AI_MARKDOWN_VALIDATION_STREAMING_BYPASS";
   private static final String ENV_AI_MARKDOWN_VALIDATION_MAX_RETRIES =
       "AI_MARKDOWN_VALIDATION_MAX_RETRIES";
 
@@ -73,6 +75,8 @@ public final class EnvironmentConfig {
   private static final String CFG_PROMPT_MAX_SIZE = "prompts.max-size";
   private static final String CFG_AI_SHOW_REASONING = "ai.show-reasoning";
   private static final String CFG_AI_MARKDOWN_VALIDATION_ENABLED = "ai.markdown-validation.enabled";
+  private static final String CFG_AI_MARKDOWN_VALIDATION_STREAMING_BYPASS =
+      "ai.markdown-validation.streaming-bypass";
   private static final String CFG_AI_MARKDOWN_VALIDATION_MAX_RETRIES =
       "ai.markdown-validation.max-retries";
 
@@ -94,6 +98,7 @@ public final class EnvironmentConfig {
   private static final long DEFAULT_PROMPT_MAX_SIZE_BYTES = 1048576L; // 1MB
   private static final boolean DEFAULT_AI_SHOW_REASONING = false;
   private static final boolean DEFAULT_AI_MARKDOWN_VALIDATION_ENABLED = true;
+  private static final boolean DEFAULT_AI_MARKDOWN_VALIDATION_STREAMING_BYPASS = false;
   private static final int DEFAULT_AI_MARKDOWN_VALIDATION_MAX_RETRIES = 5;
 
   private final Config config;
@@ -142,6 +147,9 @@ public final class EnvironmentConfig {
     defaults.put(CFG_AI_SHOW_REASONING, DEFAULT_AI_SHOW_REASONING);
     defaults.put(CFG_AI_MARKDOWN_VALIDATION_ENABLED, DEFAULT_AI_MARKDOWN_VALIDATION_ENABLED);
     defaults.put(
+        CFG_AI_MARKDOWN_VALIDATION_STREAMING_BYPASS,
+        DEFAULT_AI_MARKDOWN_VALIDATION_STREAMING_BYPASS);
+    defaults.put(
         CFG_AI_MARKDOWN_VALIDATION_MAX_RETRIES, DEFAULT_AI_MARKDOWN_VALIDATION_MAX_RETRIES);
     Config defaultsConfig = ConfigFactory.parseMap(defaults);
 
@@ -171,6 +179,10 @@ public final class EnvironmentConfig {
     mapEnvToConfigBoolean(dotEnvMapped, ENV_AI_SHOW_REASONING, CFG_AI_SHOW_REASONING);
     mapEnvToConfigBoolean(
         dotEnvMapped, ENV_AI_MARKDOWN_VALIDATION_ENABLED, CFG_AI_MARKDOWN_VALIDATION_ENABLED);
+    mapEnvToConfigBoolean(
+        dotEnvMapped,
+        ENV_AI_MARKDOWN_VALIDATION_STREAMING_BYPASS,
+        CFG_AI_MARKDOWN_VALIDATION_STREAMING_BYPASS);
     mapEnvToConfigInt(
         dotEnvMapped,
         ENV_AI_MARKDOWN_VALIDATION_MAX_RETRIES,
@@ -201,6 +213,10 @@ public final class EnvironmentConfig {
     mapSysEnvToConfigBoolean(sysEnvMapped, ENV_AI_SHOW_REASONING, CFG_AI_SHOW_REASONING);
     mapSysEnvToConfigBoolean(
         sysEnvMapped, ENV_AI_MARKDOWN_VALIDATION_ENABLED, CFG_AI_MARKDOWN_VALIDATION_ENABLED);
+    mapSysEnvToConfigBoolean(
+        sysEnvMapped,
+        ENV_AI_MARKDOWN_VALIDATION_STREAMING_BYPASS,
+        CFG_AI_MARKDOWN_VALIDATION_STREAMING_BYPASS);
     mapSysEnvToConfigInt(
         sysEnvMapped,
         ENV_AI_MARKDOWN_VALIDATION_MAX_RETRIES,
@@ -580,6 +596,15 @@ public final class EnvironmentConfig {
    */
   public boolean getAIMarkdownValidationEnabled() {
     return config.getBoolean(CFG_AI_MARKDOWN_VALIDATION_ENABLED);
+  }
+
+  /**
+   * 取得串流模式是否繞過 Markdown 驗證。
+   *
+   * @return true 繞過驗證，false 正常驗證
+   */
+  public boolean getAIMarkdownValidationStreamingBypass() {
+    return config.getBoolean(CFG_AI_MARKDOWN_VALIDATION_STREAMING_BYPASS);
   }
 
   /**
