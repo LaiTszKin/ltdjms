@@ -22,6 +22,8 @@ import org.mockito.MockitoAnnotations;
 
 import ltdjms.discord.aichat.domain.AIServiceConfig;
 import ltdjms.discord.aichat.services.AIChatService;
+import ltdjms.discord.markdown.autofix.MarkdownAutoFixer;
+import ltdjms.discord.markdown.autofix.RegexBasedAutoFixer;
 import ltdjms.discord.markdown.services.MarkdownValidatingAIChatService;
 import ltdjms.discord.markdown.validation.CommonMarkValidator;
 import ltdjms.discord.markdown.validation.MarkdownErrorFormatter;
@@ -54,7 +56,8 @@ class MarkdownValidationIntegrationTest {
           false,
           true, // enable markdown validation
           false, // streaming bypass
-          5);
+          5,
+          true); // enable auto-fix
 
   private static final AIServiceConfig TEST_CONFIG_DISABLED =
       new AIServiceConfig(
@@ -66,21 +69,24 @@ class MarkdownValidationIntegrationTest {
           false,
           false, // disable markdown validation
           false, // streaming bypass
-          5);
+          5,
+          false); // disable auto-fix
 
   @Mock private AIChatService mockDelegate;
 
   private MarkdownValidator validator;
   private MarkdownErrorFormatter formatter;
+  private MarkdownAutoFixer autofixer;
   private MarkdownValidatingAIChatService validatingService;
 
   @BeforeEach
   void setUp() {
     MockitoAnnotations.openMocks(this);
 
-    // 使用真實的 CommonMarkValidator 和 MarkdownErrorFormatter
+    // 使用真實的 CommonMarkValidator、MarkdownErrorFormatter 和 MarkdownAutoFixer
     validator = new CommonMarkValidator();
     formatter = new MarkdownErrorFormatter();
+    autofixer = new RegexBasedAutoFixer();
   }
 
   @Nested
@@ -92,7 +98,8 @@ class MarkdownValidationIntegrationTest {
     void shouldAssembleWithRealValidator() {
       // Given
       validatingService =
-          new MarkdownValidatingAIChatService(mockDelegate, validator, true, formatter, 5, false);
+          new MarkdownValidatingAIChatService(
+              mockDelegate, validator, autofixer, true, formatter, 5, false, true);
 
       // Then - 無異常拋出
       assertThat(validatingService).isNotNull();
@@ -106,7 +113,8 @@ class MarkdownValidationIntegrationTest {
     @BeforeEach
     void setUpValidatingService() {
       validatingService =
-          new MarkdownValidatingAIChatService(mockDelegate, validator, true, formatter, 5, false);
+          new MarkdownValidatingAIChatService(
+              mockDelegate, validator, autofixer, true, formatter, 5, false, true);
     }
 
     @Test
@@ -192,15 +200,20 @@ class MarkdownValidationIntegrationTest {
     @Test
     @DisplayName("超出最大重試次數應該返回最後一次的回應")
     void exceedingMaxRetriesShouldReturnLastResponse() {
-      // Given - 持續返回不完整的程式碼區塊
-      String invalidResponse = "```java\npublic void test() {\n  // 持續缺少結束";
+      // Given - 使用停用自動修復的服務來測試重試機制
+      var serviceWithoutAutoFix =
+          new MarkdownValidatingAIChatService(
+              mockDelegate, validator, autofixer, true, formatter, 5, false, false);
+
+      // 持續返回無法自動修復的錯誤（超過 Discord 限制的標題）
+      String invalidResponse = "####### H7 - 超過限制的標題";
 
       when(mockDelegate.generateResponse(anyLong(), anyString(), anyString(), anyString()))
           .thenReturn(Result.ok(List.of(invalidResponse)));
 
       // When
       Result<List<String>, DomainError> result =
-          validatingService.generateResponse(123L, "channel-1", "user-1", "測試");
+          serviceWithoutAutoFix.generateResponse(123L, "channel-1", "user-1", "測試");
 
       // Then - 應該重試 5 次（初始 + 4 次重試）
       assertThat(result.isOk()).isTrue();
@@ -219,7 +232,8 @@ class MarkdownValidationIntegrationTest {
     void disabledValidationShouldDelegateDirectly() {
       // Given
       MarkdownValidatingAIChatService disabledService =
-          new MarkdownValidatingAIChatService(mockDelegate, validator, false, formatter, 5, false);
+          new MarkdownValidatingAIChatService(
+              mockDelegate, validator, autofixer, false, formatter, 5, false, true);
 
       String anyResponse = "```\nunclosed block"; // 即使有錯誤也應該通過
       when(mockDelegate.generateResponse(anyLong(), anyString(), anyString(), anyString()))
@@ -244,7 +258,8 @@ class MarkdownValidationIntegrationTest {
     @BeforeEach
     void setUpValidatingService() {
       validatingService =
-          new MarkdownValidatingAIChatService(mockDelegate, validator, true, formatter, 5, false);
+          new MarkdownValidatingAIChatService(
+              mockDelegate, validator, autofixer, true, formatter, 5, false, true);
     }
 
     @Test
@@ -274,7 +289,8 @@ class MarkdownValidationIntegrationTest {
     @BeforeEach
     void setUpValidatingService() {
       validatingService =
-          new MarkdownValidatingAIChatService(mockDelegate, validator, true, formatter, 5, false);
+          new MarkdownValidatingAIChatService(
+              mockDelegate, validator, autofixer, true, formatter, 5, false, true);
     }
 
     @Test
@@ -342,7 +358,8 @@ class MarkdownValidationIntegrationTest {
     void streamingBypassShouldDelegate() {
       // Given
       var bypassService =
-          new MarkdownValidatingAIChatService(mockDelegate, validator, true, formatter, 5, true);
+          new MarkdownValidatingAIChatService(
+              mockDelegate, validator, autofixer, true, formatter, 5, true, true);
       ltdjms.discord.aichat.services.StreamingResponseHandler mockHandler =
           org.mockito.Mockito.mock(ltdjms.discord.aichat.services.StreamingResponseHandler.class);
 
@@ -352,6 +369,104 @@ class MarkdownValidationIntegrationTest {
       // Then
       verify(mockDelegate, times(1))
           .generateStreamingResponse(anyLong(), anyString(), anyString(), anyString(), any());
+    }
+  }
+
+  @Nested
+  @DisplayName("自動修復測試")
+  class AutoFixTests {
+
+    @BeforeEach
+    void setUpValidatingService() {
+      validatingService =
+          new MarkdownValidatingAIChatService(
+              mockDelegate, validator, autofixer, true, formatter, 5, false, true);
+    }
+
+    @Test
+    @DisplayName("啟用自動修復時，應該修復簡單標題格式錯誤並避免重試")
+    void shouldAutoFixHeadingFormatErrorWithoutRetry() {
+      // Given - 標題缺少空格（#Heading）
+      String invalidResponse = "#Heading without space";
+      when(mockDelegate.generateResponse(anyLong(), anyString(), anyString(), anyString()))
+          .thenReturn(Result.ok(List.of(invalidResponse)));
+
+      // When
+      Result<List<String>, DomainError> result =
+          validatingService.generateResponse(123L, "channel-1", "user-1", "測試");
+
+      // Then - 應該自動修復並成功，不重試
+      assertThat(result.isOk()).isTrue();
+      // 修復後應該有空格
+      assertThat(result.getValue().get(0)).contains("# Heading");
+      verify(mockDelegate, times(1))
+          .generateResponse(anyLong(), anyString(), anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("啟用自動修復時，應該修復未閉合的程式碼區塊並避免重試")
+    void shouldAutoFixUnclosedCodeBlockWithoutRetry() {
+      // Given - 未閉合的程式碼區塊後跟隨純文字
+      String invalidResponse = "```java\npublic void test() {\n}\nSome plain text after";
+      when(mockDelegate.generateResponse(anyLong(), anyString(), anyString(), anyString()))
+          .thenReturn(Result.ok(List.of(invalidResponse)));
+
+      // When
+      Result<List<String>, DomainError> result =
+          validatingService.generateResponse(123L, "channel-1", "user-1", "測試");
+
+      // Then - 應該自動修復並成功，不重試
+      assertThat(result.isOk()).isTrue();
+      // 應該包含結束的 ```
+      assertThat(result.getValue().get(0)).contains("```");
+      verify(mockDelegate, times(1))
+          .generateResponse(anyLong(), anyString(), anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("停用自動修復時，應該正常重試機制")
+    void disabledAutoFixShouldUseNormalRetry() {
+      // Given
+      var serviceWithoutAutoFix =
+          new MarkdownValidatingAIChatService(
+              mockDelegate, validator, autofixer, true, formatter, 5, false, false);
+
+      String invalidResponse = "#Invalid heading";
+      String validResponse = "# Valid heading";
+
+      when(mockDelegate.generateResponse(anyLong(), anyString(), anyString(), anyString()))
+          .thenReturn(Result.ok(List.of(invalidResponse)))
+          .thenReturn(Result.ok(List.of(validResponse)));
+
+      // When
+      Result<List<String>, DomainError> result =
+          serviceWithoutAutoFix.generateResponse(123L, "channel-1", "user-1", "測試");
+
+      // Then - 應該重試一次
+      assertThat(result.isOk()).isTrue();
+      verify(mockDelegate, times(2))
+          .generateResponse(anyLong(), anyString(), anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("自動修復無法完全修復時，應該進入重試流程")
+    void shouldRetryWhenAutoFixCannotFullyCorrect() {
+      // Given - 複雜錯誤無法自動修復
+      String invalidResponse = "####### H7 - 超過限制的標題";
+      String validResponse = "###### H6 - 修正後的標題";
+
+      when(mockDelegate.generateResponse(anyLong(), anyString(), anyString(), anyString()))
+          .thenReturn(Result.ok(List.of(invalidResponse)))
+          .thenReturn(Result.ok(List.of(validResponse)));
+
+      // When
+      Result<List<String>, DomainError> result =
+          validatingService.generateResponse(123L, "channel-1", "user-1", "測試");
+
+      // Then - 自動修復無法處理，應該重試
+      assertThat(result.isOk()).isTrue();
+      verify(mockDelegate, times(2))
+          .generateResponse(anyLong(), anyString(), anyString(), anyString());
     }
   }
 }
