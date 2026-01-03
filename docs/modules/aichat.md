@@ -719,3 +719,247 @@ mvn test -Dtest=LangChain4jListChannelsToolTest
 - [LangChain4J 任務列表](../../specs/007-langchain4j-ai/tasks.md)
 
 ---
+
+## Markdown 驗證功能（V018 新增）
+
+### 概述
+
+為了確保 AI 生成的回應在 Discord 中正確顯示，V018 版本引入了 **Markdown 驗證功能**。此功能使用裝飾器模式包裝 `AIChatService`，在回應生成後驗證 Markdown 格式，格式錯誤時自動重新生成。
+
+**核心特性**：
+- **自動驗證**：使用 CommonMark Java 庫驗證 Markdown 語法
+- **智能重試**：檢測到格式錯誤時自動重新生成，最多 5 次
+- **Discord 特定檢查**：驗證標題等級不超過 Discord 限制（H6）
+- **降級模式**：可配置停用驗證，直接使用原始回應
+- **結構化錯誤報告**：為 LLM 提供詳細的格式錯誤說明
+
+### 驗證規則
+
+#### CommonMark 基礎驗證
+
+使用 CommonMark Java 0.22.0 進行解析驗證，包括：
+- 程式碼區塊語法正確性
+- 列表格式正確性
+- 表格語法正確性（透過擴展支援）
+
+#### Discord 特定檢查
+
+| 檢查項目 | 規則 | 說明 |
+|---------|------|------|
+| 標題等級 | 最高 H6 | Discord 不支援 H7 及以上 |
+| 程式碼區塊 | 需正確閉合 | 缺少結束 ``` 會導致顯示錯誤 |
+| 列表格式 | 緊接內容需空行 | 列表與程式碼區塊之間需空行 |
+
+### 架構
+
+#### MarkdownValidatingAIChatService
+
+裝飾器類，包裝 `AIChatService` 並添加驗證邏輯：
+
+```java
+public final class MarkdownValidatingAIChatService implements AIChatService {
+    private final AIChatService delegate;
+    private final MarkdownValidator validator;
+    private final boolean enabled;
+    private final MarkdownErrorFormatter errorFormatter;
+
+    @Override
+    public Result<List<String>, DomainError> generateResponse(...) {
+        // 生成回應 → 驗證 → 格式錯誤則重試
+    }
+}
+```
+
+**行為**：
+1. 呼叫委派服務生成回應
+2. 使用 `MarkdownValidator` 驗證回應
+3. 驗證通過則返回結果
+4. 驗證失敗則生成錯誤報告並重試
+5. 最多重試 5 次，超過則返回最後一次回應
+
+#### MarkdownValidator 介面
+
+```java
+public interface MarkdownValidator {
+    sealed interface ValidationResult {
+        record Valid(String markdown) implements ValidationResult {}
+        record Invalid(List<MarkdownError> errors) implements ValidationResult {}
+    }
+
+    ValidationResult validate(String markdown);
+}
+```
+
+#### CommonMarkValidator
+
+使用 CommonMark Java 實作的驗證器：
+
+```java
+public final class CommonMarkValidator implements MarkdownValidator {
+    private final Parser parser;
+    private final HtmlRenderer renderer;
+
+    @Override
+    public ValidationResult validate(String markdown) {
+        // 1. 解析 Markdown
+        // 2. 檢查程式碼區塊閉合
+        // 3. 檢查標題等級
+        // 4. 檢查列表格式
+    }
+}
+```
+
+#### MarkdownErrorFormatter
+
+生成結構化錯誤報告：
+
+```java
+public final class MarkdownErrorFormatter {
+    public String formatErrorReport(
+        String originalPrompt,
+        List<MarkdownError> errors,
+        int attempt,
+        String fullResponse
+    ) {
+        // 生成給 LLM 的錯誤說明
+    }
+}
+```
+
+**輸出範例**：
+```
+[系統提示：你的上一次回應存在 Markdown 格式錯誤]
+
+原始用戶訊息：
+寫一個 Java 函數
+
+格式驗證錯誤報告：
+1. [程式碼區塊錯誤] 第 1-3 行：程式碼區塊未正確閉合
+
+請修正上述格式錯誤並重新生成回應。
+```
+
+### 配置
+
+#### 環境變數
+
+```bash
+# Markdown 驗證配置
+AI_MARKDOWN_VALIDATION_ENABLED=true    # 是否啟用驗證（預設: true）
+AI_MARKDOWN_VALIDATION_MAX_RETRIES=5   # 最大重試次數（預設: 5）
+```
+
+#### AIServiceConfig 擴展
+
+```java
+public record AIServiceConfig(
+    String baseUrl,
+    String apiKey,
+    String model,
+    double temperature,
+    int timeoutSeconds,
+    boolean showReasoning,
+    boolean enableMarkdownValidation,    // 新增：是否啟用驗證
+    int maxMarkdownValidationRetries     // 新增：最大重試次數
+)
+```
+
+### 依賴注入
+
+#### MarkdownValidationModule
+
+新的 Dagger 模組，提供 Markdown 驗證相關依賴：
+
+```java
+@Module
+public interface MarkdownValidationModule {
+    @Provides
+    @Singleton
+    static org.commonmark.parser.Parser provideCommonMarkParser();
+
+    @Provides
+    @Singleton
+    static org.commonmark.renderer.html.HtmlRenderer provideCommonMarkHtmlRenderer();
+
+    @Provides
+    @Singleton
+    static MarkdownValidator provideMarkdownValidator(...);
+
+    @Provides
+    @Singleton
+    static AIChatService provideValidatingAIChatService(
+        AIServiceConfig config,
+        LangChain4jAIChatService delegateService,
+        MarkdownValidator validator,
+        MarkdownErrorFormatter formatter
+    );
+}
+```
+
+**注意**：由於 Dagger 與 CommonMark 都有 `Parser` 類別，模組中使用完全限定名稱 `org.commonmark.parser.Parser` 避免衝突。
+
+### 錯誤類型
+
+#### MarkdownError
+
+```java
+public record MarkdownError(
+    MarkdownErrorType type,
+    String message,
+    int lineNumber,
+    int columnNumber,
+    String excerpt
+) {}
+
+public enum MarkdownErrorType {
+    CODE_BLOCK_UNCLOSED,      // 程式碼區塊未閉合
+    LIST_FORMAT_INVALID,      // 列表格式錯誤
+    HEADING_LEVEL_EXCEEDED,   // 標題等級超過限制
+    TABLE_FORMAT_INVALID      // 表格格式錯誤
+}
+```
+
+### 限制
+
+- **僅驗證非串流回應**：串流回應直接委派，不進行驗證
+- **最大重試次數**：預設 5 次，超過後返回最後一次回應
+- **Token 消耗**：每次重試都會消耗額外的 API 配額
+- **延遲增加**：重試會增加回應延遲
+
+### 測試
+
+#### 單元測試
+
+```bash
+# 執行 Markdown 驗證相關單元測試
+mvn test -Dtest=CommonMarkValidatorTest
+mvn test -Dtest=MarkdownErrorFormatterTest
+mvn test -Dtest=MarkdownValidatingAIChatServiceTest*
+```
+
+#### 整合測試
+
+```bash
+# 執行 Markdown 驗證整合測試
+mvn test -Dtest=MarkdownValidationIntegrationTest
+```
+
+**測試覆蓋範圍**：
+- DI 組裝驗證
+- 有效 Markdown 直接通過
+- 程式碼區塊錯誤重試
+- 標題等級超過限制重試
+- 多個格式錯誤同時修正
+- 超過最大重試次數
+- 降級模式（停用驗證）
+- 委派錯誤處理
+- 串流回應直接委派
+
+### 相關文件
+
+- [Markdown 驗證設計](../../plans/2026-01-03-markdown-validation-design.md)
+- [Markdown 驗證實作計畫](../../plans/2026-01-03-markdown-validation-implementation.md)
+- [CommonMark Java 規格](https://spec.commonmark.org/)
+- [Discord Markdown 指南](https://discord.com/developers/docs/reference#message-formatting)
+
+---

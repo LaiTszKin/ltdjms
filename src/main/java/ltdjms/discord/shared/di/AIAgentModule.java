@@ -38,7 +38,6 @@ import ltdjms.discord.aiagent.services.tools.LangChain4jListChannelsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jListRolesTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jModifyChannelPermissionsTool;
 import ltdjms.discord.aichat.domain.AIServiceConfig;
-import ltdjms.discord.aichat.services.AIChatService;
 import ltdjms.discord.aichat.services.LangChain4jAIChatService;
 import ltdjms.discord.aichat.services.PromptLoader;
 import ltdjms.discord.shared.EnvironmentConfig;
@@ -352,7 +351,7 @@ public class AIAgentModule {
   }
 
   /**
-   * 提供 AIChatService (LangChain4J 實作)。
+   * 提供 LangChain4jAIChatService (基礎實作，由 MarkdownValidationModule 包裝)。
    *
    * @param config AI 服務配置
    * @param promptLoader 提示詞載入器
@@ -366,11 +365,11 @@ public class AIAgentModule {
    * @param listRolesTool 列出角色工具
    * @param getChannelPermissionsTool 獲取頻道權限工具
    * @param modifyChannelPermissionsTool 修改頻道權限工具
-   * @return AIChatService 實例
+   * @return LangChain4jAIChatService 實例
    */
   @Provides
   @Singleton
-  public AIChatService provideAIChatService(
+  public LangChain4jAIChatService provideLangChain4jAIChatService(
       AIServiceConfig config,
       PromptLoader promptLoader,
       DomainEventPublisher eventPublisher,

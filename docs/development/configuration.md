@@ -117,7 +117,23 @@
   - 驗證範圍：`1` - `120`
   - 說明：AI 服務連線逾時秒數（不限制推理時間）
 
-### 2.6 提示詞載入器設定（V015 新增）
+### 2.6 Markdown 驗證設定（V018 新增）
+
+以下設定對應 AI 回應的 Markdown 格式驗證功能：
+
+- `AI_MARKDOWN_VALIDATION_ENABLED`
+  - 預設：`true`
+  - 對應 config key：`aichat.markdown-validation-enabled`
+  - 說明：是否啟用 AI 回應的 Markdown 格式驗證
+  - 啟用後會在回應生成後驗證格式，錯誤時自動重新生成
+
+- `AI_MARKDOWN_VALIDATION_MAX_RETRIES`
+  - 預設：`5`
+  - 對應 config key：`aichat.markdown-validation-max-retries`
+  - 驗證範圍：`1` - `10`
+  - 說明：Markdown 驗證失敗時的最大重試次數
+
+### 2.7 提示詞載入器設定（V015 新增）
 
 以下設定對應外部提示詞載入功能：
 
@@ -172,6 +188,10 @@ AI_SERVICE_TEMPERATURE=0.7
 AI_SERVICE_MAX_TOKENS=500
 AI_SERVICE_TIMEOUT_SECONDS=30
 
+# Markdown 驗證 (V018 新增)
+AI_MARKDOWN_VALIDATION_ENABLED=true
+AI_MARKDOWN_VALIDATION_MAX_RETRIES=5
+
 # 提示詞載入器 (V015 新增)
 PROMPTS_DIR_PATH=./prompts
 PROMPT_MAX_SIZE_BYTES=1048576
@@ -218,6 +238,9 @@ aichat {
   temperature = ${?AI_SERVICE_TEMPERATURE}
   max-tokens = ${?AI_SERVICE_MAX_TOKENS}
   timeout-seconds = ${?AI_SERVICE_TIMEOUT_SECONDS}
+
+  markdown-validation-enabled = ${?AI_MARKDOWN_VALIDATION_ENABLED}
+  markdown-validation-max-retries = ${?AI_MARKDOWN_VALIDATION_MAX_RETRIES}
 
   prompts-dir-path = ${?PROMPTS_DIR_PATH}
   prompt-max-size-bytes = ${?PROMPT_MAX_SIZE_BYTES}

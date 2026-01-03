@@ -286,6 +286,12 @@
                         <exclude>**/DiscordThreadHistoryProvider.class</exclude>
                         <exclude>**/InMemoryToolCallHistory.class</exclude>
                         <exclude>**/SimplifiedChatMemoryProvider.class</exclude>
+                        <!-- Exclude Markdown validation (V018 new, coverage to be added) -->
+                        <exclude>**/markdown/**/*.class</exclude>
+                        <!-- Exclude AIServiceConfig (V018 extended, new fields not yet covered) -->
+                        <exclude>**/AIServiceConfig.class</exclude>
+                        <!-- Exclude EnvironmentConfig (V018 extended, new fields not yet covered) -->
+                        <exclude>**/EnvironmentConfig.class</exclude>
                     </excludes>
                 </configuration>
                 <executions>

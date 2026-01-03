@@ -67,7 +67,8 @@ import ltdjms.discord.shop.services.CurrencyPurchaseService;
       CommandHandlerModule.class,
       EventModule.class,
       AIChatModule.class,
-      AIAgentModule.class
+      AIAgentModule.class,
+      MarkdownValidationModule.class
     })
 public interface AppComponent {
 
