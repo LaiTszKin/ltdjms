@@ -17,6 +17,7 @@ import ltdjms.discord.shared.Unit;
  * @param enableMarkdownValidation 是否啟用 Markdown 格式驗證（預設: true）
  * @param streamingBypassValidation 串流模式是否跳過驗證（預設: false）
  * @param maxMarkdownValidationRetries Markdown 驗證最大重試次數（預設: 5）
+ * @param enableAutoFix 是否啟用 Markdown 自動修復（預設: true）
  */
 public record AIServiceConfig(
     String baseUrl,
@@ -27,7 +28,8 @@ public record AIServiceConfig(
     boolean showReasoning,
     boolean enableMarkdownValidation,
     boolean streamingBypassValidation,
-    int maxMarkdownValidationRetries) {
+    int maxMarkdownValidationRetries,
+    boolean enableAutoFix) {
 
   /** 從 EnvironmentConfig 建立配置。 */
   public static AIServiceConfig from(EnvironmentConfig env) {
@@ -40,7 +42,8 @@ public record AIServiceConfig(
         env.getAIShowReasoning(),
         env.getAIMarkdownValidationEnabled(),
         env.getAIMarkdownValidationStreamingBypass(),
-        env.getAIMarkdownValidationMaxRetries());
+        env.getAIMarkdownValidationMaxRetries(),
+        env.getAIMarkdownAutoFixEnabled());
   }
 
   /** 驗證配置。 */

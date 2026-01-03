@@ -54,6 +54,7 @@ public final class EnvironmentConfig {
       "AI_MARKDOWN_VALIDATION_STREAMING_BYPASS";
   private static final String ENV_AI_MARKDOWN_VALIDATION_MAX_RETRIES =
       "AI_MARKDOWN_VALIDATION_MAX_RETRIES";
+  private static final String ENV_AI_MARKDOWN_AUTO_FIX_ENABLED = "AI_MARKDOWN_AUTO_FIX_ENABLED";
 
   // Config paths for Typesafe Config
   private static final String CFG_DISCORD_BOT_TOKEN = "discord.bot.token";
@@ -79,6 +80,8 @@ public final class EnvironmentConfig {
       "ai.markdown-validation.streaming-bypass";
   private static final String CFG_AI_MARKDOWN_VALIDATION_MAX_RETRIES =
       "ai.markdown-validation.max-retries";
+  private static final String CFG_AI_MARKDOWN_AUTO_FIX_ENABLED =
+      "ai.markdown-validation.autofix.enabled";
 
   // Default values
   private static final String DEFAULT_REDIS_URI = "redis://localhost:6379";
@@ -100,6 +103,7 @@ public final class EnvironmentConfig {
   private static final boolean DEFAULT_AI_MARKDOWN_VALIDATION_ENABLED = true;
   private static final boolean DEFAULT_AI_MARKDOWN_VALIDATION_STREAMING_BYPASS = false;
   private static final int DEFAULT_AI_MARKDOWN_VALIDATION_MAX_RETRIES = 5;
+  private static final boolean DEFAULT_AI_MARKDOWN_AUTO_FIX_ENABLED = true;
 
   private final Config config;
   private final Map<String, String> dotEnvValues;
@@ -151,6 +155,7 @@ public final class EnvironmentConfig {
         DEFAULT_AI_MARKDOWN_VALIDATION_STREAMING_BYPASS);
     defaults.put(
         CFG_AI_MARKDOWN_VALIDATION_MAX_RETRIES, DEFAULT_AI_MARKDOWN_VALIDATION_MAX_RETRIES);
+    defaults.put(CFG_AI_MARKDOWN_AUTO_FIX_ENABLED, DEFAULT_AI_MARKDOWN_AUTO_FIX_ENABLED);
     Config defaultsConfig = ConfigFactory.parseMap(defaults);
 
     // Load application.conf/properties (standard Typesafe Config behavior)
@@ -187,6 +192,8 @@ public final class EnvironmentConfig {
         dotEnvMapped,
         ENV_AI_MARKDOWN_VALIDATION_MAX_RETRIES,
         CFG_AI_MARKDOWN_VALIDATION_MAX_RETRIES);
+    mapEnvToConfigBoolean(
+        dotEnvMapped, ENV_AI_MARKDOWN_AUTO_FIX_ENABLED, CFG_AI_MARKDOWN_AUTO_FIX_ENABLED);
     Config dotEnvConfig = ConfigFactory.parseMap(dotEnvMapped);
 
     // Build system env vars as config (highest priority)
@@ -221,6 +228,8 @@ public final class EnvironmentConfig {
         sysEnvMapped,
         ENV_AI_MARKDOWN_VALIDATION_MAX_RETRIES,
         CFG_AI_MARKDOWN_VALIDATION_MAX_RETRIES);
+    mapSysEnvToConfigBoolean(
+        sysEnvMapped, ENV_AI_MARKDOWN_AUTO_FIX_ENABLED, CFG_AI_MARKDOWN_AUTO_FIX_ENABLED);
     Config sysEnvConfig = ConfigFactory.parseMap(sysEnvMapped);
 
     // Layer configs: sysEnv > dotEnv > application > defaults
@@ -614,5 +623,14 @@ public final class EnvironmentConfig {
    */
   public int getAIMarkdownValidationMaxRetries() {
     return config.getInt(CFG_AI_MARKDOWN_VALIDATION_MAX_RETRIES);
+  }
+
+  /**
+   * 取得是否啟用 Markdown 自動修復。
+   *
+   * @return true 啟用，false 停用（預設: true）
+   */
+  public boolean getAIMarkdownAutoFixEnabled() {
+    return config.getBoolean(CFG_AI_MARKDOWN_AUTO_FIX_ENABLED);
   }
 }
