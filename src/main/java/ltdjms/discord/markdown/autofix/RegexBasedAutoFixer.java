@@ -21,6 +21,14 @@ public class RegexBasedAutoFixer implements MarkdownAutoFixer {
   private static final Pattern HEADING_WITHOUT_SPACE =
       Pattern.compile("^(#{1,6})([^\\s#].*)$", Pattern.MULTILINE);
 
+  /** 正規表達式：匹配行首的無序列表標記後直接跟隨非空白字符（排除分隔線） 例如: "-item" */
+  private static final Pattern UNORDERED_LIST_WITHOUT_SPACE =
+      Pattern.compile("^(\\s*)([-*+])([^\\s].*)$", Pattern.MULTILINE);
+
+  /** 正規表達式：匹配行首的有序列表標記後直接跟隨非空白字符 例如: "1.item" */
+  private static final Pattern ORDERED_LIST_WITHOUT_SPACE =
+      Pattern.compile("^(\\s*)(\\d+\\.)([^\\s].*)$", Pattern.MULTILINE);
+
   @Override
   public String autoFix(String markdown) {
     if (markdown == null || markdown.isEmpty()) {
@@ -32,6 +40,7 @@ public class RegexBasedAutoFixer implements MarkdownAutoFixer {
     // 應用修復（順序很重要）
     result = fixUnclosedCodeBlocks(result);
     result = fixHeadingFormat(result);
+    result = fixListFormat(result);
 
     return result;
   }
@@ -213,6 +222,84 @@ public class RegexBasedAutoFixer implements MarkdownAutoFixer {
 
     // 還原程式碼區塊
     return restoreCodeBlocks(fixedContent, codeBlocks);
+  }
+
+  /**
+   * 修復列表格式錯誤。
+   *
+   * <p>在列表標記（-、*、+ 或數字+句號）後面插入空格。
+   *
+   * <p>注意：此方法不會修改分隔線（---、***、___）。
+   *
+   * @param markdown 原始 Markdown
+   * @return 修復後的 Markdown
+   */
+  private String fixListFormat(String markdown) {
+    // 先保護程式碼區塊
+    List<String> codeBlocks = new ArrayList<>();
+    String protectedContent = protectCodeBlocks(markdown, codeBlocks);
+
+    // 修復無序列表（-、*、+），但跳過分隔線
+    String fixedContent =
+        UNORDERED_LIST_WITHOUT_SPACE
+            .matcher(protectedContent)
+            .replaceAll(
+                mr -> {
+                  String indent = mr.group(1);
+                  String marker = mr.group(2);
+                  String content = mr.group(3);
+
+                  // 檢查是否為分隔線（只有破折號/星號且沒有其他內容，或只有相同的字符）
+                  if (isHorizontalRule(marker, content)) {
+                    return mr.group(0); // 保持原樣
+                  }
+
+                  return indent + marker + " " + content;
+                });
+
+    // 修復有序列表（1.、2. 等）
+    fixedContent = ORDERED_LIST_WITHOUT_SPACE.matcher(fixedContent).replaceAll("$1$2 $3");
+
+    // 還原程式碼區塊
+    return restoreCodeBlocks(fixedContent, codeBlocks);
+  }
+
+  /**
+   * 檢查是否為分隔線。
+   *
+   * <p>分隔線是連續的 -、* 或 _ 字符（至少 3 個），可選前面有空格。
+   *
+   * @param marker 列表標記（-、* 或 +）
+   * @param content 標記後的內容
+   * @return 如果是分隔線返回 true
+   */
+  private boolean isHorizontalRule(String marker, String content) {
+    // + 號不會形成分隔線
+    if ("+".equals(marker)) {
+      return false;
+    }
+
+    // 檢查內容是否只有相同字符（全部是 - 或全部是 *）
+    if (content.isEmpty()) {
+      return false;
+    }
+
+    // 移除內容中的所有空白字符
+    String trimmed = content.replaceAll("\\s", "");
+
+    // 如果內容為空，或者內容只包含與標記相同的字符
+    if (trimmed.isEmpty()) {
+      return false;
+    }
+
+    // 檢查是否只包含標記字符（- 或 *）
+    if ("-".equals(marker)) {
+      return trimmed.chars().allMatch(c -> c == '-');
+    } else if ("*".equals(marker)) {
+      return trimmed.chars().allMatch(c -> c == '*');
+    }
+
+    return false;
   }
 
   /** 保護程式碼區塊，替換為佔位符。 */
