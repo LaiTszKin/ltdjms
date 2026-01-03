@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -285,6 +286,41 @@ class MarkdownValidationIntegrationTest {
       // Then - 直接委派，不驗證
       verify(mockDelegate, times(1))
           .generateStreamingResponse(anyLong(), anyString(), anyString(), anyString(), any());
+    }
+
+    @Test
+    @DisplayName("串流回應（帶 messageId）應該直接委派，不進行驗證")
+    void streamingResponseWithMessageIdShouldDelegateDirectly() {
+      // Given
+      ltdjms.discord.aichat.services.StreamingResponseHandler mockHandler =
+          org.mockito.Mockito.mock(ltdjms.discord.aichat.services.StreamingResponseHandler.class);
+      long messageId = 999L;
+
+      // When
+      validatingService.generateStreamingResponse(
+          123L, "channel-1", "user-1", "測試", messageId, mockHandler);
+
+      // Then - 直接委派，不驗證
+      verify(mockDelegate, times(1))
+          .generateStreamingResponse(
+              anyLong(), anyString(), anyString(), anyString(), eq(messageId), any());
+    }
+
+    @Test
+    @DisplayName("帶對話歷史的串流回應應該直接委派，不進行驗證")
+    void streamingResponseWithHistoryShouldDelegateDirectly() {
+      // Given
+      ltdjms.discord.aichat.services.StreamingResponseHandler mockHandler =
+          org.mockito.Mockito.mock(ltdjms.discord.aichat.services.StreamingResponseHandler.class);
+      java.util.List<ltdjms.discord.aiagent.domain.ConversationMessage> history =
+          java.util.List.of();
+
+      // When
+      validatingService.generateWithHistory(123L, "channel-1", "user-1", history, mockHandler);
+
+      // Then - 直接委派，不驗證
+      verify(mockDelegate, times(1))
+          .generateWithHistory(anyLong(), anyString(), anyString(), any(), any());
     }
   }
 }
