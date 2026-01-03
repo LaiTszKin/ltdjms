@@ -28,7 +28,8 @@ class AIChatRequestTest {
             false,
             true,
             false,
-            5);
+            5,
+            true);
     AIChatRequest request = AIChatRequest.createUserMessage("你好，今天天氣如何？", config);
 
     // When
@@ -54,7 +55,8 @@ class AIChatRequestTest {
             false,
             true,
             false,
-            5);
+            5,
+            true);
 
     // When
     AIChatRequest request = AIChatRequest.createUserMessage("測試訊息", config);
@@ -80,7 +82,8 @@ class AIChatRequestTest {
             false,
             true,
             false,
-            5);
+            5,
+            true);
 
     // When
     AIChatRequest request = AIChatRequest.createUserMessage("", config);
@@ -103,7 +106,8 @@ class AIChatRequestTest {
             false,
             true,
             false,
-            5);
+            5,
+            true);
 
     // When
     AIChatRequest request = AIChatRequest.createUserMessage(null, config);

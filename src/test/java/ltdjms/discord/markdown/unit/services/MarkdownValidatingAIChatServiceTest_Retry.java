@@ -13,6 +13,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import ltdjms.discord.aichat.services.AIChatService;
+import ltdjms.discord.markdown.autofix.MarkdownAutoFixer;
 import ltdjms.discord.markdown.services.MarkdownValidatingAIChatService;
 import ltdjms.discord.markdown.validation.*;
 import ltdjms.discord.shared.DomainError;
@@ -23,6 +24,7 @@ class MarkdownValidatingAIChatServiceTest_Retry {
 
   private AIChatService mockDelegate;
   private MarkdownValidator mockValidator;
+  private MarkdownAutoFixer mockAutoFixer;
   private MarkdownErrorFormatter formatter;
   private MarkdownValidatingAIChatService service;
 
@@ -30,9 +32,11 @@ class MarkdownValidatingAIChatServiceTest_Retry {
   void setUp() {
     mockDelegate = mock(AIChatService.class);
     mockValidator = mock(MarkdownValidator.class);
+    mockAutoFixer = mock(MarkdownAutoFixer.class);
     formatter = new MarkdownErrorFormatter();
     service =
-        new MarkdownValidatingAIChatService(mockDelegate, mockValidator, true, formatter, 5, false);
+        new MarkdownValidatingAIChatService(
+            mockDelegate, mockValidator, mockAutoFixer, false, formatter, 5, false, false);
   }
 
   @Test
