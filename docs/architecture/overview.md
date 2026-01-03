@@ -100,6 +100,10 @@ flowchart LR
    - `domain/`：AI 服務配置、請求與回應模型
    - `services/`：AI HTTP 客戶端與聊天服務實作
    - `commands/`：AI 聊天提及監聽器
+   - `markdown/`：Markdown 驗證與自動修復功能
+     - `validation/`：CommonMark 驗證器、錯誤格式化器
+     - `autofix/`：自動修復器（MarkdownAutoFixer、RegexBasedAutoFixer）
+     - `services/`：驗證裝飾器（MarkdownValidatingAIChatService）
    - 詳細說明請參閱 [AI Chat 模組文件](../modules/aichat.md)
 
 - `aiagent/`

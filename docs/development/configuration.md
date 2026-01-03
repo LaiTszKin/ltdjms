@@ -133,6 +133,22 @@
   - 驗證範圍：`1` - `10`
   - 說明：Markdown 驗證失敗時的最大重試次數
 
+- `AI_MARKDOWN_VALIDATION_STREAMING_BYPASS`
+  - 預設：`false`
+  - 對應 config key：`aichat.markdown-validation-streaming-bypass`
+  - 說明：串流模式是否跳過 Markdown 驗證
+  - 啟用後串流回應會直接傳送，不進行驗證
+
+- `AI_MARKDOWN_AUTO_FIX_ENABLED`
+  - 預設：`true`
+  - 對應 config key：`aichat.markdown-validation.autofix.enabled`
+  - 說明：是否啟用 Markdown 自動修復功能
+  - 啟用後會在首次驗證失敗時嘗試自動修復常見格式錯誤
+  - 可修復的錯誤類型：
+    - 標題格式錯誤（如 `#Heading` → `# Heading`）
+    - 未閉合的程式碼區塊（偵測並插入結束的 ```）
+  - 自動修復失敗時仍會進入重試流程
+
 ### 2.7 提示詞載入器設定（V015 新增）
 
 以下設定對應外部提示詞載入功能：
@@ -191,6 +207,8 @@ AI_SERVICE_TIMEOUT_SECONDS=30
 # Markdown 驗證 (V018 新增)
 AI_MARKDOWN_VALIDATION_ENABLED=true
 AI_MARKDOWN_VALIDATION_MAX_RETRIES=5
+AI_MARKDOWN_VALIDATION_STREAMING_BYPASS=false
+AI_MARKDOWN_AUTO_FIX_ENABLED=true
 
 # 提示詞載入器 (V015 新增)
 PROMPTS_DIR_PATH=./prompts
@@ -241,6 +259,11 @@ aichat {
 
   markdown-validation-enabled = ${?AI_MARKDOWN_VALIDATION_ENABLED}
   markdown-validation-max-retries = ${?AI_MARKDOWN_VALIDATION_MAX_RETRIES}
+  markdown-validation-streaming-bypass = ${?AI_MARKDOWN_VALIDATION_STREAMING_BYPASS}
+
+  markdown-validation {
+    autofix.enabled = ${?AI_MARKDOWN_AUTO_FIX_ENABLED}
+  }
 
   prompts-dir-path = ${?PROMPTS_DIR_PATH}
   prompt-max-size-bytes = ${?PROMPT_MAX_SIZE_BYTES}
