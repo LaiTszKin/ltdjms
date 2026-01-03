@@ -61,4 +61,52 @@ class MarkdownAutoFixerTest {
     String result = fixer.autoFix(input);
     assertEquals(expected, result);
   }
+
+  @Test
+  @DisplayName("應該修復未閉合的程式碼區塊")
+  void shouldFixUnclosedCodeBlock() {
+    MarkdownAutoFixer fixer = new RegexBasedAutoFixer();
+
+    String input = "```\nconsole.log('hello');\nSome text after";
+    String expected = "```\nconsole.log('hello');\n```\nSome text after";
+
+    String result = fixer.autoFix(input);
+    assertEquals(expected, result);
+  }
+
+  @Test
+  @DisplayName("應該處理多個未閉合的程式碼區塊")
+  void shouldFixMultipleUnclosedCodeBlocks() {
+    MarkdownAutoFixer fixer = new RegexBasedAutoFixer();
+
+    String input = "```\nblock1\n```\n```\nblock2\nText";
+    String expected = "```\nblock1\n```\n```\nblock2\n```\nText";
+
+    String result = fixer.autoFix(input);
+    assertEquals(expected, result);
+  }
+
+  @Test
+  @DisplayName("不應該修復已閉合的程式碼區塊")
+  void shouldNotModifyClosedCodeBlocks() {
+    MarkdownAutoFixer fixer = new RegexBasedAutoFixer();
+
+    String input = "```\nconst x = 1;\n```\nNormal text";
+    String expected = "```\nconst x = 1;\n```\nNormal text";
+
+    String result = fixer.autoFix(input);
+    assertEquals(expected, result);
+  }
+
+  @Test
+  @DisplayName("應該處理帶語言標籤的程式碼區塊")
+  void shouldFixCodeBlocksWithLanguageSpec() {
+    MarkdownAutoFixer fixer = new RegexBasedAutoFixer();
+
+    String input = "```java\npublic class Test {}\nText";
+    String expected = "```java\npublic class Test {}\n```\nText";
+
+    String result = fixer.autoFix(input);
+    assertEquals(expected, result);
+  }
 }
