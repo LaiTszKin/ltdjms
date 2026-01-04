@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.25.0] - 2026-01-05
+
+### Added
+- **aiagent**: Discord 角色與類別權限管理工具
+  - LangChain4jModifyCategoryPermissionsTool：修改類別權限覆寫設定
+    - 支援為用戶或角色添加/移除允許權限（allowToAdd、allowToRemove）
+    - 支援為用戶或角色添加/移除拒絕權限（denyToAdd、denyToRemove）
+    - 使用 JDA 的 upsertPermissionOverride() 進行增量權限修改
+    - 返回修改前後的權限對比資訊
+  - LangChain4jCreateRoleTool：創建新的 Discord 角色
+    - 支援設定角色名稱、顏色、權限、分隔顯示、可提及等屬性
+    - 返回新創建角色的完整資訊（包含 roleId）
+  - LangChain4jGetRolePermissionsTool：讀取角色權限資訊
+    - 返回角色的完整權限列表、顏色、位置等資訊
+  - LangChain4jModifyRolePermissionsTool：修改角色權限
+    - 支援添加或移除角色的 Discord 權限
+    - 返回修改前後的權限對比
+  - RoleCreateInfo：角色創建資訊的領域模型
+  - 在 AIAgentModule 中註冊所有新工具
+  - 更新 LangChain4jAIChatService 整合新工具
+
+### Changed
+- **aichat**: 重新組織 prompts 結構以提升可維護性
+  - prompts/system/intro.md → prompts/system/LTDJBackgroundInfo.md
+  - prompts/system/commands.md → prompts/system/LTDJMSFunctions.md
+  - 新增 prompts/system/SystemPrompt.md 整合系統提示詞
+  - 移除 prompts/system/personality.md 和 prompts/system/rules.md（已整合至 SystemPrompt.md）
+  - 新增 prompts/agent/AgentSystemPrompt.md
+  - 移除 prompts/agent/agent.md
+
+### Documentation
+- 新增實作計畫文件 docs/plans/2026-01-05-role-category-permission-tools-implementation.md，記錄角色與類別權限管理工具的完整實作細節
+
 ## [0.24.0] - 2026-01-05
 
 ### Breaking Changes
