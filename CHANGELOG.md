@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.23.3] - 2026-01-04
+
+### Added
+- **markdown**: Markdown 列表格式驗證規則
+  - 標題中不應包含列表標記 (`HEADING_CONTAINS_LIST_MARKER`)
+  - 列表標記後必須有空格 (`MALFORMED_LIST`)
+  - 嵵套列表必須正確縮排至少 4 個空格 (`MALFORMED_NESTED_LIST`)
+- **markdown**: 新增 `checkListFormat()` 方法驗證列表格式與嵌套規則
+- **markdown**: 新增 `checkListMarkersInHeading()` 方法檢測標題中的列表標記
+- **markdown**: 改善分隔線辨識邏輯，避免誤判為列表格式錯誤
+
+### Changed
+- **system**: 更新 AI 助手人格提示詞，增加 Discord 環境語境說明
+- **system**: 明確要求 markdown 回應格式需符合 Discord 規範
+
+### Tests
+- 新增 11 個測試案例覆蓋列表格式驗證功能
+
 ## [0.23.2] - 2026-01-03
 
 ### Added

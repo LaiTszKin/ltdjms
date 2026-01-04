@@ -40,6 +40,10 @@ public interface MarkdownValidator {
     HEADING_LEVEL_EXCEEDED,
     /** 標題格式錯誤（如 ###abc 缺少空格） */
     HEADING_FORMAT,
+    /** 標題中包含列表標記（如 ### 1. 標題） */
+    HEADING_CONTAINS_LIST_MARKER,
+    /** 列表嵌套縮排錯誤 */
+    MALFORMED_NESTED_LIST,
     /** 表格格式錯誤 */
     MALFORMED_TABLE,
     /** 缺少轉義字符 */

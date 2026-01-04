@@ -82,6 +82,8 @@ public final class MarkdownErrorFormatter {
       case UNCLOSED_CODE_BLOCK -> "程式碼區塊未閉合";
       case HEADING_LEVEL_EXCEEDED -> "標題層級超限";
       case HEADING_FORMAT -> "標題格式錯誤";
+      case HEADING_CONTAINS_LIST_MARKER -> "標題中包含列表標記";
+      case MALFORMED_NESTED_LIST -> "嵌套列表縮排錯誤";
       case MALFORMED_TABLE -> "表格格式錯誤";
       case ESCAPE_CHARACTER_MISSING -> "缺少轉義字符";
       case DISCORD_RENDER_ISSUE -> "Discord 渲染問題";
