@@ -32,11 +32,15 @@ import ltdjms.discord.aiagent.services.TokenEstimator;
 import ltdjms.discord.aiagent.services.ToolExecutionInterceptor;
 import ltdjms.discord.aiagent.services.tools.LangChain4jCreateCategoryTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jCreateChannelTool;
+import ltdjms.discord.aiagent.services.tools.LangChain4jCreateRoleTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jGetChannelPermissionsTool;
+import ltdjms.discord.aiagent.services.tools.LangChain4jGetRolePermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jListCategoriesTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jListChannelsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jListRolesTool;
+import ltdjms.discord.aiagent.services.tools.LangChain4jModifyCategoryPermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jModifyChannelPermissionsTool;
+import ltdjms.discord.aiagent.services.tools.LangChain4jModifyRolePermissionsTool;
 import ltdjms.discord.aichat.domain.AIServiceConfig;
 import ltdjms.discord.aichat.services.LangChain4jAIChatService;
 import ltdjms.discord.aichat.services.PromptLoader;
@@ -190,6 +194,51 @@ public class AIAgentModule {
   @Singleton
   public LangChain4jModifyChannelPermissionsTool provideLangChain4jModifyChannelPermissionsTool() {
     return new LangChain4jModifyChannelPermissionsTool();
+  }
+
+  /**
+   * 提供 LangChain4J 修改類別權限工具。
+   *
+   * @return LangChain4jModifyCategoryPermissionsTool 實例
+   */
+  @Provides
+  @Singleton
+  public LangChain4jModifyCategoryPermissionsTool
+      provideLangChain4jModifyCategoryPermissionsTool() {
+    return new LangChain4jModifyCategoryPermissionsTool();
+  }
+
+  /**
+   * 提供 LangChain4J 創建角色工具。
+   *
+   * @return LangChain4jCreateRoleTool 實例
+   */
+  @Provides
+  @Singleton
+  public LangChain4jCreateRoleTool provideLangChain4jCreateRoleTool() {
+    return new LangChain4jCreateRoleTool();
+  }
+
+  /**
+   * 提供 LangChain4J 獲取角色權限工具。
+   *
+   * @return LangChain4jGetRolePermissionsTool 實例
+   */
+  @Provides
+  @Singleton
+  public LangChain4jGetRolePermissionsTool provideLangChain4jGetRolePermissionsTool() {
+    return new LangChain4jGetRolePermissionsTool();
+  }
+
+  /**
+   * 提供 LangChain4J 修改角色權限工具。
+   *
+   * @return LangChain4jModifyRolePermissionsTool 實例
+   */
+  @Provides
+  @Singleton
+  public LangChain4jModifyRolePermissionsTool provideLangChain4jModifyRolePermissionsTool() {
+    return new LangChain4jModifyRolePermissionsTool();
   }
 
   /**
@@ -365,6 +414,10 @@ public class AIAgentModule {
    * @param listRolesTool 列出角色工具
    * @param getChannelPermissionsTool 獲取頻道權限工具
    * @param modifyChannelPermissionsTool 修改頻道權限工具
+   * @param modifyCategoryPermissionsTool 修改類別權限工具
+   * @param createRoleTool 創建角色工具
+   * @param getRolePermissionsTool 獲取角色權限工具
+   * @param modifyRolePermissionsTool 修改角色權限工具
    * @return LangChain4jAIChatService 實例
    */
   @Provides
@@ -384,6 +437,10 @@ public class AIAgentModule {
       LangChain4jListRolesTool listRolesTool,
       LangChain4jGetChannelPermissionsTool getChannelPermissionsTool,
       LangChain4jModifyChannelPermissionsTool modifyChannelPermissionsTool,
+      LangChain4jModifyCategoryPermissionsTool modifyCategoryPermissionsTool,
+      LangChain4jCreateRoleTool createRoleTool,
+      LangChain4jGetRolePermissionsTool getRolePermissionsTool,
+      LangChain4jModifyRolePermissionsTool modifyRolePermissionsTool,
       AIAgentChannelConfigService agentChannelConfigService) {
     return new LangChain4jAIChatService(
         config,
@@ -400,6 +457,10 @@ public class AIAgentModule {
         listRolesTool,
         getChannelPermissionsTool,
         modifyChannelPermissionsTool,
+        modifyCategoryPermissionsTool,
+        createRoleTool,
+        getRolePermissionsTool,
+        modifyRolePermissionsTool,
         agentChannelConfigService);
   }
 
