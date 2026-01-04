@@ -1,0 +1,89 @@
+package ltdjms.discord.aiagent.unit.services.tools;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.util.List;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+
+import dev.langchain4j.invocation.InvocationParameters;
+import ltdjms.discord.aiagent.services.tools.LangChain4jModifyCategoryPermissionsTool;
+import ltdjms.discord.shared.di.JDAProvider;
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.channel.attribute.IPermissionContainer;
+import net.dv8tion.jda.api.entities.channel.concrete.Category;
+
+@DisplayName("T026: LangChain4jModifyCategoryPermissionsTool 單元測試")
+class LangChain4jModifyCategoryPermissionsToolTest {
+
+  private static final long TEST_GUILD_ID = 123456789012345678L;
+  private static final long TEST_CATEGORY_ID = 888888888888888888L;
+  private static final long TEST_ROLE_ID = 111111111111111111L;
+
+  private LangChain4jModifyCategoryPermissionsTool tool;
+  private Guild mockGuild;
+  private Category mockCategory;
+  private IPermissionContainer mockPermissionContainer;
+  private JDA mockJda;
+  private InvocationParameters parameters;
+
+  @BeforeEach
+  void setUp() {
+    mockGuild = mock(Guild.class);
+    mockJda = mock(JDA.class);
+    tool = new LangChain4jModifyCategoryPermissionsTool();
+    parameters = new InvocationParameters();
+
+    parameters.put("guildId", TEST_GUILD_ID);
+    parameters.put("channelId", TEST_CATEGORY_ID);
+    parameters.put("userId", TEST_ROLE_ID);
+
+    JDAProvider.setJda(mockJda);
+    when(mockJda.getGuildById(TEST_GUILD_ID)).thenReturn(mockGuild);
+
+    mockCategory = mock(Category.class);
+    mockPermissionContainer = mockCategory;
+
+    when(mockGuild.getCategoryById(TEST_CATEGORY_ID)).thenReturn(mockCategory);
+    when(mockCategory.getIdLong()).thenReturn(TEST_CATEGORY_ID);
+    when(mockCategory.getName()).thenReturn("test-category");
+    when(mockPermissionContainer.getPermissionOverrides()).thenReturn(List.of());
+  }
+
+  @AfterEach
+  void tearDown() {
+    JDAProvider.clear();
+  }
+
+  @Nested
+  @DisplayName("參數驗證測試")
+  class ParameterValidationTests {
+
+    @Test
+    @DisplayName("缺少 categoryId 應返回錯誤")
+    void missingCategoryIdShouldReturnError() {
+      String result =
+          tool.modifyCategoryPermissions(null, "123", "role", null, null, null, null, parameters);
+
+      assertThat(result).contains("\"success\": false");
+      assertThat(result).contains("categoryId 未提供");
+    }
+
+    @Test
+    @DisplayName("缺少 targetId 應返回錯誤")
+    void missingTargetIdShouldReturnError() {
+      String result =
+          tool.modifyCategoryPermissions("123", null, "role", null, null, null, null, parameters);
+
+      assertThat(result).contains("\"success\": false");
+      assertThat(result).contains("targetId 未提供");
+    }
+  }
+}

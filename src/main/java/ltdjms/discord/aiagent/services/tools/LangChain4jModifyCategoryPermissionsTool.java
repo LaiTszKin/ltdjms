@@ -1,0 +1,314 @@
+package ltdjms.discord.aiagent.services.tools;
+
+import java.util.EnumSet;
+import java.util.List;
+import java.util.stream.Collectors;
+import javax.inject.Inject;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.invocation.InvocationParameters;
+import ltdjms.discord.shared.di.JDAProvider;
+import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.PermissionOverride;
+import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.channel.concrete.Category;
+import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
+
+/** 修改 Discord 類別的權限覆寫設定工具（LangChain4J 版本）。 */
+public final class LangChain4jModifyCategoryPermissionsTool {
+
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(LangChain4jModifyCategoryPermissionsTool.class);
+
+  @Inject
+  public LangChain4jModifyCategoryPermissionsTool() {
+    // JDA 將從 JDAProvider 延遲獲取
+  }
+
+  @Tool(
+      """
+      修改 Discord 類別的權限覆寫設定。
+
+      使用場景：
+      - 當需要為特定用戶或角色添加或移除類別權限時使用
+      - 需要修改現有類別權限覆寫時使用
+      - 批量修改多個權限時使用
+
+      返回資訊：
+      - 修改是否成功
+      - 修改前後的權限對比
+      - 類別和目標資訊
+
+      重要限制：
+      - 同一權限不能同時存在於「允許」和「拒絕」集合中
+      - 拒絕權限優級高於允許權限
+      """)
+  public String modifyCategoryPermissions(
+      @P(value = "要修改權限的類別 ID", required = true) String categoryId,
+      @P(value = "目標 ID（用戶 ID 或角色 ID）", required = true) String targetId,
+      @P(value = "目標類型（member 或 role）", required = false) String targetType,
+      @P(value = "要添加的允許權限列表", required = false) List<String> allowToAdd,
+      @P(value = "要移除的允許權限列表", required = false) List<String> allowToRemove,
+      @P(value = "要添加的拒絕權限列表", required = false) List<String> denyToAdd,
+      @P(value = "要移除的拒絕權限列表", required = false) List<String> denyToRemove,
+      InvocationParameters parameters) {
+
+    // 1. 驗證必要參數
+    if (categoryId == null || categoryId.isBlank()) {
+      return buildErrorResponse("categoryId 未提供");
+    }
+    if (targetId == null || targetId.isBlank()) {
+      return buildErrorResponse("targetId 未提供");
+    }
+
+    // 解析 ID
+    long categoryIdLong;
+    long targetIdLong;
+    try {
+      categoryIdLong = parseId(categoryId);
+      targetIdLong = parseId(targetId);
+    } catch (NumberFormatException e) {
+      return buildErrorResponse("無效的 ID 格式");
+    }
+
+    // 設定預設 targetType
+    if (targetType == null || targetType.isBlank()) {
+      targetType = "role";
+    }
+    if (!targetType.equals("member") && !targetType.equals("role")) {
+      return buildErrorResponse("targetType 必須是 'member' 或 'role'");
+    }
+
+    // 檢查是否有任何權限操作
+    boolean hasPermissionChanges =
+        (allowToAdd != null && !allowToAdd.isEmpty())
+            || (allowToRemove != null && !allowToRemove.isEmpty())
+            || (denyToAdd != null && !denyToAdd.isEmpty())
+            || (denyToRemove != null && !denyToRemove.isEmpty());
+
+    if (!hasPermissionChanges) {
+      return buildErrorResponse("未指定任何權限修改操作");
+    }
+
+    // 2. 從 InvocationParameters 獲取執行上下文
+    Long guildId = parameters.get("guildId");
+    if (guildId == null) {
+      return buildErrorResponse("guildId 未設置");
+    }
+
+    // 3. 獲取 Guild
+    Guild guild = JDAProvider.getJda().getGuildById(guildId);
+    if (guild == null) {
+      return buildErrorResponse("找不到伺服器");
+    }
+
+    // 4. 獲取類別
+    Category category = guild.getCategoryById(categoryIdLong);
+    if (category == null) {
+      return buildErrorResponse("找不到指定的類別");
+    }
+
+    // 5. 獲取或驗證目標（用戶或角色）
+    boolean isMember = targetType.equals("member");
+    if (isMember) {
+      Member member = guild.getMemberById(targetIdLong);
+      if (member == null) {
+        return buildErrorResponse("找不到指定的用戶");
+      }
+    } else {
+      Role role = guild.getRoleById(targetIdLong);
+      if (role == null) {
+        return buildErrorResponse("找不到指定的角色");
+      }
+    }
+
+    try {
+      // 6. 獲取現有權限覆寫
+      PermissionOverride existingOverride = null;
+      for (PermissionOverride override : category.getPermissionOverrides()) {
+        if (override.getIdLong() == targetIdLong) {
+          existingOverride = override;
+          break;
+        }
+      }
+
+      EnumSet<Permission> currentAllowed =
+          existingOverride != null
+              ? existingOverride.getAllowed()
+              : EnumSet.noneOf(Permission.class);
+      EnumSet<Permission> currentDenied =
+          existingOverride != null
+              ? existingOverride.getDenied()
+              : EnumSet.noneOf(Permission.class);
+
+      List<String> beforeAllowed = permissionListToString(currentAllowed);
+      List<String> beforeDenied = permissionListToString(currentDenied);
+
+      // 7. 計算新的權限集合
+      EnumSet<Permission> newAllowed = currentAllowed.clone();
+      EnumSet<Permission> newDenied = currentDenied.clone();
+
+      if (allowToAdd != null && !allowToAdd.isEmpty()) {
+        EnumSet<Permission> toAdd = parsePermissionList(allowToAdd);
+        for (Permission perm : toAdd) {
+          newDenied.remove(perm);
+          newAllowed.add(perm);
+        }
+      }
+
+      if (allowToRemove != null && !allowToRemove.isEmpty()) {
+        EnumSet<Permission> toRemove = parsePermissionList(allowToRemove);
+        newAllowed.removeAll(toRemove);
+      }
+
+      if (denyToAdd != null && !denyToAdd.isEmpty()) {
+        EnumSet<Permission> toAdd = parsePermissionList(denyToAdd);
+        for (Permission perm : toAdd) {
+          newAllowed.remove(perm);
+          newDenied.add(perm);
+        }
+      }
+
+      if (denyToRemove != null && !denyToRemove.isEmpty()) {
+        EnumSet<Permission> toRemove = parsePermissionList(denyToRemove);
+        newDenied.removeAll(toRemove);
+      }
+
+      // 8. 應用權限修改
+      if (isMember) {
+        Member member = guild.getMemberById(targetIdLong);
+        category.upsertPermissionOverride(member).setPermissions(newAllowed, newDenied).complete();
+      } else {
+        Role role = guild.getRoleById(targetIdLong);
+        category.upsertPermissionOverride(role).setPermissions(newAllowed, newDenied).complete();
+      }
+
+      List<String> afterAllowed = permissionListToString(newAllowed);
+      List<String> afterDenied = permissionListToString(newDenied);
+
+      LOGGER.info(
+          "修改類別 {} 權限: 目標={}, 類型={}, 允許={}, 拒絕={}",
+          category.getIdLong(),
+          targetIdLong,
+          targetType,
+          newAllowed,
+          newDenied);
+
+      return buildSuccessResponse(
+          category,
+          targetIdLong,
+          targetType,
+          beforeAllowed,
+          beforeDenied,
+          afterAllowed,
+          afterDenied);
+
+    } catch (InsufficientPermissionException e) {
+      LOGGER.warn("權限不足: {}", e.getMessage());
+      return buildErrorResponse("權限不足: " + e.getMessage());
+
+    } catch (Exception e) {
+      LOGGER.error("修改類別權限失敗", e);
+      return buildErrorResponse("修改失敗: " + e.getMessage());
+    }
+  }
+
+  private long parseId(String id) {
+    String trimmed = id.trim();
+    if (trimmed.startsWith("<@&") && trimmed.endsWith(">")) {
+      trimmed = trimmed.substring(3, trimmed.length() - 1);
+    } else if (trimmed.startsWith("<@") && trimmed.endsWith(">")) {
+      trimmed = trimmed.substring(2, trimmed.length() - 1);
+    }
+    return Long.parseLong(trimmed);
+  }
+
+  private EnumSet<Permission> parsePermissionList(List<String> permissionList) {
+    EnumSet<Permission> permissions = EnumSet.noneOf(Permission.class);
+    for (String permName : permissionList) {
+      try {
+        Permission perm = Permission.valueOf(permName.toUpperCase().trim());
+        permissions.add(perm);
+      } catch (IllegalArgumentException e) {
+        LOGGER.warn("無效的權限名稱: {}", permName);
+      }
+    }
+    return permissions;
+  }
+
+  private List<String> permissionListToString(EnumSet<Permission> permissions) {
+    if (permissions == null || permissions.isEmpty()) {
+      return List.of();
+    }
+    return permissions.stream().map(Permission::name).sorted().collect(Collectors.toList());
+  }
+
+  private String buildSuccessResponse(
+      Category category,
+      long targetId,
+      String targetType,
+      List<String> beforeAllowed,
+      List<String> beforeDenied,
+      List<String> afterAllowed,
+      List<String> afterDenied) {
+    StringBuilder json = new StringBuilder();
+    json.append("{\n");
+    json.append("  \"success\": true,\n");
+    json.append("  \"message\": \"類別權限修改成功\",\n");
+    json.append("  \"categoryId\": \"").append(category.getIdLong()).append("\",\n");
+    json.append("  \"categoryName\": \"").append(escapeJson(category.getName())).append("\",\n");
+    json.append("  \"targetId\": \"").append(targetId).append("\",\n");
+    json.append("  \"targetType\": \"").append(targetType).append("\",\n");
+    json.append("  \"before\": {\n");
+    json.append("    \"allowed\": ").append(permissionListToJson(beforeAllowed)).append(",\n");
+    json.append("    \"denied\": ").append(permissionListToJson(beforeDenied)).append("\n");
+    json.append("  },\n");
+    json.append("  \"after\": {\n");
+    json.append("    \"allowed\": ").append(permissionListToJson(afterAllowed)).append(",\n");
+    json.append("    \"denied\": ").append(permissionListToJson(afterDenied)).append("\n");
+    json.append("  }\n");
+    json.append("}");
+    return json.toString();
+  }
+
+  private String permissionListToJson(List<String> permissions) {
+    if (permissions == null || permissions.isEmpty()) {
+      return "[]";
+    }
+    StringBuilder sb = new StringBuilder();
+    sb.append("[");
+    for (int i = 0; i < permissions.size(); i++) {
+      if (i > 0) {
+        sb.append(", ");
+      }
+      sb.append("\"").append(permissions.get(i)).append("\"");
+    }
+    sb.append("]");
+    return sb.toString();
+  }
+
+  private String escapeJson(String value) {
+    return value
+        .replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+        .replace("\t", "\\t");
+  }
+
+  private String buildErrorResponse(String error) {
+    return """
+    {
+      "success": false,
+      "error": "%s"
+    }
+    """
+        .formatted(escapeJson(error));
+  }
+}
