@@ -29,11 +29,15 @@ import ltdjms.discord.aiagent.services.PersistentChatMemoryProvider;
 import ltdjms.discord.aiagent.services.ToolExecutionInterceptor;
 import ltdjms.discord.aiagent.services.tools.LangChain4jCreateCategoryTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jCreateChannelTool;
+import ltdjms.discord.aiagent.services.tools.LangChain4jCreateRoleTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jGetChannelPermissionsTool;
+import ltdjms.discord.aiagent.services.tools.LangChain4jGetRolePermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jListCategoriesTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jListChannelsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jListRolesTool;
+import ltdjms.discord.aiagent.services.tools.LangChain4jModifyCategoryPermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jModifyChannelPermissionsTool;
+import ltdjms.discord.aiagent.services.tools.LangChain4jModifyRolePermissionsTool;
 import ltdjms.discord.aichat.domain.AIServiceConfig;
 import ltdjms.discord.aichat.domain.PromptSection;
 import ltdjms.discord.aichat.domain.SystemPrompt;
@@ -74,6 +78,10 @@ class LangChain4jAIChatServiceTest {
   private LangChain4jListRolesTool mockListRolesTool;
   private LangChain4jGetChannelPermissionsTool mockGetChannelPermissionsTool;
   private LangChain4jModifyChannelPermissionsTool mockModifyChannelPermissionsTool;
+  private LangChain4jModifyCategoryPermissionsTool mockModifyCategoryPermissionsTool;
+  private LangChain4jCreateRoleTool mockCreateRoleTool;
+  private LangChain4jGetRolePermissionsTool mockGetRolePermissionsTool;
+  private LangChain4jModifyRolePermissionsTool mockModifyRolePermissionsTool;
   private AIAgentChannelConfigService mockAgentChannelConfigService;
   private TestAgentServiceFactory testAgentServiceFactory;
   private AIChatService service;
@@ -108,6 +116,10 @@ class LangChain4jAIChatServiceTest {
     mockListRolesTool = mock(LangChain4jListRolesTool.class);
     mockGetChannelPermissionsTool = mock(LangChain4jGetChannelPermissionsTool.class);
     mockModifyChannelPermissionsTool = mock(LangChain4jModifyChannelPermissionsTool.class);
+    mockModifyCategoryPermissionsTool = mock(LangChain4jModifyCategoryPermissionsTool.class);
+    mockCreateRoleTool = mock(LangChain4jCreateRoleTool.class);
+    mockGetRolePermissionsTool = mock(LangChain4jGetRolePermissionsTool.class);
+    mockModifyRolePermissionsTool = mock(LangChain4jModifyRolePermissionsTool.class);
     mockAgentChannelConfigService = mock(AIAgentChannelConfigService.class);
     testAgentServiceFactory = new TestAgentServiceFactory();
 
@@ -132,6 +144,10 @@ class LangChain4jAIChatServiceTest {
             mockListRolesTool,
             mockGetChannelPermissionsTool,
             mockModifyChannelPermissionsTool,
+            mockModifyCategoryPermissionsTool,
+            mockCreateRoleTool,
+            mockGetRolePermissionsTool,
+            mockModifyRolePermissionsTool,
             mockAgentChannelConfigService,
             testAgentServiceFactory);
   }
