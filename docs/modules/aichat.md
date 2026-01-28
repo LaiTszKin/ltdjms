@@ -724,14 +724,13 @@ mvn test -Dtest=LangChain4jListChannelsToolTest
 
 ### 概述
 
-為了確保 AI 生成的回應在 Discord 中正確顯示，V018 版本引入了 **Markdown 驗證功能**。此功能使用裝飾器模式包裝 `AIChatService`，在回應生成後驗證 Markdown 格式，格式錯誤時自動重新生成。
+為了確保 AI 生成的回應在 Discord 中正確顯示，V018 版本引入了 **Markdown 驗證功能**。此功能使用裝飾器模式包裝 `AIChatService`，在回應生成後驗證 Markdown 格式，格式錯誤時直接送入統一的 Markdown reformatter 進行重格式化。
 
 **核心特性**：
 - **自動驗證**：使用 CommonMark Java 庫驗證 Markdown 語法
-- **智能重試**：檢測到格式錯誤時自動重新生成，最多 5 次
+- **統一重格式化**：檢測到格式錯誤時直接重格式化，不進行 AI 重試
 - **Discord 特定檢查**：驗證標題等級不超過 Discord 限制（H6），並檢測 Discord 不支援的語法
 - **降級模式**：可配置停用驗證，直接使用原始回應
-- **結構化錯誤報告**：為 LLM 提供詳細的格式錯誤說明
 
 ### 驗證規則
 
@@ -768,11 +767,11 @@ public final class MarkdownValidatingAIChatService implements AIChatService {
     private final AIChatService delegate;
     private final MarkdownValidator validator;
     private final boolean enabled;
-    private final MarkdownErrorFormatter errorFormatter;
+    private final MarkdownAutoFixer autofixer;
 
     @Override
     public Result<List<String>, DomainError> generateResponse(...) {
-        // 生成回應 → 驗證 → 格式錯誤則重試
+        // 生成回應 → 驗證 → 格式錯誤則重格式化
     }
 }
 ```
@@ -781,8 +780,7 @@ public final class MarkdownValidatingAIChatService implements AIChatService {
 1. 呼叫委派服務生成回應
 2. 使用 `MarkdownValidator` 驗證回應
 3. 驗證通過則返回結果
-4. 驗證失敗則生成錯誤報告並重試
-5. 最多重試 5 次，超過則返回最後一次回應
+4. 驗證失敗則進行重格式化並返回（即使仍有錯誤也不重試）
 
 #### MarkdownValidator 介面
 
@@ -816,36 +814,6 @@ public final class CommonMarkValidator implements MarkdownValidator {
 }
 ```
 
-#### MarkdownErrorFormatter
-
-生成結構化錯誤報告：
-
-```java
-public final class MarkdownErrorFormatter {
-    public String formatErrorReport(
-        String originalPrompt,
-        List<MarkdownError> errors,
-        int attempt,
-        String fullResponse
-    ) {
-        // 生成給 LLM 的錯誤說明
-    }
-}
-```
-
-**輸出範例**：
-```
-[系統提示：你的上一次回應存在 Markdown 格式錯誤]
-
-原始用戶訊息：
-寫一個 Java 函數
-
-格式驗證錯誤報告：
-1. [程式碼區塊錯誤] 第 1-3 行：程式碼區塊未正確閉合
-
-請修正上述格式錯誤並重新生成回應。
-```
-
 ### 配置
 
 #### 環境變數
@@ -853,7 +821,7 @@ public final class MarkdownErrorFormatter {
 ```bash
 # Markdown 驗證配置
 AI_MARKDOWN_VALIDATION_ENABLED=true    # 是否啟用驗證（預設: true）
-AI_MARKDOWN_VALIDATION_MAX_RETRIES=5   # 最大重試次數（預設: 5）
+AI_MARKDOWN_VALIDATION_STREAMING_BYPASS=false
 ```
 
 #### AIServiceConfig 擴展
@@ -867,7 +835,9 @@ public record AIServiceConfig(
     int timeoutSeconds,
     boolean showReasoning,
     boolean enableMarkdownValidation,    // 新增：是否啟用驗證
-    int maxMarkdownValidationRetries     // 新增：最大重試次數
+    boolean streamingBypassValidation,   // 新增：串流模式是否跳過驗證
+    int maxMarkdownValidationRetries,    // 已停用（固定為 0）
+    boolean enableAutoFix                // 已停用（固定為 false）
 )
 ```
 
@@ -898,7 +868,7 @@ public interface MarkdownValidationModule {
         AIServiceConfig config,
         LangChain4jAIChatService delegateService,
         MarkdownValidator validator,
-        MarkdownErrorFormatter formatter
+        MarkdownAutoFixer autofixer
     );
 }
 ```
@@ -928,10 +898,8 @@ public enum MarkdownErrorType {
 
 ### 限制
 
-- **僅驗證非串流回應**：串流回應直接委派，不進行驗證
-- **最大重試次數**：預設 5 次，超過後返回最後一次回應
-- **Token 消耗**：每次重試都會消耗額外的 API 配額
-- **延遲增加**：重試會增加回應延遲
+- **重格式化為本地規則**：無法保證修復所有 Markdown 錯誤
+- **串流繞過模式**：啟用後會直接委派串流回應，不進行驗證或重格式化
 
 ### 測試
 
@@ -954,13 +922,12 @@ mvn test -Dtest=MarkdownValidationIntegrationTest
 **測試覆蓋範圍**：
 - DI 組裝驗證
 - 有效 Markdown 直接通過
-- 程式碼區塊錯誤重試
-- 標題等級超過限制重試
-- 多個格式錯誤同時修正
-- 超過最大重試次數
+- 格式錯誤重格式化
+- 重格式化後仍無效的回傳行為
 - 降級模式（停用驗證）
 - 委派錯誤處理
-- 串流回應直接委派
+- 串流回應驗證/重格式化
+- 串流繞過模式直接委派
 
 ### 相關文件
 

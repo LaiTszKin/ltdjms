@@ -4,6 +4,8 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.commonmark.ext.gfm.tables.TableBlock;
 import org.commonmark.ext.gfm.tables.TablesExtension;
@@ -49,9 +51,11 @@ public final class CommonMarkValidator implements MarkdownValidator {
 
     // 2. 檢查標題層級
     checkHeadingLevels(markdown, errors);
+    checkInlineHeadings(markdown, errors);
 
     // 3. 檢查列表格式
     checkListFormat(markdown, errors);
+    checkInlineListItems(markdown, errors);
 
     // 4. 解析階段 - 檢測語法錯誤
     try {
@@ -110,6 +114,7 @@ public final class CommonMarkValidator implements MarkdownValidator {
             // 檢查標題文字中是否包含列表標記
             String headingText = trimmedLine.substring(count + 1).trim();
             checkListMarkersInHeading(headingText, i + 1, line, errors);
+            checkInlineListMarkersInHeading(headingText, i + 1, line, errors);
           }
         }
 
@@ -146,6 +151,54 @@ public final class CommonMarkValidator implements MarkdownValidator {
               1,
               originalLine.length() > 50 ? originalLine.substring(0, 50) + "..." : originalLine,
               "標題文字中不應包含列表標記（如 '1.'）"));
+    }
+  }
+
+  /** 檢查標題文字內部的列表標記（例如 "標題- item"） */
+  private void checkInlineListMarkersInHeading(
+      String headingText, int lineNum, String originalLine, List<MarkdownError> errors) {
+    if (headingText.matches(".*[^\\s][-*+]\\s+.*")) {
+      errors.add(
+          new MarkdownError(
+              ErrorType.HEADING_CONTAINS_LIST_MARKER,
+              lineNum,
+              1,
+              originalLine.length() > 50 ? originalLine.substring(0, 50) + "..." : originalLine,
+              "標題後請換行再開始列表（例如使用 \\n- 開頭）"));
+    }
+  }
+
+  /** 檢查行內標題（標題標記未獨立成行） */
+  private void checkInlineHeadings(String markdown, List<MarkdownError> errors) {
+    String[] lines = markdown.split("\n");
+    boolean inCodeBlock = false;
+
+    for (int i = 0; i < lines.length; i++) {
+      String line = lines[i];
+      String trimmed = line.trim();
+
+      if (trimmed.startsWith("```")) {
+        inCodeBlock = !inCodeBlock;
+        continue;
+      }
+      if (inCodeBlock) {
+        continue;
+      }
+
+      if (trimmed.startsWith("#")) {
+        continue;
+      }
+
+      int headingIndex = line.indexOf("##");
+      if (headingIndex > 0) {
+        errors.add(
+            new MarkdownError(
+                ErrorType.HEADING_FORMAT,
+                i + 1,
+                headingIndex + 1,
+                line.length() > 50 ? line.substring(0, 50) + "..." : line,
+                "標題需獨立成行，並在 # 後加空格"));
+      }
     }
   }
 
@@ -252,6 +305,56 @@ public final class CommonMarkValidator implements MarkdownValidator {
         while (!indentStack.isEmpty() && indentStack.peek() > leadingSpaces) {
           indentStack.pop();
         }
+      }
+    }
+  }
+
+  /**
+   * 檢查同一行中是否出現多個列表標記（例如 "- item1- item2" 或 "1. item1 2. item2"）。
+   *
+   * <p>Discord 會將這種格式渲染成單一列表項，容易導致格式不符合預期。
+   */
+  private void checkInlineListItems(String markdown, List<MarkdownError> errors) {
+    String[] lines = markdown.split("\n");
+    boolean inCodeBlock = false;
+    Pattern markerPattern = Pattern.compile("[-*+]\\s+|\\d+\\.\\s+");
+
+    for (int i = 0; i < lines.length; i++) {
+      String line = lines[i];
+      String trimmed = line.trim();
+
+      if (trimmed.startsWith("```")) {
+        inCodeBlock = !inCodeBlock;
+        continue;
+      }
+      if (inCodeBlock || trimmed.isEmpty()) {
+        continue;
+      }
+
+      boolean isListLine = trimmed.matches("^[-*+]\\s+.*") || trimmed.matches("^\\d+\\.\\s+.*");
+      if (!isListLine || isHorizontalRule(trimmed)) {
+        continue;
+      }
+
+      Matcher matcher = markerPattern.matcher(line);
+      int count = 0;
+      int secondMarkerIndex = -1;
+      while (matcher.find()) {
+        count++;
+        if (count == 2) {
+          secondMarkerIndex = matcher.start();
+          break;
+        }
+      }
+
+      if (count > 1) {
+        errors.add(
+            new MarkdownError(
+                ErrorType.MALFORMED_LIST,
+                i + 1,
+                Math.max(1, secondMarkerIndex + 1),
+                line.length() > 50 ? line.substring(0, 50) + "..." : line,
+                "列表項需分行，請在每個列表標記前換行"));
       }
     }
   }

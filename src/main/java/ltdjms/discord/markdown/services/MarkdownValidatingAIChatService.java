@@ -6,16 +6,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ltdjms.discord.aiagent.domain.ConversationMessage;
+import ltdjms.discord.aiagent.domain.MessageRole;
 import ltdjms.discord.aichat.services.AIChatService;
+import ltdjms.discord.aichat.services.MessageSplitter;
 import ltdjms.discord.aichat.services.StreamingResponseHandler;
 import ltdjms.discord.markdown.autofix.MarkdownAutoFixer;
-import ltdjms.discord.markdown.validation.MarkdownErrorFormatter;
 import ltdjms.discord.markdown.validation.MarkdownValidator;
 import ltdjms.discord.markdown.validation.MarkdownValidator.ValidationResult;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 
-/** Markdown 驗證裝飾器 包裝 AIChatService，在回應生成後驗證 Markdown 格式 格式錯誤時自動重新生成 */
+/** Markdown 驗證裝飾器 包裝 AIChatService，在回應生成後驗證並統一重新格式化輸出 */
 public final class MarkdownValidatingAIChatService implements AIChatService {
 
   private static final Logger LOG = LoggerFactory.getLogger(MarkdownValidatingAIChatService.class);
@@ -24,28 +25,19 @@ public final class MarkdownValidatingAIChatService implements AIChatService {
   private final MarkdownValidator validator;
   private final MarkdownAutoFixer autofixer;
   private final boolean enabled;
-  private final MarkdownErrorFormatter errorFormatter;
-  private final int maxRetryAttempts;
   private final boolean streamingBypassValidation;
-  private final boolean enableAutoFix;
 
   public MarkdownValidatingAIChatService(
       AIChatService delegate,
       MarkdownValidator validator,
       MarkdownAutoFixer autofixer,
       boolean enabled,
-      MarkdownErrorFormatter errorFormatter,
-      int maxRetryAttempts,
-      boolean streamingBypassValidation,
-      boolean enableAutoFix) {
+      boolean streamingBypassValidation) {
     this.delegate = delegate;
     this.validator = validator;
     this.autofixer = autofixer;
     this.enabled = enabled;
-    this.errorFormatter = errorFormatter;
-    this.maxRetryAttempts = maxRetryAttempts;
     this.streamingBypassValidation = streamingBypassValidation;
-    this.enableAutoFix = enableAutoFix;
   }
 
   @Override
@@ -118,24 +110,22 @@ public final class MarkdownValidatingAIChatService implements AIChatService {
       String userId,
       List<ConversationMessage> history,
       StreamingResponseHandler handler) {
-    // 帶對話歷史的回應直接委派，不進行驗證
-    delegate.generateWithHistory(guildId, channelId, userId, history, handler);
-  }
+    if (!enabled || streamingBypassValidation) {
+      delegate.generateWithHistory(guildId, channelId, userId, history, handler);
+      return;
+    }
 
-  private String buildRetryPrompt(String originalPrompt, String errorReport) {
-    return String.format(
-        """
-        [系統提示：你的上一次回應存在 Markdown 格式錯誤]
+    String originalPrompt = extractLastUserMessage(history);
+    if (originalPrompt == null || originalPrompt.isBlank()) {
+      handler.onChunk(
+          "",
+          true,
+          DomainError.invalidInput("No user message found in history"),
+          StreamingResponseHandler.ChunkType.CONTENT);
+      return;
+    }
 
-        原始用戶訊息：
-        %s
-
-        格式驗證錯誤報告：
-        %s
-
-        請修正上述格式錯誤並重新生成回應。
-        """,
-        originalPrompt, errorReport);
+    validateAndGenerateWithHistory(guildId, channelId, userId, history, handler, originalPrompt);
   }
 
   private Result<List<String>, DomainError> validateAndGenerate(
@@ -145,64 +135,126 @@ public final class MarkdownValidatingAIChatService implements AIChatService {
       return delegate.generateResponse(guildId, channelId, userId, userMessage);
     }
 
-    String originalPrompt = userMessage;
-    String currentPrompt = userMessage;
-    String lastResponse = null;
-    int attempt = 0;
+    Result<List<String>, DomainError> result =
+        delegate.generateResponse(guildId, channelId, userId, userMessage);
 
-    while (attempt < maxRetryAttempts) {
-      attempt++;
-
-      Result<List<String>, DomainError> result =
-          delegate.generateResponse(guildId, channelId, userId, currentPrompt);
-
-      if (result.isErr()) {
-        return result;
-      }
-
-      String fullResponse = String.join("\n", result.getValue());
-      lastResponse = fullResponse;
-
-      ValidationResult validation = validator.validate(fullResponse);
-
-      if (validation instanceof ValidationResult.Valid) {
-        return result;
-      }
-
-      ValidationResult.Invalid invalid = (ValidationResult.Invalid) validation;
-
-      // 嘗試自動修復
-      if (enableAutoFix && attempt == 1) {
-        String fixedContent = autofixer.autoFix(fullResponse);
-        ValidationResult fixedValidation = validator.validate(fixedContent);
-
-        if (fixedValidation instanceof ValidationResult.Valid) {
-          LOG.info("自動修復成功: {} 個錯誤被修復", invalid.errors().size());
-          return Result.ok(List.of(fixedContent));
-        }
-
-        // 自動修復不完全，記錄差異
-        int originalErrorCount = invalid.errors().size();
-        int fixedErrorCount =
-            fixedValidation instanceof ValidationResult.Invalid invalid2
-                ? invalid2.errors().size()
-                : 0;
-        LOG.debug(
-            "自動修復部分成功: {} 個錯誤中修復了 {}", originalErrorCount, originalErrorCount - fixedErrorCount);
-      }
-
-      String errorReport =
-          errorFormatter.formatErrorReport(originalPrompt, invalid.errors(), attempt, fullResponse);
-
-      currentPrompt = buildRetryPrompt(originalPrompt, errorReport);
-      LOG.warn(
-          "Markdown validation failed (attempt {}/{}): {} errors",
-          attempt,
-          maxRetryAttempts,
-          invalid.errors().size());
+    if (result.isErr()) {
+      return result;
     }
 
-    LOG.warn("Markdown validation exceeded max attempts, returning last response");
-    return Result.ok(List.of(lastResponse));
+    String fullResponse = String.join("\n", result.getValue());
+    ValidationResult validation = validator.validate(fullResponse);
+
+    if (validation instanceof ValidationResult.Valid) {
+      return result;
+    }
+
+    ValidationResult.Invalid invalid = (ValidationResult.Invalid) validation;
+    String reformatted = autofixer.autoFix(fullResponse);
+    ValidationResult reformattedValidation = validator.validate(reformatted);
+
+    if (reformattedValidation instanceof ValidationResult.Valid) {
+      LOG.info("Markdown 重格式化成功: {} 個錯誤被修復", invalid.errors().size());
+    } else if (reformattedValidation instanceof ValidationResult.Invalid invalidAfter) {
+      LOG.warn("Markdown 重格式化後仍有格式錯誤: {} 個錯誤", invalidAfter.errors().size());
+    }
+
+    return Result.ok(MessageSplitter.split(reformatted));
+  }
+
+  private void validateAndGenerateWithHistory(
+      long guildId,
+      String channelId,
+      String userId,
+      List<ConversationMessage> history,
+      StreamingResponseHandler handler,
+      String originalPrompt) {
+    List<ConversationMessage> updatedHistory = replaceLastUserMessage(history, originalPrompt);
+
+    StringBuilder fullResponse = new StringBuilder();
+
+    delegate.generateWithHistory(
+        guildId,
+        channelId,
+        userId,
+        updatedHistory,
+        new StreamingResponseHandler() {
+          @Override
+          public void onChunk(String chunk, boolean isComplete, DomainError error, ChunkType type) {
+            if (error != null) {
+              handler.onChunk("", true, error, ChunkType.CONTENT);
+              return;
+            }
+            if (type == ChunkType.CONTENT) {
+              fullResponse.append(chunk);
+            }
+            if (!isComplete) {
+              return;
+            }
+
+            String responseText = fullResponse.toString();
+            ValidationResult validation = validator.validate(responseText);
+
+            if (validation instanceof ValidationResult.Valid) {
+              deliverValidatedResponse(handler, responseText);
+              return;
+            }
+
+            ValidationResult.Invalid invalid = (ValidationResult.Invalid) validation;
+            String reformatted = autofixer.autoFix(responseText);
+            ValidationResult reformattedValidation = validator.validate(reformatted);
+            if (reformattedValidation instanceof ValidationResult.Valid) {
+              LOG.info("Markdown 重格式化成功（with history）: {} 個錯誤被修復", invalid.errors().size());
+            } else if (reformattedValidation instanceof ValidationResult.Invalid invalidAfter) {
+              LOG.warn("Markdown 重格式化後仍有格式錯誤（with history）: {} 個錯誤", invalidAfter.errors().size());
+            }
+
+            deliverValidatedResponse(handler, reformatted);
+          }
+        });
+  }
+
+  private void deliverValidatedResponse(StreamingResponseHandler handler, String content) {
+    List<String> messages = MessageSplitter.split(content);
+    for (int i = 0; i < messages.size(); i++) {
+      boolean isLast = (i == messages.size() - 1);
+      handler.onChunk(messages.get(i), isLast, null, StreamingResponseHandler.ChunkType.CONTENT);
+    }
+  }
+
+  private String extractLastUserMessage(List<ConversationMessage> history) {
+    if (history == null || history.isEmpty()) {
+      return null;
+    }
+    for (int i = history.size() - 1; i >= 0; i--) {
+      ConversationMessage message = history.get(i);
+      if (message.role() == MessageRole.USER) {
+        return message.content();
+      }
+    }
+    return null;
+  }
+
+  private List<ConversationMessage> replaceLastUserMessage(
+      List<ConversationMessage> history, String newContent) {
+    if (history == null || history.isEmpty()) {
+      return history;
+    }
+    List<ConversationMessage> updated = new java.util.ArrayList<>(history);
+    for (int i = updated.size() - 1; i >= 0; i--) {
+      ConversationMessage message = updated.get(i);
+      if (message.role() == MessageRole.USER) {
+        updated.set(
+            i,
+            new ConversationMessage(
+                message.role(),
+                newContent,
+                message.timestamp(),
+                message.toolCall(),
+                message.reasoningContent()));
+        return updated;
+      }
+    }
+    return updated;
   }
 }

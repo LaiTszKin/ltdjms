@@ -1,10 +1,13 @@
-package ltdjms.discord.markdown.validation;
+package ltdjms.discord.markdown.unit.validation;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+
+import ltdjms.discord.markdown.validation.CommonMarkValidator;
+import ltdjms.discord.markdown.validation.MarkdownValidator;
 
 @DisplayName("CommonMarkValidator - 列表格式驗證")
 class CommonMarkValidatorTest_Lists {
@@ -97,8 +100,8 @@ class CommonMarkValidatorTest_Lists {
   }
 
   @Test
-  @DisplayName("分隔線不應被誤判為列表格式錯誤")
-  void horizontalRule_shouldNotFail() {
+  @DisplayName("分隔線應檢測為 Discord 渲染問題")
+  void horizontalRule_shouldDetectDiscordIssue() {
     String markdown =
         """
         ---
@@ -108,7 +111,13 @@ class CommonMarkValidatorTest_Lists {
 
     MarkdownValidator.ValidationResult result = validator.validate(markdown);
 
-    assertInstanceOf(MarkdownValidator.ValidationResult.Valid.class, result);
+    assertInstanceOf(MarkdownValidator.ValidationResult.Invalid.class, result);
+    MarkdownValidator.ValidationResult.Invalid invalid =
+        (MarkdownValidator.ValidationResult.Invalid) result;
+    assertTrue(
+        invalid.errors().stream()
+            .anyMatch(e -> e.type() == MarkdownValidator.ErrorType.DISCORD_RENDER_ISSUE),
+        "應檢測到 Discord 不支援分隔線");
   }
 
   @Test
@@ -169,6 +178,26 @@ class CommonMarkValidatorTest_Lists {
       MarkdownValidator.ValidationResult.Invalid invalid =
           (MarkdownValidator.ValidationResult.Invalid) result;
       assertFalse(invalid.errors().isEmpty(), "應該檢測到標題中的有序列表標記");
+      assertTrue(
+          invalid.errors().stream()
+              .anyMatch(e -> e.type() == MarkdownValidator.ErrorType.HEADING_CONTAINS_LIST_MARKER),
+          "應該是 HEADING_CONTAINS_LIST_MARKER 錯誤");
+    }
+
+    @Test
+    @DisplayName("標題中行內列表標記應被檢測為錯誤")
+    void headingWithInlineListMarker_shouldFail() {
+      String markdown =
+          """
+          ## 標題- 項目一
+          """;
+
+      MarkdownValidator.ValidationResult result = validator.validate(markdown);
+
+      assertInstanceOf(MarkdownValidator.ValidationResult.Invalid.class, result);
+      MarkdownValidator.ValidationResult.Invalid invalid =
+          (MarkdownValidator.ValidationResult.Invalid) result;
+      assertFalse(invalid.errors().isEmpty(), "應該檢測到標題中的列表標記");
       assertTrue(
           invalid.errors().stream()
               .anyMatch(e -> e.type() == MarkdownValidator.ErrorType.HEADING_CONTAINS_LIST_MARKER),

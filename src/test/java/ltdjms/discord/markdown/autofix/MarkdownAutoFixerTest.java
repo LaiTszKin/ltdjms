@@ -51,6 +51,18 @@ class MarkdownAutoFixerTest {
   }
 
   @Test
+  @DisplayName("應該將行內標題拆成獨立一行")
+  void shouldFixInlineHeading() {
+    MarkdownAutoFixer fixer = new RegexBasedAutoFixer();
+
+    String input = "前文##標題";
+    String expected = "前文\n## 標題";
+
+    String result = fixer.autoFix(input);
+    assertEquals(expected, result);
+  }
+
+  @Test
   @DisplayName("不應該將程式碼區塊中的 # 視為標題")
   void shouldNotFixHashInCodeBlocks() {
     MarkdownAutoFixer fixer = new RegexBasedAutoFixer();
@@ -173,12 +185,12 @@ class MarkdownAutoFixerTest {
   }
 
   @Test
-  @DisplayName("不應該將分隔線視為列表")
-  void shouldNotModifyHorizontalRule() {
+  @DisplayName("應該移除水平分隔線")
+  void shouldRemoveHorizontalRule() {
     MarkdownAutoFixer fixer = new RegexBasedAutoFixer();
 
     String input = "---\n***\n___";
-    String expected = "---\n***\n___";
+    String expected = "";
 
     String result = fixer.autoFix(input);
     assertEquals(expected, result);
@@ -253,6 +265,30 @@ class MarkdownAutoFixerTest {
 
     String input = "Some text - first item - second item";
     String expected = "Some text\n- first item\n- second item";
+
+    String result = fixer.autoFix(input);
+    assertEquals(expected, result);
+  }
+
+  @Test
+  @DisplayName("應該修復標題行內的列表項")
+  void shouldFixInlineListItemsAfterHeading() {
+    MarkdownAutoFixer fixer = new RegexBasedAutoFixer();
+
+    String input = "## 工具- 項目一- 項目二";
+    String expected = "## 工具\n- 項目一\n- 項目二";
+
+    String result = fixer.autoFix(input);
+    assertEquals(expected, result);
+  }
+
+  @Test
+  @DisplayName("應該修復列表行中缺少空格的行內列表項")
+  void shouldFixInlineListItemsMissingSpaceInListLine() {
+    MarkdownAutoFixer fixer = new RegexBasedAutoFixer();
+
+    String input = "- 建立文字頻道 -創建新的文字頻道";
+    String expected = "- 建立文字頻道\n- 創建新的文字頻道";
 
     String result = fixer.autoFix(input);
     assertEquals(expected, result);
@@ -414,6 +450,6 @@ class MarkdownAutoFixerTest {
     assertEquals(expected, result);
   }
 
-  // 注意：水平分隔線和嵌套列表縮排的測試已被移除，
-  // 因為這些自動修復功能已停用（可能會產生非預期的副作用）
+  // 注意：嵌套列表縮排的測試已被移除，
+  // 因為這個自動修復功能已停用（可能會產生非預期的副作用）
 }

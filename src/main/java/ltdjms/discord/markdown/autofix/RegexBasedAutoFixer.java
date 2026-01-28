@@ -29,6 +29,13 @@ public class RegexBasedAutoFixer implements MarkdownAutoFixer {
   private static final Pattern ORDERED_LIST_WITHOUT_SPACE =
       Pattern.compile("^(\\s*)(\\d+\\.)([^\\s].*)$", Pattern.MULTILINE);
 
+  /** 正規表達式：匹配非行首的標題標記（避免標題與前文黏在同一行） */
+  private static final Pattern INLINE_HEADING_MARKER = Pattern.compile("([^\\n])(?=[ \\t]*#{2,6})");
+
+  /** 正規表達式：匹配標題行中緊貼的列表標記（例如 "## 標題- item"） */
+  private static final Pattern HEADING_INLINE_LIST_MARKER =
+      Pattern.compile("(?m)^(#{1,6}\\s+[^\\n]*?)([-*+]\\s+)");
+
   @Override
   public String autoFix(String markdown) {
     if (markdown == null || markdown.isEmpty()) {
@@ -40,17 +47,19 @@ public class RegexBasedAutoFixer implements MarkdownAutoFixer {
     // 應用修復（順序很重要）
     result = fixUnclosedCodeBlocks(result);
     result = fixHeadingLevelExceeded(result);
+    result = fixInlineHeadings(result);
     result = fixHeadingFormat(result);
     result = fixHeadingContainsListMarker(result);
+    result = fixHeadingInlineListItems(result);
     result = fixEmbeddedLists(result);
+    result = fixInlineListMarkersInListLines(result);
     result = fixListFormat(result);
     // 注意：fixNestedListIndentation 已停用，因為它會過度修正同層級的列表項
     // result = fixNestedListIndentation(result);
     result = fixDiscordUnderlineBold(result);
     result = fixTaskList(result);
-    // 注意：fixHorizontalRules 已停用，因為水平分隔線是有效的 Markdown 語法
-    // 不應該自動移除，僅作為 Discord 渲染問題提示
-    // result = fixHorizontalRules(result);
+    // Discord 不支援水平分隔線，這裡直接移除以避免驗證失敗
+    result = fixHorizontalRules(result);
 
     return result;
   }
@@ -221,6 +230,34 @@ public class RegexBasedAutoFixer implements MarkdownAutoFixer {
   }
 
   /**
+   * 修復行內標題（標題標記與前文黏在同一行）。
+   *
+   * <p>將 "文字## 標題" 轉為 "文字\n## 標題"。
+   */
+  private String fixInlineHeadings(String markdown) {
+    List<String> codeBlocks = new ArrayList<>();
+    String protectedContent = protectCodeBlocks(markdown, codeBlocks);
+    String[] lines = protectedContent.split("\n", -1);
+    StringBuilder result = new StringBuilder();
+
+    for (int i = 0; i < lines.length; i++) {
+      String line = lines[i];
+      String trimmed = line.trim();
+
+      if (!trimmed.startsWith("#")) {
+        line = INLINE_HEADING_MARKER.matcher(line).replaceAll("$1\n");
+      }
+
+      result.append(line);
+      if (i < lines.length - 1) {
+        result.append("\n");
+      }
+    }
+
+    return restoreCodeBlocks(result.toString(), codeBlocks);
+  }
+
+  /**
    * 修復標題格式錯誤。
    *
    * <p>在 # 符號和標題文字之間插入空格。
@@ -237,6 +274,20 @@ public class RegexBasedAutoFixer implements MarkdownAutoFixer {
     String fixedContent = HEADING_WITHOUT_SPACE.matcher(protectedContent).replaceAll("$1 $2");
 
     // 還原程式碼區塊
+    return restoreCodeBlocks(fixedContent, codeBlocks);
+  }
+
+  /**
+   * 修復標題行內的列表標記。
+   *
+   * <p>將 "## 標題- item" 轉為 "## 標題\n- item"。
+   */
+  private String fixHeadingInlineListItems(String markdown) {
+    List<String> codeBlocks = new ArrayList<>();
+    String protectedContent = protectCodeBlocks(markdown, codeBlocks);
+
+    String fixedContent = HEADING_INLINE_LIST_MARKER.matcher(protectedContent).replaceAll("$1\n$2");
+
     return restoreCodeBlocks(fixedContent, codeBlocks);
   }
 
@@ -278,6 +329,84 @@ public class RegexBasedAutoFixer implements MarkdownAutoFixer {
 
     // 還原程式碼區塊
     return restoreCodeBlocks(fixedContent, codeBlocks);
+  }
+
+  /**
+   * 修復列表行中黏在一起的多個列表項。
+   *
+   * <p>將 "- item1- item2" 轉為 "- item1\n- item2"（保留縮排）。
+   */
+  private String fixInlineListMarkersInListLines(String markdown) {
+    List<String> codeBlocks = new ArrayList<>();
+    String protectedContent = protectCodeBlocks(markdown, codeBlocks);
+
+    String[] lines = protectedContent.split("\n", -1);
+    StringBuilder result = new StringBuilder();
+    Pattern inlineUnorderedMarker = Pattern.compile("([^\\s])([-*+]\\s+)");
+    Pattern inlineOrderedMarker = Pattern.compile("([^\\s])(\\d+\\.\\s+)");
+    Pattern inlineUnorderedMarkerWithLeadingSpace = Pattern.compile("(?<!^)\\s+([-*+]\\s+)");
+    Pattern inlineOrderedMarkerWithLeadingSpace = Pattern.compile("(?<!^)\\s+(\\d+\\.\\s+)");
+    Pattern inlineUnorderedMarkerMissingSpace = Pattern.compile("(?<!^)\\s+([-*+])(?=\\S)");
+    // 有序列表缺少空格時可能誤判版本號（例如 1.2.3），避免在此處處理
+
+    for (int i = 0; i < lines.length; i++) {
+      String line = lines[i];
+      String trimmed = line.trim();
+
+      if (trimmed.startsWith("- ")
+          || trimmed.startsWith("* ")
+          || trimmed.startsWith("+ ")
+          || trimmed.matches("^\\d+\\.\\s+.*")) {
+        int firstNonSpace = line.indexOf(trimmed);
+        String indent = firstNonSpace > 0 ? line.substring(0, firstNonSpace) : "";
+
+        line = splitInlineListMarkers(line, indent, inlineUnorderedMarker);
+        line = splitInlineListMarkers(line, indent, inlineOrderedMarker);
+        line =
+            splitInlineListMarkersWithLeadingSpace(
+                line, indent, inlineUnorderedMarkerWithLeadingSpace, false);
+        line =
+            splitInlineListMarkersWithLeadingSpace(
+                line, indent, inlineOrderedMarkerWithLeadingSpace, false);
+        line =
+            splitInlineListMarkersWithLeadingSpace(
+                line, indent, inlineUnorderedMarkerMissingSpace, true);
+      }
+
+      result.append(line);
+      if (i < lines.length - 1) {
+        result.append("\n");
+      }
+    }
+
+    return restoreCodeBlocks(result.toString(), codeBlocks);
+  }
+
+  private String splitInlineListMarkers(String line, String indent, Pattern pattern) {
+    Matcher matcher = pattern.matcher(line);
+    StringBuffer sb = new StringBuffer();
+    while (matcher.find()) {
+      String replacement = matcher.group(1) + "\n" + indent + matcher.group(2);
+      matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
+    }
+    matcher.appendTail(sb);
+    return sb.toString();
+  }
+
+  private String splitInlineListMarkersWithLeadingSpace(
+      String line, String indent, Pattern pattern, boolean ensureSpaceAfter) {
+    Matcher matcher = pattern.matcher(line);
+    StringBuffer sb = new StringBuffer();
+    while (matcher.find()) {
+      String marker = matcher.group(1);
+      String replacement = "\n" + indent + marker;
+      if (ensureSpaceAfter && !marker.endsWith(" ")) {
+        replacement += " ";
+      }
+      matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
+    }
+    matcher.appendTail(sb);
+    return sb.toString();
   }
 
   /**
@@ -617,8 +746,9 @@ public class RegexBasedAutoFixer implements MarkdownAutoFixer {
     List<String> codeBlocks = new ArrayList<>();
     String protectedContent = protectCodeBlocks(markdown, codeBlocks);
 
-    String[] lines = protectedContent.split("\n");
+    String[] lines = protectedContent.split("\n", -1);
     StringBuilder result = new StringBuilder();
+    boolean removed = false;
 
     for (int i = 0; i < lines.length; i++) {
       String line = lines[i];
@@ -627,6 +757,7 @@ public class RegexBasedAutoFixer implements MarkdownAutoFixer {
       // 檢查是否為水平分隔線
       if (isHorizontalRule(trimmed)) {
         // 跳過此行（移除水平分隔線）
+        removed = true;
         continue;
       }
 
@@ -637,6 +768,10 @@ public class RegexBasedAutoFixer implements MarkdownAutoFixer {
     }
 
     // 還原程式碼區塊
+    if (!removed) {
+      return markdown;
+    }
+
     return restoreCodeBlocks(result.toString(), codeBlocks);
   }
 }

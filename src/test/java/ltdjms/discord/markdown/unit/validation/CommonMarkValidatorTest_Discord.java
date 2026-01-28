@@ -74,6 +74,26 @@ class CommonMarkValidatorTest_Discord {
   }
 
   @Test
+  @DisplayName("行內標題應檢測為錯誤")
+  void inlineHeading_shouldDetectError() {
+    String markdown =
+        """
+        前文##標題
+        """;
+
+    MarkdownValidator.ValidationResult result = validator.validate(markdown);
+
+    assertInstanceOf(MarkdownValidator.ValidationResult.Invalid.class, result);
+    MarkdownValidator.ValidationResult.Invalid invalid =
+        (MarkdownValidator.ValidationResult.Invalid) result;
+
+    boolean hasHeadingFormatError =
+        invalid.errors().stream()
+            .anyMatch(e -> e.type() == MarkdownValidator.ErrorType.HEADING_FORMAT);
+    assertTrue(hasHeadingFormatError, "應檢測到行內標題格式錯誤");
+  }
+
+  @Test
   @DisplayName("標題格式正確應通過")
   void headingWithSpace_shouldPass() {
     String markdown =

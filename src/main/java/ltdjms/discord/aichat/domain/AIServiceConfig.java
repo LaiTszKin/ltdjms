@@ -16,8 +16,8 @@ import ltdjms.discord.shared.Unit;
  * @param showReasoning 是否顯示推理內容（預設: false）
  * @param enableMarkdownValidation 是否啟用 Markdown 格式驗證（預設: true）
  * @param streamingBypassValidation 串流模式是否跳過驗證（預設: false）
- * @param maxMarkdownValidationRetries Markdown 驗證最大重試次數（預設: 5）
- * @param enableAutoFix 是否啟用 Markdown 自動修復（預設: true）
+ * @param maxMarkdownValidationRetries Markdown 驗證最大重試次數（已停用，保留相容性）
+ * @param enableAutoFix 是否啟用 Markdown 自動修復（已停用，保留相容性）
  */
 public record AIServiceConfig(
     String baseUrl,
@@ -42,8 +42,8 @@ public record AIServiceConfig(
         env.getAIShowReasoning(),
         env.getAIMarkdownValidationEnabled(),
         env.getAIMarkdownValidationStreamingBypass(),
-        env.getAIMarkdownValidationMaxRetries(),
-        env.getAIMarkdownAutoFixEnabled());
+        0,
+        false);
   }
 
   /** 驗證配置。 */

@@ -15,7 +15,6 @@ import ltdjms.discord.markdown.autofix.MarkdownAutoFixer;
 import ltdjms.discord.markdown.autofix.RegexBasedAutoFixer;
 import ltdjms.discord.markdown.services.MarkdownValidatingAIChatService;
 import ltdjms.discord.markdown.validation.CommonMarkValidator;
-import ltdjms.discord.markdown.validation.MarkdownErrorFormatter;
 import ltdjms.discord.markdown.validation.MarkdownValidator;
 
 /** Markdown 驗證功能的 Dagger 模組 提供驗證器和裝飾後的 AIChatService */
@@ -47,12 +46,6 @@ public interface MarkdownValidationModule {
 
   @Provides
   @Singleton
-  static MarkdownErrorFormatter provideMarkdownErrorFormatter() {
-    return new MarkdownErrorFormatter();
-  }
-
-  @Provides
-  @Singleton
   static MarkdownAutoFixer provideMarkdownAutoFixer() {
     return new RegexBasedAutoFixer();
   }
@@ -63,21 +56,13 @@ public interface MarkdownValidationModule {
       AIServiceConfig config,
       LangChain4jAIChatService delegateService,
       MarkdownValidator validator,
-      MarkdownAutoFixer autofixer,
-      MarkdownErrorFormatter formatter) {
+      MarkdownAutoFixer autofixer) {
 
     if (!config.enableMarkdownValidation()) {
       return delegateService;
     }
 
     return new MarkdownValidatingAIChatService(
-        delegateService,
-        validator,
-        autofixer,
-        true,
-        formatter,
-        config.maxMarkdownValidationRetries(),
-        config.streamingBypassValidation(),
-        config.enableAutoFix());
+        delegateService, validator, autofixer, true, config.streamingBypassValidation());
   }
 }

@@ -3,7 +3,6 @@ package ltdjms.discord.markdown.unit.services;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.Mockito.*;
 
 import java.util.List;
@@ -15,17 +14,16 @@ import org.junit.jupiter.api.Test;
 import ltdjms.discord.aichat.services.AIChatService;
 import ltdjms.discord.markdown.autofix.MarkdownAutoFixer;
 import ltdjms.discord.markdown.services.MarkdownValidatingAIChatService;
-import ltdjms.discord.markdown.validation.*;
+import ltdjms.discord.markdown.validation.MarkdownValidator;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 
-@DisplayName("MarkdownValidatingAIChatService - 重試邏輯測試")
-class MarkdownValidatingAIChatServiceTest_Retry {
+@DisplayName("MarkdownValidatingAIChatService - 重格式化流程測試")
+class MarkdownValidatingAIChatServiceTest_Reformat {
 
   private AIChatService mockDelegate;
   private MarkdownValidator mockValidator;
   private MarkdownAutoFixer mockAutoFixer;
-  private MarkdownErrorFormatter formatter;
   private MarkdownValidatingAIChatService service;
 
   @BeforeEach
@@ -33,23 +31,21 @@ class MarkdownValidatingAIChatServiceTest_Retry {
     mockDelegate = mock(AIChatService.class);
     mockValidator = mock(MarkdownValidator.class);
     mockAutoFixer = mock(MarkdownAutoFixer.class);
-    formatter = new MarkdownErrorFormatter();
-    // 注意：第四個參數 enabled 應為 true 才能測試重試邏輯
     service =
         new MarkdownValidatingAIChatService(
-            mockDelegate, mockValidator, mockAutoFixer, true, formatter, 5, false, false);
+            mockDelegate, mockValidator, mockAutoFixer, true, false);
   }
 
   @Test
-  @DisplayName("格式錯誤應觸發重試並在第二次成功")
-  void invalidThenValid_shouldRetryAndSucceed() {
+  @DisplayName("格式錯誤應直接重格式化並返回")
+  void invalidResponse_shouldReformatAndReturn() {
     // Given
     long guildId = 123L;
     String channelId = "456";
     String userId = "789";
     String userMessage = "解釋 CompletableFuture";
     String invalidResponse = "```java without closing";
-    String validResponse = "正確的回應";
+    String reformattedResponse = "```java\n// fixed\n```";
 
     List<MarkdownValidator.MarkdownError> errors =
         List.of(
@@ -62,30 +58,31 @@ class MarkdownValidatingAIChatServiceTest_Retry {
 
     when(mockDelegate.generateResponse(anyLong(), anyString(), anyString(), eq(userMessage)))
         .thenReturn(Result.ok(List.of(invalidResponse)));
-    when(mockDelegate.generateResponse(anyLong(), anyString(), anyString(), contains("系統提示")))
-        .thenReturn(Result.ok(List.of(validResponse)));
     when(mockValidator.validate(invalidResponse))
         .thenReturn(new MarkdownValidator.ValidationResult.Invalid(errors));
-    when(mockValidator.validate(validResponse))
-        .thenReturn(new MarkdownValidator.ValidationResult.Valid(validResponse));
+    when(mockAutoFixer.autoFix(invalidResponse)).thenReturn(reformattedResponse);
+    when(mockValidator.validate(reformattedResponse))
+        .thenReturn(new MarkdownValidator.ValidationResult.Valid(reformattedResponse));
 
     // When
     var result = service.generateResponse(guildId, channelId, userId, userMessage);
 
     // Then
     assertTrue(result.isOk());
-    assertEquals(List.of(validResponse), result.getValue());
+    assertEquals(List.of(reformattedResponse), result.getValue());
 
-    // 驗證調用了兩次
-    verify(mockDelegate, times(2))
+    // 驗證只調用一次
+    verify(mockDelegate, times(1))
         .generateResponse(anyLong(), anyString(), anyString(), anyString());
+    verify(mockAutoFixer, times(1)).autoFix(invalidResponse);
   }
 
   @Test
-  @DisplayName("超過重試次數應返回最後結果")
-  void exceedMaxRetries_shouldReturnLastResponse() {
+  @DisplayName("重格式化後仍無效時應直接返回重格式化結果")
+  void reformattedStillInvalid_shouldReturnReformatted() {
     // Given
     String invalidResponse = "Always invalid";
+    String reformatted = "Always invalid (reformatted)";
     List<MarkdownValidator.MarkdownError> errors =
         List.of(
             new MarkdownValidator.MarkdownError(
@@ -93,7 +90,10 @@ class MarkdownValidatingAIChatServiceTest_Retry {
 
     when(mockDelegate.generateResponse(anyLong(), anyString(), anyString(), anyString()))
         .thenReturn(Result.ok(List.of(invalidResponse)));
-    when(mockValidator.validate(anyString()))
+    when(mockValidator.validate(invalidResponse))
+        .thenReturn(new MarkdownValidator.ValidationResult.Invalid(errors));
+    when(mockAutoFixer.autoFix(invalidResponse)).thenReturn(reformatted);
+    when(mockValidator.validate(reformatted))
         .thenReturn(new MarkdownValidator.ValidationResult.Invalid(errors));
 
     // When
@@ -101,11 +101,10 @@ class MarkdownValidatingAIChatServiceTest_Retry {
 
     // Then
     assertTrue(result.isOk());
-    assertEquals(List.of(invalidResponse), result.getValue());
-
-    // 驗證調用了 MAX_RETRY_ATTEMPTS 次
-    verify(mockDelegate, times(5))
+    assertEquals(List.of(reformatted), result.getValue());
+    verify(mockDelegate, times(1))
         .generateResponse(anyLong(), anyString(), anyString(), anyString());
+    verify(mockAutoFixer, times(1)).autoFix(invalidResponse);
   }
 
   @Test

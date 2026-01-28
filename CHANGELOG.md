@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.25.3] - 2026-01-28
+
+### Fixed
+- **markdown**: 驗證失敗後直接重格式化輸出，避免 AI 重試造成格式問題
+- **markdown**: 強化標題/列表行內黏合與水平分隔線的修復與驗證，提升 Discord 渲染相容性
+- **markdown**: 串流含歷史回應也會進行驗證與重格式化
+
+### Changed
+- **aichat**: 移除 Markdown 重試/自動修復設定項（保留相容欄位但固定停用）
+- **docs**: 更新 Markdown 驗證設定與行為說明
+
+### Tests
+- 更新 Markdown 驗證與自動修復測試，新增行內標題/列表與串流歷史覆蓋
+
 ## [0.25.0] - 2026-01-05
 
 ### Added
