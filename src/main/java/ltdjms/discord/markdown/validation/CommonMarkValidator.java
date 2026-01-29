@@ -243,14 +243,16 @@ public final class CommonMarkValidator implements MarkdownValidator {
       }
 
       // 檢查是否為列表行
-      boolean isUnorderedList = trimmed.matches("^[-*+].*");
+      boolean isUnorderedList = trimmed.matches("^[-*+].*") && !isLikelyEmphasisLine(trimmed);
       boolean isOrderedList = trimmed.matches("^\\d+\\..*");
       boolean isListLine = isUnorderedList || isOrderedList;
 
       if (isListLine) {
         // 檢查列表標記後是否有空格
         if (isUnorderedList) {
-          if (trimmed.matches("^[-*+][^\\s].*") && !isHorizontalRule(trimmed)) {
+          if (trimmed.matches("^[-*+][^\\s].*")
+              && !isHorizontalRule(trimmed)
+              && !isLikelyEmphasisLine(trimmed)) {
             errors.add(
                 new MarkdownError(
                     ErrorType.MALFORMED_LIST,
@@ -281,15 +283,16 @@ public final class CommonMarkValidator implements MarkdownValidator {
         // 檢查嵌套層級是否正確（只對新的更深層級進行檢查）
         if (!indentStack.isEmpty() && leadingSpaces > indentStack.peek()) {
           int parentIndent = indentStack.peek();
-          // CommonMark 規則：嵌套列表必須縮排至少 4 個空格（或 1 個 tab）
-          if (leadingSpaces < parentIndent + 4) {
+          int expectedIndent = parentIndent + 4;
+          // 每一層固定 4 個空格（或 1 個 tab）
+          if (leadingSpaces != expectedIndent) {
             errors.add(
                 new MarkdownError(
                     ErrorType.MALFORMED_NESTED_LIST,
                     i + 1,
                     leadingSpaces + 1,
                     line.length() > 50 ? line.substring(0, 50) + "..." : line,
-                    "嵌套列表縮排不足，需要至少 " + (parentIndent + 4) + " 個空格"));
+                    "巢狀列表每層需縮排 4 個空格，此行應縮排到 " + expectedIndent + " 個空格"));
           }
         }
 
@@ -357,6 +360,65 @@ public final class CommonMarkValidator implements MarkdownValidator {
                 "列表項需分行，請在每個列表標記前換行"));
       }
     }
+  }
+
+  /**
+   * 判斷一行是否是純強調語法（避免把 *bold* 或 **bold** 當成列表）。
+   *
+   * <p>只在行首是 * 或 _ 時檢查，且限制在 1~3 個連續符號。
+   */
+  private boolean isLikelyEmphasisLine(String trimmedLine) {
+    if (trimmedLine == null || trimmedLine.isEmpty()) {
+      return false;
+    }
+
+    if (trimmedLine.startsWith("*")) {
+      return isWrappedByMarker(trimmedLine, '*');
+    }
+    if (trimmedLine.startsWith("_")) {
+      return isWrappedByMarker(trimmedLine, '_');
+    }
+
+    return false;
+  }
+
+  private boolean isWrappedByMarker(String trimmedLine, char marker) {
+    int run = countLeadingMarkers(trimmedLine, marker);
+    if (run < 1 || run > 3) {
+      return false;
+    }
+    int coreEnd = trimTrailingPunctuationAndSpaces(trimmedLine);
+    if (coreEnd <= run * 2) {
+      return false;
+    }
+    if (Character.isWhitespace(trimmedLine.charAt(run))) {
+      return false;
+    }
+    String suffix = String.valueOf(marker).repeat(run);
+    return trimmedLine.substring(0, coreEnd).endsWith(suffix);
+  }
+
+  private int countLeadingMarkers(String text, char marker) {
+    int count = 0;
+    while (count < text.length() && text.charAt(count) == marker) {
+      count++;
+    }
+    return count;
+  }
+
+  private int trimTrailingPunctuationAndSpaces(String text) {
+    int end = text.length();
+    while (end > 0 && isTrailingPunctuationOrSpace(text.charAt(end - 1))) {
+      end--;
+    }
+    return end;
+  }
+
+  private boolean isTrailingPunctuationOrSpace(char c) {
+    if (Character.isWhitespace(c)) {
+      return true;
+    }
+    return "：:，,。.!！？?;；、".indexOf(c) >= 0;
   }
 
   /** 判斷一行是否為分隔線（---、***、___） */

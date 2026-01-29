@@ -13,6 +13,8 @@ import ltdjms.discord.aichat.services.AIChatService;
 import ltdjms.discord.aichat.services.LangChain4jAIChatService;
 import ltdjms.discord.markdown.autofix.MarkdownAutoFixer;
 import ltdjms.discord.markdown.autofix.RegexBasedAutoFixer;
+import ltdjms.discord.markdown.services.DiscordMarkdownPaginator;
+import ltdjms.discord.markdown.services.DiscordMarkdownSanitizer;
 import ltdjms.discord.markdown.services.MarkdownValidatingAIChatService;
 import ltdjms.discord.markdown.validation.CommonMarkValidator;
 import ltdjms.discord.markdown.validation.MarkdownValidator;
@@ -52,17 +54,37 @@ public interface MarkdownValidationModule {
 
   @Provides
   @Singleton
+  static DiscordMarkdownSanitizer provideDiscordMarkdownSanitizer() {
+    return new DiscordMarkdownSanitizer();
+  }
+
+  @Provides
+  @Singleton
+  static DiscordMarkdownPaginator provideDiscordMarkdownPaginator() {
+    return new DiscordMarkdownPaginator();
+  }
+
+  @Provides
+  @Singleton
   static AIChatService provideValidatingAIChatService(
       AIServiceConfig config,
       LangChain4jAIChatService delegateService,
       MarkdownValidator validator,
-      MarkdownAutoFixer autofixer) {
+      MarkdownAutoFixer autofixer,
+      DiscordMarkdownSanitizer sanitizer,
+      DiscordMarkdownPaginator paginator) {
 
     if (!config.enableMarkdownValidation()) {
       return delegateService;
     }
 
     return new MarkdownValidatingAIChatService(
-        delegateService, validator, autofixer, true, config.streamingBypassValidation());
+        delegateService,
+        validator,
+        autofixer,
+        sanitizer,
+        paginator,
+        true,
+        config.streamingBypassValidation());
   }
 }

@@ -25,6 +25,8 @@ import ltdjms.discord.aichat.services.AIChatService;
 import ltdjms.discord.aichat.services.StreamingResponseHandler;
 import ltdjms.discord.markdown.autofix.MarkdownAutoFixer;
 import ltdjms.discord.markdown.autofix.RegexBasedAutoFixer;
+import ltdjms.discord.markdown.services.DiscordMarkdownPaginator;
+import ltdjms.discord.markdown.services.DiscordMarkdownSanitizer;
 import ltdjms.discord.markdown.services.MarkdownValidatingAIChatService;
 import ltdjms.discord.markdown.validation.CommonMarkValidator;
 import ltdjms.discord.markdown.validation.MarkdownValidator;
@@ -38,8 +40,8 @@ import ltdjms.discord.shared.Result;
  *
  * <ul>
  *   <li>DI 組裝驗證：驗證 CommonMarkValidator 與 MarkdownValidatingAIChatService 可正確組裝
- *   <li>驗證流程：有效的 Markdown 直接通過
- *   <li>重格式化流程：格式錯誤時直接重格式化，不重試
+ *   <li>驗證流程：先預修復再驗證並回傳
+ *   <li>預修復流程：格式錯誤時先預修復再驗證，不重試
  *   <li>降級模式：停用驗證時直接委派
  * </ul>
  */
@@ -50,6 +52,8 @@ class MarkdownValidationIntegrationTest {
 
   private MarkdownValidator validator;
   private MarkdownAutoFixer autofixer;
+  private DiscordMarkdownSanitizer sanitizer;
+  private DiscordMarkdownPaginator paginator;
   private MarkdownValidatingAIChatService validatingService;
 
   @BeforeEach
@@ -59,6 +63,8 @@ class MarkdownValidationIntegrationTest {
     // 使用真實的 CommonMarkValidator 和 MarkdownAutoFixer
     validator = new CommonMarkValidator();
     autofixer = new RegexBasedAutoFixer();
+    sanitizer = new DiscordMarkdownSanitizer();
+    paginator = new DiscordMarkdownPaginator();
   }
 
   @Nested
@@ -70,7 +76,8 @@ class MarkdownValidationIntegrationTest {
     void shouldAssembleWithRealValidator() {
       // Given
       validatingService =
-          new MarkdownValidatingAIChatService(mockDelegate, validator, autofixer, true, false);
+          new MarkdownValidatingAIChatService(
+              mockDelegate, validator, autofixer, sanitizer, paginator, true, false);
 
       // Then - 無異常拋出
       assertThat(validatingService).isNotNull();
@@ -84,11 +91,12 @@ class MarkdownValidationIntegrationTest {
     @BeforeEach
     void setUpValidatingService() {
       validatingService =
-          new MarkdownValidatingAIChatService(mockDelegate, validator, autofixer, true, false);
+          new MarkdownValidatingAIChatService(
+              mockDelegate, validator, autofixer, sanitizer, paginator, true, false);
     }
 
     @Test
-    @DisplayName("有效的 Markdown 應該直接通過，不進行重格式化")
+    @DisplayName("有效的 Markdown 應該預修復後通過")
     void validMarkdownShouldPass() {
       // Given
       String validResponse = "## 這是標題\n\n這是段落文字。\n\n- 列表項目 1\n- 列表項目 2";
@@ -101,13 +109,13 @@ class MarkdownValidationIntegrationTest {
 
       // Then
       assertThat(result.isOk()).isTrue();
-      assertThat(result.getValue()).containsExactly(validResponse);
+      assertThat(result.getValue()).containsExactly("## 這是標題\n\n這是段落文字。\n- 列表項目 1\n- 列表項目 2");
       verify(mockDelegate, times(1))
           .generateResponse(anyLong(), anyString(), anyString(), anyString());
     }
 
     @Test
-    @DisplayName("格式錯誤時應直接重格式化，不重試")
+    @DisplayName("格式錯誤時應先預修復再驗證，不重試")
     void invalidMarkdownShouldBeReformattedWithoutRetry() {
       // Given - 標題缺少空格（#Heading）
       String invalidResponse = "#Heading without space";
@@ -126,7 +134,7 @@ class MarkdownValidationIntegrationTest {
     }
 
     @Test
-    @DisplayName("重格式化後仍無效時，應直接返回重格式化結果")
+    @DisplayName("預修復後仍無效時，應直接返回預修復結果")
     void invalidMarkdownStillInvalidShouldReturnReformatted() {
       // Given - 表格是 Discord 不支援語法
       String invalidResponse = "| 欄位 A | 欄位 B |\n|--------|--------|\n| 值 1   | 值 2   |";
@@ -137,9 +145,10 @@ class MarkdownValidationIntegrationTest {
       Result<List<String>, DomainError> result =
           validatingService.generateResponse(123L, "channel-1", "user-1", "測試");
 
-      // Then - 不重試，直接返回重格式化結果（可能與原始相同）
+      // Then - 不重試，直接返回預修復結果（可能與原始相同）
       assertThat(result.isOk()).isTrue();
-      assertThat(result.getValue()).containsExactly(invalidResponse);
+      assertThat(result.getValue())
+          .containsExactly("```text\n| 欄位 A | 欄位 B |\n|--------|--------|\n| 值 1   | 值 2   |\n```");
       verify(mockDelegate, times(1))
           .generateResponse(anyLong(), anyString(), anyString(), anyString());
     }
@@ -154,7 +163,8 @@ class MarkdownValidationIntegrationTest {
     void disabledValidationShouldDelegateDirectly() {
       // Given
       MarkdownValidatingAIChatService disabledService =
-          new MarkdownValidatingAIChatService(mockDelegate, validator, autofixer, false, false);
+          new MarkdownValidatingAIChatService(
+              mockDelegate, validator, autofixer, sanitizer, paginator, false, false);
 
       String anyResponse = "```\nunclosed block"; // 即使有錯誤也應該通過
       when(mockDelegate.generateResponse(anyLong(), anyString(), anyString(), anyString()))
@@ -179,7 +189,8 @@ class MarkdownValidationIntegrationTest {
     @BeforeEach
     void setUpValidatingService() {
       validatingService =
-          new MarkdownValidatingAIChatService(mockDelegate, validator, autofixer, true, false);
+          new MarkdownValidatingAIChatService(
+              mockDelegate, validator, autofixer, sanitizer, paginator, true, false);
     }
 
     @Test
@@ -209,7 +220,8 @@ class MarkdownValidationIntegrationTest {
     @BeforeEach
     void setUpValidatingService() {
       validatingService =
-          new MarkdownValidatingAIChatService(mockDelegate, validator, autofixer, true, false);
+          new MarkdownValidatingAIChatService(
+              mockDelegate, validator, autofixer, sanitizer, paginator, true, false);
     }
 
     @Test
@@ -218,17 +230,23 @@ class MarkdownValidationIntegrationTest {
       // Given
       StreamingResponseHandler mockHandler =
           org.mockito.Mockito.mock(StreamingResponseHandler.class);
-      when(mockDelegate.generateResponse(anyLong(), anyString(), anyString(), anyString()))
-          .thenReturn(Result.ok(List.of("合法回應")));
+      doAnswer(
+              invocation -> {
+                StreamingResponseHandler handler = invocation.getArgument(4);
+                handler.onChunk("合法回應", true, null, StreamingResponseHandler.ChunkType.CONTENT);
+                return null;
+              })
+          .when(mockDelegate)
+          .generateStreamingResponse(anyLong(), anyString(), anyString(), anyString(), any());
 
       // When
       validatingService.generateStreamingResponse(123L, "channel-1", "user-1", "測試", mockHandler);
 
       // Then - 透過 onChunk 回傳結果，且不使用委派的串流方法
       verify(mockDelegate, times(1))
-          .generateResponse(anyLong(), anyString(), anyString(), anyString());
-      verify(mockDelegate, never())
           .generateStreamingResponse(anyLong(), anyString(), anyString(), anyString(), any());
+      verify(mockDelegate, never())
+          .generateResponse(anyLong(), anyString(), anyString(), anyString());
       verify(mockHandler, times(1)).onChunk(eq("合法回應"), eq(true), isNull(), any());
     }
 
@@ -239,8 +257,15 @@ class MarkdownValidationIntegrationTest {
       StreamingResponseHandler mockHandler =
           org.mockito.Mockito.mock(StreamingResponseHandler.class);
       long messageId = 999L;
-      when(mockDelegate.generateResponse(anyLong(), anyString(), anyString(), anyString()))
-          .thenReturn(Result.ok(List.of("合法回應 2")));
+      doAnswer(
+              invocation -> {
+                StreamingResponseHandler handler = invocation.getArgument(5);
+                handler.onChunk("合法回應 2", true, null, StreamingResponseHandler.ChunkType.CONTENT);
+                return null;
+              })
+          .when(mockDelegate)
+          .generateStreamingResponse(
+              anyLong(), anyString(), anyString(), anyString(), eq(messageId), any());
 
       // When
       validatingService.generateStreamingResponse(
@@ -248,10 +273,10 @@ class MarkdownValidationIntegrationTest {
 
       // Then - 透過 onChunk 回傳結果，且不使用委派的串流方法
       verify(mockDelegate, times(1))
-          .generateResponse(anyLong(), anyString(), anyString(), anyString());
-      verify(mockDelegate, never())
           .generateStreamingResponse(
               anyLong(), anyString(), anyString(), anyString(), eq(messageId), any());
+      verify(mockDelegate, never())
+          .generateResponse(anyLong(), anyString(), anyString(), anyString());
       verify(mockHandler, times(1)).onChunk(eq("合法回應 2"), eq(true), isNull(), any());
     }
 
@@ -302,8 +327,6 @@ class MarkdownValidationIntegrationTest {
       assertThat(content.toString()).contains("# 標題");
       verify(mockDelegate, times(1))
           .generateWithHistory(anyLong(), anyString(), anyString(), any(), any());
-      verify(mockDelegate, never())
-          .generateStreamingResponse(anyLong(), anyString(), anyString(), anyString(), any());
     }
 
     @Test
@@ -311,7 +334,8 @@ class MarkdownValidationIntegrationTest {
     void streamingBypassShouldDelegate() {
       // Given
       var bypassService =
-          new MarkdownValidatingAIChatService(mockDelegate, validator, autofixer, true, true);
+          new MarkdownValidatingAIChatService(
+              mockDelegate, validator, autofixer, sanitizer, paginator, true, true);
       StreamingResponseHandler mockHandler =
           org.mockito.Mockito.mock(StreamingResponseHandler.class);
 

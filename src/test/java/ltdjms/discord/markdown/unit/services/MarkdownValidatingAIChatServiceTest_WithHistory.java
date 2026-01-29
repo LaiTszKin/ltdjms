@@ -6,6 +6,8 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
@@ -22,6 +24,8 @@ import ltdjms.discord.aiagent.domain.MessageRole;
 import ltdjms.discord.aichat.services.AIChatService;
 import ltdjms.discord.aichat.services.StreamingResponseHandler;
 import ltdjms.discord.markdown.autofix.MarkdownAutoFixer;
+import ltdjms.discord.markdown.services.DiscordMarkdownPaginator;
+import ltdjms.discord.markdown.services.DiscordMarkdownSanitizer;
 import ltdjms.discord.markdown.services.MarkdownValidatingAIChatService;
 import ltdjms.discord.markdown.validation.MarkdownValidator;
 import ltdjms.discord.shared.DomainError;
@@ -35,9 +39,11 @@ class MarkdownValidatingAIChatServiceTest_WithHistory {
     AIChatService mockDelegate = mock(AIChatService.class);
     MarkdownValidator mockValidator = mock(MarkdownValidator.class);
     MarkdownAutoFixer mockAutoFixer = mock(MarkdownAutoFixer.class);
+    DiscordMarkdownSanitizer sanitizer = new DiscordMarkdownSanitizer();
+    DiscordMarkdownPaginator paginator = new DiscordMarkdownPaginator();
     MarkdownValidatingAIChatService service =
         new MarkdownValidatingAIChatService(
-            mockDelegate, mockValidator, mockAutoFixer, true, false);
+            mockDelegate, mockValidator, mockAutoFixer, sanitizer, paginator, true, false);
 
     long guildId = 123L;
     String channelId = "456";
@@ -61,16 +67,7 @@ class MarkdownValidatingAIChatServiceTest_WithHistory {
         .generateWithHistory(anyLong(), anyString(), anyString(), any(), any());
 
     when(mockValidator.validate(invalidResponse))
-        .thenReturn(
-            new MarkdownValidator.ValidationResult.Invalid(
-                List.of(
-                    new MarkdownValidator.MarkdownError(
-                        MarkdownValidator.ErrorType.HEADING_FORMAT,
-                        1,
-                        1,
-                        invalidResponse,
-                        "在 # 後加入空格"))));
-
+        .thenReturn(new MarkdownValidator.ValidationResult.Invalid(List.of()));
     when(mockAutoFixer.autoFix(invalidResponse)).thenReturn(fixedResponse);
     when(mockValidator.validate(fixedResponse))
         .thenReturn(new MarkdownValidator.ValidationResult.Valid(fixedResponse));
@@ -104,5 +101,9 @@ class MarkdownValidatingAIChatServiceTest_WithHistory {
     assertTrue(complete.get());
     assertNull(errorRef.get());
     assertEquals(fixedResponse, content.toString());
+
+    verify(mockAutoFixer, times(1)).autoFix(invalidResponse);
+    verify(mockValidator, times(1)).validate(invalidResponse);
+    verify(mockValidator, times(1)).validate(fixedResponse);
   }
 }

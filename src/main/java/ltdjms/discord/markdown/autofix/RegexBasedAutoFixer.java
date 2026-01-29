@@ -1,6 +1,8 @@
 package ltdjms.discord.markdown.autofix;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -54,8 +56,8 @@ public class RegexBasedAutoFixer implements MarkdownAutoFixer {
     result = fixEmbeddedLists(result);
     result = fixInlineListMarkersInListLines(result);
     result = fixListFormat(result);
-    // 注意：fixNestedListIndentation 已停用，因為它會過度修正同層級的列表項
-    // result = fixNestedListIndentation(result);
+    result = normalizeUnorderedListMarkers(result);
+    result = fixNestedListIndentation(result);
     result = fixDiscordUnderlineBold(result);
     result = fixTaskList(result);
     // Discord 不支援水平分隔線，這裡直接移除以避免驗證失敗
@@ -246,6 +248,8 @@ public class RegexBasedAutoFixer implements MarkdownAutoFixer {
 
       if (!trimmed.startsWith("#")) {
         line = INLINE_HEADING_MARKER.matcher(line).replaceAll("$1\n");
+      } else {
+        line = splitInlineHeadingInHeadingLine(line);
       }
 
       result.append(line);
@@ -255,6 +259,21 @@ public class RegexBasedAutoFixer implements MarkdownAutoFixer {
     }
 
     return restoreCodeBlocks(result.toString(), codeBlocks);
+  }
+
+  private String splitInlineHeadingInHeadingLine(String line) {
+    int firstRun = 0;
+    while (firstRun < line.length() && line.charAt(firstRun) == '#') {
+      firstRun++;
+    }
+    if (firstRun == 0 || firstRun >= line.length()) {
+      return line;
+    }
+    int nextHeadingIndex = line.indexOf("##", firstRun);
+    if (nextHeadingIndex <= 0) {
+      return line;
+    }
+    return line.substring(0, nextHeadingIndex) + "\n" + line.substring(nextHeadingIndex);
   }
 
   /**
@@ -321,6 +340,11 @@ public class RegexBasedAutoFixer implements MarkdownAutoFixer {
                     return mr.group(0); // 保持原樣
                   }
 
+                  // 避免把純強調語法（*bold* / **bold**）當成列表
+                  if ("*".equals(marker) && isLikelyEmphasisLine(mr.group(0).trim())) {
+                    return mr.group(0);
+                  }
+
                   return indent + marker + " " + content;
                 });
 
@@ -342,11 +366,14 @@ public class RegexBasedAutoFixer implements MarkdownAutoFixer {
 
     String[] lines = protectedContent.split("\n", -1);
     StringBuilder result = new StringBuilder();
-    Pattern inlineUnorderedMarker = Pattern.compile("([^\\s])([-*+]\\s+)");
+    Pattern inlineUnorderedMarker = Pattern.compile("([^\\s])(-\\s+)");
     Pattern inlineOrderedMarker = Pattern.compile("([^\\s])(\\d+\\.\\s+)");
-    Pattern inlineUnorderedMarkerWithLeadingSpace = Pattern.compile("(?<!^)\\s+([-*+]\\s+)");
-    Pattern inlineOrderedMarkerWithLeadingSpace = Pattern.compile("(?<!^)\\s+(\\d+\\.\\s+)");
-    Pattern inlineUnorderedMarkerMissingSpace = Pattern.compile("(?<!^)\\s+([-*+])(?=\\S)");
+    Pattern inlineUnorderedMarkerWithLeadingSpace = Pattern.compile("(?<=\\S)\\s+(-\\s+)");
+    Pattern inlineOrderedMarkerWithLeadingSpace = Pattern.compile("(?<=\\S)\\s+(\\d+\\.\\s+)");
+    Pattern inlineUnorderedMarkerMissingSpace = Pattern.compile("(?<=\\S)\\s+(-)(?=\\S)");
+    Pattern inlineUnorderedMarkerNoSpaceCjk =
+        Pattern.compile(
+            "([\\p{IsHan}\\p{IsHiragana}\\p{IsKatakana}\\p{IsHangul}])(-)(?=[\\p{IsHan}\\p{IsHiragana}\\p{IsKatakana}\\p{IsHangul}])");
     // 有序列表缺少空格時可能誤判版本號（例如 1.2.3），避免在此處處理
 
     for (int i = 0; i < lines.length; i++) {
@@ -371,6 +398,7 @@ public class RegexBasedAutoFixer implements MarkdownAutoFixer {
         line =
             splitInlineListMarkersWithLeadingSpace(
                 line, indent, inlineUnorderedMarkerMissingSpace, true);
+        line = splitInlineListMarkersNoSpaceCjk(line, indent, inlineUnorderedMarkerNoSpaceCjk);
       }
 
       result.append(line);
@@ -403,6 +431,17 @@ public class RegexBasedAutoFixer implements MarkdownAutoFixer {
       if (ensureSpaceAfter && !marker.endsWith(" ")) {
         replacement += " ";
       }
+      matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
+    }
+    matcher.appendTail(sb);
+    return sb.toString();
+  }
+
+  private String splitInlineListMarkersNoSpaceCjk(String line, String indent, Pattern pattern) {
+    Matcher matcher = pattern.matcher(line);
+    StringBuffer sb = new StringBuffer();
+    while (matcher.find()) {
+      String replacement = matcher.group(1) + "\n" + indent + matcher.group(2) + " ";
       matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
     }
     matcher.appendTail(sb);
@@ -468,6 +507,85 @@ public class RegexBasedAutoFixer implements MarkdownAutoFixer {
     }
 
     return false;
+  }
+
+  /**
+   * 判斷一行是否是純強調語法（避免把 *bold* 或 **bold** 當成列表）。
+   *
+   * <p>只在行首是 * 或 _ 時檢查，且限制在 1~3 個連續符號。
+   */
+  private boolean isLikelyEmphasisLine(String trimmedLine) {
+    if (trimmedLine == null || trimmedLine.isEmpty()) {
+      return false;
+    }
+
+    if (trimmedLine.startsWith("*")) {
+      return isWrappedByMarker(trimmedLine, '*');
+    }
+    if (trimmedLine.startsWith("_")) {
+      return isWrappedByMarker(trimmedLine, '_');
+    }
+
+    return false;
+  }
+
+  private boolean isWrappedByMarker(String trimmedLine, char marker) {
+    int run = countLeadingMarkers(trimmedLine, marker);
+    if (run < 1 || run > 3) {
+      return false;
+    }
+    int coreEnd = trimTrailingPunctuationAndSpaces(trimmedLine);
+    if (coreEnd <= run * 2) {
+      return false;
+    }
+    if (Character.isWhitespace(trimmedLine.charAt(run))) {
+      return false;
+    }
+    String suffix = String.valueOf(marker).repeat(run);
+    return trimmedLine.substring(0, coreEnd).endsWith(suffix);
+  }
+
+  private int countLeadingMarkers(String text, char marker) {
+    int count = 0;
+    while (count < text.length() && text.charAt(count) == marker) {
+      count++;
+    }
+    return count;
+  }
+
+  private int trimTrailingPunctuationAndSpaces(String text) {
+    int end = text.length();
+    while (end > 0 && isTrailingPunctuationOrSpace(text.charAt(end - 1))) {
+      end--;
+    }
+    return end;
+  }
+
+  private boolean isTrailingPunctuationOrSpace(char c) {
+    if (Character.isWhitespace(c)) {
+      return true;
+    }
+    return "：:，,。.!！？?;；、".indexOf(c) >= 0;
+  }
+
+  private String normalizeUnorderedListMarkers(String markdown) {
+    List<String> codeBlocks = new ArrayList<>();
+    String protectedContent = protectCodeBlocks(markdown, codeBlocks);
+
+    String[] lines = protectedContent.split("\n", -1);
+    StringBuilder result = new StringBuilder();
+    Pattern normalizePattern = Pattern.compile("^(\\s*)[+*]\\s+(.*)$");
+
+    for (int i = 0; i < lines.length; i++) {
+      String line = lines[i];
+      String fixedLine = normalizePattern.matcher(line).replaceAll("$1- $2");
+      result.append(fixedLine);
+      if (i < lines.length - 1) {
+        result.append("\n");
+      }
+    }
+
+    return restoreCodeBlocks(result.toString(), codeBlocks);
   }
 
   /** 保護程式碼區塊，替換為佔位符。 */
@@ -546,9 +664,41 @@ public class RegexBasedAutoFixer implements MarkdownAutoFixer {
    * <p>識別類似 {@code text - item - item} 的模式，轉換為正確的列表格式。
    */
   private String fixEmbeddedUnorderedList(String markdown) {
-    // 使用 replaceAll 一次性將所有 " 空格+標記 " 替換為 "\n標記 "
-    // 使用環視確保前面不是換行符（避免影響已經正確格式的列表）
-    return markdown.replaceAll("([^\\n])(\\s+)([-*+]\\s+)", "$1\n$3");
+    String[] lines = markdown.split("\n", -1);
+    StringBuilder result = new StringBuilder();
+    Pattern markerPattern = Pattern.compile("\\s+-\\s+");
+
+    for (int i = 0; i < lines.length; i++) {
+      String line = lines[i];
+      String trimmed = line.trim();
+
+      if (trimmed.startsWith("- ") || trimmed.startsWith("* ") || trimmed.startsWith("+ ")) {
+        result.append(line);
+      } else {
+        Matcher matcher = markerPattern.matcher(line);
+        int count = 0;
+        while (matcher.find()) {
+          count++;
+          if (count >= 2) {
+            break;
+          }
+        }
+        if (count >= 2) {
+          int leadingSpaces = countLeadingSpaces(line);
+          String indent = leadingSpaces > 0 ? line.substring(0, leadingSpaces) : "";
+          String replaced = line.replaceAll("\\s+-\\s+", "\n" + indent + "- ");
+          result.append(replaced);
+        } else {
+          result.append(line);
+        }
+      }
+
+      if (i < lines.length - 1) {
+        result.append("\n");
+      }
+    }
+
+    return result.toString();
   }
 
   /**
@@ -608,7 +758,7 @@ public class RegexBasedAutoFixer implements MarkdownAutoFixer {
   /**
    * 修復嵌套列表縮排不足的問題。
    *
-   * <p>自動為嵌套列表項添加適當的縮排（至少 4 個空格）。
+   * <p>自動將巢狀列表縮排校正為每層固定 4 個空格。
    *
    * @param markdown 原始 Markdown
    * @return 修復後的 Markdown
@@ -618,18 +768,19 @@ public class RegexBasedAutoFixer implements MarkdownAutoFixer {
     List<String> codeBlocks = new ArrayList<>();
     String protectedContent = protectCodeBlocks(markdown, codeBlocks);
 
-    String[] lines = protectedContent.split("\n");
+    String[] lines = protectedContent.split("\n", -1);
     StringBuilder result = new StringBuilder();
-    int parentIndent = -1;
+    Deque<Integer> rawIndentStack = new ArrayDeque<>();
+    Deque<Integer> normalizedIndentStack = new ArrayDeque<>();
 
     for (int i = 0; i < lines.length; i++) {
       String line = lines[i];
-      int leadingSpaces = countLeadingSpaces(line);
       String trimmed = line.trim();
 
-      // 空行或程式碼區塊標記：重置狀態
-      if (trimmed.isEmpty() || trimmed.startsWith("```")) {
-        parentIndent = -1;
+      // 空行：重置縮排堆疊
+      if (trimmed.isEmpty()) {
+        rawIndentStack.clear();
+        normalizedIndentStack.clear();
         result.append(line);
         if (i < lines.length - 1) {
           result.append("\n");
@@ -637,27 +788,47 @@ public class RegexBasedAutoFixer implements MarkdownAutoFixer {
         continue;
       }
 
+      int leadingSpaces = countLeadingSpaces(line);
+
       // 檢查是否為列表行
-      boolean isListLine = trimmed.matches("^[-*+].*") || trimmed.matches("^\\d+\\..*");
+      boolean isUnorderedList =
+          trimmed.matches("^[-*+]\\s+.*")
+              && !isLikelyEmphasisLine(trimmed)
+              && !isHorizontalRule(trimmed);
+      boolean isOrderedList = trimmed.matches("^\\d+\\.\\s+.*");
+      boolean isListLine = isUnorderedList || isOrderedList;
 
       if (isListLine) {
-        // 檢查是否需要添加縮排
-        if (parentIndent >= 0 && leadingSpaces <= parentIndent) {
-          // 當前列表項縮排不足，添加至少 4 個空格的縮排
-          int requiredIndent = parentIndent + 4;
-          String newIndent = " ".repeat(requiredIndent);
-          result.append(newIndent).append(trimmed);
+        while (!rawIndentStack.isEmpty() && leadingSpaces < rawIndentStack.peek()) {
+          rawIndentStack.pop();
+          normalizedIndentStack.pop();
+        }
+
+        int targetIndent = leadingSpaces;
+        if (rawIndentStack.isEmpty()) {
+          targetIndent = leadingSpaces;
+          rawIndentStack.push(leadingSpaces);
+          normalizedIndentStack.push(targetIndent);
         } else {
-          result.append(line);
-          // 更新父級縮排（當前層級成為下一層的父級）
-          if (parentIndent < 0 || leadingSpaces > parentIndent) {
-            parentIndent = leadingSpaces;
+          int parentRawIndent = rawIndentStack.peek();
+          int parentNormalizedIndent = normalizedIndentStack.peek();
+          if (leadingSpaces > parentRawIndent) {
+            targetIndent = parentNormalizedIndent + 4;
+            rawIndentStack.push(leadingSpaces);
+            normalizedIndentStack.push(targetIndent);
+          } else {
+            targetIndent = parentNormalizedIndent;
           }
         }
+
+        String content = line.substring(firstNonWhitespaceIndex(line));
+        String fixedLine = " ".repeat(targetIndent) + content;
+        result.append(fixedLine);
       } else {
         // 非列表行：如果縮排減少，重置父級縮排
-        if (parentIndent >= 0 && leadingSpaces < parentIndent) {
-          parentIndent = -1;
+        while (!rawIndentStack.isEmpty() && leadingSpaces < rawIndentStack.peek()) {
+          rawIndentStack.pop();
+          normalizedIndentStack.pop();
         }
         result.append(line);
       }
@@ -669,6 +840,15 @@ public class RegexBasedAutoFixer implements MarkdownAutoFixer {
 
     // 還原程式碼區塊
     return restoreCodeBlocks(result.toString(), codeBlocks);
+  }
+
+  private int firstNonWhitespaceIndex(String line) {
+    for (int i = 0; i < line.length(); i++) {
+      if (!Character.isWhitespace(line.charAt(i))) {
+        return i;
+      }
+    }
+    return line.length();
   }
 
   /** 計算行首的空格數量。 */

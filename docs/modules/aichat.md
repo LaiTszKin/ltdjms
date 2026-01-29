@@ -724,11 +724,11 @@ mvn test -Dtest=LangChain4jListChannelsToolTest
 
 ### 概述
 
-為了確保 AI 生成的回應在 Discord 中正確顯示，V018 版本引入了 **Markdown 驗證功能**。此功能使用裝飾器模式包裝 `AIChatService`，在回應生成後驗證 Markdown 格式，格式錯誤時直接送入統一的 Markdown reformatter 進行重格式化。
+為了確保 AI 生成的回應在 Discord 中正確顯示，V018 版本引入了 **Markdown 驗證功能**。此功能使用裝飾器模式包裝 `AIChatService`，在回應生成後先以正規表達式預修復，接著使用 CommonMark 驗證與解析。
 
 **核心特性**：
-- **自動驗證**：使用 CommonMark Java 庫驗證 Markdown 語法
-- **統一重格式化**：檢測到格式錯誤時直接重格式化，不進行 AI 重試
+- **預修復再驗證**：使用 RegexBasedAutoFixer 先修復常見錯誤，再交由 CommonMark Java 驗證
+- **統一輸出**：回傳預修復後的內容（即使仍有錯誤也不重試）
 - **Discord 特定檢查**：驗證標題等級不超過 Discord 限制（H6），並檢測 Discord 不支援的語法
 - **降級模式**：可配置停用驗證，直接使用原始回應
 
@@ -771,16 +771,16 @@ public final class MarkdownValidatingAIChatService implements AIChatService {
 
     @Override
     public Result<List<String>, DomainError> generateResponse(...) {
-        // 生成回應 → 驗證 → 格式錯誤則重格式化
+        // 生成回應 → 預修復 → 驗證 → 回傳預修復後內容
     }
 }
 ```
 
 **行為**：
 1. 呼叫委派服務生成回應
-2. 使用 `MarkdownValidator` 驗證回應
-3. 驗證通過則返回結果
-4. 驗證失敗則進行重格式化並返回（即使仍有錯誤也不重試）
+2. 使用 `MarkdownAutoFixer` 進行預修復
+3. 使用 `MarkdownValidator` 驗證預修復內容
+4. 回傳預修復後內容（即使仍有錯誤也不重試）
 
 #### MarkdownValidator 介面
 

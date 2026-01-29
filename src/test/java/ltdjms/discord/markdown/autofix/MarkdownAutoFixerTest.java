@@ -142,7 +142,7 @@ class MarkdownAutoFixerTest {
     MarkdownAutoFixer fixer = new RegexBasedAutoFixer();
 
     String input = "*First item\n*Second item";
-    String expected = "* First item\n* Second item";
+    String expected = "- First item\n- Second item";
 
     String result = fixer.autoFix(input);
     assertEquals(expected, result);
@@ -154,7 +154,7 @@ class MarkdownAutoFixerTest {
     MarkdownAutoFixer fixer = new RegexBasedAutoFixer();
 
     String input = "+First item\n+Second item";
-    String expected = "+ First item\n+ Second item";
+    String expected = "- First item\n- Second item";
 
     String result = fixer.autoFix(input);
     assertEquals(expected, result);
@@ -179,6 +179,30 @@ class MarkdownAutoFixerTest {
 
     String input = "- First item\n- Second item\n1. First\n2. Second";
     String expected = "- First item\n- Second item\n1. First\n2. Second";
+
+    String result = fixer.autoFix(input);
+    assertEquals(expected, result);
+  }
+
+  @Test
+  @DisplayName("不應該把純強調語法當成列表")
+  void shouldNotTreatEmphasisAsList() {
+    MarkdownAutoFixer fixer = new RegexBasedAutoFixer();
+
+    String input = "**關於機器人功能：**\n*斜體內容*\n***加強斜體***\n**段落標題**：";
+    String expected = "**關於機器人功能：**\n*斜體內容*\n***加強斜體***\n**段落標題**：";
+
+    String result = fixer.autoFix(input);
+    assertEquals(expected, result);
+  }
+
+  @Test
+  @DisplayName("應該修復行內 CJK 無空格列表標記")
+  void shouldFixInlineListMarkersWithoutSpacesInCjk() {
+    MarkdownAutoFixer fixer = new RegexBasedAutoFixer();
+
+    String input = "- 解答關於 Discord機器人功能的問題-協助使用 /user-panel";
+    String expected = "- 解答關於 Discord機器人功能的問題\n- 協助使用 /user-panel";
 
     String result = fixer.autoFix(input);
     assertEquals(expected, result);
@@ -214,7 +238,7 @@ class MarkdownAutoFixerTest {
     MarkdownAutoFixer fixer = new RegexBasedAutoFixer();
 
     String input = "-Wrong\n- Correct\n1.Wrong\n2. Correct\n*Also wrong";
-    String expected = "- Wrong\n- Correct\n1. Wrong\n2. Correct\n* Also wrong";
+    String expected = "- Wrong\n- Correct\n1. Wrong\n2. Correct\n- Also wrong";
 
     String result = fixer.autoFix(input);
     assertEquals(expected, result);
@@ -226,7 +250,19 @@ class MarkdownAutoFixerTest {
     MarkdownAutoFixer fixer = new RegexBasedAutoFixer();
 
     String input = "  -Indented item\n    -More indented";
-    String expected = "  - Indented item\n    - More indented";
+    String expected = "  - Indented item\n      - More indented";
+
+    String result = fixer.autoFix(input);
+    assertEquals(expected, result);
+  }
+
+  @Test
+  @DisplayName("應該將巢狀列表縮排調整為每層 4 個空格")
+  void shouldNormalizeNestedListIndentation() {
+    MarkdownAutoFixer fixer = new RegexBasedAutoFixer();
+
+    String input = "- 第一層\n  - 第二層\n    - 第三層\n  - 第二層回到同層";
+    String expected = "- 第一層\n    - 第二層\n        - 第三層\n    - 第二層回到同層";
 
     String result = fixer.autoFix(input);
     assertEquals(expected, result);
@@ -450,6 +486,5 @@ class MarkdownAutoFixerTest {
     assertEquals(expected, result);
   }
 
-  // 注意：嵌套列表縮排的測試已被移除，
-  // 因為這個自動修復功能已停用（可能會產生非預期的副作用）
+  // 巢狀列表縮排的修復已啟用，測試覆蓋於上方 shouldNormalizeNestedListIndentation
 }

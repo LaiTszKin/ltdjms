@@ -13,12 +13,14 @@ import org.junit.jupiter.api.Test;
 
 import ltdjms.discord.aichat.services.AIChatService;
 import ltdjms.discord.markdown.autofix.MarkdownAutoFixer;
+import ltdjms.discord.markdown.services.DiscordMarkdownPaginator;
+import ltdjms.discord.markdown.services.DiscordMarkdownSanitizer;
 import ltdjms.discord.markdown.services.MarkdownValidatingAIChatService;
 import ltdjms.discord.markdown.validation.MarkdownValidator;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 
-@DisplayName("MarkdownValidatingAIChatService - 重格式化流程測試")
+@DisplayName("MarkdownValidatingAIChatService - 預修復流程測試")
 class MarkdownValidatingAIChatServiceTest_Reformat {
 
   private AIChatService mockDelegate;
@@ -31,13 +33,15 @@ class MarkdownValidatingAIChatServiceTest_Reformat {
     mockDelegate = mock(AIChatService.class);
     mockValidator = mock(MarkdownValidator.class);
     mockAutoFixer = mock(MarkdownAutoFixer.class);
+    DiscordMarkdownSanitizer sanitizer = new DiscordMarkdownSanitizer();
+    DiscordMarkdownPaginator paginator = new DiscordMarkdownPaginator();
     service =
         new MarkdownValidatingAIChatService(
-            mockDelegate, mockValidator, mockAutoFixer, true, false);
+            mockDelegate, mockValidator, mockAutoFixer, sanitizer, paginator, true, false);
   }
 
   @Test
-  @DisplayName("格式錯誤應直接重格式化並返回")
+  @DisplayName("格式錯誤應先預修復並返回")
   void invalidResponse_shouldReformatAndReturn() {
     // Given
     long guildId = 123L;
@@ -75,10 +79,12 @@ class MarkdownValidatingAIChatServiceTest_Reformat {
     verify(mockDelegate, times(1))
         .generateResponse(anyLong(), anyString(), anyString(), anyString());
     verify(mockAutoFixer, times(1)).autoFix(invalidResponse);
+    verify(mockValidator, times(1)).validate(invalidResponse);
+    verify(mockValidator, times(1)).validate(reformattedResponse);
   }
 
   @Test
-  @DisplayName("重格式化後仍無效時應直接返回重格式化結果")
+  @DisplayName("預修復後仍無效時應直接返回預修復結果")
   void reformattedStillInvalid_shouldReturnReformatted() {
     // Given
     String invalidResponse = "Always invalid";
@@ -105,6 +111,8 @@ class MarkdownValidatingAIChatServiceTest_Reformat {
     verify(mockDelegate, times(1))
         .generateResponse(anyLong(), anyString(), anyString(), anyString());
     verify(mockAutoFixer, times(1)).autoFix(invalidResponse);
+    verify(mockValidator, times(1)).validate(invalidResponse);
+    verify(mockValidator, times(1)).validate(reformatted);
   }
 
   @Test

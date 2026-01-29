@@ -2,9 +2,6 @@ package ltdjms.discord.markdown.services;
 
 import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import ltdjms.discord.aiagent.domain.ConversationMessage;
 import ltdjms.discord.aiagent.domain.MessageRole;
 import ltdjms.discord.aichat.services.AIChatService;
@@ -12,18 +9,17 @@ import ltdjms.discord.aichat.services.MessageSplitter;
 import ltdjms.discord.aichat.services.StreamingResponseHandler;
 import ltdjms.discord.markdown.autofix.MarkdownAutoFixer;
 import ltdjms.discord.markdown.validation.MarkdownValidator;
-import ltdjms.discord.markdown.validation.MarkdownValidator.ValidationResult;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 
-/** Markdown 驗證裝飾器 包裝 AIChatService，在回應生成後驗證並統一重新格式化輸出 */
+/** Markdown 驗證裝飾器 包裝 AIChatService，在回應生成後預修復並驗證輸出 */
 public final class MarkdownValidatingAIChatService implements AIChatService {
-
-  private static final Logger LOG = LoggerFactory.getLogger(MarkdownValidatingAIChatService.class);
 
   private final AIChatService delegate;
   private final MarkdownValidator validator;
   private final MarkdownAutoFixer autofixer;
+  private final DiscordMarkdownSanitizer sanitizer;
+  private final DiscordMarkdownPaginator paginator;
   private final boolean enabled;
   private final boolean streamingBypassValidation;
 
@@ -31,11 +27,15 @@ public final class MarkdownValidatingAIChatService implements AIChatService {
       AIChatService delegate,
       MarkdownValidator validator,
       MarkdownAutoFixer autofixer,
+      DiscordMarkdownSanitizer sanitizer,
+      DiscordMarkdownPaginator paginator,
       boolean enabled,
       boolean streamingBypassValidation) {
     this.delegate = delegate;
     this.validator = validator;
     this.autofixer = autofixer;
+    this.sanitizer = sanitizer;
+    this.paginator = paginator;
     this.enabled = enabled;
     this.streamingBypassValidation = streamingBypassValidation;
   }
@@ -58,20 +58,11 @@ public final class MarkdownValidatingAIChatService implements AIChatService {
       delegate.generateStreamingResponse(guildId, channelId, userId, userMessage, handler);
       return;
     }
-
-    Result<List<String>, DomainError> result =
-        validateAndGenerate(guildId, channelId, userId, userMessage);
-
-    if (result.isErr()) {
-      handler.onChunk("", true, result.getError(), StreamingResponseHandler.ChunkType.CONTENT);
-      return;
-    }
-
-    List<String> messages = result.getValue();
-    for (int i = 0; i < messages.size(); i++) {
-      boolean isLast = (i == messages.size() - 1);
-      handler.onChunk(messages.get(i), isLast, null, StreamingResponseHandler.ChunkType.CONTENT);
-    }
+    streamWithValidation(
+        (streamHandler) ->
+            delegate.generateStreamingResponse(
+                guildId, channelId, userId, userMessage, streamHandler),
+        handler);
   }
 
   @Override
@@ -87,20 +78,11 @@ public final class MarkdownValidatingAIChatService implements AIChatService {
           guildId, channelId, userId, userMessage, messageId, handler);
       return;
     }
-
-    Result<List<String>, DomainError> result =
-        validateAndGenerate(guildId, channelId, userId, userMessage);
-
-    if (result.isErr()) {
-      handler.onChunk("", true, result.getError(), StreamingResponseHandler.ChunkType.CONTENT);
-      return;
-    }
-
-    List<String> messages = result.getValue();
-    for (int i = 0; i < messages.size(); i++) {
-      boolean isLast = (i == messages.size() - 1);
-      handler.onChunk(messages.get(i), isLast, null, StreamingResponseHandler.ChunkType.CONTENT);
-    }
+    streamWithValidation(
+        (streamHandler) ->
+            delegate.generateStreamingResponse(
+                guildId, channelId, userId, userMessage, messageId, streamHandler),
+        handler);
   }
 
   @Override
@@ -125,7 +107,11 @@ public final class MarkdownValidatingAIChatService implements AIChatService {
       return;
     }
 
-    validateAndGenerateWithHistory(guildId, channelId, userId, history, handler, originalPrompt);
+    List<ConversationMessage> updatedHistory = replaceLastUserMessage(history, originalPrompt);
+    streamWithValidation(
+        (streamHandler) ->
+            delegate.generateWithHistory(guildId, channelId, userId, updatedHistory, streamHandler),
+        handler);
   }
 
   private Result<List<String>, DomainError> validateAndGenerate(
@@ -143,41 +129,21 @@ public final class MarkdownValidatingAIChatService implements AIChatService {
     }
 
     String fullResponse = String.join("\n", result.getValue());
-    ValidationResult validation = validator.validate(fullResponse);
-
-    if (validation instanceof ValidationResult.Valid) {
-      return result;
+    DiscordMarkdownStreamProcessor processor = buildStreamProcessor();
+    List<String> pages = new java.util.ArrayList<>();
+    pages.addAll(processor.onChunk(fullResponse));
+    pages.addAll(processor.flush());
+    if (pages.isEmpty()) {
+      pages = MessageSplitter.split(fullResponse);
     }
-
-    ValidationResult.Invalid invalid = (ValidationResult.Invalid) validation;
-    String reformatted = autofixer.autoFix(fullResponse);
-    ValidationResult reformattedValidation = validator.validate(reformatted);
-
-    if (reformattedValidation instanceof ValidationResult.Valid) {
-      LOG.info("Markdown 重格式化成功: {} 個錯誤被修復", invalid.errors().size());
-    } else if (reformattedValidation instanceof ValidationResult.Invalid invalidAfter) {
-      LOG.warn("Markdown 重格式化後仍有格式錯誤: {} 個錯誤", invalidAfter.errors().size());
-    }
-
-    return Result.ok(MessageSplitter.split(reformatted));
+    return Result.ok(pages);
   }
 
-  private void validateAndGenerateWithHistory(
-      long guildId,
-      String channelId,
-      String userId,
-      List<ConversationMessage> history,
-      StreamingResponseHandler handler,
-      String originalPrompt) {
-    List<ConversationMessage> updatedHistory = replaceLastUserMessage(history, originalPrompt);
-
-    StringBuilder fullResponse = new StringBuilder();
-
-    delegate.generateWithHistory(
-        guildId,
-        channelId,
-        userId,
-        updatedHistory,
+  private void streamWithValidation(
+      java.util.function.Consumer<StreamingResponseHandler> delegateCall,
+      StreamingResponseHandler handler) {
+    DiscordMarkdownStreamProcessor processor = buildStreamProcessor();
+    delegateCall.accept(
         new StreamingResponseHandler() {
           @Override
           public void onChunk(String chunk, boolean isComplete, DomainError error, ChunkType type) {
@@ -185,41 +151,40 @@ public final class MarkdownValidatingAIChatService implements AIChatService {
               handler.onChunk("", true, error, ChunkType.CONTENT);
               return;
             }
-            if (type == ChunkType.CONTENT) {
-              fullResponse.append(chunk);
-            }
-            if (!isComplete) {
+            if (type == ChunkType.REASONING) {
+              handler.onChunk(chunk, isComplete, null, ChunkType.REASONING);
               return;
             }
 
-            String responseText = fullResponse.toString();
-            ValidationResult validation = validator.validate(responseText);
-
-            if (validation instanceof ValidationResult.Valid) {
-              deliverValidatedResponse(handler, responseText);
-              return;
+            if (chunk != null && !chunk.isEmpty()) {
+              List<String> pages = processor.onChunk(chunk);
+              emitPages(handler, pages, false);
             }
 
-            ValidationResult.Invalid invalid = (ValidationResult.Invalid) validation;
-            String reformatted = autofixer.autoFix(responseText);
-            ValidationResult reformattedValidation = validator.validate(reformatted);
-            if (reformattedValidation instanceof ValidationResult.Valid) {
-              LOG.info("Markdown 重格式化成功（with history）: {} 個錯誤被修復", invalid.errors().size());
-            } else if (reformattedValidation instanceof ValidationResult.Invalid invalidAfter) {
-              LOG.warn("Markdown 重格式化後仍有格式錯誤（with history）: {} 個錯誤", invalidAfter.errors().size());
+            if (isComplete) {
+              List<String> remaining = processor.flush();
+              emitPages(handler, remaining, true);
+              if (remaining.isEmpty()) {
+                handler.onChunk("", true, null, ChunkType.CONTENT);
+              }
             }
-
-            deliverValidatedResponse(handler, reformatted);
           }
         });
   }
 
-  private void deliverValidatedResponse(StreamingResponseHandler handler, String content) {
-    List<String> messages = MessageSplitter.split(content);
-    for (int i = 0; i < messages.size(); i++) {
-      boolean isLast = (i == messages.size() - 1);
-      handler.onChunk(messages.get(i), isLast, null, StreamingResponseHandler.ChunkType.CONTENT);
+  private void emitPages(StreamingResponseHandler handler, List<String> pages, boolean isComplete) {
+    if (pages == null || pages.isEmpty()) {
+      return;
     }
+    for (int i = 0; i < pages.size(); i++) {
+      boolean isLast = isComplete && (i == pages.size() - 1);
+      handler.onChunk(pages.get(i), isLast, null, StreamingResponseHandler.ChunkType.CONTENT);
+    }
+  }
+
+  private DiscordMarkdownStreamProcessor buildStreamProcessor() {
+    return new DiscordMarkdownStreamProcessor(
+        new MarkdownHeadingSegmenter(), validator, autofixer, sanitizer, paginator);
   }
 
   private String extractLastUserMessage(List<ConversationMessage> history) {

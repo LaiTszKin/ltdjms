@@ -64,6 +64,22 @@ class CommonMarkValidatorTest_Lists {
   }
 
   @Test
+  @DisplayName("純強調語法不應被當成列表錯誤")
+  void emphasisOnly_shouldPass() {
+    String markdown =
+        """
+        **關於機器人功能：**
+        *斜體內容*
+        ***加強斜體***
+        **段落標題**：
+        """;
+
+    MarkdownValidator.ValidationResult result = validator.validate(markdown);
+
+    assertInstanceOf(MarkdownValidator.ValidationResult.Valid.class, result);
+  }
+
+  @Test
   @DisplayName("缺少空格的無序列表應檢測為格式錯誤")
   void unorderedListWithoutSpace_shouldFail() {
     String markdown =
@@ -268,6 +284,23 @@ class CommonMarkValidatorTest_Lists {
       MarkdownValidator.ValidationResult.Invalid invalid =
           (MarkdownValidator.ValidationResult.Invalid) result;
       assertFalse(invalid.errors().isEmpty(), "應該檢測到嵌套列表縮排不足");
+      assertTrue(
+          invalid.errors().stream()
+              .anyMatch(e -> e.type() == MarkdownValidator.ErrorType.MALFORMED_NESTED_LIST),
+          "應該是 MALFORMED_NESTED_LIST 錯誤");
+    }
+
+    @Test
+    @DisplayName("嵌套列表縮排非 4 個空格應被檢測為錯誤")
+    void nestedIndentNotFourSpaces_shouldFail() {
+      String markdown = "- 第一層項目\n      - 第二層項目（縮排 6 個空格）";
+
+      MarkdownValidator.ValidationResult result = validator.validate(markdown);
+
+      assertInstanceOf(MarkdownValidator.ValidationResult.Invalid.class, result);
+      MarkdownValidator.ValidationResult.Invalid invalid =
+          (MarkdownValidator.ValidationResult.Invalid) result;
+      assertFalse(invalid.errors().isEmpty(), "應該檢測到嵌套列表縮排錯誤");
       assertTrue(
           invalid.errors().stream()
               .anyMatch(e -> e.type() == MarkdownValidator.ErrorType.MALFORMED_NESTED_LIST),

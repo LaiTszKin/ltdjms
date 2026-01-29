@@ -105,6 +105,8 @@ public class AIChatMentionListener extends ListenerAdapter {
   private final AIChannelRestrictionService channelRestrictionService;
   private final AIAgentChannelConfigService agentConfigService;
   private final boolean showReasoning;
+  private final boolean enableMarkdownValidation;
+  private final boolean streamingBypassValidation;
 
   /**
    * 創建 AIChatMentionListener。
@@ -117,11 +119,15 @@ public class AIChatMentionListener extends ListenerAdapter {
       AIChatService aiChatService,
       AIChannelRestrictionService channelRestrictionService,
       AIAgentChannelConfigService agentConfigService,
-      boolean showReasoning) {
+      boolean showReasoning,
+      boolean enableMarkdownValidation,
+      boolean streamingBypassValidation) {
     this.aiChatService = aiChatService;
     this.channelRestrictionService = channelRestrictionService;
     this.agentConfigService = agentConfigService;
     this.showReasoning = showReasoning;
+    this.enableMarkdownValidation = enableMarkdownValidation;
+    this.streamingBypassValidation = streamingBypassValidation;
   }
 
   @Override
@@ -185,7 +191,8 @@ public class AIChatMentionListener extends ListenerAdapter {
         .queue(
             thinkingMessage -> {
               // 非 Agent 路徑改為緩衝輸出，避免逐 token 碎訊息與空白訊息例外
-              StringBuilder contentBuffer = new StringBuilder();
+              boolean streamProcessed = enableMarkdownValidation && !streamingBypassValidation;
+              StringBuilder contentBuffer = streamProcessed ? null : new StringBuilder();
               AtomicBoolean completed = new AtomicBoolean(false);
 
               if (agentEnabled) {
@@ -208,6 +215,7 @@ public class AIChatMentionListener extends ListenerAdapter {
 
               final boolean[] isFirstChunk = {true};
               final boolean[] hasReasoning = {false};
+              final AtomicBoolean firstContentSent = new AtomicBoolean(false);
 
               aiChatService.generateStreamingResponse(
                   guildId,
@@ -245,12 +253,32 @@ public class AIChatMentionListener extends ListenerAdapter {
                                   sentMessage -> reasoningTracker.addReasoningMessage(sentMessage));
                         }
                       } else if (type == StreamingResponseHandler.ChunkType.CONTENT) {
-                        // 緩衝內容，待完成後一次送出，避免碎字與空白訊息
-                        contentBuffer.append(chunk);
+                        if (streamProcessed) {
+                          if (!chunk.isBlank()) {
+                            boolean allowEditThinking = !(showReasoning && hasReasoning[0]);
+                            sendStreamingContentChunk(
+                                channel,
+                                thinkingMessage,
+                                chunk,
+                                firstContentSent,
+                                allowEditThinking);
+                          }
+                        } else {
+                          // 緩衝內容，待完成後一次送出，避免碎字與空白訊息
+                          contentBuffer.append(chunk);
+                        }
                       }
                     }
 
                     if (!isComplete || !completed.compareAndSet(false, true)) {
+                      return;
+                    }
+
+                    if (streamProcessed) {
+                      if (!firstContentSent.get()) {
+                        thinkingMessage.editMessage(":question: AI 沒有產生回應").queue();
+                      }
+                      LOGGER.info("AI streaming completed");
                       return;
                     }
 
@@ -260,7 +288,6 @@ public class AIChatMentionListener extends ListenerAdapter {
                       return;
                     }
 
-                    // 如果前面已顯示 reasoning，保留 reasoning 訊息；否則覆蓋初始 thinking
                     if (showReasoning && hasReasoning[0]) {
                       sendBufferedContent(channel, null, fullContent);
                     } else {
@@ -282,11 +309,16 @@ public class AIChatMentionListener extends ListenerAdapter {
       Message thinkingMessage,
       long messageId) {
     StringBuilder contentBuffer = new StringBuilder();
+    boolean streamProcessed = enableMarkdownValidation && !streamingBypassValidation;
+    if (streamProcessed) {
+      contentBuffer.setLength(0);
+    }
     AtomicBoolean completed = new AtomicBoolean(false);
     final ReasoningMessageTracker reasoningTracker = new ReasoningMessageTracker();
     reasoningTracker.setInitialMessage(thinkingMessage);
     final boolean[] isFirstChunk = {true};
     final boolean[] hasReasoning = {false};
+    final AtomicBoolean firstContentSent = new AtomicBoolean(false);
 
     aiChatService.generateStreamingResponse(
         guildId,
@@ -316,11 +348,27 @@ public class AIChatMentionListener extends ListenerAdapter {
                 }
               }
             } else if (type == StreamingResponseHandler.ChunkType.CONTENT) {
-              contentBuffer.append(chunk);
+              if (streamProcessed) {
+                if (!chunk.isBlank()) {
+                  boolean allowEditThinking = !(showReasoning && hasReasoning[0]);
+                  sendStreamingContentChunk(
+                      channel, thinkingMessage, chunk, firstContentSent, allowEditThinking);
+                }
+              } else {
+                contentBuffer.append(chunk);
+              }
             }
           }
 
           if (!isComplete || !completed.compareAndSet(false, true)) {
+            return;
+          }
+
+          if (streamProcessed) {
+            if (!firstContentSent.get()) {
+              thinkingMessage.editMessage(":question: AI 沒有產生回應").queue();
+            }
+            LOGGER.info("AI streaming completed");
             return;
           }
 
@@ -354,6 +402,21 @@ public class AIChatMentionListener extends ListenerAdapter {
     for (int i = 1; i < parts.size(); i++) {
       channel.sendMessage(parts.get(i)).queue();
     }
+  }
+
+  private void sendStreamingContentChunk(
+      MessageChannelUnion channel,
+      Message thinkingMessage,
+      String chunk,
+      AtomicBoolean firstContentSent,
+      boolean allowEditThinking) {
+    if (!firstContentSent.getAndSet(true)) {
+      if (allowEditThinking && thinkingMessage != null) {
+        thinkingMessage.editMessage(chunk).queue();
+        return;
+      }
+    }
+    channel.sendMessage(chunk).queue();
   }
 
   private String getErrorMessage(DomainError error) {

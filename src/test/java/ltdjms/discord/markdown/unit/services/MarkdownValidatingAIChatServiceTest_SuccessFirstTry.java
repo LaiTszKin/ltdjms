@@ -1,7 +1,6 @@
 package ltdjms.discord.markdown.unit.services;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -12,6 +11,8 @@ import org.junit.jupiter.api.Test;
 
 import ltdjms.discord.aichat.services.AIChatService;
 import ltdjms.discord.markdown.autofix.MarkdownAutoFixer;
+import ltdjms.discord.markdown.services.DiscordMarkdownPaginator;
+import ltdjms.discord.markdown.services.DiscordMarkdownSanitizer;
 import ltdjms.discord.markdown.services.MarkdownValidatingAIChatService;
 import ltdjms.discord.markdown.validation.MarkdownValidator;
 import ltdjms.discord.shared.DomainError;
@@ -30,9 +31,11 @@ class MarkdownValidatingAIChatServiceTest_SuccessFirstTry {
     mockDelegate = mock(AIChatService.class);
     mockValidator = mock(MarkdownValidator.class);
     mockAutoFixer = mock(MarkdownAutoFixer.class);
+    DiscordMarkdownSanitizer sanitizer = new DiscordMarkdownSanitizer();
+    DiscordMarkdownPaginator paginator = new DiscordMarkdownPaginator();
     service =
         new MarkdownValidatingAIChatService(
-            mockDelegate, mockValidator, mockAutoFixer, true, false);
+            mockDelegate, mockValidator, mockAutoFixer, sanitizer, paginator, true, false);
   }
 
   @Test
@@ -63,6 +66,7 @@ class MarkdownValidatingAIChatServiceTest_SuccessFirstTry {
     // 驗證只調用一次
     verify(mockDelegate, times(1))
         .generateResponse(anyLong(), anyString(), anyString(), anyString());
-    verify(mockValidator, times(1)).validate(any());
+    verify(mockAutoFixer, times(0)).autoFix(anyString());
+    verify(mockValidator, times(1)).validate(validResponse);
   }
 }

@@ -53,6 +53,11 @@ public class AIChatModule {
       AIAgentChannelConfigService agentConfigService,
       AIServiceConfig config) {
     return new AIChatMentionListener(
-        aiChatService, channelRestrictionService, agentConfigService, config.showReasoning());
+        aiChatService,
+        channelRestrictionService,
+        agentConfigService,
+        config.showReasoning(),
+        config.enableMarkdownValidation(),
+        config.streamingBypassValidation());
   }
 }

@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.25.4] - 2026-01-29
+
+### Added
+- **markdown**: 新增 Discord 串流 Markdown 分段、清理與分頁器，支援標題分段與訊息長度控管
+
+### Fixed
+- **markdown**: 強化列表標記與巢狀縮排修正，避免把純強調語法誤判為列表
+- **markdown**: 調整串流驗證流程，改為分段修復與輸出，提升 Discord 渲染穩定性
+- **aichat**: 串流模式在啟用驗證時改為即時輸出內容，避免空白訊息與碎片問題
+
+### Changed
+- **prompt**: 更新系統提示詞結構，新增範例提示詞並移除舊背景/指令檔
+- **docs**: 更新 AI Chat / Markdown 驗證相關說明
+
+### Tests
+- 更新 Markdown 自動修復與驗證測試，補強列表與串流情境
+
 ## [0.25.3] - 2026-01-28
 
 ### Fixed
