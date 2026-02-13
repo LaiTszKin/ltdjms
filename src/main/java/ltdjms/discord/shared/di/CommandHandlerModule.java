@@ -13,6 +13,7 @@ import ltdjms.discord.currency.services.BalanceAdjustmentService;
 import ltdjms.discord.currency.services.BalanceService;
 import ltdjms.discord.currency.services.CurrencyConfigService;
 import ltdjms.discord.currency.services.CurrencyTransactionService;
+import ltdjms.discord.dispatch.commands.DispatchPanelCommandHandler;
 import ltdjms.discord.gametoken.commands.DiceGame1CommandHandler;
 import ltdjms.discord.gametoken.commands.DiceGame2CommandHandler;
 import ltdjms.discord.gametoken.persistence.DiceGame1ConfigRepository;
@@ -292,13 +293,15 @@ public class CommandHandlerModule {
       DiceGame2CommandHandler diceGame2Handler,
       UserPanelCommandHandler userPanelHandler,
       AdminPanelCommandHandler adminPanelHandler,
-      ShopCommandHandler shopHandler) {
+      ShopCommandHandler shopHandler,
+      DispatchPanelCommandHandler dispatchPanelHandler) {
     return new SlashCommandListener(
         configHandler,
         diceGame1Handler,
         diceGame2Handler,
         userPanelHandler,
         adminPanelHandler,
-        shopHandler);
+        shopHandler,
+        dispatchPanelHandler);
   }
 }

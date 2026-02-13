@@ -552,9 +552,7 @@ flowchart TD
 |------|------|
 | [AI Chat 模組文件](../modules/aichat.md) | 模組概述與使用方式 |
 | [AI Chat 時序圖](sequence-diagrams.md#9-ai-chat-提及回應流程v010-新增) | 詳細時序圖 |
-| [AI Chat 規格](../../specs/003-ai-chat/spec.md) | 功能規格與驗收標準 |
-| [AI Chat 實作計畫](../../specs/003-ai-chat/plan.md) | 實作計畫與技術決策 |
-| [AI Chat API 契約](../../specs/003-ai-chat/contracts/openapi.yaml) | AI 服務 API 規格 |
-| [AI Chat 快速入門](../../specs/003-ai-chat/quickstart.md) | 快速開始指南 |
-| [外部提示詞載入器規格](../../specs/004-external-prompts-loader/spec.md) | V015 新增功能規格 |
-| [外部提示詞載入器實作計畫](../../specs/004-external-prompts-loader/plan.md) | V015 實作計畫 |
+| [Slash Commands 參考（AI Chat）](../api/slash-commands.md#ai-chat-訊息功能) | 對外使用方式與限制 |
+| [系統架構總覽](overview.md) | 模組定位與整體設計 |
+| [設定管理說明](../development/configuration.md) | AI 相關環境變數與載入規則 |
+| [AI Agent 模組文件](../modules/aiagent.md) | Agent 啟用時的工具調用與頻道控制 |

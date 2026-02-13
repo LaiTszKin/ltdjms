@@ -29,6 +29,7 @@
 | `/shop` | 所有成員 | 商店 | 瀏覽伺服器可兌換的產品列表 |
 | `/user-panel` | 所有成員 | 面板 | 顯示個人面板（貨幣餘額、遊戲代幣、流水紀錄） |
 | `/admin-panel` | 管理員 | 面板 | 顯示管理面板，用按鈕與表單管理餘額、代幣與遊戲設定 |
+| `/dispatch-panel` | 管理員 | 派單護航 | 顯示派單面板，建立護航訂單並通知護航者確認接單 |
 
 > **注意**：原有的 `/balance`、`/adjust-balance`、`/game-token-adjust`、`/dice-game-1-config`、`/dice-game-2-config` 指令已整合至 `/user-panel` 與 `/admin-panel`，不再作為獨立指令提供；相關業務邏輯仍存在於服務層與歷史 handler 中，供面板與測試重用。
 
@@ -97,8 +98,8 @@ AI_SERVICE_TIMEOUT_SECONDS=30
 ### 相關文件
 
 - [AI Chat 模組文件](../modules/aichat.md)
-- [AI Chat 規格](../../specs/003-ai-chat/spec.md)
-- [AI Chat 快速入門](../../specs/003-ai-chat/quickstart.md)
+- [AI Chat 流程架構](../architecture/ai-chat-flow.md)
+- [AI Chat 時序圖](../architecture/sequence-diagrams.md#9-ai-chat-提及回應流程v010-新增)
 
 ---
 
@@ -353,6 +354,57 @@ New Balance: 💰 15,000,000 Gold
 
 ---
 
+## `/dispatch-panel` – 派單護航面板
+
+- **權限**：需具備 Administrator 權限
+- **用途**：透過互動面板建立護航派單，並由護航者在私訊中確認接單。
+
+### 參數
+
+- 無
+
+### 使用流程概要
+
+1. 管理員輸入：
+
+   ```text
+   /dispatch-panel
+   ```
+
+2. Bot 會回覆一個僅管理員可見的派單面板 Embed，包含：
+   - 護航者（User）選單
+   - 客戶（User）選單
+   - 「✅ 建立派單」按鈕（未完成選擇前為停用）
+
+3. 建立派單前會驗證：
+   - 護航者與客戶都已完成選擇
+   - 護航者與客戶不可為同一人
+   - 兩位成員都仍在伺服器
+
+4. 驗證通過後，系統建立訂單（狀態 `PENDING_CONFIRMATION`）並產生訂單編號（格式：`ESC-YYYYMMDD-XXXXXX`），接著私訊護航者並附上「✅ 確認接單」按鈕。
+
+5. 護航者在私訊點擊確認後：
+   - 訂單更新為 `CONFIRMED`
+   - 系統更新私訊內容為已確認狀態
+   - 系統另行私訊通知客戶已確認接單
+
+### 錯誤處理
+
+| 情境 | 回應 |
+|------|------|
+| 非伺服器環境呼叫 | `此功能只能在伺服器中使用` |
+| 未完成成員選擇就建立 | `請先完整選擇護航者與客戶` |
+| 護航者與客戶相同 | `護航者與客戶不能是同一人` |
+| 私訊無法送達護航者 | 訂單仍建立成功，但回覆警示需手動通知 |
+| 在伺服器內點擊確認按鈕 | `請在機器人私訊中確認接單` |
+| 非被指派護航者確認 | `只有被指派的護航者可以確認此訂單` |
+
+### 相關文件
+
+- [派單護航模組文件](../modules/dispatch.md)
+
+---
+
 ## AI Agent Tools 功能（V017 新增）
 
 AI Agent Tools 功能允許 AI 在特定頻道中調用系統工具執行實際操作。
@@ -442,7 +494,7 @@ AI: 我將為您創建「活動」類別。
 ### 相關文件
 
 - [AI Agent 模組文件](../modules/aiagent.md)
-- [AI Agent Tools 規格](../../specs/006-ai-agent-tools/spec.md)
+- [AI Chat 模組文件](../modules/aichat.md)
 
 ---
 

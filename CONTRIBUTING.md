@@ -19,7 +19,7 @@
    ```
 3. 設定上游遠端倉庫：
    ```bash
-   git remote add upstream https://github.com/original-owner/LTDJMS.git
+   git remote add upstream https://github.com/LaiTszKin/LTDJMS.git
    ```
 
 ### 環境變數設定
@@ -134,13 +134,13 @@ docs: 更新快速入門指南
 LTDJMS/
 ├── src/main/java/ltdjms/discord/
 │   ├── currency/           # 貨幣系統模組
+│   ├── dispatch/           # 派單護航模組
 │   ├── gametoken/          # 遊戲代幣與小遊戲模組
 │   ├── panel/              # 使用者與管理面板模組
 │   └── shared/             # 共用基礎設施
 ├── src/test/              # 測試程式碼
 ├── docs/                  # 專案文件
-├── openspec/              # OpenSpec 規範管理
-└── specs/                 # 功能規格
+└── prompts/               # AI 提示詞
 ```
 
 詳細架構說明請參閱：
@@ -150,20 +150,18 @@ LTDJMS/
 
 ## 特殊工作流程
 
-### OpenSpec 變更管理
-對於架構變更、重大功能新增或破壞性變更，請使用 OpenSpec 流程：
-1. 在 `openspec/changes/` 建立提案
-2. 撰寫詳細規格與設計文件
-3. 等待維護者審核通過
-4. 根據核准的規格實作
-
-詳情請參閱 [openspec/AGENTS.md](openspec/AGENTS.md)。
+### 功能計畫文件（docs/plans）
+對於中大型需求（例如新模組、資料庫變更、跨模組流程調整），請先補齊計畫文件：
+1. 在 `docs/plans/` 建立新計畫（建議命名：`YYYY-MM-DD-feature-name.md`）
+2. 說明需求背景、核心流程、資料影響與測試策略
+3. 在 PR 內附上計畫文件連結
+4. 依核准內容實作並同步更新模組文件
 
 ### 本地化 (i18n)
 本專案支援繁體中文（zh-TW）與英文：
-- 本地化訊息位於 `src/main/resources/messages/`
-- 新增功能時請提供兩種語言版本
-- 使用 `LocalizationService` 取得本地化文字
+- Slash Command 的本地化集中在 `src/main/java/ltdjms/discord/shared/localization/CommandLocalizations.java`
+- 新增指令時，請同步補上 `name`、`description` 與 option 的本地化映射
+- 更新後請執行對應測試（例如 `CommandLocalizationsTest`）確認 key 完整
 
 ## 疑難排解
 

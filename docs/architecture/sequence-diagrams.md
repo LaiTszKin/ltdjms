@@ -569,8 +569,8 @@ sequenceDiagram
 
 **相關文件**：
 - [AI Chat 模組文件](../modules/aichat.md)
-- [AI Chat 規格](../../specs/003-ai-chat/spec.md)
-- [AI Chat API 契約](../../specs/003-ai-chat/contracts/openapi.yaml)
+- [AI Chat 流程架構](ai-chat-flow.md)
+- [Slash Commands 參考（AI Chat）](../api/slash-commands.md#ai-chat-訊息功能)
 
 ---
 

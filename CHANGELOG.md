@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.27.0] - 2026-02-13
+
+### Added
+- **dispatch**: 新增完整護航派單系統，包含訂單 domain model、服務層、JDBC repository 與 `escort_dispatch_order` 資料表 migration
+- **dispatch**: 新增管理員互動派單面板，可直接選擇護航者與客戶並驗證兩者不可相同
+- **dispatch**: 新增護航者私訊接單流程，確認後同步通知護航者與客戶，並產生唯一訂單編號 `ESC-YYYYMMDD-XXXXXX`
+
+### Changed
+- **bot**: 註冊新的 `/dispatch-panel` 管理員指令、互動 listener 與 Dagger DI wiring
+- **localization**: 新增 `dispatch-panel` 的 zh-TW 指令名稱與描述
+- **docs**: 更新 README 的派單護航介紹與啟動指令說明，補充 `dispatch` 模組文件
+- **security**: 更新 `SECURITY.md` 的安全通報信箱與 GitHub 安全通報/Issue 連結
+
+### Tests
+- 新增 `EscortDispatchOrderServiceTest`，覆蓋建立派單、編號衝突重試、確認權限與重複確認情境
+- 更新 `SlashCommandListenerTest` 與 `DatabaseMigrationRunnerIntegrationTest`，驗證新指令與 migration `V014`
+
 ## [0.26.0] - 2026-02-13
 
 ### Added

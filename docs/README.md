@@ -34,7 +34,7 @@ PostgreSQL (currency_bot 資料庫)
   從 0 開始安裝、啟動並把 Bot 邀請到自己的 Discord 伺服器的快速入門指南，包含環境需求、Discord Developer Portal 設定與啟動指令，以及如何使用 `/user-panel` 與 `/admin-panel` 做基本驗證。
 
 - `api/slash-commands.md`  
-  所有已實作的 slash commands（例如 `/currency-config`、`/dice-game-1`、`/dice-game-2`、`/user-panel`、`/admin-panel`）的權限需求、參數、使用範例與回應說明。舊指令（如 `/balance`、`/adjust-balance` 等）已整合進面板與遊戲指令，不再對外提供。
+  所有已實作的 slash commands（例如 `/currency-config`、`/dice-game-1`、`/dice-game-2`、`/user-panel`、`/admin-panel`、`/dispatch-panel`）的權限需求、參數、使用範例與回應說明。舊指令（如 `/balance`、`/adjust-balance` 等）已整合進面板與遊戲指令，不再對外提供。
 
 ### 2. 給後端／Bot 開發者
 
@@ -58,6 +58,9 @@ PostgreSQL (currency_bot 資料庫)
 
 - `modules/panels.md`
    `/user-panel` 與 `/admin-panel` 面板的互動流程、按鈕與 Modal 設計，以及如何整合各服務。
+
+- `modules/dispatch.md`
+   派單護航模組的設計與實作概觀，包括 `/dispatch-panel` 互動流程、訂單狀態流轉與私訊確認通知機制。
 
 - `modules/product.md`
    產品定義模組的設計與實作概觀，包括產品管理、刪除行為（失效關聯兌換碼）與事件發布。**（V005 更新：新增產品刪除流程圖）**

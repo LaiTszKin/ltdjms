@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ltdjms.discord.currency.commands.CurrencyConfigCommandHandler;
+import ltdjms.discord.dispatch.commands.DispatchPanelCommandHandler;
 import ltdjms.discord.gametoken.commands.DiceGame1CommandHandler;
 import ltdjms.discord.gametoken.commands.DiceGame2CommandHandler;
 import ltdjms.discord.panel.commands.AdminPanelCommandHandler;
@@ -38,6 +39,7 @@ public class SlashCommandListener extends ListenerAdapter {
   public static final String CMD_USER_PANEL = "user-panel";
   public static final String CMD_ADMIN_PANEL = "admin-panel";
   public static final String CMD_SHOP = "shop";
+  public static final String CMD_DISPATCH_PANEL = "dispatch-panel";
 
   private final CurrencyConfigCommandHandler configHandler;
   private final DiceGame1CommandHandler diceGame1Handler;
@@ -45,6 +47,7 @@ public class SlashCommandListener extends ListenerAdapter {
   private final UserPanelCommandHandler userPanelHandler;
   private final AdminPanelCommandHandler adminPanelHandler;
   private final ShopCommandHandler shopHandler;
+  private final DispatchPanelCommandHandler dispatchPanelHandler;
   private final SlashCommandMetrics metrics;
 
   public SlashCommandListener(
@@ -53,7 +56,8 @@ public class SlashCommandListener extends ListenerAdapter {
       DiceGame2CommandHandler diceGame2Handler,
       UserPanelCommandHandler userPanelHandler,
       AdminPanelCommandHandler adminPanelHandler,
-      ShopCommandHandler shopHandler) {
+      ShopCommandHandler shopHandler,
+      DispatchPanelCommandHandler dispatchPanelHandler) {
     this(
         configHandler,
         diceGame1Handler,
@@ -61,6 +65,7 @@ public class SlashCommandListener extends ListenerAdapter {
         userPanelHandler,
         adminPanelHandler,
         shopHandler,
+        dispatchPanelHandler,
         new SlashCommandMetrics());
   }
 
@@ -71,6 +76,7 @@ public class SlashCommandListener extends ListenerAdapter {
       UserPanelCommandHandler userPanelHandler,
       AdminPanelCommandHandler adminPanelHandler,
       ShopCommandHandler shopHandler,
+      DispatchPanelCommandHandler dispatchPanelHandler,
       SlashCommandMetrics metrics) {
     this.configHandler = configHandler;
     this.diceGame1Handler = diceGame1Handler;
@@ -78,6 +84,7 @@ public class SlashCommandListener extends ListenerAdapter {
     this.userPanelHandler = userPanelHandler;
     this.adminPanelHandler = adminPanelHandler;
     this.shopHandler = shopHandler;
+    this.dispatchPanelHandler = dispatchPanelHandler;
     this.metrics = metrics;
   }
 
@@ -173,7 +180,14 @@ public class SlashCommandListener extends ListenerAdapter {
         Commands.slash(CMD_SHOP, "Browse available products in the shop")
             .setNameLocalizations(CommandLocalizations.getNameLocalizations(CMD_SHOP))
             .setDescriptionLocalizations(
-                CommandLocalizations.getDescriptionLocalizations(CMD_SHOP)));
+                CommandLocalizations.getDescriptionLocalizations(CMD_SHOP)),
+
+        // /dispatch-panel - admin only
+        Commands.slash(CMD_DISPATCH_PANEL, "Assign escort orders through interactive panel")
+            .setNameLocalizations(CommandLocalizations.getNameLocalizations(CMD_DISPATCH_PANEL))
+            .setDescriptionLocalizations(
+                CommandLocalizations.getDescriptionLocalizations(CMD_DISPATCH_PANEL))
+            .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.ADMINISTRATOR)));
   }
 
   /**
@@ -300,6 +314,7 @@ public class SlashCommandListener extends ListenerAdapter {
         case CMD_USER_PANEL -> userPanelHandler.handle(event);
         case CMD_ADMIN_PANEL -> handleWithAdminCheck(event, adminPanelHandler);
         case CMD_SHOP -> shopHandler.handle(event);
+        case CMD_DISPATCH_PANEL -> handleWithAdminCheck(event, dispatchPanelHandler);
         default -> {
           LOG.warn("Unknown command received: {}", commandName);
           event.reply("Unknown command.").setEphemeral(true).queue();

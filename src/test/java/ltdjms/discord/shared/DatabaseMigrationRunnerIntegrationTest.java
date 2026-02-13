@@ -71,6 +71,7 @@ class DatabaseMigrationRunnerIntegrationTest {
       stmt.execute("DROP TABLE IF EXISTS game_token_account CASCADE");
       stmt.execute("DROP TABLE IF EXISTS member_currency_account CASCADE");
       stmt.execute("DROP TABLE IF EXISTS guild_currency_config CASCADE");
+      stmt.execute("DROP TABLE IF EXISTS escort_dispatch_order CASCADE");
       // Drop functions
       stmt.execute("DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE");
     } catch (SQLException e) {
@@ -107,6 +108,9 @@ class DatabaseMigrationRunnerIntegrationTest {
           .isTrue();
       assertThat(tableExists(conn, "currency_transaction"))
           .as("currency_transaction table should exist")
+          .isTrue();
+      assertThat(tableExists(conn, "escort_dispatch_order"))
+          .as("escort_dispatch_order table should exist")
           .isTrue();
 
       // Verify indexes exist

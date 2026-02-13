@@ -7,8 +7,8 @@
 ### 報告安全漏洞
 如果你發現安全漏洞，**請勿公開揭露**。請透過以下方式私下報告：
 
-1. **電子郵件**：傳送詳細說明到 security@example.com（請替換為實際聯絡信箱）
-2. **GitHub 安全公告**：使用 GitHub 的 [私有漏洞報告功能](https://github.com/owner/repo/security/advisories)
+1. **電子郵件**：傳送詳細說明到 laitszkin1206@gmail.com
+2. **GitHub 安全公告**：使用 GitHub 的 [私有漏洞報告功能](https://github.com/LaiTszKin/LTDJMS/security/advisories)
 
 ### 報告內容
 請提供以下資訊以幫助我們快速理解與重現問題：
@@ -198,9 +198,9 @@ trivy image your-image:tag
 
 安全相關問題請聯絡：
 - **主要聯絡人**：專案維護團隊
-- **備用聯絡**：security@example.com（請替換為實際信箱）
+- **備用聯絡**：laitszkin1206@gmail.com
 
-對於非安全相關問題，請使用 [GitHub Issues](https://github.com/owner/repo/issues)。
+對於非安全相關問題，請使用 [GitHub Issues](https://github.com/LaiTszKin/LTDJMS/issues)。
 
 ---
 

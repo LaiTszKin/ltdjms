@@ -1,6 +1,6 @@
 # 開發者工作流程指南
 
-本文件說明 LTDJMS Discord Bot 的標準開發流程，包括測試驅動開發 (TDD)、OpenSpec 變更管理、提交規範與程式碼審查流程。遵循這些流程有助於維持程式碼品質與專案一致性。
+本文件說明 LTDJMS Discord Bot 的標準開發流程，包括測試驅動開發 (TDD)、功能計畫文件管理、提交規範與程式碼審查流程。遵循這些流程有助於維持程式碼品質與專案一致性。
 
 ## 開發環境設定
 
@@ -14,11 +14,11 @@
 ### 初始設定
 ```bash
 # 克隆專案
-git clone https://github.com/<username>/LTDJMS.git
+git clone https://github.com/LaiTszKin/LTDJMS.git
 cd LTDJMS
 
 # 設定上游遠端（若為 fork）
-git remote add upstream https://github.com/original-owner/LTDJMS.git
+git remote add upstream https://github.com/LaiTszKin/LTDJMS.git
 
 # 複製環境變數範本
 cp .env.example .env
@@ -132,78 +132,40 @@ make coverage
 - **檢查指令**：`make coverage-check`
 - **排除項目**：Dagger 元件、JDBC 實作、Command Handlers 等基礎設施類別
 
-## OpenSpec 變更管理流程
+## 功能計畫文件流程（docs/plans）
 
-對於架構變更、重大功能新增或破壞性變更，必須使用 OpenSpec 流程。
+對於架構變更、重大功能新增或破壞性變更，建議先在 `docs/plans/` 建立計畫文件。
 
-### 何時使用 OpenSpec
+### 何時需要先寫計畫
 
-| 變更類型 | 是否需要 OpenSpec |
+| 變更類型 | 是否建議先寫計畫 |
 |---------|------------------|
-| 新增小功能（如新指令） | 否 |
+| 新增小功能（如小型 UI/文案調整） | 否 |
 | 錯誤修復 | 否 |
 | 架構重構（如引入新框架） | 是 |
 | 破壞性 API 變更 | 是 |
 | 資料庫 schema 變更 | 是 |
 | 新增核心模組 | 是 |
 
-### OpenSpec 提案流程
+### 計畫文件流程
 
-#### 1. 建立提案目錄
+#### 1. 建立計畫檔案
+在 `docs/plans/` 建立檔案，命名建議：
+
 ```
-openspec/changes/YYYY-MM-DD-feature-name/
-├── proposal.md      # 提案文件
-├── design.md        # 技術設計（可選）
-├── specs/           # 詳細規格
-└── tasks.md         # 實作任務清單
+YYYY-MM-DD-feature-name.md
 ```
 
-#### 2. 撰寫提案文件 (`proposal.md`)
-```markdown
-# 提案：新增貨幣轉帳功能
+#### 2. 撰寫內容（最少包含）
+- 背景與需求摘要
+- 核心流程與邊界條件
+- 影響範圍（模組、資料表、指令）
+- 測試策略（單元/整合/效能）
+- 待澄清問題（如果有）
 
-## 摘要
-允許成員之間轉帳伺服器貨幣。
-
-## 動機
-- 促進社群經濟活動
-- 減少管理員手動調整負擔
-
-## 規格詳情
-### 功能需求
-1. 轉帳指令 `/transfer <成員> <金額>`
-2. 餘額不足檢查
-3. 轉帳紀錄查詢
-
-### 技術設計
-- 新增 `TransferService`
-- 擴充 `CurrencyTransaction` 紀錄類型
-- 更新資料庫 schema 新增索引
-
-## 影響評估
-### 破壞性變更
-- 無
-
-### 遷移需求
-- 新增 `transaction_type` 欄位到 `currency_transaction` 表
-
-## 替代方案考慮
-1. 使用現有的調整指令搭配人工協調（棄用，效率低）
-2. 實作拍賣系統（未來擴充）
-
-## 決策記錄
-同意實作，需補充足夠測試。
-```
-
-#### 3. 等待審核
-- 提案提交至 GitHub Pull Request
-- 至少需要一位維護者審核通過
-- 必要時進行討論與修改
-
-#### 4. 實作與驗證
-- 根據核准的 `tasks.md` 實作功能
-- 確保所有測試通過
-- 更新相關文件
+#### 3. 與實作一起提交
+- 在 PR 內附上計畫文件連結
+- 若需求有變更，請同步更新計畫文件與模組文件
 
 ## Git 工作流程
 

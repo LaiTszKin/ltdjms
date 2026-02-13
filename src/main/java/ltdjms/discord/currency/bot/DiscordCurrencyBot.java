@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ltdjms.discord.aichat.commands.AIChatMentionListener;
+import ltdjms.discord.dispatch.commands.DispatchPanelInteractionHandler;
 import ltdjms.discord.panel.commands.AdminPanelButtonHandler;
 import ltdjms.discord.panel.commands.AdminProductPanelHandler;
 import ltdjms.discord.panel.commands.UserPanelButtonHandler;
@@ -68,6 +69,8 @@ public class DiscordCurrencyBot {
     UserPanelButtonHandler userPanelButtonHandler = appComponent.userPanelButtonHandler();
     AdminPanelButtonHandler adminPanelButtonHandler = appComponent.adminPanelButtonHandler();
     AdminProductPanelHandler adminProductPanelHandler = appComponent.adminProductPanelHandler();
+    DispatchPanelInteractionHandler dispatchPanelInteractionHandler =
+        appComponent.dispatchPanelInteractionHandler();
     ShopButtonHandler shopButtonHandler = appComponent.shopButtonHandler();
     ShopSelectMenuHandler shopSelectMenuHandler = appComponent.shopSelectMenuHandler();
     AIChatMentionListener aiChatMentionListener = appComponent.aiChatMentionListener();
@@ -81,6 +84,7 @@ public class DiscordCurrencyBot {
             userPanelButtonHandler,
             adminPanelButtonHandler,
             adminProductPanelHandler,
+            dispatchPanelInteractionHandler,
             shopButtonHandler,
             shopSelectMenuHandler,
             aiChatMentionListener);
@@ -163,6 +167,7 @@ public class DiscordCurrencyBot {
       UserPanelButtonHandler userPanelButtonHandler,
       AdminPanelButtonHandler adminPanelButtonHandler,
       AdminProductPanelHandler adminProductPanelHandler,
+      DispatchPanelInteractionHandler dispatchPanelInteractionHandler,
       ShopButtonHandler shopButtonHandler,
       ShopSelectMenuHandler shopSelectMenuHandler,
       AIChatMentionListener aiChatMentionListener) {
@@ -171,6 +176,7 @@ public class DiscordCurrencyBot {
         userPanelButtonHandler,
         adminPanelButtonHandler,
         adminProductPanelHandler,
+        dispatchPanelInteractionHandler,
         shopButtonHandler,
         shopSelectMenuHandler,
         aiChatMentionListener);

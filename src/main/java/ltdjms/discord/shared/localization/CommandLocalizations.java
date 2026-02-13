@@ -45,6 +45,7 @@ public final class CommandLocalizations {
     COMMAND_NAME_LOCALIZATIONS.put("user-panel", Map.of(DiscordLocale.CHINESE_TAIWAN, "個人面板"));
     COMMAND_NAME_LOCALIZATIONS.put("admin-panel", Map.of(DiscordLocale.CHINESE_TAIWAN, "管理面板"));
     COMMAND_NAME_LOCALIZATIONS.put("shop", Map.of(DiscordLocale.CHINESE_TAIWAN, "商店"));
+    COMMAND_NAME_LOCALIZATIONS.put("dispatch-panel", Map.of(DiscordLocale.CHINESE_TAIWAN, "派單面板"));
 
     // Initialize command description localizations
     COMMAND_DESCRIPTION_LOCALIZATIONS = new HashMap<>();
@@ -70,6 +71,8 @@ public final class CommandLocalizations {
         "admin-panel", Map.of(DiscordLocale.CHINESE_TAIWAN, "管理成員餘額、遊戲代幣與遊戲設定"));
     COMMAND_DESCRIPTION_LOCALIZATIONS.put(
         "shop", Map.of(DiscordLocale.CHINESE_TAIWAN, "瀏覽伺服器可購買的商品"));
+    COMMAND_DESCRIPTION_LOCALIZATIONS.put(
+        "dispatch-panel", Map.of(DiscordLocale.CHINESE_TAIWAN, "透過互動面板分派護航訂單"));
 
     // Initialize option name localizations
     OPTION_NAME_LOCALIZATIONS = new HashMap<>();

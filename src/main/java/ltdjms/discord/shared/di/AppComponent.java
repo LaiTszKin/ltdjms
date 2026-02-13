@@ -18,6 +18,7 @@ import ltdjms.discord.currency.persistence.MemberCurrencyAccountRepository;
 import ltdjms.discord.currency.services.BalanceAdjustmentService;
 import ltdjms.discord.currency.services.BalanceService;
 import ltdjms.discord.currency.services.CurrencyConfigService;
+import ltdjms.discord.dispatch.commands.DispatchPanelInteractionHandler;
 import ltdjms.discord.gametoken.commands.DiceGame1CommandHandler;
 import ltdjms.discord.gametoken.commands.DiceGame2CommandHandler;
 import ltdjms.discord.gametoken.persistence.DiceGame1ConfigRepository;
@@ -64,6 +65,7 @@ import ltdjms.discord.shop.services.CurrencyPurchaseService;
       GameTokenServiceModule.class,
       ProductRepositoryModule.class,
       ProductServiceModule.class,
+      DispatchModule.class,
       CommandHandlerModule.class,
       EventModule.class,
       AIChatModule.class,
@@ -152,6 +154,8 @@ public interface AppComponent {
   AdminPanelButtonHandler adminPanelButtonHandler();
 
   AdminProductPanelHandler adminProductPanelHandler();
+
+  DispatchPanelInteractionHandler dispatchPanelInteractionHandler();
 
   // Shop Handlers
   ShopButtonHandler shopButtonHandler();

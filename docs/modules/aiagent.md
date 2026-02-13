@@ -429,9 +429,7 @@ private PermissionOverride parsePermissionSet(ChannelPermission perm) {
 
 ## 相關文件
 
-- [AI Agent Tools 規格](../../specs/006-ai-agent-tools/spec.md)
-- [AI Agent Tools 實作計畫](../../specs/006-ai-agent-tools/plan.md)
-- [AI Agent Tools 快速入門](../../specs/006-ai-agent-tools/quickstart.md)
+- [Slash Commands 參考（AI Agent）](../api/slash-commands.md#ai-agent-tools-功能v017-新增)
 - [系統架構](../architecture/overview.md)
 - [AI Chat 模組](aichat.md)
 
@@ -673,10 +671,8 @@ mvn test -Dtest=RedisPostgresChatMemoryStoreTest
 
 ### 相關文件
 
-- [LangChain4J AI 功能規格](../../specs/007-langchain4j-ai/spec.md)
-- [LangChain4J 實作計畫](../../specs/007-langchain4j-ai/plan.md)
-- [LangChain4J 研究文檔](../../specs/007-langchain4j-ai/research.md)
-- [LangChain4J 快速入門](../../specs/007-langchain4j-ai/quickstart.md)
-- [LangChain4J 任務列表](../../specs/007-langchain4j-ai/tasks.md)
+- [AI Chat 模組（LangChain4J 整合）](aichat.md#langchain4j-整合v007-新增)
+- [Slash Commands 參考（AI Agent）](../api/slash-commands.md#ai-agent-tools-功能v017-新增)
+- [開發測試指南](../development/testing.md)
 
 ---

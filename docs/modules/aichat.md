@@ -353,15 +353,11 @@ mvn test -Dtest='ltdjms.discord.aichat.integration.*'
 
 ## 相關文件
 
-- [AI Chat 規格](../../specs/003-ai-chat/spec.md)
-- [AI Chat 實作計畫](../../specs/003-ai-chat/plan.md)
-- [AI Chat 快速入門](../../specs/003-ai-chat/quickstart.md)
-- [外部提示詞載入器規格](../../specs/004-external-prompts-loader/spec.md)（V015 新增）
-- [外部提示詞載入器實作計畫](../../specs/004-external-prompts-loader/plan.md)（V015 新增）
-- [AI 頻道限制規格](../../specs/005-ai-channel-restriction/spec.md)（V016 新增）
-- [AI 頻道限制實作計畫](../../specs/005-ai-channel-restriction/plan.md)（V016 新增）
+- [Slash Commands 參考（AI Chat）](../api/slash-commands.md#ai-chat-訊息功能)
 - [系統架構](../architecture/overview.md)
 - [AI Chat 流程架構](../architecture/ai-chat-flow.md)
+- [AI Chat 時序圖](../architecture/sequence-diagrams.md#9-ai-chat-提及回應流程v010-新增)
+- [AI Agent 模組](aiagent.md)
 
 ---
 
@@ -712,11 +708,9 @@ mvn test -Dtest=LangChain4jListChannelsToolTest
 
 ### 相關文件
 
-- [LangChain4J AI 功能規格](../../specs/007-langchain4j-ai/spec.md)
-- [LangChain4J 實作計畫](../../specs/007-langchain4j-ai/plan.md)
-- [LangChain4J 研究文檔](../../specs/007-langchain4j-ai/research.md)
-- [LangChain4J 快速入門](../../specs/007-langchain4j-ai/quickstart.md)
-- [LangChain4J 任務列表](../../specs/007-langchain4j-ai/tasks.md)
+- [AI Agent 模組（LangChain4J 工具）](aiagent.md#langchain4j-工具調用整合v007-新增)
+- [Slash Commands 參考（AI Agent）](../api/slash-commands.md#ai-agent-tools-功能v017-新增)
+- [AI Chat 流程架構](../architecture/ai-chat-flow.md)
 
 ---
 
@@ -931,8 +925,8 @@ mvn test -Dtest=MarkdownValidationIntegrationTest
 
 ### 相關文件
 
-- [Markdown 驗證設計](../../plans/2026-01-03-markdown-validation-design.md)
-- [Markdown 驗證實作計畫](../../plans/2026-01-03-markdown-validation-implementation.md)
+- [AI Chat 流程架構](../architecture/ai-chat-flow.md)
+- [開發測試指南](../development/testing.md)
 - [CommonMark Java 規格](https://spec.commonmark.org/)
 - [Discord Markdown 指南](https://discord.com/developers/docs/reference#message-formatting)
 

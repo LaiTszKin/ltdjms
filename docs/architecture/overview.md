@@ -86,6 +86,9 @@ flowchart LR
 - `panel/`
    使用者面板與管理面板：`/user-panel`、`/admin-panel` 指令與各種按鈕、Modal 處理邏輯。
 
+- `dispatch/`
+   派單護航模組：`/dispatch-panel` 互動面板、護航訂單建立與私訊確認流程。
+
 - `product/`
    產品定義與管理：產品資料模型、產品服務與相關資料庫操作。
 
@@ -289,6 +292,7 @@ Command handler 通常遵守以下模式：
 - `docs/modules/currency-system.md` - 貨幣系統
 - `docs/modules/game-tokens-and-games.md` - 遊戲代幣與遊戲
 - `docs/modules/panels.md` - 使用者與管理面板
+- `docs/modules/dispatch.md` - 派單護航系統
 - `docs/modules/product.md` - 產品管理
 - `docs/modules/redemption.md` - 兌換碼系統
 - `docs/modules/shop.md` - 商店與貨幣購買
