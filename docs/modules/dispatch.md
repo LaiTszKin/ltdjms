@@ -9,6 +9,8 @@
 主要能力：
 
 - 管理員透過 `/dispatch-panel` 在面板中選擇：
+  - 護航群組（Role）
+  - 客戶群組（Role）
   - 護航者（User）
   - 客戶（User）
 - 系統建立唯一訂單編號並持久化（預設狀態：`PENDING_CONFIRMATION`）
@@ -25,16 +27,17 @@
   - 回覆 ephemeral 派單面板
 
 - `DispatchPanelInteractionHandler`
-  - 處理 Entity Select（使用者選擇）與按鈕互動
+  - 處理 Entity Select（角色／使用者選擇）與按鈕互動
   - 維護每位管理員在每個 guild 的面板暫存狀態（`sessionStates`）
   - 建立派單前驗證：
-    - 兩項選擇是否完整
+    - 四項選擇是否完整
     - 護航者與客戶不可同一人
     - 成員是否仍在 guild
+    - 護航者是否屬於護航群組、客戶是否屬於客戶群組
   - 處理護航者 DM 中的「確認接單」按鈕
 
 - `DispatchPanelView`
-  - 組裝面板 Embed 與元件（2 個選單 + 1 個建立按鈕）
+  - 組裝面板 Embed 與元件（4 個選單 + 1 個建立按鈕）
   - 未完成選擇前，建立按鈕為停用狀態
 
 ### 2.2 領域層（domain）
@@ -75,9 +78,9 @@
 ### 3.1 建立派單流程
 
 1. 管理員執行 `/dispatch-panel`
-2. 面板顯示護航者與客戶選單
+2. 面板顯示護航群組、客戶群組、護航者與客戶選單
 3. 管理員完成選擇並點擊「✅ 建立派單」
-4. 系統驗證選擇內容
+4. 系統驗證選擇內容與角色對應關係
 5. `EscortDispatchOrderService.createOrder(...)` 建立 `PENDING_CONFIRMATION` 訂單
 6. 系統私訊護航者，附上「✅ 確認接單」按鈕
 
@@ -104,7 +107,7 @@ Migration：`src/main/resources/db/migration/V014__create_escort_dispatch_order.
 - `escort_dispatch_order`
   - 主鍵：`id`
   - 唯一鍵：`order_number`
-  - 欄位：`guild_id`、`assigned_by_user_id`、`escort_user_id`、`customer_user_id`、`status`、`created_at`、`confirmed_at`、`updated_at`
+  - 欄位：`guild_id`、`assigned_by_user_id`、`escort_role_id`、`customer_role_id`、`escort_user_id`、`customer_user_id`、`status`、`created_at`、`confirmed_at`、`updated_at`
 
 ### 4.2 約束與索引
 
