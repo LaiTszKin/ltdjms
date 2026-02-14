@@ -18,7 +18,9 @@ import ltdjms.discord.aiagent.services.ToolExecutionContext;
 import ltdjms.discord.aiagent.services.tools.LangChain4jListRolesTool;
 import ltdjms.discord.shared.di.JDAProvider;
 import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 
 /**
@@ -59,6 +61,9 @@ class LangChain4jListRolesToolIntegrationTest {
     // 設置 JDAProvider
     JDAProvider.setJda(mockJda);
     when(mockJda.getGuildById(TEST_GUILD_ID)).thenReturn(mockGuild);
+    Member mockCaller = mock(Member.class);
+    when(mockGuild.getMemberById(TEST_USER_ID)).thenReturn(mockCaller);
+    when(mockCaller.hasPermission(Permission.ADMINISTRATOR)).thenReturn(true);
 
     // 設定 ToolExecutionContext
     ToolExecutionContext.setContext(TEST_GUILD_ID, TEST_CHANNEL_ID, TEST_USER_ID);

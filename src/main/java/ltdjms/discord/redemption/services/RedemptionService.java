@@ -206,8 +206,22 @@ public class RedemptionService {
 
     try {
       // Mark code as redeemed
+      if (code.id() == null) {
+        LOG.error("Redemption code ID is null during redeem: code={}", code.getMaskedCode());
+        return Result.err(DomainError.unexpectedFailure("兌換碼資料異常", null));
+      }
+
       RedemptionCode redeemedCode = code.withRedeemed(userId);
-      codeRepository.update(redeemedCode);
+      boolean marked =
+          codeRepository.markAsRedeemedIfAvailable(
+              redeemedCode.id(), userId, redeemedCode.redeemedAt());
+      if (!marked) {
+        LOG.warn(
+            "Redemption code became unavailable during redeem attempt: code={}, userId={}",
+            code.getMaskedCode(),
+            userId);
+        return Result.err(DomainError.invalidInput("此兌換碼已被使用或不可用"));
+      }
 
       // Grant reward if applicable
       Long rewardedAmount = null;

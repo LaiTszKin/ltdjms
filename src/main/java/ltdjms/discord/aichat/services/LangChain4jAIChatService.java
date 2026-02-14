@@ -408,7 +408,8 @@ public final class LangChain4jAIChatService implements AIChatService {
       tokenStream
           .beforeToolExecution(
               before -> handleBeforeToolExecution(before, guildIdLong, channelIdLong, userIdLong))
-          .onToolExecuted(toolExecution -> handleToolExecuted(guildId, channelId, toolExecution))
+          .onToolExecuted(
+              toolExecution -> handleToolExecuted(guildId, channelId, userIdLong, toolExecution))
           // 處理推理內容 (reasoning_content)，僅在需要顯示推理時才轉發
           .onPartialThinking(
               token -> {
@@ -518,7 +519,8 @@ public final class LangChain4jAIChatService implements AIChatService {
       tokenStream
           .beforeToolExecution(
               before -> handleBeforeToolExecution(before, guildIdLong, channelIdLong, userIdLong))
-          .onToolExecuted(toolExecution -> handleToolExecuted(guildId, channelId, toolExecution))
+          .onToolExecuted(
+              toolExecution -> handleToolExecuted(guildId, channelId, userIdLong, toolExecution))
           // 處理推理內容
           .onPartialThinking(
               token -> {
@@ -667,7 +669,8 @@ public final class LangChain4jAIChatService implements AIChatService {
   }
 
   /** 處理工具執行完成後的事件、歷史記錄與通知。 */
-  private void handleToolExecuted(long guildId, String channelId, ToolExecution toolExecution) {
+  private void handleToolExecuted(
+      long guildId, String channelId, long userId, ToolExecution toolExecution) {
     try {
       boolean success = !toolExecution.hasFailed();
       String resultText = toolExecution.result() != null ? toolExecution.result() : "無返回結果";
@@ -685,6 +688,7 @@ public final class LangChain4jAIChatService implements AIChatService {
         Map<String, Object> params = parseArguments(toolExecution.request().arguments());
         toolCallHistory.addToolCall(
             threadId,
+            userId,
             new InMemoryToolCallHistory.ToolCallEntry(
                 Instant.now(), toolExecution.request().name(), params, success, resultText));
       }

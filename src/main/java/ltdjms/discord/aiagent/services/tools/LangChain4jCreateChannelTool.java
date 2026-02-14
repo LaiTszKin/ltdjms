@@ -139,6 +139,13 @@ public final class LangChain4jCreateChannelTool {
       return ToolJsonResponses.error("找不到伺服器");
     }
 
+    String authorizationError =
+        ToolCallerAuthorizationGuard.validateAdministrator(
+            parameters, guild, LOGGER, "LangChain4jCreateChannelTool");
+    if (authorizationError != null) {
+      return ToolJsonResponses.error(authorizationError);
+    }
+
     try {
       // 4. 驗證類別（如果提供）
       Category category = null;

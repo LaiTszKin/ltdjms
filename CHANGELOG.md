@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.27.1] - 2026-02-14
+
+### Added
+- **aiagent**: 新增 `ToolCallerAuthorizationGuard`，統一驗證 AI Agent 工具呼叫者必須具備管理員權限
+- **redemption**: 新增 `markAsRedeemedIfAvailable` 原子兌換介面與 JDBC 單元測試，防止同一兌換碼被並發重複兌換
+
+### Fixed
+- **aiagent**: 所有高權限 Discord 管理工具加入呼叫者權限檢查，修復非管理員可觸發工具的安全風險
+- **aichat**: Thread 歷史僅保留「當前使用者 + 機器人」訊息並以 `threadId:userId` 隔離工具歷史，避免跨使用者上下文污染
+- **aichat**: Mention 事件日誌改為僅記錄 `messageLength`，避免輸入內容直接落盤
+- **redemption**: 兌換流程改為原子更新並補上 `code.id == null` 防護，避免競態與異常資料導致重複發獎
+- **redemption**: 兌換碼到期條件修正為 `expires_at >= ?`，與 domain 到期判定一致
+- **dispatch**: 補上 migration `V015` 移除 `escort_dispatch_order` 舊版角色欄位，修復資料表結構遺留問題
+
+### Changed
+- **docs**: 更新派單模組與 Slash Commands 文件，對齊現行欄位與流程
+
+### Tests
+- 新增 `ToolCallerAuthorizationGuardTest`，覆蓋快取 miss、成員拉取失敗、缺失 `userId`、guild owner 放行等邊界情境
+- 新增 `JdbcRedemptionCodeRepositoryTest`，覆蓋原子兌換成功/失敗、`null redeemedAt`、SQL 到期邊界與 SQLException 路徑
+- 更新 `InMemoryToolCallHistoryTest` 與 `RedemptionServiceTest`，補齊使用者隔離清理與異常資料防護測試
+
 ## [0.27.0] - 2026-02-13
 
 ### Added

@@ -412,7 +412,7 @@ class RedemptionServiceTest {
 
       when(codeRepository.findByCode("ABCD1234EFGH5678")).thenReturn(Optional.of(code));
       when(productRepository.findById(TEST_PRODUCT_ID)).thenReturn(Optional.of(product));
-      when(codeRepository.update(any())).thenAnswer(i -> i.getArgument(0));
+      when(codeRepository.markAsRedeemedIfAvailable(anyLong(), anyLong(), any())).thenReturn(true);
       when(productRedemptionTransactionService.recordTransaction(
               eq(TEST_GUILD_ID), eq(TEST_USER_ID), eq(product), any()))
           .thenReturn(transaction);
@@ -425,7 +425,7 @@ class RedemptionServiceTest {
       assertThat(result.isOk()).isTrue();
       assertThat(result.getValue().product().name()).isEqualTo("VIP 服務");
       assertThat(result.getValue().rewardedAmount()).isNull();
-      verify(codeRepository).update(any());
+      verify(codeRepository).markAsRedeemedIfAvailable(anyLong(), eq(TEST_USER_ID), any());
       verify(productRedemptionTransactionService)
           .recordTransaction(eq(TEST_GUILD_ID), eq(TEST_USER_ID), eq(product), any());
       verify(eventPublisher).publish(any());
@@ -472,7 +472,7 @@ class RedemptionServiceTest {
 
       when(codeRepository.findByCode("ABCD1234EFGH5678")).thenReturn(Optional.of(code));
       when(productRepository.findById(TEST_PRODUCT_ID)).thenReturn(Optional.of(product));
-      when(codeRepository.update(any())).thenAnswer(i -> i.getArgument(0));
+      when(codeRepository.markAsRedeemedIfAvailable(anyLong(), anyLong(), any())).thenReturn(true);
       when(balanceAdjustmentService.tryAdjustBalance(TEST_GUILD_ID, TEST_USER_ID, 1000L))
           .thenReturn(
               Result.ok(
@@ -536,7 +536,7 @@ class RedemptionServiceTest {
 
       when(codeRepository.findByCode("ABCD1234EFGH5678")).thenReturn(Optional.of(code));
       when(productRepository.findById(TEST_PRODUCT_ID)).thenReturn(Optional.of(product));
-      when(codeRepository.update(any())).thenAnswer(i -> i.getArgument(0));
+      when(codeRepository.markAsRedeemedIfAvailable(anyLong(), anyLong(), any())).thenReturn(true);
       when(gameTokenService.tryAdjustTokens(TEST_GUILD_ID, TEST_USER_ID, 50L))
           .thenReturn(
               Result.ok(
@@ -600,7 +600,7 @@ class RedemptionServiceTest {
 
       when(codeRepository.findByCode("ABCD1234EFGH5678")).thenReturn(Optional.of(code));
       when(productRepository.findById(TEST_PRODUCT_ID)).thenReturn(Optional.of(product));
-      when(codeRepository.update(any())).thenAnswer(i -> i.getArgument(0));
+      when(codeRepository.markAsRedeemedIfAvailable(anyLong(), anyLong(), any())).thenReturn(true);
       when(productRedemptionTransactionService.recordTransaction(
               eq(TEST_GUILD_ID), eq(TEST_USER_ID), eq(product), any()))
           .thenReturn(transaction);
@@ -753,6 +753,96 @@ class RedemptionServiceTest {
       // Then
       assertThat(result.isErr()).isTrue();
       assertThat(result.getError().message()).contains("已失效");
+    }
+
+    @Test
+    @DisplayName("should reject when code id is null")
+    void shouldRejectWhenCodeIdIsNull() {
+      // Given
+      Instant now = Instant.now();
+      Product product =
+          new Product(
+              Long.valueOf(TEST_PRODUCT_ID),
+              TEST_GUILD_ID,
+              "Test",
+              null,
+              null,
+              null,
+              null,
+              now,
+              now);
+      RedemptionCode code =
+          new RedemptionCode(
+              null,
+              "ABCD1234EFGH5678",
+              TEST_PRODUCT_ID,
+              TEST_GUILD_ID,
+              null,
+              null,
+              null,
+              now,
+              null,
+              1);
+
+      when(codeRepository.findByCode("ABCD1234EFGH5678")).thenReturn(Optional.of(code));
+      when(productRepository.findById(TEST_PRODUCT_ID)).thenReturn(Optional.of(product));
+
+      // When
+      Result<RedemptionService.RedemptionResult, DomainError> result =
+          redemptionService.redeemCode("ABCD1234EFGH5678", TEST_GUILD_ID, TEST_USER_ID);
+
+      // Then
+      assertThat(result.isErr()).isTrue();
+      assertThat(result.getError().message()).contains("兌換碼資料異常");
+      verify(codeRepository, never()).markAsRedeemedIfAvailable(anyLong(), anyLong(), any());
+      verify(productRedemptionTransactionService, never())
+          .recordTransaction(anyLong(), anyLong(), any(), any());
+    }
+
+    @Test
+    @DisplayName("should reject when code becomes unavailable during atomic redeem")
+    void shouldRejectWhenCodeBecomesUnavailableDuringAtomicRedeem() {
+      // Given
+      Instant now = Instant.now();
+      Product product =
+          new Product(
+              Long.valueOf(TEST_PRODUCT_ID),
+              TEST_GUILD_ID,
+              "Test",
+              null,
+              null,
+              null,
+              null,
+              now,
+              now);
+      RedemptionCode code =
+          new RedemptionCode(
+              1L,
+              "ABCD1234EFGH5678",
+              TEST_PRODUCT_ID,
+              TEST_GUILD_ID,
+              null,
+              null,
+              null,
+              now,
+              null,
+              1);
+
+      when(codeRepository.findByCode("ABCD1234EFGH5678")).thenReturn(Optional.of(code));
+      when(productRepository.findById(TEST_PRODUCT_ID)).thenReturn(Optional.of(product));
+      when(codeRepository.markAsRedeemedIfAvailable(eq(1L), eq(TEST_USER_ID), any()))
+          .thenReturn(false);
+
+      // When
+      Result<RedemptionService.RedemptionResult, DomainError> result =
+          redemptionService.redeemCode("ABCD1234EFGH5678", TEST_GUILD_ID, TEST_USER_ID);
+
+      // Then
+      assertThat(result.isErr()).isTrue();
+      assertThat(result.getError().message()).contains("已被使用或不可用");
+      verify(productRedemptionTransactionService, never())
+          .recordTransaction(anyLong(), anyLong(), any(), any());
+      verify(eventPublisher, never()).publish(any());
     }
   }
 

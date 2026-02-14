@@ -22,6 +22,7 @@ import ltdjms.discord.shared.di.JDAProvider;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.PermissionOverride;
 import net.dv8tion.jda.api.entities.channel.attribute.IPermissionContainer;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
@@ -68,6 +69,9 @@ class LangChain4jGetChannelPermissionsToolTest {
 
     // 設定 JDA 基本行為
     when(mockJda.getGuildById(TEST_GUILD_ID)).thenReturn(mockGuild);
+    Member mockCaller = mock(Member.class);
+    when(mockGuild.getMemberById(TEST_USER_ID)).thenReturn(mockCaller);
+    when(mockCaller.hasPermission(Permission.ADMINISTRATOR)).thenReturn(true);
 
     // 設定 ToolExecutionContext
     ToolExecutionContext.setContext(TEST_GUILD_ID, TEST_CHANNEL_ID, TEST_USER_ID);

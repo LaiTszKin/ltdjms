@@ -108,6 +108,13 @@ public final class LangChain4jModifyCategoryPermissionsTool {
       return buildErrorResponse("找不到伺服器");
     }
 
+    String authorizationError =
+        ToolCallerAuthorizationGuard.validateAdministrator(
+            parameters, guild, LOGGER, "LangChain4jModifyCategoryPermissionsTool");
+    if (authorizationError != null) {
+      return buildErrorResponse(authorizationError);
+    }
+
     // 4. 獲取類別
     Category category = guild.getCategoryById(categoryIdLong);
     if (category == null) {

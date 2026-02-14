@@ -103,6 +103,13 @@ public final class LangChain4jGetChannelPermissionsTool {
       return buildErrorResponse("找不到伺服器");
     }
 
+    String authorizationError =
+        ToolCallerAuthorizationGuard.validateAdministrator(
+            parameters, guild, LOGGER, "LangChain4jGetChannelPermissionsTool");
+    if (authorizationError != null) {
+      return buildErrorResponse(authorizationError);
+    }
+
     // 4. 獲取頻道
     GuildChannel channel = guild.getGuildChannelById(channelIdLong);
     if (channel == null) {

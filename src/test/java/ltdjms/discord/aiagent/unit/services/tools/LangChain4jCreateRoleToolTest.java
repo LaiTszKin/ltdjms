@@ -14,7 +14,9 @@ import dev.langchain4j.invocation.InvocationParameters;
 import ltdjms.discord.aiagent.services.tools.LangChain4jCreateRoleTool;
 import ltdjms.discord.shared.di.JDAProvider;
 import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.requests.restaction.RoleAction;
 
@@ -42,6 +44,9 @@ class LangChain4jCreateRoleToolTest {
 
     JDAProvider.setJda(mockJda);
     when(mockJda.getGuildById(TEST_GUILD_ID)).thenReturn(mockGuild);
+    Member mockCaller = mock(Member.class);
+    when(mockGuild.getMemberById(TEST_USER_ID)).thenReturn(mockCaller);
+    when(mockCaller.hasPermission(Permission.ADMINISTRATOR)).thenReturn(true);
 
     Role mockRole = mock(Role.class);
     when(mockRole.getIdLong()).thenReturn(111111111111111111L);
@@ -79,5 +84,18 @@ class LangChain4jCreateRoleToolTest {
       assertThat(result).contains("\"success\": false");
       assertThat(result).contains("角色名稱不能為空");
     }
+  }
+
+  @Test
+  @DisplayName("非管理員呼叫應被拒絕")
+  void shouldRejectNonAdminCaller() {
+    Member nonAdmin = mock(Member.class);
+    when(mockGuild.getMemberById(TEST_USER_ID)).thenReturn(nonAdmin);
+    when(nonAdmin.hasPermission(Permission.ADMINISTRATOR)).thenReturn(false);
+
+    String result = tool.createRole("new-role", null, null, null, null, parameters);
+
+    assertThat(result).contains("\"success\": false");
+    assertThat(result).contains("你沒有權限使用此工具");
   }
 }

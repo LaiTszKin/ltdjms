@@ -70,6 +70,13 @@ public final class LangChain4jListCategoriesTool {
       return ToolJsonResponses.error("找不到伺服器");
     }
 
+    String authorizationError =
+        ToolCallerAuthorizationGuard.validateAdministrator(
+            parameters, guild, LOGGER, "LangChain4jListCategoriesTool");
+    if (authorizationError != null) {
+      return ToolJsonResponses.error(authorizationError);
+    }
+
     try {
       // 3. 收集類別資訊
       List<Category> categories = new ArrayList<>(guild.getCategories());

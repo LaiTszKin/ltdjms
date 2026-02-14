@@ -81,6 +81,13 @@ public final class LangChain4jModifyRolePermissionsTool {
       return buildErrorResponse("找不到伺服器");
     }
 
+    String authorizationError =
+        ToolCallerAuthorizationGuard.validateAdministrator(
+            parameters, guild, LOGGER, "LangChain4jModifyRolePermissionsTool");
+    if (authorizationError != null) {
+      return buildErrorResponse(authorizationError);
+    }
+
     // 4. 獲取角色
     Role role = guild.getRoleById(roleIdLong);
     if (role == null) {

@@ -17,7 +17,9 @@ import dev.langchain4j.invocation.InvocationParameters;
 import ltdjms.discord.aiagent.services.tools.LangChain4jModifyChannelPermissionsTool;
 import ltdjms.discord.shared.di.JDAProvider;
 import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.channel.attribute.IPermissionContainer;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 
@@ -28,6 +30,7 @@ class LangChain4jModifyChannelPermissionsToolTest {
   private static final long TEST_CHANNEL_ID = 999999999999999999L;
   private static final long TEST_ROLE_ID = 111111111111111111L;
   private static final long TEST_MEMBER_ID = 222222222222222222L;
+  private static final long TEST_CALLER_ID = 333333333333333333L;
 
   private LangChain4jModifyChannelPermissionsTool tool;
   private Guild mockGuild;
@@ -46,10 +49,13 @@ class LangChain4jModifyChannelPermissionsToolTest {
     // 設置測試參數
     parameters.put("guildId", TEST_GUILD_ID);
     parameters.put("channelId", TEST_CHANNEL_ID);
-    parameters.put("userId", TEST_MEMBER_ID);
+    parameters.put("userId", TEST_CALLER_ID);
 
     JDAProvider.setJda(mockJda);
     when(mockJda.getGuildById(TEST_GUILD_ID)).thenReturn(mockGuild);
+    Member mockCaller = mock(Member.class);
+    when(mockGuild.getMemberById(TEST_CALLER_ID)).thenReturn(mockCaller);
+    when(mockCaller.hasPermission(Permission.ADMINISTRATOR)).thenReturn(true);
 
     // Mock 頻道（同時實現 IPermissionContainer）
     mockChannel =

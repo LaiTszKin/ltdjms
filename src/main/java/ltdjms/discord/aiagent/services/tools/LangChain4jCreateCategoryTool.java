@@ -120,6 +120,13 @@ public final class LangChain4jCreateCategoryTool {
       return buildErrorResponse("找不到伺服器");
     }
 
+    String authorizationError =
+        ToolCallerAuthorizationGuard.validateAdministrator(
+            parameters, guild, LOGGER, "LangChain4jCreateCategoryTool");
+    if (authorizationError != null) {
+      return buildErrorResponse(authorizationError);
+    }
+
     try {
       // 4. 創建類別
       Category category = createCategoryWithTimeout(guild, name);

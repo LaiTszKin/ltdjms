@@ -127,6 +127,13 @@ public final class LangChain4jListChannelsTool {
       return ToolJsonResponses.error("找不到伺服器");
     }
 
+    String authorizationError =
+        ToolCallerAuthorizationGuard.validateAdministrator(
+            parameters, guild, LOGGER, "LangChain4jListChannelsTool");
+    if (authorizationError != null) {
+      return ToolJsonResponses.error(authorizationError);
+    }
+
     try {
       // 4. 收集頻道資訊
       List<GuildChannel> channels = guild.getChannels();

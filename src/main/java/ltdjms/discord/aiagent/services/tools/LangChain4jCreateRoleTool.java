@@ -64,6 +64,13 @@ public final class LangChain4jCreateRoleTool {
       return ToolJsonResponses.error("找不到伺服器");
     }
 
+    String authorizationError =
+        ToolCallerAuthorizationGuard.validateAdministrator(
+            parameters, guild, LOGGER, "LangChain4jCreateRoleTool");
+    if (authorizationError != null) {
+      return ToolJsonResponses.error(authorizationError);
+    }
+
     try {
       // 4. 解析顏色
       int colorInt = 0;

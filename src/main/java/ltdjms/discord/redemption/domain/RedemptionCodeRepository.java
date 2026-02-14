@@ -1,5 +1,6 @@
 package ltdjms.discord.redemption.domain;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,6 +30,19 @@ public interface RedemptionCodeRepository {
    * @return the updated code
    */
   RedemptionCode update(RedemptionCode code);
+
+  /**
+   * Atomically marks a redemption code as redeemed only when it is still available.
+   *
+   * <p>This method prevents race conditions where multiple concurrent requests redeem the same
+   * code.
+   *
+   * @param codeId redemption code ID
+   * @param userId user ID performing redemption
+   * @param redeemedAt redemption timestamp
+   * @return true if the code was successfully marked as redeemed, false otherwise
+   */
+  boolean markAsRedeemedIfAvailable(long codeId, long userId, Instant redeemedAt);
 
   /**
    * Finds a redemption code by its code string.

@@ -64,10 +64,12 @@ public final class DiscordThreadHistoryProvider {
    *
    * @param guildId Discord 伺服器 ID
    * @param threadId Discord Thread ID
+   * @param requesterUserId 請求者使用者 ID（只保留該使用者訊息）
    * @param botUserId 機器人用戶 ID（用於過濾）
    * @return ChatMessage 列表（按時間排序，從舊到新）
    */
-  public List<ChatMessage> getThreadHistory(long guildId, long threadId, long botUserId) {
+  public List<ChatMessage> getThreadHistory(
+      long guildId, long threadId, long requesterUserId, long botUserId) {
     Guild guild = getJda().getGuildById(guildId);
     if (guild == null) {
       LOG.warn("找不到伺服器: guildId={}", guildId);
@@ -88,7 +90,8 @@ public final class DiscordThreadHistoryProvider {
       LOG.debug("從 Thread {} 獲取 {} 則訊息", threadId, discordMessages.size());
 
       // 轉換為 ChatMessage 格式
-      List<ChatMessage> chatMessages = convertToChatMessages(discordMessages, botUserId);
+      List<ChatMessage> chatMessages =
+          convertToChatMessages(discordMessages, requesterUserId, botUserId);
 
       // 使用 TokenEstimator 裁剪
       List<ChatMessage> trimmed = trimByTokens(chatMessages);
@@ -116,10 +119,12 @@ public final class DiscordThreadHistoryProvider {
    * 將 Discord 訊息轉換為 ChatMessage 格式。
    *
    * @param discordMessages Discord 訊息列表
+   * @param requesterUserId 請求者使用者 ID
    * @param botUserId 機器人用戶 ID
    * @return ChatMessage 列表
    */
-  private List<ChatMessage> convertToChatMessages(List<Message> discordMessages, long botUserId) {
+  private List<ChatMessage> convertToChatMessages(
+      List<Message> discordMessages, long requesterUserId, long botUserId) {
     List<ChatMessage> chatMessages = new ArrayList<>();
 
     for (Message msg : discordMessages) {
@@ -135,10 +140,16 @@ public final class DiscordThreadHistoryProvider {
 
       // 根據作者類型決定訊息類型
       if (msg.getAuthor().isBot()) {
-        // AI 回應（其他機器人的訊息）
+        // 只保留本機器人的回應，避免其他 bot 注入歷史上下文
+        if (msg.getAuthor().getIdLong() != botUserId) {
+          continue;
+        }
         chatMessages.add(AiMessage.from(content));
       } else {
-        // 用戶訊息
+        // 只保留當前請求使用者的訊息，避免跨使用者上下文污染
+        if (msg.getAuthor().getIdLong() != requesterUserId) {
+          continue;
+        }
         chatMessages.add(UserMessage.from(content));
       }
     }

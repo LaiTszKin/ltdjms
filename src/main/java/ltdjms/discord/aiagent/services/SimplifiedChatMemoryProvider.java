@@ -87,21 +87,22 @@ public final class SimplifiedChatMemoryProvider implements ChatMemoryProvider {
           .build();
     }
 
-    // 解析 guildId, threadId
+    // 解析 guildId, threadId, userId
     String[] parts = conversationId.split(":");
     long guildId = Long.parseLong(parts[0]);
     long threadId = Long.parseLong(parts[1]);
+    long userId = Long.parseLong(parts[2]);
 
-    LOG.debug("Thread 級別會話: guildId={}, threadId={}", guildId, threadId);
+    LOG.debug("Thread 級別會話: guildId={}, threadId={}, userId={}", guildId, threadId, userId);
 
     // 獲取 Discord Thread 歷史
     List<ChatMessage> threadMessages =
-        threadHistoryProvider.getThreadHistory(guildId, threadId, getBotUserId());
+        threadHistoryProvider.getThreadHistory(guildId, threadId, userId, getBotUserId());
 
     LOG.debug("從 Discord Thread 獲取 {} 則訊息", threadMessages.size());
 
     // 獲取工具調用歷史
-    List<ChatMessage> toolCallMessages = toolCallHistory.getToolCallMessages(threadId);
+    List<ChatMessage> toolCallMessages = toolCallHistory.getToolCallMessages(threadId, userId);
 
     LOG.debug("從記憶體獲取 {} 則工具調用記錄", toolCallMessages.size());
 

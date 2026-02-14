@@ -73,6 +73,13 @@ public final class LangChain4jListRolesTool {
       return ToolJsonResponses.error("找不到伺服器");
     }
 
+    String authorizationError =
+        ToolCallerAuthorizationGuard.validateAdministrator(
+            parameters, guild, LOGGER, "LangChain4jListRolesTool");
+    if (authorizationError != null) {
+      return ToolJsonResponses.error(authorizationError);
+    }
+
     try {
       // 3. 收集角色資訊並按權限排序
       List<Role> roles = new ArrayList<>(guild.getRoles());

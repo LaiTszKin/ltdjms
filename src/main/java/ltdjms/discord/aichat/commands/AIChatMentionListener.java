@@ -182,7 +182,11 @@ public class AIChatMentionListener extends ListenerAdapter {
     boolean agentEnabled =
         agentConfigService != null && agentConfigService.isAgentEnabled(guildId, channelId);
 
-    LOGGER.info("Bot mentioned by user {} in channel {}: {}", userId, channelIdStr, userMessage);
+    LOGGER.info(
+        "Bot mentioned by user {} in channel {} (messageLength={})",
+        userId,
+        channelIdStr,
+        userMessage.length());
 
     // Generate AI streaming response
     // 先發送初始提示訊息

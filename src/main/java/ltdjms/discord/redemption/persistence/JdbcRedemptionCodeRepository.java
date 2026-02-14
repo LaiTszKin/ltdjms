@@ -159,6 +159,38 @@ public class JdbcRedemptionCodeRepository implements RedemptionCodeRepository {
   }
 
   @Override
+  public boolean markAsRedeemedIfAvailable(long codeId, long userId, Instant redeemedAt) {
+    String sql =
+        "UPDATE redemption_code SET redeemed_by = ?, redeemed_at = ? "
+            + "WHERE id = ? AND redeemed_by IS NULL AND invalidated_at IS NULL "
+            + "AND (expires_at IS NULL OR expires_at >= ?)";
+
+    Instant redeemTime = redeemedAt != null ? redeemedAt : Instant.now();
+
+    try (Connection conn = dataSource.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+      stmt.setLong(1, userId);
+      stmt.setTimestamp(2, Timestamp.from(redeemTime));
+      stmt.setLong(3, codeId);
+      stmt.setTimestamp(4, Timestamp.from(redeemTime));
+
+      int affected = stmt.executeUpdate();
+      if (affected == 1) {
+        LOG.debug("Atomically redeemed code: id={}, userId={}", codeId, userId);
+        return true;
+      }
+
+      LOG.debug("Atomic redeem skipped (already unavailable): id={}, userId={}", codeId, userId);
+      return false;
+
+    } catch (SQLException e) {
+      LOG.error("Failed to atomically redeem code id={}, userId={}", codeId, userId, e);
+      throw new RepositoryException("Failed to atomically redeem code", e);
+    }
+  }
+
+  @Override
   public Optional<RedemptionCode> findByCode(String code) {
     String sql =
         "SELECT id, code, product_id, guild_id, expires_at, redeemed_by, redeemed_at, created_at,"
