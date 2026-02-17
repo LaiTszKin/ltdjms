@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.29.2] - 2026-02-17
+
+### Fixed
+- **shop/security**: 修正商品購買流程缺少 guild 邊界驗證的問題，現在會拒絕購買不屬於當前 guild 的商品，避免跨伺服器商品被誤購與獎勵發放
+
+### Tests
+- **shop**: 新增跨 guild 商品購買拒絕測試，驗證風險路徑在扣款前即被阻擋
+
 ## [0.29.1] - 2026-02-17
 
 ### Fixed

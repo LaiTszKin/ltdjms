@@ -50,6 +50,9 @@ public class CurrencyPurchaseService {
     }
 
     Product product = productOpt.get();
+    if (product.guildId() != guildId) {
+      return Result.err(DomainError.invalidInput("找不到該商品"));
+    }
     if (!product.hasCurrencyPrice()) {
       return Result.err(DomainError.invalidInput("此商品不可用貨幣購買"));
     }
