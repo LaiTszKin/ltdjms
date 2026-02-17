@@ -30,6 +30,7 @@ import ltdjms.discord.aiagent.services.ToolExecutionInterceptor;
 import ltdjms.discord.aiagent.services.tools.LangChain4jCreateCategoryTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jCreateChannelTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jCreateRoleTool;
+import ltdjms.discord.aiagent.services.tools.LangChain4jGetCategoryPermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jGetChannelPermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jGetRolePermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jListCategoriesTool;
@@ -77,6 +78,7 @@ class LangChain4jAIChatServiceTest {
   private LangChain4jListCategoriesTool mockListCategoriesTool;
   private LangChain4jListRolesTool mockListRolesTool;
   private LangChain4jGetChannelPermissionsTool mockGetChannelPermissionsTool;
+  private LangChain4jGetCategoryPermissionsTool mockGetCategoryPermissionsTool;
   private LangChain4jModifyChannelPermissionsTool mockModifyChannelPermissionsTool;
   private LangChain4jModifyCategoryPermissionsTool mockModifyCategoryPermissionsTool;
   private LangChain4jCreateRoleTool mockCreateRoleTool;
@@ -115,6 +117,7 @@ class LangChain4jAIChatServiceTest {
     mockListCategoriesTool = mock(LangChain4jListCategoriesTool.class);
     mockListRolesTool = mock(LangChain4jListRolesTool.class);
     mockGetChannelPermissionsTool = mock(LangChain4jGetChannelPermissionsTool.class);
+    mockGetCategoryPermissionsTool = mock(LangChain4jGetCategoryPermissionsTool.class);
     mockModifyChannelPermissionsTool = mock(LangChain4jModifyChannelPermissionsTool.class);
     mockModifyCategoryPermissionsTool = mock(LangChain4jModifyCategoryPermissionsTool.class);
     mockCreateRoleTool = mock(LangChain4jCreateRoleTool.class);
@@ -143,6 +146,7 @@ class LangChain4jAIChatServiceTest {
             mockListCategoriesTool,
             mockListRolesTool,
             mockGetChannelPermissionsTool,
+            mockGetCategoryPermissionsTool,
             mockModifyChannelPermissionsTool,
             mockModifyCategoryPermissionsTool,
             mockCreateRoleTool,

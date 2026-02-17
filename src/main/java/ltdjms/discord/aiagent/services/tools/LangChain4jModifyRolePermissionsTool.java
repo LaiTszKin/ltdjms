@@ -22,6 +22,7 @@ public final class LangChain4jModifyRolePermissionsTool {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(LangChain4jModifyRolePermissionsTool.class);
+  private static final int MAX_ROLE_NAME_LENGTH = 100;
 
   @Inject
   public LangChain4jModifyRolePermissionsTool() {
@@ -34,6 +35,7 @@ public final class LangChain4jModifyRolePermissionsTool {
 
       使用場景：
       - 當需要添加或移除角色的伺服器權限時使用
+      - 當需要重新命名角色時使用
       - 調整角色權限等級時使用
 
       注意：
@@ -41,8 +43,9 @@ public final class LangChain4jModifyRolePermissionsTool {
       - 不是修改頻道層級的權限覆寫
       - 權限修改是基於現有權限的增量操作
       """)
-  public String modifyRolePermissions(
+  public String modifyRoleSettings(
       @P(value = "角色 ID", required = true) String roleId,
+      @P(value = "新的角色名稱（可選，最多 100 字）", required = false) String newName,
       @P(value = "要添加的權限列表", required = false) List<String> permissionsToAdd,
       @P(value = "要移除的權限列表", required = false) List<String> permissionsToRemove,
       InvocationParameters parameters) {
@@ -58,15 +61,6 @@ public final class LangChain4jModifyRolePermissionsTool {
       roleIdLong = parseId(roleId);
     } catch (NumberFormatException e) {
       return buildErrorResponse("無效的 ID 格式");
-    }
-
-    // 檢查是否有任何權限操作
-    boolean hasChanges =
-        (permissionsToAdd != null && !permissionsToAdd.isEmpty())
-            || (permissionsToRemove != null && !permissionsToRemove.isEmpty());
-
-    if (!hasChanges) {
-      return buildErrorResponse("未指定任何權限修改操作");
     }
 
     // 2. 從 InvocationParameters 獲取執行上下文
@@ -95,47 +89,84 @@ public final class LangChain4jModifyRolePermissionsTool {
     }
 
     try {
+      String normalizedName = normalizeName(newName);
+      if (newName != null && normalizedName == null) {
+        return buildErrorResponse("新的角色名稱不能為空白");
+      }
+      if (normalizedName != null && normalizedName.length() > MAX_ROLE_NAME_LENGTH) {
+        return buildErrorResponse(
+            String.format("角色名稱不能超過 %d 字（當前: %d）", MAX_ROLE_NAME_LENGTH, normalizedName.length()));
+      }
+
+      boolean hasRename = normalizedName != null;
+
       // 5. 獲取現有權限
       EnumSet<Permission> currentPermissions = EnumSet.copyOf(role.getPermissions());
       List<String> beforePermissions = permissionListToString(currentPermissions);
 
       // 6. 計算新權限
       EnumSet<Permission> newPermissions = currentPermissions.clone();
+      boolean hasPermissionChanges =
+          (permissionsToAdd != null && !permissionsToAdd.isEmpty())
+              || (permissionsToRemove != null && !permissionsToRemove.isEmpty());
 
-      if (permissionsToAdd != null && !permissionsToAdd.isEmpty()) {
-        for (String permName : permissionsToAdd) {
-          try {
-            Permission perm = Permission.valueOf(permName.toUpperCase().trim());
-            newPermissions.add(perm);
-          } catch (IllegalArgumentException e) {
-            LOGGER.warn("無效的權限名稱: {}", permName);
+      if (!hasPermissionChanges && !hasRename) {
+        return buildErrorResponse("未指定任何權限或名稱修改操作");
+      }
+
+      if (hasPermissionChanges) {
+        if (permissionsToAdd != null && !permissionsToAdd.isEmpty()) {
+          for (String permName : permissionsToAdd) {
+            try {
+              Permission perm = Permission.valueOf(permName.toUpperCase().trim());
+              newPermissions.add(perm);
+            } catch (IllegalArgumentException e) {
+              LOGGER.warn("無效的權限名稱: {}", permName);
+            }
+          }
+        }
+
+        if (permissionsToRemove != null && !permissionsToRemove.isEmpty()) {
+          for (String permName : permissionsToRemove) {
+            try {
+              Permission perm = Permission.valueOf(permName.toUpperCase().trim());
+              newPermissions.remove(perm);
+            } catch (IllegalArgumentException e) {
+              LOGGER.warn("無效的權限名稱: {}", permName);
+            }
           }
         }
       }
 
-      if (permissionsToRemove != null && !permissionsToRemove.isEmpty()) {
-        for (String permName : permissionsToRemove) {
-          try {
-            Permission perm = Permission.valueOf(permName.toUpperCase().trim());
-            newPermissions.remove(perm);
-          } catch (IllegalArgumentException e) {
-            LOGGER.warn("無效的權限名稱: {}", permName);
-          }
-        }
-      }
-
-      List<String> afterPermissions = permissionListToString(newPermissions);
+      List<String> afterPermissions =
+          hasPermissionChanges ? permissionListToString(newPermissions) : beforePermissions;
+      long beforeRaw = role.getPermissionsRaw();
+      long afterRaw = hasPermissionChanges ? Permission.getRaw(newPermissions) : beforeRaw;
+      String effectiveRoleName = hasRename ? normalizedName : role.getName();
 
       // 7. 應用修改
-      role.getManager().setPermissions(newPermissions).complete();
+      var manager = role.getManager();
+      if (hasRename) {
+        manager = manager.setName(normalizedName);
+      }
+      if (hasPermissionChanges) {
+        manager = manager.setPermissions(newPermissions);
+      }
+      manager.complete();
 
       LOGGER.info(
-          "修改角色權限: roleId={}, before={}, after={}", roleIdLong, currentPermissions, newPermissions);
+          "修改角色設定: roleId={}, renamed={}, permissionsUpdated={}",
+          roleIdLong,
+          hasRename,
+          hasPermissionChanges);
 
       return buildSuccessResponse(
           role,
-          role.getPermissionsRaw(),
-          Permission.getRaw(newPermissions),
+          effectiveRoleName,
+          hasRename,
+          hasPermissionChanges,
+          beforeRaw,
+          afterRaw,
           beforePermissions,
           afterPermissions);
 
@@ -166,6 +197,9 @@ public final class LangChain4jModifyRolePermissionsTool {
 
   private String buildSuccessResponse(
       Role role,
+      String roleName,
+      boolean renamed,
+      boolean permissionsUpdated,
       long beforeRaw,
       long afterRaw,
       List<String> beforePermissions,
@@ -173,33 +207,60 @@ public final class LangChain4jModifyRolePermissionsTool {
     StringBuilder json = new StringBuilder();
     json.append("{\n");
     json.append("  \"success\": true,\n");
-    json.append("  \"message\": \"角色權限修改成功\",\n");
+    json.append("  \"message\": \"")
+        .append(buildSuccessMessage(renamed, permissionsUpdated))
+        .append("\",\n");
     json.append("  \"role\": {\n");
     json.append("    \"id\": \"").append(role.getIdLong()).append("\",\n");
-    json.append("    \"name\": \"").append(escapeJson(role.getName())).append("\"\n");
+    json.append("    \"name\": \"").append(escapeJson(roleName)).append("\"\n");
     json.append("  },\n");
-    json.append("  \"before\": {\n");
-    json.append("    \"permissions\": ")
-        .append(permissionListToJson(beforePermissions))
-        .append(",\n");
-    json.append("    \"count\": ").append(beforePermissions.size()).append(",\n");
-    json.append("    \"raw\": ").append(beforeRaw).append("\n");
-    json.append("  },\n");
-    json.append("  \"after\": {\n");
-    json.append("    \"permissions\": ")
-        .append(permissionListToJson(afterPermissions))
-        .append(",\n");
-    json.append("    \"count\": ").append(afterPermissions.size()).append(",\n");
-    json.append("    \"raw\": ").append(afterRaw).append("\n");
-    json.append("  },\n");
-    json.append("  \"changes\": {\n");
-    json.append("    \"added\": [],\n");
-    json.append("    \"removed\": [],\n");
-    json.append("    \"addedCount\": 0,\n");
-    json.append("    \"removedCount\": 0\n");
-    json.append("  }\n");
+    json.append("  \"renamed\": ").append(renamed).append(",\n");
+    json.append("  \"permissionsUpdated\": ").append(permissionsUpdated);
+    if (permissionsUpdated) {
+      json.append(",\n");
+      json.append("  \"before\": {\n");
+      json.append("    \"permissions\": ")
+          .append(permissionListToJson(beforePermissions))
+          .append(",\n");
+      json.append("    \"count\": ").append(beforePermissions.size()).append(",\n");
+      json.append("    \"raw\": ").append(beforeRaw).append("\n");
+      json.append("  },\n");
+      json.append("  \"after\": {\n");
+      json.append("    \"permissions\": ")
+          .append(permissionListToJson(afterPermissions))
+          .append(",\n");
+      json.append("    \"count\": ").append(afterPermissions.size()).append(",\n");
+      json.append("    \"raw\": ").append(afterRaw).append("\n");
+      json.append("  },\n");
+      json.append("  \"changes\": {\n");
+      json.append("    \"added\": [],\n");
+      json.append("    \"removed\": [],\n");
+      json.append("    \"addedCount\": 0,\n");
+      json.append("    \"removedCount\": 0\n");
+      json.append("  }\n");
+    } else {
+      json.append("\n");
+    }
     json.append("}");
     return json.toString();
+  }
+
+  private String buildSuccessMessage(boolean renamed, boolean permissionsUpdated) {
+    if (renamed && permissionsUpdated) {
+      return "角色名稱與權限修改成功";
+    }
+    if (renamed) {
+      return "角色名稱修改成功";
+    }
+    return "角色權限修改成功";
+  }
+
+  private String normalizeName(String value) {
+    if (value == null) {
+      return null;
+    }
+    String trimmed = value.trim();
+    return trimmed.isEmpty() ? null : trimmed;
   }
 
   private String permissionListToJson(List<String> permissions) {

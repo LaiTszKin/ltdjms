@@ -1,6 +1,8 @@
 package ltdjms.discord.aiagent.unit.services.tools;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.withSettings;
@@ -22,6 +24,7 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.channel.attribute.IPermissionContainer;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
+import net.dv8tion.jda.api.managers.channel.attribute.IPermissionContainerManager;
 
 @DisplayName("T025: LangChain4jModifyChannelPermissionsTool 單元測試")
 class LangChain4jModifyChannelPermissionsToolTest {
@@ -82,7 +85,7 @@ class LangChain4jModifyChannelPermissionsToolTest {
     @DisplayName("缺少 channelId 應返回錯誤")
     void missingChannelIdShouldReturnError() {
       String result =
-          tool.modifyChannelPermissions(null, "123", "role", null, null, null, null, parameters);
+          tool.modifyChannelSettings(null, "123", "role", null, null, null, null, null, parameters);
 
       assertThat(result).contains("\"success\": false");
       assertThat(result).contains("channelId 未提供");
@@ -92,7 +95,8 @@ class LangChain4jModifyChannelPermissionsToolTest {
     @DisplayName("缺少 targetId 應返回錯誤")
     void missingTargetIdShouldReturnError() {
       String result =
-          tool.modifyChannelPermissions("123", null, "role", null, null, null, null, parameters);
+          tool.modifyChannelSettings(
+              "123", null, "role", List.of("VIEW_CHANNEL"), null, null, null, null, parameters);
 
       assertThat(result).contains("\"success\": false");
       assertThat(result).contains("targetId 未提供");
@@ -102,8 +106,8 @@ class LangChain4jModifyChannelPermissionsToolTest {
     @DisplayName("無效的 targetType 應返回錯誤")
     void invalidTargetTypeShouldReturnError() {
       String result =
-          tool.modifyChannelPermissions(
-              "123", "456", "invalid", null, null, null, null, parameters);
+          tool.modifyChannelSettings(
+              "123", "456", "invalid", List.of("VIEW_CHANNEL"), null, null, null, null, parameters);
 
       assertThat(result).contains("\"success\": false");
       assertThat(result).contains("targetType 必須是 'member' 或 'role'");
@@ -113,11 +117,84 @@ class LangChain4jModifyChannelPermissionsToolTest {
     @DisplayName("未指定任何權限操作應返回錯誤")
     void noPermissionChangesShouldReturnError() {
       String result =
-          tool.modifyChannelPermissions(
-              String.valueOf(TEST_CHANNEL_ID), "456", "role", null, null, null, null, parameters);
+          tool.modifyChannelSettings(
+              String.valueOf(TEST_CHANNEL_ID),
+              "456",
+              "role",
+              null,
+              null,
+              null,
+              null,
+              null,
+              parameters);
 
       assertThat(result).contains("\"success\": false");
-      assertThat(result).contains("未指定任何權限修改操作");
+      assertThat(result).contains("未指定任何權限或名稱修改操作");
+    }
+
+    @Test
+    @DisplayName("新頻道名稱為空白應返回錯誤")
+    void blankChannelNameShouldReturnError() {
+      String result =
+          tool.modifyChannelSettings(
+              String.valueOf(TEST_CHANNEL_ID),
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              "   ",
+              parameters);
+
+      assertThat(result).contains("\"success\": false");
+      assertThat(result).contains("新的頻道名稱不能為空白");
+    }
+
+    @Test
+    @DisplayName("新頻道名稱超過上限應返回錯誤")
+    void tooLongChannelNameShouldReturnError() {
+      String result =
+          tool.modifyChannelSettings(
+              String.valueOf(TEST_CHANNEL_ID),
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              "a".repeat(101),
+              parameters);
+
+      assertThat(result).contains("\"success\": false");
+      assertThat(result).contains("頻道名稱不能超過 100 字");
+    }
+
+    @Test
+    @DisplayName("僅改名應成功")
+    void renameOnlyShouldSucceed() {
+      @SuppressWarnings("unchecked")
+      IPermissionContainerManager<?, ?> channelManager = mock(IPermissionContainerManager.class);
+      doReturn(channelManager).when(mockChannel).getManager();
+      doReturn(channelManager).when(channelManager).setName("new-channel");
+      doNothing().when(channelManager).complete();
+
+      String result =
+          tool.modifyChannelSettings(
+              String.valueOf(TEST_CHANNEL_ID),
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              "new-channel",
+              parameters);
+
+      assertThat(result).contains("\"success\": true");
+      assertThat(result).contains("\"renamed\": true");
+      assertThat(result).contains("\"permissionsUpdated\": false");
+      assertThat(result).contains("\"channelName\": \"new-channel\"");
     }
   }
 
@@ -131,11 +208,12 @@ class LangChain4jModifyChannelPermissionsToolTest {
       when(mockGuild.getGuildChannelById(TEST_CHANNEL_ID)).thenReturn(null);
 
       String result =
-          tool.modifyChannelPermissions(
+          tool.modifyChannelSettings(
               String.valueOf(TEST_CHANNEL_ID),
               String.valueOf(TEST_ROLE_ID),
               "role",
               List.of("VIEW_CHANNEL"),
+              null,
               null,
               null,
               null,
@@ -151,11 +229,12 @@ class LangChain4jModifyChannelPermissionsToolTest {
       when(mockGuild.getRoleById(TEST_ROLE_ID)).thenReturn(null);
 
       String result =
-          tool.modifyChannelPermissions(
+          tool.modifyChannelSettings(
               String.valueOf(TEST_CHANNEL_ID),
               String.valueOf(TEST_ROLE_ID),
               "role",
               List.of("VIEW_CHANNEL"),
+              null,
               null,
               null,
               null,
@@ -171,11 +250,12 @@ class LangChain4jModifyChannelPermissionsToolTest {
       when(mockGuild.getMemberById(TEST_MEMBER_ID)).thenReturn(null);
 
       String result =
-          tool.modifyChannelPermissions(
+          tool.modifyChannelSettings(
               String.valueOf(TEST_CHANNEL_ID),
               String.valueOf(TEST_MEMBER_ID),
               "member",
               List.of("VIEW_CHANNEL"),
+              null,
               null,
               null,
               null,
@@ -194,8 +274,16 @@ class LangChain4jModifyChannelPermissionsToolTest {
     @DisplayName("無效 ID 格式應返回錯誤")
     void invalidIdFormatShouldReturnError() {
       String result =
-          tool.modifyChannelPermissions(
-              "invalid", "123", "role", List.of("VIEW_CHANNEL"), null, null, null, parameters);
+          tool.modifyChannelSettings(
+              "invalid",
+              "123",
+              "role",
+              List.of("VIEW_CHANNEL"),
+              null,
+              null,
+              null,
+              null,
+              parameters);
 
       assertThat(result).contains("\"success\": false");
       assertThat(result).contains("無效的 ID 格式");
@@ -209,11 +297,12 @@ class LangChain4jModifyChannelPermissionsToolTest {
           .thenReturn(mock(net.dv8tion.jda.api.entities.Role.class));
 
       String result =
-          tool.modifyChannelPermissions(
+          tool.modifyChannelSettings(
               "987654321",
               "111222333",
               "role",
               List.of("VIEW_CHANNEL"),
+              null,
               null,
               null,
               null,

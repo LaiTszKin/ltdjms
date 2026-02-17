@@ -1,6 +1,8 @@
 package ltdjms.discord.aiagent.unit.services.tools;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -21,6 +23,7 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.channel.attribute.IPermissionContainer;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
+import net.dv8tion.jda.api.managers.channel.concrete.CategoryManager;
 
 @DisplayName("T026: LangChain4jModifyCategoryPermissionsTool 單元測試")
 class LangChain4jModifyCategoryPermissionsToolTest {
@@ -76,7 +79,8 @@ class LangChain4jModifyCategoryPermissionsToolTest {
     @DisplayName("缺少 categoryId 應返回錯誤")
     void missingCategoryIdShouldReturnError() {
       String result =
-          tool.modifyCategoryPermissions(null, "123", "role", null, null, null, null, parameters);
+          tool.modifyCategorySettings(
+              null, "123", "role", null, null, null, null, null, parameters);
 
       assertThat(result).contains("\"success\": false");
       assertThat(result).contains("categoryId 未提供");
@@ -86,10 +90,94 @@ class LangChain4jModifyCategoryPermissionsToolTest {
     @DisplayName("缺少 targetId 應返回錯誤")
     void missingTargetIdShouldReturnError() {
       String result =
-          tool.modifyCategoryPermissions("123", null, "role", null, null, null, null, parameters);
+          tool.modifyCategorySettings(
+              "123", null, "role", List.of("VIEW_CHANNEL"), null, null, null, null, parameters);
 
       assertThat(result).contains("\"success\": false");
       assertThat(result).contains("targetId 未提供");
+    }
+
+    @Test
+    @DisplayName("未指定任何操作應返回錯誤")
+    void noChangesShouldReturnError() {
+      String result =
+          tool.modifyCategorySettings(
+              String.valueOf(TEST_CATEGORY_ID),
+              "123",
+              "role",
+              null,
+              null,
+              null,
+              null,
+              null,
+              parameters);
+
+      assertThat(result).contains("\"success\": false");
+      assertThat(result).contains("未指定任何權限或名稱修改操作");
+    }
+
+    @Test
+    @DisplayName("新類別名稱為空白應返回錯誤")
+    void blankCategoryNameShouldReturnError() {
+      String result =
+          tool.modifyCategorySettings(
+              String.valueOf(TEST_CATEGORY_ID),
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              "   ",
+              parameters);
+
+      assertThat(result).contains("\"success\": false");
+      assertThat(result).contains("新的類別名稱不能為空白");
+    }
+
+    @Test
+    @DisplayName("新類別名稱超過上限應返回錯誤")
+    void tooLongCategoryNameShouldReturnError() {
+      String result =
+          tool.modifyCategorySettings(
+              String.valueOf(TEST_CATEGORY_ID),
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              "a".repeat(101),
+              parameters);
+
+      assertThat(result).contains("\"success\": false");
+      assertThat(result).contains("類別名稱不能超過 100 字");
+    }
+
+    @Test
+    @DisplayName("僅改名應成功")
+    void renameOnlyShouldSucceed() {
+      CategoryManager mockManager = mock(CategoryManager.class);
+      doReturn(mockManager).when(mockCategory).getManager();
+      doReturn(mockManager).when(mockManager).setName("new-category");
+      doNothing().when(mockManager).complete();
+
+      String result =
+          tool.modifyCategorySettings(
+              String.valueOf(TEST_CATEGORY_ID),
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              "new-category",
+              parameters);
+
+      assertThat(result).contains("\"success\": true");
+      assertThat(result).contains("\"renamed\": true");
+      assertThat(result).contains("\"permissionsUpdated\": false");
+      assertThat(result).contains("\"categoryName\": \"new-category\"");
     }
   }
 }

@@ -84,7 +84,7 @@ class LangChain4jModifyChannelPermissionsToolIntegrationTest {
 
       // When
       // String result =
-      //     tool.modifyChannelPermissions(
+      //     tool.modifyChannelSettings(
       //         String.valueOf(channelId),
       //         String.valueOf(roleId),
       //         "role",
@@ -117,7 +117,7 @@ class LangChain4jModifyChannelPermissionsToolIntegrationTest {
 
       // When
       // String result =
-      //     tool.modifyChannelPermissions(
+      //     tool.modifyChannelSettings(
       //         String.valueOf(channelId),
       //         String.valueOf(roleId),
       //         "role",
@@ -149,7 +149,7 @@ class LangChain4jModifyChannelPermissionsToolIntegrationTest {
 
       // When
       // String result =
-      //     tool.modifyChannelPermissions(
+      //     tool.modifyChannelSettings(
       //         String.valueOf(channelId),
       //         String.valueOf(roleId),
       //         "role",
@@ -181,7 +181,7 @@ class LangChain4jModifyChannelPermissionsToolIntegrationTest {
 
       // When - 同時添加和移除多個權限
       // String result =
-      //     tool.modifyChannelPermissions(
+      //     tool.modifyChannelSettings(
       //         String.valueOf(channelId),
       //         String.valueOf(roleId),
       //         "role",
@@ -219,7 +219,7 @@ class LangChain4jModifyChannelPermissionsToolIntegrationTest {
 
       // When
       // String result =
-      //     tool.modifyChannelPermissions(
+      //     tool.modifyChannelSettings(
       //         String.valueOf(channelId),
       //         String.valueOf(targetMemberId),
       //         "member",
@@ -249,7 +249,7 @@ class LangChain4jModifyChannelPermissionsToolIntegrationTest {
       // parameters.put("userId", userId);
 
       // When - 先添加權限
-      // tool.modifyChannelPermissions(
+      // tool.modifyChannelSettings(
       //     String.valueOf(channelId),
       //     String.valueOf(targetMemberId),
       //     "member",
@@ -261,7 +261,7 @@ class LangChain4jModifyChannelPermissionsToolIntegrationTest {
 
       // Then - 移除部分權限
       // String result =
-      //     tool.modifyChannelPermissions(
+      //     tool.modifyChannelSettings(
       //         String.valueOf(channelId),
       //         String.valueOf(targetMemberId),
       //         "member",
@@ -296,7 +296,7 @@ class LangChain4jModifyChannelPermissionsToolIntegrationTest {
       // parameters.put("userId", userId);
 
       // 首先添加拒絕權限
-      // tool.modifyChannelPermissions(
+      // tool.modifyChannelSettings(
       //     String.valueOf(channelId),
       //     String.valueOf(roleId),
       //     "role",
@@ -308,7 +308,7 @@ class LangChain4jModifyChannelPermissionsToolIntegrationTest {
 
       // When - 添加相同的允許權限（應自動移除拒絕）
       // String result =
-      //     tool.modifyChannelPermissions(
+      //     tool.modifyChannelSettings(
       //         String.valueOf(channelId),
       //         String.valueOf(roleId),
       //         "role",
@@ -338,7 +338,7 @@ class LangChain4jModifyChannelPermissionsToolIntegrationTest {
       // parameters.put("userId", userId);
 
       // 首先添加允許權限
-      // tool.modifyChannelPermissions(
+      // tool.modifyChannelSettings(
       //     String.valueOf(channelId),
       //     String.valueOf(roleId),
       //     "role",
@@ -350,7 +350,7 @@ class LangChain4jModifyChannelPermissionsToolIntegrationTest {
 
       // When - 添加相同的拒絕權限（應自動移除允許）
       // String result =
-      //     tool.modifyChannelPermissions(
+      //     tool.modifyChannelSettings(
       //         String.valueOf(channelId),
       //         String.valueOf(roleId),
       //         "role",
@@ -386,7 +386,7 @@ class LangChain4jModifyChannelPermissionsToolIntegrationTest {
 
       // When - 第一次操作：添加兩個權限
       // String result1 =
-      //     tool.modifyChannelPermissions(
+      //     tool.modifyChannelSettings(
       //         String.valueOf(channelId),
       //         String.valueOf(roleId),
       //         "role",
@@ -398,7 +398,7 @@ class LangChain4jModifyChannelPermissionsToolIntegrationTest {
 
       // 第二次操作：再添加一個權限
       // String result2 =
-      //     tool.modifyChannelPermissions(
+      //     tool.modifyChannelSettings(
       //         String.valueOf(channelId),
       //         String.valueOf(roleId),
       //         "role",
@@ -435,7 +435,7 @@ class LangChain4jModifyChannelPermissionsToolIntegrationTest {
 
       // When - 使用 <#ID> 格式
       // String result =
-      //     tool.modifyChannelPermissions(
+      //     tool.modifyChannelSettings(
       //         "<#" + channelId + ">",
       //         String.valueOf(roleId),
       //         "role",
@@ -465,7 +465,7 @@ class LangChain4jModifyChannelPermissionsToolIntegrationTest {
 
       // When - 使用 <@&ID> 格式
       // String result =
-      //     tool.modifyChannelPermissions(
+      //     tool.modifyChannelSettings(
       //         String.valueOf(channelId),
       //         "<@&" + roleId + ">",
       //         "role",
@@ -495,7 +495,7 @@ class LangChain4jModifyChannelPermissionsToolIntegrationTest {
 
       // When - 使用 <@ID> 格式
       // String result =
-      //     tool.modifyChannelPermissions(
+      //     tool.modifyChannelSettings(
       //         String.valueOf(channelId),
       //         "<@" + targetMemberId + ">",
       //         "member",

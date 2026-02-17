@@ -181,9 +181,9 @@ public final class ToolExecutionInterceptor {
       case "listRoles" -> "列出角色";
       case "getChannelPermissions" -> "獲取頻道權限";
       case "getRolePermissions" -> "獲取角色權限";
-      case "modifyChannelPermissions" -> "修改頻道權限";
-      case "modifyCategoryPermissions" -> "修改類別權限";
-      case "modifyRolePermissions" -> "修改角色權限";
+      case "modifyChannelSettings", "modifyChannelPermissions" -> "修改頻道設定";
+      case "modifyCategorySettings", "modifyCategoryPermissions" -> "修改類別設定";
+      case "modifyRoleSettings", "modifyRolePermissions" -> "修改角色設定";
       default -> toolName;
     };
   }

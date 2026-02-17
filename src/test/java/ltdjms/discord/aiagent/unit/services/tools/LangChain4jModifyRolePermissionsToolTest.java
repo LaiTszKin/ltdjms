@@ -1,8 +1,12 @@
 package ltdjms.discord.aiagent.unit.services.tools;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+
+import java.util.EnumSet;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +22,7 @@ import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.managers.RoleManager;
 
 @DisplayName("T029: LangChain4jModifyRolePermissionsTool 單元測試")
 class LangChain4jModifyRolePermissionsToolTest {
@@ -28,6 +33,7 @@ class LangChain4jModifyRolePermissionsToolTest {
 
   private LangChain4jModifyRolePermissionsTool tool;
   private Guild mockGuild;
+  private Role mockRole;
   private JDA mockJda;
   private InvocationParameters parameters;
 
@@ -48,10 +54,12 @@ class LangChain4jModifyRolePermissionsToolTest {
     when(mockGuild.getMemberById(TEST_USER_ID)).thenReturn(mockCaller);
     when(mockCaller.hasPermission(Permission.ADMINISTRATOR)).thenReturn(true);
 
-    Role mockRole = mock(Role.class);
+    mockRole = mock(Role.class);
     when(mockRole.getIdLong()).thenReturn(TEST_ROLE_ID);
     when(mockRole.getName()).thenReturn("版主");
     when(mockRole.getPermissionsRaw()).thenReturn(66048L); // VIEW_CHANNEL + MESSAGE_SEND
+    when(mockRole.getPermissions())
+        .thenReturn(EnumSet.of(Permission.VIEW_CHANNEL, Permission.MESSAGE_SEND));
 
     when(mockGuild.getRoleById(TEST_ROLE_ID)).thenReturn(mockRole);
   }
@@ -68,7 +76,7 @@ class LangChain4jModifyRolePermissionsToolTest {
     @Test
     @DisplayName("缺少 roleId 應返回錯誤")
     void missingRoleIdShouldReturnError() {
-      String result = tool.modifyRolePermissions(null, null, null, parameters);
+      String result = tool.modifyRoleSettings(null, null, null, null, parameters);
 
       assertThat(result).contains("\"success\": false");
       assertThat(result).contains("roleId 未提供");
@@ -77,10 +85,49 @@ class LangChain4jModifyRolePermissionsToolTest {
     @Test
     @DisplayName("未指定任何操作應返回錯誤")
     void noChangesShouldReturnError() {
-      String result = tool.modifyRolePermissions("111", null, null, parameters);
+      String result =
+          tool.modifyRoleSettings(String.valueOf(TEST_ROLE_ID), null, null, null, parameters);
 
       assertThat(result).contains("\"success\": false");
-      assertThat(result).contains("未指定任何權限修改操作");
+      assertThat(result).contains("未指定任何權限或名稱修改操作");
+    }
+
+    @Test
+    @DisplayName("新角色名稱為空白應返回錯誤")
+    void blankRoleNameShouldReturnError() {
+      String result =
+          tool.modifyRoleSettings(String.valueOf(TEST_ROLE_ID), "   ", null, null, parameters);
+
+      assertThat(result).contains("\"success\": false");
+      assertThat(result).contains("新的角色名稱不能為空白");
+    }
+
+    @Test
+    @DisplayName("新角色名稱超過上限應返回錯誤")
+    void tooLongRoleNameShouldReturnError() {
+      String result =
+          tool.modifyRoleSettings(
+              String.valueOf(TEST_ROLE_ID), "a".repeat(101), null, null, parameters);
+
+      assertThat(result).contains("\"success\": false");
+      assertThat(result).contains("角色名稱不能超過 100 字");
+    }
+
+    @Test
+    @DisplayName("僅改名應成功")
+    void renameOnlyShouldSucceed() {
+      RoleManager mockManager = mock(RoleManager.class);
+      doReturn(mockManager).when(mockRole).getManager();
+      doReturn(mockManager).when(mockManager).setName("新角色");
+      doNothing().when(mockManager).complete();
+
+      String result =
+          tool.modifyRoleSettings(String.valueOf(TEST_ROLE_ID), "新角色", null, null, parameters);
+
+      assertThat(result).contains("\"success\": true");
+      assertThat(result).contains("\"renamed\": true");
+      assertThat(result).contains("\"permissionsUpdated\": false");
+      assertThat(result).contains("\"name\": \"新角色\"");
     }
   }
 }

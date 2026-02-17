@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.29.0] - 2026-02-17
+
+### Added
+- **aiagent**: 新增 `LangChain4jGetCategoryPermissionsTool`，可查詢指定類別的權限覆寫（包含允許/拒絕/中立與目標資訊）
+
+### Changed
+- **aiagent**: 將工具名稱調整為 `modifyChannelSettings`、`modifyCategorySettings`、`modifyRoleSettings`，避免「僅能改權限」的語意誤導
+- **aiagent**: 三個 `modify*Settings` 工具新增 `newName`，支援只改名稱、只改權限，或名稱與權限同時修改，並在回傳中新增 `renamed` / `permissionsUpdated`
+- **aiagent**: `ToolExecutionInterceptor` 顯示名稱改為「修改*設定」，同時保留舊工具名相容映射
+- **aichat**: `LangChain4jAIChatService` 與 DI 註冊更新，納入 `getCategoryPermissions` 並對齊最新工具命名
+
+### Tests
+- 新增 `modifyChannelSettings`、`modifyCategorySettings`、`modifyRoleSettings` 的邊界測試（空白名稱、超長名稱、僅改名）
+- 新增 `LangChain4jGetCategoryPermissionsToolTest`，並更新 `LangChain4jAIChatServiceTest` 對齊工具清單
+
 ## [0.28.3] - 2026-02-17
 
 ### Added

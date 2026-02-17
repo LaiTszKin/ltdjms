@@ -6,10 +6,15 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 import ltdjms.discord.currency.domain.CurrencyTransaction;
 import ltdjms.discord.currency.services.GameRewardService;
 import ltdjms.discord.gametoken.domain.DiceGame1Config;
@@ -340,6 +345,20 @@ class DiceGame1ServiceTest {
   @Nested
   @DisplayName("Performance regression tests")
   class PerformanceRegression {
+    private Logger diceGameLogger;
+    private Level previousLevel;
+
+    @BeforeEach
+    void reduceLoggingNoiseForPerformanceChecks() {
+      diceGameLogger = (Logger) LoggerFactory.getLogger(DiceGame1Service.class);
+      previousLevel = diceGameLogger.getLevel();
+      diceGameLogger.setLevel(Level.WARN);
+    }
+
+    @AfterEach
+    void restoreLoggingLevel() {
+      diceGameLogger.setLevel(previousLevel);
+    }
 
     @Test
     @DisplayName("should complete 1000 games within 100ms")

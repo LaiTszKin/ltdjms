@@ -33,6 +33,7 @@ import ltdjms.discord.aiagent.services.ToolExecutionInterceptor;
 import ltdjms.discord.aiagent.services.tools.LangChain4jCreateCategoryTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jCreateChannelTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jCreateRoleTool;
+import ltdjms.discord.aiagent.services.tools.LangChain4jGetCategoryPermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jGetChannelPermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jGetRolePermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jListCategoriesTool;
@@ -183,6 +184,17 @@ public class AIAgentModule {
   @Singleton
   public LangChain4jGetChannelPermissionsTool provideLangChain4jGetChannelPermissionsTool() {
     return new LangChain4jGetChannelPermissionsTool();
+  }
+
+  /**
+   * 提供 LangChain4J 獲取類別權限工具。
+   *
+   * @return LangChain4jGetCategoryPermissionsTool 實例
+   */
+  @Provides
+  @Singleton
+  public LangChain4jGetCategoryPermissionsTool provideLangChain4jGetCategoryPermissionsTool() {
+    return new LangChain4jGetCategoryPermissionsTool();
   }
 
   /**
@@ -413,6 +425,7 @@ public class AIAgentModule {
    * @param listCategoriesTool 列出類別工具
    * @param listRolesTool 列出角色工具
    * @param getChannelPermissionsTool 獲取頻道權限工具
+   * @param getCategoryPermissionsTool 獲取類別權限工具
    * @param modifyChannelPermissionsTool 修改頻道權限工具
    * @param modifyCategoryPermissionsTool 修改類別權限工具
    * @param createRoleTool 創建角色工具
@@ -436,6 +449,7 @@ public class AIAgentModule {
       LangChain4jListCategoriesTool listCategoriesTool,
       LangChain4jListRolesTool listRolesTool,
       LangChain4jGetChannelPermissionsTool getChannelPermissionsTool,
+      LangChain4jGetCategoryPermissionsTool getCategoryPermissionsTool,
       LangChain4jModifyChannelPermissionsTool modifyChannelPermissionsTool,
       LangChain4jModifyCategoryPermissionsTool modifyCategoryPermissionsTool,
       LangChain4jCreateRoleTool createRoleTool,
@@ -456,6 +470,7 @@ public class AIAgentModule {
         listCategoriesTool,
         listRolesTool,
         getChannelPermissionsTool,
+        getCategoryPermissionsTool,
         modifyChannelPermissionsTool,
         modifyCategoryPermissionsTool,
         createRoleTool,

@@ -27,6 +27,7 @@ import ltdjms.discord.aiagent.services.ToolExecutionInterceptor;
 import ltdjms.discord.aiagent.services.tools.LangChain4jCreateCategoryTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jCreateChannelTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jCreateRoleTool;
+import ltdjms.discord.aiagent.services.tools.LangChain4jGetCategoryPermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jGetChannelPermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jGetRolePermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jListCategoriesTool;
@@ -101,6 +102,7 @@ public final class LangChain4jAIChatService implements AIChatService {
   private final LangChain4jListCategoriesTool listCategoriesTool;
   private final LangChain4jListRolesTool listRolesTool;
   private final LangChain4jGetChannelPermissionsTool getChannelPermissionsTool;
+  private final LangChain4jGetCategoryPermissionsTool getCategoryPermissionsTool;
   private final LangChain4jModifyChannelPermissionsTool modifyChannelPermissionsTool;
   private final LangChain4jModifyCategoryPermissionsTool modifyCategoryPermissionsTool;
   private final LangChain4jCreateRoleTool createRoleTool;
@@ -130,6 +132,7 @@ public final class LangChain4jAIChatService implements AIChatService {
     private final LangChain4jListCategoriesTool listCategoriesTool;
     private final LangChain4jListRolesTool listRolesTool;
     private final LangChain4jGetChannelPermissionsTool getChannelPermissionsTool;
+    private final LangChain4jGetCategoryPermissionsTool getCategoryPermissionsTool;
     private final LangChain4jModifyChannelPermissionsTool modifyChannelPermissionsTool;
     private final LangChain4jCreateChannelTool createChannelTool;
     private final LangChain4jCreateCategoryTool createCategoryTool;
@@ -145,6 +148,7 @@ public final class LangChain4jAIChatService implements AIChatService {
         LangChain4jListCategoriesTool listCategoriesTool,
         LangChain4jListRolesTool listRolesTool,
         LangChain4jGetChannelPermissionsTool getChannelPermissionsTool,
+        LangChain4jGetCategoryPermissionsTool getCategoryPermissionsTool,
         LangChain4jModifyChannelPermissionsTool modifyChannelPermissionsTool,
         LangChain4jCreateChannelTool createChannelTool,
         LangChain4jCreateCategoryTool createCategoryTool,
@@ -158,6 +162,7 @@ public final class LangChain4jAIChatService implements AIChatService {
       this.listCategoriesTool = listCategoriesTool;
       this.listRolesTool = listRolesTool;
       this.getChannelPermissionsTool = getChannelPermissionsTool;
+      this.getCategoryPermissionsTool = getCategoryPermissionsTool;
       this.modifyChannelPermissionsTool = modifyChannelPermissionsTool;
       this.createChannelTool = createChannelTool;
       this.createCategoryTool = createCategoryTool;
@@ -183,6 +188,7 @@ public final class LangChain4jAIChatService implements AIChatService {
             listCategoriesTool,
             listRolesTool,
             getChannelPermissionsTool,
+            getCategoryPermissionsTool,
             modifyChannelPermissionsTool,
             modifyCategoryPermissionsTool,
             createRoleTool,
@@ -210,6 +216,7 @@ public final class LangChain4jAIChatService implements AIChatService {
    * @param listCategoriesTool 列出類別工具
    * @param listRolesTool 列出角色工具
    * @param getChannelPermissionsTool 獲取頻道權限工具
+   * @param getCategoryPermissionsTool 獲取類別權限工具
    * @param modifyChannelPermissionsTool 修改頻道權限工具
    * @param modifyCategoryPermissionsTool 修改類別權限工具
    * @param createRoleTool 創建角色工具
@@ -232,6 +239,7 @@ public final class LangChain4jAIChatService implements AIChatService {
       LangChain4jListCategoriesTool listCategoriesTool,
       LangChain4jListRolesTool listRolesTool,
       LangChain4jGetChannelPermissionsTool getChannelPermissionsTool,
+      LangChain4jGetCategoryPermissionsTool getCategoryPermissionsTool,
       LangChain4jModifyChannelPermissionsTool modifyChannelPermissionsTool,
       LangChain4jModifyCategoryPermissionsTool modifyCategoryPermissionsTool,
       LangChain4jCreateRoleTool createRoleTool,
@@ -252,6 +260,7 @@ public final class LangChain4jAIChatService implements AIChatService {
         listCategoriesTool,
         listRolesTool,
         getChannelPermissionsTool,
+        getCategoryPermissionsTool,
         modifyChannelPermissionsTool,
         modifyCategoryPermissionsTool,
         createRoleTool,
@@ -276,6 +285,7 @@ public final class LangChain4jAIChatService implements AIChatService {
       LangChain4jListCategoriesTool listCategoriesTool,
       LangChain4jListRolesTool listRolesTool,
       LangChain4jGetChannelPermissionsTool getChannelPermissionsTool,
+      LangChain4jGetCategoryPermissionsTool getCategoryPermissionsTool,
       LangChain4jModifyChannelPermissionsTool modifyChannelPermissionsTool,
       LangChain4jModifyCategoryPermissionsTool modifyCategoryPermissionsTool,
       LangChain4jCreateRoleTool createRoleTool,
@@ -296,6 +306,7 @@ public final class LangChain4jAIChatService implements AIChatService {
     this.listCategoriesTool = listCategoriesTool;
     this.listRolesTool = listRolesTool;
     this.getChannelPermissionsTool = getChannelPermissionsTool;
+    this.getCategoryPermissionsTool = getCategoryPermissionsTool;
     this.modifyChannelPermissionsTool = modifyChannelPermissionsTool;
     this.modifyCategoryPermissionsTool = modifyCategoryPermissionsTool;
     this.createRoleTool = createRoleTool;
@@ -312,6 +323,7 @@ public final class LangChain4jAIChatService implements AIChatService {
                 listCategoriesTool,
                 listRolesTool,
                 getChannelPermissionsTool,
+                getCategoryPermissionsTool,
                 modifyChannelPermissionsTool,
                 createChannelTool,
                 createCategoryTool,
@@ -320,7 +332,7 @@ public final class LangChain4jAIChatService implements AIChatService {
                 getRolePermissionsTool,
                 modifyRolePermissionsTool);
     LOG.info(
-        "LangChain4jAIChatService initialized with model: {}, tools: 11, reasoning: {}",
+        "LangChain4jAIChatService initialized with model: {}, tools: 12, reasoning: {}",
         config.model(),
         config.showReasoning());
   }
