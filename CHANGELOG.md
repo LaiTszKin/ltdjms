@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.29.1] - 2026-02-17
+
+### Fixed
+- **aichat**: Agent 模式完成時不再編輯舊的 `:thought_balloon: AI 正在思考...` 訊息，改為先移除 thinking/reasoning 訊息再發送新的最終結論，避免工具呼叫歷史顯示在結論下方
+- **aichat**: Agent 模式改為只送出最後整段結論內容，不再混入作業中的中間內容片段
+- **gametoken**: 修正 `DiceGame1ServiceTest` 失敗情境，補齊缺漏的邊界測試案例
+
+### Tests
+- 新增 `AIChatMentionListenerAgentConclusionTest`，驗證 Agent 會刪除 thinking 訊息，且只發送一則最終結論訊息
+
 ## [0.29.0] - 2026-02-17
 
 ### Added

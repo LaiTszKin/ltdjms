@@ -313,16 +313,10 @@ public class AIChatMentionListener extends ListenerAdapter {
       Message thinkingMessage,
       long messageId) {
     StringBuilder contentBuffer = new StringBuilder();
-    boolean streamProcessed = enableMarkdownValidation && !streamingBypassValidation;
-    if (streamProcessed) {
-      contentBuffer.setLength(0);
-    }
     AtomicBoolean completed = new AtomicBoolean(false);
     final ReasoningMessageTracker reasoningTracker = new ReasoningMessageTracker();
     reasoningTracker.setInitialMessage(thinkingMessage);
     final boolean[] isFirstChunk = {true};
-    final boolean[] hasReasoning = {false};
-    final AtomicBoolean firstContentSent = new AtomicBoolean(false);
 
     aiChatService.generateStreamingResponse(
         guildId,
@@ -341,7 +335,6 @@ public class AIChatMentionListener extends ListenerAdapter {
             if (type == StreamingResponseHandler.ChunkType.REASONING) {
               if (showReasoning) {
                 String formattedChunk = formatAsSpoiler(chunk);
-                hasReasoning[0] = true;
                 if (isFirstChunk[0]) {
                   thinkingMessage.editMessage(formattedChunk).queue();
                   isFirstChunk[0] = false;
@@ -352,13 +345,7 @@ public class AIChatMentionListener extends ListenerAdapter {
                 }
               }
             } else if (type == StreamingResponseHandler.ChunkType.CONTENT) {
-              if (streamProcessed) {
-                if (!chunk.isBlank()) {
-                  boolean allowEditThinking = !(showReasoning && hasReasoning[0]);
-                  sendStreamingContentChunk(
-                      channel, thinkingMessage, chunk, firstContentSent, allowEditThinking);
-                }
-              } else {
+              if (!chunk.isBlank()) {
                 contentBuffer.append(chunk);
               }
             }
@@ -368,26 +355,17 @@ public class AIChatMentionListener extends ListenerAdapter {
             return;
           }
 
-          if (streamProcessed) {
-            if (!firstContentSent.get()) {
-              thinkingMessage.editMessage(":question: AI 沒有產生回應").queue();
-            }
-            LOGGER.info("AI streaming completed");
-            return;
-          }
-
           String fullContent = contentBuffer.toString().trim();
-          if (fullContent.isEmpty()) {
-            thinkingMessage.editMessage(":question: AI 沒有產生回應").queue();
-            return;
-          }
+          reasoningTracker.deleteAll(
+              () -> {
+                if (fullContent.isEmpty()) {
+                  channel.sendMessage(":question: AI 沒有產生回應").queue();
+                  return;
+                }
 
-          if (showReasoning && hasReasoning[0]) {
-            sendBufferedContent(channel, null, fullContent);
-          } else {
-            sendBufferedContent(channel, thinkingMessage, fullContent);
-          }
-          LOGGER.info("AI streaming completed");
+                sendBufferedContent(channel, null, fullContent);
+                LOGGER.info("AI streaming completed");
+              });
         });
   }
 
