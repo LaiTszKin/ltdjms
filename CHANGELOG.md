@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.28.2] - 2026-02-17
+
+### Fixed
+- **panel**: 統一 `/admin-panel` 主選單的初始載入與返回渲染路徑，避免兩套獨立實作造成內容不一致
+
+### Tests
+- **panel**: 新增「初始載入 vs 返回主選單」一致性測試，鎖定主選單欄位與按鈕 ID 必須完全相同
+
 ## [0.28.1] - 2026-02-14
 
 ### Fixed

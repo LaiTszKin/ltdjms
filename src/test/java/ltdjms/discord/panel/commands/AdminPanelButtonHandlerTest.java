@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,6 +19,9 @@ class AdminPanelButtonHandlerTest {
 
   private final AdminPanelButtonHandler handler =
       new AdminPanelButtonHandler(mock(AdminPanelService.class), new AdminPanelSessionManager());
+
+  private final AdminPanelCommandHandler commandHandler =
+      new AdminPanelCommandHandler(mock(AdminPanelService.class), new AdminPanelSessionManager());
 
   @Test
   @DisplayName("返回主選單時商品按鈕應維持「商品與兌換碼管理」文字")
@@ -49,5 +53,28 @@ class AdminPanelButtonHandlerTest {
     assertThat(dispatchButton.getId())
         .isEqualTo(AdminPanelButtonHandler.BUTTON_DISPATCH_AFTER_SALES_CONFIG);
     assertThat(dispatchButton.getLabel()).isEqualTo("🧰 派單售後設定");
+  }
+
+  @Test
+  @DisplayName("主選單初始載入與返回主選單應使用相同渲染路徑")
+  void loadedAndReturnedMainPanelShouldUseSameRenderingPath() {
+    MessageEmbed commandEmbed = commandHandler.buildMainPanelEmbed("💰");
+    MessageEmbed buttonEmbed = handler.buildMainPanelEmbed("💰");
+
+    assertThat(buttonEmbed.getFields().stream().map(MessageEmbed.Field::getName).toList())
+        .isEqualTo(commandEmbed.getFields().stream().map(MessageEmbed.Field::getName).toList());
+
+    List<String> commandButtons = flattenButtonIds(commandHandler.buildMainActionRows("💰"));
+    List<String> buttonButtons = flattenButtonIds(handler.buildMainPanelComponents("💰"));
+
+    assertThat(buttonButtons).isEqualTo(commandButtons);
+  }
+
+  private List<String> flattenButtonIds(List<ActionRow> rows) {
+    return rows.stream()
+        .flatMap(row -> row.getComponents().stream())
+        .map(component -> (Button) component)
+        .map(Button::getId)
+        .collect(Collectors.toList());
   }
 }

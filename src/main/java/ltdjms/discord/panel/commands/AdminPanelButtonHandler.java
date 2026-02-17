@@ -971,33 +971,11 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
   }
 
   MessageEmbed buildMainPanelEmbed(String currencyIcon) {
-    return new EmbedBuilder()
-        .setTitle("🔧 管理面板")
-        .setDescription("選擇要管理的項目：")
-        .setColor(EMBED_COLOR)
-        .addField(currencyIcon + " 使用者餘額管理", "調整成員的貨幣餘額", false)
-        .addField("🎮 遊戲代幣管理", "調整成員的遊戲代幣餘額", false)
-        .addField("🎲 遊戲設定管理", "調整遊戲的代幣消耗設定", false)
-        .addField("📦 商品與兌換碼管理", "建立商品、生成兌換碼、查詢兌換狀態", false)
-        .addField("🤖 AI 頻道設定", "設定允許使用 AI 功能的頻道", false)
-        .addField("🤖 AI Agent 配置", "管理哪些頻道啟用 AI Agent 模式", false)
-        .addField("🧰 派單售後設定", "設定派單系統的售後人員名單", false)
-        .setFooter("點擊下方按鈕進入對應功能")
-        .build();
+    return AdminPanelCommandHandler.buildMainPanelEmbed(currencyIcon);
   }
 
   List<ActionRow> buildMainPanelComponents(String currencyIcon) {
-    return List.of(
-        ActionRow.of(
-            Button.primary(BUTTON_BALANCE, currencyIcon + " 使用者餘額管理"),
-            Button.primary(BUTTON_TOKENS, "🎮 遊戲代幣管理")),
-        ActionRow.of(
-            Button.primary(BUTTON_GAMES, "🎲 遊戲設定管理"),
-            Button.primary(AdminProductPanelHandler.BUTTON_PRODUCTS, "📦 商品與兌換碼管理")),
-        ActionRow.of(
-            Button.primary(BUTTON_AI_CHANNEL_CONFIG, "🤖 AI 頻道設定"),
-            Button.primary(BUTTON_AI_AGENT_CONFIG, "🤖 AI Agent 配置")),
-        ActionRow.of(Button.primary(BUTTON_DISPATCH_AFTER_SALES_CONFIG, "🧰 派單售後設定")));
+    return AdminPanelCommandHandler.buildMainActionRows(currencyIcon);
   }
 
   // ===== Modal Handlers =====

@@ -28,14 +28,16 @@ public class AdminPanelCommandHandler implements SlashCommandListener.CommandHan
   private static final Color EMBED_COLOR = new Color(0xED4245); // Discord red for admin
 
   // Button IDs
-  public static final String BUTTON_BALANCE_MANAGEMENT = "admin_panel_balance";
-  public static final String BUTTON_TOKEN_MANAGEMENT = "admin_panel_tokens";
-  public static final String BUTTON_GAME_MANAGEMENT = "admin_panel_games";
+  public static final String BUTTON_BALANCE_MANAGEMENT = AdminPanelButtonHandler.BUTTON_BALANCE;
+  public static final String BUTTON_TOKEN_MANAGEMENT = AdminPanelButtonHandler.BUTTON_TOKENS;
+  public static final String BUTTON_GAME_MANAGEMENT = AdminPanelButtonHandler.BUTTON_GAMES;
   public static final String BUTTON_PRODUCT_MANAGEMENT = AdminProductPanelHandler.BUTTON_PRODUCTS;
-  public static final String BUTTON_AI_CHANNEL_CONFIG = "admin_panel_ai_channel";
-  public static final String BUTTON_AI_AGENT_CONFIG = "admin_panel_ai_agent";
+  public static final String BUTTON_AI_CHANNEL_CONFIG =
+      AdminPanelButtonHandler.BUTTON_AI_CHANNEL_CONFIG;
+  public static final String BUTTON_AI_AGENT_CONFIG =
+      AdminPanelButtonHandler.BUTTON_AI_AGENT_CONFIG;
   public static final String BUTTON_DISPATCH_AFTER_SALES_CONFIG =
-      "admin_panel_dispatch_after_sales";
+      AdminPanelButtonHandler.BUTTON_DISPATCH_AFTER_SALES_CONFIG;
 
   private final AdminPanelService adminPanelService;
   private final AdminPanelSessionManager adminPanelSessionManager;
@@ -76,7 +78,7 @@ public class AdminPanelCommandHandler implements SlashCommandListener.CommandHan
             });
   }
 
-  MessageEmbed buildMainPanelEmbed(String currencyIcon) {
+  static MessageEmbed buildMainPanelEmbed(String currencyIcon) {
     return new EmbedBuilder()
         .setTitle("🔧 管理面板")
         .setDescription("選擇要管理的項目：")
@@ -93,7 +95,7 @@ public class AdminPanelCommandHandler implements SlashCommandListener.CommandHan
   }
 
   /** 建立主選單的按鈕列，保持測試可驗證性。 */
-  List<Button> buildMainActionButtons(String currencyIcon) {
+  static List<Button> buildMainActionButtons(String currencyIcon) {
     return List.of(
         Button.primary(BUTTON_BALANCE_MANAGEMENT, currencyIcon + " 使用者餘額管理"),
         Button.primary(BUTTON_TOKEN_MANAGEMENT, "🎮 遊戲代幣管理"),
@@ -105,7 +107,7 @@ public class AdminPanelCommandHandler implements SlashCommandListener.CommandHan
   }
 
   /** 建立主選單的 ActionRow。 */
-  List<ActionRow> buildMainActionRows(String currencyIcon) {
+  static List<ActionRow> buildMainActionRows(String currencyIcon) {
     List<Button> buttons = buildMainActionButtons(currencyIcon);
     return List.of(
         ActionRow.of(buttons.get(0), buttons.get(1)),
