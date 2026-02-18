@@ -39,9 +39,12 @@ import ltdjms.discord.aiagent.services.tools.LangChain4jGetRolePermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jListCategoriesTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jListChannelsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jListRolesTool;
+import ltdjms.discord.aiagent.services.tools.LangChain4jManageMessageTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jModifyCategoryPermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jModifyChannelPermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jModifyRolePermissionsTool;
+import ltdjms.discord.aiagent.services.tools.LangChain4jSearchMessagesTool;
+import ltdjms.discord.aiagent.services.tools.LangChain4jSendMessagesTool;
 import ltdjms.discord.aichat.domain.AIServiceConfig;
 import ltdjms.discord.aichat.services.LangChain4jAIChatService;
 import ltdjms.discord.aichat.services.PromptLoader;
@@ -151,6 +154,39 @@ public class AIAgentModule {
   @Singleton
   public LangChain4jListChannelsTool provideLangChain4jListChannelsTool() {
     return new LangChain4jListChannelsTool();
+  }
+
+  /**
+   * 提供 LangChain4J 發送訊息工具。
+   *
+   * @return LangChain4jSendMessagesTool 實例
+   */
+  @Provides
+  @Singleton
+  public LangChain4jSendMessagesTool provideLangChain4jSendMessagesTool() {
+    return new LangChain4jSendMessagesTool();
+  }
+
+  /**
+   * 提供 LangChain4J 搜尋訊息工具。
+   *
+   * @return LangChain4jSearchMessagesTool 實例
+   */
+  @Provides
+  @Singleton
+  public LangChain4jSearchMessagesTool provideLangChain4jSearchMessagesTool() {
+    return new LangChain4jSearchMessagesTool();
+  }
+
+  /**
+   * 提供 LangChain4J 訊息管理工具。
+   *
+   * @return LangChain4jManageMessageTool 實例
+   */
+  @Provides
+  @Singleton
+  public LangChain4jManageMessageTool provideLangChain4jManageMessageTool() {
+    return new LangChain4jManageMessageTool();
   }
 
   /**
@@ -431,6 +467,9 @@ public class AIAgentModule {
    * @param createRoleTool 創建角色工具
    * @param getRolePermissionsTool 獲取角色權限工具
    * @param modifyRolePermissionsTool 修改角色權限工具
+   * @param sendMessagesTool 發送訊息工具
+   * @param searchMessagesTool 搜尋訊息工具
+   * @param manageMessageTool 訊息管理工具
    * @return LangChain4jAIChatService 實例
    */
   @Provides
@@ -455,6 +494,9 @@ public class AIAgentModule {
       LangChain4jCreateRoleTool createRoleTool,
       LangChain4jGetRolePermissionsTool getRolePermissionsTool,
       LangChain4jModifyRolePermissionsTool modifyRolePermissionsTool,
+      LangChain4jSendMessagesTool sendMessagesTool,
+      LangChain4jSearchMessagesTool searchMessagesTool,
+      LangChain4jManageMessageTool manageMessageTool,
       AIAgentChannelConfigService agentChannelConfigService) {
     return new LangChain4jAIChatService(
         config,
@@ -476,6 +518,9 @@ public class AIAgentModule {
         createRoleTool,
         getRolePermissionsTool,
         modifyRolePermissionsTool,
+        sendMessagesTool,
+        searchMessagesTool,
+        manageMessageTool,
         agentChannelConfigService);
   }
 

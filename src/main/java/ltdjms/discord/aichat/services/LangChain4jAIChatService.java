@@ -33,9 +33,12 @@ import ltdjms.discord.aiagent.services.tools.LangChain4jGetRolePermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jListCategoriesTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jListChannelsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jListRolesTool;
+import ltdjms.discord.aiagent.services.tools.LangChain4jManageMessageTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jModifyCategoryPermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jModifyChannelPermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jModifyRolePermissionsTool;
+import ltdjms.discord.aiagent.services.tools.LangChain4jSearchMessagesTool;
+import ltdjms.discord.aiagent.services.tools.LangChain4jSendMessagesTool;
 import ltdjms.discord.aichat.domain.AIServiceConfig;
 import ltdjms.discord.aichat.domain.SystemPrompt;
 import ltdjms.discord.shared.DomainError;
@@ -108,6 +111,9 @@ public final class LangChain4jAIChatService implements AIChatService {
   private final LangChain4jCreateRoleTool createRoleTool;
   private final LangChain4jGetRolePermissionsTool getRolePermissionsTool;
   private final LangChain4jModifyRolePermissionsTool modifyRolePermissionsTool;
+  private final LangChain4jSendMessagesTool sendMessagesTool;
+  private final LangChain4jSearchMessagesTool searchMessagesTool;
+  private final LangChain4jManageMessageTool manageMessageTool;
   private final AIAgentChannelConfigService agentChannelConfigService;
   private final AgentServiceFactory agentServiceFactory;
 
@@ -140,6 +146,9 @@ public final class LangChain4jAIChatService implements AIChatService {
     private final LangChain4jCreateRoleTool createRoleTool;
     private final LangChain4jGetRolePermissionsTool getRolePermissionsTool;
     private final LangChain4jModifyRolePermissionsTool modifyRolePermissionsTool;
+    private final LangChain4jSendMessagesTool sendMessagesTool;
+    private final LangChain4jSearchMessagesTool searchMessagesTool;
+    private final LangChain4jManageMessageTool manageMessageTool;
 
     DefaultAgentServiceFactory(
         StreamingChatModel streamingChatModel,
@@ -155,7 +164,10 @@ public final class LangChain4jAIChatService implements AIChatService {
         LangChain4jModifyCategoryPermissionsTool modifyCategoryPermissionsTool,
         LangChain4jCreateRoleTool createRoleTool,
         LangChain4jGetRolePermissionsTool getRolePermissionsTool,
-        LangChain4jModifyRolePermissionsTool modifyRolePermissionsTool) {
+        LangChain4jModifyRolePermissionsTool modifyRolePermissionsTool,
+        LangChain4jSendMessagesTool sendMessagesTool,
+        LangChain4jSearchMessagesTool searchMessagesTool,
+        LangChain4jManageMessageTool manageMessageTool) {
       this.streamingChatModel = streamingChatModel;
       this.chatMemoryProvider = chatMemoryProvider;
       this.listChannelsTool = listChannelsTool;
@@ -170,6 +182,9 @@ public final class LangChain4jAIChatService implements AIChatService {
       this.createRoleTool = createRoleTool;
       this.getRolePermissionsTool = getRolePermissionsTool;
       this.modifyRolePermissionsTool = modifyRolePermissionsTool;
+      this.sendMessagesTool = sendMessagesTool;
+      this.searchMessagesTool = searchMessagesTool;
+      this.manageMessageTool = manageMessageTool;
     }
 
     @Override
@@ -193,7 +208,10 @@ public final class LangChain4jAIChatService implements AIChatService {
             modifyCategoryPermissionsTool,
             createRoleTool,
             getRolePermissionsTool,
-            modifyRolePermissionsTool);
+            modifyRolePermissionsTool,
+            sendMessagesTool,
+            searchMessagesTool,
+            manageMessageTool);
       }
 
       return builder.build();
@@ -222,6 +240,9 @@ public final class LangChain4jAIChatService implements AIChatService {
    * @param createRoleTool 創建角色工具
    * @param getRolePermissionsTool 獲取角色權限工具
    * @param modifyRolePermissionsTool 修改角色權限工具
+   * @param sendMessagesTool 發送訊息工具
+   * @param searchMessagesTool 搜尋訊息工具
+   * @param manageMessageTool 訊息管理工具
    * @param agentChannelConfigService Agent 頻道配置服務（決定是否允許工具）
    */
   @Inject
@@ -245,6 +266,9 @@ public final class LangChain4jAIChatService implements AIChatService {
       LangChain4jCreateRoleTool createRoleTool,
       LangChain4jGetRolePermissionsTool getRolePermissionsTool,
       LangChain4jModifyRolePermissionsTool modifyRolePermissionsTool,
+      LangChain4jSendMessagesTool sendMessagesTool,
+      LangChain4jSearchMessagesTool searchMessagesTool,
+      LangChain4jManageMessageTool manageMessageTool,
       AIAgentChannelConfigService agentChannelConfigService) {
     this(
         config,
@@ -266,6 +290,9 @@ public final class LangChain4jAIChatService implements AIChatService {
         createRoleTool,
         getRolePermissionsTool,
         modifyRolePermissionsTool,
+        sendMessagesTool,
+        searchMessagesTool,
+        manageMessageTool,
         agentChannelConfigService,
         null);
   }
@@ -291,6 +318,9 @@ public final class LangChain4jAIChatService implements AIChatService {
       LangChain4jCreateRoleTool createRoleTool,
       LangChain4jGetRolePermissionsTool getRolePermissionsTool,
       LangChain4jModifyRolePermissionsTool modifyRolePermissionsTool,
+      LangChain4jSendMessagesTool sendMessagesTool,
+      LangChain4jSearchMessagesTool searchMessagesTool,
+      LangChain4jManageMessageTool manageMessageTool,
       AIAgentChannelConfigService agentChannelConfigService,
       AgentServiceFactory agentServiceFactory) {
     this.config = config;
@@ -312,6 +342,9 @@ public final class LangChain4jAIChatService implements AIChatService {
     this.createRoleTool = createRoleTool;
     this.getRolePermissionsTool = getRolePermissionsTool;
     this.modifyRolePermissionsTool = modifyRolePermissionsTool;
+    this.sendMessagesTool = sendMessagesTool;
+    this.searchMessagesTool = searchMessagesTool;
+    this.manageMessageTool = manageMessageTool;
     this.agentChannelConfigService = agentChannelConfigService;
     this.agentServiceFactory =
         (agentServiceFactory != null)
@@ -330,9 +363,12 @@ public final class LangChain4jAIChatService implements AIChatService {
                 modifyCategoryPermissionsTool,
                 createRoleTool,
                 getRolePermissionsTool,
-                modifyRolePermissionsTool);
+                modifyRolePermissionsTool,
+                sendMessagesTool,
+                searchMessagesTool,
+                manageMessageTool);
     LOG.info(
-        "LangChain4jAIChatService initialized with model: {}, tools: 12, reasoning: {}",
+        "LangChain4jAIChatService initialized with model: {}, tools: 15, reasoning: {}",
         config.model(),
         config.showReasoning());
   }

@@ -618,10 +618,13 @@ class AIAgentDomainTest {
       List<ToolDefinition> tools = AIAgentTools.all();
 
       // Then
-      assertThat(tools).hasSize(3);
+      assertThat(tools).hasSize(6);
       assertThat(tools.get(0).name()).isEqualTo("create_channel");
       assertThat(tools.get(1).name()).isEqualTo("create_category");
       assertThat(tools.get(2).name()).isEqualTo("list_channels");
+      assertThat(tools.get(3).name()).isEqualTo("send_messages");
+      assertThat(tools.get(4).name()).isEqualTo("search_messages");
+      assertThat(tools.get(5).name()).isEqualTo("manage_message");
     }
 
     @Test
@@ -647,6 +650,33 @@ class AIAgentDomainTest {
       // Then
       assertThat(AIAgentTools.LIST_CHANNELS.name()).isEqualTo("list_channels");
       assertThat(AIAgentTools.LIST_CHANNELS.description()).contains("頻道");
+    }
+
+    @Test
+    @DisplayName("should have SEND_MESSAGES tool")
+    void shouldHaveSendMessagesTool() {
+      // Then
+      assertThat(AIAgentTools.SEND_MESSAGES.name()).isEqualTo("send_messages");
+      assertThat(AIAgentTools.SEND_MESSAGES.description()).contains("訊息");
+      assertThat(AIAgentTools.SEND_MESSAGES.parameters()).hasSize(3);
+    }
+
+    @Test
+    @DisplayName("should have SEARCH_MESSAGES tool")
+    void shouldHaveSearchMessagesTool() {
+      // Then
+      assertThat(AIAgentTools.SEARCH_MESSAGES.name()).isEqualTo("search_messages");
+      assertThat(AIAgentTools.SEARCH_MESSAGES.description()).contains("搜尋");
+      assertThat(AIAgentTools.SEARCH_MESSAGES.parameters()).hasSize(4);
+    }
+
+    @Test
+    @DisplayName("should have MANAGE_MESSAGE tool")
+    void shouldHaveManageMessageTool() {
+      // Then
+      assertThat(AIAgentTools.MANAGE_MESSAGE.name()).isEqualTo("manage_message");
+      assertThat(AIAgentTools.MANAGE_MESSAGE.description()).contains("訊息");
+      assertThat(AIAgentTools.MANAGE_MESSAGE.parameters()).hasSize(4);
     }
   }
 

@@ -52,12 +52,80 @@ public final class AIAgentTools {
                   false,
                   null)));
 
+  /** 發送訊息工具。 */
+  public static final ToolDefinition SEND_MESSAGES =
+      new ToolDefinition(
+          "send_messages",
+          "向指定的一個或多個 Discord 頻道發送單則或多則訊息",
+          List.of(
+              new ToolParameter(
+                  "channelIds",
+                  ToolParameter.ParamType.ARRAY,
+                  "目標頻道 ID 列表（可選，未提供時使用當前頻道）",
+                  false,
+                  null),
+              new ToolParameter(
+                  "message", ToolParameter.ParamType.STRING, "單則訊息內容（可選）", false, null),
+              new ToolParameter(
+                  "messages", ToolParameter.ParamType.ARRAY, "多則訊息內容列表（可選）", false, null)));
+
+  /** 搜尋訊息工具。 */
+  public static final ToolDefinition SEARCH_MESSAGES =
+      new ToolDefinition(
+          "search_messages",
+          "在指定頻道中搜尋包含關鍵字的歷史訊息（支援多頻道）",
+          List.of(
+              new ToolParameter(
+                  "keywords", ToolParameter.ParamType.STRING, "搜尋關鍵字（可含多個詞）", true, null),
+              new ToolParameter(
+                  "channelIds", ToolParameter.ParamType.ARRAY, "要搜尋的頻道 ID 列表", false, null),
+              new ToolParameter(
+                  "maxResultsPerChannel",
+                  ToolParameter.ParamType.NUMBER,
+                  "每個頻道最多返回幾筆匹配結果",
+                  false,
+                  null),
+              new ToolParameter(
+                  "maxMessagesToScan",
+                  ToolParameter.ParamType.NUMBER,
+                  "每個頻道最多掃描幾筆歷史訊息",
+                  false,
+                  null)));
+
+  /** 訊息管理工具。 */
+  public static final ToolDefinition MANAGE_MESSAGE =
+      new ToolDefinition(
+          "manage_message",
+          "管理指定訊息狀態（pin、delete、edit）",
+          List.of(
+              new ToolParameter("messageId", ToolParameter.ParamType.STRING, "目標訊息 ID", true, null),
+              new ToolParameter(
+                  "action", ToolParameter.ParamType.STRING, "操作類型：pin、delete、edit", true, null),
+              new ToolParameter(
+                  "channelId",
+                  ToolParameter.ParamType.STRING,
+                  "目標頻道 ID（可選，未提供時使用當前頻道）",
+                  false,
+                  null),
+              new ToolParameter(
+                  "newContent",
+                  ToolParameter.ParamType.STRING,
+                  "新的訊息內容（僅 action=edit 時需要）",
+                  false,
+                  null)));
+
   /**
    * 獲取所有已註冊的工具。
    *
    * @return 工具定義列表
    */
   public static List<ToolDefinition> all() {
-    return List.of(CREATE_CHANNEL, CREATE_CATEGORY, LIST_CHANNELS);
+    return List.of(
+        CREATE_CHANNEL,
+        CREATE_CATEGORY,
+        LIST_CHANNELS,
+        SEND_MESSAGES,
+        SEARCH_MESSAGES,
+        MANAGE_MESSAGE);
   }
 }

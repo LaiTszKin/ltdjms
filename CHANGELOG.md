@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.30.0] - 2026-02-18
+
+### Added
+- **aiagent**: 新增 `LangChain4jSendMessagesTool`，支援一次對多個頻道發送單則或多則訊息
+- **aiagent**: 新增 `LangChain4jSearchMessagesTool`，支援在指定頻道用關鍵字搜尋歷史訊息
+- **aiagent**: 新增 `LangChain4jManageMessageTool`，支援 `pin` / `delete` / `edit` 指定訊息
+
+### Changed
+- **aiagent**: `AIAgentTools` 新增 `send_messages`、`search_messages`、`manage_message` 工具定義並納入註冊清單
+- **aichat**: `LangChain4jAIChatService` 與 `AIAgentModule` 注入並註冊三個新工具，Agent 工具總數更新為 15
+
+### Docs
+- **prompt**: 更新 `prompts/agent/AgentSystemPrompt.md`，加入三個新工具的使用規則、操作指引與範例
+
+### Tests
+- 新增 `LangChain4jSendMessagesToolTest`、`LangChain4jSearchMessagesToolTest`、`LangChain4jManageMessageToolTest`
+- 更新 `LangChain4jAIChatServiceTest` 與 `AIAgentDomainTest`，覆蓋新工具註冊與定義
+- 補充邊界案例：超長訊息、複合關鍵字 AND 搜尋、無效 messageId
+
 ## [0.29.4] - 2026-02-18
 
 ### Fixed
