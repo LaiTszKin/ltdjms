@@ -19,6 +19,9 @@ import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 import ltdjms.discord.shared.Unit;
 import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.ChannelType;
@@ -135,6 +138,11 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
       return;
     }
 
+    if (!isAdmin(event.getMember(), event.getGuild())) {
+      event.reply("你沒有權限使用管理面板").setEphemeral(true).queue();
+      return;
+    }
+
     LOG.debug(
         "Processing admin panel button: buttonId={}, userId={}",
         buttonId,
@@ -171,6 +179,11 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     }
 
     if (!event.isFromGuild() || event.getGuild() == null) {
+      return;
+    }
+
+    if (!isAdmin(event.getMember(), event.getGuild())) {
+      event.reply("你沒有權限使用管理面板").setEphemeral(true).queue();
       return;
     }
 
@@ -215,6 +228,11 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
       return;
     }
 
+    if (!isAdmin(event.getMember(), event.getGuild())) {
+      event.reply("你沒有權限使用管理面板").setEphemeral(true).queue();
+      return;
+    }
+
     long guildId = event.getGuild().getIdLong();
     String sessionKey = getSessionKey(event.getUser().getIdLong(), guildId);
 
@@ -237,6 +255,16 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     String modalId = event.getModalId();
 
     if (!modalId.startsWith("admin_modal_")) {
+      return;
+    }
+
+    if (!event.isFromGuild() || event.getGuild() == null) {
+      event.reply("此功能只能在伺服器中使用").setEphemeral(true).queue();
+      return;
+    }
+
+    if (!isAdmin(event.getMember(), event.getGuild())) {
+      event.reply("你沒有權限使用管理面板").setEphemeral(true).queue();
       return;
     }
 
@@ -2160,6 +2188,20 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
               failure -> LOG.warn("Failed to update AI agent config panel", failure));
     } else {
       LOG.warn("Failed to fetch AI agent channel config: {}", result.getError().message());
+    }
+  }
+
+  private boolean isAdmin(Member member, Guild guild) {
+    if (member == null || guild == null) {
+      return false;
+    }
+    if (member.hasPermission(Permission.ADMINISTRATOR)) {
+      return true;
+    }
+    try {
+      return guild.getOwnerIdLong() == member.getIdLong();
+    } catch (Exception ignored) {
+      return false;
     }
   }
 

@@ -1,7 +1,12 @@
 package ltdjms.discord.panel.commands;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.List;
 
@@ -10,8 +15,14 @@ import org.junit.jupiter.api.Test;
 
 import ltdjms.discord.panel.services.AdminPanelService;
 import ltdjms.discord.panel.services.AdminPanelSessionManager;
+import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
+import net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction;
 
 /** 驗證管理員面板主選單的內容與按鈕配置。 */
 class AdminPanelCommandHandlerTest {
@@ -79,5 +90,35 @@ class AdminPanelCommandHandlerTest {
     assertThat(buttons)
         .extracting(Button::getId)
         .contains(AdminPanelCommandHandler.BUTTON_DISPATCH_AFTER_SALES_CONFIG);
+  }
+
+  @Test
+  @DisplayName("非管理員不應該能開啟管理面板")
+  void nonAdminCannotOpenPanel() {
+    AdminPanelService adminPanelService = mock(AdminPanelService.class);
+    AdminPanelSessionManager sessionManager = mock(AdminPanelSessionManager.class);
+    AdminPanelCommandHandler handler =
+        new AdminPanelCommandHandler(adminPanelService, sessionManager);
+
+    SlashCommandInteractionEvent event = mock(SlashCommandInteractionEvent.class);
+    Guild guild = mock(Guild.class);
+    Member member = mock(Member.class);
+    User user = mock(User.class);
+    ReplyCallbackAction replyAction = mock(ReplyCallbackAction.class);
+
+    when(event.getGuild()).thenReturn(guild);
+    when(event.getMember()).thenReturn(member);
+    when(event.getUser()).thenReturn(user);
+    when(user.getIdLong()).thenReturn(123L);
+    when(member.hasPermission(Permission.ADMINISTRATOR)).thenReturn(false);
+    when(guild.getOwnerIdLong()).thenReturn(999L);
+    when(event.reply("你沒有權限使用管理面板")).thenReturn(replyAction);
+    when(replyAction.setEphemeral(true)).thenReturn(replyAction);
+
+    handler.handle(event);
+
+    verify(event).reply("你沒有權限使用管理面板");
+    verify(event, never()).replyEmbeds(any(MessageEmbed.class));
+    verify(sessionManager, never()).registerSession(anyLong(), anyLong(), any());
   }
 }
