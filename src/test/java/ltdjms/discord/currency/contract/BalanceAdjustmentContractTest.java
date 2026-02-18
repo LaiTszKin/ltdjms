@@ -81,17 +81,15 @@ class BalanceAdjustmentContractTest {
   }
 
   @Test
-  @DisplayName("Account adjustment validation accepts all long values")
-  void accountAdjustmentValidationAcceptsAllLongValues() {
-    // Given - MAX_ADJUSTMENT_AMOUNT is now Long.MAX_VALUE
-    // All long values should be considered valid for adjustment amounts
-
-    // Then - validation should accept all values
+  @DisplayName("Account adjustment validation rejects Long.MIN_VALUE")
+  void accountAdjustmentValidationRejectsLongMinValue() {
+    // Then - validation should accept all values except Long.MIN_VALUE (abs overflow)
     assertThat(MemberCurrencyAccount.isValidAdjustmentAmount(1L)).isTrue();
     assertThat(MemberCurrencyAccount.isValidAdjustmentAmount(-1L)).isTrue();
     assertThat(MemberCurrencyAccount.isValidAdjustmentAmount(Long.MAX_VALUE)).isTrue();
     // Note: Long.MIN_VALUE + 1 is used instead of -Long.MAX_VALUE to avoid overflow
     assertThat(MemberCurrencyAccount.isValidAdjustmentAmount(Long.MIN_VALUE + 1)).isTrue();
+    assertThat(MemberCurrencyAccount.isValidAdjustmentAmount(Long.MIN_VALUE)).isFalse();
   }
 
   @Test

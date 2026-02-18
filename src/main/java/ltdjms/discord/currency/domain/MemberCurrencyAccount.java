@@ -67,6 +67,9 @@ public record MemberCurrencyAccount(
    * @return true if the absolute value is within MAX_ADJUSTMENT_AMOUNT
    */
   public static boolean isValidAdjustmentAmount(long amount) {
+    if (amount == Long.MIN_VALUE) {
+      return false;
+    }
     return Math.abs(amount) <= MAX_ADJUSTMENT_AMOUNT;
   }
 }
