@@ -111,13 +111,14 @@ public final class LangChain4jModifyChannelPermissionsTool {
                   """
                   目標 ID（用戶 ID 或角色 ID）。
 
+                  進行權限修改時必填；僅修改頻道名稱時可省略。
                   必須是有效的 Discord 用戶 ID 或角色 ID（字串格式）。
 
                   範例：
                   - "123456789012345678"：用戶 ID
                   - "987654321098765432"：角色 ID
                   """,
-              required = true)
+              required = false)
           String targetId,
       @P(
               value =

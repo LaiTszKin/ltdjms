@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.29.3] - 2026-02-18
+
+### Fixed
+- **aiagent**: 修正 `modifyChannelSettings` 工具參數 schema，`targetId` 改為非必填（僅改名情境可省略），與實作邏輯一致
+
 ## [0.29.1] - 2026-02-17
 
 ### Fixed
