@@ -14,6 +14,7 @@ import ltdjms.discord.panel.services.AdminPanelSessionManager;
 import ltdjms.discord.product.domain.Product;
 import ltdjms.discord.redemption.domain.RedemptionCodeRepository;
 import ltdjms.discord.redemption.services.RedemptionService;
+import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.interactions.InteractionHook;
@@ -96,13 +97,17 @@ class AdminProductPanelHandlerTest {
     var event = mock(net.dv8tion.jda.api.events.interaction.ModalInteractionEvent.class);
     var guild = mock(net.dv8tion.jda.api.entities.Guild.class);
     var admin = mock(net.dv8tion.jda.api.entities.User.class);
+    var adminMember = mock(net.dv8tion.jda.api.entities.Member.class);
     var reply =
         mock(net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction.class);
     var nameMapping = mock(net.dv8tion.jda.api.interactions.modals.ModalMapping.class);
 
     when(event.getModalId()).thenReturn(AdminProductPanelHandler.MODAL_CREATE_PRODUCT);
+    when(event.isFromGuild()).thenReturn(true);
     when(event.getGuild()).thenReturn(guild);
     when(guild.getIdLong()).thenReturn(guildId);
+    when(event.getMember()).thenReturn(adminMember);
+    when(adminMember.hasPermission(Permission.ADMINISTRATOR)).thenReturn(true);
     when(event.getUser()).thenReturn(admin);
     when(admin.getIdLong()).thenReturn(adminId);
 
