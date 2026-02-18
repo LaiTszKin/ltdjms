@@ -23,6 +23,9 @@ import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 import ltdjms.discord.shared.Unit;
 import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
@@ -94,6 +97,11 @@ public class AdminProductPanelHandler extends ListenerAdapter {
       return;
     }
 
+    if (!isAdmin(event.getMember(), event.getGuild())) {
+      event.reply("你沒有權限使用管理面板").setEphemeral(true).queue();
+      return;
+    }
+
     LOG.debug(
         "Processing product panel button: buttonId={}, userId={}",
         buttonId,
@@ -140,6 +148,11 @@ public class AdminProductPanelHandler extends ListenerAdapter {
       return;
     }
 
+    if (!isAdmin(event.getMember(), event.getGuild())) {
+      event.reply("你沒有權限使用管理面板").setEphemeral(true).queue();
+      return;
+    }
+
     try {
       handleProductSelect(event);
     } catch (Exception e) {
@@ -158,6 +171,16 @@ public class AdminProductPanelHandler extends ListenerAdapter {
 
     // Skip if not product-related modal
     if (!modalId.contains("product") && !modalId.contains("codes")) {
+      return;
+    }
+
+    if (!event.isFromGuild() || event.getGuild() == null) {
+      event.reply("此功能只能在伺服器中使用").setEphemeral(true).queue();
+      return;
+    }
+
+    if (!isAdmin(event.getMember(), event.getGuild())) {
+      event.reply("你沒有權限使用管理面板").setEphemeral(true).queue();
       return;
     }
 
@@ -994,5 +1017,19 @@ public class AdminProductPanelHandler extends ListenerAdapter {
         ActionRow.of(
             Button.success(BUTTON_CREATE_PRODUCT, "➕ 建立商品"),
             Button.secondary(AdminPanelButtonHandler.BUTTON_BACK, "⬅️ 返回主選單")));
+  }
+
+  private boolean isAdmin(Member member, Guild guild) {
+    if (member == null || guild == null) {
+      return false;
+    }
+    if (member.hasPermission(Permission.ADMINISTRATOR)) {
+      return true;
+    }
+    try {
+      return guild.getOwnerIdLong() == member.getIdLong();
+    } catch (Exception ignored) {
+      return false;
+    }
   }
 }

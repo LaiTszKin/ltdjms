@@ -12,6 +12,9 @@ import ltdjms.discord.panel.services.AdminPanelSessionManager;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
@@ -57,9 +60,19 @@ public class AdminPanelCommandHandler implements SlashCommandListener.CommandHan
 
   @Override
   public void handle(SlashCommandInteractionEvent event) {
-    long guildId = event.getGuild().getIdLong();
+    Guild guild = event.getGuild();
+    if (guild == null) {
+      event.reply("此功能只能在伺服器中使用").setEphemeral(true).queue();
+      return;
+    }
+    long guildId = guild.getIdLong();
 
     LOG.debug("Processing /admin-panel for guildId={}", guildId);
+
+    if (!isAdmin(event.getMember(), guild)) {
+      event.reply("你沒有權限使用管理面板").setEphemeral(true).queue();
+      return;
+    }
 
     String currencyIcon = getCurrencyIcon(guildId);
     MessageEmbed embed = buildMainPanelEmbed(currencyIcon);
@@ -76,6 +89,20 @@ public class AdminPanelCommandHandler implements SlashCommandListener.CommandHan
               adminPanelSessionManager.registerSession(guildId, adminId, hook);
               LOG.info("Admin panel opened for guildId={} by userId={}", guildId, adminId);
             });
+  }
+
+  private boolean isAdmin(Member member, Guild guild) {
+    if (member == null || guild == null) {
+      return false;
+    }
+    if (member.hasPermission(Permission.ADMINISTRATOR)) {
+      return true;
+    }
+    try {
+      return guild.getOwnerIdLong() == member.getIdLong();
+    } catch (Exception ignored) {
+      return false;
+    }
   }
 
   static MessageEmbed buildMainPanelEmbed(String currencyIcon) {
