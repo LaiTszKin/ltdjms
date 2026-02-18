@@ -29,6 +29,7 @@ import ltdjms.discord.shared.Result;
 class CurrencyPurchaseServiceTest {
 
   private static final long TEST_GUILD_ID = 123456789012345678L;
+  private static final long OTHER_GUILD_ID = 223456789012345678L;
   private static final long TEST_USER_ID = 987654321098765432L;
   private static final long TEST_PRODUCT_ID = 1L;
   private static final long TEST_CURRENCY_PRICE = 500L;
@@ -94,6 +95,34 @@ class CurrencyPurchaseServiceTest {
       // Then
       assertThat(result.isErr()).isTrue();
       assertThat(result.getError().message()).contains("不可用貨幣購買");
+    }
+
+    @Test
+    @DisplayName("should reject when product belongs to another guild")
+    void shouldRejectWhenProductBelongsToAnotherGuild() {
+      // Given
+      Product product =
+          new Product(
+              TEST_PRODUCT_ID,
+              OTHER_GUILD_ID,
+              "Other Guild Product",
+              "Description",
+              null,
+              null,
+              TEST_CURRENCY_PRICE,
+              Instant.now(),
+              Instant.now());
+      when(productService.getProduct(TEST_PRODUCT_ID)).thenReturn(Optional.of(product));
+
+      // When
+      Result<CurrencyPurchaseService.PurchaseResult, DomainError> result =
+          purchaseService.purchaseProduct(TEST_GUILD_ID, TEST_USER_ID, TEST_PRODUCT_ID);
+
+      // Then
+      assertThat(result.isErr()).isTrue();
+      assertThat(result.getError().message()).contains("找不到該商品");
+      verify(balanceService, never()).tryGetBalance(anyLong(), anyLong());
+      verify(balanceAdjustmentService, never()).tryAdjustBalance(anyLong(), anyLong(), anyLong());
     }
 
     @Test
