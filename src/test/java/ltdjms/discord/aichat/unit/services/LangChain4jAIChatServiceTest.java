@@ -30,6 +30,7 @@ import ltdjms.discord.aiagent.services.ToolExecutionInterceptor;
 import ltdjms.discord.aiagent.services.tools.LangChain4jCreateCategoryTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jCreateChannelTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jCreateRoleTool;
+import ltdjms.discord.aiagent.services.tools.LangChain4jDeleteDiscordResourceTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jGetCategoryPermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jGetChannelPermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jGetRolePermissionsTool;
@@ -40,6 +41,7 @@ import ltdjms.discord.aiagent.services.tools.LangChain4jManageMessageTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jModifyCategoryPermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jModifyChannelPermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jModifyRolePermissionsTool;
+import ltdjms.discord.aiagent.services.tools.LangChain4jMoveChannelTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jSearchMessagesTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jSendMessagesTool;
 import ltdjms.discord.aichat.domain.AIServiceConfig;
@@ -90,6 +92,8 @@ class LangChain4jAIChatServiceTest {
   private LangChain4jSendMessagesTool mockSendMessagesTool;
   private LangChain4jSearchMessagesTool mockSearchMessagesTool;
   private LangChain4jManageMessageTool mockManageMessageTool;
+  private LangChain4jMoveChannelTool mockMoveChannelTool;
+  private LangChain4jDeleteDiscordResourceTool mockDeleteDiscordResourceTool;
   private AIAgentChannelConfigService mockAgentChannelConfigService;
   private TestAgentServiceFactory testAgentServiceFactory;
   private AIChatService service;
@@ -132,6 +136,8 @@ class LangChain4jAIChatServiceTest {
     mockSendMessagesTool = mock(LangChain4jSendMessagesTool.class);
     mockSearchMessagesTool = mock(LangChain4jSearchMessagesTool.class);
     mockManageMessageTool = mock(LangChain4jManageMessageTool.class);
+    mockMoveChannelTool = mock(LangChain4jMoveChannelTool.class);
+    mockDeleteDiscordResourceTool = mock(LangChain4jDeleteDiscordResourceTool.class);
     mockAgentChannelConfigService = mock(AIAgentChannelConfigService.class);
     testAgentServiceFactory = new TestAgentServiceFactory();
 
@@ -164,6 +170,8 @@ class LangChain4jAIChatServiceTest {
             mockSendMessagesTool,
             mockSearchMessagesTool,
             mockManageMessageTool,
+            mockMoveChannelTool,
+            mockDeleteDiscordResourceTool,
             mockAgentChannelConfigService,
             testAgentServiceFactory);
   }

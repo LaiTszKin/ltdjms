@@ -618,13 +618,15 @@ class AIAgentDomainTest {
       List<ToolDefinition> tools = AIAgentTools.all();
 
       // Then
-      assertThat(tools).hasSize(6);
+      assertThat(tools).hasSize(8);
       assertThat(tools.get(0).name()).isEqualTo("create_channel");
       assertThat(tools.get(1).name()).isEqualTo("create_category");
       assertThat(tools.get(2).name()).isEqualTo("list_channels");
-      assertThat(tools.get(3).name()).isEqualTo("send_messages");
-      assertThat(tools.get(4).name()).isEqualTo("search_messages");
-      assertThat(tools.get(5).name()).isEqualTo("manage_message");
+      assertThat(tools.get(3).name()).isEqualTo("move_channel");
+      assertThat(tools.get(4).name()).isEqualTo("send_messages");
+      assertThat(tools.get(5).name()).isEqualTo("search_messages");
+      assertThat(tools.get(6).name()).isEqualTo("manage_message");
+      assertThat(tools.get(7).name()).isEqualTo("delete_discord_resource");
     }
 
     @Test
@@ -653,6 +655,15 @@ class AIAgentDomainTest {
     }
 
     @Test
+    @DisplayName("should have MOVE_CHANNEL tool")
+    void shouldHaveMoveChannelTool() {
+      // Then
+      assertThat(AIAgentTools.MOVE_CHANNEL.name()).isEqualTo("move_channel");
+      assertThat(AIAgentTools.MOVE_CHANNEL.description()).contains("移動");
+      assertThat(AIAgentTools.MOVE_CHANNEL.parameters()).hasSize(2);
+    }
+
+    @Test
     @DisplayName("should have SEND_MESSAGES tool")
     void shouldHaveSendMessagesTool() {
       // Then
@@ -677,6 +688,15 @@ class AIAgentDomainTest {
       assertThat(AIAgentTools.MANAGE_MESSAGE.name()).isEqualTo("manage_message");
       assertThat(AIAgentTools.MANAGE_MESSAGE.description()).contains("訊息");
       assertThat(AIAgentTools.MANAGE_MESSAGE.parameters()).hasSize(5);
+    }
+
+    @Test
+    @DisplayName("should have DELETE_DISCORD_RESOURCE tool")
+    void shouldHaveDeleteDiscordResourceTool() {
+      // Then
+      assertThat(AIAgentTools.DELETE_DISCORD_RESOURCE.name()).isEqualTo("delete_discord_resource");
+      assertThat(AIAgentTools.DELETE_DISCORD_RESOURCE.description()).contains("刪除");
+      assertThat(AIAgentTools.DELETE_DISCORD_RESOURCE.parameters()).hasSize(2);
     }
   }
 

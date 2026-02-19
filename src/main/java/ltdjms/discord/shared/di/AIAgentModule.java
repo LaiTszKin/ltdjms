@@ -33,6 +33,7 @@ import ltdjms.discord.aiagent.services.ToolExecutionInterceptor;
 import ltdjms.discord.aiagent.services.tools.LangChain4jCreateCategoryTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jCreateChannelTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jCreateRoleTool;
+import ltdjms.discord.aiagent.services.tools.LangChain4jDeleteDiscordResourceTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jGetCategoryPermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jGetChannelPermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jGetRolePermissionsTool;
@@ -43,6 +44,7 @@ import ltdjms.discord.aiagent.services.tools.LangChain4jManageMessageTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jModifyCategoryPermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jModifyChannelPermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jModifyRolePermissionsTool;
+import ltdjms.discord.aiagent.services.tools.LangChain4jMoveChannelTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jSearchMessagesTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jSendMessagesTool;
 import ltdjms.discord.aichat.domain.AIServiceConfig;
@@ -187,6 +189,28 @@ public class AIAgentModule {
   @Singleton
   public LangChain4jManageMessageTool provideLangChain4jManageMessageTool() {
     return new LangChain4jManageMessageTool();
+  }
+
+  /**
+   * 提供 LangChain4J 移動頻道工具。
+   *
+   * @return LangChain4jMoveChannelTool 實例
+   */
+  @Provides
+  @Singleton
+  public LangChain4jMoveChannelTool provideLangChain4jMoveChannelTool() {
+    return new LangChain4jMoveChannelTool();
+  }
+
+  /**
+   * 提供 LangChain4J 刪除 Discord 資源工具。
+   *
+   * @return LangChain4jDeleteDiscordResourceTool 實例
+   */
+  @Provides
+  @Singleton
+  public LangChain4jDeleteDiscordResourceTool provideLangChain4jDeleteDiscordResourceTool() {
+    return new LangChain4jDeleteDiscordResourceTool();
   }
 
   /**
@@ -470,6 +494,8 @@ public class AIAgentModule {
    * @param sendMessagesTool 發送訊息工具
    * @param searchMessagesTool 搜尋訊息工具
    * @param manageMessageTool 訊息管理工具
+   * @param moveChannelTool 移動頻道工具
+   * @param deleteDiscordResourceTool 刪除 Discord 資源工具
    * @return LangChain4jAIChatService 實例
    */
   @Provides
@@ -497,6 +523,8 @@ public class AIAgentModule {
       LangChain4jSendMessagesTool sendMessagesTool,
       LangChain4jSearchMessagesTool searchMessagesTool,
       LangChain4jManageMessageTool manageMessageTool,
+      LangChain4jMoveChannelTool moveChannelTool,
+      LangChain4jDeleteDiscordResourceTool deleteDiscordResourceTool,
       AIAgentChannelConfigService agentChannelConfigService) {
     return new LangChain4jAIChatService(
         config,
@@ -521,6 +549,8 @@ public class AIAgentModule {
         sendMessagesTool,
         searchMessagesTool,
         manageMessageTool,
+        moveChannelTool,
+        deleteDiscordResourceTool,
         agentChannelConfigService);
   }
 

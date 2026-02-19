@@ -27,6 +27,7 @@ import ltdjms.discord.aiagent.services.ToolExecutionInterceptor;
 import ltdjms.discord.aiagent.services.tools.LangChain4jCreateCategoryTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jCreateChannelTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jCreateRoleTool;
+import ltdjms.discord.aiagent.services.tools.LangChain4jDeleteDiscordResourceTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jGetCategoryPermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jGetChannelPermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jGetRolePermissionsTool;
@@ -37,6 +38,7 @@ import ltdjms.discord.aiagent.services.tools.LangChain4jManageMessageTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jModifyCategoryPermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jModifyChannelPermissionsTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jModifyRolePermissionsTool;
+import ltdjms.discord.aiagent.services.tools.LangChain4jMoveChannelTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jSearchMessagesTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jSendMessagesTool;
 import ltdjms.discord.aichat.domain.AIServiceConfig;
@@ -114,6 +116,8 @@ public final class LangChain4jAIChatService implements AIChatService {
   private final LangChain4jSendMessagesTool sendMessagesTool;
   private final LangChain4jSearchMessagesTool searchMessagesTool;
   private final LangChain4jManageMessageTool manageMessageTool;
+  private final LangChain4jMoveChannelTool moveChannelTool;
+  private final LangChain4jDeleteDiscordResourceTool deleteDiscordResourceTool;
   private final AIAgentChannelConfigService agentChannelConfigService;
   private final AgentServiceFactory agentServiceFactory;
 
@@ -149,6 +153,8 @@ public final class LangChain4jAIChatService implements AIChatService {
     private final LangChain4jSendMessagesTool sendMessagesTool;
     private final LangChain4jSearchMessagesTool searchMessagesTool;
     private final LangChain4jManageMessageTool manageMessageTool;
+    private final LangChain4jMoveChannelTool moveChannelTool;
+    private final LangChain4jDeleteDiscordResourceTool deleteDiscordResourceTool;
 
     DefaultAgentServiceFactory(
         StreamingChatModel streamingChatModel,
@@ -167,7 +173,9 @@ public final class LangChain4jAIChatService implements AIChatService {
         LangChain4jModifyRolePermissionsTool modifyRolePermissionsTool,
         LangChain4jSendMessagesTool sendMessagesTool,
         LangChain4jSearchMessagesTool searchMessagesTool,
-        LangChain4jManageMessageTool manageMessageTool) {
+        LangChain4jManageMessageTool manageMessageTool,
+        LangChain4jMoveChannelTool moveChannelTool,
+        LangChain4jDeleteDiscordResourceTool deleteDiscordResourceTool) {
       this.streamingChatModel = streamingChatModel;
       this.chatMemoryProvider = chatMemoryProvider;
       this.listChannelsTool = listChannelsTool;
@@ -185,6 +193,8 @@ public final class LangChain4jAIChatService implements AIChatService {
       this.sendMessagesTool = sendMessagesTool;
       this.searchMessagesTool = searchMessagesTool;
       this.manageMessageTool = manageMessageTool;
+      this.moveChannelTool = moveChannelTool;
+      this.deleteDiscordResourceTool = deleteDiscordResourceTool;
     }
 
     @Override
@@ -211,7 +221,9 @@ public final class LangChain4jAIChatService implements AIChatService {
             modifyRolePermissionsTool,
             sendMessagesTool,
             searchMessagesTool,
-            manageMessageTool);
+            manageMessageTool,
+            moveChannelTool,
+            deleteDiscordResourceTool);
       }
 
       return builder.build();
@@ -243,6 +255,8 @@ public final class LangChain4jAIChatService implements AIChatService {
    * @param sendMessagesTool 發送訊息工具
    * @param searchMessagesTool 搜尋訊息工具
    * @param manageMessageTool 訊息管理工具
+   * @param moveChannelTool 移動頻道工具
+   * @param deleteDiscordResourceTool 刪除 Discord 資源工具
    * @param agentChannelConfigService Agent 頻道配置服務（決定是否允許工具）
    */
   @Inject
@@ -269,6 +283,8 @@ public final class LangChain4jAIChatService implements AIChatService {
       LangChain4jSendMessagesTool sendMessagesTool,
       LangChain4jSearchMessagesTool searchMessagesTool,
       LangChain4jManageMessageTool manageMessageTool,
+      LangChain4jMoveChannelTool moveChannelTool,
+      LangChain4jDeleteDiscordResourceTool deleteDiscordResourceTool,
       AIAgentChannelConfigService agentChannelConfigService) {
     this(
         config,
@@ -293,6 +309,8 @@ public final class LangChain4jAIChatService implements AIChatService {
         sendMessagesTool,
         searchMessagesTool,
         manageMessageTool,
+        moveChannelTool,
+        deleteDiscordResourceTool,
         agentChannelConfigService,
         null);
   }
@@ -321,6 +339,8 @@ public final class LangChain4jAIChatService implements AIChatService {
       LangChain4jSendMessagesTool sendMessagesTool,
       LangChain4jSearchMessagesTool searchMessagesTool,
       LangChain4jManageMessageTool manageMessageTool,
+      LangChain4jMoveChannelTool moveChannelTool,
+      LangChain4jDeleteDiscordResourceTool deleteDiscordResourceTool,
       AIAgentChannelConfigService agentChannelConfigService,
       AgentServiceFactory agentServiceFactory) {
     this.config = config;
@@ -345,6 +365,8 @@ public final class LangChain4jAIChatService implements AIChatService {
     this.sendMessagesTool = sendMessagesTool;
     this.searchMessagesTool = searchMessagesTool;
     this.manageMessageTool = manageMessageTool;
+    this.moveChannelTool = moveChannelTool;
+    this.deleteDiscordResourceTool = deleteDiscordResourceTool;
     this.agentChannelConfigService = agentChannelConfigService;
     this.agentServiceFactory =
         (agentServiceFactory != null)
@@ -366,9 +388,11 @@ public final class LangChain4jAIChatService implements AIChatService {
                 modifyRolePermissionsTool,
                 sendMessagesTool,
                 searchMessagesTool,
-                manageMessageTool);
+                manageMessageTool,
+                moveChannelTool,
+                deleteDiscordResourceTool);
     LOG.info(
-        "LangChain4jAIChatService initialized with model: {}, tools: 15, reasoning: {}",
+        "LangChain4jAIChatService initialized with model: {}, tools: 17, reasoning: {}",
         config.model(),
         config.showReasoning());
   }

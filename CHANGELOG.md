@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.31.0] - 2026-02-20
+
+### Added
+- **aiagent**: 新增 `LangChain4jMoveChannelTool`，支援在類別之間移動既有頻道（`move_channel`）
+- **aiagent**: 新增 `LangChain4jDeleteDiscordResourceTool`，支援刪除頻道、類別、身分組（`delete_discord_resource`）
+
+### Changed
+- **aiagent**: `AIAgentTools` 新增 `move_channel`、`delete_discord_resource` 工具定義並納入註冊清單
+- **aichat**: `LangChain4jAIChatService` 與 `AIAgentModule` 注入並註冊兩個新工具，Agent 工具總數更新為 17
+
+### Docs
+- **prompt**: 更新 `prompts/agent/AgentSystemPrompt.md`，加入 `move_channel` / `delete_discord_resource` 的使用規則與範例
+
+### Tests
+- 新增 `LangChain4jMoveChannelToolTest`、`LangChain4jDeleteDiscordResourceToolTest`
+- 更新 `LangChain4jAIChatServiceTest` 與 `AIAgentDomainTest`，覆蓋新工具註冊與定義
+
 ## [0.30.1] - 2026-02-19
 
 ### Fixed

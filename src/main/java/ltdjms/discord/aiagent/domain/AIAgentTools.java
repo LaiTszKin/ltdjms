@@ -52,6 +52,17 @@ public final class AIAgentTools {
                   false,
                   null)));
 
+  /** 移動頻道工具。 */
+  public static final ToolDefinition MOVE_CHANNEL =
+      new ToolDefinition(
+          "move_channel",
+          "將既有頻道移動到指定 Discord 類別",
+          List.of(
+              new ToolParameter(
+                  "channelId", ToolParameter.ParamType.STRING, "要移動的頻道 ID", true, null),
+              new ToolParameter(
+                  "targetCategoryId", ToolParameter.ParamType.STRING, "目標類別 ID", true, null)));
+
   /** 發送訊息工具。 */
   public static final ToolDefinition SEND_MESSAGES =
       new ToolDefinition(
@@ -120,6 +131,21 @@ public final class AIAgentTools {
                   false,
                   null)));
 
+  /** 刪除 Discord 資源工具。 */
+  public static final ToolDefinition DELETE_DISCORD_RESOURCE =
+      new ToolDefinition(
+          "delete_discord_resource",
+          "刪除指定 Discord 資源（頻道、類別、身分組）",
+          List.of(
+              new ToolParameter(
+                  "resourceType",
+                  ToolParameter.ParamType.STRING,
+                  "資源類型：channel、category、role",
+                  true,
+                  null),
+              new ToolParameter(
+                  "resourceId", ToolParameter.ParamType.STRING, "要刪除的資源 ID", true, null)));
+
   /**
    * 獲取所有已註冊的工具。
    *
@@ -130,8 +156,10 @@ public final class AIAgentTools {
         CREATE_CHANNEL,
         CREATE_CATEGORY,
         LIST_CHANNELS,
+        MOVE_CHANNEL,
         SEND_MESSAGES,
         SEARCH_MESSAGES,
-        MANAGE_MESSAGE);
+        MANAGE_MESSAGE,
+        DELETE_DISCORD_RESOURCE);
   }
 }
