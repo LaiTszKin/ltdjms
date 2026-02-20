@@ -287,12 +287,16 @@ public class RedemptionService {
     if (page < 1) page = 1;
     if (pageSize < 1) pageSize = 10;
 
-    int offset = (page - 1) * pageSize;
-    List<RedemptionCode> codes = codeRepository.findByProductId(productId, pageSize, offset);
     long totalCount = codeRepository.countByProductId(productId);
 
     int totalPages = (int) Math.ceil((double) totalCount / pageSize);
     if (totalPages < 1) totalPages = 1;
+    if (page > totalPages) {
+      page = totalPages;
+    }
+
+    int offset = (page - 1) * pageSize;
+    List<RedemptionCode> codes = codeRepository.findByProductId(productId, pageSize, offset);
 
     return new CodePage(codes, page, totalPages, totalCount, pageSize);
   }

@@ -135,6 +135,23 @@ class CurrencyTransactionServiceTest {
       assertThat(result.currentPage()).isEqualTo(1);
       verify(transactionRepository).findByGuildIdAndUserId(TEST_GUILD_ID, TEST_USER_ID, 10, 0);
     }
+
+    @Test
+    @DisplayName("should clamp page number to total pages")
+    void shouldClampPageNumberToTotalPages() {
+      // Given
+      when(transactionRepository.findByGuildIdAndUserId(TEST_GUILD_ID, TEST_USER_ID, 10, 20))
+          .thenReturn(List.of());
+      when(transactionRepository.countByGuildIdAndUserId(TEST_GUILD_ID, TEST_USER_ID))
+          .thenReturn(25L);
+
+      // When
+      TransactionPage result = service.getTransactionPage(TEST_GUILD_ID, TEST_USER_ID, 99, 10);
+
+      // Then
+      assertThat(result.currentPage()).isEqualTo(3);
+      verify(transactionRepository).findByGuildIdAndUserId(TEST_GUILD_ID, TEST_USER_ID, 10, 20);
+    }
   }
 
   @Nested

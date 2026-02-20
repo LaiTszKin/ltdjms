@@ -42,15 +42,19 @@ public class GameTokenTransactionService {
       pageSize = DEFAULT_PAGE_SIZE;
     }
 
-    int offset = (page - 1) * pageSize;
-    List<GameTokenTransaction> transactions =
-        transactionRepository.findByGuildIdAndUserId(guildId, userId, pageSize, offset);
     long totalCount = transactionRepository.countByGuildIdAndUserId(guildId, userId);
 
     int totalPages = (int) Math.ceil((double) totalCount / pageSize);
     if (totalPages < 1) {
       totalPages = 1;
     }
+    if (page > totalPages) {
+      page = totalPages;
+    }
+
+    int offset = (page - 1) * pageSize;
+    List<GameTokenTransaction> transactions =
+        transactionRepository.findByGuildIdAndUserId(guildId, userId, pageSize, offset);
 
     LOG.debug(
         "Retrieved transaction page: guildId={}, userId={}, page={}/{}, count={}",

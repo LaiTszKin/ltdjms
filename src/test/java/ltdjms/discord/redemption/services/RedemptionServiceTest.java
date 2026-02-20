@@ -344,6 +344,21 @@ class RedemptionServiceTest {
       // Then - pageSize is clamped to 10 in the implementation
       assertThat(result.pageSize()).isEqualTo(10);
     }
+
+    @Test
+    @DisplayName("should clamp page number to total pages")
+    void shouldClampPageNumberToTotalPages() {
+      // Given
+      when(codeRepository.findByProductId(TEST_PRODUCT_ID, 10, 10)).thenReturn(List.of());
+      when(codeRepository.countByProductId(TEST_PRODUCT_ID)).thenReturn(15L);
+
+      // When
+      RedemptionService.CodePage result = redemptionService.getCodePage(TEST_PRODUCT_ID, 5, 10);
+
+      // Then - 15 items with page size 10 = 2 pages
+      assertThat(result.currentPage()).isEqualTo(2);
+      verify(codeRepository).findByProductId(TEST_PRODUCT_ID, 10, 10);
+    }
   }
 
   @Nested

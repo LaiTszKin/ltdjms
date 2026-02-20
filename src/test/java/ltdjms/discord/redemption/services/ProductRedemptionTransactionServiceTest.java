@@ -262,6 +262,26 @@ class ProductRedemptionTransactionServiceTest {
       // Then - offset should be (2-1) * 10 = 10
       verify(transactionRepository).findByGuildIdAndUserId(TEST_GUILD_ID, TEST_USER_ID, 10, 10);
     }
+
+    @Test
+    @DisplayName("should clamp page number to total pages")
+    void shouldClampPageNumberToTotalPages() {
+      // Given
+      List<ProductRedemptionTransaction> transactions = List.of();
+      when(transactionRepository.findByGuildIdAndUserId(
+              eq(TEST_GUILD_ID), eq(TEST_USER_ID), eq(10), eq(20)))
+          .thenReturn(transactions);
+      when(transactionRepository.countByGuildIdAndUserId(TEST_GUILD_ID, TEST_USER_ID))
+          .thenReturn(25L);
+
+      // When
+      ProductRedemptionTransactionService.TransactionPage result =
+          service.getTransactionPage(TEST_GUILD_ID, TEST_USER_ID, 99, 10);
+
+      // Then
+      assertThat(result.currentPage()).isEqualTo(3);
+      verify(transactionRepository).findByGuildIdAndUserId(TEST_GUILD_ID, TEST_USER_ID, 10, 20);
+    }
   }
 
   @Nested
