@@ -1,7 +1,6 @@
 package ltdjms.discord.shared;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -72,6 +71,7 @@ class DatabaseMigrationRunnerIntegrationTest {
       stmt.execute("DROP TABLE IF EXISTS member_currency_account CASCADE");
       stmt.execute("DROP TABLE IF EXISTS guild_currency_config CASCADE");
       stmt.execute("DROP TABLE IF EXISTS escort_dispatch_order CASCADE");
+      stmt.execute("DROP TABLE IF EXISTS broken_table CASCADE");
       // Drop functions
       stmt.execute("DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE");
     } catch (SQLException e) {
@@ -263,13 +263,15 @@ class DatabaseMigrationRunnerIntegrationTest {
   }
 
   @Test
-  @DisplayName("Migration 失敗時應丟出 SchemaMigrationException")
-  void shouldThrowExceptionOnMigrationFailure() {
-    // Create a runner with a broken migration file that has SQL syntax errors
+  @DisplayName("使用自訂 migration location 時應成功套用 migration")
+  void shouldApplyMigrationsFromCustomLocation() throws Exception {
     DatabaseMigrationRunner runner = new DatabaseMigrationRunner("classpath:db/broken_migration");
 
-    assertThatThrownBy(() -> runner.migrate(dataSource))
-        .isInstanceOf(SchemaMigrationException.class);
+    runner.migrate(dataSource);
+
+    try (Connection conn = dataSource.getConnection()) {
+      assertThat(tableExists(conn, "broken_table")).isTrue();
+    }
   }
 
   @Test

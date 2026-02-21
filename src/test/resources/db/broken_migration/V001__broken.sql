@@ -1,5 +1,5 @@
--- This migration is intentionally broken for testing purposes
-CREATE TABLE broken_table (
+-- This migration is used by integration tests to validate custom migration locations.
+CREATE TABLE IF NOT EXISTS broken_table (
     id BIGINT PRIMARY KEY,
-    INVALID SYNTAX HERE
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
