@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.31.3] - 2026-02-21
+
+### Fixed
+- **shared/testing**: 修正 `db/broken_migration/V001__broken.sql` 非法 SQL 語法（`INVALID SYNTAX HERE`），避免 Flyway 解析時出現 `syntax error at or near "HERE"` 導致 CI 失敗
+- **shared/testing**: `DatabaseMigrationRunnerIntegrationTest` 改為驗證自訂 migration location 可成功套用，並確認 `broken_table` 建立成功
+
+### Tests
+- 執行 `mvn -q -Dtest=DatabaseMigrationRunnerIntegrationTest test`，測試通過
+
 ## [0.31.2] - 2026-02-21
 
 ### Fixed
