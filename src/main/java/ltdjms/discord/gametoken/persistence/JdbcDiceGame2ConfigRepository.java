@@ -53,7 +53,10 @@ public class JdbcDiceGame2ConfigRepository implements DiceGame2ConfigRepository 
         "INSERT INTO dice_game2_config "
             + "(guild_id, min_tokens_per_play, max_tokens_per_play, "
             + "straight_multiplier, base_multiplier, triple_low_bonus, triple_high_bonus, "
-            + "created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            + "created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) "
+            + "RETURNING guild_id, min_tokens_per_play, max_tokens_per_play, "
+            + "straight_multiplier, base_multiplier, triple_low_bonus, triple_high_bonus, "
+            + "created_at, updated_at";
 
     try (Connection conn = dataSource.getConnection();
         PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -68,17 +71,19 @@ public class JdbcDiceGame2ConfigRepository implements DiceGame2ConfigRepository 
       stmt.setTimestamp(8, Timestamp.from(config.createdAt()));
       stmt.setTimestamp(9, Timestamp.from(config.updatedAt()));
 
-      int affected = stmt.executeUpdate();
-      if (affected != 1) {
-        throw new RepositoryException("Expected 1 row affected, got " + affected);
-      }
+      try (ResultSet rs = stmt.executeQuery()) {
+        if (!rs.next()) {
+          throw new RepositoryException("Expected inserted config row to be returned");
+        }
 
-      LOG.info(
-          "Saved dice game 2 config: guildId={}, min={}, max={}",
-          config.guildId(),
-          config.minTokensPerPlay(),
-          config.maxTokensPerPlay());
-      return config;
+        DiceGame2Config saved = mapRow(rs);
+        LOG.info(
+            "Saved dice game 2 config: guildId={}, min={}, max={}",
+            saved.guildId(),
+            saved.minTokensPerPlay(),
+            saved.maxTokensPerPlay());
+        return saved;
+      }
 
     } catch (SQLException e) {
       LOG.error("Failed to save dice game 2 config for guildId={}", config.guildId(), e);

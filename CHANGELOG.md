@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.31.4] - 2026-02-21
+
+### Fixed
+- **gametoken/persistence**: `JdbcDiceGame2ConfigRepository.save` 改為使用 `INSERT ... RETURNING`，回傳資料庫實際儲存的時間欄位，避免 `findOrCreateDefault` 首次建立與再次查詢時發生奈秒/微秒精度差異，導致 `created_at` 比對失敗
+
+### Tests
+- 執行 `mvn -B -Pintegration-tests -Dtest=DiceGame2ConfigRepositoryIntegrationTest test`，測試通過
+- 執行 `mvn -B -Pintegration-tests test`，測試通過
+
 ## [0.31.3] - 2026-02-21
 
 ### Fixed
