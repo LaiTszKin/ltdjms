@@ -6,60 +6,123 @@ on:
   pull_request:
     branches: ["main"]
 
+concurrency:
+  group: "ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}"
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+env:
+  JAVA_VERSION: "17"
+
 jobs:
-  format:
+  detect-changes:
     runs-on: ubuntu-latest
+    outputs:
+      run_prechecks: ${{ steps.filter.outputs.core == 'true' || steps.filter.outputs.unit == 'true' || steps.filter.outputs.integration == 'true' || steps.filter.outputs.performance == 'true' || steps.filter.outputs.property == 'true' }}
+      run_unit_tests: ${{ steps.filter.outputs.core == 'true' || steps.filter.outputs.unit == 'true' }}
+      run_integration_tests: ${{ steps.filter.outputs.core == 'true' || steps.filter.outputs.integration == 'true' }}
+      run_performance_tests: ${{ steps.filter.outputs.core == 'true' || steps.filter.outputs.performance == 'true' }}
+      run_property_tests: ${{ steps.filter.outputs.core == 'true' || steps.filter.outputs.property == 'true' }}
+      run_workflow_lint: ${{ steps.filter.outputs.workflow == 'true' }}
+    steps:
+      - name: "Checkout code"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: "Detect changed files"
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            core:
+              - "pom.xml"
+              - ".mvn/**"
+              - "src/main/**"
+              - "src/main/resources/**"
+              - "src/test/resources/**"
+            unit:
+              - "src/test/**"
+              - "!src/test/**/integration/**"
+              - "!src/test/**/performance/**"
+              - "!src/test/**/property/**"
+              - "!src/test/**/*IntegrationTest*.java"
+              - "!src/test/**/*PerformanceTest*.java"
+              - "!src/test/**/*PropertyBasedTest*.java"
+              - "!src/test/**/*PropertyTest*.java"
+            integration:
+              - "src/test/**/integration/**"
+              - "src/test/**/*IntegrationTest*.java"
+            performance:
+              - "src/test/**/performance/**"
+              - "src/test/**/*PerformanceTest*.java"
+            property:
+              - "src/test/**/property/**"
+              - "src/test/**/*PropertyBasedTest*.java"
+              - "src/test/**/*PropertyTest*.java"
+            workflow:
+              - ".github/workflows/**"
+              - ".github/actions/**"
+
+      - name: "Report selected checks"
+        run: |
+          echo "core=${{ steps.filter.outputs.core }}"
+          echo "unit=${{ steps.filter.outputs.unit }}"
+          echo "integration=${{ steps.filter.outputs.integration }}"
+          echo "performance=${{ steps.filter.outputs.performance }}"
+          echo "property=${{ steps.filter.outputs.property }}"
+          echo "workflow=${{ steps.filter.outputs.workflow }}"
+
+  workflow-lint:
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.run_workflow_lint == 'true'
+    steps:
+      - name: "Checkout code"
+        uses: actions/checkout@v4
+
+      - name: "Lint GitHub workflows"
+        uses: rhysd/actionlint@v1
+
+  pre-checks:
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.run_prechecks == 'true'
     steps:
       - name: "Checkout code"
         uses: actions/checkout@v4
 
       - name: "Set up JDK"
-        uses: actions/setup-java@v4
+        uses: ./.github/actions/setup-java-maven
         with:
-          distribution: 'temurin'
-          java-version: '17'
-          cache: "maven"
+          java-version: ${{ env.JAVA_VERSION }}
 
-      - name: "Check format"
-        run: mvn -B spotless:check
-
-  type-safety:
-    runs-on: ubuntu-latest
-    needs: format
-    steps:
-      - name: "Checkout code"
-        uses: actions/checkout@v4
-
-      - name: "Set up JDK"
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-          cache: "maven"
-
-      - name: "Run type-safety checks"
-        run: mvn -B -Ptype-safety -DskipTests test-compile
+      - name: "Run format and type-safety checks"
+        run: mvn -B -Ptype-safety -DskipTests spotless:check test-compile
 
   unit-tests:
     runs-on: ubuntu-latest
-    needs: [format, type-safety]
+    needs: [detect-changes, pre-checks]
+    if: needs.detect-changes.outputs.run_unit_tests == 'true'
     steps:
       - name: "Checkout code"
         uses: actions/checkout@v4
 
       - name: "Set up JDK"
-        uses: actions/setup-java@v4
+        uses: ./.github/actions/setup-java-maven
         with:
-          distribution: 'temurin'
-          java-version: '17'
-          cache: "maven"
+          java-version: ${{ env.JAVA_VERSION }}
 
       - name: "Run unit tests"
         run: mvn -B -Punit-tests test
 
   integration-tests:
     runs-on: ubuntu-latest
-    needs: [format, type-safety]
+    needs: [detect-changes, pre-checks]
+    if: needs.detect-changes.outputs.run_integration_tests == 'true'
     services:
       redis:
         image: redis:7-alpine
@@ -71,51 +134,47 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
-      REDIS_URI: ${{ vars.REDIS_URI }}
+      REDIS_URI: ${{ vars.REDIS_URI || 'redis://localhost:6379' }}
     steps:
       - name: "Checkout code"
         uses: actions/checkout@v4
 
       - name: "Set up JDK"
-        uses: actions/setup-java@v4
+        uses: ./.github/actions/setup-java-maven
         with:
-          distribution: 'temurin'
-          java-version: '17'
-          cache: "maven"
+          java-version: ${{ env.JAVA_VERSION }}
 
       - name: "Run integration tests"
         run: mvn -B -Pintegration-tests test
 
   performance-tests:
     runs-on: ubuntu-latest
-    needs: [format, type-safety]
+    needs: [detect-changes, pre-checks]
+    if: needs.detect-changes.outputs.run_performance_tests == 'true'
     steps:
       - name: "Checkout code"
         uses: actions/checkout@v4
 
       - name: "Set up JDK"
-        uses: actions/setup-java@v4
+        uses: ./.github/actions/setup-java-maven
         with:
-          distribution: 'temurin'
-          java-version: '17'
-          cache: "maven"
+          java-version: ${{ env.JAVA_VERSION }}
 
       - name: "Run performance tests"
         run: mvn -B -Pperformance-tests test
 
   property-based-tests:
     runs-on: ubuntu-latest
-    needs: [format, type-safety]
+    needs: [detect-changes, pre-checks]
+    if: needs.detect-changes.outputs.run_property_tests == 'true'
     steps:
       - name: "Checkout code"
         uses: actions/checkout@v4
 
       - name: "Set up JDK"
-        uses: actions/setup-java@v4
+        uses: ./.github/actions/setup-java-maven
         with:
-          distribution: 'temurin'
-          java-version: '17'
-          cache: "maven"
+          java-version: ${{ env.JAVA_VERSION }}
 
       - name: "Run property-based tests"
         run: mvn -B -Pproperty-based-tests test
