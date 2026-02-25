@@ -19,6 +19,7 @@ import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.OnlineStatus;
+import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.MessageEmbed;
@@ -70,6 +71,11 @@ public class DispatchPanelInteractionHandler extends ListenerAdapter {
 
     if (!event.isFromGuild() || event.getGuild() == null) {
       event.reply("此功能只能在伺服器中使用").setEphemeral(true).queue();
+      return;
+    }
+
+    if (!isAdmin(event.getMember(), event.getGuild())) {
+      event.reply("你沒有權限使用派單面板").setEphemeral(true).queue();
       return;
     }
 
@@ -173,6 +179,11 @@ public class DispatchPanelInteractionHandler extends ListenerAdapter {
       return;
     }
 
+    if (!isAdmin(event.getMember(), event.getGuild())) {
+      event.reply("你沒有權限使用派單面板").setEphemeral(true).queue();
+      return;
+    }
+
     long guildId = event.getGuild().getIdLong();
     long adminUserId = event.getUser().getIdLong();
     String sessionKey = getSessionKey(adminUserId, guildId);
@@ -199,6 +210,11 @@ public class DispatchPanelInteractionHandler extends ListenerAdapter {
   private void handleHistory(ButtonInteractionEvent event) {
     if (!event.isFromGuild() || event.getGuild() == null) {
       event.reply("此功能只能在伺服器中使用").setEphemeral(true).queue();
+      return;
+    }
+
+    if (!isAdmin(event.getMember(), event.getGuild())) {
+      event.reply("你沒有權限使用派單面板").setEphemeral(true).queue();
       return;
     }
 
@@ -990,6 +1006,20 @@ public class DispatchPanelInteractionHandler extends ListenerAdapter {
 
   private String getSessionKey(long userId, long guildId) {
     return guildId + ":" + userId;
+  }
+
+  private boolean isAdmin(Member member, Guild guild) {
+    if (member == null || guild == null) {
+      return false;
+    }
+    if (member.hasPermission(Permission.ADMINISTRATOR)) {
+      return true;
+    }
+    try {
+      return guild.getOwnerIdLong() == member.getIdLong();
+    } catch (Exception ignored) {
+      return false;
+    }
   }
 
   private record AfterSalesNotifyResult(String message) {}
