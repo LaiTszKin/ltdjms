@@ -28,8 +28,8 @@ public class JdbcProductRepository implements ProductRepository {
   public Product save(Product product) {
     String sql =
         "INSERT INTO product (guild_id, name, description, reward_type, reward_amount,"
-            + " currency_price, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING"
-            + " id";
+            + " currency_price, fiat_price_twd, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?,"
+            + " ?, ?, ?) RETURNING id";
 
     try (Connection conn = dataSource.getConnection();
         PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -48,8 +48,13 @@ public class JdbcProductRepository implements ProductRepository {
       } else {
         stmt.setNull(6, Types.BIGINT);
       }
-      stmt.setTimestamp(7, Timestamp.from(product.createdAt()));
-      stmt.setTimestamp(8, Timestamp.from(product.updatedAt()));
+      if (product.fiatPriceTwd() != null) {
+        stmt.setLong(7, product.fiatPriceTwd());
+      } else {
+        stmt.setNull(7, Types.BIGINT);
+      }
+      stmt.setTimestamp(8, Timestamp.from(product.createdAt()));
+      stmt.setTimestamp(9, Timestamp.from(product.updatedAt()));
 
       try (ResultSet rs = stmt.executeQuery()) {
         if (rs.next()) {
@@ -63,6 +68,7 @@ public class JdbcProductRepository implements ProductRepository {
                   product.rewardType(),
                   product.rewardAmount(),
                   product.currencyPrice(),
+                  product.fiatPriceTwd(),
                   product.createdAt(),
                   product.updatedAt());
           LOG.debug(
@@ -87,7 +93,7 @@ public class JdbcProductRepository implements ProductRepository {
 
     String sql =
         "UPDATE product SET name = ?, description = ?, reward_type = ?, reward_amount = ?,"
-            + " currency_price = ?, updated_at = ? WHERE id = ?";
+            + " currency_price = ?, fiat_price_twd = ?, updated_at = ? WHERE id = ?";
 
     try (Connection conn = dataSource.getConnection();
         PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -105,8 +111,13 @@ public class JdbcProductRepository implements ProductRepository {
       } else {
         stmt.setNull(5, Types.BIGINT);
       }
-      stmt.setTimestamp(6, Timestamp.from(product.updatedAt()));
-      stmt.setLong(7, product.id());
+      if (product.fiatPriceTwd() != null) {
+        stmt.setLong(6, product.fiatPriceTwd());
+      } else {
+        stmt.setNull(6, Types.BIGINT);
+      }
+      stmt.setTimestamp(7, Timestamp.from(product.updatedAt()));
+      stmt.setLong(8, product.id());
 
       int affected = stmt.executeUpdate();
       if (affected == 0) {
@@ -125,8 +136,8 @@ public class JdbcProductRepository implements ProductRepository {
   @Override
   public Optional<Product> findById(long id) {
     String sql =
-        "SELECT id, guild_id, name, description, reward_type, reward_amount, currency_price, "
-            + "created_at, updated_at FROM product WHERE id = ?";
+        "SELECT id, guild_id, name, description, reward_type, reward_amount, currency_price,"
+            + " fiat_price_twd, created_at, updated_at FROM product WHERE id = ?";
 
     try (Connection conn = dataSource.getConnection();
         PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -148,8 +159,9 @@ public class JdbcProductRepository implements ProductRepository {
   @Override
   public Optional<Product> findByGuildIdAndName(long guildId, String name) {
     String sql =
-        "SELECT id, guild_id, name, description, reward_type, reward_amount, currency_price, "
-            + "created_at, updated_at FROM product WHERE guild_id = ? AND name = ?";
+        "SELECT id, guild_id, name, description, reward_type, reward_amount, currency_price,"
+            + " fiat_price_twd, created_at, updated_at FROM product WHERE guild_id = ? AND name ="
+            + " ?";
 
     try (Connection conn = dataSource.getConnection();
         PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -172,8 +184,9 @@ public class JdbcProductRepository implements ProductRepository {
   @Override
   public List<Product> findByGuildId(long guildId) {
     String sql =
-        "SELECT id, guild_id, name, description, reward_type, reward_amount, currency_price, "
-            + "created_at, updated_at FROM product WHERE guild_id = ? ORDER BY created_at DESC";
+        "SELECT id, guild_id, name, description, reward_type, reward_amount, currency_price,"
+            + " fiat_price_twd, created_at, updated_at FROM product WHERE guild_id = ? ORDER BY"
+            + " created_at DESC";
 
     List<Product> products = new ArrayList<>();
 
@@ -201,8 +214,8 @@ public class JdbcProductRepository implements ProductRepository {
   public List<Product> findByGuildIdPaginated(long guildId, int page, int size) {
     String sql =
         "SELECT id, guild_id, name, description, reward_type, reward_amount, currency_price,"
-            + " created_at, updated_at FROM product WHERE guild_id = ? ORDER BY created_at DESC"
-            + " LIMIT ? OFFSET ?";
+            + " fiat_price_twd, created_at, updated_at FROM product WHERE guild_id = ? ORDER BY"
+            + " created_at DESC LIMIT ? OFFSET ?";
 
     List<Product> products = new ArrayList<>();
 
@@ -330,6 +343,8 @@ public class JdbcProductRepository implements ProductRepository {
 
     long currencyPriceValue = rs.getLong("currency_price");
     Long currencyPrice = rs.wasNull() ? null : currencyPriceValue;
+    long fiatPriceTwdValue = rs.getLong("fiat_price_twd");
+    Long fiatPriceTwd = rs.wasNull() ? null : fiatPriceTwdValue;
 
     return new Product(
         rs.getLong("id"),
@@ -339,6 +354,7 @@ public class JdbcProductRepository implements ProductRepository {
         rewardType,
         rewardAmount,
         currencyPrice,
+        fiatPriceTwd,
         rs.getTimestamp("created_at").toInstant(),
         rs.getTimestamp("updated_at").toInstant());
   }
@@ -353,8 +369,8 @@ public class JdbcProductRepository implements ProductRepository {
   public List<Product> findByGuildIdWithCurrencyPrice(long guildId) {
     String sql =
         "SELECT id, guild_id, name, description, reward_type, reward_amount, currency_price,"
-            + " created_at, updated_at FROM product WHERE guild_id = ? AND currency_price IS NOT"
-            + " NULL AND currency_price > 0 ORDER BY name ASC";
+            + " fiat_price_twd, created_at, updated_at FROM product WHERE guild_id = ? AND"
+            + " currency_price IS NOT NULL AND currency_price > 0 ORDER BY name ASC";
 
     List<Product> products = new ArrayList<>();
 
@@ -375,6 +391,41 @@ public class JdbcProductRepository implements ProductRepository {
     } catch (SQLException e) {
       LOG.error("Failed to find products with currency price for guildId={}", guildId, e);
       throw new RepositoryException("Failed to find products with currency price", e);
+    }
+  }
+
+  /**
+   * Finds fiat-only products for the given guild.
+   *
+   * @param guildId the guild ID
+   * @return list of products that can only be ordered by fiat payment
+   */
+  public List<Product> findFiatOnlyByGuildId(long guildId) {
+    String sql =
+        "SELECT id, guild_id, name, description, reward_type, reward_amount, currency_price,"
+            + " fiat_price_twd, created_at, updated_at FROM product WHERE guild_id = ? AND"
+            + " fiat_price_twd IS NOT NULL AND fiat_price_twd > 0 AND (currency_price IS NULL OR"
+            + " currency_price <= 0) ORDER BY name ASC";
+
+    List<Product> products = new ArrayList<>();
+
+    try (Connection conn = dataSource.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+      stmt.setLong(1, guildId);
+
+      try (ResultSet rs = stmt.executeQuery()) {
+        while (rs.next()) {
+          products.add(mapRow(rs));
+        }
+      }
+
+      LOG.debug("Found {} fiat-only products for guildId={}", products.size(), guildId);
+      return products;
+
+    } catch (SQLException e) {
+      LOG.error("Failed to find fiat-only products for guildId={}", guildId, e);
+      throw new RepositoryException("Failed to find fiat-only products", e);
     }
   }
 }

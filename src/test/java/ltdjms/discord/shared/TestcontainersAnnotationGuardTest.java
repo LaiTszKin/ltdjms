@@ -19,7 +19,8 @@ class TestcontainersAnnotationGuardTest {
         "ltdjms.discord.aiagent.integration.services.ConversationMemoryIntegrationTest",
         "ltdjms.discord.shared.cache.RedisCacheServiceIntegrationTest",
         "ltdjms.discord.aiagent.integration.services.ToolExecutionLogIntegrationTest",
-        "ltdjms.discord.aiagent.integration.services.LangChain4jGetChannelPermissionsToolIntegrationTest"
+        "ltdjms.discord.aiagent.integration.services.LangChain4jGetChannelPermissionsToolIntegrationTest",
+        "ltdjms.discord.shop.integration.EcpayFiatPaymentE2EIntegrationTest"
       })
   void integrationTestShouldEnableDisabledWithoutDockerFlag(String className)
       throws ClassNotFoundException {

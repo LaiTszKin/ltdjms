@@ -44,6 +44,7 @@ public class ProductService {
    * @param rewardAmount the reward amount (can be null for no automatic reward)
    * @param currencyPrice the currency price for direct purchase (can be null for currency purchase
    *     not available)
+   * @param fiatPriceTwd the product actual value in TWD (can be null for not configured)
    * @return Result containing the created product or an error
    */
   public Result<Product, DomainError> createProduct(
@@ -53,6 +54,30 @@ public class ProductService {
       Product.RewardType rewardType,
       Long rewardAmount,
       Long currencyPrice) {
+    return createProduct(guildId, name, description, rewardType, rewardAmount, currencyPrice, null);
+  }
+
+  /**
+   * Creates a new product.
+   *
+   * @param guildId the Discord guild ID
+   * @param name the product name
+   * @param description the product description (can be null)
+   * @param rewardType the type of reward (can be null for no automatic reward)
+   * @param rewardAmount the reward amount (can be null for no automatic reward)
+   * @param currencyPrice the currency price for direct purchase (can be null for currency purchase
+   *     not available)
+   * @param fiatPriceTwd the product actual value in TWD (can be null for not configured)
+   * @return Result containing the created product or an error
+   */
+  public Result<Product, DomainError> createProduct(
+      long guildId,
+      String name,
+      String description,
+      Product.RewardType rewardType,
+      Long rewardAmount,
+      Long currencyPrice,
+      Long fiatPriceTwd) {
 
     // Validate name
     if (name == null || name.isBlank()) {
@@ -82,18 +107,24 @@ public class ProductService {
     if (currencyPrice != null && currencyPrice <= 0) {
       return Result.err(DomainError.invalidInput("貨幣價格必須大於 0"));
     }
+    if (fiatPriceTwd != null && fiatPriceTwd <= 0) {
+      return Result.err(DomainError.invalidInput("新台幣實際價值必須大於 0"));
+    }
 
     try {
       Product product =
-          Product.create(guildId, name, description, rewardType, rewardAmount, currencyPrice);
+          Product.create(
+              guildId, name, description, rewardType, rewardAmount, currencyPrice, fiatPriceTwd);
       Product saved = productRepository.save(product);
       LOG.info(
-          "Created product: guildId={}, name={}, rewardType={}, rewardAmount={}, currencyPrice={}",
+          "Created product: guildId={}, name={}, rewardType={}, rewardAmount={}, currencyPrice={},"
+              + " fiatPriceTwd={}",
           guildId,
           name,
           rewardType,
           rewardAmount,
-          currencyPrice);
+          currencyPrice,
+          fiatPriceTwd);
 
       // Publish event after successful save
       eventPublisher.publish(
@@ -115,6 +146,7 @@ public class ProductService {
    * @param rewardType the new reward type
    * @param rewardAmount the new reward amount
    * @param currencyPrice the new currency price
+   * @param fiatPriceTwd the new fiat value in TWD
    * @return Result containing the updated product or an error
    */
   public Result<Product, DomainError> updateProduct(
@@ -124,6 +156,32 @@ public class ProductService {
       Product.RewardType rewardType,
       Long rewardAmount,
       Long currencyPrice) {
+    Long fiatPriceTwd =
+        productRepository.findById(productId).map(Product::fiatPriceTwd).orElse(null);
+    return updateProduct(
+        productId, name, description, rewardType, rewardAmount, currencyPrice, fiatPriceTwd);
+  }
+
+  /**
+   * Updates an existing product.
+   *
+   * @param productId the product ID
+   * @param name the new product name
+   * @param description the new description
+   * @param rewardType the new reward type
+   * @param rewardAmount the new reward amount
+   * @param currencyPrice the new currency price
+   * @param fiatPriceTwd the new fiat value in TWD
+   * @return Result containing the updated product or an error
+   */
+  public Result<Product, DomainError> updateProduct(
+      long productId,
+      String name,
+      String description,
+      Product.RewardType rewardType,
+      Long rewardAmount,
+      Long currencyPrice,
+      Long fiatPriceTwd) {
 
     // Validate name
     if (name == null || name.isBlank()) {
@@ -161,10 +219,14 @@ public class ProductService {
     if (currencyPrice != null && currencyPrice <= 0) {
       return Result.err(DomainError.invalidInput("貨幣價格必須大於 0"));
     }
+    if (fiatPriceTwd != null && fiatPriceTwd <= 0) {
+      return Result.err(DomainError.invalidInput("新台幣實際價值必須大於 0"));
+    }
 
     try {
       Product updated =
-          existing.withUpdatedDetails(name, description, rewardType, rewardAmount, currencyPrice);
+          existing.withUpdatedDetails(
+              name, description, rewardType, rewardAmount, currencyPrice, fiatPriceTwd);
       Product saved = productRepository.update(updated);
       LOG.info("Updated product: id={}, name={}", productId, name);
 
@@ -270,5 +332,18 @@ public class ProductService {
     return productRepository.findByGuildId(guildId).stream()
         .filter(Product::hasCurrencyPrice)
         .toList();
+  }
+
+  /**
+   * Gets products that are limited to fiat payment only.
+   *
+   * @param guildId the Discord guild ID
+   * @return a list of fiat-only products
+   */
+  public List<Product> getFiatOnlyProducts(long guildId) {
+    if (productRepository instanceof JdbcProductRepository jdbcRepo) {
+      return jdbcRepo.findFiatOnlyByGuildId(guildId);
+    }
+    return productRepository.findByGuildId(guildId).stream().filter(Product::isFiatOnly).toList();
   }
 }

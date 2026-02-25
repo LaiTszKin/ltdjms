@@ -64,6 +64,7 @@ class ShopButtonHandlerTest {
     when(replyAction.setEphemeral(anyBoolean())).thenReturn(replyAction);
     when(event.editMessageEmbeds(any(MessageEmbed.class))).thenReturn(editAction);
     when(editAction.setComponents(anyList())).thenReturn(editAction);
+    when(productService.getFiatOnlyProducts(TEST_GUILD_ID)).thenReturn(List.of());
   }
 
   @Test
@@ -202,6 +203,45 @@ class ShopButtonHandlerTest {
     handler.onButtonInteraction(event);
 
     verify(event).reply("目前沒有可用貨幣購買的商品");
+    verify(replyAction).setEphemeral(true);
+  }
+
+  @Test
+  @DisplayName("法幣下單按鈕應該顯示法幣商品選單")
+  void fiatOrderButton_shouldShowFiatOrderMenu() {
+    when(event.getComponentId()).thenReturn(ShopView.BUTTON_FIAT_ORDER);
+    var product =
+        new Product(
+            2L,
+            TEST_GUILD_ID,
+            "Fiat Product",
+            null,
+            null,
+            null,
+            null,
+            500L,
+            Instant.now(),
+            Instant.now());
+    when(productService.getFiatOnlyProducts(TEST_GUILD_ID)).thenReturn(List.of(product));
+    when(replyAction.addActionRow(
+            any(net.dv8tion.jda.api.interactions.components.ItemComponent[].class)))
+        .thenReturn(replyAction);
+
+    handler.onButtonInteraction(event);
+
+    verify(event).reply("請選擇要法幣下單的商品");
+    verify(replyAction).setEphemeral(true);
+  }
+
+  @Test
+  @DisplayName("法幣下單按鈕無商品時應該回覆提示訊息")
+  void fiatOrderButtonWithNoProducts_shouldReplyMessage() {
+    when(event.getComponentId()).thenReturn(ShopView.BUTTON_FIAT_ORDER);
+    when(productService.getFiatOnlyProducts(TEST_GUILD_ID)).thenReturn(List.of());
+
+    handler.onButtonInteraction(event);
+
+    verify(event).reply("目前沒有限定法幣支付的商品");
     verify(replyAction).setEphemeral(true);
   }
 

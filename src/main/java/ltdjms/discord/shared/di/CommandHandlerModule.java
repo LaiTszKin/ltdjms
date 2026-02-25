@@ -44,10 +44,13 @@ import ltdjms.discord.product.domain.ProductRepository;
 import ltdjms.discord.product.services.ProductService;
 import ltdjms.discord.redemption.services.ProductRedemptionTransactionService;
 import ltdjms.discord.redemption.services.RedemptionService;
+import ltdjms.discord.shared.EnvironmentConfig;
 import ltdjms.discord.shared.events.DomainEventPublisher;
 import ltdjms.discord.shop.commands.ShopButtonHandler;
 import ltdjms.discord.shop.commands.ShopCommandHandler;
 import ltdjms.discord.shop.commands.ShopSelectMenuHandler;
+import ltdjms.discord.shop.services.EcpayCvsPaymentService;
+import ltdjms.discord.shop.services.FiatOrderService;
 import ltdjms.discord.shop.services.ShopService;
 
 /**
@@ -285,11 +288,26 @@ public class CommandHandlerModule {
 
   @Provides
   @Singleton
+  public EcpayCvsPaymentService provideEcpayCvsPaymentService(EnvironmentConfig config) {
+    return new EcpayCvsPaymentService(config);
+  }
+
+  @Provides
+  @Singleton
+  public FiatOrderService provideFiatOrderService(
+      ProductService productService, EcpayCvsPaymentService ecpayCvsPaymentService) {
+    return new FiatOrderService(productService, ecpayCvsPaymentService);
+  }
+
+  @Provides
+  @Singleton
   public ShopSelectMenuHandler provideShopSelectMenuHandler(
       ProductService productService,
       BalanceService balanceService,
-      ltdjms.discord.shop.services.CurrencyPurchaseService currencyPurchaseService) {
-    return new ShopSelectMenuHandler(productService, balanceService, currencyPurchaseService);
+      ltdjms.discord.shop.services.CurrencyPurchaseService currencyPurchaseService,
+      FiatOrderService fiatOrderService) {
+    return new ShopSelectMenuHandler(
+        productService, balanceService, currencyPurchaseService, fiatOrderService);
   }
 
   @Provides

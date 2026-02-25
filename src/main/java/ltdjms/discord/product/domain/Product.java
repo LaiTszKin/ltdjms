@@ -16,6 +16,7 @@ public record Product(
     RewardType rewardType,
     Long rewardAmount,
     Long currencyPrice,
+    Long fiatPriceTwd,
     Instant createdAt,
     Instant updatedAt) {
   /** Type of reward that can be given when a product is redeemed. */
@@ -41,11 +42,37 @@ public record Product(
     if (currencyPrice != null && currencyPrice < 0) {
       throw new IllegalArgumentException("currencyPrice must not be negative");
     }
+    if (fiatPriceTwd != null && fiatPriceTwd < 0) {
+      throw new IllegalArgumentException("fiatPriceTwd must not be negative");
+    }
     // Ensure reward_type and reward_amount are consistent
     if ((rewardType == null) != (rewardAmount == null)) {
       throw new IllegalArgumentException(
           "rewardType and rewardAmount must both be specified or both be null");
     }
+  }
+
+  public Product(
+      Long id,
+      long guildId,
+      String name,
+      String description,
+      RewardType rewardType,
+      Long rewardAmount,
+      Long currencyPrice,
+      Instant createdAt,
+      Instant updatedAt) {
+    this(
+        id,
+        guildId,
+        name,
+        description,
+        rewardType,
+        rewardAmount,
+        currencyPrice,
+        null,
+        createdAt,
+        updatedAt);
   }
 
   /**
@@ -59,6 +86,7 @@ public record Product(
    * @param rewardAmount the reward amount (can be null for no automatic reward)
    * @param currencyPrice the currency price for direct purchase (can be null for currency purchase
    *     not available)
+   * @param fiatPriceTwd the product actual value in TWD (can be null for not configured)
    * @return a new Product instance
    */
   public static Product create(
@@ -67,10 +95,30 @@ public record Product(
       String description,
       RewardType rewardType,
       Long rewardAmount,
-      Long currencyPrice) {
+      Long currencyPrice,
+      Long fiatPriceTwd) {
     Instant now = Instant.now();
     return new Product(
-        null, guildId, name, description, rewardType, rewardAmount, currencyPrice, now, now);
+        null,
+        guildId,
+        name,
+        description,
+        rewardType,
+        rewardAmount,
+        currencyPrice,
+        fiatPriceTwd,
+        now,
+        now);
+  }
+
+  public static Product create(
+      long guildId,
+      String name,
+      String description,
+      RewardType rewardType,
+      Long rewardAmount,
+      Long currencyPrice) {
+    return create(guildId, name, description, rewardType, rewardAmount, currencyPrice, null);
   }
 
   /**
@@ -82,7 +130,7 @@ public record Product(
    * @return a new Product instance without rewards
    */
   public static Product createWithoutReward(long guildId, String name, String description) {
-    return create(guildId, name, description, null, null, null);
+    return create(guildId, name, description, null, null, null, null);
   }
 
   /**
@@ -96,7 +144,21 @@ public record Product(
    */
   public static Product createWithCurrencyPrice(
       long guildId, String name, String description, long currencyPrice) {
-    return create(guildId, name, description, null, null, currencyPrice);
+    return create(guildId, name, description, null, null, currencyPrice, null);
+  }
+
+  /**
+   * Creates a new product without automatic reward, with a specified fiat value in TWD.
+   *
+   * @param guildId the Discord guild ID
+   * @param name the product name
+   * @param description the product description (can be null)
+   * @param fiatPriceTwd the product actual value in TWD
+   * @return a new Product instance with fiat value
+   */
+  public static Product createWithFiatPriceTwd(
+      long guildId, String name, String description, long fiatPriceTwd) {
+    return create(guildId, name, description, null, null, null, fiatPriceTwd);
   }
 
   /**
@@ -107,6 +169,7 @@ public record Product(
    * @param rewardType the new reward type
    * @param rewardAmount the new reward amount
    * @param currencyPrice the new currency price
+   * @param fiatPriceTwd the new fiat value in TWD
    * @return a new Product instance with updated values
    */
   public Product withUpdatedDetails(
@@ -114,7 +177,8 @@ public record Product(
       String description,
       RewardType rewardType,
       Long rewardAmount,
-      Long currencyPrice) {
+      Long currencyPrice,
+      Long fiatPriceTwd) {
     return new Product(
         this.id,
         this.guildId,
@@ -123,8 +187,19 @@ public record Product(
         rewardType,
         rewardAmount,
         currencyPrice,
+        fiatPriceTwd,
         this.createdAt,
         Instant.now());
+  }
+
+  public Product withUpdatedDetails(
+      String name,
+      String description,
+      RewardType rewardType,
+      Long rewardAmount,
+      Long currencyPrice) {
+    return withUpdatedDetails(
+        name, description, rewardType, rewardAmount, currencyPrice, this.fiatPriceTwd);
   }
 
   /**
@@ -170,5 +245,35 @@ public record Product(
       return null;
     }
     return String.format("%,d 貨幣", currencyPrice);
+  }
+
+  /**
+   * Checks if this product has a fiat value in TWD configured.
+   *
+   * @return true if fiat value in TWD is configured
+   */
+  public boolean hasFiatPriceTwd() {
+    return fiatPriceTwd != null && fiatPriceTwd > 0;
+  }
+
+  /**
+   * Formats the fiat value in TWD for display.
+   *
+   * @return a formatted string describing the TWD value, or null if not configured
+   */
+  public String formatFiatPriceTwd() {
+    if (!hasFiatPriceTwd()) {
+      return null;
+    }
+    return String.format("NT$%,d", fiatPriceTwd);
+  }
+
+  /**
+   * Checks whether the product is limited to fiat payment only.
+   *
+   * @return true when fiat value is configured and currency purchase is unavailable
+   */
+  public boolean isFiatOnly() {
+    return hasFiatPriceTwd() && !hasCurrencyPrice();
   }
 }

@@ -132,6 +132,28 @@ class ShopViewTest {
   }
 
   @Test
+  @DisplayName("buildShopComponents 應該在有限定法幣商品時添加法幣下單按鈕")
+  void buildShopComponentsShouldAddFiatOrderButtonWhenFiatProductsAvailable() {
+    Product fiatOnly =
+        new Product(
+            1L,
+            TEST_GUILD_ID,
+            "法幣商品",
+            null,
+            null,
+            null,
+            null,
+            500L,
+            java.time.Instant.now(),
+            java.time.Instant.now());
+
+    List<ActionRow> components = ShopView.buildShopComponents(1, 1, List.of(), List.of(fiatOnly));
+
+    assertThat(components).hasSize(2);
+    assertThat(components.get(1).getButtons().get(0).getId()).isEqualTo(ShopView.BUTTON_FIAT_ORDER);
+  }
+
+  @Test
   @DisplayName("buildPurchaseMenu 應該建立選擇選單")
   void buildPurchaseMenuShouldCreateSelectionMenu() {
     Product product = Product.createWithCurrencyPrice(TEST_GUILD_ID, "測試商品", null, 100L);
@@ -158,6 +180,57 @@ class ShopViewTest {
     assertThat(menu.getOptions()).hasSize(25);
     assertThat(menu.getOptions().get(0).getLabel()).isEqualTo("商品 0");
     assertThat(menu.getOptions().get(24).getLabel()).isEqualTo("商品 24");
+  }
+
+  @Test
+  @DisplayName("buildFiatOrderMenu 應該建立法幣下單選單")
+  void buildFiatOrderMenuShouldCreateSelectionMenu() {
+    Product product =
+        new Product(
+            1L,
+            TEST_GUILD_ID,
+            "法幣商品",
+            null,
+            null,
+            null,
+            null,
+            700L,
+            java.time.Instant.now(),
+            java.time.Instant.now());
+
+    var menu = ShopView.buildFiatOrderMenu(List.of(product));
+
+    assertThat(menu.getId()).isEqualTo(ShopView.SELECT_FIAT_PRODUCT);
+    assertThat(menu.getOptions()).hasSize(1);
+    assertThat(menu.getOptions().get(0).getDescription()).isEqualTo("NT$700");
+  }
+
+  @Test
+  @DisplayName("buildFiatOrderMenu 應該限制最多 25 個選項")
+  void buildFiatOrderMenuShouldLimitOptions() {
+    java.time.Instant now = java.time.Instant.now();
+    List<Product> products =
+        java.util.stream.IntStream.range(0, 30)
+            .mapToObj(
+                i ->
+                    new Product(
+                        (long) i + 1,
+                        TEST_GUILD_ID,
+                        "法幣商品 " + i,
+                        null,
+                        null,
+                        null,
+                        null,
+                        500L + i,
+                        now,
+                        now))
+            .toList();
+
+    var menu = ShopView.buildFiatOrderMenu(products);
+
+    assertThat(menu.getOptions()).hasSize(25);
+    assertThat(menu.getOptions().get(0).getLabel()).isEqualTo("法幣商品 0");
+    assertThat(menu.getOptions().get(24).getLabel()).isEqualTo("法幣商品 24");
   }
 
   @Test

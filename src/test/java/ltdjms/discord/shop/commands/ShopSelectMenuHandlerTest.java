@@ -23,6 +23,7 @@ import ltdjms.discord.product.services.ProductService;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 import ltdjms.discord.shop.services.CurrencyPurchaseService;
+import ltdjms.discord.shop.services.FiatOrderService;
 import ltdjms.discord.shop.services.ShopView;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed;
@@ -49,6 +50,8 @@ class ShopSelectMenuHandlerTest {
 
   @Mock private CurrencyPurchaseService purchaseService;
 
+  @Mock private FiatOrderService fiatOrderService;
+
   @Mock private StringSelectInteractionEvent selectEvent;
 
   @Mock private ButtonInteractionEvent buttonEvent;
@@ -65,7 +68,9 @@ class ShopSelectMenuHandlerTest {
 
   @BeforeEach
   void setUp() {
-    handler = new ShopSelectMenuHandler(productService, balanceService, purchaseService);
+    handler =
+        new ShopSelectMenuHandler(
+            productService, balanceService, purchaseService, fiatOrderService);
 
     // 設定預設的 mock 行為
     when(selectEvent.getGuild()).thenReturn(guild);
@@ -213,6 +218,21 @@ class ShopSelectMenuHandlerTest {
     handler.onStringSelectInteraction(selectEvent);
 
     verify(selectEvent).reply("發生錯誤，請稍後再試");
+    verify(replyAction).setEphemeral(true);
+  }
+
+  @Test
+  @DisplayName("法幣下單失敗應該回覆錯誤訊息")
+  void selectFiatProductFailure_shouldReplyErrorMessage() {
+    when(selectEvent.getComponentId()).thenReturn(ShopView.SELECT_FIAT_PRODUCT);
+    when(selectEvent.getValues()).thenReturn(List.of(String.valueOf(TEST_PRODUCT_ID)));
+    when(fiatOrderService.createFiatOnlyOrder(TEST_GUILD_ID, TEST_USER_ID, TEST_PRODUCT_ID))
+        .thenReturn(
+            Result.err(new DomainError(DomainError.Category.INVALID_INPUT, "商品不支援法幣", null)));
+
+    handler.onStringSelectInteraction(selectEvent);
+
+    verify(selectEvent).reply("下單失敗：商品不支援法幣");
     verify(replyAction).setEphemeral(true);
   }
 

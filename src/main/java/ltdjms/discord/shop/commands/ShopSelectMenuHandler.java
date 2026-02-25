@@ -8,6 +8,7 @@ import ltdjms.discord.product.services.ProductService;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 import ltdjms.discord.shop.services.CurrencyPurchaseService;
+import ltdjms.discord.shop.services.FiatOrderService;
 import ltdjms.discord.shop.services.ShopView;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
@@ -26,21 +27,25 @@ public class ShopSelectMenuHandler extends ListenerAdapter {
   private final ProductService productService;
   private final BalanceService balanceService;
   private final CurrencyPurchaseService purchaseService;
+  private final FiatOrderService fiatOrderService;
 
   public ShopSelectMenuHandler(
       ProductService productService,
       BalanceService balanceService,
-      CurrencyPurchaseService purchaseService) {
+      CurrencyPurchaseService purchaseService,
+      FiatOrderService fiatOrderService) {
     this.productService = productService;
     this.balanceService = balanceService;
     this.purchaseService = purchaseService;
+    this.fiatOrderService = fiatOrderService;
   }
 
   @Override
   public void onStringSelectInteraction(StringSelectInteractionEvent event) {
     String selectId = event.getComponentId();
 
-    if (!selectId.equals(ShopView.SELECT_PURCHASE_PRODUCT)) {
+    if (!selectId.equals(ShopView.SELECT_PURCHASE_PRODUCT)
+        && !selectId.equals(ShopView.SELECT_FIAT_PRODUCT)) {
       return;
     }
 
@@ -53,6 +58,16 @@ public class ShopSelectMenuHandler extends ListenerAdapter {
     long userId = event.getUser().getIdLong();
 
     try {
+      if (event.getValues().isEmpty()) {
+        event.reply("請先選擇商品").setEphemeral(true).queue();
+        return;
+      }
+
+      if (selectId.equals(ShopView.SELECT_FIAT_PRODUCT)) {
+        handleFiatOrderSelect(event, guildId, userId);
+        return;
+      }
+
       String productIdStr = event.getValues().get(0);
       long productId = Long.parseLong(productIdStr);
 
@@ -82,6 +97,50 @@ public class ShopSelectMenuHandler extends ListenerAdapter {
       LOG.error("Error handling purchase select: {}", selectId, e);
       event.reply("發生錯誤，請稍後再試").setEphemeral(true).queue();
     }
+  }
+
+  private void handleFiatOrderSelect(
+      StringSelectInteractionEvent event, long guildId, long userId) {
+    long productId = Long.parseLong(event.getValues().get(0));
+    Result<FiatOrderService.FiatOrderResult, DomainError> orderResult =
+        fiatOrderService.createFiatOnlyOrder(guildId, userId, productId);
+    if (orderResult.isErr()) {
+      event.reply("下單失敗：" + orderResult.getError().message()).setEphemeral(true).queue();
+      return;
+    }
+
+    FiatOrderService.FiatOrderResult order = orderResult.getValue();
+    event
+        .getUser()
+        .openPrivateChannel()
+        .queue(
+            channel ->
+                channel
+                    .sendMessage(order.formatDirectMessage())
+                    .queue(
+                        success -> event.reply("✅ 已將超商代碼與訂單編號私訊給你").setEphemeral(true).queue(),
+                        failure -> {
+                          LOG.warn(
+                              "Failed to DM fiat order info: userId={}, orderNumber={}",
+                              userId,
+                              order.orderNumber(),
+                              failure);
+                          event
+                              .reply("⚠️ 訂單已建立（`" + order.orderNumber() + "`），但無法私訊你，請開啟私訊後再試。")
+                              .setEphemeral(true)
+                              .queue();
+                        }),
+            failure -> {
+              LOG.warn(
+                  "Failed to open DM for fiat order info: userId={}, orderNumber={}",
+                  userId,
+                  order.orderNumber(),
+                  failure);
+              event
+                  .reply("⚠️ 訂單已建立（`" + order.orderNumber() + "`），但無法開啟私訊，請開啟私訊後再試。")
+                  .setEphemeral(true)
+                  .queue();
+            });
   }
 
   @Override

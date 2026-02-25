@@ -57,6 +57,12 @@ public final class EnvironmentConfig {
   private static final String ENV_AI_MARKDOWN_VALIDATION_ENABLED = "AI_MARKDOWN_VALIDATION_ENABLED";
   private static final String ENV_AI_MARKDOWN_VALIDATION_STREAMING_BYPASS =
       "AI_MARKDOWN_VALIDATION_STREAMING_BYPASS";
+  private static final String ENV_ECPAY_MERCHANT_ID = "ECPAY_MERCHANT_ID";
+  private static final String ENV_ECPAY_HASH_KEY = "ECPAY_HASH_KEY";
+  private static final String ENV_ECPAY_HASH_IV = "ECPAY_HASH_IV";
+  private static final String ENV_ECPAY_RETURN_URL = "ECPAY_RETURN_URL";
+  private static final String ENV_ECPAY_STAGE_MODE = "ECPAY_STAGE_MODE";
+  private static final String ENV_ECPAY_CVS_EXPIRE_MINUTES = "ECPAY_CVS_EXPIRE_MINUTES";
 
   // Config paths for Typesafe Config
   private static final String CFG_DISCORD_BOT_TOKEN = "discord.bot.token";
@@ -85,6 +91,12 @@ public final class EnvironmentConfig {
   private static final String CFG_AI_MARKDOWN_VALIDATION_ENABLED = "ai.markdown-validation.enabled";
   private static final String CFG_AI_MARKDOWN_VALIDATION_STREAMING_BYPASS =
       "ai.markdown-validation.streaming-bypass";
+  private static final String CFG_ECPAY_MERCHANT_ID = "payment.ecpay.merchant-id";
+  private static final String CFG_ECPAY_HASH_KEY = "payment.ecpay.hash-key";
+  private static final String CFG_ECPAY_HASH_IV = "payment.ecpay.hash-iv";
+  private static final String CFG_ECPAY_RETURN_URL = "payment.ecpay.return-url";
+  private static final String CFG_ECPAY_STAGE_MODE = "payment.ecpay.stage-mode";
+  private static final String CFG_ECPAY_CVS_EXPIRE_MINUTES = "payment.ecpay.cvs-expire-minutes";
 
   // Default values
   private static final String DEFAULT_REDIS_URI = "redis://localhost:6379";
@@ -105,6 +117,12 @@ public final class EnvironmentConfig {
   private static final boolean DEFAULT_AI_SHOW_REASONING = false;
   private static final boolean DEFAULT_AI_MARKDOWN_VALIDATION_ENABLED = true;
   private static final boolean DEFAULT_AI_MARKDOWN_VALIDATION_STREAMING_BYPASS = false;
+  private static final String DEFAULT_ECPAY_MERCHANT_ID = "";
+  private static final String DEFAULT_ECPAY_HASH_KEY = "";
+  private static final String DEFAULT_ECPAY_HASH_IV = "";
+  private static final String DEFAULT_ECPAY_RETURN_URL = "";
+  private static final boolean DEFAULT_ECPAY_STAGE_MODE = true;
+  private static final int DEFAULT_ECPAY_CVS_EXPIRE_MINUTES = 10080;
 
   private final Config config;
   private final Map<String, String> dotEnvValues;
@@ -154,6 +172,12 @@ public final class EnvironmentConfig {
     defaults.put(
         CFG_AI_MARKDOWN_VALIDATION_STREAMING_BYPASS,
         DEFAULT_AI_MARKDOWN_VALIDATION_STREAMING_BYPASS);
+    defaults.put(CFG_ECPAY_MERCHANT_ID, DEFAULT_ECPAY_MERCHANT_ID);
+    defaults.put(CFG_ECPAY_HASH_KEY, DEFAULT_ECPAY_HASH_KEY);
+    defaults.put(CFG_ECPAY_HASH_IV, DEFAULT_ECPAY_HASH_IV);
+    defaults.put(CFG_ECPAY_RETURN_URL, DEFAULT_ECPAY_RETURN_URL);
+    defaults.put(CFG_ECPAY_STAGE_MODE, DEFAULT_ECPAY_STAGE_MODE);
+    defaults.put(CFG_ECPAY_CVS_EXPIRE_MINUTES, DEFAULT_ECPAY_CVS_EXPIRE_MINUTES);
     Config defaultsConfig = ConfigFactory.parseMap(defaults);
 
     // Load application.conf/properties (standard Typesafe Config behavior)
@@ -186,6 +210,12 @@ public final class EnvironmentConfig {
         dotEnvMapped,
         ENV_AI_MARKDOWN_VALIDATION_STREAMING_BYPASS,
         CFG_AI_MARKDOWN_VALIDATION_STREAMING_BYPASS);
+    mapEnvToConfig(dotEnvMapped, ENV_ECPAY_MERCHANT_ID, CFG_ECPAY_MERCHANT_ID);
+    mapEnvToConfig(dotEnvMapped, ENV_ECPAY_HASH_KEY, CFG_ECPAY_HASH_KEY);
+    mapEnvToConfig(dotEnvMapped, ENV_ECPAY_HASH_IV, CFG_ECPAY_HASH_IV);
+    mapEnvToConfig(dotEnvMapped, ENV_ECPAY_RETURN_URL, CFG_ECPAY_RETURN_URL);
+    mapEnvToConfigBoolean(dotEnvMapped, ENV_ECPAY_STAGE_MODE, CFG_ECPAY_STAGE_MODE);
+    mapEnvToConfigInt(dotEnvMapped, ENV_ECPAY_CVS_EXPIRE_MINUTES, CFG_ECPAY_CVS_EXPIRE_MINUTES);
     Config dotEnvConfig = ConfigFactory.parseMap(dotEnvMapped);
 
     // Build system env vars as config (highest priority)
@@ -216,6 +246,12 @@ public final class EnvironmentConfig {
         sysEnvMapped,
         ENV_AI_MARKDOWN_VALIDATION_STREAMING_BYPASS,
         CFG_AI_MARKDOWN_VALIDATION_STREAMING_BYPASS);
+    mapSysEnvToConfig(sysEnvMapped, ENV_ECPAY_MERCHANT_ID, CFG_ECPAY_MERCHANT_ID);
+    mapSysEnvToConfig(sysEnvMapped, ENV_ECPAY_HASH_KEY, CFG_ECPAY_HASH_KEY);
+    mapSysEnvToConfig(sysEnvMapped, ENV_ECPAY_HASH_IV, CFG_ECPAY_HASH_IV);
+    mapSysEnvToConfig(sysEnvMapped, ENV_ECPAY_RETURN_URL, CFG_ECPAY_RETURN_URL);
+    mapSysEnvToConfigBoolean(sysEnvMapped, ENV_ECPAY_STAGE_MODE, CFG_ECPAY_STAGE_MODE);
+    mapSysEnvToConfigInt(sysEnvMapped, ENV_ECPAY_CVS_EXPIRE_MINUTES, CFG_ECPAY_CVS_EXPIRE_MINUTES);
     Config sysEnvConfig = ConfigFactory.parseMap(sysEnvMapped);
 
     // Layer configs: sysEnv > dotEnv > application > defaults
@@ -685,5 +721,59 @@ public final class EnvironmentConfig {
    */
   public boolean getAIMarkdownValidationStreamingBypass() {
     return config.getBoolean(CFG_AI_MARKDOWN_VALIDATION_STREAMING_BYPASS);
+  }
+
+  /**
+   * Gets ECPay MerchantID used for payment API calls.
+   *
+   * @return MerchantID, empty string when not configured
+   */
+  public String getEcpayMerchantId() {
+    return config.getString(CFG_ECPAY_MERCHANT_ID);
+  }
+
+  /**
+   * Gets ECPay HashKey used for request encryption.
+   *
+   * @return HashKey, empty string when not configured
+   */
+  public String getEcpayHashKey() {
+    return config.getString(CFG_ECPAY_HASH_KEY);
+  }
+
+  /**
+   * Gets ECPay HashIV used for request encryption.
+   *
+   * @return HashIV, empty string when not configured
+   */
+  public String getEcpayHashIv() {
+    return config.getString(CFG_ECPAY_HASH_IV);
+  }
+
+  /**
+   * Gets ECPay payment result callback URL.
+   *
+   * @return callback URL, empty string when not configured
+   */
+  public String getEcpayReturnUrl() {
+    return config.getString(CFG_ECPAY_RETURN_URL);
+  }
+
+  /**
+   * Gets whether ECPay stage endpoint should be used.
+   *
+   * @return true for stage, false for production
+   */
+  public boolean getEcpayStageMode() {
+    return config.getBoolean(CFG_ECPAY_STAGE_MODE);
+  }
+
+  /**
+   * Gets CVS code expiration time in minutes.
+   *
+   * @return expiration minutes
+   */
+  public int getEcpayCvsExpireMinutes() {
+    return config.getInt(CFG_ECPAY_CVS_EXPIRE_MINUTES);
   }
 }

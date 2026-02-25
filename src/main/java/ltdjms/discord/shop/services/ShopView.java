@@ -21,7 +21,9 @@ public class ShopView {
   public static final String BUTTON_PREV_PAGE = "shop_prev_";
   public static final String BUTTON_NEXT_PAGE = "shop_next_";
   public static final String BUTTON_PURCHASE = "shop_purchase";
+  public static final String BUTTON_FIAT_ORDER = "shop_fiat_order";
   public static final String SELECT_PURCHASE_PRODUCT = "shop_purchase_select";
+  public static final String SELECT_FIAT_PRODUCT = "shop_fiat_select";
 
   private ShopView() {
     // Utility class
@@ -55,6 +57,9 @@ public class ShopView {
 
       if (product.hasCurrencyPrice()) {
         sb.append("\n💰 價格：").append(product.formatCurrencyPrice());
+      }
+      if (product.hasFiatPriceTwd()) {
+        sb.append("\n💵 實際價值：").append(product.formatFiatPriceTwd());
       }
 
       if (product.description() != null && !product.description().isBlank()) {
@@ -106,6 +111,19 @@ public class ShopView {
    */
   public static List<ActionRow> buildShopComponents(
       int currentPage, int totalPages, List<Product> productsForPurchase) {
+    return buildShopComponents(currentPage, totalPages, productsForPurchase, List.of());
+  }
+
+  /**
+   * Builds action rows for shop page navigation with purchase/order buttons.
+   *
+   * <p>Buttons are shown only when related products exist.
+   */
+  public static List<ActionRow> buildShopComponents(
+      int currentPage,
+      int totalPages,
+      List<Product> productsForPurchase,
+      List<Product> fiatOnlyProducts) {
     Button prevButton;
     Button nextButton;
 
@@ -121,12 +139,21 @@ public class ShopView {
       nextButton = Button.secondary(BUTTON_NEXT_PAGE + (currentPage + 1), "下一頁 ➡️");
     }
 
-    if (productsForPurchase.isEmpty()) {
-      return List.of(ActionRow.of(prevButton, nextButton));
+    List<ActionRow> rows = new java.util.ArrayList<>();
+    rows.add(ActionRow.of(prevButton, nextButton));
+
+    List<Button> actionButtons = new java.util.ArrayList<>();
+    if (!productsForPurchase.isEmpty()) {
+      actionButtons.add(Button.success(BUTTON_PURCHASE, "💰 購買商品"));
+    }
+    if (!fiatOnlyProducts.isEmpty()) {
+      actionButtons.add(Button.primary(BUTTON_FIAT_ORDER, "💳 法幣下單"));
+    }
+    if (!actionButtons.isEmpty()) {
+      rows.add(ActionRow.of(actionButtons));
     }
 
-    Button purchaseButton = Button.success(BUTTON_PURCHASE, "💰 購買商品");
-    return List.of(ActionRow.of(prevButton, nextButton), ActionRow.of(purchaseButton));
+    return rows;
   }
 
   /** Builds a purchase menu with products available for currency purchase. */
@@ -139,6 +166,22 @@ public class ShopView {
       Product product = productsForPurchase.get(i);
       String label = product.name();
       String description = product.formatCurrencyPrice();
+      menuBuilder.addOption(label, String.valueOf(product.id()), description);
+    }
+
+    return menuBuilder.build();
+  }
+
+  /** Builds a select menu for fiat-only products. */
+  public static StringSelectMenu buildFiatOrderMenu(List<Product> fiatOnlyProducts) {
+    StringSelectMenu.Builder menuBuilder =
+        StringSelectMenu.create(SELECT_FIAT_PRODUCT).setPlaceholder("選擇要法幣下單的商品");
+
+    int limit = Math.min(fiatOnlyProducts.size(), MAX_PURCHASE_OPTIONS);
+    for (int i = 0; i < limit; i++) {
+      Product product = fiatOnlyProducts.get(i);
+      String label = product.name();
+      String description = product.formatFiatPriceTwd();
       menuBuilder.addOption(label, String.valueOf(product.id()), description);
     }
 

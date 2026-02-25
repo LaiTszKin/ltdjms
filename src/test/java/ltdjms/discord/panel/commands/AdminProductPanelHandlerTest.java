@@ -133,7 +133,7 @@ class AdminProductPanelHandlerTest {
             null,
             Instant.now(),
             Instant.now());
-    when(productService.createProduct(eq(guildId), anyString(), any(), any(), any(), any()))
+    when(productService.createProduct(eq(guildId), anyString(), any(), any(), any(), any(), any()))
         .thenReturn(ltdjms.discord.shared.Result.ok(newProduct));
     when(productService.getProducts(guildId)).thenReturn(List.of(newProduct));
     when(redemptionService.getCodeStats(newProduct.id()))
@@ -142,6 +142,49 @@ class AdminProductPanelHandlerTest {
     handler.onModalInteraction(event);
 
     verify(hook, atLeastOnce()).editOriginalEmbeds(any(MessageEmbed.class));
+  }
+
+  @Test
+  void setFiatValueModal_shouldUpdateProductFiatPrice() {
+    var event = mock(net.dv8tion.jda.api.events.interaction.ModalInteractionEvent.class);
+    var guild = mock(net.dv8tion.jda.api.entities.Guild.class);
+    var adminMember = mock(net.dv8tion.jda.api.entities.Member.class);
+    var reply =
+        mock(net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction.class);
+    var fiatPriceMapping = mock(net.dv8tion.jda.api.interactions.modals.ModalMapping.class);
+
+    when(event.getModalId()).thenReturn(AdminProductPanelHandler.MODAL_SET_FIAT_VALUE + productId);
+    when(event.isFromGuild()).thenReturn(true);
+    when(event.getGuild()).thenReturn(guild);
+    when(guild.getIdLong()).thenReturn(guildId);
+    when(event.getMember()).thenReturn(adminMember);
+    when(adminMember.hasPermission(Permission.ADMINISTRATOR)).thenReturn(true);
+    when(event.getValue("fiat_price_twd")).thenReturn(fiatPriceMapping);
+    when(fiatPriceMapping.getAsString()).thenReturn("1200");
+
+    when(event.reply(anyString())).thenReturn(reply);
+    when(reply.setEphemeral(true)).thenReturn(reply);
+    doAnswer(invocation -> null).when(reply).queue();
+
+    var updatedProduct =
+        new Product(
+            Long.valueOf(productId),
+            guildId,
+            "Test Product",
+            null,
+            null,
+            null,
+            null,
+            1200L,
+            Instant.now(),
+            Instant.now());
+    when(productService.updateProduct(eq(productId), any(), any(), any(), any(), any(), eq(1200L)))
+        .thenReturn(ltdjms.discord.shared.Result.ok(updatedProduct));
+
+    handler.onModalInteraction(event);
+
+    verify(productService).updateProduct(productId, "Test Product", null, null, null, null, 1200L);
+    verify(event).reply("✅ 已更新實際價值（TWD）");
   }
 
   @SuppressWarnings("unchecked")

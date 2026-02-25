@@ -57,6 +57,7 @@ public class AdminProductPanelHandler extends ListenerAdapter {
   public static final String BUTTON_PRODUCT_BACK = "admin_product_back";
   public static final String BUTTON_PREFIX_EDIT_PRODUCT = "admin_edit_product_";
   public static final String BUTTON_PREFIX_DELETE_PRODUCT = "admin_delete_product_";
+  public static final String BUTTON_PREFIX_SET_FIAT_VALUE = "admin_set_fiat_value_";
   public static final String BUTTON_PREFIX_CODE_PAGE = "admin_code_page_";
   public static final String BUTTON_CODE_BACK = "admin_code_back";
 
@@ -66,6 +67,7 @@ public class AdminProductPanelHandler extends ListenerAdapter {
   // Modal IDs
   public static final String MODAL_CREATE_PRODUCT = "admin_modal_create_product";
   public static final String MODAL_EDIT_PRODUCT = "admin_modal_edit_product_";
+  public static final String MODAL_SET_FIAT_VALUE = "admin_modal_set_fiat_value_";
   public static final String MODAL_GENERATE_CODES = "admin_modal_generate_codes_";
 
   private final ProductService productService;
@@ -126,6 +128,9 @@ public class AdminProductPanelHandler extends ListenerAdapter {
       } else if (buttonId.startsWith(BUTTON_PREFIX_DELETE_PRODUCT)) {
         String productIdStr = buttonId.substring(BUTTON_PREFIX_DELETE_PRODUCT.length());
         handleDeleteProduct(event, Long.parseLong(productIdStr));
+      } else if (buttonId.startsWith(BUTTON_PREFIX_SET_FIAT_VALUE)) {
+        String productIdStr = buttonId.substring(BUTTON_PREFIX_SET_FIAT_VALUE.length());
+        openSetFiatValueModal(event, Long.parseLong(productIdStr));
       } else if (buttonId.startsWith(BUTTON_PREFIX_CODE_PAGE)) {
         String pageStr = buttonId.substring(BUTTON_PREFIX_CODE_PAGE.length());
         showCodeList(event, Integer.parseInt(pageStr));
@@ -169,8 +174,7 @@ public class AdminProductPanelHandler extends ListenerAdapter {
       return;
     }
 
-    // Skip if not product-related modal
-    if (!modalId.contains("product") && !modalId.contains("codes")) {
+    if (!isProductPanelModal(modalId)) {
       return;
     }
 
@@ -189,6 +193,8 @@ public class AdminProductPanelHandler extends ListenerAdapter {
         handleCreateProductModal(event);
       } else if (modalId.startsWith(MODAL_EDIT_PRODUCT)) {
         handleEditProductModal(event);
+      } else if (modalId.startsWith(MODAL_SET_FIAT_VALUE)) {
+        handleSetFiatValueModal(event);
       } else if (modalId.startsWith(MODAL_GENERATE_CODES)) {
         handleGenerateCodesModal(event);
       }
@@ -207,7 +213,15 @@ public class AdminProductPanelHandler extends ListenerAdapter {
         || buttonId.equals(BUTTON_CODE_BACK)
         || buttonId.startsWith(BUTTON_PREFIX_EDIT_PRODUCT)
         || buttonId.startsWith(BUTTON_PREFIX_DELETE_PRODUCT)
+        || buttonId.startsWith(BUTTON_PREFIX_SET_FIAT_VALUE)
         || buttonId.startsWith(BUTTON_PREFIX_CODE_PAGE);
+  }
+
+  private boolean isProductPanelModal(String modalId) {
+    return modalId.equals(MODAL_CREATE_PRODUCT)
+        || modalId.startsWith(MODAL_EDIT_PRODUCT)
+        || modalId.startsWith(MODAL_SET_FIAT_VALUE)
+        || modalId.startsWith(MODAL_GENERATE_CODES);
   }
 
   // ===== Product List =====
@@ -336,6 +350,11 @@ public class AdminProductPanelHandler extends ListenerAdapter {
     } else {
       builder.addField("貨幣價格", "不可用貨幣購買", true);
     }
+    if (product.hasFiatPriceTwd()) {
+      builder.addField("實際價值（TWD）", product.formatFiatPriceTwd(), true);
+    } else {
+      builder.addField("實際價值（TWD）", "未設定", true);
+    }
 
     // Code stats
     RedemptionCodeRepository.CodeStats stats = redemptionService.getCodeStats(product.id());
@@ -361,6 +380,7 @@ public class AdminProductPanelHandler extends ListenerAdapter {
                 : Button.primary(BUTTON_VIEW_CODES, "📋 查看兌換碼").asDisabled()),
         ActionRow.of(
             Button.secondary(BUTTON_PREFIX_EDIT_PRODUCT + product.id(), "✏️ 編輯"),
+            Button.secondary(BUTTON_PREFIX_SET_FIAT_VALUE + product.id(), "💵 設定實際價值"),
             Button.danger(BUTTON_PREFIX_DELETE_PRODUCT + product.id(), "🗑️ 刪除"),
             Button.secondary(BUTTON_PRODUCT_BACK, "⬅️ 返回列表")));
   }
@@ -403,7 +423,6 @@ public class AdminProductPanelHandler extends ListenerAdapter {
             .setRequired(false)
             .setMaxLength(15)
             .build();
-
     Modal modal =
         Modal.create(MODAL_CREATE_PRODUCT, "建立商品")
             .addComponents(
@@ -458,10 +477,9 @@ public class AdminProductPanelHandler extends ListenerAdapter {
         return;
       }
     }
-
     Result<Product, DomainError> result =
         productService.createProduct(
-            guildId, name, description, rewardType, rewardAmount, currencyPrice);
+            guildId, name, description, rewardType, rewardAmount, currencyPrice, null);
 
     if (result.isErr()) {
       event.reply("建立失敗：" + result.getError().message()).setEphemeral(true).queue();
@@ -561,7 +579,6 @@ public class AdminProductPanelHandler extends ListenerAdapter {
                         .setMaxLength(15)
                         .build();
               }
-
               Modal modal =
                   Modal.create(MODAL_EDIT_PRODUCT + productId, "編輯商品")
                       .addComponents(
@@ -619,10 +636,21 @@ public class AdminProductPanelHandler extends ListenerAdapter {
         return;
       }
     }
+    Product existing = productService.getProduct(productId).orElse(null);
+    if (existing == null) {
+      event.reply("找不到該商品").setEphemeral(true).queue();
+      return;
+    }
 
     Result<Product, DomainError> result =
         productService.updateProduct(
-            productId, name, description, rewardType, rewardAmount, currencyPrice);
+            productId,
+            name,
+            description,
+            rewardType,
+            rewardAmount,
+            currencyPrice,
+            existing.fiatPriceTwd());
 
     if (result.isErr()) {
       event.reply("更新失敗：" + result.getError().message()).setEphemeral(true).queue();
@@ -630,6 +658,70 @@ public class AdminProductPanelHandler extends ListenerAdapter {
     }
 
     event.reply("✅ 商品更新成功！").setEphemeral(true).queue();
+  }
+
+  private void openSetFiatValueModal(ButtonInteractionEvent event, long productId) {
+    productService
+        .getProduct(productId)
+        .ifPresentOrElse(
+            product -> {
+              String currentValue =
+                  product.fiatPriceTwd() != null ? String.valueOf(product.fiatPriceTwd()) : "";
+              TextInput.Builder builder =
+                  TextInput.create("fiat_price_twd", "實際價值（TWD）", TextInputStyle.SHORT)
+                      .setPlaceholder("輸入新台幣金額（留空可清除）")
+                      .setRequired(false)
+                      .setMaxLength(15);
+              if (!currentValue.isBlank()) {
+                builder.setValue(currentValue);
+              }
+              Modal modal =
+                  Modal.create(MODAL_SET_FIAT_VALUE + productId, "設定實際價值（TWD）")
+                      .addComponents(ActionRow.of(builder.build()))
+                      .build();
+              event.replyModal(modal).queue();
+            },
+            () -> event.reply("找不到該商品").setEphemeral(true).queue());
+  }
+
+  private void handleSetFiatValueModal(ModalInteractionEvent event) {
+    String modalId = event.getModalId();
+    long productId = Long.parseLong(modalId.substring(MODAL_SET_FIAT_VALUE.length()));
+    Product existing = productService.getProduct(productId).orElse(null);
+    if (existing == null) {
+      event.reply("找不到該商品").setEphemeral(true).queue();
+      return;
+    }
+
+    String fiatPriceTwdStr = getModalValueOrNull(event, "fiat_price_twd");
+    Long fiatPriceTwd = null;
+    if (fiatPriceTwdStr != null && !fiatPriceTwdStr.isBlank()) {
+      try {
+        fiatPriceTwd = Long.parseLong(fiatPriceTwdStr);
+      } catch (NumberFormatException e) {
+        event.reply("實際價值（TWD）格式錯誤，請輸入有效數字").setEphemeral(true).queue();
+        return;
+      }
+    }
+
+    Result<Product, DomainError> result =
+        productService.updateProduct(
+            productId,
+            existing.name(),
+            existing.description(),
+            existing.rewardType(),
+            existing.rewardAmount(),
+            existing.currencyPrice(),
+            fiatPriceTwd);
+    if (result.isErr()) {
+      event.reply("更新失敗：" + result.getError().message()).setEphemeral(true).queue();
+      return;
+    }
+    if (fiatPriceTwd == null) {
+      event.reply("✅ 已清除實際價值（TWD）").setEphemeral(true).queue();
+      return;
+    }
+    event.reply("✅ 已更新實際價值（TWD）").setEphemeral(true).queue();
   }
 
   // ===== Delete Product =====

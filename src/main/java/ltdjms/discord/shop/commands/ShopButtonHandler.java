@@ -53,6 +53,8 @@ public class ShopButtonHandler extends ListenerAdapter {
         showShopPage(event, guildId, page);
       } else if (buttonId.equals(ShopView.BUTTON_PURCHASE)) {
         showPurchaseMenu(event, guildId);
+      } else if (buttonId.equals(ShopView.BUTTON_FIAT_ORDER)) {
+        showFiatOrderMenu(event, guildId);
       }
     } catch (Exception e) {
       LOG.error("Error handling shop button: {}", buttonId, e);
@@ -63,7 +65,8 @@ public class ShopButtonHandler extends ListenerAdapter {
   private boolean isShopButton(String buttonId) {
     return buttonId.startsWith(ShopView.BUTTON_PREV_PAGE)
         || buttonId.startsWith(ShopView.BUTTON_NEXT_PAGE)
-        || buttonId.equals(ShopView.BUTTON_PURCHASE);
+        || buttonId.equals(ShopView.BUTTON_PURCHASE)
+        || buttonId.equals(ShopView.BUTTON_FIAT_ORDER);
   }
 
   private int parsePageFromButtonId(String buttonId, String prefix) {
@@ -85,10 +88,11 @@ public class ShopButtonHandler extends ListenerAdapter {
 
     // Get products available for purchase
     var productsForPurchase = productService.getProductsForPurchase(guildId);
+    var fiatOnlyProducts = productService.getFiatOnlyProducts(guildId);
 
     List<ActionRow> components =
         ShopView.buildShopComponents(
-            shopPage.currentPage(), shopPage.totalPages(), productsForPurchase);
+            shopPage.currentPage(), shopPage.totalPages(), productsForPurchase, fiatOnlyProducts);
 
     event.editMessageEmbeds(embed).setComponents(components).queue();
   }
@@ -104,5 +108,16 @@ public class ShopButtonHandler extends ListenerAdapter {
     StringSelectMenu purchaseMenu = ShopView.buildPurchaseMenu(productsForPurchase);
 
     event.reply("請選擇要購買的商品").setEphemeral(true).addActionRow(purchaseMenu).queue();
+  }
+
+  private void showFiatOrderMenu(ButtonInteractionEvent event, long guildId) {
+    var fiatOnlyProducts = productService.getFiatOnlyProducts(guildId);
+    if (fiatOnlyProducts.isEmpty()) {
+      event.reply("目前沒有限定法幣支付的商品").setEphemeral(true).queue();
+      return;
+    }
+
+    StringSelectMenu fiatOrderMenu = ShopView.buildFiatOrderMenu(fiatOnlyProducts);
+    event.reply("請選擇要法幣下單的商品").setEphemeral(true).addActionRow(fiatOrderMenu).queue();
   }
 }
