@@ -164,6 +164,109 @@ class LangChain4jManageMessageToolTest {
   }
 
   @Test
+  @DisplayName("editMode=diff 時應套用 unified diff")
+  void shouldApplyUnifiedDiffWhenEditModeIsDiff() {
+    @SuppressWarnings("unchecked")
+    RestAction<Message> retrieveAction = mock(RestAction.class);
+    Message originalMessage = mock(Message.class);
+    MessageEditAction editAction = mock(MessageEditAction.class);
+    Message editedMessage = mock(Message.class);
+
+    when(mockChannel.retrieveMessageById(TEST_MESSAGE_ID)).thenReturn(retrieveAction);
+    when(retrieveAction.complete()).thenReturn(originalMessage);
+    when(originalMessage.getContentRaw()).thenReturn("第一行\n第二行\n第三行");
+    when(mockChannel.editMessageById(TEST_MESSAGE_ID, "第一行\n第二行（已更新）\n第三行")).thenReturn(editAction);
+    when(editAction.complete()).thenReturn(editedMessage);
+
+    String diffPatch = "@@ -1,3 +1,3 @@\n" + " 第一行\n" + "-第二行\n" + "+第二行（已更新）\n" + " 第三行";
+
+    String result =
+        tool.manageMessage(
+            String.valueOf(TEST_MESSAGE_ID), "edit", null, diffPatch, "diff", parameters);
+
+    assertThat(result).contains("\"success\": true");
+    assertThat(result).contains("\"editMode\": \"diff\"");
+    assertThat(result).contains("第一行 第二行（已更新） 第三行");
+  }
+
+  @Test
+  @DisplayName("未提供 editMode 且內容為 unified diff 時應自動套用 diff")
+  void shouldAutoDetectDiffModeWhenEditModeMissing() {
+    @SuppressWarnings("unchecked")
+    RestAction<Message> retrieveAction = mock(RestAction.class);
+    Message originalMessage = mock(Message.class);
+    MessageEditAction editAction = mock(MessageEditAction.class);
+    Message editedMessage = mock(Message.class);
+
+    when(mockChannel.retrieveMessageById(TEST_MESSAGE_ID)).thenReturn(retrieveAction);
+    when(retrieveAction.complete()).thenReturn(originalMessage);
+    when(originalMessage.getContentRaw()).thenReturn("A\nB\nC");
+    when(mockChannel.editMessageById(TEST_MESSAGE_ID, "A\nB-2\nC")).thenReturn(editAction);
+    when(editAction.complete()).thenReturn(editedMessage);
+
+    String diffPatch = "@@ -1,3 +1,3 @@\n A\n-B\n+B-2\n C";
+
+    String result =
+        tool.manageMessage(
+            String.valueOf(TEST_MESSAGE_ID), "edit", null, diffPatch, null, parameters);
+
+    assertThat(result).contains("\"success\": true");
+    assertThat(result).contains("\"editMode\": \"diff\"");
+    assertThat(result).contains("A B-2 C");
+  }
+
+  @Test
+  @DisplayName("diff 內容包在 markdown code fence 時應可正常套用")
+  void shouldApplyDiffWhenWrappedInCodeFence() {
+    @SuppressWarnings("unchecked")
+    RestAction<Message> retrieveAction = mock(RestAction.class);
+    Message originalMessage = mock(Message.class);
+    MessageEditAction editAction = mock(MessageEditAction.class);
+    Message editedMessage = mock(Message.class);
+
+    when(mockChannel.retrieveMessageById(TEST_MESSAGE_ID)).thenReturn(retrieveAction);
+    when(retrieveAction.complete()).thenReturn(originalMessage);
+    when(originalMessage.getContentRaw()).thenReturn("alpha\nbeta\ngamma");
+    when(mockChannel.editMessageById(TEST_MESSAGE_ID, "alpha\nbeta-2\ngamma"))
+        .thenReturn(editAction);
+    when(editAction.complete()).thenReturn(editedMessage);
+
+    String diffPatch = "```diff\n@@ -1,3 +1,3 @@\n alpha\n-beta\n+beta-2\n gamma\n```";
+
+    String result =
+        tool.manageMessage(
+            String.valueOf(TEST_MESSAGE_ID), "edit", null, diffPatch, "diff", parameters);
+
+    assertThat(result).contains("\"success\": true");
+    assertThat(result).contains("\"editMode\": \"diff\"");
+    assertThat(result).contains("alpha beta-2 gamma");
+  }
+
+  @Test
+  @DisplayName("diff 內容與原文不符時應回傳錯誤")
+  void shouldReturnErrorWhenDiffContextDoesNotMatchOriginal() {
+    @SuppressWarnings("unchecked")
+    RestAction<Message> retrieveAction = mock(RestAction.class);
+    Message originalMessage = mock(Message.class);
+
+    when(mockChannel.retrieveMessageById(TEST_MESSAGE_ID)).thenReturn(retrieveAction);
+    when(retrieveAction.complete()).thenReturn(originalMessage);
+    when(originalMessage.getContentRaw()).thenReturn("A\nB\nC");
+
+    String result =
+        tool.manageMessage(
+            String.valueOf(TEST_MESSAGE_ID),
+            "edit",
+            null,
+            "@@ -1,3 +1,3 @@\n A\n-X\n+Y\n C",
+            "diff",
+            parameters);
+
+    assertThat(result).contains("\"success\": false");
+    assertThat(result).contains("diff 套用失敗：第 2 行內容不符");
+  }
+
+  @Test
   @DisplayName("editMode 非法時應回傳錯誤")
   void shouldReturnErrorWhenEditModeInvalid() {
     String result =
@@ -171,7 +274,31 @@ class LangChain4jManageMessageToolTest {
             String.valueOf(TEST_MESSAGE_ID), "edit", null, "updated content", "merge", parameters);
 
     assertThat(result).contains("\"success\": false");
-    assertThat(result).contains("editMode 必須是 replace、append 或 prepend");
+    assertThat(result).contains("editMode 必須是 replace、append、prepend 或 diff");
+  }
+
+  @Test
+  @DisplayName("diff 格式缺少 hunk 時應回傳錯誤")
+  void shouldReturnErrorWhenDiffFormatIsInvalid() {
+    @SuppressWarnings("unchecked")
+    RestAction<Message> retrieveAction = mock(RestAction.class);
+    Message originalMessage = mock(Message.class);
+
+    when(mockChannel.retrieveMessageById(TEST_MESSAGE_ID)).thenReturn(retrieveAction);
+    when(retrieveAction.complete()).thenReturn(originalMessage);
+    when(originalMessage.getContentRaw()).thenReturn("原始內容");
+
+    String result =
+        tool.manageMessage(
+            String.valueOf(TEST_MESSAGE_ID),
+            "edit",
+            null,
+            "--- a/message\n+++ b/message\n-原始內容\n+更新內容",
+            "diff",
+            parameters);
+
+    assertThat(result).contains("\"success\": false");
+    assertThat(result).contains("diff 格式無效：找不到 hunk 標頭");
   }
 
   @Test

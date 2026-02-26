@@ -58,12 +58,13 @@
     - `action`（必填，字串）：`pin`、`delete`、`edit`。
     - `channelId`（可選，字串）：目標頻道 ID；未提供時使用當前頻道。
     - `newContent`（`action=edit` 必填，字串）：新訊息內容。
-    - `editMode`（`action=edit` 可選，字串）：`replace`（覆寫）、`append`（接在原文後）、`prepend`（接在原文前）。
+    - `editMode`（`action=edit` 可選，字串）：`replace`（覆寫）、`append`（接在原文後）、`prepend`（接在原文前）、`diff`（套用 unified diff）。
   - 規則：
     - `delete` 與 `edit` 預設直接執行，不需先詢問確認。
     - `edit` 必須帶 `newContent`，不可留空。
     - `edit` 時禁止使用「測試」等佔位內容，除非使用者明確要求該文字。
     - 使用者只提供增量文字時，優先使用 `editMode=append` 或 `editMode=prepend`，避免覆蓋原文。
+    - 使用者提供 unified diff（含 `@@ ... @@`）時，優先使用 `editMode=diff` 套用差異而非整段覆寫。
 
 - `move_channel`
   - 用途：將既有頻道移動到指定類別。
