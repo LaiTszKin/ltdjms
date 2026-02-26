@@ -105,6 +105,11 @@ public class RedemptionService {
       return Result.err(DomainError.invalidInput("單個兌換碼最多可兌換 1000 個商品"));
     }
 
+    // Validate expiration time
+    if (expiresAt != null && expiresAt.isBefore(Instant.now())) {
+      return Result.err(DomainError.invalidInput("過期時間必須在未來"));
+    }
+
     // Find product
     Optional<Product> productOpt = productRepository.findById(productId);
     if (productOpt.isEmpty()) {

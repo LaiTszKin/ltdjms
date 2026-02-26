@@ -232,6 +232,19 @@ class RedemptionServiceTest {
       assertThat(result.isErr()).isTrue();
       assertThat(result.getError().message()).contains("1000");
     }
+
+    @Test
+    @DisplayName("should reject expiration time in the past")
+    void shouldRejectExpirationTimeInThePast() {
+      // When
+      Instant expiresAt = Instant.now().minus(1, ChronoUnit.SECONDS);
+      Result<List<RedemptionCode>, DomainError> result =
+          redemptionService.generateCodes(TEST_PRODUCT_ID, 1, expiresAt);
+
+      // Then
+      assertThat(result.isErr()).isTrue();
+      assertThat(result.getError().message()).contains("過期時間");
+    }
   }
 
   @Nested
