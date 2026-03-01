@@ -210,6 +210,15 @@ public class RedemptionService {
     Product product = productOpt.get();
 
     try {
+      Long totalRewardAmount = null;
+      if (product.hasReward()) {
+        Result<Long, DomainError> totalRewardResult = calculateTotalReward(product, code);
+        if (totalRewardResult.isErr()) {
+          return Result.err(totalRewardResult.getError());
+        }
+        totalRewardAmount = totalRewardResult.getValue();
+      }
+
       // Mark code as redeemed
       if (code.id() == null) {
         LOG.error("Redemption code ID is null during redeem: code={}", code.getMaskedCode());
@@ -231,7 +240,8 @@ public class RedemptionService {
       // Grant reward if applicable
       Long rewardedAmount = null;
       if (product.hasReward()) {
-        Result<Long, DomainError> rewardResult = grantReward(guildId, userId, product, code);
+        Result<Long, DomainError> rewardResult =
+            grantReward(guildId, userId, product, code, totalRewardAmount);
         if (rewardResult.isErr()) {
           // Rollback the redemption would be complex, log and continue
           LOG.error(
@@ -332,14 +342,17 @@ public class RedemptionService {
 
   /** Grants the reward for a product. */
   private Result<Long, DomainError> grantReward(
-      long guildId, long userId, Product product, RedemptionCode code) {
+      long guildId, long userId, Product product, RedemptionCode code, Long totalRewardAmount) {
 
     if (!product.hasReward()) {
       return Result.ok(null);
     }
 
-    // Calculate total reward based on quantity
-    long totalAmount = product.rewardAmount() * code.quantity();
+    if (totalRewardAmount == null) {
+      return Result.err(DomainError.invalidInput("獎勵金額計算失敗"));
+    }
+
+    long totalAmount = totalRewardAmount.longValue();
     String description =
         String.format("兌換碼: %s (%s) x%d", code.getMaskedCode(), product.name(), code.quantity());
 
@@ -375,6 +388,14 @@ public class RedemptionService {
         yield Result.err(tokenResult.getError());
       }
     };
+  }
+
+  private Result<Long, DomainError> calculateTotalReward(Product product, RedemptionCode code) {
+    try {
+      return Result.ok(Math.multiplyExact(product.rewardAmount(), code.quantity()));
+    } catch (ArithmeticException e) {
+      return Result.err(DomainError.invalidInput("兌換獎勵金額超出可表示範圍"));
+    }
   }
 
   /** Result of a successful redemption. */

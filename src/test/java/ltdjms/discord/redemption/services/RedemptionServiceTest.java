@@ -836,6 +836,51 @@ class RedemptionServiceTest {
     }
 
     @Test
+    @DisplayName("should reject reward overflow before marking code redeemed")
+    void shouldRejectRewardOverflowBeforeMarkingCodeRedeemed() {
+      // Given
+      Instant now = Instant.now();
+      Product product =
+          new Product(
+              Long.valueOf(TEST_PRODUCT_ID),
+              TEST_GUILD_ID,
+              "超大獎勵商品",
+              null,
+              Product.RewardType.CURRENCY,
+              Long.MAX_VALUE,
+              null,
+              now,
+              now);
+      RedemptionCode code =
+          new RedemptionCode(
+              1L,
+              "ABCD1234EFGH5678",
+              TEST_PRODUCT_ID,
+              TEST_GUILD_ID,
+              null,
+              null,
+              null,
+              now,
+              null,
+              2);
+
+      when(codeRepository.findByCode("ABCD1234EFGH5678")).thenReturn(Optional.of(code));
+      when(productRepository.findById(TEST_PRODUCT_ID)).thenReturn(Optional.of(product));
+
+      // When
+      Result<RedemptionService.RedemptionResult, DomainError> result =
+          redemptionService.redeemCode("ABCD1234EFGH5678", TEST_GUILD_ID, TEST_USER_ID);
+
+      // Then
+      assertThat(result.isErr()).isTrue();
+      assertThat(result.getError().message()).contains("獎勵");
+      verify(codeRepository, never()).markAsRedeemedIfAvailable(anyLong(), anyLong(), any());
+      verify(balanceAdjustmentService, never()).tryAdjustBalance(anyLong(), anyLong(), anyLong());
+      verify(productRedemptionTransactionService, never())
+          .recordTransaction(anyLong(), anyLong(), any(), any());
+    }
+
+    @Test
     @DisplayName("should reject when code id is null")
     void shouldRejectWhenCodeIdIsNull() {
       // Given

@@ -127,6 +127,32 @@ class ProductRedemptionTransactionServiceTest {
     }
 
     @Test
+    @DisplayName("should reject overflow reward amount")
+    void shouldRejectOverflowRewardAmount() {
+      // Given
+      Product product =
+          new Product(
+              TEST_PRODUCT_ID,
+              TEST_GUILD_ID,
+              "超大獎勵",
+              "overflow case",
+              Product.RewardType.CURRENCY,
+              Long.MAX_VALUE,
+              null,
+              Instant.now(),
+              Instant.now());
+      RedemptionCode code =
+          RedemptionCode.create("OVERFLOW", TEST_PRODUCT_ID, TEST_GUILD_ID, null, 2);
+
+      // When / Then
+      assertThatThrownBy(
+              () -> service.recordTransaction(TEST_GUILD_ID, TEST_USER_ID, product, code))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("超出可表示範圍");
+      verify(transactionRepository, never()).save(any(ProductRedemptionTransaction.class));
+    }
+
+    @Test
     @DisplayName("should record transaction without reward")
     void shouldRecordTransactionWithoutReward() {
       // Given

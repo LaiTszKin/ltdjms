@@ -42,7 +42,11 @@ public class ProductRedemptionTransactionService {
     ProductRedemptionTransaction.RewardType rewardType = null;
 
     if (product.hasReward()) {
-      rewardAmount = product.rewardAmount() * redemptionCode.quantity();
+      try {
+        rewardAmount = Math.multiplyExact(product.rewardAmount(), redemptionCode.quantity());
+      } catch (ArithmeticException e) {
+        throw new IllegalArgumentException("兌換交易獎勵金額超出可表示範圍", e);
+      }
       rewardType =
           switch (product.rewardType()) {
             case CURRENCY -> ProductRedemptionTransaction.RewardType.CURRENCY;
