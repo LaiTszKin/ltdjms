@@ -163,6 +163,29 @@ class AIChatStreamChunkTest {
     assertThat(reasoningContent).isNull();
   }
 
+  @Test
+  void testExtractMethods_withNullChoiceElement_shouldHandleGracefully() {
+    // Given
+    String json =
+        """
+        {
+          "id": "test-id",
+          "object": "chat.completion.chunk",
+          "created": 1234567890,
+          "model": "test-model",
+          "choices": [null]
+        }
+        """;
+
+    // When
+    AIChatStreamChunk chunk = parseJson(json);
+
+    // Then
+    assertThat(chunk.extractContent()).isNull();
+    assertThat(chunk.extractReasoningContent()).isNull();
+    assertThat(chunk.isFinished()).isFalse();
+  }
+
   private AIChatStreamChunk parseJson(String json) {
     try {
       com.fasterxml.jackson.databind.ObjectMapper mapper =

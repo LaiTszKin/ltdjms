@@ -55,7 +55,7 @@ public record AIChatStreamChunk(
       return null;
     }
     StreamChoice choice = choices.get(0);
-    if (choice.delta() == null) {
+    if (choice == null || choice.delta() == null) {
       return null;
     }
     return choice.delta().content();
@@ -67,7 +67,7 @@ public record AIChatStreamChunk(
       return null;
     }
     StreamChoice choice = choices.get(0);
-    if (choice.delta() == null) {
+    if (choice == null || choice.delta() == null) {
       return null;
     }
     return choice.delta().reasoningContent();
@@ -79,6 +79,9 @@ public record AIChatStreamChunk(
       return false;
     }
     StreamChoice choice = choices.get(0);
+    if (choice == null) {
+      return false;
+    }
     return "stop".equals(choice.finishReason());
   }
 }
