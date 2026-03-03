@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -27,6 +28,7 @@ class JdbcRedemptionCodeRepositoryTest {
 
   private static final long TEST_CODE_ID = 1L;
   private static final long TEST_USER_ID = 987654321098765432L;
+  private static final long TEST_PRODUCT_ID = 42L;
 
   private DataSource dataSource;
   private Connection connection;
@@ -125,6 +127,46 @@ class JdbcRedemptionCodeRepositoryTest {
                       TEST_CODE_ID, TEST_USER_ID, Instant.parse("2026-02-01T00:00:00Z")))
           .isInstanceOf(RepositoryException.class)
           .hasMessageContaining("Failed to atomically redeem code");
+    }
+  }
+
+  @Nested
+  @DisplayName("invalidated code queries")
+  class InvalidatedCodeQueryTests {
+
+    @Test
+    @DisplayName("invalidateByProductId 不應清空 product_id，避免後續查詢失去產品邊界")
+    void invalidateByProductIdShouldNotNullOutProductId() throws SQLException {
+      PreparedStatement stmt = mock(PreparedStatement.class);
+      ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+
+      when(connection.prepareStatement(sqlCaptor.capture())).thenReturn(stmt);
+      when(stmt.executeUpdate()).thenReturn(1);
+
+      int affected = repository.invalidateByProductId(TEST_PRODUCT_ID);
+
+      assertThat(affected).isEqualTo(1);
+      assertThat(sqlCaptor.getValue()).contains("SET invalidated_at = NOW()");
+      assertThat(sqlCaptor.getValue()).doesNotContain("product_id = NULL");
+      verify(stmt).setLong(1, TEST_PRODUCT_ID);
+    }
+
+    @Test
+    @DisplayName("findInvalidatedByProductId 應只查詢指定 product_id 的失效碼")
+    void findInvalidatedByProductIdShouldScopeByProductId() throws SQLException {
+      PreparedStatement stmt = mock(PreparedStatement.class);
+      ResultSet rs = mock(ResultSet.class);
+      ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+
+      when(connection.prepareStatement(sqlCaptor.capture())).thenReturn(stmt);
+      when(stmt.executeQuery()).thenReturn(rs);
+      when(rs.next()).thenReturn(false);
+
+      repository.findInvalidatedByProductId(TEST_PRODUCT_ID);
+
+      assertThat(sqlCaptor.getValue())
+          .contains("WHERE product_id = ? AND invalidated_at IS NOT NULL");
+      verify(stmt).setLong(1, TEST_PRODUCT_ID);
     }
   }
 }

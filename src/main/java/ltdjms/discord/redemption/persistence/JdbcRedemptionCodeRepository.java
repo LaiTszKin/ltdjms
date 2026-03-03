@@ -454,7 +454,7 @@ public class JdbcRedemptionCodeRepository implements RedemptionCodeRepository {
   public int invalidateByProductId(long productId) {
     String sql =
         "UPDATE redemption_code "
-            + "SET product_id = NULL, invalidated_at = NOW() "
+            + "SET invalidated_at = NOW() "
             + "WHERE product_id = ? AND invalidated_at IS NULL";
 
     try (Connection conn = dataSource.getConnection();
@@ -478,30 +478,20 @@ public class JdbcRedemptionCodeRepository implements RedemptionCodeRepository {
   public List<RedemptionCode> findInvalidatedByProductId(long productId) {
     String sql =
         "SELECT id, code, product_id, guild_id, expires_at, redeemed_by, redeemed_at, created_at,"
-            + " invalidated_at FROM redemption_code WHERE product_id IS NULL AND id IN (  SELECT"
-            + " unnest(string_to_array(substring, ' '))::bigint   FROM (    SELECT"
-            + " string_agg(id::text, ' ') as substring     FROM redemption_code     WHERE"
-            + " invalidated_at IS NOT NULL  ) x)";
-
-    // Simplified query for invalidated codes - find codes where product_id is NULL
-    String simplifiedSql =
-        "SELECT id, code, product_id, guild_id, expires_at, redeemed_by, redeemed_at, created_at,"
-            + " invalidated_at, quantity FROM redemption_code WHERE invalidated_at IS NOT NULL"
+            + " invalidated_at, quantity FROM redemption_code WHERE product_id = ? AND"
+            + " invalidated_at IS NOT NULL"
             + " ORDER BY invalidated_at DESC";
 
     List<RedemptionCode> codes = new ArrayList<>();
 
     try (Connection conn = dataSource.getConnection();
-        PreparedStatement stmt = conn.prepareStatement(simplifiedSql)) {
+        PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+      stmt.setLong(1, productId);
 
       try (ResultSet rs = stmt.executeQuery()) {
         while (rs.next()) {
-          RedemptionCode code = mapRow(rs);
-          // Filter by checking if this code originally belonged to the product
-          // Since product_id is NULL after invalidation, we need to check through a different
-          // approach
-          // For now, return all invalidated codes and filter in service layer if needed
-          codes.add(code);
+          codes.add(mapRow(rs));
         }
       }
 
