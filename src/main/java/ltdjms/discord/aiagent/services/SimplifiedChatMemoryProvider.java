@@ -75,23 +75,31 @@ public final class SimplifiedChatMemoryProvider implements ChatMemoryProvider {
    */
   @Override
   public ChatMemory get(Object memoryId) {
-    String conversationId = (String) memoryId;
+    if (!(memoryId instanceof String conversationId) || conversationId.isBlank()) {
+      LOG.warn("無效的會話 ID 物件，使用空記憶體: {}", memoryId);
+      return createNonThreadMemory(String.valueOf(memoryId));
+    }
 
     // 檢查是否為 Thread 級別會話
-    if (!ConversationIdBuilder.isThreadLevel(conversationId)) {
+    if (!isThreadLevelConversation(conversationId)) {
       // 非 Thread，返回空記憶體（短期上下文）
       LOG.debug("非 Thread 級別會話，使用空記憶體: {}", conversationId);
-      return MessageWindowChatMemory.builder()
-          .id(conversationId)
-          .maxMessages(NON_THREAD_MAX_MESSAGES)
-          .build();
+      return createNonThreadMemory(conversationId);
     }
 
     // 解析 guildId, threadId, userId
-    String[] parts = conversationId.split(":");
-    long guildId = Long.parseLong(parts[0]);
-    long threadId = Long.parseLong(parts[1]);
-    long userId = Long.parseLong(parts[2]);
+    long guildId;
+    long threadId;
+    long userId;
+    try {
+      String[] parts = conversationId.split(":");
+      guildId = Long.parseLong(parts[0]);
+      threadId = Long.parseLong(parts[1]);
+      userId = Long.parseLong(parts[2]);
+    } catch (RuntimeException e) {
+      LOG.warn("無法解析 Thread 級別會話 ID，改用空記憶體: {}", conversationId);
+      return createNonThreadMemory(conversationId);
+    }
 
     LOG.debug("Thread 級別會話: guildId={}, threadId={}, userId={}", guildId, threadId, userId);
 
@@ -130,5 +138,21 @@ public final class SimplifiedChatMemoryProvider implements ChatMemoryProvider {
         toolCallMessages.size());
 
     return memory;
+  }
+
+  private boolean isThreadLevelConversation(String conversationId) {
+    try {
+      return ConversationIdBuilder.isThreadLevel(conversationId);
+    } catch (IllegalArgumentException e) {
+      LOG.warn("會話 ID 格式無效，改用空記憶體: {}", conversationId);
+      return false;
+    }
+  }
+
+  private ChatMemory createNonThreadMemory(Object memoryId) {
+    return MessageWindowChatMemory.builder()
+        .id(memoryId == null ? "null" : String.valueOf(memoryId))
+        .maxMessages(NON_THREAD_MAX_MESSAGES)
+        .build();
   }
 }
