@@ -8,14 +8,17 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -122,7 +125,9 @@ class ProductFulfillmentApiServiceTest {
 
     assertThat(result.isOk()).isTrue();
     verify(escortOptionPricingService).getEffectivePrice(GUILD_ID, "CONF_DAM_300W");
-    verify(httpClient).send(any(), anyStringBodyHandler());
+    ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+    verify(httpClient).send(requestCaptor.capture(), anyStringBodyHandler());
+    assertThat(requestCaptor.getValue().timeout()).contains(Duration.ofSeconds(10));
   }
 
   @Test

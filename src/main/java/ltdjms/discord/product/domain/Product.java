@@ -1,6 +1,7 @@
 package ltdjms.discord.product.domain;
 
 import java.time.Instant;
+import java.util.Locale;
 import java.util.Objects;
 
 /**
@@ -51,10 +52,13 @@ public record Product(
     if (backendApiUrl != null && backendApiUrl.length() > 500) {
       throw new IllegalArgumentException("backendApiUrl must not exceed 500 characters");
     }
-    if (backendApiUrl != null
-        && !backendApiUrl.isBlank()
-        && !(backendApiUrl.startsWith("http://") || backendApiUrl.startsWith("https://"))) {
-      throw new IllegalArgumentException("backendApiUrl must start with http:// or https://");
+    if (backendApiUrl != null && !backendApiUrl.isBlank()) {
+      String trimmedBackendApiUrl = backendApiUrl.trim();
+      String normalizedBackendApiUrl = trimmedBackendApiUrl.toLowerCase(Locale.ROOT);
+      if (!(normalizedBackendApiUrl.startsWith("http://")
+          || normalizedBackendApiUrl.startsWith("https://"))) {
+        throw new IllegalArgumentException("backendApiUrl must start with http:// or https://");
+      }
     }
     if (escortOptionCode != null && escortOptionCode.length() > 120) {
       throw new IllegalArgumentException("escortOptionCode must not exceed 120 characters");

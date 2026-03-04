@@ -1081,7 +1081,8 @@ public class AdminProductPanelHandler extends ListenerAdapter {
     return switch (normalized) {
       case "true", "1", "yes", "y", "on" -> Result.ok(true);
       case "false", "0", "no", "n", "off" -> Result.ok(false);
-      default -> Result.err(DomainError.invalidInput("自動護航開單僅接受 true 或 false"));
+      default ->
+          Result.err(DomainError.invalidInput("自動護航開單僅接受 true/false, 1/0, yes/no, y/n, on/off"));
     };
   }
 

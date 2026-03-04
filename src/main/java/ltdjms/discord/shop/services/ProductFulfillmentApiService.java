@@ -6,6 +6,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 
@@ -25,6 +26,7 @@ import ltdjms.discord.shared.Unit;
 public class ProductFulfillmentApiService {
 
   private static final Logger LOG = LoggerFactory.getLogger(ProductFulfillmentApiService.class);
+  private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
 
   private final EscortOptionPricingService escortOptionPricingService;
   private final HttpClient httpClient;
@@ -34,7 +36,7 @@ public class ProductFulfillmentApiService {
   public ProductFulfillmentApiService(EscortOptionPricingService escortOptionPricingService) {
     this(
         escortOptionPricingService,
-        HttpClient.newHttpClient(),
+        HttpClient.newBuilder().connectTimeout(REQUEST_TIMEOUT).build(),
         new ObjectMapper(),
         Clock.systemUTC());
   }
@@ -85,6 +87,7 @@ public class ProductFulfillmentApiService {
       HttpRequest httpRequest =
           HttpRequest.newBuilder()
               .uri(URI.create(product.backendApiUrl().trim()))
+              .timeout(REQUEST_TIMEOUT)
               .header("Content-Type", "application/json")
               .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(payload)))
               .build();

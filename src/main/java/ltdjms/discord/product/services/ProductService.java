@@ -1,7 +1,9 @@
 package ltdjms.discord.product.services;
 
+import java.net.InetAddress;
 import java.net.URI;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 import org.slf4j.Logger;
@@ -386,10 +388,52 @@ public class ProductService {
       if (uri.getHost() == null || uri.getHost().isBlank()) {
         return Result.err(DomainError.invalidInput("後端 API URL 格式無效"));
       }
-      return Result.ok(normalized);
+
+      if (isDisallowedBackendHost(uri.getHost())) {
+        return Result.err(DomainError.invalidInput("後端 API URL 不可使用 localhost 或內網位址"));
+      }
+
+      String normalizedScheme = scheme.toLowerCase(Locale.ROOT);
+      String normalizedUrl = normalizedScheme + normalized.substring(scheme.length());
+      return Result.ok(normalizedUrl);
     } catch (IllegalArgumentException e) {
       return Result.err(DomainError.invalidInput("後端 API URL 格式無效"));
     }
+  }
+
+  private boolean isDisallowedBackendHost(String host) {
+    String normalizedHost = host.trim().toLowerCase(Locale.ROOT);
+    if (normalizedHost.equals("localhost") || normalizedHost.endsWith(".localhost")) {
+      return true;
+    }
+    if (!looksLikeIpLiteral(normalizedHost)) {
+      return false;
+    }
+    try {
+      InetAddress address = InetAddress.getByName(normalizedHost);
+      return address.isAnyLocalAddress()
+          || address.isLoopbackAddress()
+          || address.isLinkLocalAddress()
+          || address.isSiteLocalAddress()
+          || address.isMulticastAddress();
+    } catch (Exception e) {
+      return true;
+    }
+  }
+
+  private boolean looksLikeIpLiteral(String host) {
+    if (host.contains(":")) {
+      return true;
+    }
+    if (!host.contains(".")) {
+      return false;
+    }
+    for (char ch : host.toCharArray()) {
+      if (!Character.isDigit(ch) && ch != '.') {
+        return false;
+      }
+    }
+    return true;
   }
 
   private Result<String, DomainError> normalizeEscortOption(
