@@ -416,13 +416,6 @@ public class AdminProductPanelHandler extends ListenerAdapter {
             .setMaxLength(100)
             .build();
 
-    TextInput descInput =
-        TextInput.create("description", "商品描述", TextInputStyle.PARAGRAPH)
-            .setPlaceholder("輸入商品描述（選填）")
-            .setRequired(false)
-            .setMaxLength(500)
-            .build();
-
     TextInput rewardTypeInput =
         TextInput.create("reward_type", "獎勵類型", TextInputStyle.SHORT)
             .setPlaceholder("CURRENCY 或 TOKEN（留空表示無自動獎勵）")
@@ -443,14 +436,22 @@ public class AdminProductPanelHandler extends ListenerAdapter {
             .setRequired(false)
             .setMaxLength(15)
             .build();
+
+    TextInput fiatPriceInput =
+        TextInput.create("fiat_price_twd", "實際價值（TWD）", TextInputStyle.SHORT)
+            .setPlaceholder("輸入新台幣金額（留空表示非法幣商品）")
+            .setRequired(false)
+            .setMaxLength(15)
+            .build();
+
     Modal modal =
         Modal.create(MODAL_CREATE_PRODUCT, "建立商品")
             .addComponents(
                 ActionRow.of(nameInput),
-                ActionRow.of(descInput),
                 ActionRow.of(rewardTypeInput),
                 ActionRow.of(rewardAmountInput),
-                ActionRow.of(currencyPriceInput))
+                ActionRow.of(currencyPriceInput),
+                ActionRow.of(fiatPriceInput))
             .build();
 
     event.replyModal(modal).queue();
@@ -460,10 +461,11 @@ public class AdminProductPanelHandler extends ListenerAdapter {
     long guildId = event.getGuild().getIdLong();
 
     String name = event.getValue("name").getAsString().trim();
-    String description = getModalValueOrNull(event, "description");
+    String description = null;
     String rewardTypeStr = getModalValueOrNull(event, "reward_type");
     String rewardAmountStr = getModalValueOrNull(event, "reward_amount");
     String currencyPriceStr = getModalValueOrNull(event, "currency_price");
+    String fiatPriceTwdStr = getModalValueOrNull(event, "fiat_price_twd");
 
     // Parse reward type and amount
     Product.RewardType rewardType = null;
@@ -497,9 +499,20 @@ public class AdminProductPanelHandler extends ListenerAdapter {
         return;
       }
     }
+
+    Long fiatPriceTwd = null;
+    if (fiatPriceTwdStr != null && !fiatPriceTwdStr.isBlank()) {
+      try {
+        fiatPriceTwd = Long.parseLong(fiatPriceTwdStr);
+      } catch (NumberFormatException e) {
+        event.reply("實際價值（TWD）格式錯誤，請輸入有效數字").setEphemeral(true).queue();
+        return;
+      }
+    }
+
     Result<Product, DomainError> result =
         productService.createProduct(
-            guildId, name, description, rewardType, rewardAmount, currencyPrice, null);
+            guildId, name, description, rewardType, rewardAmount, currencyPrice, fiatPriceTwd);
 
     if (result.isErr()) {
       event.reply("建立失敗：" + result.getError().message()).setEphemeral(true).queue();

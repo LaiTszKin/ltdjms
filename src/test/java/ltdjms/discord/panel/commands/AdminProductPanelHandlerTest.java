@@ -102,6 +102,7 @@ class AdminProductPanelHandlerTest {
     var reply =
         mock(net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction.class);
     var nameMapping = mock(net.dv8tion.jda.api.interactions.modals.ModalMapping.class);
+    var fiatPriceMapping = mock(net.dv8tion.jda.api.interactions.modals.ModalMapping.class);
 
     when(event.getModalId()).thenReturn(AdminProductPanelHandler.MODAL_CREATE_PRODUCT);
     when(event.isFromGuild()).thenReturn(true);
@@ -114,9 +115,10 @@ class AdminProductPanelHandlerTest {
 
     when(event.getValue("name")).thenReturn(nameMapping);
     when(nameMapping.getAsString()).thenReturn("New Product");
-    when(event.getValue("description")).thenReturn(null);
     when(event.getValue("reward_type")).thenReturn(null);
     when(event.getValue("reward_amount")).thenReturn(null);
+    when(event.getValue("fiat_price_twd")).thenReturn(fiatPriceMapping);
+    when(fiatPriceMapping.getAsString()).thenReturn("1200");
 
     when(event.reply(anyString())).thenReturn(reply);
     when(reply.setEphemeral(true)).thenReturn(reply);
@@ -131,9 +133,11 @@ class AdminProductPanelHandlerTest {
             null,
             null,
             null,
+            1200L,
             Instant.now(),
             Instant.now());
-    when(productService.createProduct(eq(guildId), anyString(), any(), any(), any(), any(), any()))
+    when(productService.createProduct(
+            eq(guildId), eq("New Product"), isNull(), isNull(), isNull(), isNull(), eq(1200L)))
         .thenReturn(ltdjms.discord.shared.Result.ok(newProduct));
     when(productService.getProducts(guildId)).thenReturn(List.of(newProduct));
     when(redemptionService.getCodeStats(newProduct.id()))
@@ -141,7 +145,43 @@ class AdminProductPanelHandlerTest {
 
     handler.onModalInteraction(event);
 
+    verify(productService).createProduct(guildId, "New Product", null, null, null, null, 1200L);
     verify(hook, atLeastOnce()).editOriginalEmbeds(any(MessageEmbed.class));
+  }
+
+  @Test
+  void createProductModal_shouldRejectInvalidFiatPriceFormat() {
+    var event = mock(net.dv8tion.jda.api.events.interaction.ModalInteractionEvent.class);
+    var guild = mock(net.dv8tion.jda.api.entities.Guild.class);
+    var adminMember = mock(net.dv8tion.jda.api.entities.Member.class);
+    var reply =
+        mock(net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction.class);
+    var nameMapping = mock(net.dv8tion.jda.api.interactions.modals.ModalMapping.class);
+    var fiatPriceMapping = mock(net.dv8tion.jda.api.interactions.modals.ModalMapping.class);
+
+    when(event.getModalId()).thenReturn(AdminProductPanelHandler.MODAL_CREATE_PRODUCT);
+    when(event.isFromGuild()).thenReturn(true);
+    when(event.getGuild()).thenReturn(guild);
+    when(guild.getIdLong()).thenReturn(guildId);
+    when(event.getMember()).thenReturn(adminMember);
+    when(adminMember.hasPermission(Permission.ADMINISTRATOR)).thenReturn(true);
+
+    when(event.getValue("name")).thenReturn(nameMapping);
+    when(nameMapping.getAsString()).thenReturn("New Product");
+    when(event.getValue("reward_type")).thenReturn(null);
+    when(event.getValue("reward_amount")).thenReturn(null);
+    when(event.getValue("fiat_price_twd")).thenReturn(fiatPriceMapping);
+    when(fiatPriceMapping.getAsString()).thenReturn("12O0");
+
+    when(event.reply(anyString())).thenReturn(reply);
+    when(reply.setEphemeral(true)).thenReturn(reply);
+    doAnswer(invocation -> null).when(reply).queue();
+
+    handler.onModalInteraction(event);
+
+    verify(event).reply("實際價值（TWD）格式錯誤，請輸入有效數字");
+    verify(productService, never())
+        .createProduct(anyLong(), anyString(), any(), any(), any(), any(), any());
   }
 
   @Test
