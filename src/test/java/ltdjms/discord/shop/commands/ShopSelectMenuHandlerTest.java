@@ -24,6 +24,7 @@ import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 import ltdjms.discord.shop.services.CurrencyPurchaseService;
 import ltdjms.discord.shop.services.FiatOrderService;
+import ltdjms.discord.shop.services.ShopAdminNotificationService;
 import ltdjms.discord.shop.services.ShopView;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed;
@@ -51,6 +52,8 @@ class ShopSelectMenuHandlerTest {
 
   @Mock private FiatOrderService fiatOrderService;
 
+  @Mock private ShopAdminNotificationService adminNotificationService;
+
   @Mock private StringSelectInteractionEvent selectEvent;
 
   @Mock private ButtonInteractionEvent buttonEvent;
@@ -69,7 +72,11 @@ class ShopSelectMenuHandlerTest {
   void setUp() {
     handler =
         new ShopSelectMenuHandler(
-            productService, balanceService, purchaseService, fiatOrderService);
+            productService,
+            balanceService,
+            purchaseService,
+            fiatOrderService,
+            adminNotificationService);
 
     // 設定預設的 mock 行為
     when(selectEvent.getGuild()).thenReturn(guild);

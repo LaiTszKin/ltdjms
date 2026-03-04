@@ -1,0 +1,334 @@
+package ltdjms.discord.shop.services;
+
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
+import java.time.Clock;
+import java.time.Instant;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import javax.crypto.Cipher;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import ltdjms.discord.product.domain.Product;
+import ltdjms.discord.product.services.ProductService;
+import ltdjms.discord.shared.DomainError;
+import ltdjms.discord.shared.EnvironmentConfig;
+import ltdjms.discord.shared.Result;
+import ltdjms.discord.shop.domain.FiatOrder;
+import ltdjms.discord.shop.domain.FiatOrderRepository;
+
+/** Handles ECPay payment callback and triggers post-payment fulfillment once. */
+public class FiatPaymentCallbackService {
+
+  private static final Logger LOG = LoggerFactory.getLogger(FiatPaymentCallbackService.class);
+
+  private final EnvironmentConfig config;
+  private final FiatOrderRepository fiatOrderRepository;
+  private final ProductService productService;
+  private final ProductFulfillmentApiService productFulfillmentApiService;
+  private final ShopAdminNotificationService adminNotificationService;
+  private final ObjectMapper objectMapper;
+  private final Clock clock;
+
+  public FiatPaymentCallbackService(
+      EnvironmentConfig config,
+      FiatOrderRepository fiatOrderRepository,
+      ProductService productService,
+      ProductFulfillmentApiService productFulfillmentApiService,
+      ShopAdminNotificationService adminNotificationService) {
+    this(
+        config,
+        fiatOrderRepository,
+        productService,
+        productFulfillmentApiService,
+        adminNotificationService,
+        new ObjectMapper(),
+        Clock.systemUTC());
+  }
+
+  FiatPaymentCallbackService(
+      EnvironmentConfig config,
+      FiatOrderRepository fiatOrderRepository,
+      ProductService productService,
+      ProductFulfillmentApiService productFulfillmentApiService,
+      ShopAdminNotificationService adminNotificationService,
+      ObjectMapper objectMapper,
+      Clock clock) {
+    this.config = Objects.requireNonNull(config, "config must not be null");
+    this.fiatOrderRepository =
+        Objects.requireNonNull(fiatOrderRepository, "fiatOrderRepository must not be null");
+    this.productService = Objects.requireNonNull(productService, "productService must not be null");
+    this.productFulfillmentApiService =
+        Objects.requireNonNull(
+            productFulfillmentApiService, "productFulfillmentApiService must not be null");
+    this.adminNotificationService =
+        Objects.requireNonNull(
+            adminNotificationService, "adminNotificationService must not be null");
+    this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper must not be null");
+    this.clock = Objects.requireNonNull(clock, "clock must not be null");
+  }
+
+  public CallbackResult handleCallback(String requestBody, String contentType) {
+    if (requestBody == null || requestBody.isBlank()) {
+      return CallbackResult.fail(400);
+    }
+
+    try {
+      JsonNode callbackNode = parseCallbackNode(requestBody, contentType);
+      String orderNumber = extractOrderNumber(callbackNode);
+      if (orderNumber == null || orderNumber.isBlank()) {
+        LOG.warn("ECPay callback missing order number: payload={}", requestBody);
+        return CallbackResult.fail(400);
+      }
+
+      String tradeStatus = extractTradeStatus(callbackNode);
+      int rtnCode = callbackNode.path("RtnCode").asInt(-1);
+      String paymentMessage = extractPaymentMessage(callbackNode);
+      boolean paid = isPaidStatus(tradeStatus, rtnCode, paymentMessage);
+      String callbackPayload = sanitizePayload(requestBody);
+
+      FiatOrder order = fiatOrderRepository.findByOrderNumber(orderNumber).orElse(null);
+      if (order == null) {
+        LOG.warn("ECPay callback order not found: orderNumber={}", orderNumber);
+        return CallbackResult.ok();
+      }
+
+      if (!paid) {
+        fiatOrderRepository.updateCallbackStatus(
+            orderNumber, tradeStatus, paymentMessage, callbackPayload);
+        LOG.info(
+            "ECPay callback recorded unpaid status: orderNumber={}, tradeStatus={}, rtnCode={}",
+            orderNumber,
+            tradeStatus,
+            rtnCode);
+        return CallbackResult.ok();
+      }
+
+      FiatOrder paidOrder =
+          fiatOrderRepository
+              .markPaidIfPending(
+                  orderNumber, tradeStatus, paymentMessage, callbackPayload, Instant.now(clock))
+              .orElse(null);
+
+      if (paidOrder == null) {
+        fiatOrderRepository.updateCallbackStatus(
+            orderNumber, tradeStatus, paymentMessage, callbackPayload);
+        LOG.info("ECPay callback duplicated paid notification: orderNumber={}", orderNumber);
+        return CallbackResult.ok();
+      }
+
+      handlePostPayment(paidOrder);
+      return CallbackResult.ok();
+    } catch (Exception e) {
+      LOG.error("Failed to process ECPay callback payload", e);
+      return CallbackResult.fail(500);
+    }
+  }
+
+  private void handlePostPayment(FiatOrder order) {
+    Product product = productService.getProduct(order.productId()).orElse(null);
+    if (product == null) {
+      LOG.warn(
+          "Paid order product not found, skip fulfillment and admin notify: orderNumber={},"
+              + " productId={}",
+          order.orderNumber(),
+          order.productId());
+      return;
+    }
+
+    if (product.shouldAutoCreateEscortOrder()) {
+      boolean shouldNotifyAdmin =
+          fiatOrderRepository
+              .markAdminNotifiedIfNeeded(order.orderNumber(), Instant.now(clock))
+              .isPresent();
+      if (shouldNotifyAdmin) {
+        adminNotificationService.notifyAdminsOrderCreated(
+            order.guildId(), order.buyerUserId(), product, "法幣付款完成", order.orderNumber());
+      }
+    }
+
+    if (!product.shouldCallBackendFulfillment()) {
+      fiatOrderRepository.markFulfilledIfNeeded(order.orderNumber(), Instant.now(clock));
+      return;
+    }
+
+    Result<ltdjms.discord.shared.Unit, DomainError> fulfillmentResult =
+        productFulfillmentApiService.notifyFulfillment(
+            new ProductFulfillmentApiService.FulfillmentRequest(
+                order.guildId(),
+                order.buyerUserId(),
+                product,
+                ProductFulfillmentApiService.PurchaseSource.FIAT_PAYMENT_CALLBACK,
+                order.orderNumber(),
+                order.paymentNo()));
+    if (fulfillmentResult.isErr()) {
+      LOG.warn(
+          "Backend fulfillment failed after paid callback: orderNumber={}, reason={}",
+          order.orderNumber(),
+          fulfillmentResult.getError().message());
+      return;
+    }
+
+    fiatOrderRepository.markFulfilledIfNeeded(order.orderNumber(), Instant.now(clock));
+  }
+
+  private JsonNode parseCallbackNode(String requestBody, String contentType) throws Exception {
+    JsonNode parsedJson = null;
+    Map<String, String> formData = null;
+
+    if (isJson(contentType, requestBody)) {
+      parsedJson = objectMapper.readTree(requestBody);
+    } else {
+      formData = parseFormBody(requestBody);
+      if (formData == null || formData.isEmpty()) {
+        parsedJson = objectMapper.readTree(requestBody);
+      }
+    }
+
+    String encryptedData = null;
+    if (parsedJson != null && parsedJson.hasNonNull("Data")) {
+      encryptedData = parsedJson.path("Data").asText(null);
+    }
+    if ((encryptedData == null || encryptedData.isBlank())
+        && formData != null
+        && formData.containsKey("Data")) {
+      encryptedData = formData.get("Data");
+    }
+
+    if (encryptedData != null && !encryptedData.isBlank()) {
+      return parseDecryptedData(encryptedData);
+    }
+
+    if (parsedJson != null) {
+      return parsedJson;
+    }
+    return objectMapper.valueToTree(formData);
+  }
+
+  private JsonNode parseDecryptedData(String encryptedData) throws Exception {
+    String hashKey = config.getEcpayHashKey();
+    String hashIv = config.getEcpayHashIv();
+    if (hashKey == null || hashKey.isBlank() || hashIv == null || hashIv.isBlank()) {
+      throw new IllegalStateException("ECPAY_HASH_KEY / ECPAY_HASH_IV are required for callback");
+    }
+    String decryptedJson = decryptData(encryptedData, hashKey, hashIv);
+    return objectMapper.readTree(decryptedJson);
+  }
+
+  private String decryptData(String encryptedData, String hashKey, String hashIv)
+      throws GeneralSecurityException {
+    Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+    SecretKeySpec keySpec = new SecretKeySpec(hashKey.getBytes(StandardCharsets.UTF_8), "AES");
+    IvParameterSpec ivSpec = new IvParameterSpec(hashIv.getBytes(StandardCharsets.UTF_8));
+    cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+    byte[] decoded = Base64.getDecoder().decode(encryptedData);
+    byte[] decrypted = cipher.doFinal(decoded);
+    String urlEncodedPlain = new String(decrypted, StandardCharsets.UTF_8);
+    return URLDecoder.decode(urlEncodedPlain, StandardCharsets.UTF_8);
+  }
+
+  private Map<String, String> parseFormBody(String body) {
+    Map<String, String> data = new HashMap<>();
+    String[] parts = body.split("&");
+    for (String part : parts) {
+      if (part == null || part.isBlank()) {
+        continue;
+      }
+      int eqIndex = part.indexOf('=');
+      if (eqIndex <= 0) {
+        continue;
+      }
+      String key = URLDecoder.decode(part.substring(0, eqIndex), StandardCharsets.UTF_8);
+      String value = URLDecoder.decode(part.substring(eqIndex + 1), StandardCharsets.UTF_8);
+      data.put(key, value);
+    }
+    return data;
+  }
+
+  private boolean isJson(String contentType, String body) {
+    if (contentType != null && contentType.toLowerCase(Locale.ROOT).contains("application/json")) {
+      return true;
+    }
+    String trimmed = body.trim();
+    return trimmed.startsWith("{") && trimmed.endsWith("}");
+  }
+
+  private String extractOrderNumber(JsonNode callbackNode) {
+    String direct = textOrNull(callbackNode.path("MerchantTradeNo").asText(null));
+    if (direct != null) {
+      return direct;
+    }
+    return textOrNull(callbackNode.path("OrderInfo").path("MerchantTradeNo").asText(null));
+  }
+
+  private String extractTradeStatus(JsonNode callbackNode) {
+    String direct = textOrNull(callbackNode.path("TradeStatus").asText(null));
+    if (direct != null) {
+      return direct;
+    }
+    return textOrNull(callbackNode.path("OrderInfo").path("TradeStatus").asText(null));
+  }
+
+  private String extractPaymentMessage(JsonNode callbackNode) {
+    String rtnMsg = textOrNull(callbackNode.path("RtnMsg").asText(null));
+    if (rtnMsg != null) {
+      return rtnMsg;
+    }
+    return textOrNull(callbackNode.path("TradeMsg").asText(null));
+  }
+
+  private boolean isPaidStatus(String tradeStatus, int rtnCode, String message) {
+    if (tradeStatus != null) {
+      return "1".equals(tradeStatus);
+    }
+    if (rtnCode == 1) {
+      return true;
+    }
+    if (message == null) {
+      return false;
+    }
+    String normalized = message.toLowerCase(Locale.ROOT);
+    return normalized.contains("付款成功")
+        || normalized.contains("交易成功")
+        || normalized.contains("paid");
+  }
+
+  private String sanitizePayload(String payload) {
+    if (payload == null) {
+      return null;
+    }
+    if (payload.length() <= 4000) {
+      return payload;
+    }
+    return payload.substring(0, 4000);
+  }
+
+  private String textOrNull(String value) {
+    if (value == null || value.isBlank()) {
+      return null;
+    }
+    return value.trim();
+  }
+
+  public record CallbackResult(int httpStatus, String responseBody) {
+
+    public static CallbackResult ok() {
+      return new CallbackResult(200, "1|OK");
+    }
+
+    public static CallbackResult fail(int status) {
+      return new CallbackResult(status, "0|FAIL");
+    }
+  }
+}

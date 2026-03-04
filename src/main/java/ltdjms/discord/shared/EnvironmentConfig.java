@@ -63,6 +63,9 @@ public final class EnvironmentConfig {
   private static final String ENV_ECPAY_RETURN_URL = "ECPAY_RETURN_URL";
   private static final String ENV_ECPAY_STAGE_MODE = "ECPAY_STAGE_MODE";
   private static final String ENV_ECPAY_CVS_EXPIRE_MINUTES = "ECPAY_CVS_EXPIRE_MINUTES";
+  private static final String ENV_ECPAY_CALLBACK_BIND_HOST = "ECPAY_CALLBACK_BIND_HOST";
+  private static final String ENV_ECPAY_CALLBACK_BIND_PORT = "ECPAY_CALLBACK_BIND_PORT";
+  private static final String ENV_ECPAY_CALLBACK_PATH = "ECPAY_CALLBACK_PATH";
 
   // Config paths for Typesafe Config
   private static final String CFG_DISCORD_BOT_TOKEN = "discord.bot.token";
@@ -97,6 +100,9 @@ public final class EnvironmentConfig {
   private static final String CFG_ECPAY_RETURN_URL = "payment.ecpay.return-url";
   private static final String CFG_ECPAY_STAGE_MODE = "payment.ecpay.stage-mode";
   private static final String CFG_ECPAY_CVS_EXPIRE_MINUTES = "payment.ecpay.cvs-expire-minutes";
+  private static final String CFG_ECPAY_CALLBACK_BIND_HOST = "payment.ecpay.callback.bind-host";
+  private static final String CFG_ECPAY_CALLBACK_BIND_PORT = "payment.ecpay.callback.bind-port";
+  private static final String CFG_ECPAY_CALLBACK_PATH = "payment.ecpay.callback.path";
 
   // Default values
   private static final String DEFAULT_REDIS_URI = "redis://localhost:6379";
@@ -123,6 +129,9 @@ public final class EnvironmentConfig {
   private static final String DEFAULT_ECPAY_RETURN_URL = "";
   private static final boolean DEFAULT_ECPAY_STAGE_MODE = true;
   private static final int DEFAULT_ECPAY_CVS_EXPIRE_MINUTES = 10080;
+  private static final String DEFAULT_ECPAY_CALLBACK_BIND_HOST = "0.0.0.0";
+  private static final int DEFAULT_ECPAY_CALLBACK_BIND_PORT = 8085;
+  private static final String DEFAULT_ECPAY_CALLBACK_PATH = "/ecpay/callback";
 
   private final Config config;
   private final Map<String, String> dotEnvValues;
@@ -178,6 +187,9 @@ public final class EnvironmentConfig {
     defaults.put(CFG_ECPAY_RETURN_URL, DEFAULT_ECPAY_RETURN_URL);
     defaults.put(CFG_ECPAY_STAGE_MODE, DEFAULT_ECPAY_STAGE_MODE);
     defaults.put(CFG_ECPAY_CVS_EXPIRE_MINUTES, DEFAULT_ECPAY_CVS_EXPIRE_MINUTES);
+    defaults.put(CFG_ECPAY_CALLBACK_BIND_HOST, DEFAULT_ECPAY_CALLBACK_BIND_HOST);
+    defaults.put(CFG_ECPAY_CALLBACK_BIND_PORT, DEFAULT_ECPAY_CALLBACK_BIND_PORT);
+    defaults.put(CFG_ECPAY_CALLBACK_PATH, DEFAULT_ECPAY_CALLBACK_PATH);
     Config defaultsConfig = ConfigFactory.parseMap(defaults);
 
     // Load application.conf/properties (standard Typesafe Config behavior)
@@ -216,6 +228,9 @@ public final class EnvironmentConfig {
     mapEnvToConfig(dotEnvMapped, ENV_ECPAY_RETURN_URL, CFG_ECPAY_RETURN_URL);
     mapEnvToConfigBoolean(dotEnvMapped, ENV_ECPAY_STAGE_MODE, CFG_ECPAY_STAGE_MODE);
     mapEnvToConfigInt(dotEnvMapped, ENV_ECPAY_CVS_EXPIRE_MINUTES, CFG_ECPAY_CVS_EXPIRE_MINUTES);
+    mapEnvToConfig(dotEnvMapped, ENV_ECPAY_CALLBACK_BIND_HOST, CFG_ECPAY_CALLBACK_BIND_HOST);
+    mapEnvToConfigInt(dotEnvMapped, ENV_ECPAY_CALLBACK_BIND_PORT, CFG_ECPAY_CALLBACK_BIND_PORT);
+    mapEnvToConfig(dotEnvMapped, ENV_ECPAY_CALLBACK_PATH, CFG_ECPAY_CALLBACK_PATH);
     Config dotEnvConfig = ConfigFactory.parseMap(dotEnvMapped);
 
     // Build system env vars as config (highest priority)
@@ -252,6 +267,9 @@ public final class EnvironmentConfig {
     mapSysEnvToConfig(sysEnvMapped, ENV_ECPAY_RETURN_URL, CFG_ECPAY_RETURN_URL);
     mapSysEnvToConfigBoolean(sysEnvMapped, ENV_ECPAY_STAGE_MODE, CFG_ECPAY_STAGE_MODE);
     mapSysEnvToConfigInt(sysEnvMapped, ENV_ECPAY_CVS_EXPIRE_MINUTES, CFG_ECPAY_CVS_EXPIRE_MINUTES);
+    mapSysEnvToConfig(sysEnvMapped, ENV_ECPAY_CALLBACK_BIND_HOST, CFG_ECPAY_CALLBACK_BIND_HOST);
+    mapSysEnvToConfigInt(sysEnvMapped, ENV_ECPAY_CALLBACK_BIND_PORT, CFG_ECPAY_CALLBACK_BIND_PORT);
+    mapSysEnvToConfig(sysEnvMapped, ENV_ECPAY_CALLBACK_PATH, CFG_ECPAY_CALLBACK_PATH);
     Config sysEnvConfig = ConfigFactory.parseMap(sysEnvMapped);
 
     // Layer configs: sysEnv > dotEnv > application > defaults
@@ -785,5 +803,32 @@ public final class EnvironmentConfig {
    */
   public int getEcpayCvsExpireMinutes() {
     return config.getInt(CFG_ECPAY_CVS_EXPIRE_MINUTES);
+  }
+
+  /**
+   * Gets callback server bind host for ECPay return URL push notifications.
+   *
+   * @return callback bind host
+   */
+  public String getEcpayCallbackBindHost() {
+    return config.getString(CFG_ECPAY_CALLBACK_BIND_HOST);
+  }
+
+  /**
+   * Gets callback server bind port for ECPay return URL push notifications.
+   *
+   * @return callback bind port
+   */
+  public int getEcpayCallbackBindPort() {
+    return config.getInt(CFG_ECPAY_CALLBACK_BIND_PORT);
+  }
+
+  /**
+   * Gets callback route path for ECPay return URL push notifications.
+   *
+   * @return callback route path
+   */
+  public String getEcpayCallbackPath() {
+    return config.getString(CFG_ECPAY_CALLBACK_PATH);
   }
 }

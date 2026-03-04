@@ -45,6 +45,7 @@ import ltdjms.discord.shared.events.DomainEventPublisher;
 import ltdjms.discord.shop.commands.ShopButtonHandler;
 import ltdjms.discord.shop.commands.ShopSelectMenuHandler;
 import ltdjms.discord.shop.services.CurrencyPurchaseService;
+import ltdjms.discord.shop.services.EcpayCallbackHttpServer;
 
 /**
  * Main Dagger component for the LTDJ management system application. Provides all dependencies
@@ -163,6 +164,8 @@ public interface AppComponent {
   ShopSelectMenuHandler shopSelectMenuHandler();
 
   CurrencyPurchaseService currencyPurchaseService();
+
+  EcpayCallbackHttpServer ecpayCallbackHttpServer();
 
   // AI Chat
   AIChatService aiChatService();

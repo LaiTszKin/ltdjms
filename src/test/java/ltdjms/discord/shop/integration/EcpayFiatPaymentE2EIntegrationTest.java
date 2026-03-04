@@ -37,6 +37,7 @@ import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.EnvironmentConfig;
 import ltdjms.discord.shared.Result;
 import ltdjms.discord.shared.events.DomainEventPublisher;
+import ltdjms.discord.shop.persistence.JdbcFiatOrderRepository;
 import ltdjms.discord.shop.services.EcpayCvsPaymentService;
 import ltdjms.discord.shop.services.FiatOrderService;
 
@@ -105,7 +106,9 @@ class EcpayFiatPaymentE2EIntegrationTest {
     Assumptions.assumeTrue(config.getEcpayStageMode(), "E2E 測試僅允許綠界 Stage 模式");
 
     EcpayCvsPaymentService paymentService = new EcpayCvsPaymentService(config);
-    FiatOrderService fiatOrderService = new FiatOrderService(productService, paymentService);
+    FiatOrderService fiatOrderService =
+        new FiatOrderService(
+            productService, paymentService, new JdbcFiatOrderRepository(dataSource));
 
     Result<Product, DomainError> productResult =
         productService.createProduct(
@@ -156,6 +159,7 @@ class EcpayFiatPaymentE2EIntegrationTest {
     try (Connection conn = ds.getConnection();
         Statement stmt = conn.createStatement()) {
       stmt.execute("TRUNCATE TABLE redemption_code CASCADE");
+      stmt.execute("TRUNCATE TABLE fiat_order CASCADE");
       stmt.execute("TRUNCATE TABLE product CASCADE");
     } catch (Exception e) {
       throw new RuntimeException("Failed to clean test tables", e);
