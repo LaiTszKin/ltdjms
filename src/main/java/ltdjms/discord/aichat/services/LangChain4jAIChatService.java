@@ -554,6 +554,7 @@ public final class LangChain4jAIChatService implements AIChatService {
           // 處理錯誤
           .onError(
               error -> {
+                ToolExecutionContext.clearContext();
                 DomainError domainError = LangChain4jExceptionMapper.map(error);
                 try {
                   handler.onChunk(
@@ -565,6 +566,7 @@ public final class LangChain4jAIChatService implements AIChatService {
           .start();
 
     } catch (Exception e) {
+      ToolExecutionContext.clearContext();
       DomainError error = LangChain4jExceptionMapper.map(e);
       handler.onChunk("", true, error, StreamingResponseHandler.ChunkType.CONTENT);
     }
@@ -667,6 +669,7 @@ public final class LangChain4jAIChatService implements AIChatService {
           // 處理錯誤
           .onError(
               error -> {
+                ToolExecutionContext.clearContext();
                 DomainError domainError = LangChain4jExceptionMapper.map(error);
                 try {
                   handler.onChunk(
@@ -678,6 +681,7 @@ public final class LangChain4jAIChatService implements AIChatService {
           .start();
 
     } catch (Exception e) {
+      ToolExecutionContext.clearContext();
       DomainError error = LangChain4jExceptionMapper.map(e);
       handler.onChunk("", true, error, StreamingResponseHandler.ChunkType.CONTENT);
     }

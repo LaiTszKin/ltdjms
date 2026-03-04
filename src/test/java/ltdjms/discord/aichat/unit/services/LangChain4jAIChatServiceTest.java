@@ -26,6 +26,7 @@ import ltdjms.discord.aiagent.services.AIAgentChannelConfigService;
 import ltdjms.discord.aiagent.services.InMemoryToolCallHistory;
 import ltdjms.discord.aiagent.services.LangChain4jAgentService;
 import ltdjms.discord.aiagent.services.PersistentChatMemoryProvider;
+import ltdjms.discord.aiagent.services.ToolExecutionContext;
 import ltdjms.discord.aiagent.services.ToolExecutionInterceptor;
 import ltdjms.discord.aiagent.services.tools.LangChain4jCreateCategoryTool;
 import ltdjms.discord.aiagent.services.tools.LangChain4jCreateChannelTool;
@@ -100,6 +101,7 @@ class LangChain4jAIChatServiceTest {
 
   @BeforeEach
   void setUp() {
+    ToolExecutionContext.clearContext();
     // 使用真實的 AIServiceConfig，但配置測試用的值
     config =
         new AIServiceConfig(
@@ -418,6 +420,36 @@ class LangChain4jAIChatServiceTest {
     void shouldMapRateLimitError() {
       assertNotNull(service);
     }
+
+    @Test
+    @DisplayName("工具前置後若直接錯誤，應清理 ToolExecutionContext")
+    void shouldClearToolExecutionContextWhenErrorOccursAfterBeforeToolExecution() {
+      when(mockAgentChannelConfigService.isAgentEnabled(123L, 456L)).thenReturn(true);
+      testAgentServiceFactory.setTokenStreamHandler(new ToolErrorTokenStreamInvocationHandler());
+
+      AtomicBoolean callbackInvoked = new AtomicBoolean(false);
+      AtomicReference<DomainError> capturedError = new AtomicReference<>();
+
+      service.generateStreamingResponse(
+          123L,
+          "456",
+          "789",
+          "測試訊息",
+          new StreamingResponseHandler() {
+            @Override
+            public void onChunk(
+                String chunk, boolean isComplete, DomainError error, ChunkType type) {
+              if (isComplete) {
+                callbackInvoked.set(true);
+                capturedError.set(error);
+              }
+            }
+          });
+
+      assertTrue(callbackInvoked.get());
+      assertNotNull(capturedError.get());
+      assertFalse(ToolExecutionContext.isContextSet());
+    }
   }
 
   @Nested
@@ -446,6 +478,11 @@ class LangChain4jAIChatServiceTest {
       implements LangChain4jAIChatService.AgentServiceFactory {
     private Boolean lastAgentToolsEnabled;
     private String lastSystemPrompt;
+    private InvocationHandler tokenStreamHandler = new TokenStreamInvocationHandler();
+
+    void setTokenStreamHandler(InvocationHandler tokenStreamHandler) {
+      this.tokenStreamHandler = tokenStreamHandler;
+    }
 
     @Override
     public LangChain4jAgentService create(boolean agentToolsEnabled, String systemPrompt) {
@@ -459,7 +496,7 @@ class LangChain4jAIChatServiceTest {
               Proxy.newProxyInstance(
                   TokenStream.class.getClassLoader(),
                   new Class<?>[] {TokenStream.class},
-                  new TokenStreamInvocationHandler());
+                  tokenStreamHandler);
         }
       };
     }
@@ -477,6 +514,39 @@ class LangChain4jAIChatServiceTest {
   private static class TokenStreamInvocationHandler implements InvocationHandler {
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) {
+      if (TokenStream.class.isAssignableFrom(method.getReturnType())) {
+        return proxy;
+      }
+      return null;
+    }
+  }
+
+  private static class ToolErrorTokenStreamInvocationHandler implements InvocationHandler {
+    private Object beforeToolExecutionConsumer;
+    private Object onErrorConsumer;
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Object invoke(Object proxy, Method method, Object[] args) {
+      String methodName = method.getName();
+      if ("beforeToolExecution".equals(methodName) && args != null && args.length > 0) {
+        beforeToolExecutionConsumer = args[0];
+        return proxy;
+      }
+      if ("onError".equals(methodName) && args != null && args.length > 0) {
+        onErrorConsumer = args[0];
+        return proxy;
+      }
+      if ("start".equals(methodName)) {
+        if (beforeToolExecutionConsumer != null) {
+          ((java.util.function.Consumer<Object>) beforeToolExecutionConsumer).accept(null);
+        }
+        if (onErrorConsumer != null) {
+          ((java.util.function.Consumer<Throwable>) onErrorConsumer)
+              .accept(new RuntimeException("simulated tool failure"));
+        }
+        return null;
+      }
       if (TokenStream.class.isAssignableFrom(method.getReturnType())) {
         return proxy;
       }
