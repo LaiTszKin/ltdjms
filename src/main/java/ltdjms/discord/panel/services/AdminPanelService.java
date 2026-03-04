@@ -9,6 +9,7 @@ import ltdjms.discord.aichat.domain.AllowedCategory;
 import ltdjms.discord.aichat.domain.AllowedChannel;
 import ltdjms.discord.currency.domain.GuildCurrencyConfig;
 import ltdjms.discord.dispatch.services.DispatchAfterSalesStaffService;
+import ltdjms.discord.dispatch.services.EscortOptionPricingService;
 import ltdjms.discord.gametoken.domain.DiceGame1Config;
 import ltdjms.discord.gametoken.domain.DiceGame2Config;
 import ltdjms.discord.shared.DomainError;
@@ -30,6 +31,7 @@ public class AdminPanelService {
   private final GameConfigManagementFacade gameConfigFacade;
   private final AIConfigManagementFacade aiConfigFacade;
   private final DispatchAfterSalesStaffService dispatchAfterSalesStaffService;
+  private final EscortOptionPricingService escortOptionPricingService;
 
   public AdminPanelService(
       CurrencyManagementFacade currencyFacade,
@@ -37,11 +39,28 @@ public class AdminPanelService {
       GameConfigManagementFacade gameConfigFacade,
       AIConfigManagementFacade aiConfigFacade,
       DispatchAfterSalesStaffService dispatchAfterSalesStaffService) {
+    this(
+        currencyFacade,
+        gameTokenFacade,
+        gameConfigFacade,
+        aiConfigFacade,
+        dispatchAfterSalesStaffService,
+        null);
+  }
+
+  public AdminPanelService(
+      CurrencyManagementFacade currencyFacade,
+      GameTokenManagementFacade gameTokenFacade,
+      GameConfigManagementFacade gameConfigFacade,
+      AIConfigManagementFacade aiConfigFacade,
+      DispatchAfterSalesStaffService dispatchAfterSalesStaffService,
+      EscortOptionPricingService escortOptionPricingService) {
     this.currencyFacade = currencyFacade;
     this.gameTokenFacade = gameTokenFacade;
     this.gameConfigFacade = gameConfigFacade;
     this.aiConfigFacade = aiConfigFacade;
     this.dispatchAfterSalesStaffService = dispatchAfterSalesStaffService;
+    this.escortOptionPricingService = escortOptionPricingService;
   }
 
   // ========== Currency Management ==========
@@ -318,5 +337,31 @@ public class AdminPanelService {
     LOG.info(
         "Admin panel removing dispatch after-sales staff: guildId={}, userId={}", guildId, userId);
     return dispatchAfterSalesStaffService.removeStaff(guildId, userId);
+  }
+
+  // ========== Escort 定價管理 ==========
+
+  public Result<java.util.List<EscortOptionPricingService.OptionPriceView>, DomainError>
+      getEscortOptionPrices(long guildId) {
+    if (escortOptionPricingService == null) {
+      return Result.err(DomainError.unexpectedFailure("護航定價服務尚未初始化", null));
+    }
+    return escortOptionPricingService.listOptionPrices(guildId);
+  }
+
+  public Result<EscortOptionPricingService.OptionPriceView, DomainError> updateEscortOptionPrice(
+      long guildId, long updatedByUserId, String optionCode, long priceTwd) {
+    if (escortOptionPricingService == null) {
+      return Result.err(DomainError.unexpectedFailure("護航定價服務尚未初始化", null));
+    }
+    return escortOptionPricingService.updateOptionPrice(
+        guildId, updatedByUserId, optionCode, priceTwd);
+  }
+
+  public Result<Unit, DomainError> resetEscortOptionPrice(long guildId, String optionCode) {
+    if (escortOptionPricingService == null) {
+      return Result.err(DomainError.unexpectedFailure("護航定價服務尚未初始化", null));
+    }
+    return escortOptionPricingService.resetOptionPrice(guildId, optionCode);
   }
 }

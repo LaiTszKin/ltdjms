@@ -17,6 +17,9 @@ public record Product(
     Long rewardAmount,
     Long currencyPrice,
     Long fiatPriceTwd,
+    String backendApiUrl,
+    boolean autoCreateEscortOrder,
+    String escortOptionCode,
     Instant createdAt,
     Instant updatedAt) {
   /** Type of reward that can be given when a product is redeemed. */
@@ -45,11 +48,62 @@ public record Product(
     if (fiatPriceTwd != null && fiatPriceTwd < 0) {
       throw new IllegalArgumentException("fiatPriceTwd must not be negative");
     }
+    if (backendApiUrl != null && backendApiUrl.length() > 500) {
+      throw new IllegalArgumentException("backendApiUrl must not exceed 500 characters");
+    }
+    if (backendApiUrl != null
+        && !backendApiUrl.isBlank()
+        && !(backendApiUrl.startsWith("http://") || backendApiUrl.startsWith("https://"))) {
+      throw new IllegalArgumentException("backendApiUrl must start with http:// or https://");
+    }
+    if (escortOptionCode != null && escortOptionCode.length() > 120) {
+      throw new IllegalArgumentException("escortOptionCode must not exceed 120 characters");
+    }
+    if (autoCreateEscortOrder) {
+      if (backendApiUrl == null || backendApiUrl.isBlank()) {
+        throw new IllegalArgumentException(
+            "backendApiUrl is required when autoCreateEscortOrder is enabled");
+      }
+      if (escortOptionCode == null || escortOptionCode.isBlank()) {
+        throw new IllegalArgumentException(
+            "escortOptionCode is required when autoCreateEscortOrder is enabled");
+      }
+    } else if (escortOptionCode != null && !escortOptionCode.isBlank()) {
+      throw new IllegalArgumentException(
+          "escortOptionCode requires autoCreateEscortOrder to be enabled");
+    }
     // Ensure reward_type and reward_amount are consistent
     if ((rewardType == null) != (rewardAmount == null)) {
       throw new IllegalArgumentException(
           "rewardType and rewardAmount must both be specified or both be null");
     }
+  }
+
+  public Product(
+      Long id,
+      long guildId,
+      String name,
+      String description,
+      RewardType rewardType,
+      Long rewardAmount,
+      Long currencyPrice,
+      Long fiatPriceTwd,
+      Instant createdAt,
+      Instant updatedAt) {
+    this(
+        id,
+        guildId,
+        name,
+        description,
+        rewardType,
+        rewardAmount,
+        currencyPrice,
+        fiatPriceTwd,
+        null,
+        false,
+        null,
+        createdAt,
+        updatedAt);
   }
 
   public Product(
@@ -71,6 +125,9 @@ public record Product(
         rewardAmount,
         currencyPrice,
         null,
+        null,
+        false,
+        null,
         createdAt,
         updatedAt);
   }
@@ -78,16 +135,6 @@ public record Product(
   /**
    * Creates a new product with the given details. The ID will be null until the product is
    * persisted.
-   *
-   * @param guildId the Discord guild ID
-   * @param name the product name
-   * @param description the product description (can be null)
-   * @param rewardType the type of reward (can be null for no automatic reward)
-   * @param rewardAmount the reward amount (can be null for no automatic reward)
-   * @param currencyPrice the currency price for direct purchase (can be null for currency purchase
-   *     not available)
-   * @param fiatPriceTwd the product actual value in TWD (can be null for not configured)
-   * @return a new Product instance
    */
   public static Product create(
       long guildId,
@@ -96,7 +143,10 @@ public record Product(
       RewardType rewardType,
       Long rewardAmount,
       Long currencyPrice,
-      Long fiatPriceTwd) {
+      Long fiatPriceTwd,
+      String backendApiUrl,
+      boolean autoCreateEscortOrder,
+      String escortOptionCode) {
     Instant now = Instant.now();
     return new Product(
         null,
@@ -107,8 +157,32 @@ public record Product(
         rewardAmount,
         currencyPrice,
         fiatPriceTwd,
+        backendApiUrl,
+        autoCreateEscortOrder,
+        escortOptionCode,
         now,
         now);
+  }
+
+  public static Product create(
+      long guildId,
+      String name,
+      String description,
+      RewardType rewardType,
+      Long rewardAmount,
+      Long currencyPrice,
+      Long fiatPriceTwd) {
+    return create(
+        guildId,
+        name,
+        description,
+        rewardType,
+        rewardAmount,
+        currencyPrice,
+        fiatPriceTwd,
+        null,
+        false,
+        null);
   }
 
   public static Product create(
@@ -179,6 +253,28 @@ public record Product(
       Long rewardAmount,
       Long currencyPrice,
       Long fiatPriceTwd) {
+    return withUpdatedDetails(
+        name,
+        description,
+        rewardType,
+        rewardAmount,
+        currencyPrice,
+        fiatPriceTwd,
+        this.backendApiUrl,
+        this.autoCreateEscortOrder,
+        this.escortOptionCode);
+  }
+
+  public Product withUpdatedDetails(
+      String name,
+      String description,
+      RewardType rewardType,
+      Long rewardAmount,
+      Long currencyPrice,
+      Long fiatPriceTwd,
+      String backendApiUrl,
+      boolean autoCreateEscortOrder,
+      String escortOptionCode) {
     return new Product(
         this.id,
         this.guildId,
@@ -188,6 +284,9 @@ public record Product(
         rewardAmount,
         currencyPrice,
         fiatPriceTwd,
+        backendApiUrl,
+        autoCreateEscortOrder,
+        escortOptionCode,
         this.createdAt,
         Instant.now());
   }
@@ -275,5 +374,20 @@ public record Product(
    */
   public boolean isFiatOnly() {
     return hasFiatPriceTwd() && !hasCurrencyPrice();
+  }
+
+  /** Checks whether this product has backend API integration configured. */
+  public boolean hasBackendApiIntegration() {
+    return backendApiUrl != null && !backendApiUrl.isBlank();
+  }
+
+  /** Checks whether this product should request escort order creation after purchase. */
+  public boolean shouldAutoCreateEscortOrder() {
+    return autoCreateEscortOrder && escortOptionCode != null && !escortOptionCode.isBlank();
+  }
+
+  /** Checks whether this product should call backend API after purchase. */
+  public boolean shouldCallBackendFulfillment() {
+    return hasBackendApiIntegration() && (hasReward() || shouldAutoCreateEscortOrder());
   }
 }

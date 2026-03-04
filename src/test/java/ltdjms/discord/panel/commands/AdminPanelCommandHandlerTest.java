@@ -61,6 +61,16 @@ class AdminPanelCommandHandlerTest {
   }
 
   @Test
+  @DisplayName("主選單應包含護航定價設定入口")
+  void mainPanelShouldIncludeEscortPricingEntry() {
+    MessageEmbed embed = handler.buildMainPanelEmbed("💰");
+
+    List<String> fieldNames = embed.getFields().stream().map(MessageEmbed.Field::getName).toList();
+
+    assertThat(fieldNames).contains("🛡️ 護航定價設定");
+  }
+
+  @Test
   @DisplayName("主選單按鈕應包含商品管理按鈕")
   void mainPanelButtonsShouldContainProductButton() {
     List<Button> buttons = handler.buildMainActionButtons("💰");
@@ -90,6 +100,16 @@ class AdminPanelCommandHandlerTest {
     assertThat(buttons)
         .extracting(Button::getId)
         .contains(AdminPanelCommandHandler.BUTTON_DISPATCH_AFTER_SALES_CONFIG);
+  }
+
+  @Test
+  @DisplayName("主選單按鈕應包含護航定價設定")
+  void mainPanelButtonsShouldContainEscortPricingButton() {
+    List<Button> buttons = handler.buildMainActionButtons("💰");
+
+    assertThat(buttons)
+        .extracting(Button::getId)
+        .contains(AdminPanelCommandHandler.BUTTON_ESCORT_PRICING_CONFIG);
   }
 
   @Test

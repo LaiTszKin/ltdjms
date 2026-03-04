@@ -1,6 +1,11 @@
 package ltdjms.discord.product.persistence;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -18,6 +23,11 @@ public class JdbcProductRepository implements ProductRepository {
 
   private static final Logger LOG = LoggerFactory.getLogger(JdbcProductRepository.class);
 
+  private static final String SELECT_COLUMNS =
+      "id, guild_id, name, description, reward_type, reward_amount, currency_price,"
+          + " fiat_price_twd, backend_api_url, auto_create_escort_order, escort_option_code,"
+          + " created_at, updated_at";
+
   private final DataSource dataSource;
 
   public JdbcProductRepository(DataSource dataSource) {
@@ -28,8 +38,9 @@ public class JdbcProductRepository implements ProductRepository {
   public Product save(Product product) {
     String sql =
         "INSERT INTO product (guild_id, name, description, reward_type, reward_amount,"
-            + " currency_price, fiat_price_twd, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?,"
-            + " ?, ?, ?) RETURNING id";
+            + " currency_price, fiat_price_twd, backend_api_url, auto_create_escort_order,"
+            + " escort_option_code, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?,"
+            + " ?, ?) RETURNING id";
 
     try (Connection conn = dataSource.getConnection();
         PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -53,30 +64,35 @@ public class JdbcProductRepository implements ProductRepository {
       } else {
         stmt.setNull(7, Types.BIGINT);
       }
-      stmt.setTimestamp(8, Timestamp.from(product.createdAt()));
-      stmt.setTimestamp(9, Timestamp.from(product.updatedAt()));
+      stmt.setString(8, product.backendApiUrl());
+      stmt.setBoolean(9, product.autoCreateEscortOrder());
+      stmt.setString(10, product.escortOptionCode());
+      stmt.setTimestamp(11, Timestamp.from(product.createdAt()));
+      stmt.setTimestamp(12, Timestamp.from(product.updatedAt()));
 
       try (ResultSet rs = stmt.executeQuery()) {
-        if (rs.next()) {
-          long id = rs.getLong("id");
-          Product saved =
-              new Product(
-                  id,
-                  product.guildId(),
-                  product.name(),
-                  product.description(),
-                  product.rewardType(),
-                  product.rewardAmount(),
-                  product.currencyPrice(),
-                  product.fiatPriceTwd(),
-                  product.createdAt(),
-                  product.updatedAt());
-          LOG.debug(
-              "Saved product: id={}, guildId={}, name={}", id, product.guildId(), product.name());
-          return saved;
-        } else {
+        if (!rs.next()) {
           throw new RepositoryException("Failed to get generated ID for product");
         }
+        long id = rs.getLong("id");
+        Product saved =
+            new Product(
+                id,
+                product.guildId(),
+                product.name(),
+                product.description(),
+                product.rewardType(),
+                product.rewardAmount(),
+                product.currencyPrice(),
+                product.fiatPriceTwd(),
+                product.backendApiUrl(),
+                product.autoCreateEscortOrder(),
+                product.escortOptionCode(),
+                product.createdAt(),
+                product.updatedAt());
+        LOG.debug(
+            "Saved product: id={}, guildId={}, name={}", id, product.guildId(), product.name());
+        return saved;
       }
     } catch (SQLException e) {
       LOG.error(
@@ -93,7 +109,8 @@ public class JdbcProductRepository implements ProductRepository {
 
     String sql =
         "UPDATE product SET name = ?, description = ?, reward_type = ?, reward_amount = ?,"
-            + " currency_price = ?, fiat_price_twd = ?, updated_at = ? WHERE id = ?";
+            + " currency_price = ?, fiat_price_twd = ?, backend_api_url = ?,"
+            + " auto_create_escort_order = ?, escort_option_code = ?, updated_at = ? WHERE id = ?";
 
     try (Connection conn = dataSource.getConnection();
         PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -116,8 +133,11 @@ public class JdbcProductRepository implements ProductRepository {
       } else {
         stmt.setNull(6, Types.BIGINT);
       }
-      stmt.setTimestamp(7, Timestamp.from(product.updatedAt()));
-      stmt.setLong(8, product.id());
+      stmt.setString(7, product.backendApiUrl());
+      stmt.setBoolean(8, product.autoCreateEscortOrder());
+      stmt.setString(9, product.escortOptionCode());
+      stmt.setTimestamp(10, Timestamp.from(product.updatedAt()));
+      stmt.setLong(11, product.id());
 
       int affected = stmt.executeUpdate();
       if (affected == 0) {
@@ -126,7 +146,6 @@ public class JdbcProductRepository implements ProductRepository {
 
       LOG.debug("Updated product: id={}, name={}", product.id(), product.name());
       return product;
-
     } catch (SQLException e) {
       LOG.error("Failed to update product id={}", product.id(), e);
       throw new RepositoryException("Failed to update product", e);
@@ -135,15 +154,12 @@ public class JdbcProductRepository implements ProductRepository {
 
   @Override
   public Optional<Product> findById(long id) {
-    String sql =
-        "SELECT id, guild_id, name, description, reward_type, reward_amount, currency_price,"
-            + " fiat_price_twd, created_at, updated_at FROM product WHERE id = ?";
+    String sql = "SELECT " + SELECT_COLUMNS + " FROM product WHERE id = ?";
 
     try (Connection conn = dataSource.getConnection();
         PreparedStatement stmt = conn.prepareStatement(sql)) {
 
       stmt.setLong(1, id);
-
       try (ResultSet rs = stmt.executeQuery()) {
         if (rs.next()) {
           return Optional.of(mapRow(rs));
@@ -158,10 +174,7 @@ public class JdbcProductRepository implements ProductRepository {
 
   @Override
   public Optional<Product> findByGuildIdAndName(long guildId, String name) {
-    String sql =
-        "SELECT id, guild_id, name, description, reward_type, reward_amount, currency_price,"
-            + " fiat_price_twd, created_at, updated_at FROM product WHERE guild_id = ? AND name ="
-            + " ?";
+    String sql = "SELECT " + SELECT_COLUMNS + " FROM product WHERE guild_id = ? AND name = ?";
 
     try (Connection conn = dataSource.getConnection();
         PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -184,9 +197,7 @@ public class JdbcProductRepository implements ProductRepository {
   @Override
   public List<Product> findByGuildId(long guildId) {
     String sql =
-        "SELECT id, guild_id, name, description, reward_type, reward_amount, currency_price,"
-            + " fiat_price_twd, created_at, updated_at FROM product WHERE guild_id = ? ORDER BY"
-            + " created_at DESC";
+        "SELECT " + SELECT_COLUMNS + " FROM product WHERE guild_id = ? ORDER BY created_at DESC";
 
     List<Product> products = new ArrayList<>();
 
@@ -203,7 +214,6 @@ public class JdbcProductRepository implements ProductRepository {
 
       LOG.debug("Found {} products for guildId={}", products.size(), guildId);
       return products;
-
     } catch (SQLException e) {
       LOG.error("Failed to find products for guildId={}", guildId, e);
       throw new RepositoryException("Failed to find products", e);
@@ -213,9 +223,9 @@ public class JdbcProductRepository implements ProductRepository {
   @Override
   public List<Product> findByGuildIdPaginated(long guildId, int page, int size) {
     String sql =
-        "SELECT id, guild_id, name, description, reward_type, reward_amount, currency_price,"
-            + " fiat_price_twd, created_at, updated_at FROM product WHERE guild_id = ? ORDER BY"
-            + " created_at DESC LIMIT ? OFFSET ?";
+        "SELECT "
+            + SELECT_COLUMNS
+            + " FROM product WHERE guild_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?";
 
     List<Product> products = new ArrayList<>();
 
@@ -239,7 +249,6 @@ public class JdbcProductRepository implements ProductRepository {
           page,
           size);
       return products;
-
     } catch (SQLException e) {
       LOG.error("Failed to find products paginated for guildId={}", guildId, e);
       throw new RepositoryException("Failed to find products", e);
@@ -282,7 +291,6 @@ public class JdbcProductRepository implements ProductRepository {
         return true;
       }
       return false;
-
     } catch (SQLException e) {
       LOG.error("Failed to delete product id={}", id, e);
       throw new RepositoryException("Failed to delete product", e);
@@ -343,6 +351,7 @@ public class JdbcProductRepository implements ProductRepository {
 
     long currencyPriceValue = rs.getLong("currency_price");
     Long currencyPrice = rs.wasNull() ? null : currencyPriceValue;
+
     long fiatPriceTwdValue = rs.getLong("fiat_price_twd");
     Long fiatPriceTwd = rs.wasNull() ? null : fiatPriceTwdValue;
 
@@ -355,6 +364,9 @@ public class JdbcProductRepository implements ProductRepository {
         rewardAmount,
         currencyPrice,
         fiatPriceTwd,
+        rs.getString("backend_api_url"),
+        rs.getBoolean("auto_create_escort_order"),
+        rs.getString("escort_option_code"),
         rs.getTimestamp("created_at").toInstant(),
         rs.getTimestamp("updated_at").toInstant());
   }
@@ -362,15 +374,13 @@ public class JdbcProductRepository implements ProductRepository {
   /**
    * Finds all products with a currency price set for the given guild. Only products where
    * currency_price is not null and greater than 0 are returned.
-   *
-   * @param guildId the guild ID
-   * @return list of products available for currency purchase
    */
   public List<Product> findByGuildIdWithCurrencyPrice(long guildId) {
     String sql =
-        "SELECT id, guild_id, name, description, reward_type, reward_amount, currency_price,"
-            + " fiat_price_twd, created_at, updated_at FROM product WHERE guild_id = ? AND"
-            + " currency_price IS NOT NULL AND currency_price > 0 ORDER BY name ASC";
+        "SELECT "
+            + SELECT_COLUMNS
+            + " FROM product WHERE guild_id = ? AND currency_price IS NOT NULL AND currency_price"
+            + " > 0 ORDER BY name ASC";
 
     List<Product> products = new ArrayList<>();
 
@@ -387,25 +397,19 @@ public class JdbcProductRepository implements ProductRepository {
 
       LOG.debug("Found {} products with currency price for guildId={}", products.size(), guildId);
       return products;
-
     } catch (SQLException e) {
       LOG.error("Failed to find products with currency price for guildId={}", guildId, e);
       throw new RepositoryException("Failed to find products with currency price", e);
     }
   }
 
-  /**
-   * Finds fiat-only products for the given guild.
-   *
-   * @param guildId the guild ID
-   * @return list of products that can only be ordered by fiat payment
-   */
+  /** Finds fiat-only products for the given guild. */
   public List<Product> findFiatOnlyByGuildId(long guildId) {
     String sql =
-        "SELECT id, guild_id, name, description, reward_type, reward_amount, currency_price,"
-            + " fiat_price_twd, created_at, updated_at FROM product WHERE guild_id = ? AND"
-            + " fiat_price_twd IS NOT NULL AND fiat_price_twd > 0 AND (currency_price IS NULL OR"
-            + " currency_price <= 0) ORDER BY name ASC";
+        "SELECT "
+            + SELECT_COLUMNS
+            + " FROM product WHERE guild_id = ? AND fiat_price_twd IS NOT NULL AND fiat_price_twd"
+            + " > 0 AND (currency_price IS NULL OR currency_price <= 0) ORDER BY name ASC";
 
     List<Product> products = new ArrayList<>();
 
@@ -422,7 +426,6 @@ public class JdbcProductRepository implements ProductRepository {
 
       LOG.debug("Found {} fiat-only products for guildId={}", products.size(), guildId);
       return products;
-
     } catch (SQLException e) {
       LOG.error("Failed to find fiat-only products for guildId={}", guildId, e);
       throw new RepositoryException("Failed to find fiat-only products", e);

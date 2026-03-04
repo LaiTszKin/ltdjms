@@ -6,18 +6,28 @@ import ltdjms.discord.product.domain.Product;
 import ltdjms.discord.product.services.ProductService;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
+import ltdjms.discord.shared.Unit;
 
 /** Creates fiat-only product orders and requests CVS code from ECPay. */
 public class FiatOrderService {
 
   private final ProductService productService;
   private final EcpayCvsPaymentService ecpayCvsPaymentService;
+  private final ProductFulfillmentApiService productFulfillmentApiService;
 
   public FiatOrderService(
       ProductService productService, EcpayCvsPaymentService ecpayCvsPaymentService) {
+    this(productService, ecpayCvsPaymentService, null);
+  }
+
+  public FiatOrderService(
+      ProductService productService,
+      EcpayCvsPaymentService ecpayCvsPaymentService,
+      ProductFulfillmentApiService productFulfillmentApiService) {
     this.productService = Objects.requireNonNull(productService, "productService must not be null");
     this.ecpayCvsPaymentService =
         Objects.requireNonNull(ecpayCvsPaymentService, "ecpayCvsPaymentService must not be null");
+    this.productFulfillmentApiService = productFulfillmentApiService;
   }
 
   /**
@@ -49,18 +59,49 @@ public class FiatOrderService {
     }
 
     EcpayCvsPaymentService.CvsPaymentCode paymentCode = paymentResult.getValue();
+    String fulfillmentWarning = tryNotifyBackendFulfillment(guildId, userId, product, paymentCode);
     return Result.ok(
         new FiatOrderResult(
             product,
             paymentCode.orderNumber(),
             paymentCode.paymentNo(),
             paymentCode.expireDate(),
-            paymentCode.paymentUrl()));
+            paymentCode.paymentUrl(),
+            fulfillmentWarning));
+  }
+
+  private String tryNotifyBackendFulfillment(
+      long guildId,
+      long userId,
+      Product product,
+      EcpayCvsPaymentService.CvsPaymentCode paymentCode) {
+    if (productFulfillmentApiService == null || !product.shouldCallBackendFulfillment()) {
+      return null;
+    }
+
+    Result<Unit, DomainError> fulfillmentResult =
+        productFulfillmentApiService.notifyFulfillment(
+            new ProductFulfillmentApiService.FulfillmentRequest(
+                guildId,
+                userId,
+                product,
+                ProductFulfillmentApiService.PurchaseSource.FIAT_ORDER,
+                paymentCode.orderNumber(),
+                paymentCode.paymentNo()));
+    if (fulfillmentResult.isErr()) {
+      return "⚠️ 後端履約通知失敗，請聯絡管理員協助後續處理。";
+    }
+    return null;
   }
 
   /** Result of fiat-only order creation. */
   public record FiatOrderResult(
-      Product product, String orderNumber, String paymentNo, String expireDate, String paymentUrl) {
+      Product product,
+      String orderNumber,
+      String paymentNo,
+      String expireDate,
+      String paymentUrl,
+      String fulfillmentWarning) {
 
     /** Formats DM content sent to buyer. */
     public String formatDirectMessage() {
@@ -75,6 +116,9 @@ public class FiatOrderService {
       }
       if (paymentUrl != null && !paymentUrl.isBlank()) {
         sb.append("**繳費說明：** ").append(paymentUrl).append("\n");
+      }
+      if (fulfillmentWarning != null && !fulfillmentWarning.isBlank()) {
+        sb.append("\n").append(fulfillmentWarning).append("\n");
       }
       sb.append("\n請以此超商代碼完成付款。");
       return sb.toString();

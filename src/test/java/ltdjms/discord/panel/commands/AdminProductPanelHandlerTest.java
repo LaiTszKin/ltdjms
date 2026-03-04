@@ -187,6 +187,80 @@ class AdminProductPanelHandlerTest {
     verify(event).reply("✅ 已更新實際價值（TWD）");
   }
 
+  @Test
+  void integrationConfigModal_shouldUpdateBackendIntegration() {
+    var event = mock(net.dv8tion.jda.api.events.interaction.ModalInteractionEvent.class);
+    var guild = mock(net.dv8tion.jda.api.entities.Guild.class);
+    var adminMember = mock(net.dv8tion.jda.api.entities.Member.class);
+    var reply =
+        mock(net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction.class);
+    var backendApiMapping = mock(net.dv8tion.jda.api.interactions.modals.ModalMapping.class);
+    var autoEscortMapping = mock(net.dv8tion.jda.api.interactions.modals.ModalMapping.class);
+    var escortOptionMapping = mock(net.dv8tion.jda.api.interactions.modals.ModalMapping.class);
+
+    when(event.getModalId())
+        .thenReturn(AdminProductPanelHandler.MODAL_INTEGRATION_CONFIG + productId);
+    when(event.isFromGuild()).thenReturn(true);
+    when(event.getGuild()).thenReturn(guild);
+    when(guild.getIdLong()).thenReturn(guildId);
+    when(event.getMember()).thenReturn(adminMember);
+    when(adminMember.hasPermission(Permission.ADMINISTRATOR)).thenReturn(true);
+
+    when(event.getValue("backend_api_url")).thenReturn(backendApiMapping);
+    when(backendApiMapping.getAsString()).thenReturn("https://backend.example.com/fulfill");
+    when(event.getValue("auto_create_escort_order")).thenReturn(autoEscortMapping);
+    when(autoEscortMapping.getAsString()).thenReturn("true");
+    when(event.getValue("escort_option_code")).thenReturn(escortOptionMapping);
+    when(escortOptionMapping.getAsString()).thenReturn("CONF_DAM_300W");
+
+    when(event.reply(anyString())).thenReturn(reply);
+    when(reply.setEphemeral(true)).thenReturn(reply);
+    doAnswer(invocation -> null).when(reply).queue();
+
+    var updatedProduct =
+        new Product(
+            Long.valueOf(productId),
+            guildId,
+            "Test Product",
+            null,
+            null,
+            null,
+            null,
+            null,
+            "https://backend.example.com/fulfill",
+            true,
+            "CONF_DAM_300W",
+            Instant.now(),
+            Instant.now());
+    when(productService.updateProduct(
+            eq(productId),
+            eq("Test Product"),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            isNull(),
+            eq("https://backend.example.com/fulfill"),
+            eq(true),
+            eq("CONF_DAM_300W")))
+        .thenReturn(ltdjms.discord.shared.Result.ok(updatedProduct));
+
+    handler.onModalInteraction(event);
+
+    verify(productService)
+        .updateProduct(
+            productId,
+            "Test Product",
+            null,
+            null,
+            null,
+            null,
+            null,
+            "https://backend.example.com/fulfill",
+            true,
+            "CONF_DAM_300W");
+  }
+
   @SuppressWarnings("unchecked")
   private static WebhookMessageEditAction<Message> mockEditAction() {
     return mock(WebhookMessageEditAction.class);
