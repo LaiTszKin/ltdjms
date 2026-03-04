@@ -3,14 +3,17 @@ package ltdjms.discord.panel.commands;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import ltdjms.discord.dispatch.services.EscortOptionPricingService;
 import ltdjms.discord.panel.services.AdminPanelService;
 import ltdjms.discord.panel.services.AdminPanelSessionManager;
+import ltdjms.discord.product.domain.EscortOrderOptionCatalog;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
@@ -56,6 +59,19 @@ class AdminPanelButtonHandlerTest {
   }
 
   @Test
+  @DisplayName("返回主選單應包含護航定價設定按鈕")
+  void mainPanelShouldIncludeEscortPricingButton() {
+    List<ActionRow> rows = handler.buildMainPanelComponents("💰");
+
+    ActionRow lastRow = rows.get(rows.size() - 1);
+    Button escortButton = (Button) lastRow.getComponents().get(1);
+
+    assertThat(escortButton.getId())
+        .isEqualTo(AdminPanelButtonHandler.BUTTON_ESCORT_PRICING_CONFIG);
+    assertThat(escortButton.getLabel()).isEqualTo("🛡️ 護航定價設定");
+  }
+
+  @Test
   @DisplayName("主選單初始載入與返回主選單應使用相同渲染路徑")
   void loadedAndReturnedMainPanelShouldUseSameRenderingPath() {
     MessageEmbed commandEmbed = commandHandler.buildMainPanelEmbed("💰");
@@ -68,6 +84,33 @@ class AdminPanelButtonHandlerTest {
     List<String> buttonButtons = flattenButtonIds(handler.buildMainPanelComponents("💰"));
 
     assertThat(buttonButtons).isEqualTo(commandButtons);
+  }
+
+  @Test
+  @DisplayName("護航定價面板應避免單一 Embed 欄位超過長度限制")
+  void escortPricingEmbedShouldSplitLongContentIntoMultipleFields() throws Exception {
+    List<EscortOptionPricingService.OptionPriceView> optionPrices =
+        EscortOrderOptionCatalog.allOptions().stream()
+            .map(
+                option ->
+                    new EscortOptionPricingService.OptionPriceView(
+                        option.code(), option, option.priceTwd(), option.priceTwd(), false))
+            .toList();
+
+    Method method =
+        AdminPanelButtonHandler.class.getDeclaredMethod(
+            "buildEscortPricingEmbed", List.class, String.class);
+    method.setAccessible(true);
+
+    MessageEmbed embed = (MessageEmbed) method.invoke(handler, optionPrices, null);
+
+    List<MessageEmbed.Field> pricingFields =
+        embed.getFields().stream()
+            .filter(field -> field.getName().startsWith("目前定價（含覆蓋狀態）"))
+            .toList();
+
+    assertThat(pricingFields).isNotEmpty();
+    assertThat(pricingFields).allMatch(field -> field.getValue().length() <= 1024);
   }
 
   private List<String> flattenButtonIds(List<ActionRow> rows) {

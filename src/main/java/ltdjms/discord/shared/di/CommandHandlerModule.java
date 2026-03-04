@@ -15,6 +15,7 @@ import ltdjms.discord.currency.services.CurrencyConfigService;
 import ltdjms.discord.currency.services.CurrencyTransactionService;
 import ltdjms.discord.dispatch.commands.DispatchPanelCommandHandler;
 import ltdjms.discord.dispatch.services.DispatchAfterSalesStaffService;
+import ltdjms.discord.dispatch.services.EscortOptionPricingService;
 import ltdjms.discord.gametoken.commands.DiceGame1CommandHandler;
 import ltdjms.discord.gametoken.commands.DiceGame2CommandHandler;
 import ltdjms.discord.gametoken.persistence.DiceGame1ConfigRepository;
@@ -51,6 +52,7 @@ import ltdjms.discord.shop.commands.ShopCommandHandler;
 import ltdjms.discord.shop.commands.ShopSelectMenuHandler;
 import ltdjms.discord.shop.services.EcpayCvsPaymentService;
 import ltdjms.discord.shop.services.FiatOrderService;
+import ltdjms.discord.shop.services.ProductFulfillmentApiService;
 import ltdjms.discord.shop.services.ShopService;
 
 /**
@@ -205,13 +207,15 @@ public class CommandHandlerModule {
       GameTokenManagementFacade gameTokenFacade,
       GameConfigManagementFacade gameConfigFacade,
       AIConfigManagementFacade aiConfigFacade,
-      DispatchAfterSalesStaffService dispatchAfterSalesStaffService) {
+      DispatchAfterSalesStaffService dispatchAfterSalesStaffService,
+      EscortOptionPricingService escortOptionPricingService) {
     return new AdminPanelService(
         currencyFacade,
         gameTokenFacade,
         gameConfigFacade,
         aiConfigFacade,
-        dispatchAfterSalesStaffService);
+        dispatchAfterSalesStaffService,
+        escortOptionPricingService);
   }
 
   @Provides
@@ -277,13 +281,25 @@ public class CommandHandlerModule {
 
   @Provides
   @Singleton
+  public ProductFulfillmentApiService provideProductFulfillmentApiService(
+      EscortOptionPricingService escortOptionPricingService) {
+    return new ProductFulfillmentApiService(escortOptionPricingService);
+  }
+
+  @Provides
+  @Singleton
   public ltdjms.discord.shop.services.CurrencyPurchaseService provideCurrencyPurchaseService(
       ProductService productService,
       BalanceService balanceService,
       BalanceAdjustmentService balanceAdjustmentService,
-      CurrencyTransactionService currencyTransactionService) {
+      CurrencyTransactionService currencyTransactionService,
+      ProductFulfillmentApiService productFulfillmentApiService) {
     return new ltdjms.discord.shop.services.CurrencyPurchaseService(
-        productService, balanceService, balanceAdjustmentService, currencyTransactionService);
+        productService,
+        balanceService,
+        balanceAdjustmentService,
+        currencyTransactionService,
+        productFulfillmentApiService);
   }
 
   @Provides
@@ -295,8 +311,11 @@ public class CommandHandlerModule {
   @Provides
   @Singleton
   public FiatOrderService provideFiatOrderService(
-      ProductService productService, EcpayCvsPaymentService ecpayCvsPaymentService) {
-    return new FiatOrderService(productService, ecpayCvsPaymentService);
+      ProductService productService,
+      EcpayCvsPaymentService ecpayCvsPaymentService,
+      ProductFulfillmentApiService productFulfillmentApiService) {
+    return new FiatOrderService(
+        productService, ecpayCvsPaymentService, productFulfillmentApiService);
   }
 
   @Provides

@@ -1,6 +1,7 @@
 package ltdjms.discord.shop.services;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
@@ -29,6 +30,8 @@ class FiatOrderServiceTest {
   @Mock private ProductService productService;
 
   @Mock private EcpayCvsPaymentService ecpayCvsPaymentService;
+
+  @Mock private ProductFulfillmentApiService productFulfillmentApiService;
 
   private FiatOrderService service;
 
@@ -106,5 +109,85 @@ class FiatOrderServiceTest {
     assertThat(result.getValue().paymentNo()).isEqualTo("ABC123456789");
     assertThat(result.getValue().formatDirectMessage()).contains("訂單編號");
     assertThat(result.getValue().formatDirectMessage()).contains("超商代碼");
+  }
+
+  @Test
+  @DisplayName("有後端接入時應呼叫履約 API")
+  void shouldCallFulfillmentApiWhenConfigured() {
+    service =
+        new FiatOrderService(productService, ecpayCvsPaymentService, productFulfillmentApiService);
+
+    Product product =
+        new Product(
+            TEST_PRODUCT_ID,
+            TEST_GUILD_ID,
+            "VIP",
+            "desc",
+            Product.RewardType.TOKEN,
+            300L,
+            null,
+            1200L,
+            "https://backend.example.com/fulfill",
+            false,
+            null,
+            Instant.now(),
+            Instant.now());
+    when(productService.getProduct(TEST_PRODUCT_ID)).thenReturn(Optional.of(product));
+    when(ecpayCvsPaymentService.generateCvsPaymentCode(1200L, "VIP", "Discord 商品下單 user:2"))
+        .thenReturn(
+            Result.ok(
+                new EcpayCvsPaymentService.CvsPaymentCode(
+                    "FD260224000001",
+                    "ABC123456789",
+                    "2026/02/26 23:59:59",
+                    "https://example.com")));
+    when(productFulfillmentApiService.notifyFulfillment(any())).thenReturn(Result.okVoid());
+
+    Result<FiatOrderService.FiatOrderResult, DomainError> result =
+        service.createFiatOnlyOrder(TEST_GUILD_ID, TEST_USER_ID, TEST_PRODUCT_ID);
+
+    assertThat(result.isOk()).isTrue();
+    assertThat(result.getValue().fulfillmentWarning()).isNull();
+  }
+
+  @Test
+  @DisplayName("履約 API 失敗不應影響綠界下單")
+  void shouldKeepOrderSuccessWhenFulfillmentFails() {
+    service =
+        new FiatOrderService(productService, ecpayCvsPaymentService, productFulfillmentApiService);
+
+    Product product =
+        new Product(
+            TEST_PRODUCT_ID,
+            TEST_GUILD_ID,
+            "VIP",
+            "desc",
+            Product.RewardType.CURRENCY,
+            100L,
+            null,
+            1200L,
+            "https://backend.example.com/fulfill",
+            false,
+            null,
+            Instant.now(),
+            Instant.now());
+    when(productService.getProduct(TEST_PRODUCT_ID)).thenReturn(Optional.of(product));
+    when(ecpayCvsPaymentService.generateCvsPaymentCode(1200L, "VIP", "Discord 商品下單 user:2"))
+        .thenReturn(
+            Result.ok(
+                new EcpayCvsPaymentService.CvsPaymentCode(
+                    "FD260224000001",
+                    "ABC123456789",
+                    "2026/02/26 23:59:59",
+                    "https://example.com")));
+    when(productFulfillmentApiService.notifyFulfillment(any()))
+        .thenReturn(Result.err(DomainError.unexpectedFailure("backend failed", null)));
+
+    Result<FiatOrderService.FiatOrderResult, DomainError> result =
+        service.createFiatOnlyOrder(TEST_GUILD_ID, TEST_USER_ID, TEST_PRODUCT_ID);
+
+    assertThat(result.isOk()).isTrue();
+    assertThat(result.getValue().fulfillmentWarning()).contains("後端履約通知失敗");
+    assertThat(result.getValue().formatDirectMessage()).contains("後端履約通知失敗");
   }
 }

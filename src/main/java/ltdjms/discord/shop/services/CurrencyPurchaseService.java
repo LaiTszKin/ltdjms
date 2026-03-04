@@ -11,6 +11,7 @@ import ltdjms.discord.product.domain.Product;
 import ltdjms.discord.product.services.ProductService;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
+import ltdjms.discord.shared.Unit;
 
 /** Service for handling product purchases with currency. */
 public class CurrencyPurchaseService {
@@ -21,16 +22,27 @@ public class CurrencyPurchaseService {
   private final BalanceService balanceService;
   private final BalanceAdjustmentService balanceAdjustmentService;
   private final CurrencyTransactionService transactionService;
+  private final ProductFulfillmentApiService productFulfillmentApiService;
 
   public CurrencyPurchaseService(
       ProductService productService,
       BalanceService balanceService,
       BalanceAdjustmentService balanceAdjustmentService,
       CurrencyTransactionService transactionService) {
+    this(productService, balanceService, balanceAdjustmentService, transactionService, null);
+  }
+
+  public CurrencyPurchaseService(
+      ProductService productService,
+      BalanceService balanceService,
+      BalanceAdjustmentService balanceAdjustmentService,
+      CurrencyTransactionService transactionService,
+      ProductFulfillmentApiService productFulfillmentApiService) {
     this.productService = productService;
     this.balanceService = balanceService;
     this.balanceAdjustmentService = balanceAdjustmentService;
     this.transactionService = transactionService;
+    this.productFulfillmentApiService = productFulfillmentApiService;
   }
 
   /**
@@ -120,6 +132,7 @@ public class CurrencyPurchaseService {
         // Note: Token handling would need to be implemented separately
       }
     }
+    rewardMessage.append(tryNotifyBackendFulfillment(guildId, userId, product));
 
     LOG.info(
         "Product purchased: guildId={}, userId={}, productId={}, price={}",
@@ -132,6 +145,35 @@ public class CurrencyPurchaseService {
         new PurchaseResult(product, currentBalance, newBalance, price, rewardMessage.toString());
 
     return Result.ok(result);
+  }
+
+  private String tryNotifyBackendFulfillment(long guildId, long userId, Product product) {
+    if (productFulfillmentApiService == null || !product.shouldCallBackendFulfillment()) {
+      return "";
+    }
+
+    Result<Unit, DomainError> fulfillmentResult =
+        productFulfillmentApiService.notifyFulfillment(
+            new ProductFulfillmentApiService.FulfillmentRequest(
+                guildId,
+                userId,
+                product,
+                ProductFulfillmentApiService.PurchaseSource.CURRENCY_PURCHASE,
+                null,
+                null));
+
+    if (fulfillmentResult.isErr()) {
+      LOG.warn(
+          "Backend fulfillment notify failed after currency purchase: guildId={}, userId={},"
+              + " productId={}, reason={}",
+          guildId,
+          userId,
+          product.id(),
+          fulfillmentResult.getError().message());
+      return "\n\n⚠️ 已完成購買，但後端履約通知失敗，請聯絡管理員協助。";
+    }
+
+    return "";
   }
 
   /** Result of a product purchase operation. */

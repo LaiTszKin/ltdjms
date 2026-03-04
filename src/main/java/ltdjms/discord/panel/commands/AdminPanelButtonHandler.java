@@ -9,6 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ltdjms.discord.dispatch.services.EscortOptionPricingService;
 import ltdjms.discord.gametoken.domain.DiceGame1Config;
 import ltdjms.discord.gametoken.domain.DiceGame2Config;
 import ltdjms.discord.panel.services.AdminPanelService;
@@ -48,6 +49,7 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
   private static final Logger LOG = LoggerFactory.getLogger(AdminPanelButtonHandler.class);
 
   private static final Color EMBED_COLOR = new Color(0xED4245);
+  private static final int EMBED_FIELD_VALUE_LIMIT = 1024;
 
   // Button IDs
   public static final String BUTTON_BALANCE = "admin_panel_balance";
@@ -73,6 +75,10 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
   // Dispatch 售後設定（dispatch 模組）
   public static final String BUTTON_DISPATCH_AFTER_SALES_CONFIG =
       "admin_panel_dispatch_after_sales";
+  public static final String BUTTON_ESCORT_PRICING_CONFIG = "admin_panel_escort_pricing";
+  public static final String BUTTON_ESCORT_PRICING_EDIT = "admin_escort_pricing_edit";
+  public static final String BUTTON_ESCORT_PRICING_RESET = "admin_escort_pricing_reset";
+  public static final String BUTTON_ESCORT_PRICING_REFRESH = "admin_escort_pricing_refresh";
 
   // Modal IDs
   public static final String MODAL_BALANCE_ADJUST = "admin_modal_balance_adjust";
@@ -82,6 +88,8 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
   public static final String MODAL_GAME_2_TOKENS = "admin_modal_game2_tokens";
   public static final String MODAL_GAME_2_MULTIPLIERS = "admin_modal_game2_multipliers";
   public static final String MODAL_GAME_2_BONUSES = "admin_modal_game2_bonuses";
+  public static final String MODAL_ESCORT_PRICING_EDIT = "admin_modal_escort_pricing_edit";
+  public static final String MODAL_ESCORT_PRICING_RESET = "admin_modal_escort_pricing_reset";
 
   // Select Menu IDs
   public static final String SELECT_GAME = "admin_select_game";
@@ -156,6 +164,10 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         case BUTTON_AI_CHANNEL_CONFIG -> showAIChannelConfig(event);
         case BUTTON_AI_AGENT_CONFIG -> showAIAgentConfig(event);
         case BUTTON_DISPATCH_AFTER_SALES_CONFIG -> showDispatchAfterSalesConfig(event);
+        case BUTTON_ESCORT_PRICING_CONFIG -> showEscortPricingConfig(event);
+        case BUTTON_ESCORT_PRICING_EDIT -> openEscortPricingEditModal(event);
+        case BUTTON_ESCORT_PRICING_RESET -> openEscortPricingResetModal(event);
+        case BUTTON_ESCORT_PRICING_REFRESH -> showEscortPricingConfig(event);
         case BUTTON_BACK -> showMainPanel(event);
         case BUTTON_OPEN_BALANCE_MODAL -> openBalanceModal(event);
         case BUTTON_OPEN_TOKEN_MODAL -> openTokenModal(event);
@@ -283,6 +295,10 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         handleGame2MultipliersModal(event);
       } else if (modalId.startsWith(MODAL_GAME_2_BONUSES)) {
         handleGame2BonusesModal(event);
+      } else if (modalId.startsWith(MODAL_ESCORT_PRICING_EDIT)) {
+        handleEscortPricingEditModal(event);
+      } else if (modalId.startsWith(MODAL_ESCORT_PRICING_RESET)) {
+        handleEscortPricingResetModal(event);
       }
     } catch (Exception e) {
       LOG.error("Error handling modal: {}", modalId, e);
@@ -1500,6 +1516,168 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
       case "adjust" -> "設定代幣";
       default -> mode;
     };
+  }
+
+  // ===== Escort 定價設定 =====
+
+  private void showEscortPricingConfig(ButtonInteractionEvent event) {
+    long guildId = event.getGuild().getIdLong();
+    Result<List<EscortOptionPricingService.OptionPriceView>, DomainError> result =
+        adminPanelService.getEscortOptionPrices(guildId);
+
+    if (result.isErr()) {
+      event
+          .editMessageEmbeds(
+              buildEscortPricingEmbed(List.of(), "❌ 載入失敗：" + result.getError().message()))
+          .setComponents(buildEscortPricingComponents())
+          .queue();
+      return;
+    }
+
+    event
+        .editMessageEmbeds(buildEscortPricingEmbed(result.getValue(), null))
+        .setComponents(buildEscortPricingComponents())
+        .queue();
+  }
+
+  private void openEscortPricingEditModal(ButtonInteractionEvent event) {
+    TextInput optionCodeInput =
+        TextInput.create("option_code", "護航選項代碼", TextInputStyle.SHORT)
+            .setPlaceholder("例如：CONF_DAM_300W")
+            .setRequired(true)
+            .setMinLength(1)
+            .setMaxLength(120)
+            .build();
+
+    TextInput priceInput =
+        TextInput.create("price_twd", "實際價格（TWD）", TextInputStyle.SHORT)
+            .setPlaceholder("輸入新台幣整數，例如 1500")
+            .setRequired(true)
+            .setMinLength(1)
+            .setMaxLength(15)
+            .build();
+
+    Modal modal =
+        Modal.create(MODAL_ESCORT_PRICING_EDIT, "調整護航定價")
+            .addComponents(ActionRow.of(optionCodeInput), ActionRow.of(priceInput))
+            .build();
+    event.replyModal(modal).queue();
+  }
+
+  private void openEscortPricingResetModal(ButtonInteractionEvent event) {
+    TextInput optionCodeInput =
+        TextInput.create("option_code", "護航選項代碼", TextInputStyle.SHORT)
+            .setPlaceholder("輸入要重置為預設價的代碼")
+            .setRequired(true)
+            .setMinLength(1)
+            .setMaxLength(120)
+            .build();
+
+    Modal modal =
+        Modal.create(MODAL_ESCORT_PRICING_RESET, "重置護航定價")
+            .addComponents(ActionRow.of(optionCodeInput))
+            .build();
+    event.replyModal(modal).queue();
+  }
+
+  private void handleEscortPricingEditModal(ModalInteractionEvent event) {
+    long guildId = event.getGuild().getIdLong();
+    long adminId = event.getUser().getIdLong();
+    String optionCode = event.getValue("option_code").getAsString().trim();
+    String priceStr = event.getValue("price_twd").getAsString().trim();
+
+    long priceTwd;
+    try {
+      priceTwd = Long.parseLong(priceStr);
+    } catch (NumberFormatException e) {
+      event.reply("價格格式錯誤，請輸入有效整數").setEphemeral(true).queue();
+      return;
+    }
+
+    Result<EscortOptionPricingService.OptionPriceView, DomainError> updateResult =
+        adminPanelService.updateEscortOptionPrice(guildId, adminId, optionCode, priceTwd);
+    if (updateResult.isErr()) {
+      event.reply("❌ 更新失敗：" + updateResult.getError().message()).setEphemeral(true).queue();
+      return;
+    }
+
+    EscortOptionPricingService.OptionPriceView view = updateResult.getValue();
+    event
+        .reply(String.format("✅ 已更新 `%s` 為 NT$%,d", view.optionCode(), view.effectivePriceTwd()))
+        .setEphemeral(true)
+        .queue();
+  }
+
+  private void handleEscortPricingResetModal(ModalInteractionEvent event) {
+    long guildId = event.getGuild().getIdLong();
+    String optionCode = event.getValue("option_code").getAsString().trim();
+
+    Result<Unit, DomainError> result =
+        adminPanelService.resetEscortOptionPrice(guildId, optionCode);
+    if (result.isErr()) {
+      event.reply("❌ 重置失敗：" + result.getError().message()).setEphemeral(true).queue();
+      return;
+    }
+
+    event.reply("✅ 已重置 `" + optionCode.toUpperCase() + "` 為預設價格").setEphemeral(true).queue();
+  }
+
+  private MessageEmbed buildEscortPricingEmbed(
+      List<EscortOptionPricingService.OptionPriceView> optionPrices, String statusMessage) {
+    EmbedBuilder embed =
+        new EmbedBuilder()
+            .setTitle("🛡️ 護航定價設定")
+            .setColor(EMBED_COLOR)
+            .setDescription("可調整各護航訂單類型的實際價格（TWD）");
+
+    if (optionPrices.isEmpty()) {
+      embed.addField("目前定價", "暫無資料", false);
+    } else {
+      addEscortPricingFields(embed, optionPrices);
+    }
+
+    if (statusMessage != null && !statusMessage.isBlank()) {
+      embed.addField("狀態", statusMessage, false);
+    }
+
+    embed.setFooter("調整後會即時套用到後端護航開單請求");
+    return embed.build();
+  }
+
+  private void addEscortPricingFields(
+      EmbedBuilder embed, List<EscortOptionPricingService.OptionPriceView> optionPrices) {
+    String fieldName = "目前定價（含覆蓋狀態）";
+    StringBuilder chunk = new StringBuilder();
+    int chunkIndex = 1;
+
+    for (EscortOptionPricingService.OptionPriceView view : optionPrices) {
+      String line = view.toDisplayLine() + "\n";
+      if (chunk.length() + line.length() > EMBED_FIELD_VALUE_LIMIT) {
+        embed.addField(
+            chunkIndex == 1 ? fieldName : fieldName + "（續 " + chunkIndex + "）",
+            chunk.toString(),
+            false);
+        chunk.setLength(0);
+        chunkIndex++;
+      }
+      chunk.append(line);
+    }
+
+    if (chunk.length() > 0) {
+      embed.addField(
+          chunkIndex == 1 ? fieldName : fieldName + "（續 " + chunkIndex + "）",
+          chunk.toString(),
+          false);
+    }
+  }
+
+  private List<ActionRow> buildEscortPricingComponents() {
+    return List.of(
+        ActionRow.of(
+            Button.primary(BUTTON_ESCORT_PRICING_EDIT, "✏️ 調整價格"),
+            Button.secondary(BUTTON_ESCORT_PRICING_RESET, "♻️ 重置預設"),
+            Button.secondary(BUTTON_ESCORT_PRICING_REFRESH, "🔄 重新整理")),
+        ActionRow.of(Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")));
   }
 
   // ===== Dispatch 售後設定 =====

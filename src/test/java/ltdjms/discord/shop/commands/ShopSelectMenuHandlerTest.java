@@ -30,7 +30,6 @@ import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
-import net.dv8tion.jda.api.interactions.components.LayoutComponent;
 import net.dv8tion.jda.api.requests.restaction.interactions.MessageEditCallbackAction;
 import net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction;
 
@@ -176,7 +175,7 @@ class ShopSelectMenuHandlerTest {
     handler.onStringSelectInteraction(selectEvent);
 
     verify(selectEvent).editMessageEmbeds(any(MessageEmbed.class));
-    verify(editAction).setComponents(any(LayoutComponent.class));
+    verify(editAction).setComponents(anyList());
   }
 
   @Test

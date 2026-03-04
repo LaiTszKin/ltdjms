@@ -234,6 +234,72 @@ class ProductServiceTest {
     }
 
     @Test
+    @DisplayName("should normalize uppercase backend API URL scheme")
+    void shouldNormalizeUppercaseBackendApiUrlScheme() {
+      when(productRepository.existsByGuildIdAndName(TEST_GUILD_ID, "Backend Product"))
+          .thenReturn(false);
+      when(productRepository.save(any(Product.class)))
+          .thenAnswer(
+              invocation -> {
+                Product p = invocation.getArgument(0);
+                return new Product(
+                    1L,
+                    p.guildId(),
+                    p.name(),
+                    p.description(),
+                    p.rewardType(),
+                    p.rewardAmount(),
+                    p.currencyPrice(),
+                    p.fiatPriceTwd(),
+                    p.backendApiUrl(),
+                    p.autoCreateEscortOrder(),
+                    p.escortOptionCode(),
+                    p.createdAt(),
+                    p.updatedAt());
+              });
+
+      Result<Product, DomainError> result =
+          productService.createProduct(
+              TEST_GUILD_ID,
+              "Backend Product",
+              "desc",
+              null,
+              null,
+              300L,
+              null,
+              "HTTPS://backend.example.com/fulfill",
+              false,
+              null);
+
+      assertThat(result.isOk()).isTrue();
+      assertThat(result.getValue().backendApiUrl())
+          .isEqualTo("https://backend.example.com/fulfill");
+    }
+
+    @Test
+    @DisplayName("should reject localhost and private backend API target")
+    void shouldRejectLocalOrPrivateBackendApiUrl() {
+      when(productRepository.existsByGuildIdAndName(TEST_GUILD_ID, "Unsafe Backend"))
+          .thenReturn(false);
+
+      Result<Product, DomainError> result =
+          productService.createProduct(
+              TEST_GUILD_ID,
+              "Unsafe Backend",
+              "desc",
+              null,
+              null,
+              300L,
+              null,
+              "http://127.0.0.1/internal",
+              false,
+              null);
+
+      assertThat(result.isErr()).isTrue();
+      assertThat(result.getError().message()).contains("localhost 或內網位址");
+    }
+
+    @Test
     @DisplayName("should handle persistence failure on create")
     void shouldHandlePersistenceFailureOnCreate() {
       // Given

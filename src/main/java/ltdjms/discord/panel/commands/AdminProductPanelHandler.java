@@ -58,6 +58,7 @@ public class AdminProductPanelHandler extends ListenerAdapter {
   public static final String BUTTON_PREFIX_EDIT_PRODUCT = "admin_edit_product_";
   public static final String BUTTON_PREFIX_DELETE_PRODUCT = "admin_delete_product_";
   public static final String BUTTON_PREFIX_SET_FIAT_VALUE = "admin_set_fiat_value_";
+  public static final String BUTTON_PREFIX_INTEGRATION_CONFIG = "admin_integration_config_";
   public static final String BUTTON_PREFIX_CODE_PAGE = "admin_code_page_";
   public static final String BUTTON_CODE_BACK = "admin_code_back";
 
@@ -68,6 +69,7 @@ public class AdminProductPanelHandler extends ListenerAdapter {
   public static final String MODAL_CREATE_PRODUCT = "admin_modal_create_product";
   public static final String MODAL_EDIT_PRODUCT = "admin_modal_edit_product_";
   public static final String MODAL_SET_FIAT_VALUE = "admin_modal_set_fiat_value_";
+  public static final String MODAL_INTEGRATION_CONFIG = "admin_modal_integration_config_";
   public static final String MODAL_GENERATE_CODES = "admin_modal_generate_codes_";
 
   private final ProductService productService;
@@ -131,6 +133,9 @@ public class AdminProductPanelHandler extends ListenerAdapter {
       } else if (buttonId.startsWith(BUTTON_PREFIX_SET_FIAT_VALUE)) {
         String productIdStr = buttonId.substring(BUTTON_PREFIX_SET_FIAT_VALUE.length());
         openSetFiatValueModal(event, Long.parseLong(productIdStr));
+      } else if (buttonId.startsWith(BUTTON_PREFIX_INTEGRATION_CONFIG)) {
+        String productIdStr = buttonId.substring(BUTTON_PREFIX_INTEGRATION_CONFIG.length());
+        openIntegrationConfigModal(event, Long.parseLong(productIdStr));
       } else if (buttonId.startsWith(BUTTON_PREFIX_CODE_PAGE)) {
         String pageStr = buttonId.substring(BUTTON_PREFIX_CODE_PAGE.length());
         showCodeList(event, Integer.parseInt(pageStr));
@@ -195,6 +200,8 @@ public class AdminProductPanelHandler extends ListenerAdapter {
         handleEditProductModal(event);
       } else if (modalId.startsWith(MODAL_SET_FIAT_VALUE)) {
         handleSetFiatValueModal(event);
+      } else if (modalId.startsWith(MODAL_INTEGRATION_CONFIG)) {
+        handleIntegrationConfigModal(event);
       } else if (modalId.startsWith(MODAL_GENERATE_CODES)) {
         handleGenerateCodesModal(event);
       }
@@ -214,6 +221,7 @@ public class AdminProductPanelHandler extends ListenerAdapter {
         || buttonId.startsWith(BUTTON_PREFIX_EDIT_PRODUCT)
         || buttonId.startsWith(BUTTON_PREFIX_DELETE_PRODUCT)
         || buttonId.startsWith(BUTTON_PREFIX_SET_FIAT_VALUE)
+        || buttonId.startsWith(BUTTON_PREFIX_INTEGRATION_CONFIG)
         || buttonId.startsWith(BUTTON_PREFIX_CODE_PAGE);
   }
 
@@ -221,6 +229,7 @@ public class AdminProductPanelHandler extends ListenerAdapter {
     return modalId.equals(MODAL_CREATE_PRODUCT)
         || modalId.startsWith(MODAL_EDIT_PRODUCT)
         || modalId.startsWith(MODAL_SET_FIAT_VALUE)
+        || modalId.startsWith(MODAL_INTEGRATION_CONFIG)
         || modalId.startsWith(MODAL_GENERATE_CODES);
   }
 
@@ -355,6 +364,16 @@ public class AdminProductPanelHandler extends ListenerAdapter {
     } else {
       builder.addField("實際價值（TWD）", "未設定", true);
     }
+    if (product.hasBackendApiIntegration()) {
+      builder.addField("後端履約 API", product.backendApiUrl(), false);
+    } else {
+      builder.addField("後端履約 API", "未設定", false);
+    }
+    if (product.shouldAutoCreateEscortOrder()) {
+      builder.addField("自動護航開單", "已啟用\n選項代碼：" + product.escortOptionCode(), false);
+    } else {
+      builder.addField("自動護航開單", "未啟用", false);
+    }
 
     // Code stats
     RedemptionCodeRepository.CodeStats stats = redemptionService.getCodeStats(product.id());
@@ -381,6 +400,7 @@ public class AdminProductPanelHandler extends ListenerAdapter {
         ActionRow.of(
             Button.secondary(BUTTON_PREFIX_EDIT_PRODUCT + product.id(), "✏️ 編輯"),
             Button.secondary(BUTTON_PREFIX_SET_FIAT_VALUE + product.id(), "💵 設定實際價值"),
+            Button.secondary(BUTTON_PREFIX_INTEGRATION_CONFIG + product.id(), "🔗 接入設定"),
             Button.danger(BUTTON_PREFIX_DELETE_PRODUCT + product.id(), "🗑️ 刪除"),
             Button.secondary(BUTTON_PRODUCT_BACK, "⬅️ 返回列表")));
   }
@@ -724,6 +744,110 @@ public class AdminProductPanelHandler extends ListenerAdapter {
     event.reply("✅ 已更新實際價值（TWD）").setEphemeral(true).queue();
   }
 
+  private void openIntegrationConfigModal(ButtonInteractionEvent event, long productId) {
+    productService
+        .getProduct(productId)
+        .ifPresentOrElse(
+            product -> {
+              TextInput backendApiInput =
+                  TextInput.create("backend_api_url", "後端 API URL", TextInputStyle.SHORT)
+                      .setPlaceholder("https://example.com/fulfillment")
+                      .setRequired(false)
+                      .setMaxLength(500)
+                      .build();
+              if (product.backendApiUrl() != null && !product.backendApiUrl().isBlank()) {
+                backendApiInput =
+                    TextInput.create("backend_api_url", "後端 API URL", TextInputStyle.SHORT)
+                        .setRequired(false)
+                        .setMaxLength(500)
+                        .setValue(product.backendApiUrl())
+                        .build();
+              }
+
+              TextInput autoEscortInput =
+                  TextInput.create("auto_create_escort_order", "自動護航開單", TextInputStyle.SHORT)
+                      .setPlaceholder("true / false")
+                      .setRequired(false)
+                      .setMaxLength(10)
+                      .setValue(Boolean.toString(product.autoCreateEscortOrder()))
+                      .build();
+
+              TextInput escortOptionInput =
+                  TextInput.create("escort_option_code", "護航選項代碼", TextInputStyle.SHORT)
+                      .setPlaceholder("例如：CONF_DAM_300W")
+                      .setRequired(false)
+                      .setMaxLength(120)
+                      .build();
+              if (product.escortOptionCode() != null && !product.escortOptionCode().isBlank()) {
+                escortOptionInput =
+                    TextInput.create("escort_option_code", "護航選項代碼", TextInputStyle.SHORT)
+                        .setRequired(false)
+                        .setMaxLength(120)
+                        .setValue(product.escortOptionCode())
+                        .build();
+              }
+
+              Modal modal =
+                  Modal.create(MODAL_INTEGRATION_CONFIG + productId, "接入設定")
+                      .addComponents(
+                          ActionRow.of(backendApiInput),
+                          ActionRow.of(autoEscortInput),
+                          ActionRow.of(escortOptionInput))
+                      .build();
+              event.replyModal(modal).queue();
+            },
+            () -> event.reply("找不到該商品").setEphemeral(true).queue());
+  }
+
+  private void handleIntegrationConfigModal(ModalInteractionEvent event) {
+    String modalId = event.getModalId();
+    long productId = Long.parseLong(modalId.substring(MODAL_INTEGRATION_CONFIG.length()));
+
+    Product existing = productService.getProduct(productId).orElse(null);
+    if (existing == null) {
+      event.reply("找不到該商品").setEphemeral(true).queue();
+      return;
+    }
+
+    String backendApiUrl = getModalValueOrNull(event, "backend_api_url");
+    String autoEscortRaw = getModalValueOrNull(event, "auto_create_escort_order");
+    String escortOptionCode = getModalValueOrNull(event, "escort_option_code");
+
+    Result<Boolean, DomainError> autoEscortResult = parseBooleanInput(autoEscortRaw, false);
+    if (autoEscortResult.isErr()) {
+      event.reply("更新失敗：" + autoEscortResult.getError().message()).setEphemeral(true).queue();
+      return;
+    }
+    boolean autoCreateEscortOrder = autoEscortResult.getValue();
+
+    Result<Product, DomainError> result =
+        productService.updateProduct(
+            productId,
+            existing.name(),
+            existing.description(),
+            existing.rewardType(),
+            existing.rewardAmount(),
+            existing.currencyPrice(),
+            existing.fiatPriceTwd(),
+            backendApiUrl,
+            autoCreateEscortOrder,
+            escortOptionCode);
+    if (result.isErr()) {
+      event.reply("更新失敗：" + result.getError().message()).setEphemeral(true).queue();
+      return;
+    }
+
+    Product updated = result.getValue();
+    String backendStatus =
+        updated.backendApiUrl() == null || updated.backendApiUrl().isBlank() ? "未設定" : "已設定";
+    String escortStatus =
+        updated.autoCreateEscortOrder() ? "已啟用（" + updated.escortOptionCode() + "）" : "未啟用";
+    event
+        .reply(String.format("✅ 接入設定已更新\n後端 API：%s\n自動護航開單：%s", backendStatus, escortStatus))
+        .setEphemeral(true)
+        .queue();
+  }
+
   // ===== Delete Product =====
 
   private void handleDeleteProduct(ButtonInteractionEvent event, long productId) {
@@ -947,6 +1071,19 @@ public class AdminProductPanelHandler extends ListenerAdapter {
     }
     String value = mapping.getAsString();
     return value.isBlank() ? null : value.trim();
+  }
+
+  private Result<Boolean, DomainError> parseBooleanInput(String raw, boolean defaultValue) {
+    if (raw == null || raw.isBlank()) {
+      return Result.ok(defaultValue);
+    }
+    String normalized = raw.trim().toLowerCase();
+    return switch (normalized) {
+      case "true", "1", "yes", "y", "on" -> Result.ok(true);
+      case "false", "0", "no", "n", "off" -> Result.ok(false);
+      default ->
+          Result.err(DomainError.invalidInput("自動護航開單僅接受 true/false, 1/0, yes/no, y/n, on/off"));
+    };
   }
 
   /** 目前商品面板的檢視狀態。 */
