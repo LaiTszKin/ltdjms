@@ -283,7 +283,12 @@ public final class EnvironmentConfig {
     String value = dotEnvValues.get(envKey);
     if (value != null && !value.isBlank()) {
       try {
-        target.put(configPath, Double.parseDouble(value));
+        double parsed = Double.parseDouble(value);
+        if (Double.isFinite(parsed)) {
+          target.put(configPath, parsed);
+        } else {
+          LOG.warn("Invalid non-finite double value for {}: {}", envKey, value);
+        }
       } catch (NumberFormatException e) {
         LOG.warn("Invalid double value for {}: {}", envKey, value);
       }
@@ -324,7 +329,12 @@ public final class EnvironmentConfig {
     String value = System.getenv(envKey);
     if (value != null && !value.isBlank()) {
       try {
-        target.put(configPath, Double.parseDouble(value));
+        double parsed = Double.parseDouble(value);
+        if (Double.isFinite(parsed)) {
+          target.put(configPath, parsed);
+        } else {
+          LOG.warn("Invalid non-finite double value for {}: {}, using default", envKey, value);
+        }
       } catch (NumberFormatException e) {
         LOG.warn("Invalid double value for {}: {}, using default", envKey, value);
       }
