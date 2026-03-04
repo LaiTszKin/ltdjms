@@ -50,9 +50,13 @@ import ltdjms.discord.shared.events.DomainEventPublisher;
 import ltdjms.discord.shop.commands.ShopButtonHandler;
 import ltdjms.discord.shop.commands.ShopCommandHandler;
 import ltdjms.discord.shop.commands.ShopSelectMenuHandler;
+import ltdjms.discord.shop.domain.FiatOrderRepository;
+import ltdjms.discord.shop.services.EcpayCallbackHttpServer;
 import ltdjms.discord.shop.services.EcpayCvsPaymentService;
 import ltdjms.discord.shop.services.FiatOrderService;
+import ltdjms.discord.shop.services.FiatPaymentCallbackService;
 import ltdjms.discord.shop.services.ProductFulfillmentApiService;
+import ltdjms.discord.shop.services.ShopAdminNotificationService;
 import ltdjms.discord.shop.services.ShopService;
 
 /**
@@ -310,12 +314,40 @@ public class CommandHandlerModule {
 
   @Provides
   @Singleton
+  public ShopAdminNotificationService provideShopAdminNotificationService() {
+    return new ShopAdminNotificationService();
+  }
+
+  @Provides
+  @Singleton
   public FiatOrderService provideFiatOrderService(
       ProductService productService,
       EcpayCvsPaymentService ecpayCvsPaymentService,
-      ProductFulfillmentApiService productFulfillmentApiService) {
-    return new FiatOrderService(
-        productService, ecpayCvsPaymentService, productFulfillmentApiService);
+      FiatOrderRepository fiatOrderRepository) {
+    return new FiatOrderService(productService, ecpayCvsPaymentService, fiatOrderRepository);
+  }
+
+  @Provides
+  @Singleton
+  public FiatPaymentCallbackService provideFiatPaymentCallbackService(
+      EnvironmentConfig config,
+      FiatOrderRepository fiatOrderRepository,
+      ProductService productService,
+      ProductFulfillmentApiService productFulfillmentApiService,
+      ShopAdminNotificationService shopAdminNotificationService) {
+    return new FiatPaymentCallbackService(
+        config,
+        fiatOrderRepository,
+        productService,
+        productFulfillmentApiService,
+        shopAdminNotificationService);
+  }
+
+  @Provides
+  @Singleton
+  public EcpayCallbackHttpServer provideEcpayCallbackHttpServer(
+      EnvironmentConfig config, FiatPaymentCallbackService fiatPaymentCallbackService) {
+    return new EcpayCallbackHttpServer(config, fiatPaymentCallbackService);
   }
 
   @Provides
@@ -324,9 +356,14 @@ public class CommandHandlerModule {
       ProductService productService,
       BalanceService balanceService,
       ltdjms.discord.shop.services.CurrencyPurchaseService currencyPurchaseService,
-      FiatOrderService fiatOrderService) {
+      FiatOrderService fiatOrderService,
+      ShopAdminNotificationService shopAdminNotificationService) {
     return new ShopSelectMenuHandler(
-        productService, balanceService, currencyPurchaseService, fiatOrderService);
+        productService,
+        balanceService,
+        currencyPurchaseService,
+        fiatOrderService,
+        shopAdminNotificationService);
   }
 
   @Provides

@@ -2,32 +2,34 @@ package ltdjms.discord.shop.services;
 
 import java.util.Objects;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import ltdjms.discord.product.domain.Product;
 import ltdjms.discord.product.services.ProductService;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
-import ltdjms.discord.shared.Unit;
+import ltdjms.discord.shop.domain.FiatOrder;
+import ltdjms.discord.shop.domain.FiatOrderRepository;
 
 /** Creates fiat-only product orders and requests CVS code from ECPay. */
 public class FiatOrderService {
 
+  private static final Logger LOG = LoggerFactory.getLogger(FiatOrderService.class);
+
   private final ProductService productService;
   private final EcpayCvsPaymentService ecpayCvsPaymentService;
-  private final ProductFulfillmentApiService productFulfillmentApiService;
-
-  public FiatOrderService(
-      ProductService productService, EcpayCvsPaymentService ecpayCvsPaymentService) {
-    this(productService, ecpayCvsPaymentService, null);
-  }
+  private final FiatOrderRepository fiatOrderRepository;
 
   public FiatOrderService(
       ProductService productService,
       EcpayCvsPaymentService ecpayCvsPaymentService,
-      ProductFulfillmentApiService productFulfillmentApiService) {
+      FiatOrderRepository fiatOrderRepository) {
     this.productService = Objects.requireNonNull(productService, "productService must not be null");
     this.ecpayCvsPaymentService =
         Objects.requireNonNull(ecpayCvsPaymentService, "ecpayCvsPaymentService must not be null");
-    this.productFulfillmentApiService = productFulfillmentApiService;
+    this.fiatOrderRepository =
+        Objects.requireNonNull(fiatOrderRepository, "fiatOrderRepository must not be null");
   }
 
   /**
@@ -50,6 +52,9 @@ public class FiatOrderService {
     if (!product.isFiatOnly()) {
       return Result.err(DomainError.invalidInput("此商品並非限定法幣支付商品"));
     }
+    if (product.id() == null) {
+      return Result.err(DomainError.unexpectedFailure("商品資料異常，缺少商品編號", null));
+    }
 
     Result<EcpayCvsPaymentService.CvsPaymentCode, DomainError> paymentResult =
         ecpayCvsPaymentService.generateCvsPaymentCode(
@@ -59,7 +64,28 @@ public class FiatOrderService {
     }
 
     EcpayCvsPaymentService.CvsPaymentCode paymentCode = paymentResult.getValue();
-    String fulfillmentWarning = tryNotifyBackendFulfillment(guildId, userId, product, paymentCode);
+    try {
+      FiatOrder order =
+          FiatOrder.createPending(
+              guildId,
+              userId,
+              product.id().longValue(),
+              product.name(),
+              paymentCode.orderNumber(),
+              paymentCode.paymentNo(),
+              product.fiatPriceTwd());
+      fiatOrderRepository.save(order);
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to persist fiat order: guildId={}, userId={}, productId={}, orderNumber={}",
+          guildId,
+          userId,
+          product.id().longValue(),
+          paymentCode.orderNumber(),
+          e);
+      return Result.err(DomainError.persistenceFailure("建立法幣訂單失敗，請稍後再試", e));
+    }
+
     return Result.ok(
         new FiatOrderResult(
             product,
@@ -67,31 +93,7 @@ public class FiatOrderService {
             paymentCode.paymentNo(),
             paymentCode.expireDate(),
             paymentCode.paymentUrl(),
-            fulfillmentWarning));
-  }
-
-  private String tryNotifyBackendFulfillment(
-      long guildId,
-      long userId,
-      Product product,
-      EcpayCvsPaymentService.CvsPaymentCode paymentCode) {
-    if (productFulfillmentApiService == null || !product.shouldCallBackendFulfillment()) {
-      return null;
-    }
-
-    Result<Unit, DomainError> fulfillmentResult =
-        productFulfillmentApiService.notifyFulfillment(
-            new ProductFulfillmentApiService.FulfillmentRequest(
-                guildId,
-                userId,
-                product,
-                ProductFulfillmentApiService.PurchaseSource.FIAT_ORDER,
-                paymentCode.orderNumber(),
-                paymentCode.paymentNo()));
-    if (fulfillmentResult.isErr()) {
-      return "⚠️ 後端履約通知失敗，請聯絡管理員協助後續處理。";
-    }
-    return null;
+            null));
   }
 
   /** Result of fiat-only order creation. */

@@ -189,7 +189,8 @@ public class ProductFulfillmentApiService {
 
   public enum PurchaseSource {
     CURRENCY_PURCHASE,
-    FIAT_ORDER
+    FIAT_ORDER,
+    FIAT_PAYMENT_CALLBACK
   }
 
   public record FulfillmentRequest(

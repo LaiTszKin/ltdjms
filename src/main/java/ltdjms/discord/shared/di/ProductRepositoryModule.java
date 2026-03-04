@@ -11,6 +11,8 @@ import ltdjms.discord.redemption.domain.ProductRedemptionTransactionRepository;
 import ltdjms.discord.redemption.domain.RedemptionCodeRepository;
 import ltdjms.discord.redemption.persistence.JdbcProductRedemptionTransactionRepository;
 import ltdjms.discord.redemption.persistence.JdbcRedemptionCodeRepository;
+import ltdjms.discord.shop.domain.FiatOrderRepository;
+import ltdjms.discord.shop.persistence.JdbcFiatOrderRepository;
 
 /** Dagger module providing product and redemption code repository dependencies. */
 @Module
@@ -33,5 +35,11 @@ public class ProductRepositoryModule {
   public ProductRedemptionTransactionRepository provideProductRedemptionTransactionRepository(
       DataSource dataSource) {
     return new JdbcProductRedemptionTransactionRepository(dataSource);
+  }
+
+  @Provides
+  @Singleton
+  public FiatOrderRepository provideFiatOrderRepository(DataSource dataSource) {
+    return new JdbcFiatOrderRepository(dataSource);
   }
 }
