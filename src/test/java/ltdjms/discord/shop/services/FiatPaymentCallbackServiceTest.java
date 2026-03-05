@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -43,6 +44,7 @@ import ltdjms.discord.shop.domain.FiatOrderRepository;
 class FiatPaymentCallbackServiceTest {
 
   private static final String ORDER_NUMBER = "FD260304000001";
+  private static final String MERCHANT_ID = "2000132";
   private static final String HASH_KEY = "1234567890123456";
   private static final String HASH_IV = "6543210987654321";
   private static final long GUILD_ID = 123L;
@@ -61,6 +63,7 @@ class FiatPaymentCallbackServiceTest {
   @BeforeEach
   void setUp() {
     fixedClock = Clock.fixed(Instant.parse("2026-03-04T12:00:00Z"), ZoneOffset.UTC);
+    lenient().when(config.getEcpayMerchantId()).thenReturn(MERCHANT_ID);
     when(config.getEcpayHashKey()).thenReturn(HASH_KEY);
     when(config.getEcpayHashIv()).thenReturn(HASH_IV);
     service =
@@ -113,7 +116,7 @@ class FiatPaymentCallbackServiceTest {
         service.handleCallback(
             encryptedPayload(
                 """
-                {"MerchantTradeNo":"FD260304000001","TradeStatus":"1","RtnCode":1,"RtnMsg":"付款成功"}
+                {"MerchantID":"2000132","MerchantTradeNo":"FD260304000001","TradeAmt":"1200","TradeStatus":"1","RtnCode":1,"RtnMsg":"付款成功"}
                 """),
             "application/json");
 
@@ -142,7 +145,7 @@ class FiatPaymentCallbackServiceTest {
         service.handleCallback(
             encryptedPayload(
                 """
-                {"MerchantTradeNo":"FD260304000001","TradeStatus":"1","RtnCode":1,"RtnMsg":"付款成功"}
+                {"MerchantID":"2000132","MerchantTradeNo":"FD260304000001","TradeAmt":"1200","TradeStatus":"1","RtnCode":1,"RtnMsg":"付款成功"}
                 """),
             "application/json");
 
@@ -259,7 +262,7 @@ class FiatPaymentCallbackServiceTest {
         service.handleCallback(
             encryptedPayload(
                 """
-                {"MerchantTradeNo":"FD260304000001","TradeStatus":"1","RtnCode":1,"RtnMsg":"付款成功"}
+                {"MerchantID":"2000132","MerchantTradeNo":"FD260304000001","TradeAmt":"1200","TradeStatus":"1","RtnCode":1,"RtnMsg":"付款成功"}
                 """),
             "application/json");
 
@@ -296,6 +299,50 @@ class FiatPaymentCallbackServiceTest {
 
     assertThat(result.httpStatus()).isEqualTo(400);
     verify(fiatOrderRepository, never()).findByOrderNumber(any());
+  }
+
+  @Test
+  @DisplayName("付款金額不一致時不應標記訂單已付款")
+  void shouldRejectPaidCallbackWhenTradeAmountMismatch() {
+    when(fiatOrderRepository.findByOrderNumber(ORDER_NUMBER))
+        .thenReturn(Optional.of(pendingOrder()));
+    when(fiatOrderRepository.updateCallbackStatus(eq(ORDER_NUMBER), eq("1"), eq("付款成功"), any()))
+        .thenReturn(Optional.of(pendingOrder()));
+
+    FiatPaymentCallbackService.CallbackResult result =
+        service.handleCallback(
+            encryptedPayload(
+                """
+                {"MerchantID":"2000132","MerchantTradeNo":"FD260304000001","TradeAmt":"1","TradeStatus":"1","RtnCode":1,"RtnMsg":"付款成功"}
+                """),
+            "application/json");
+
+    assertThat(result.httpStatus()).isEqualTo(200);
+    verify(fiatOrderRepository, never())
+        .markPaidIfPending(any(), any(), any(), any(), any(Instant.class));
+    verify(fiatOrderRepository).updateCallbackStatus(eq(ORDER_NUMBER), eq("1"), eq("付款成功"), any());
+  }
+
+  @Test
+  @DisplayName("MerchantID 不一致時不應標記訂單已付款")
+  void shouldRejectPaidCallbackWhenMerchantMismatch() {
+    when(fiatOrderRepository.findByOrderNumber(ORDER_NUMBER))
+        .thenReturn(Optional.of(pendingOrder()));
+    when(fiatOrderRepository.updateCallbackStatus(eq(ORDER_NUMBER), eq("1"), eq("付款成功"), any()))
+        .thenReturn(Optional.of(pendingOrder()));
+
+    FiatPaymentCallbackService.CallbackResult result =
+        service.handleCallback(
+            encryptedPayload(
+                """
+                {"MerchantID":"9999999","MerchantTradeNo":"FD260304000001","TradeAmt":"1200","TradeStatus":"1","RtnCode":1,"RtnMsg":"付款成功"}
+                """),
+            "application/json");
+
+    assertThat(result.httpStatus()).isEqualTo(200);
+    verify(fiatOrderRepository, never())
+        .markPaidIfPending(any(), any(), any(), any(), any(Instant.class));
+    verify(fiatOrderRepository).updateCallbackStatus(eq(ORDER_NUMBER), eq("1"), eq("付款成功"), any());
   }
 
   private FiatOrder pendingOrder() {

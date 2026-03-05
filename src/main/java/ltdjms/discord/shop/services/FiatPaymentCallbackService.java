@@ -114,6 +114,15 @@ public class FiatPaymentCallbackService {
         return CallbackResult.ok();
       }
 
+      if (paid && !isValidPaidCallback(callbackNode, order, orderNumber)) {
+        fiatOrderRepository.updateCallbackStatus(
+            orderNumber, tradeStatus, paymentMessage, callbackPayload);
+        LOG.warn(
+            "ECPay callback rejected paid transition due to validation failure: orderNumber={}",
+            orderNumber);
+        return CallbackResult.ok();
+      }
+
       FiatOrder paidOrder =
           fiatOrderRepository
               .markPaidIfPending(
@@ -301,6 +310,60 @@ public class FiatPaymentCallbackService {
     return textOrNull(callbackNode.path("TradeMsg").asText(null));
   }
 
+  private String extractMerchantId(JsonNode callbackNode) {
+    String direct = textOrNull(callbackNode.path("MerchantID").asText(null));
+    if (direct != null) {
+      return direct;
+    }
+    return textOrNull(callbackNode.path("OrderInfo").path("MerchantID").asText(null));
+  }
+
+  private Long extractTradeAmount(JsonNode callbackNode) {
+    Long direct = parsePositiveLong(callbackNode.path("TradeAmt").asText(null));
+    if (direct != null) {
+      return direct;
+    }
+    Long nestedTradeAmt =
+        parsePositiveLong(callbackNode.path("OrderInfo").path("TradeAmt").asText(null));
+    if (nestedTradeAmt != null) {
+      return nestedTradeAmt;
+    }
+    return parsePositiveLong(callbackNode.path("OrderInfo").path("TotalAmount").asText(null));
+  }
+
+  private boolean isValidPaidCallback(JsonNode callbackNode, FiatOrder order, String orderNumber) {
+    String expectedMerchantId = textOrNull(config.getEcpayMerchantId());
+    if (expectedMerchantId != null) {
+      String callbackMerchantId = extractMerchantId(callbackNode);
+      if (!expectedMerchantId.equals(callbackMerchantId)) {
+        LOG.warn(
+            "ECPay callback merchant mismatch: orderNumber={}, expectedMerchantId={},"
+                + " callbackMerchantId={}",
+            orderNumber,
+            expectedMerchantId,
+            callbackMerchantId);
+        return false;
+      }
+    }
+
+    Long callbackAmount = extractTradeAmount(callbackNode);
+    if (callbackAmount == null) {
+      LOG.warn(
+          "ECPay callback missing valid TradeAmt for paid status: orderNumber={}", orderNumber);
+      return false;
+    }
+    if (callbackAmount.longValue() != order.amountTwd()) {
+      LOG.warn(
+          "ECPay callback amount mismatch: orderNumber={}, expectedAmount={}, callbackAmount={}",
+          orderNumber,
+          order.amountTwd(),
+          callbackAmount);
+      return false;
+    }
+
+    return true;
+  }
+
   private boolean isPaidStatus(String tradeStatus) {
     return "1".equals(tradeStatus);
   }
@@ -320,6 +383,19 @@ public class FiatPaymentCallbackService {
       return null;
     }
     return value.trim();
+  }
+
+  private Long parsePositiveLong(String value) {
+    String text = textOrNull(value);
+    if (text == null) {
+      return null;
+    }
+    try {
+      long parsed = Long.parseLong(text);
+      return parsed > 0 ? parsed : null;
+    } catch (NumberFormatException e) {
+      return null;
+    }
   }
 
   public record CallbackResult(int httpStatus, String responseBody) {
