@@ -53,14 +53,20 @@ public final class AgentCompletionListener implements Consumer<DomainEvent> {
       }
 
       List<String> messages = MessageSplitter.split(event.finalResponse());
+      int sentCount = 0;
       for (String message : messages) {
+        if (message == null || message.isBlank()) {
+          continue;
+        }
         channel.sendMessage(message).queue();
+        sentCount++;
+      }
+      if (sentCount == 0) {
+        channel.sendMessage(":question: AI 沒有產生回應").queue();
       }
 
       LOGGER.info(
-          "Agent 完成，已發送最終回應: conversationId={}, length={}",
-          event.conversationId(),
-          messages.size());
+          "Agent 完成，已發送最終回應: conversationId={}, length={}", event.conversationId(), sentCount);
 
     } catch (Exception e) {
       LOGGER.error("處理 Agent 完成事件時發生錯誤", e);

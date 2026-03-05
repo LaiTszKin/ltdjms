@@ -175,6 +175,23 @@ class AgentCompletionListenerTest {
       // Then
       verify(threadChannel, never()).sendMessage(any(CharSequence.class));
     }
+
+    @Test
+    @DisplayName("should send fallback message when final response is blank")
+    void shouldSendFallbackMessageWhenFinalResponseIsBlank() {
+      // Given
+      when(jda.getGuildById(123L)).thenReturn(guild);
+      when(guild.getThreadChannelById(456L)).thenReturn(threadChannel);
+
+      AgentCompletedEvent event =
+          new AgentCompletedEvent(123L, "456", "789", "conv-123", "   ", List.of(), Instant.now());
+
+      // When
+      listener.accept(event);
+
+      // Then
+      verify(threadChannel).sendMessage(":question: AI 沒有產生回應");
+    }
   }
 
   @Nested
