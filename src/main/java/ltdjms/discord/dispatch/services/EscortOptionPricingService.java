@@ -131,7 +131,8 @@ public class EscortOptionPricingService {
     public String toDisplayLine() {
       String suffix = overridden ? "（已覆蓋）" : "（預設）";
       return String.format(
-          "`%s` %s -> NT$%,d %s", optionCode, option.toDisplayText(), effectivePriceTwd, suffix);
+          "`%s` %s｜%s｜%s｜NT$%,d %s",
+          optionCode, option.type(), option.level(), option.target(), effectivePriceTwd, suffix);
     }
   }
 }

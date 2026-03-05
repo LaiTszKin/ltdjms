@@ -1,7 +1,12 @@
 package ltdjms.discord.panel.commands;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Method;
 import java.util.List;
@@ -14,9 +19,17 @@ import ltdjms.discord.dispatch.services.EscortOptionPricingService;
 import ltdjms.discord.panel.services.AdminPanelService;
 import ltdjms.discord.panel.services.AdminPanelSessionManager;
 import ltdjms.discord.product.domain.EscortOrderOptionCatalog;
+import ltdjms.discord.shared.Result;
+import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
+import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
+import net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction;
 
 class AdminPanelButtonHandlerTest {
 
@@ -111,6 +124,69 @@ class AdminPanelButtonHandlerTest {
 
     assertThat(pricingFields).isNotEmpty();
     assertThat(pricingFields).allMatch(field -> field.getValue().length() <= 1024);
+  }
+
+  @Test
+  @DisplayName("護航定價顯示應避免 markdown 表格樣式分隔符")
+  void escortPricingDisplayShouldAvoidTableLikeSeparators() {
+    var option = EscortOrderOptionCatalog.allOptions().get(0);
+    var view =
+        new EscortOptionPricingService.OptionPriceView(
+            option.code(), option, option.priceTwd(), option.priceTwd(), false);
+
+    assertThat(view.toDisplayLine()).doesNotContain(" | ");
+  }
+
+  @Test
+  @DisplayName("護航定價調整按鈕應開啟嵌入設定面板而非直接 modal")
+  void escortPricingEditButtonShouldOpenEmbedPanelInsteadOfModal() {
+    AdminPanelService service = mock(AdminPanelService.class);
+    AdminPanelButtonHandler localHandler =
+        new AdminPanelButtonHandler(service, new AdminPanelSessionManager());
+    var option = EscortOrderOptionCatalog.allOptions().get(0);
+    when(service.getEscortOptionPrices(100L))
+        .thenReturn(
+            Result.ok(
+                List.of(
+                    new EscortOptionPricingService.OptionPriceView(
+                        option.code(), option, option.priceTwd(), option.priceTwd(), false))));
+
+    ButtonInteractionEvent event = mock(ButtonInteractionEvent.class);
+    Guild guild = mock(Guild.class);
+    Member member = mock(Member.class);
+    User user = mock(User.class);
+    ReplyCallbackAction reply = mock(ReplyCallbackAction.class);
+    ReplyCallbackAction errorReply = mock(ReplyCallbackAction.class);
+    InteractionHook hook = mock(InteractionHook.class);
+
+    when(event.getComponentId()).thenReturn(AdminPanelButtonHandler.BUTTON_ESCORT_PRICING_EDIT);
+    when(event.isFromGuild()).thenReturn(true);
+    when(event.getGuild()).thenReturn(guild);
+    when(guild.getIdLong()).thenReturn(100L);
+    when(event.getMember()).thenReturn(member);
+    when(member.hasPermission(Permission.ADMINISTRATOR)).thenReturn(true);
+    when(event.getUser()).thenReturn(user);
+    when(user.getIdLong()).thenReturn(200L);
+    when(event.replyEmbeds(any(MessageEmbed.class))).thenReturn(reply);
+    when(reply.setComponents(anyList())).thenReturn(reply);
+    when(reply.setEphemeral(true)).thenReturn(reply);
+    when(event.reply(any(String.class))).thenReturn(errorReply);
+    when(errorReply.setEphemeral(true)).thenReturn(errorReply);
+    org.mockito.Mockito.doAnswer(
+            invocation -> {
+              @SuppressWarnings("unchecked")
+              java.util.function.Consumer<InteractionHook> consumer = invocation.getArgument(0);
+              consumer.accept(hook);
+              return null;
+            })
+        .when(reply)
+        .queue(any());
+    org.mockito.Mockito.doAnswer(invocation -> null).when(errorReply).queue();
+
+    localHandler.onButtonInteraction(event);
+
+    verify(event).replyEmbeds(any(MessageEmbed.class));
+    verify(event, never()).replyModal(any());
   }
 
   private List<String> flattenButtonIds(List<ActionRow> rows) {

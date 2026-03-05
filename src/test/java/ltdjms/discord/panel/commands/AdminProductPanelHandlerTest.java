@@ -301,6 +301,50 @@ class AdminProductPanelHandlerTest {
             "CONF_DAM_300W");
   }
 
+  @Test
+  void integrationConfigButton_shouldOpenEphemeralEmbedPanelInsteadOfModal() {
+    var event = mock(net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent.class);
+    var guild = mock(net.dv8tion.jda.api.entities.Guild.class);
+    var admin = mock(net.dv8tion.jda.api.entities.User.class);
+    var adminMember = mock(net.dv8tion.jda.api.entities.Member.class);
+    var reply =
+        mock(net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction.class);
+    var errorReply =
+        mock(net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction.class);
+    var panelHook = mock(InteractionHook.class);
+
+    when(event.getComponentId())
+        .thenReturn(AdminProductPanelHandler.BUTTON_PREFIX_INTEGRATION_CONFIG + productId);
+    when(event.isFromGuild()).thenReturn(true);
+    when(event.getGuild()).thenReturn(guild);
+    when(guild.getIdLong()).thenReturn(guildId);
+    when(event.getMember()).thenReturn(adminMember);
+    when(adminMember.hasPermission(Permission.ADMINISTRATOR)).thenReturn(true);
+    when(event.getUser()).thenReturn(admin);
+    when(admin.getIdLong()).thenReturn(adminId);
+
+    when(event.replyEmbeds(any(MessageEmbed.class))).thenReturn(reply);
+    when(reply.setComponents(anyLayoutComponents())).thenReturn(reply);
+    when(reply.setEphemeral(true)).thenReturn(reply);
+    when(event.reply(anyString())).thenReturn(errorReply);
+    when(errorReply.setEphemeral(true)).thenReturn(errorReply);
+    doAnswer(
+            invocation -> {
+              @SuppressWarnings("unchecked")
+              java.util.function.Consumer<InteractionHook> consumer = invocation.getArgument(0);
+              consumer.accept(panelHook);
+              return null;
+            })
+        .when(reply)
+        .queue(any());
+    doAnswer(invocation -> null).when(errorReply).queue();
+
+    handler.onButtonInteraction(event);
+
+    verify(event).replyEmbeds(any(MessageEmbed.class));
+    verify(event, never()).replyModal(any());
+  }
+
   @SuppressWarnings("unchecked")
   private static WebhookMessageEditAction<Message> mockEditAction() {
     return mock(WebhookMessageEditAction.class);

@@ -31,6 +31,7 @@ import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.EntitySelectInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.interactions.components.selections.EntitySelectMenu;
@@ -79,6 +80,11 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
   public static final String BUTTON_ESCORT_PRICING_EDIT = "admin_escort_pricing_edit";
   public static final String BUTTON_ESCORT_PRICING_RESET = "admin_escort_pricing_reset";
   public static final String BUTTON_ESCORT_PRICING_REFRESH = "admin_escort_pricing_refresh";
+  public static final String BUTTON_ESCORT_PRICING_PANEL_INPUT_PRICE =
+      "admin_escort_pricing_panel_input_price";
+  public static final String BUTTON_ESCORT_PRICING_PANEL_CONFIRM =
+      "admin_escort_pricing_panel_confirm";
+  public static final String BUTTON_ESCORT_PRICING_PANEL_CLOSE = "admin_escort_pricing_panel_close";
 
   // Modal IDs
   public static final String MODAL_BALANCE_ADJUST = "admin_modal_balance_adjust";
@@ -90,6 +96,8 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
   public static final String MODAL_GAME_2_BONUSES = "admin_modal_game2_bonuses";
   public static final String MODAL_ESCORT_PRICING_EDIT = "admin_modal_escort_pricing_edit";
   public static final String MODAL_ESCORT_PRICING_RESET = "admin_modal_escort_pricing_reset";
+  public static final String MODAL_ESCORT_PRICING_PANEL_PRICE =
+      "admin_modal_escort_pricing_panel_price";
 
   // Select Menu IDs
   public static final String SELECT_GAME = "admin_select_game";
@@ -113,12 +121,21 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
       "admin_select_dispatch_after_sales_add_user";
   public static final String SELECT_DISPATCH_AFTER_SALES_REMOVE_USER =
       "admin_select_dispatch_after_sales_remove_user";
+  public static final String SELECT_ESCORT_PRICING_PANEL_ACTION =
+      "admin_select_escort_pricing_panel_action";
+  public static final String SELECT_ESCORT_PRICING_PANEL_OPTION =
+      "admin_select_escort_pricing_panel_option";
+
+  private static final String ESCORT_PRICING_ACTION_UPDATE = "update";
+  private static final String ESCORT_PRICING_ACTION_RESET = "reset";
 
   private final AdminPanelService adminPanelService;
   private final AdminPanelSessionManager adminPanelSessionManager;
 
   // Session state for user selections (keyed by interactionId or uniqueId)
   private final Map<String, SessionState> sessionStates = new ConcurrentHashMap<>();
+  private final Map<String, EscortPricingPanelState> escortPricingPanelStates =
+      new ConcurrentHashMap<>();
 
   public AdminPanelButtonHandler(
       AdminPanelService adminPanelService, AdminPanelSessionManager adminPanelSessionManager) {
@@ -168,6 +185,9 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         case BUTTON_ESCORT_PRICING_EDIT -> openEscortPricingEditModal(event);
         case BUTTON_ESCORT_PRICING_RESET -> openEscortPricingResetModal(event);
         case BUTTON_ESCORT_PRICING_REFRESH -> showEscortPricingConfig(event);
+        case BUTTON_ESCORT_PRICING_PANEL_INPUT_PRICE -> openEscortPricingPanelPriceModal(event);
+        case BUTTON_ESCORT_PRICING_PANEL_CONFIRM -> handleEscortPricingPanelConfirm(event);
+        case BUTTON_ESCORT_PRICING_PANEL_CLOSE -> handleEscortPricingPanelClose(event);
         case BUTTON_BACK -> showMainPanel(event);
         case BUTTON_OPEN_BALANCE_MODAL -> openBalanceModal(event);
         case BUTTON_OPEN_TOKEN_MODAL -> openTokenModal(event);
@@ -254,6 +274,10 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         case SELECT_BALANCE_MODE -> handleBalanceModeSelect(event, sessionKey, guildId);
         case SELECT_TOKEN_MODE -> handleTokenModeSelect(event, sessionKey, guildId);
         case SELECT_GAME_SETTING -> handleGameSettingSelect(event, guildId);
+        case SELECT_ESCORT_PRICING_PANEL_ACTION ->
+            handleEscortPricingPanelActionSelect(event, sessionKey, guildId);
+        case SELECT_ESCORT_PRICING_PANEL_OPTION ->
+            handleEscortPricingPanelOptionSelect(event, sessionKey, guildId);
         default -> LOG.warn("Unknown string select: {}", selectId);
       }
     } catch (Exception e) {
@@ -299,6 +323,8 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         handleEscortPricingEditModal(event);
       } else if (modalId.startsWith(MODAL_ESCORT_PRICING_RESET)) {
         handleEscortPricingResetModal(event);
+      } else if (modalId.startsWith(MODAL_ESCORT_PRICING_PANEL_PRICE)) {
+        handleEscortPricingPanelPriceModal(event);
       }
     } catch (Exception e) {
       LOG.error("Error handling modal: {}", modalId, e);
@@ -1006,6 +1032,7 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     long guildId = event.getGuild().getIdLong();
     String sessionKey = getSessionKey(event.getUser().getIdLong(), guildId);
     sessionStates.remove(sessionKey);
+    escortPricingPanelStates.remove(sessionKey);
 
     String currencyIcon = getCurrencyIcon(guildId);
     MessageEmbed embed = buildMainPanelEmbed(currencyIcon);
@@ -1541,43 +1568,56 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
   }
 
   private void openEscortPricingEditModal(ButtonInteractionEvent event) {
-    TextInput optionCodeInput =
-        TextInput.create("option_code", "護航選項代碼", TextInputStyle.SHORT)
-            .setPlaceholder("例如：CONF_DAM_300W")
-            .setRequired(true)
-            .setMinLength(1)
-            .setMaxLength(120)
-            .build();
-
-    TextInput priceInput =
-        TextInput.create("price_twd", "實際價格（TWD）", TextInputStyle.SHORT)
-            .setPlaceholder("輸入新台幣整數，例如 1500")
-            .setRequired(true)
-            .setMinLength(1)
-            .setMaxLength(15)
-            .build();
-
-    Modal modal =
-        Modal.create(MODAL_ESCORT_PRICING_EDIT, "調整護航定價")
-            .addComponents(ActionRow.of(optionCodeInput), ActionRow.of(priceInput))
-            .build();
-    event.replyModal(modal).queue();
+    openEscortPricingPanel(event, ESCORT_PRICING_ACTION_UPDATE);
   }
 
   private void openEscortPricingResetModal(ButtonInteractionEvent event) {
-    TextInput optionCodeInput =
-        TextInput.create("option_code", "護航選項代碼", TextInputStyle.SHORT)
-            .setPlaceholder("輸入要重置為預設價的代碼")
-            .setRequired(true)
-            .setMinLength(1)
-            .setMaxLength(120)
-            .build();
+    openEscortPricingPanel(event, ESCORT_PRICING_ACTION_RESET);
+  }
 
-    Modal modal =
-        Modal.create(MODAL_ESCORT_PRICING_RESET, "重置護航定價")
-            .addComponents(ActionRow.of(optionCodeInput))
-            .build();
-    event.replyModal(modal).queue();
+  private void openEscortPricingPanel(ButtonInteractionEvent event, String defaultAction) {
+    long guildId = event.getGuild().getIdLong();
+    String sessionKey = getSessionKey(event.getUser().getIdLong(), guildId);
+    EscortPricingPanelState state = escortPricingPanelStates.get(sessionKey);
+    if (state == null) {
+      state = new EscortPricingPanelState();
+    }
+
+    if (!ESCORT_PRICING_ACTION_RESET.equals(defaultAction)) {
+      defaultAction = ESCORT_PRICING_ACTION_UPDATE;
+    }
+    state.action = defaultAction;
+
+    Result<List<EscortOptionPricingService.OptionPriceView>, DomainError> result =
+        adminPanelService.getEscortOptionPrices(guildId);
+    if (result.isErr()) {
+      event.reply("❌ 無法載入護航選項：" + result.getError().message()).setEphemeral(true).queue();
+      return;
+    }
+
+    Map<String, EscortOptionPricingService.OptionPriceView> optionMap =
+        toEscortOptionMap(result.getValue());
+    if (optionMap.isEmpty()) {
+      event.reply("❌ 沒有可設定的護航選項").setEphemeral(true).queue();
+      return;
+    }
+
+    if (state.optionCode == null || !optionMap.containsKey(state.optionCode)) {
+      state.optionCode = result.getValue().get(0).optionCode();
+      state.pendingPriceTwd = null;
+    }
+    state.statusMessage = null;
+
+    EscortPricingPanelState capturedState = state;
+    event
+        .replyEmbeds(buildEscortPricingPanelEmbed(capturedState, optionMap))
+        .setComponents(buildEscortPricingPanelComponents(capturedState, optionMap))
+        .setEphemeral(true)
+        .queue(
+            hook -> {
+              capturedState.panelHook = hook;
+              escortPricingPanelStates.put(sessionKey, capturedState);
+            });
   }
 
   private void handleEscortPricingEditModal(ModalInteractionEvent event) {
@@ -1620,6 +1660,355 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     }
 
     event.reply("✅ 已重置 `" + optionCode.toUpperCase() + "` 為預設價格").setEphemeral(true).queue();
+  }
+
+  private void openEscortPricingPanelPriceModal(ButtonInteractionEvent event) {
+    long guildId = event.getGuild().getIdLong();
+    String sessionKey = getSessionKey(event.getUser().getIdLong(), guildId);
+    EscortPricingPanelState state = escortPricingPanelStates.get(sessionKey);
+    if (state == null) {
+      event.reply("設定面板已過期，請重新開啟").setEphemeral(true).queue();
+      return;
+    }
+    if (ESCORT_PRICING_ACTION_RESET.equals(state.action)) {
+      event.reply("重置模式不需要輸入價格").setEphemeral(true).queue();
+      return;
+    }
+
+    TextInput.Builder inputBuilder =
+        TextInput.create("price_twd", "實際價格（TWD）", TextInputStyle.SHORT)
+            .setPlaceholder("輸入新台幣整數，例如 1500")
+            .setRequired(true)
+            .setMinLength(1)
+            .setMaxLength(15);
+    if (state.pendingPriceTwd != null) {
+      inputBuilder.setValue(String.valueOf(state.pendingPriceTwd));
+    }
+    Modal modal =
+        Modal.create(MODAL_ESCORT_PRICING_PANEL_PRICE, "設定護航價格")
+            .addComponents(ActionRow.of(inputBuilder.build()))
+            .build();
+    event.replyModal(modal).queue();
+  }
+
+  private void handleEscortPricingPanelPriceModal(ModalInteractionEvent event) {
+    long guildId = event.getGuild().getIdLong();
+    String sessionKey = getSessionKey(event.getUser().getIdLong(), guildId);
+    EscortPricingPanelState state = escortPricingPanelStates.get(sessionKey);
+    if (state == null) {
+      event.reply("設定面板已過期，請重新開啟").setEphemeral(true).queue();
+      return;
+    }
+
+    String priceStr = event.getValue("price_twd").getAsString().trim();
+    long priceTwd;
+    try {
+      priceTwd = Long.parseLong(priceStr);
+    } catch (NumberFormatException e) {
+      event.reply("價格格式錯誤，請輸入有效整數").setEphemeral(true).queue();
+      return;
+    }
+    if (priceTwd <= 0) {
+      event.reply("護航價格必須大於 0").setEphemeral(true).queue();
+      return;
+    }
+
+    state.pendingPriceTwd = priceTwd;
+    state.statusMessage = String.format("✅ 已更新暫存價格：NT$%,d（尚未送出）", priceTwd);
+
+    Result<List<EscortOptionPricingService.OptionPriceView>, DomainError> listResult =
+        adminPanelService.getEscortOptionPrices(guildId);
+    if (state.panelHook != null && listResult.isOk()) {
+      Map<String, EscortOptionPricingService.OptionPriceView> optionMap =
+          toEscortOptionMap(listResult.getValue());
+      state
+          .panelHook
+          .editOriginalEmbeds(buildEscortPricingPanelEmbed(state, optionMap))
+          .setComponents(buildEscortPricingPanelComponents(state, optionMap))
+          .queue(
+              success -> LOG.trace("Updated escort pricing panel for guildId={}", guildId),
+              error -> LOG.warn("Failed to update escort pricing panel", error));
+    }
+
+    event.reply("✅ 已回填價格，請回設定面板按「確認送出」").setEphemeral(true).queue();
+  }
+
+  private void handleEscortPricingPanelConfirm(ButtonInteractionEvent event) {
+    long guildId = event.getGuild().getIdLong();
+    long adminId = event.getUser().getIdLong();
+    String sessionKey = getSessionKey(adminId, guildId);
+    EscortPricingPanelState state = escortPricingPanelStates.get(sessionKey);
+    if (state == null) {
+      event.reply("設定面板已過期，請重新開啟").setEphemeral(true).queue();
+      return;
+    }
+
+    Result<List<EscortOptionPricingService.OptionPriceView>, DomainError> listResult =
+        adminPanelService.getEscortOptionPrices(guildId);
+    if (listResult.isErr()) {
+      event.reply("❌ 讀取護航定價失敗：" + listResult.getError().message()).setEphemeral(true).queue();
+      return;
+    }
+    Map<String, EscortOptionPricingService.OptionPriceView> optionMap =
+        toEscortOptionMap(listResult.getValue());
+
+    if (state.optionCode == null || !optionMap.containsKey(state.optionCode)) {
+      state.statusMessage = "❌ 請先選擇護航選項";
+      event
+          .editMessageEmbeds(buildEscortPricingPanelEmbed(state, optionMap))
+          .setComponents(buildEscortPricingPanelComponents(state, optionMap))
+          .queue();
+      return;
+    }
+
+    if (ESCORT_PRICING_ACTION_UPDATE.equals(state.action) && state.pendingPriceTwd == null) {
+      state.statusMessage = "❌ 調整價格前請先輸入新的價格";
+      event
+          .editMessageEmbeds(buildEscortPricingPanelEmbed(state, optionMap))
+          .setComponents(buildEscortPricingPanelComponents(state, optionMap))
+          .queue();
+      return;
+    }
+
+    if (ESCORT_PRICING_ACTION_RESET.equals(state.action)) {
+      Result<Unit, DomainError> resetResult =
+          adminPanelService.resetEscortOptionPrice(guildId, state.optionCode);
+      if (resetResult.isErr()) {
+        state.statusMessage = "❌ 重置失敗：" + resetResult.getError().message();
+      } else {
+        state.statusMessage = "✅ 已重置 `" + state.optionCode + "` 為預設價格";
+        state.pendingPriceTwd = null;
+      }
+    } else {
+      Result<EscortOptionPricingService.OptionPriceView, DomainError> updateResult =
+          adminPanelService.updateEscortOptionPrice(
+              guildId, adminId, state.optionCode, state.pendingPriceTwd);
+      if (updateResult.isErr()) {
+        state.statusMessage = "❌ 更新失敗：" + updateResult.getError().message();
+      } else {
+        EscortOptionPricingService.OptionPriceView updated = updateResult.getValue();
+        state.statusMessage =
+            String.format("✅ 已更新 `%s` 為 NT$%,d", updated.optionCode(), updated.effectivePriceTwd());
+      }
+    }
+
+    refreshEscortPricingMainPanel(guildId, adminId, state.statusMessage);
+
+    Result<List<EscortOptionPricingService.OptionPriceView>, DomainError> latestListResult =
+        adminPanelService.getEscortOptionPrices(guildId);
+    if (latestListResult.isOk()) {
+      optionMap = toEscortOptionMap(latestListResult.getValue());
+    }
+    event
+        .editMessageEmbeds(buildEscortPricingPanelEmbed(state, optionMap))
+        .setComponents(buildEscortPricingPanelComponents(state, optionMap))
+        .queue();
+  }
+
+  private void handleEscortPricingPanelClose(ButtonInteractionEvent event) {
+    long guildId = event.getGuild().getIdLong();
+    String sessionKey = getSessionKey(event.getUser().getIdLong(), guildId);
+    escortPricingPanelStates.remove(sessionKey);
+    MessageEmbed closedEmbed =
+        new EmbedBuilder()
+            .setTitle("🛡️ 護航定價設定面板")
+            .setColor(EMBED_COLOR)
+            .setDescription("已關閉設定面板")
+            .build();
+    event.editMessageEmbeds(closedEmbed).setComponents(List.of()).queue();
+  }
+
+  private void handleEscortPricingPanelActionSelect(
+      StringSelectInteractionEvent event, String sessionKey, long guildId) {
+    EscortPricingPanelState state = escortPricingPanelStates.get(sessionKey);
+    if (state == null) {
+      event.reply("設定面板已過期，請重新開啟").setEphemeral(true).queue();
+      return;
+    }
+    String action = event.getValues().get(0);
+    state.action =
+        ESCORT_PRICING_ACTION_RESET.equals(action)
+            ? ESCORT_PRICING_ACTION_RESET
+            : ESCORT_PRICING_ACTION_UPDATE;
+    if (ESCORT_PRICING_ACTION_RESET.equals(state.action)) {
+      state.pendingPriceTwd = null;
+    }
+    state.statusMessage = "✅ 已更新操作模式（尚未送出）";
+
+    Result<List<EscortOptionPricingService.OptionPriceView>, DomainError> listResult =
+        adminPanelService.getEscortOptionPrices(guildId);
+    if (listResult.isErr()) {
+      event.reply("❌ 讀取護航定價失敗：" + listResult.getError().message()).setEphemeral(true).queue();
+      return;
+    }
+    Map<String, EscortOptionPricingService.OptionPriceView> optionMap =
+        toEscortOptionMap(listResult.getValue());
+    event
+        .editMessageEmbeds(buildEscortPricingPanelEmbed(state, optionMap))
+        .setComponents(buildEscortPricingPanelComponents(state, optionMap))
+        .queue();
+  }
+
+  private void handleEscortPricingPanelOptionSelect(
+      StringSelectInteractionEvent event, String sessionKey, long guildId) {
+    EscortPricingPanelState state = escortPricingPanelStates.get(sessionKey);
+    if (state == null) {
+      event.reply("設定面板已過期，請重新開啟").setEphemeral(true).queue();
+      return;
+    }
+    state.optionCode = event.getValues().get(0);
+    state.statusMessage = "✅ 已更新護航選項（尚未送出）";
+
+    Result<List<EscortOptionPricingService.OptionPriceView>, DomainError> listResult =
+        adminPanelService.getEscortOptionPrices(guildId);
+    if (listResult.isErr()) {
+      event.reply("❌ 讀取護航定價失敗：" + listResult.getError().message()).setEphemeral(true).queue();
+      return;
+    }
+    Map<String, EscortOptionPricingService.OptionPriceView> optionMap =
+        toEscortOptionMap(listResult.getValue());
+    event
+        .editMessageEmbeds(buildEscortPricingPanelEmbed(state, optionMap))
+        .setComponents(buildEscortPricingPanelComponents(state, optionMap))
+        .queue();
+  }
+
+  private MessageEmbed buildEscortPricingPanelEmbed(
+      EscortPricingPanelState state,
+      Map<String, EscortOptionPricingService.OptionPriceView> optionMap) {
+    EmbedBuilder embed =
+        new EmbedBuilder()
+            .setTitle("🛡️ 護航定價設定面板")
+            .setColor(EMBED_COLOR)
+            .setDescription("先選擇操作與選項，再按確認送出變更");
+    embed.addField(
+        "操作模式", ESCORT_PRICING_ACTION_RESET.equals(state.action) ? "重置為預設價格" : "調整實際價格", true);
+
+    EscortOptionPricingService.OptionPriceView selected =
+        state.optionCode == null ? null : optionMap.get(state.optionCode);
+    embed.addField(
+        "護航選項",
+        selected == null
+            ? "尚未選擇"
+            : String.format(
+                "`%s` %s｜%s",
+                selected.optionCode(), selected.option().type(), selected.option().target()),
+        false);
+
+    if (selected != null) {
+      embed.addField(
+          "目前定價",
+          String.format(
+              "生效：NT$%,d\n預設：NT$%,d", selected.effectivePriceTwd(), selected.defaultPriceTwd()),
+          true);
+    }
+
+    if (ESCORT_PRICING_ACTION_UPDATE.equals(state.action)) {
+      embed.addField(
+          "暫存價格",
+          state.pendingPriceTwd == null ? "尚未輸入" : String.format("NT$%,d", state.pendingPriceTwd),
+          true);
+    }
+
+    if (state.statusMessage != null && !state.statusMessage.isBlank()) {
+      embed.addField("狀態", state.statusMessage, false);
+    }
+
+    embed.setFooter("按下「確認送出」前不會更新實際設定");
+    return embed.build();
+  }
+
+  private List<ActionRow> buildEscortPricingPanelComponents(
+      EscortPricingPanelState state,
+      Map<String, EscortOptionPricingService.OptionPriceView> optionMap) {
+    StringSelectMenu actionSelect =
+        StringSelectMenu.create(SELECT_ESCORT_PRICING_PANEL_ACTION)
+            .setPlaceholder("選擇操作模式")
+            .addOption("調整價格", ESCORT_PRICING_ACTION_UPDATE, "設定指定護航選項的價格")
+            .addOption("重置為預設", ESCORT_PRICING_ACTION_RESET, "移除覆蓋價格並回到預設值")
+            .setDefaultValues(List.of(state.action))
+            .build();
+
+    StringSelectMenu.Builder optionSelectBuilder =
+        StringSelectMenu.create(SELECT_ESCORT_PRICING_PANEL_OPTION).setPlaceholder("選擇護航選項");
+    optionMap
+        .values()
+        .forEach(
+            view ->
+                optionSelectBuilder.addOption(
+                    truncate(view.optionCode() + "｜" + view.option().target(), 100),
+                    view.optionCode(),
+                    truncate(
+                        String.format(
+                            "%s｜%s｜NT$%,d",
+                            view.option().type(), view.option().level(), view.effectivePriceTwd()),
+                        100)));
+    if (!optionMap.isEmpty()
+        && state.optionCode != null
+        && optionMap.containsKey(state.optionCode)) {
+      optionSelectBuilder.setDefaultValues(List.of(state.optionCode));
+    }
+    StringSelectMenu optionSelect = optionSelectBuilder.build();
+
+    boolean canConfirm =
+        state.optionCode != null
+            && (ESCORT_PRICING_ACTION_RESET.equals(state.action) || state.pendingPriceTwd != null);
+    Button inputPriceBtn =
+        ESCORT_PRICING_ACTION_RESET.equals(state.action)
+            ? Button.secondary(BUTTON_ESCORT_PRICING_PANEL_INPUT_PRICE, "💵 輸入價格").asDisabled()
+            : Button.secondary(BUTTON_ESCORT_PRICING_PANEL_INPUT_PRICE, "💵 輸入價格");
+    Button confirmBtn =
+        canConfirm
+            ? Button.success(BUTTON_ESCORT_PRICING_PANEL_CONFIRM, "✅ 確認送出")
+            : Button.success(BUTTON_ESCORT_PRICING_PANEL_CONFIRM, "✅ 確認送出").asDisabled();
+
+    return List.of(
+        ActionRow.of(actionSelect),
+        ActionRow.of(optionSelect),
+        ActionRow.of(
+            inputPriceBtn,
+            confirmBtn,
+            Button.secondary(BUTTON_ESCORT_PRICING_PANEL_CLOSE, "✖ 關閉")));
+  }
+
+  private Map<String, EscortOptionPricingService.OptionPriceView> toEscortOptionMap(
+      List<EscortOptionPricingService.OptionPriceView> optionPrices) {
+    Map<String, EscortOptionPricingService.OptionPriceView> optionMap =
+        new java.util.LinkedHashMap<>();
+    for (EscortOptionPricingService.OptionPriceView view : optionPrices) {
+      optionMap.put(view.optionCode(), view);
+    }
+    return optionMap;
+  }
+
+  private void refreshEscortPricingMainPanel(long guildId, long adminId, String statusMessage) {
+    adminPanelSessionManager.updatePanel(
+        guildId,
+        adminId,
+        hook -> {
+          Result<List<EscortOptionPricingService.OptionPriceView>, DomainError> result =
+              adminPanelService.getEscortOptionPrices(guildId);
+          MessageEmbed embed =
+              result.isErr()
+                  ? buildEscortPricingEmbed(List.of(), "❌ 載入失敗：" + result.getError().message())
+                  : buildEscortPricingEmbed(result.getValue(), statusMessage);
+          hook.editOriginalEmbeds(embed)
+              .setComponents(buildEscortPricingComponents())
+              .queue(
+                  success ->
+                      LOG.trace(
+                          "Refreshed escort pricing main panel for guildId={}, adminId={}",
+                          guildId,
+                          adminId),
+                  error -> LOG.warn("Failed to refresh escort pricing main panel", error));
+        });
+  }
+
+  private String truncate(String value, int maxLength) {
+    if (value == null || value.length() <= maxLength) {
+      return value;
+    }
+    return value.substring(0, Math.max(0, maxLength - 3)) + "...";
   }
 
   private MessageEmbed buildEscortPricingEmbed(
@@ -1674,8 +2063,8 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
   private List<ActionRow> buildEscortPricingComponents() {
     return List.of(
         ActionRow.of(
-            Button.primary(BUTTON_ESCORT_PRICING_EDIT, "✏️ 調整價格"),
-            Button.secondary(BUTTON_ESCORT_PRICING_RESET, "♻️ 重置預設"),
+            Button.primary(BUTTON_ESCORT_PRICING_EDIT, "✏️ 調整面板"),
+            Button.secondary(BUTTON_ESCORT_PRICING_RESET, "♻️ 重置面板"),
             Button.secondary(BUTTON_ESCORT_PRICING_REFRESH, "🔄 重新整理")),
         ActionRow.of(Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")));
   }
@@ -2400,5 +2789,13 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     SessionState(ManagementType type) {
       this.type = type;
     }
+  }
+
+  private static class EscortPricingPanelState {
+    String action = ESCORT_PRICING_ACTION_UPDATE;
+    String optionCode;
+    Long pendingPriceTwd;
+    String statusMessage;
+    InteractionHook panelHook;
   }
 }

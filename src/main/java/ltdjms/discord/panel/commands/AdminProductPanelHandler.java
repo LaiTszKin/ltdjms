@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ltdjms.discord.panel.services.AdminPanelSessionManager;
+import ltdjms.discord.product.domain.EscortOrderOptionCatalog;
 import ltdjms.discord.product.domain.Product;
 import ltdjms.discord.product.services.ProductService;
 import ltdjms.discord.redemption.domain.RedemptionCode;
@@ -61,9 +62,19 @@ public class AdminProductPanelHandler extends ListenerAdapter {
   public static final String BUTTON_PREFIX_INTEGRATION_CONFIG = "admin_integration_config_";
   public static final String BUTTON_PREFIX_CODE_PAGE = "admin_code_page_";
   public static final String BUTTON_CODE_BACK = "admin_code_back";
+  public static final String BUTTON_INTEGRATION_PANEL_EDIT_BACKEND =
+      "admin_integration_panel_edit_backend";
+  public static final String BUTTON_INTEGRATION_PANEL_CONFIRM = "admin_integration_panel_confirm";
+  public static final String BUTTON_INTEGRATION_PANEL_CLOSE = "admin_integration_panel_close";
 
   // Select Menu IDs
   public static final String SELECT_PRODUCT = "admin_select_product";
+  public static final String SELECT_INTEGRATION_PANEL_AUTO_ESCORT =
+      "admin_select_integration_panel_auto_escort";
+  public static final String SELECT_INTEGRATION_PANEL_ESCORT_OPTION =
+      "admin_select_integration_panel_escort_option";
+  public static final String SELECT_INTEGRATION_PANEL_ESCORT_OPTION_EXTRA =
+      "admin_select_integration_panel_escort_option_extra";
 
   // Modal IDs
   public static final String MODAL_CREATE_PRODUCT = "admin_modal_create_product";
@@ -71,6 +82,8 @@ public class AdminProductPanelHandler extends ListenerAdapter {
   public static final String MODAL_SET_FIAT_VALUE = "admin_modal_set_fiat_value_";
   public static final String MODAL_INTEGRATION_CONFIG = "admin_modal_integration_config_";
   public static final String MODAL_GENERATE_CODES = "admin_modal_generate_codes_";
+  public static final String MODAL_INTEGRATION_PANEL_BACKEND_URL =
+      "admin_modal_integration_panel_backend_url";
 
   private final ProductService productService;
   private final RedemptionService redemptionService;
@@ -78,6 +91,8 @@ public class AdminProductPanelHandler extends ListenerAdapter {
 
   // Session state for product selection (keyed by "userId_guildId")
   private final Map<String, ProductSessionState> productSessions = new ConcurrentHashMap<>();
+  private final Map<String, IntegrationConfigSessionState> integrationConfigSessions =
+      new ConcurrentHashMap<>();
 
   public AdminProductPanelHandler(
       ProductService productService,
@@ -124,6 +139,12 @@ public class AdminProductPanelHandler extends ListenerAdapter {
         showProductList(event);
       } else if (buttonId.equals(BUTTON_CODE_BACK)) {
         showProductDetail(event);
+      } else if (buttonId.equals(BUTTON_INTEGRATION_PANEL_EDIT_BACKEND)) {
+        openIntegrationPanelBackendModal(event);
+      } else if (buttonId.equals(BUTTON_INTEGRATION_PANEL_CONFIRM)) {
+        handleIntegrationPanelConfirm(event);
+      } else if (buttonId.equals(BUTTON_INTEGRATION_PANEL_CLOSE)) {
+        handleIntegrationPanelClose(event);
       } else if (buttonId.startsWith(BUTTON_PREFIX_EDIT_PRODUCT)) {
         String productIdStr = buttonId.substring(BUTTON_PREFIX_EDIT_PRODUCT.length());
         openEditProductModal(event, Long.parseLong(productIdStr));
@@ -135,7 +156,7 @@ public class AdminProductPanelHandler extends ListenerAdapter {
         openSetFiatValueModal(event, Long.parseLong(productIdStr));
       } else if (buttonId.startsWith(BUTTON_PREFIX_INTEGRATION_CONFIG)) {
         String productIdStr = buttonId.substring(BUTTON_PREFIX_INTEGRATION_CONFIG.length());
-        openIntegrationConfigModal(event, Long.parseLong(productIdStr));
+        openIntegrationConfigPanel(event, Long.parseLong(productIdStr));
       } else if (buttonId.startsWith(BUTTON_PREFIX_CODE_PAGE)) {
         String pageStr = buttonId.substring(BUTTON_PREFIX_CODE_PAGE.length());
         showCodeList(event, Integer.parseInt(pageStr));
@@ -150,7 +171,10 @@ public class AdminProductPanelHandler extends ListenerAdapter {
   public void onStringSelectInteraction(StringSelectInteractionEvent event) {
     String selectId = event.getComponentId();
 
-    if (!selectId.equals(SELECT_PRODUCT)) {
+    if (!selectId.equals(SELECT_PRODUCT)
+        && !selectId.equals(SELECT_INTEGRATION_PANEL_AUTO_ESCORT)
+        && !selectId.equals(SELECT_INTEGRATION_PANEL_ESCORT_OPTION)
+        && !selectId.equals(SELECT_INTEGRATION_PANEL_ESCORT_OPTION_EXTRA)) {
       return;
     }
 
@@ -164,7 +188,14 @@ public class AdminProductPanelHandler extends ListenerAdapter {
     }
 
     try {
-      handleProductSelect(event);
+      if (selectId.equals(SELECT_PRODUCT)) {
+        handleProductSelect(event);
+      } else if (selectId.equals(SELECT_INTEGRATION_PANEL_AUTO_ESCORT)) {
+        handleIntegrationPanelAutoEscortSelect(event);
+      } else if (selectId.equals(SELECT_INTEGRATION_PANEL_ESCORT_OPTION)
+          || selectId.equals(SELECT_INTEGRATION_PANEL_ESCORT_OPTION_EXTRA)) {
+        handleIntegrationPanelEscortOptionSelect(event);
+      }
     } catch (Exception e) {
       LOG.error("Error handling string select: {}", selectId, e);
       event.reply("發生錯誤，請稍後再試").setEphemeral(true).queue();
@@ -204,6 +235,8 @@ public class AdminProductPanelHandler extends ListenerAdapter {
         handleIntegrationConfigModal(event);
       } else if (modalId.startsWith(MODAL_GENERATE_CODES)) {
         handleGenerateCodesModal(event);
+      } else if (modalId.startsWith(MODAL_INTEGRATION_PANEL_BACKEND_URL)) {
+        handleIntegrationPanelBackendModal(event);
       }
     } catch (Exception e) {
       LOG.error("Error handling modal: {}", modalId, e);
@@ -218,6 +251,9 @@ public class AdminProductPanelHandler extends ListenerAdapter {
         || buttonId.equals(BUTTON_VIEW_CODES)
         || buttonId.equals(BUTTON_PRODUCT_BACK)
         || buttonId.equals(BUTTON_CODE_BACK)
+        || buttonId.equals(BUTTON_INTEGRATION_PANEL_EDIT_BACKEND)
+        || buttonId.equals(BUTTON_INTEGRATION_PANEL_CONFIRM)
+        || buttonId.equals(BUTTON_INTEGRATION_PANEL_CLOSE)
         || buttonId.startsWith(BUTTON_PREFIX_EDIT_PRODUCT)
         || buttonId.startsWith(BUTTON_PREFIX_DELETE_PRODUCT)
         || buttonId.startsWith(BUTTON_PREFIX_SET_FIAT_VALUE)
@@ -230,7 +266,8 @@ public class AdminProductPanelHandler extends ListenerAdapter {
         || modalId.startsWith(MODAL_EDIT_PRODUCT)
         || modalId.startsWith(MODAL_SET_FIAT_VALUE)
         || modalId.startsWith(MODAL_INTEGRATION_CONFIG)
-        || modalId.startsWith(MODAL_GENERATE_CODES);
+        || modalId.startsWith(MODAL_GENERATE_CODES)
+        || modalId.startsWith(MODAL_INTEGRATION_PANEL_BACKEND_URL);
   }
 
   // ===== Product List =====
@@ -239,6 +276,7 @@ public class AdminProductPanelHandler extends ListenerAdapter {
     long guildId = event.getGuild().getIdLong();
     String sessionKey = getSessionKey(event.getUser().getIdLong(), guildId);
     productSessions.remove(sessionKey);
+    integrationConfigSessions.remove(sessionKey);
 
     List<Product> products = productService.getProducts(guildId);
 
@@ -757,6 +795,340 @@ public class AdminProductPanelHandler extends ListenerAdapter {
     event.reply("✅ 已更新實際價值（TWD）").setEphemeral(true).queue();
   }
 
+  private void openIntegrationConfigPanel(ButtonInteractionEvent event, long productId) {
+    productService
+        .getProduct(productId)
+        .ifPresentOrElse(
+            product -> {
+              long guildId = event.getGuild().getIdLong();
+              String sessionKey = getSessionKey(event.getUser().getIdLong(), guildId);
+              IntegrationConfigSessionState state =
+                  new IntegrationConfigSessionState(
+                      product.id(),
+                      product.name(),
+                      product.backendApiUrl(),
+                      product.autoCreateEscortOrder(),
+                      product.escortOptionCode(),
+                      null);
+              integrationConfigSessions.put(sessionKey, state);
+
+              event
+                  .replyEmbeds(buildIntegrationConfigPanelEmbed(state))
+                  .setComponents(buildIntegrationConfigPanelComponents(state))
+                  .setEphemeral(true)
+                  .queue(
+                      hook -> {
+                        state.panelHook = hook;
+                        integrationConfigSessions.put(sessionKey, state);
+                      });
+            },
+            () -> event.reply("找不到該商品").setEphemeral(true).queue());
+  }
+
+  private void handleIntegrationPanelAutoEscortSelect(StringSelectInteractionEvent event) {
+    long guildId = event.getGuild().getIdLong();
+    String sessionKey = getSessionKey(event.getUser().getIdLong(), guildId);
+    IntegrationConfigSessionState state = integrationConfigSessions.get(sessionKey);
+    if (state == null) {
+      event.reply("設定面板已過期，請重新開啟").setEphemeral(true).queue();
+      return;
+    }
+
+    state.autoCreateEscortOrder = Boolean.parseBoolean(event.getValues().get(0));
+    if (!state.autoCreateEscortOrder) {
+      state.escortOptionCode = null;
+    }
+    state.statusMessage = "✅ 已更新自動護航開單設定（尚未送出）";
+
+    event
+        .editMessageEmbeds(buildIntegrationConfigPanelEmbed(state))
+        .setComponents(buildIntegrationConfigPanelComponents(state))
+        .queue();
+  }
+
+  private void handleIntegrationPanelEscortOptionSelect(StringSelectInteractionEvent event) {
+    long guildId = event.getGuild().getIdLong();
+    String sessionKey = getSessionKey(event.getUser().getIdLong(), guildId);
+    IntegrationConfigSessionState state = integrationConfigSessions.get(sessionKey);
+    if (state == null) {
+      event.reply("設定面板已過期，請重新開啟").setEphemeral(true).queue();
+      return;
+    }
+
+    String selected = event.getValues().get(0);
+    state.escortOptionCode = "__none__".equals(selected) ? null : selected;
+    state.statusMessage = "✅ 已更新護航選項（尚未送出）";
+
+    event
+        .editMessageEmbeds(buildIntegrationConfigPanelEmbed(state))
+        .setComponents(buildIntegrationConfigPanelComponents(state))
+        .queue();
+  }
+
+  private void openIntegrationPanelBackendModal(ButtonInteractionEvent event) {
+    long guildId = event.getGuild().getIdLong();
+    String sessionKey = getSessionKey(event.getUser().getIdLong(), guildId);
+    IntegrationConfigSessionState state = integrationConfigSessions.get(sessionKey);
+    if (state == null) {
+      event.reply("設定面板已過期，請重新開啟").setEphemeral(true).queue();
+      return;
+    }
+
+    TextInput.Builder inputBuilder =
+        TextInput.create("backend_api_url", "後端 API URL", TextInputStyle.SHORT)
+            .setPlaceholder("https://example.com/fulfillment")
+            .setRequired(false)
+            .setMaxLength(500);
+    if (state.backendApiUrl != null && !state.backendApiUrl.isBlank()) {
+      inputBuilder.setValue(state.backendApiUrl);
+    }
+
+    Modal modal =
+        Modal.create(MODAL_INTEGRATION_PANEL_BACKEND_URL, "設定後端 API URL")
+            .addComponents(ActionRow.of(inputBuilder.build()))
+            .build();
+    event.replyModal(modal).queue();
+  }
+
+  private void handleIntegrationPanelBackendModal(ModalInteractionEvent event) {
+    long guildId = event.getGuild().getIdLong();
+    String sessionKey = getSessionKey(event.getUser().getIdLong(), guildId);
+    IntegrationConfigSessionState state = integrationConfigSessions.get(sessionKey);
+    if (state == null) {
+      event.reply("設定面板已過期，請重新開啟").setEphemeral(true).queue();
+      return;
+    }
+
+    state.backendApiUrl = getModalValueOrNull(event, "backend_api_url");
+    state.statusMessage = "✅ 已更新後端 API URL（尚未送出）";
+    if (state.panelHook != null) {
+      state
+          .panelHook
+          .editOriginalEmbeds(buildIntegrationConfigPanelEmbed(state))
+          .setComponents(buildIntegrationConfigPanelComponents(state))
+          .queue(
+              msg ->
+                  LOG.trace("Updated integration config panel for productId={}", state.productId),
+              err -> LOG.warn("Failed to update integration config panel", err));
+    }
+
+    event.reply("✅ 已回填後端 API URL，請回設定面板按「確認送出」").setEphemeral(true).queue();
+  }
+
+  private void handleIntegrationPanelConfirm(ButtonInteractionEvent event) {
+    long guildId = event.getGuild().getIdLong();
+    String sessionKey = getSessionKey(event.getUser().getIdLong(), guildId);
+    IntegrationConfigSessionState state = integrationConfigSessions.get(sessionKey);
+    if (state == null) {
+      event.reply("設定面板已過期，請重新開啟").setEphemeral(true).queue();
+      return;
+    }
+    if (!canSubmitIntegrationConfig(state)) {
+      state.statusMessage = "❌ 請先完成必要欄位（後端 URL、護航選項）";
+      event
+          .editMessageEmbeds(buildIntegrationConfigPanelEmbed(state))
+          .setComponents(buildIntegrationConfigPanelComponents(state))
+          .queue();
+      return;
+    }
+
+    Product existing = productService.getProduct(state.productId).orElse(null);
+    if (existing == null) {
+      state.statusMessage = "❌ 找不到商品，請返回商品列表後重試";
+      event
+          .editMessageEmbeds(buildIntegrationConfigPanelEmbed(state))
+          .setComponents(buildIntegrationConfigPanelComponents(state))
+          .queue();
+      return;
+    }
+
+    String finalEscortOptionCode = state.autoCreateEscortOrder ? state.escortOptionCode : null;
+    Result<Product, DomainError> result =
+        productService.updateProduct(
+            state.productId,
+            existing.name(),
+            existing.description(),
+            existing.rewardType(),
+            existing.rewardAmount(),
+            existing.currencyPrice(),
+            existing.fiatPriceTwd(),
+            state.backendApiUrl,
+            state.autoCreateEscortOrder,
+            finalEscortOptionCode);
+    if (result.isErr()) {
+      state.statusMessage = "❌ 更新失敗：" + result.getError().message();
+      event
+          .editMessageEmbeds(buildIntegrationConfigPanelEmbed(state))
+          .setComponents(buildIntegrationConfigPanelComponents(state))
+          .queue();
+      return;
+    }
+
+    Product updated = result.getValue();
+    state.backendApiUrl = updated.backendApiUrl();
+    state.autoCreateEscortOrder = updated.autoCreateEscortOrder();
+    state.escortOptionCode = updated.escortOptionCode();
+    String backendStatus =
+        updated.backendApiUrl() == null || updated.backendApiUrl().isBlank() ? "未設定" : "已設定";
+    String escortStatus =
+        updated.autoCreateEscortOrder() ? "已啟用（" + updated.escortOptionCode() + "）" : "未啟用";
+    state.statusMessage =
+        String.format("✅ 接入設定已更新：後端 API %s，自動護航開單 %s", backendStatus, escortStatus);
+
+    refreshProductPanels(guildId);
+    event
+        .editMessageEmbeds(buildIntegrationConfigPanelEmbed(state))
+        .setComponents(buildIntegrationConfigPanelComponents(state))
+        .queue();
+  }
+
+  private void handleIntegrationPanelClose(ButtonInteractionEvent event) {
+    long guildId = event.getGuild().getIdLong();
+    String sessionKey = getSessionKey(event.getUser().getIdLong(), guildId);
+    integrationConfigSessions.remove(sessionKey);
+
+    MessageEmbed closedEmbed =
+        new EmbedBuilder()
+            .setTitle("🔗 接入設定面板")
+            .setColor(EMBED_COLOR)
+            .setDescription("已關閉設定面板")
+            .build();
+    event.editMessageEmbeds(closedEmbed).setComponents(List.of()).queue();
+  }
+
+  private MessageEmbed buildIntegrationConfigPanelEmbed(IntegrationConfigSessionState state) {
+    EmbedBuilder builder =
+        new EmbedBuilder()
+            .setTitle("🔗 接入設定面板")
+            .setColor(EMBED_COLOR)
+            .setDescription("調整設定後按「確認送出」才會套用")
+            .addField("商品", state.productName + " (`" + state.productId + "`)", false)
+            .addField(
+                "後端 API URL",
+                state.backendApiUrl == null || state.backendApiUrl.isBlank()
+                    ? "未設定"
+                    : state.backendApiUrl,
+                false)
+            .addField("自動護航開單", state.autoCreateEscortOrder ? "已啟用" : "未啟用", true)
+            .addField(
+                "護航選項代碼",
+                state.escortOptionCode == null || state.escortOptionCode.isBlank()
+                    ? "未設定"
+                    : "`" + state.escortOptionCode + "`",
+                true);
+    if (state.statusMessage != null && !state.statusMessage.isBlank()) {
+      builder.addField("狀態", state.statusMessage, false);
+    }
+    builder.setFooter("確認前不會修改實際設定");
+    return builder.build();
+  }
+
+  private List<ActionRow> buildIntegrationConfigPanelComponents(
+      IntegrationConfigSessionState state) {
+    StringSelectMenu autoEscortSelect =
+        StringSelectMenu.create(SELECT_INTEGRATION_PANEL_AUTO_ESCORT)
+            .setPlaceholder("選擇是否啟用自動護航開單")
+            .addOption("啟用", "true", "需要設定後端 API 與護航選項")
+            .addOption("停用", "false", "不進行自動護航開單")
+            .setDefaultValues(List.of(Boolean.toString(state.autoCreateEscortOrder)))
+            .build();
+
+    List<EscortOrderOptionCatalog.EscortOrderOption> allOptions =
+        EscortOrderOptionCatalog.allOptions();
+    int primaryLimit = Math.min(24, allOptions.size());
+    List<EscortOrderOptionCatalog.EscortOrderOption> primaryOptions =
+        allOptions.subList(0, primaryLimit);
+    List<EscortOrderOptionCatalog.EscortOrderOption> extraOptions =
+        allOptions.size() > primaryLimit
+            ? allOptions.subList(primaryLimit, allOptions.size())
+            : List.of();
+
+    String selectedCode =
+        state.escortOptionCode == null || state.escortOptionCode.isBlank()
+            ? "__none__"
+            : state.escortOptionCode;
+    boolean selectedInPrimary = "__none__".equals(selectedCode);
+    boolean selectedInExtra = false;
+    for (var option : primaryOptions) {
+      if (option.code().equals(selectedCode)) {
+        selectedInPrimary = true;
+        break;
+      }
+    }
+    if (!selectedInPrimary) {
+      for (var option : extraOptions) {
+        if (option.code().equals(selectedCode)) {
+          selectedInExtra = true;
+          break;
+        }
+      }
+    }
+
+    StringSelectMenu.Builder escortOptionPrimaryBuilder =
+        StringSelectMenu.create(SELECT_INTEGRATION_PANEL_ESCORT_OPTION)
+            .setPlaceholder("選擇護航選項代碼（主列表）")
+            .setDisabled(!state.autoCreateEscortOrder);
+    escortOptionPrimaryBuilder.addOption("不設定", "__none__", "清除護航選項");
+    for (var option : primaryOptions) {
+      String label = truncate(option.code() + "｜" + option.target(), 100);
+      String description =
+          truncate(
+              String.format("%s｜%s｜NT$%,d", option.type(), option.level(), option.priceTwd()), 100);
+      escortOptionPrimaryBuilder.addOption(label, option.code(), description);
+    }
+    escortOptionPrimaryBuilder.setDefaultValues(
+        List.of(selectedInPrimary ? selectedCode : "__none__"));
+    StringSelectMenu escortOptionPrimary = escortOptionPrimaryBuilder.build();
+
+    StringSelectMenu escortOptionExtra = null;
+    if (!extraOptions.isEmpty()) {
+      StringSelectMenu.Builder escortOptionExtraBuilder =
+          StringSelectMenu.create(SELECT_INTEGRATION_PANEL_ESCORT_OPTION_EXTRA)
+              .setPlaceholder("選擇護航選項代碼（更多）")
+              .setDisabled(!state.autoCreateEscortOrder);
+      for (var option : extraOptions) {
+        String label = truncate(option.code() + "｜" + option.target(), 100);
+        String description =
+            truncate(
+                String.format("%s｜%s｜NT$%,d", option.type(), option.level(), option.priceTwd()),
+                100);
+        escortOptionExtraBuilder.addOption(label, option.code(), description);
+      }
+      if (selectedInExtra) {
+        escortOptionExtraBuilder.setDefaultValues(List.of(selectedCode));
+      }
+      escortOptionExtra = escortOptionExtraBuilder.build();
+    }
+
+    Button confirmButton =
+        canSubmitIntegrationConfig(state)
+            ? Button.success(BUTTON_INTEGRATION_PANEL_CONFIRM, "✅ 確認送出")
+            : Button.success(BUTTON_INTEGRATION_PANEL_CONFIRM, "✅ 確認送出").asDisabled();
+
+    List<ActionRow> rows = new java.util.ArrayList<>();
+    rows.add(ActionRow.of(autoEscortSelect));
+    rows.add(ActionRow.of(escortOptionPrimary));
+    if (escortOptionExtra != null) {
+      rows.add(ActionRow.of(escortOptionExtra));
+    }
+    rows.add(
+        ActionRow.of(
+            Button.secondary(BUTTON_INTEGRATION_PANEL_EDIT_BACKEND, "🌐 設定後端 URL"),
+            confirmButton,
+            Button.secondary(BUTTON_INTEGRATION_PANEL_CLOSE, "✖ 關閉")));
+    return rows;
+  }
+
+  private boolean canSubmitIntegrationConfig(IntegrationConfigSessionState state) {
+    if (!state.autoCreateEscortOrder) {
+      return true;
+    }
+    return state.backendApiUrl != null
+        && !state.backendApiUrl.isBlank()
+        && state.escortOptionCode != null
+        && !state.escortOptionCode.isBlank();
+  }
+
   private void openIntegrationConfigModal(ButtonInteractionEvent event, long productId) {
     productService
         .getProduct(productId)
@@ -1073,6 +1445,13 @@ public class AdminProductPanelHandler extends ListenerAdapter {
 
   // ===== Helpers =====
 
+  private String truncate(String value, int maxLength) {
+    if (value == null || value.length() <= maxLength) {
+      return value;
+    }
+    return value.substring(0, Math.max(0, maxLength - 3)) + "...";
+  }
+
   private String getSessionKey(long userId, long guildId) {
     return userId + "_" + guildId;
   }
@@ -1119,6 +1498,31 @@ public class AdminProductPanelHandler extends ListenerAdapter {
 
     ProductSessionState withView(ProductView view, int page) {
       return new ProductSessionState(this.productId, view, page);
+    }
+  }
+
+  static class IntegrationConfigSessionState {
+    final long productId;
+    final String productName;
+    String backendApiUrl;
+    boolean autoCreateEscortOrder;
+    String escortOptionCode;
+    String statusMessage;
+    InteractionHook panelHook;
+
+    IntegrationConfigSessionState(
+        long productId,
+        String productName,
+        String backendApiUrl,
+        boolean autoCreateEscortOrder,
+        String escortOptionCode,
+        String statusMessage) {
+      this.productId = productId;
+      this.productName = productName;
+      this.backendApiUrl = backendApiUrl;
+      this.autoCreateEscortOrder = autoCreateEscortOrder;
+      this.escortOptionCode = escortOptionCode;
+      this.statusMessage = statusMessage;
     }
   }
 
