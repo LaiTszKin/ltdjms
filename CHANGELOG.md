@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.32.1] - 2026-03-05
+
+### Fixed
+- **panel/admin**: 修正護航定價面板在選項超過 25 筆時 Discord select menu 超限問題，改為主選單 + 更多選單分拆並保留預設選取
+- **ops/docker**: `docker-compose.yml` 日誌持久化改為 named volume `bot_logs`，避免宿主機 bind mount 帶來的權限與路徑問題
+
+### Tests
+- 執行 `mvn -q test -Dtest=AdminPanelButtonHandlerTest`，測試通過
+
 ## [0.32.0] - 2026-03-05
 
 ### Added

@@ -262,7 +262,7 @@ database {
 - **分層日誌**：`logs/warn.log`（`WARN+`）、`logs/error.log`（僅 `ERROR`）
 - **滾動策略**：依日期 + 檔案大小自動切分，封存於 `logs/archive/`
 - **保留策略**：可設定最大保留天數與總磁碟上限
-- **Docker 持久化**：`docker-compose.yml` 已掛載 `./logs:/app/logs`
+- **Docker 持久化**：`docker-compose.yml` 已掛載 named volume `bot_logs:/app/logs`
 
 可透過環境變數調整：
 
