@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.32.0] - 2026-03-05
+
+### Added
+- **shop/fiat**: 新增 ECPay 超商代碼付款流程，加入 `fiat_order` 資料表、訂單服務、回調驗證與回調後履約機制，並支援 E2E 測試路徑
+- **product/dispatch**: 新增可配置護航履約流程（商品護航選項、guild 護航價目、後端履約 API 通知）
+- **panel/admin**: 管理面板與商品設定新增預覽式設定流程，支援建立商品時直接設定 fiat 價格與履約選項
+- **aiagent**: `manage_message` 新增 `diff` 編輯模式
+
+### Changed
+- **ci**: 優化 CI 執行範圍並修正 actionlint tag，縮短檢查時間
+- **shop**: 購買選單項目數量限制，避免選單超限
+- **aichat/aiagent**: 強化 thread 歷史限制與工具回應 JSON 欄位轉義
+
+### Fixed
+- **shop/ecpay**: 強化付款 callback 驗證與 stage timeout 穩定性，修復 review 反饋問題
+- **redemption/security**: 強化兌換碼過期檢查、失效查詢 scope 與 reward overflow 防護，避免跨商品或溢位發獎
+- **aiagent/security**: 修正串流錯誤路徑未清理工具上下文、非有限 AI temperature 載入、聊天記憶 conversation id 解析與 stream null choice 邊界
+- **discord/permissions**: 修正頻道建立時 `permission` null entry 與 partial-word 權限比對問題
+- **tests**: 清理 raw matcher / varargs warning，提升測試穩定性
+
+### Tests
+- 執行 `make test`，共 `2454` tests（`0` failures / `0` errors，`14` skipped），測試通過
+
 ## [0.31.4] - 2026-02-21
 
 ### Fixed
