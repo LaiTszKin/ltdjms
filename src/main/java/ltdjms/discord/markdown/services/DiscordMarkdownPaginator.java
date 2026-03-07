@@ -53,7 +53,8 @@ public final class DiscordMarkdownPaginator {
 
       String remaining = lineWithNewline;
       while (!remaining.isEmpty()) {
-        int available = MAX_MESSAGE_LENGTH - current.length();
+        int available =
+            MAX_MESSAGE_LENGTH - current.length() - reservedCharsForCodeFence(current, inCodeBlock);
         if (available <= 0) {
           current = flushPage(pages, current, inCodeBlock, codeFence, true);
           continue;
@@ -113,5 +114,12 @@ public final class DiscordMarkdownPaginator {
     if (builder.charAt(length - 1) != '\n') {
       builder.append("\n");
     }
+  }
+
+  private int reservedCharsForCodeFence(StringBuilder current, boolean inCodeBlock) {
+    if (!inCodeBlock) {
+      return 0;
+    }
+    return 4;
   }
 }
