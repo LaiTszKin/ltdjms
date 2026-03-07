@@ -1,6 +1,7 @@
 package ltdjms.discord.shop.services;
 
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -32,13 +33,15 @@ public class ProductFulfillmentApiService {
   private final HttpClient httpClient;
   private final ObjectMapper objectMapper;
   private final Clock clock;
+  private final HostAddressResolver hostAddressResolver;
 
   public ProductFulfillmentApiService(EscortOptionPricingService escortOptionPricingService) {
     this(
         escortOptionPricingService,
         HttpClient.newBuilder().connectTimeout(REQUEST_TIMEOUT).build(),
         new ObjectMapper(),
-        Clock.systemUTC());
+        Clock.systemUTC(),
+        java.net.InetAddress::getAllByName);
   }
 
   ProductFulfillmentApiService(
@@ -46,12 +49,28 @@ public class ProductFulfillmentApiService {
       HttpClient httpClient,
       ObjectMapper objectMapper,
       Clock clock) {
+    this(
+        escortOptionPricingService,
+        httpClient,
+        objectMapper,
+        clock,
+        java.net.InetAddress::getAllByName);
+  }
+
+  ProductFulfillmentApiService(
+      EscortOptionPricingService escortOptionPricingService,
+      HttpClient httpClient,
+      ObjectMapper objectMapper,
+      Clock clock,
+      HostAddressResolver hostAddressResolver) {
     this.escortOptionPricingService =
         Objects.requireNonNull(
             escortOptionPricingService, "escortOptionPricingService must not be null");
     this.httpClient = Objects.requireNonNull(httpClient, "httpClient must not be null");
     this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper must not be null");
     this.clock = Objects.requireNonNull(clock, "clock must not be null");
+    this.hostAddressResolver =
+        Objects.requireNonNull(hostAddressResolver, "hostAddressResolver must not be null");
   }
 
   /** Sends fulfillment payload to product backend API when product integration is configured. */
@@ -212,9 +231,12 @@ public class ProductFulfillmentApiService {
       return Result.err(DomainError.invalidInput("後端履約 API URL 不可使用 localhost 或內網位址"));
     }
 
-    if (looksLikeIpLiteral(normalizedHost)) {
-      try {
-        java.net.InetAddress address = java.net.InetAddress.getByName(host);
+    try {
+      java.net.InetAddress[] resolvedAddresses = hostAddressResolver.resolve(host);
+      if (resolvedAddresses == null || resolvedAddresses.length == 0) {
+        return Result.err(DomainError.invalidInput("後端履約 API URL 主機格式無效"));
+      }
+      for (java.net.InetAddress address : resolvedAddresses) {
         if (isDisallowedAddress(address)) {
           LOG.warn(
               "Blocked backend fulfillment target resolving to non-public address: host={},"
@@ -223,27 +245,12 @@ public class ProductFulfillmentApiService {
               address.getHostAddress());
           return Result.err(DomainError.invalidInput("後端履約 API URL 不可使用 localhost 或內網位址"));
         }
-      } catch (Exception e) {
-        return Result.err(DomainError.invalidInput("後端履約 API URL 主機格式無效"));
       }
+    } catch (UnknownHostException e) {
+      return Result.err(DomainError.invalidInput("後端履約 API URL 主機格式無效"));
     }
 
     return Result.ok(uri);
-  }
-
-  private boolean looksLikeIpLiteral(String host) {
-    if (host.contains(":")) {
-      return true;
-    }
-    if (!host.contains(".")) {
-      return false;
-    }
-    for (char ch : host.toCharArray()) {
-      if (!Character.isDigit(ch) && ch != '.') {
-        return false;
-      }
-    }
-    return true;
   }
 
   private boolean isDisallowedAddress(java.net.InetAddress address) {
@@ -252,6 +259,11 @@ public class ProductFulfillmentApiService {
         || address.isLinkLocalAddress()
         || address.isSiteLocalAddress()
         || address.isMulticastAddress();
+  }
+
+  @FunctionalInterface
+  interface HostAddressResolver {
+    java.net.InetAddress[] resolve(String host) throws UnknownHostException;
   }
 
   public enum PurchaseSource {

@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.net.InetAddress;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -50,7 +51,16 @@ class ProductFulfillmentApiServiceTest {
             escortOptionPricingService,
             httpClient,
             new ObjectMapper(),
-            Clock.fixed(Instant.parse("2026-03-04T00:00:00Z"), ZoneOffset.UTC));
+            Clock.fixed(Instant.parse("2026-03-04T00:00:00Z"), ZoneOffset.UTC),
+            host -> {
+              if ("backend.example.com".equals(host)) {
+                return new InetAddress[] {InetAddress.getByName("93.184.216.34")};
+              }
+              if ("localhost".equals(host)) {
+                return new InetAddress[] {InetAddress.getByName("127.0.0.1")};
+              }
+              throw new java.net.UnknownHostException(host);
+            });
   }
 
   @Test
@@ -226,6 +236,53 @@ class ProductFulfillmentApiServiceTest {
 
     Result<ltdjms.discord.shared.Unit, DomainError> result =
         service.notifyFulfillment(
+            new ProductFulfillmentApiService.FulfillmentRequest(
+                GUILD_ID,
+                USER_ID,
+                product,
+                ProductFulfillmentApiService.PurchaseSource.CURRENCY_PURCHASE,
+                null,
+                null));
+
+    assertThat(result.isErr()).isTrue();
+    assertThat(result.getError().message()).contains("localhost 或內網位址");
+    verify(httpClient, never()).send(any(), anyStringBodyHandler());
+  }
+
+  @Test
+  @DisplayName("應拒絕解析到內網位址的網域目標，避免 DNS-based SSRF")
+  void shouldRejectDomainResolvingToPrivateAddress() throws Exception {
+    ProductFulfillmentApiService securedService =
+        new ProductFulfillmentApiService(
+            escortOptionPricingService,
+            httpClient,
+            new ObjectMapper(),
+            Clock.fixed(Instant.parse("2026-03-04T00:00:00Z"), ZoneOffset.UTC),
+            host -> {
+              if ("attacker.example".equals(host)) {
+                return new InetAddress[] {InetAddress.getByName("127.0.0.1")};
+              }
+              throw new java.net.UnknownHostException(host);
+            });
+
+    Product product =
+        new Product(
+            1L,
+            GUILD_ID,
+            "Unsafe Backend Domain",
+            null,
+            Product.RewardType.CURRENCY,
+            100L,
+            200L,
+            null,
+            "https://attacker.example/internal",
+            false,
+            null,
+            Instant.now(),
+            Instant.now());
+
+    Result<ltdjms.discord.shared.Unit, DomainError> result =
+        securedService.notifyFulfillment(
             new ProductFulfillmentApiService.FulfillmentRequest(
                 GUILD_ID,
                 USER_ID,
