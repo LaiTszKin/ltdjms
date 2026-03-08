@@ -300,6 +300,29 @@ class ProductServiceTest {
     }
 
     @Test
+    @DisplayName("should reject decimal IPv4 host that resolves to loopback")
+    void shouldRejectDecimalIpv4LoopbackHost() {
+      when(productRepository.existsByGuildIdAndName(TEST_GUILD_ID, "Unsafe Decimal Host"))
+          .thenReturn(false);
+
+      Result<Product, DomainError> result =
+          productService.createProduct(
+              TEST_GUILD_ID,
+              "Unsafe Decimal Host",
+              "desc",
+              null,
+              null,
+              300L,
+              null,
+              "http://2130706433/internal",
+              false,
+              null);
+
+      assertThat(result.isErr()).isTrue();
+      assertThat(result.getError().message()).contains("localhost 或內網位址");
+    }
+
+    @Test
     @DisplayName("should handle persistence failure on create")
     void shouldHandlePersistenceFailureOnCreate() {
       // Given

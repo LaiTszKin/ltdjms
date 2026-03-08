@@ -238,4 +238,38 @@ class ProductFulfillmentApiServiceTest {
     assertThat(result.getError().message()).contains("localhost 或內網位址");
     verify(httpClient, never()).send(any(), anyStringBodyHandler());
   }
+
+  @Test
+  @DisplayName("應拒絕十進位 IPv4 主機（可解析成 loopback）避免繞過 SSRF 防護")
+  void shouldRejectDecimalIpv4LoopbackTargetAtRuntime() throws Exception {
+    Product product =
+        new Product(
+            1L,
+            GUILD_ID,
+            "Unsafe Decimal Host",
+            null,
+            Product.RewardType.CURRENCY,
+            100L,
+            200L,
+            null,
+            "http://2130706433/internal",
+            false,
+            null,
+            Instant.now(),
+            Instant.now());
+
+    Result<ltdjms.discord.shared.Unit, DomainError> result =
+        service.notifyFulfillment(
+            new ProductFulfillmentApiService.FulfillmentRequest(
+                GUILD_ID,
+                USER_ID,
+                product,
+                ProductFulfillmentApiService.PurchaseSource.CURRENCY_PURCHASE,
+                null,
+                null));
+
+    assertThat(result.isErr()).isTrue();
+    assertThat(result.getError().message()).contains("localhost 或內網位址");
+    verify(httpClient, never()).send(any(), anyStringBodyHandler());
+  }
 }

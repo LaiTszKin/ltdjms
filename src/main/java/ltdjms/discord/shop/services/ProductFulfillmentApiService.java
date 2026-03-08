@@ -235,11 +235,42 @@ public class ProductFulfillmentApiService {
     if (host.contains(":")) {
       return true;
     }
+    if (isDecimalIpv4Literal(host) || isHexIpv4Literal(host)) {
+      return true;
+    }
     if (!host.contains(".")) {
       return false;
     }
     for (char ch : host.toCharArray()) {
       if (!Character.isDigit(ch) && ch != '.') {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private boolean isDecimalIpv4Literal(String host) {
+    if (host == null || host.isBlank()) {
+      return false;
+    }
+    for (char ch : host.toCharArray()) {
+      if (!Character.isDigit(ch)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private boolean isHexIpv4Literal(String host) {
+    if (host == null || host.length() <= 2) {
+      return false;
+    }
+    if (!(host.startsWith("0x") || host.startsWith("0X"))) {
+      return false;
+    }
+    for (int i = 2; i < host.length(); i++) {
+      char ch = host.charAt(i);
+      if (!((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F'))) {
         return false;
       }
     }
