@@ -43,17 +43,7 @@ public class DiscordCurrencyBot {
     // Build Dagger component with environment config
     this.appComponent = AppComponentFactory.create(envConfig);
 
-    // Register domain event listeners
-    this.appComponent.domainEventPublisher().register(this.appComponent.userPanelUpdateListener());
-    this.appComponent.domainEventPublisher().register(this.appComponent.adminPanelUpdateListener());
-    this.appComponent
-        .domainEventPublisher()
-        .register(this.appComponent.cacheInvalidationListener());
-    this.appComponent
-        .domainEventPublisher()
-        .register(this.appComponent.agentConfigCacheInvalidationListener());
-    this.appComponent.domainEventPublisher().register(this.appComponent.agentCompletionListener());
-    this.appComponent.domainEventPublisher().register(this.appComponent.toolExecutionListener());
+    // Domain event listeners are assembled through Dagger event multibindings.
 
     // Get database config from Dagger
     this.databaseConfig = appComponent.databaseConfig();

@@ -266,7 +266,7 @@ public final class AppComponentFactory {
 | `ProductRepositoryModule` | 提供產品相關 Repository |
 | `ProductServiceModule` | 提供產品相關 Service |
 | `CommandHandlerModule` | 提供 Command Handler |
-| `EventModule` | 提供事件發布器與監聽器 |
+| `EventModule` | 提供統一事件發布器與 listener multibinding 集合 |
 
 ## 5. 領域事件系統
 
@@ -282,7 +282,14 @@ public sealed interface DomainEvent permits
         CurrencyConfigChangedEvent,
         DiceGameConfigChangedEvent,
         ProductChangedEvent,
-        RedemptionCodesGeneratedEvent {
+        RedemptionCodesGeneratedEvent,
+        ProductRedemptionCompletedEvent,
+        AIAgentChannelConfigChangedEvent,
+        AIMessageEvent,
+        AgentCompletedEvent,
+        AgentFailedEvent,
+        LangChain4jToolExecutionStartedEvent,
+        LangChain4jToolExecutedEvent {
 
     /**
      * @return 事件發生的 Discord 伺服器 ID
@@ -301,10 +308,14 @@ public sealed interface DomainEvent permits
 | `DiceGameConfigChangedEvent` | 遊戲設定變更 | 管理員調整遊戲代幣消耗 |
 | `ProductChangedEvent` | 產品變更 | 新增/更新/刪除產品 |
 | `RedemptionCodesGeneratedEvent` | 兌換碼生成 | 為產品生成新兌換碼 |
+| `ProductRedemptionCompletedEvent` | 商品兌換完成 | 使用者完成商品兌換 |
+| `AIAgentChannelConfigChangedEvent` | AI Agent 頻道設定變更 | 管理員調整 AI Agent 允許頻道 |
+| `AgentCompletedEvent` / `AgentFailedEvent` | AI Agent 執行結果 | Agent 執行完成或失敗 |
+| `LangChain4jToolExecutionStartedEvent` / `LangChain4jToolExecutedEvent` | 工具執行狀態 | LangChain4j 工具開始或完成執行 |
 
 ### 5.3 DomainEventPublisher
 
-事件發布器，負責同步發送事件給所有監聽器：
+事件發布器負責同步發送事件給所有監聽器；監聽器清單主要由 Dagger multibinding 在建立時注入，也保留 `register(...)` 供局部測試或特殊場景使用。
 
 ```java
 // src/main/java/ltdjms/discord/shared/events/DomainEventPublisher.java
@@ -313,16 +324,18 @@ public class DomainEventPublisher {
     private final List<Consumer<DomainEvent>> listeners =
         new CopyOnWriteArrayList<>();
 
-    /**
-     * 註冊事件監聽器
-     */
+    public DomainEventPublisher() {}
+
+    public DomainEventPublisher(
+        Collection<? extends Consumer<DomainEvent>> listeners
+    ) {
+        this.listeners.addAll(listeners);
+    }
+
     public void register(Consumer<DomainEvent> listener) {
         listeners.add(listener);
     }
 
-    /**
-     * 發布事件給所有監聽器
-     */
     public void publish(DomainEvent event) {
         LOG.debug("Publishing event: {}", event);
         for (Consumer<DomainEvent> listener : listeners) {
@@ -336,21 +349,22 @@ public class DomainEventPublisher {
 }
 ```
 
-**使用範例：**
+**DI 組裝方式：**
 
 ```java
-// 在 Service 中發布事件
-domainEventPublisher.publish(
-    new BalanceChangedEvent(guildId, userId, oldBalance, newBalance)
-);
+@Module
+public abstract class EventModule {
+    @Multibinds
+    abstract Set<Consumer<DomainEvent>> domainEventListeners();
 
-// 在面板更新監聽器中訂閱事件
-domainEventPublisher.register(event -> {
-    if (event instanceof BalanceChangedEvent balanceEvent) {
-        // 更新對應的 Discord 訊息
-        updateUserPanelMessage(balanceEvent);
+    @Provides
+    @Singleton
+    static DomainEventPublisher provideDomainEventPublisher(
+        Set<Consumer<DomainEvent>> listeners
+    ) {
+        return new DomainEventPublisher(listeners);
     }
-});
+}
 ```
 
 ## 6. 資料庫遷移

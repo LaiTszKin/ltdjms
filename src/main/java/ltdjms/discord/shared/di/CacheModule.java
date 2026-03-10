@@ -1,17 +1,20 @@
 package ltdjms.discord.shared.di;
 
+import java.util.function.Consumer;
 import javax.inject.Singleton;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import dagger.Module;
 import dagger.Provides;
+import dagger.multibindings.IntoSet;
 import ltdjms.discord.shared.EnvironmentConfig;
 import ltdjms.discord.shared.cache.CacheInvalidationListener;
 import ltdjms.discord.shared.cache.CacheKeyGenerator;
 import ltdjms.discord.shared.cache.CacheService;
 import ltdjms.discord.shared.cache.DefaultCacheKeyGenerator;
 import ltdjms.discord.shared.cache.RedisCacheService;
+import ltdjms.discord.shared.events.DomainEvent;
 
 /** Dagger module providing cache-related dependencies. */
 @Module
@@ -41,5 +44,12 @@ public class CacheModule {
   public CacheInvalidationListener provideCacheInvalidationListener(
       CacheService cacheService, CacheKeyGenerator keyGenerator) {
     return new CacheInvalidationListener(cacheService, keyGenerator);
+  }
+
+  @Provides
+  @IntoSet
+  public Consumer<DomainEvent> provideCacheInvalidationDomainEventListener(
+      CacheInvalidationListener listener) {
+    return listener;
   }
 }

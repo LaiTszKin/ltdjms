@@ -1,5 +1,6 @@
 package ltdjms.discord.shared.di;
 
+import java.util.function.Consumer;
 import javax.inject.Singleton;
 import javax.sql.DataSource;
 
@@ -10,6 +11,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import dagger.Module;
 import dagger.Provides;
+import dagger.multibindings.IntoSet;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
@@ -52,6 +54,7 @@ import ltdjms.discord.aichat.services.LangChain4jAIChatService;
 import ltdjms.discord.aichat.services.PromptLoader;
 import ltdjms.discord.shared.EnvironmentConfig;
 import ltdjms.discord.shared.cache.CacheService;
+import ltdjms.discord.shared.events.DomainEvent;
 import ltdjms.discord.shared.events.DomainEventPublisher;
 
 /**
@@ -123,6 +126,13 @@ public class AIAgentModule {
   public AgentConfigCacheInvalidationListener provideAgentConfigCacheInvalidationListener(
       CacheService cacheService) {
     return new AgentConfigCacheInvalidationListener(cacheService);
+  }
+
+  @Provides
+  @IntoSet
+  public Consumer<DomainEvent> provideAgentConfigCacheInvalidationDomainEventListener(
+      AgentConfigCacheInvalidationListener listener) {
+    return listener;
   }
 
   /**
@@ -388,6 +398,20 @@ public class AIAgentModule {
   @Singleton
   public ToolExecutionListener provideToolExecutionListener() {
     return new ToolExecutionListener();
+  }
+
+  @Provides
+  @IntoSet
+  public Consumer<DomainEvent> provideAgentCompletionDomainEventListener(
+      AgentCompletionListener listener) {
+    return listener;
+  }
+
+  @Provides
+  @IntoSet
+  public Consumer<DomainEvent> provideToolExecutionDomainEventListener(
+      ToolExecutionListener listener) {
+    return listener;
   }
 
   /**

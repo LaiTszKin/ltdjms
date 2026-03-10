@@ -6,9 +6,6 @@ import javax.sql.DataSource;
 import org.jooq.DSLContext;
 
 import dagger.Component;
-import ltdjms.discord.aiagent.commands.AgentCompletionListener;
-import ltdjms.discord.aiagent.commands.ToolExecutionListener;
-import ltdjms.discord.aiagent.services.AgentConfigCacheInvalidationListener;
 import ltdjms.discord.aichat.commands.AIChatMentionListener;
 import ltdjms.discord.aichat.services.AIChatService;
 import ltdjms.discord.currency.bot.SlashCommandListener;
@@ -30,15 +27,12 @@ import ltdjms.discord.gametoken.services.GameTokenTransactionService;
 import ltdjms.discord.panel.commands.AdminPanelButtonHandler;
 import ltdjms.discord.panel.commands.AdminProductPanelHandler;
 import ltdjms.discord.panel.commands.UserPanelButtonHandler;
-import ltdjms.discord.panel.services.AdminPanelUpdateListener;
-import ltdjms.discord.panel.services.UserPanelUpdateListener;
 import ltdjms.discord.product.domain.ProductRepository;
 import ltdjms.discord.product.services.ProductService;
 import ltdjms.discord.redemption.domain.RedemptionCodeRepository;
 import ltdjms.discord.redemption.services.RedemptionService;
 import ltdjms.discord.shared.DatabaseConfig;
 import ltdjms.discord.shared.EnvironmentConfig;
-import ltdjms.discord.shared.cache.CacheInvalidationListener;
 import ltdjms.discord.shared.cache.CacheKeyGenerator;
 import ltdjms.discord.shared.cache.CacheService;
 import ltdjms.discord.shared.events.DomainEventPublisher;
@@ -85,21 +79,8 @@ public interface AppComponent {
 
   CacheKeyGenerator cacheKeyGenerator();
 
-  CacheInvalidationListener cacheInvalidationListener();
-
-  // AI Agent
-  AgentConfigCacheInvalidationListener agentConfigCacheInvalidationListener();
-
-  AgentCompletionListener agentCompletionListener();
-
-  ToolExecutionListener toolExecutionListener();
-
   // Events
   DomainEventPublisher domainEventPublisher();
-
-  UserPanelUpdateListener userPanelUpdateListener();
-
-  AdminPanelUpdateListener adminPanelUpdateListener();
 
   // Database
   DataSource dataSource();

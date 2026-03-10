@@ -30,8 +30,8 @@ src/main/java/ltdjms/discord/shared/cache/
 - `CacheModule`：提供所有緩存相關的 Dagger 依賴
 - `CurrencyServiceModule`：為 `BalanceService` 和 `BalanceAdjustmentService` 注入緩存依賴
 - `GameTokenServiceModule`：為 `GameTokenService` 注入緩存依賴
-- `AppComponent`：暴露 `cacheService()`、`cacheKeyGenerator()`、`cacheInvalidationListener()`
-- `DiscordCurrencyBot`：在啟動時註冊 `CacheInvalidationListener` 到 `DomainEventPublisher`
+- `AppComponent`：暴露 `cacheService()`、`cacheKeyGenerator()`、`domainEventPublisher()`
+- `CacheModule`：透過 Dagger `@IntoSet` 將 `CacheInvalidationListener` 納入統一 `DomainEventPublisher` 事件管道
 
 ## 緩存鍵格式
 

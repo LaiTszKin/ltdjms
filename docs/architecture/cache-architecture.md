@@ -266,27 +266,38 @@ public class CacheModule {
 }
 ```
 
-### 5.2 啟動註冊
+### 5.2 DI 自動組裝
 
-**DiscordCurrencyBot.java**：
+**EventModule.java / CacheModule.java**：
 
 ```java
-public class DiscordCurrencyBot {
-    public static void main(String[] args) {
-        // 建立 DI 容器
-        AppComponent component = AppComponentFactory.create(envConfig);
+@Module
+public abstract class EventModule {
+    @Multibinds
+    abstract Set<Consumer<DomainEvent>> domainEventListeners();
 
-        // 註冊緩存失效監聽器
-        DomainEventPublisher eventPublisher = component.domainEventPublisher();
-        CacheInvalidationListener cacheListener = component.cacheInvalidationListener();
+    @Provides
+    @Singleton
+    static DomainEventPublisher provideDomainEventPublisher(
+        Set<Consumer<DomainEvent>> listeners
+    ) {
+        return new DomainEventPublisher(listeners);
+    }
+}
 
-        eventPublisher.subscribe(BalanceChangedEvent.class, cacheListener::onBalanceChanged);
-        eventPublisher.subscribe(GameTokenChangedEvent.class, cacheListener::onGameTokenChanged);
-
-        // ... 啟動 JDA
+@Module
+public class CacheModule {
+    @Provides
+    @IntoSet
+    public Consumer<DomainEvent> provideCacheInvalidationDomainEventListener(
+        CacheInvalidationListener listener
+    ) {
+        return listener;
     }
 }
 ```
+
+`DiscordCurrencyBot` 不再手動註冊快取監聽器；所有事件監聽器都由 Dagger multibinding 組裝進同一個 `DomainEventPublisher`。
 
 ---
 

@@ -2,6 +2,12 @@
 
 本文件說明 LTDJMS Discord Bot 的領域事件系統，負責在系統內不同模組之間傳遞狀態變更通知，實現鬆耦合的架構設計。
 
+## Documentation Delta (2026-03-10)
+
+- 事件監聽器改由 Dagger multibinding 自動組裝進統一 `DomainEventPublisher`
+- `DiscordCurrencyBot` 不再負責手動註冊 listener
+- 文件中的舊 `DomainEventPublisher` / `subscribe(...)` 範例已以現行實作取代
+
 ## 1. 概述
 
 事件系統採用 **領域事件模式**（Domain Events），當重要的業務狀態發生變更時，系統會發布對應的事件通知。其他模組可以訂閱這些事件並做出相應的反應，而無需直接依賴發布方。
@@ -18,16 +24,21 @@
 
 ```java
 // 領域事件基底介面
-public interface DomainEvent {
-    /**
-     * 事件發生的時間戳
-     */
-    Instant occurredAt();
+public sealed interface DomainEvent permits
+        BalanceChangedEvent,
+        GameTokenChangedEvent,
+        CurrencyConfigChangedEvent,
+        DiceGameConfigChangedEvent,
+        ProductChangedEvent,
+        RedemptionCodesGeneratedEvent,
+        ProductRedemptionCompletedEvent,
+        AIAgentChannelConfigChangedEvent,
+        AgentCompletedEvent,
+        AgentFailedEvent,
+        LangChain4jToolExecutionStartedEvent,
+        LangChain4jToolExecutedEvent {
 
-    /**
-     * 事件類型識別碼
-     */
-    String eventType();
+    long guildId();
 }
 ```
 
@@ -229,8 +240,8 @@ public interface DomainEventPublisher {
 LTDJMS 使用簡單的同步事件發布機制：
 
 ```java
-// src/main/java/ltdjms/discord/shared/events/SyncDomainEventPublisher.java
-public class SyncDomainEventPublisher implements DomainEventPublisher {
+// src/main/java/ltdjms/discord/shared/events/DomainEventPublisher.java
+public class DomainEventPublisher implements DomainEventPublisher {
     private final List<Object> subscribers = new CopyOnWriteArrayList<>();
 
     @Override
@@ -382,25 +393,30 @@ public class ProductRedemptionUpdateListener
 ```java
 // src/main/java/ltdjms/discord/shared/di/EventModule.java
 @Module
-public class EventModule {
-    @Provides
-    @Singleton
-    public DomainEventPublisher provideDomainEventPublisher() {
-        return new SyncDomainEventPublisher();
-    }
+public abstract class EventModule {
+    @Multibinds
+    abstract Set<Consumer<DomainEvent>> domainEventListeners();
 
     @Provides
     @Singleton
-    public AdminPanelUpdateListener provideAdminPanelUpdateListener(
-        DomainEventPublisher eventPublisher,
-        AdminPanelService adminPanelService) {
-
-        AdminPanelUpdateListener listener = new AdminPanelUpdateListener(adminPanelService);
-        eventPublisher.register(listener);
-        return listener;
+    static DomainEventPublisher provideDomainEventPublisher(
+        Set<Consumer<DomainEvent>> listeners
+    ) {
+        return new DomainEventPublisher(listeners);
     }
 }
+
+// src/main/java/ltdjms/discord/shared/di/CommandHandlerModule.java
+@Provides
+@IntoSet
+public Consumer<DomainEvent> provideAdminPanelDomainEventListener(
+    AdminPanelUpdateListener listener
+) {
+    return listener;
+}
 ```
+
+各模組在自己的 Dagger module 內以 `@IntoSet` 宣告 listener；`DiscordCurrencyBot` 啟動時只需建立 `AppComponent`，不再逐一手動註冊監聽器。
 
 ## 7. 事件流程範例
 
@@ -529,7 +545,7 @@ public Result<Product, DomainError> createProduct(...) {
 ### 8.2 訂閱者錯誤處理
 
 ```java
-// SyncDomainEventPublisher 的錯誤處理
+// DomainEventPublisher 的錯誤處理
 @Override
 public void publish(DomainEvent event) {
     for (Object subscriber : subscribers) {
@@ -572,7 +588,7 @@ void createProduct_shouldPublishEvent() {
 void generateCodes_shouldTriggerPanelRefresh() {
     // Arrange
     TestListener listener = new TestListener();
-    eventPublisher.register(listener);
+    // listener 由 Dagger @IntoSet 自動加入事件管道
     AdminPanelSession session = createTestSession();
 
     // Act

@@ -1,5 +1,6 @@
 package ltdjms.discord.shared.events;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
@@ -13,6 +14,12 @@ public class DomainEventPublisher {
   private static final Logger LOG = LoggerFactory.getLogger(DomainEventPublisher.class);
 
   private final List<Consumer<DomainEvent>> listeners = new CopyOnWriteArrayList<>();
+
+  public DomainEventPublisher() {}
+
+  public DomainEventPublisher(Collection<? extends Consumer<DomainEvent>> listeners) {
+    this.listeners.addAll(listeners);
+  }
 
   /**
    * Registers a listener for domain events.

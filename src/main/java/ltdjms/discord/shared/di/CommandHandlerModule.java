@@ -1,9 +1,11 @@
 package ltdjms.discord.shared.di;
 
+import java.util.function.Consumer;
 import javax.inject.Singleton;
 
 import dagger.Module;
 import dagger.Provides;
+import dagger.multibindings.IntoSet;
 import ltdjms.discord.aiagent.services.AIAgentChannelConfigService;
 import ltdjms.discord.aichat.services.AIChannelRestrictionService;
 import ltdjms.discord.currency.bot.SlashCommandListener;
@@ -46,6 +48,7 @@ import ltdjms.discord.product.services.ProductService;
 import ltdjms.discord.redemption.services.ProductRedemptionTransactionService;
 import ltdjms.discord.redemption.services.RedemptionService;
 import ltdjms.discord.shared.EnvironmentConfig;
+import ltdjms.discord.shared.events.DomainEvent;
 import ltdjms.discord.shared.events.DomainEventPublisher;
 import ltdjms.discord.shop.commands.ShopButtonHandler;
 import ltdjms.discord.shop.commands.ShopCommandHandler;
@@ -202,6 +205,27 @@ public class CommandHandlerModule {
   public ProductRedemptionUpdateListener provideProductRedemptionUpdateListener(
       PanelSessionManager sessionManager) {
     return new ProductRedemptionUpdateListener(sessionManager);
+  }
+
+  @Provides
+  @IntoSet
+  public Consumer<DomainEvent> provideUserPanelDomainEventListener(
+      UserPanelUpdateListener listener) {
+    return listener;
+  }
+
+  @Provides
+  @IntoSet
+  public Consumer<DomainEvent> provideAdminPanelDomainEventListener(
+      AdminPanelUpdateListener listener) {
+    return listener;
+  }
+
+  @Provides
+  @IntoSet
+  public Consumer<DomainEvent> provideProductRedemptionDomainEventListener(
+      ProductRedemptionUpdateListener listener) {
+    return listener;
   }
 
   @Provides
