@@ -795,6 +795,30 @@ class AIAgentDomainTest {
     }
 
     @Test
+    @DisplayName("should reject thread-level conversation ID with trailing delimiter")
+    void shouldRejectThreadLevelConversationIdWithTrailingDelimiter() {
+      // Given
+      String id = "123:999:789:";
+
+      // When/Then
+      assertThatThrownBy(() -> ConversationIdBuilder.parseStrategy(id))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("無效的會話 ID 格式");
+    }
+
+    @Test
+    @DisplayName("should reject conversation ID containing empty segment")
+    void shouldRejectConversationIdContainingEmptySegment() {
+      // Given
+      String id = "123::789";
+
+      // When/Then
+      assertThatThrownBy(() -> ConversationIdBuilder.parseStrategy(id))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("無效的會話 ID 格式");
+    }
+
+    @Test
     @DisplayName("should throw exception for null conversation ID")
     void shouldThrowExceptionForNullConversationId() {
       // When/Then

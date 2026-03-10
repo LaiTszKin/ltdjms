@@ -70,7 +70,12 @@ public final class ConversationIdBuilder {
       throw new IllegalArgumentException("會話 ID 不能為空");
     }
 
-    String[] parts = conversationId.split(":");
+    String[] parts = conversationId.split(":", -1);
+    for (String part : parts) {
+      if (part == null || part.isBlank()) {
+        throw new IllegalArgumentException("無效的會話 ID 格式: " + conversationId + "（包含空白段）");
+      }
+    }
     return switch (parts.length) {
       case 3 -> ConversationIdStrategy.THREAD_LEVEL;
       case 4 -> ConversationIdStrategy.MESSAGE_LEVEL;
