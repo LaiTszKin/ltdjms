@@ -1,19 +1,23 @@
 package ltdjms.discord.shop.services;
 
 import java.awt.Color;
+import java.util.ArrayList;
 import java.util.List;
 
+import ltdjms.discord.discord.domain.ButtonView;
+import ltdjms.discord.discord.domain.EmbedView;
+import ltdjms.discord.discord.services.DiscordComponentRenderer;
 import ltdjms.discord.product.domain.Product;
-import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
-import net.dv8tion.jda.api.interactions.components.buttons.Button;
+import net.dv8tion.jda.api.interactions.components.buttons.ButtonStyle;
 import net.dv8tion.jda.api.interactions.components.selections.StringSelectMenu;
 
 /** Builds shop page embed and action components. */
 public class ShopView {
 
   private static final Color EMBED_COLOR = new Color(0x5865F2);
+  private static final Color WARNING_COLOR = new Color(0xED4245);
   private static final int PAGE_SIZE = 5;
   private static final int MAX_PURCHASE_OPTIONS = 25;
   private static final String DIVIDER = "────────────────────────────────────";
@@ -31,18 +35,13 @@ public class ShopView {
 
   /** Builds an empty shop embed when there are no products. */
   public static MessageEmbed buildEmptyShopEmbed() {
-    return new EmbedBuilder()
-        .setTitle("🏪 商店")
-        .setColor(EMBED_COLOR)
-        .setDescription("目前沒有可購買的商品")
-        .build();
+    return DiscordComponentRenderer.buildEmbed(
+        new EmbedView("🏪 商店", "目前沒有可購買的商品", EMBED_COLOR, List.of(), null));
   }
 
   /** Builds a shop embed for the given page of products. */
   public static MessageEmbed buildShopEmbed(
       List<Product> products, int currentPage, int totalPages, long guildId) {
-    EmbedBuilder builder = new EmbedBuilder().setTitle("🏪 商店").setColor(EMBED_COLOR);
-
     StringBuilder sb = new StringBuilder();
     int startNumber = (currentPage - 1) * PAGE_SIZE + 1;
     for (int i = 0; i < products.size(); i++) {
@@ -73,36 +72,18 @@ public class ShopView {
       sb.append("\n");
     }
 
-    builder.setDescription(sb.toString());
-
-    // Pagination indicator
-    if (totalPages > 1) {
-      builder.setFooter("第 " + currentPage + " / " + totalPages + " 頁");
-    } else {
-      builder.setFooter("共 " + products.size() + " 個商品");
-    }
-
-    return builder.build();
+    String footer =
+        totalPages > 1
+            ? "第 " + currentPage + " / " + totalPages + " 頁"
+            : "共 " + products.size() + " 個商品";
+    return DiscordComponentRenderer.buildEmbed(
+        new EmbedView("🏪 商店", sb.toString(), EMBED_COLOR, List.of(), footer));
   }
 
   /** Builds action rows for shop page navigation. */
   public static List<ActionRow> buildShopComponents(int currentPage, int totalPages) {
-    Button prevButton;
-    Button nextButton;
-
-    if (currentPage == 1) {
-      prevButton = Button.secondary(BUTTON_PREV_PAGE + (currentPage - 1), "⬅️ 上一頁").asDisabled();
-    } else {
-      prevButton = Button.secondary(BUTTON_PREV_PAGE + (currentPage - 1), "⬅️ 上一頁");
-    }
-
-    if (currentPage >= totalPages) {
-      nextButton = Button.secondary(BUTTON_NEXT_PAGE + (currentPage + 1), "下一頁 ➡️").asDisabled();
-    } else {
-      nextButton = Button.secondary(BUTTON_NEXT_PAGE + (currentPage + 1), "下一頁 ➡️");
-    }
-
-    return List.of(ActionRow.of(prevButton, nextButton));
+    return List.of(
+        DiscordComponentRenderer.buildActionRow(buildPaginationButtons(currentPage, totalPages)));
   }
 
   /**
@@ -124,33 +105,19 @@ public class ShopView {
       int totalPages,
       List<Product> productsForPurchase,
       List<Product> fiatOnlyProducts) {
-    Button prevButton;
-    Button nextButton;
+    List<ActionRow> rows = new ArrayList<>();
+    rows.add(
+        DiscordComponentRenderer.buildActionRow(buildPaginationButtons(currentPage, totalPages)));
 
-    if (currentPage == 1) {
-      prevButton = Button.secondary(BUTTON_PREV_PAGE + (currentPage - 1), "⬅️ 上一頁").asDisabled();
-    } else {
-      prevButton = Button.secondary(BUTTON_PREV_PAGE + (currentPage - 1), "⬅️ 上一頁");
-    }
-
-    if (currentPage >= totalPages) {
-      nextButton = Button.secondary(BUTTON_NEXT_PAGE + (currentPage + 1), "下一頁 ➡️").asDisabled();
-    } else {
-      nextButton = Button.secondary(BUTTON_NEXT_PAGE + (currentPage + 1), "下一頁 ➡️");
-    }
-
-    List<ActionRow> rows = new java.util.ArrayList<>();
-    rows.add(ActionRow.of(prevButton, nextButton));
-
-    List<Button> actionButtons = new java.util.ArrayList<>();
+    List<ButtonView> actionButtons = new ArrayList<>();
     if (!productsForPurchase.isEmpty()) {
-      actionButtons.add(Button.success(BUTTON_PURCHASE, "💰 購買商品"));
+      actionButtons.add(new ButtonView(BUTTON_PURCHASE, "💰 購買商品", ButtonStyle.SUCCESS, false));
     }
     if (!fiatOnlyProducts.isEmpty()) {
-      actionButtons.add(Button.primary(BUTTON_FIAT_ORDER, "💳 法幣下單"));
+      actionButtons.add(new ButtonView(BUTTON_FIAT_ORDER, "💳 法幣下單", ButtonStyle.PRIMARY, false));
     }
     if (!actionButtons.isEmpty()) {
-      rows.add(ActionRow.of(actionButtons));
+      rows.add(DiscordComponentRenderer.buildActionRow(actionButtons));
     }
 
     return rows;
@@ -164,9 +131,8 @@ public class ShopView {
     int limit = Math.min(productsForPurchase.size(), MAX_PURCHASE_OPTIONS);
     for (int i = 0; i < limit; i++) {
       Product product = productsForPurchase.get(i);
-      String label = product.name();
-      String description = product.formatCurrencyPrice();
-      menuBuilder.addOption(label, String.valueOf(product.id()), description);
+      menuBuilder.addOption(
+          product.name(), String.valueOf(product.id()), product.formatCurrencyPrice());
     }
 
     return menuBuilder.build();
@@ -180,9 +146,8 @@ public class ShopView {
     int limit = Math.min(fiatOnlyProducts.size(), MAX_PURCHASE_OPTIONS);
     for (int i = 0; i < limit; i++) {
       Product product = fiatOnlyProducts.get(i);
-      String label = product.name();
-      String description = product.formatFiatPriceTwd();
-      menuBuilder.addOption(label, String.valueOf(product.id()), description);
+      menuBuilder.addOption(
+          product.name(), String.valueOf(product.id()), product.formatFiatPriceTwd());
     }
 
     return menuBuilder.build();
@@ -190,16 +155,15 @@ public class ShopView {
 
   /** Builds an embed for purchase confirmation. */
   public static MessageEmbed buildPurchaseConfirmEmbed(Product product, long userBalance) {
-    EmbedBuilder builder = new EmbedBuilder().setTitle("💰 確認購買").setColor(EMBED_COLOR);
-
     StringBuilder sb = new StringBuilder();
     sb.append("**商品：** ").append(product.name()).append("\n");
     sb.append("**價格：** ").append(product.formatCurrencyPrice()).append("\n");
     sb.append("**您的餘額：** ").append(String.format("%,d", userBalance)).append(" 貨幣\n");
 
+    Color color = EMBED_COLOR;
     if (userBalance < product.currencyPrice()) {
       sb.append("\n⚠️ **餘額不足！**");
-      builder.setColor(new Color(0xED4245));
+      color = WARNING_COLOR;
     } else {
       long remaining = userBalance - product.currencyPrice();
       sb.append("**購買後餘額：** ").append(String.format("%,d", remaining)).append(" 貨幣");
@@ -213,13 +177,22 @@ public class ShopView {
       sb.append("\n\n**獎勵：** ").append(product.formatReward());
     }
 
-    builder.setDescription(sb.toString());
-
-    return builder.build();
+    return DiscordComponentRenderer.buildEmbed(
+        new EmbedView("💰 確認購買", sb.toString(), color, List.of(), null));
   }
 
   /** Returns the configured page size. */
   public static int getPageSize() {
     return PAGE_SIZE;
+  }
+
+  private static List<ButtonView> buildPaginationButtons(int currentPage, int totalPages) {
+    boolean isFirstPage = currentPage == 1;
+    boolean isLastPage = currentPage >= totalPages;
+    return List.of(
+        new ButtonView(
+            BUTTON_PREV_PAGE + (currentPage - 1), "⬅️ 上一頁", ButtonStyle.SECONDARY, isFirstPage),
+        new ButtonView(
+            BUTTON_NEXT_PAGE + (currentPage + 1), "下一頁 ➡️", ButtonStyle.SECONDARY, isLastPage));
   }
 }

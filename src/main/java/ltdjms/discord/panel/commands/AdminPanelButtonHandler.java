@@ -23,7 +23,6 @@ import ltdjms.discord.panel.services.GameTokenManagementFacade;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 import ltdjms.discord.shared.Unit;
-import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -37,7 +36,6 @@ import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionE
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
-import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.interactions.components.buttons.ButtonStyle;
 import net.dv8tion.jda.api.interactions.components.selections.EntitySelectMenu;
 import net.dv8tion.jda.api.interactions.components.selections.StringSelectMenu;
@@ -484,8 +482,8 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
       String actionLabel,
       boolean actionEnabled) {
     List<ActionRow> rows = new ArrayList<>();
-    rows.add(ActionRow.of(userSelect));
-    rows.add(ActionRow.of(modeSelect));
+    rows.add(PanelComponentRenderer.buildRow(userSelect));
+    rows.add(PanelComponentRenderer.buildRow(modeSelect));
     rows.add(
         PanelComponentRenderer.buildActionRow(
             List.of(
@@ -683,7 +681,9 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     event
         .editMessageEmbeds(embed)
         .setComponents(
-            ActionRow.of(gameSelect), ActionRow.of(Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")))
+            PanelComponentRenderer.buildRow(gameSelect),
+            PanelComponentRenderer.buildActionRow(
+                List.of(new ButtonView(BUTTON_BACK, "⬅️ 返回主選單", ButtonStyle.SECONDARY, false))))
         .queue();
   }
 
@@ -713,10 +713,11 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     event
         .editMessageEmbeds(embed)
         .setComponents(
-            ActionRow.of(settingSelect),
-            ActionRow.of(
-                Button.secondary(BUTTON_GAMES, "🎲 返回遊戲列表"),
-                Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")))
+            PanelComponentRenderer.buildRow(settingSelect),
+            PanelComponentRenderer.buildActionRow(
+                List.of(
+                    new ButtonView(BUTTON_GAMES, "🎲 返回遊戲列表", ButtonStyle.SECONDARY, false),
+                    new ButtonView(BUTTON_BACK, "⬅️ 返回主選單", ButtonStyle.SECONDARY, false))))
         .queue();
   }
 
@@ -737,10 +738,11 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     event
         .editMessageEmbeds(embed)
         .setComponents(
-            ActionRow.of(settingSelect),
-            ActionRow.of(
-                Button.secondary(BUTTON_GAMES, "🎲 返回遊戲列表"),
-                Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")))
+            PanelComponentRenderer.buildRow(settingSelect),
+            PanelComponentRenderer.buildActionRow(
+                List.of(
+                    new ButtonView(BUTTON_GAMES, "🎲 返回遊戲列表", ButtonStyle.SECONDARY, false),
+                    new ButtonView(BUTTON_BACK, "⬅️ 返回主選單", ButtonStyle.SECONDARY, false))))
         .queue();
   }
 
@@ -895,79 +897,81 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
 
   private MessageEmbed buildGameManagementEmbed(
       DiceGame1Config game1Config, DiceGame2Config game2Config, String currencyIcon) {
-    return new EmbedBuilder()
-        .setTitle("🎲 遊戲設定管理")
-        .setColor(EMBED_COLOR)
-        .setDescription("選擇要調整設定的遊戲")
-        .addField(
-            "摘星手",
-            String.format(
-                "代幣範圍：🎮 %,d ~ %,d\n單骰倍率：%s %,d",
-                game1Config.minTokensPerPlay(),
-                game1Config.maxTokensPerPlay(),
-                currencyIcon,
-                game1Config.rewardPerDiceValue()),
-            false)
-        .addField(
-            "神龍擺尾",
-            String.format(
-                "代幣範圍：🎮 %,d ~ %,d\n順子倍率：%s %,d\n基礎倍率：%s %,d",
-                game2Config.minTokensPerPlay(),
-                game2Config.maxTokensPerPlay(),
-                currencyIcon,
-                game2Config.straightMultiplier(),
-                currencyIcon,
-                game2Config.baseMultiplier()),
-            false)
-        .setFooter("選擇遊戲以查看詳細設定")
-        .build();
+    return buildAdminEmbed(
+        "🎲 遊戲設定管理",
+        "選擇要調整設定的遊戲",
+        List.of(
+            new EmbedView.FieldView(
+                "摘星手",
+                String.format(
+                    "代幣範圍：🎮 %,d ~ %,d\n單骰倍率：%s %,d",
+                    game1Config.minTokensPerPlay(),
+                    game1Config.maxTokensPerPlay(),
+                    currencyIcon,
+                    game1Config.rewardPerDiceValue()),
+                false),
+            new EmbedView.FieldView(
+                "神龍擺尾",
+                String.format(
+                    "代幣範圍：🎮 %,d ~ %,d\n順子倍率：%s %,d\n基礎倍率：%s %,d",
+                    game2Config.minTokensPerPlay(),
+                    game2Config.maxTokensPerPlay(),
+                    currencyIcon,
+                    game2Config.straightMultiplier(),
+                    currencyIcon,
+                    game2Config.baseMultiplier()),
+                false)),
+        "選擇遊戲以查看詳細設定");
   }
 
   private MessageEmbed buildDiceGame1SettingsEmbed(DiceGame1Config config, String currencyIcon) {
-    return new EmbedBuilder()
-        .setTitle("🎲 摘星手設定")
-        .setColor(EMBED_COLOR)
-        .addField(
-            "代幣範圍",
-            String.format(
-                "最小：🎮 %,d\n最大：🎮 %,d", config.minTokensPerPlay(), config.maxTokensPerPlay()),
-            true)
-        .addField(
-            "獎勵設定",
-            String.format(
-                "單骰獎勵倍率：%s %,d\n（1 點 = %,d、6 點 = %,d）",
-                currencyIcon,
-                config.rewardPerDiceValue(),
-                config.rewardPerDiceValue(),
-                config.rewardPerDiceValue() * 6),
-            true)
-        .setFooter("選擇要調整的設定類別")
-        .build();
+    return buildAdminEmbed(
+        "🎲 摘星手設定",
+        null,
+        List.of(
+            new EmbedView.FieldView(
+                "代幣範圍",
+                String.format(
+                    "最小：🎮 %,d\n最大：🎮 %,d", config.minTokensPerPlay(), config.maxTokensPerPlay()),
+                true),
+            new EmbedView.FieldView(
+                "獎勵設定",
+                String.format(
+                    "單骰獎勵倍率：%s %,d\n（1 點 = %,d、6 點 = %,d）",
+                    currencyIcon,
+                    config.rewardPerDiceValue(),
+                    config.rewardPerDiceValue(),
+                    config.rewardPerDiceValue() * 6),
+                true)),
+        "選擇要調整的設定類別");
   }
 
   private MessageEmbed buildDiceGame2SettingsEmbed(DiceGame2Config config, String currencyIcon) {
-    return new EmbedBuilder()
-        .setTitle("🎲 神龍擺尾設定")
-        .setColor(EMBED_COLOR)
-        .addField(
-            "代幣範圍",
-            String.format(
-                "最小：🎮 %,d\n最大：🎮 %,d", config.minTokensPerPlay(), config.maxTokensPerPlay()),
-            true)
-        .addField(
-            "獎勵倍率",
-            String.format(
-                "順子倍率：%s %,d\n基礎倍率：%s %,d",
-                currencyIcon, config.straightMultiplier(), currencyIcon, config.baseMultiplier()),
-            true)
-        .addField(
-            "豹子獎勵",
-            String.format(
-                "小豹子（<10）：%s %,d\n大豹子（≥10）：%s %,d",
-                currencyIcon, config.tripleLowBonus(), currencyIcon, config.tripleHighBonus()),
-            false)
-        .setFooter("選擇要調整的設定類別")
-        .build();
+    return buildAdminEmbed(
+        "🎲 神龍擺尾設定",
+        null,
+        List.of(
+            new EmbedView.FieldView(
+                "代幣範圍",
+                String.format(
+                    "最小：🎮 %,d\n最大：🎮 %,d", config.minTokensPerPlay(), config.maxTokensPerPlay()),
+                true),
+            new EmbedView.FieldView(
+                "獎勵倍率",
+                String.format(
+                    "順子倍率：%s %,d\n基礎倍率：%s %,d",
+                    currencyIcon,
+                    config.straightMultiplier(),
+                    currencyIcon,
+                    config.baseMultiplier()),
+                true),
+            new EmbedView.FieldView(
+                "豹子獎勵",
+                String.format(
+                    "小豹子（<10）：%s %,d\n大豹子（≥10）：%s %,d",
+                    currencyIcon, config.tripleLowBonus(), currencyIcon, config.tripleHighBonus()),
+                false)),
+        "選擇要調整的設定類別");
   }
 
   // ===== Main Panel =====
@@ -1754,12 +1758,7 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     long guildId = event.getGuild().getIdLong();
     String sessionKey = getSessionKey(event.getUser().getIdLong(), guildId);
     escortPricingPanelStates.remove(sessionKey);
-    MessageEmbed closedEmbed =
-        new EmbedBuilder()
-            .setTitle("🛡️ 護航定價設定面板")
-            .setColor(EMBED_COLOR)
-            .setDescription("已關閉設定面板")
-            .build();
+    MessageEmbed closedEmbed = buildAdminEmbed("🛡️ 護航定價設定面板", "已關閉設定面板", List.of(), null);
     event.editMessageEmbeds(closedEmbed).setComponents(List.of()).queue();
   }
 
@@ -1821,46 +1820,47 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
   private MessageEmbed buildEscortPricingPanelEmbed(
       EscortPricingPanelState state,
       Map<String, EscortOptionPricingService.OptionPriceView> optionMap) {
-    EmbedBuilder embed =
-        new EmbedBuilder()
-            .setTitle("🛡️ 護航定價設定面板")
-            .setColor(EMBED_COLOR)
-            .setDescription("先選擇操作與選項，再按確認送出變更");
-    embed.addField(
-        "操作模式", ESCORT_PRICING_ACTION_RESET.equals(state.action) ? "重置為預設價格" : "調整實際價格", true);
+    List<EmbedView.FieldView> fields = new ArrayList<>();
+    fields.add(
+        new EmbedView.FieldView(
+            "操作模式", ESCORT_PRICING_ACTION_RESET.equals(state.action) ? "重置為預設價格" : "調整實際價格", true));
 
     EscortOptionPricingService.OptionPriceView selected =
         state.optionCode == null ? null : optionMap.get(state.optionCode);
-    embed.addField(
-        "護航選項",
-        selected == null
-            ? "尚未選擇"
-            : String.format(
-                "`%s` %s｜%s",
-                selected.optionCode(), selected.option().type(), selected.option().target()),
-        false);
+    fields.add(
+        new EmbedView.FieldView(
+            "護航選項",
+            selected == null
+                ? "尚未選擇"
+                : String.format(
+                    "`%s` %s｜%s",
+                    selected.optionCode(), selected.option().type(), selected.option().target()),
+            false));
 
     if (selected != null) {
-      embed.addField(
-          "目前定價",
-          String.format(
-              "生效：NT$%,d\n預設：NT$%,d", selected.effectivePriceTwd(), selected.defaultPriceTwd()),
-          true);
+      fields.add(
+          new EmbedView.FieldView(
+              "目前定價",
+              String.format(
+                  "生效：NT$%,d\n預設：NT$%,d", selected.effectivePriceTwd(), selected.defaultPriceTwd()),
+              true));
     }
 
     if (ESCORT_PRICING_ACTION_UPDATE.equals(state.action)) {
-      embed.addField(
-          "暫存價格",
-          state.pendingPriceTwd == null ? "尚未輸入" : String.format("NT$%,d", state.pendingPriceTwd),
-          true);
+      fields.add(
+          new EmbedView.FieldView(
+              "暫存價格",
+              state.pendingPriceTwd == null
+                  ? "尚未輸入"
+                  : String.format("NT$%,d", state.pendingPriceTwd),
+              true));
     }
 
     if (state.statusMessage != null && !state.statusMessage.isBlank()) {
-      embed.addField("狀態", state.statusMessage, false);
+      fields.add(new EmbedView.FieldView("狀態", state.statusMessage, false));
     }
 
-    embed.setFooter("按下「確認送出」前不會更新實際設定");
-    return embed.build();
+    return buildAdminEmbed("🛡️ 護航定價設定面板", "先選擇操作與選項，再按確認送出變更", fields, "按下「確認送出」前不會更新實際設定");
   }
 
   private List<ActionRow> buildEscortPricingPanelComponents(
@@ -1922,26 +1922,27 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     boolean canConfirm =
         state.optionCode != null
             && (ESCORT_PRICING_ACTION_RESET.equals(state.action) || state.pendingPriceTwd != null);
-    Button inputPriceBtn =
-        ESCORT_PRICING_ACTION_RESET.equals(state.action)
-            ? Button.secondary(BUTTON_ESCORT_PRICING_PANEL_INPUT_PRICE, "💵 輸入價格").asDisabled()
-            : Button.secondary(BUTTON_ESCORT_PRICING_PANEL_INPUT_PRICE, "💵 輸入價格");
-    Button confirmBtn =
-        canConfirm
-            ? Button.success(BUTTON_ESCORT_PRICING_PANEL_CONFIRM, "✅ 確認送出")
-            : Button.success(BUTTON_ESCORT_PRICING_PANEL_CONFIRM, "✅ 確認送出").asDisabled();
-
     List<ActionRow> rows = new java.util.ArrayList<>();
-    rows.add(ActionRow.of(actionSelect));
-    rows.add(ActionRow.of(optionPrimary));
+    rows.add(PanelComponentRenderer.buildRow(actionSelect));
+    rows.add(PanelComponentRenderer.buildRow(optionPrimary));
     if (optionExtra != null) {
-      rows.add(ActionRow.of(optionExtra));
+      rows.add(PanelComponentRenderer.buildRow(optionExtra));
     }
     rows.add(
-        ActionRow.of(
-            inputPriceBtn,
-            confirmBtn,
-            Button.secondary(BUTTON_ESCORT_PRICING_PANEL_CLOSE, "✖ 關閉")));
+        PanelComponentRenderer.buildActionRow(
+            List.of(
+                new ButtonView(
+                    BUTTON_ESCORT_PRICING_PANEL_INPUT_PRICE,
+                    "💵 輸入價格",
+                    ButtonStyle.SECONDARY,
+                    ESCORT_PRICING_ACTION_RESET.equals(state.action)),
+                new ButtonView(
+                    BUTTON_ESCORT_PRICING_PANEL_CONFIRM,
+                    "✅ 確認送出",
+                    ButtonStyle.SUCCESS,
+                    !canConfirm),
+                new ButtonView(
+                    BUTTON_ESCORT_PRICING_PANEL_CLOSE, "✖ 關閉", ButtonStyle.SECONDARY, false))));
     return rows;
   }
 
@@ -1999,28 +2000,24 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
 
   private MessageEmbed buildEscortPricingEmbed(
       List<EscortOptionPricingService.OptionPriceView> optionPrices, String statusMessage) {
-    EmbedBuilder embed =
-        new EmbedBuilder()
-            .setTitle("🛡️ 護航定價設定")
-            .setColor(EMBED_COLOR)
-            .setDescription("可調整各護航訂單類型的實際價格（TWD）");
+    List<EmbedView.FieldView> fields = new ArrayList<>();
 
     if (optionPrices.isEmpty()) {
-      embed.addField("目前定價", "暫無資料", false);
+      fields.add(new EmbedView.FieldView("目前定價", "暫無資料", false));
     } else {
-      addEscortPricingFields(embed, optionPrices);
+      addEscortPricingFields(fields, optionPrices);
     }
 
     if (statusMessage != null && !statusMessage.isBlank()) {
-      embed.addField("狀態", statusMessage, false);
+      fields.add(new EmbedView.FieldView("狀態", statusMessage, false));
     }
 
-    embed.setFooter("調整後會即時套用到後端護航開單請求");
-    return embed.build();
+    return buildAdminEmbed("🛡️ 護航定價設定", "可調整各護航訂單類型的實際價格（TWD）", fields, "調整後會即時套用到後端護航開單請求");
   }
 
   private void addEscortPricingFields(
-      EmbedBuilder embed, List<EscortOptionPricingService.OptionPriceView> optionPrices) {
+      List<EmbedView.FieldView> fields,
+      List<EscortOptionPricingService.OptionPriceView> optionPrices) {
     String fieldName = "目前定價（含覆蓋狀態）";
     StringBuilder chunk = new StringBuilder();
     int chunkIndex = 1;
@@ -2028,10 +2025,11 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     for (EscortOptionPricingService.OptionPriceView view : optionPrices) {
       String line = view.toDisplayLine() + "\n";
       if (chunk.length() + line.length() > EMBED_FIELD_VALUE_LIMIT) {
-        embed.addField(
-            chunkIndex == 1 ? fieldName : fieldName + "（續 " + chunkIndex + "）",
-            chunk.toString(),
-            false);
+        fields.add(
+            new EmbedView.FieldView(
+                chunkIndex == 1 ? fieldName : fieldName + "（續 " + chunkIndex + "）",
+                chunk.toString(),
+                false));
         chunk.setLength(0);
         chunkIndex++;
       }
@@ -2039,20 +2037,25 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     }
 
     if (chunk.length() > 0) {
-      embed.addField(
-          chunkIndex == 1 ? fieldName : fieldName + "（續 " + chunkIndex + "）",
-          chunk.toString(),
-          false);
+      fields.add(
+          new EmbedView.FieldView(
+              chunkIndex == 1 ? fieldName : fieldName + "（續 " + chunkIndex + "）",
+              chunk.toString(),
+              false));
     }
   }
 
   private List<ActionRow> buildEscortPricingComponents() {
     return List.of(
-        ActionRow.of(
-            Button.primary(BUTTON_ESCORT_PRICING_EDIT, "✏️ 調整面板"),
-            Button.secondary(BUTTON_ESCORT_PRICING_RESET, "♻️ 重置面板"),
-            Button.secondary(BUTTON_ESCORT_PRICING_REFRESH, "🔄 重新整理")),
-        ActionRow.of(Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")));
+        PanelComponentRenderer.buildActionRow(
+            List.of(
+                new ButtonView(BUTTON_ESCORT_PRICING_EDIT, "✏️ 調整面板", ButtonStyle.PRIMARY, false),
+                new ButtonView(
+                    BUTTON_ESCORT_PRICING_RESET, "♻️ 重置面板", ButtonStyle.SECONDARY, false),
+                new ButtonView(
+                    BUTTON_ESCORT_PRICING_REFRESH, "🔄 重新整理", ButtonStyle.SECONDARY, false))),
+        PanelComponentRenderer.buildActionRow(
+            List.of(new ButtonView(BUTTON_BACK, "⬅️ 返回主選單", ButtonStyle.SECONDARY, false))));
   }
 
   // ===== Dispatch 售後設定 =====
@@ -2139,28 +2142,24 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
 
   private MessageEmbed buildDispatchAfterSalesConfigEmbed(
       Set<Long> staffUserIds, String statusMessage) {
-    EmbedBuilder embed =
-        new EmbedBuilder()
-            .setTitle("🧰 派單售後人員設定")
-            .setDescription("設定可接手派單售後案件的成員")
-            .setColor(EMBED_COLOR);
+    List<EmbedView.FieldView> fields = new ArrayList<>();
 
     if (staffUserIds.isEmpty()) {
-      embed.addField("目前售後名單", "尚未設定任何售後人員", false);
+      fields.add(new EmbedView.FieldView("目前售後名單", "尚未設定任何售後人員", false));
     } else {
       StringBuilder users = new StringBuilder();
       for (Long userId : staffUserIds) {
         users.append("<@").append(userId).append(">\n");
       }
-      embed.addField("目前售後名單 (" + staffUserIds.size() + ")", users.toString(), false);
+      fields.add(
+          new EmbedView.FieldView("目前售後名單 (" + staffUserIds.size() + ")", users.toString(), false));
     }
 
     if (statusMessage != null && !statusMessage.isBlank()) {
-      embed.addField("狀態", statusMessage, false);
+      fields.add(new EmbedView.FieldView("狀態", statusMessage, false));
     }
 
-    embed.setFooter("可設定多位售後；有售後申請時會優先通知在線售後");
-    return embed.build();
+    return buildAdminEmbed("🧰 派單售後人員設定", "設定可接手派單售後案件的成員", fields, "可設定多位售後；有售後申請時會優先通知在線售後");
   }
 
   private List<ActionRow> buildDispatchAfterSalesConfigComponents() {
@@ -2179,9 +2178,10 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
             .build();
 
     return List.of(
-        ActionRow.of(addUserSelect),
-        ActionRow.of(removeUserSelect),
-        ActionRow.of(Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")));
+        PanelComponentRenderer.buildRow(addUserSelect),
+        PanelComponentRenderer.buildRow(removeUserSelect),
+        PanelComponentRenderer.buildActionRow(
+            List.of(new ButtonView(BUTTON_BACK, "⬅️ 返回主選單", ButtonStyle.SECONDARY, false))));
   }
 
   // ===== AI 頻道設定管理 =====
@@ -2238,11 +2238,12 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     event
         .editMessageEmbeds(embed)
         .setComponents(
-            ActionRow.of(addChannelSelect),
-            ActionRow.of(removeChannelSelect),
-            ActionRow.of(addCategorySelect),
-            ActionRow.of(removeCategorySelect),
-            ActionRow.of(Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")))
+            PanelComponentRenderer.buildRow(addChannelSelect),
+            PanelComponentRenderer.buildRow(removeChannelSelect),
+            PanelComponentRenderer.buildRow(addCategorySelect),
+            PanelComponentRenderer.buildRow(removeCategorySelect),
+            PanelComponentRenderer.buildActionRow(
+                List.of(new ButtonView(BUTTON_BACK, "⬅️ 返回主選單", ButtonStyle.SECONDARY, false))))
         .queue();
   }
 
@@ -2251,24 +2252,22 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
       long guildId,
       Set<ltdjms.discord.aichat.domain.AllowedChannel> channels,
       Set<ltdjms.discord.aichat.domain.AllowedCategory> categories) {
-    var embedBuilder = new EmbedBuilder().setTitle("🤖 AI 頻道設定").setColor(EMBED_COLOR);
+    List<EmbedView.FieldView> fields = new ArrayList<>();
+    String description;
 
     if (channels.isEmpty() && categories.isEmpty()) {
-      embedBuilder
-          .setDescription("**未設定任何頻道限制**")
-          .addField("狀態", "AI 可在所有頻道使用", false)
-          .addField("說明", "使用下方的選單新增允許的頻道以啟用限制模式", false);
+      description = "**未設定任何頻道限制**";
+      fields.add(new EmbedView.FieldView("狀態", "AI 可在所有頻道使用", false));
+      fields.add(new EmbedView.FieldView("說明", "使用下方的選單新增允許的頻道以啟用限制模式", false));
     } else {
       StringBuilder channelList = new StringBuilder();
       for (var channel : channels) {
         channelList.append(
             String.format("<#%d> - %s\n", channel.channelId(), channel.channelName()));
       }
-
-      embedBuilder
-          .setDescription("**已啟用頻道限制**")
-          .addField("允許的頻道", channelList.toString(), false)
-          .addField("頻道總計", channels.size() + " 個頻道", false);
+      description = "**已啟用頻道限制**";
+      fields.add(new EmbedView.FieldView("允許的頻道", channelList.toString(), false));
+      fields.add(new EmbedView.FieldView("頻道總計", channels.size() + " 個頻道", false));
     }
 
     if (!categories.isEmpty()) {
@@ -2277,11 +2276,11 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         categoryList.append(
             String.format("📁 %s (ID: %d)\n", category.categoryName(), category.categoryId()));
       }
-      embedBuilder.addField("允許的類別", categoryList.toString(), false);
-      embedBuilder.addField("類別總計", categories.size() + " 個類別", true);
+      fields.add(new EmbedView.FieldView("允許的類別", categoryList.toString(), false));
+      fields.add(new EmbedView.FieldView("類別總計", categories.size() + " 個類別", true));
     }
 
-    return embedBuilder.build();
+    return buildAdminEmbed("🤖 AI 頻道設定", description, fields, null);
   }
 
   /** 處理新增頻道選擇。 */
@@ -2325,9 +2324,10 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
             .getMessage()
             .editMessageEmbeds(embed)
             .setComponents(
-                ActionRow.of(addChannelSelect),
-                ActionRow.of(removeChannelSelect),
-                ActionRow.of(Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")))
+                PanelComponentRenderer.buildRow(addChannelSelect),
+                PanelComponentRenderer.buildRow(removeChannelSelect),
+                PanelComponentRenderer.buildActionRow(
+                    List.of(new ButtonView(BUTTON_BACK, "⬅️ 返回主選單", ButtonStyle.SECONDARY, false))))
             .queue();
       }
     } else {
@@ -2383,9 +2383,10 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
             .getMessage()
             .editMessageEmbeds(embed)
             .setComponents(
-                ActionRow.of(addChannelSelect),
-                ActionRow.of(removeChannelSelect),
-                ActionRow.of(Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")))
+                PanelComponentRenderer.buildRow(addChannelSelect),
+                PanelComponentRenderer.buildRow(removeChannelSelect),
+                PanelComponentRenderer.buildActionRow(
+                    List.of(new ButtonView(BUTTON_BACK, "⬅️ 返回主選單", ButtonStyle.SECONDARY, false))))
             .queue();
       }
     } else {
@@ -2459,11 +2460,12 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
             .getMessage()
             .editMessageEmbeds(embed)
             .setComponents(
-                ActionRow.of(addChannelSelect),
-                ActionRow.of(removeChannelSelect),
-                ActionRow.of(addCategorySelect),
-                ActionRow.of(removeCategorySelect),
-                ActionRow.of(Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")))
+                PanelComponentRenderer.buildRow(addChannelSelect),
+                PanelComponentRenderer.buildRow(removeChannelSelect),
+                PanelComponentRenderer.buildRow(addCategorySelect),
+                PanelComponentRenderer.buildRow(removeCategorySelect),
+                PanelComponentRenderer.buildActionRow(
+                    List.of(new ButtonView(BUTTON_BACK, "⬅️ 返回主選單", ButtonStyle.SECONDARY, false))))
             .queue();
       }
     } else {
@@ -2537,11 +2539,12 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
             .getMessage()
             .editMessageEmbeds(embed)
             .setComponents(
-                ActionRow.of(addChannelSelect),
-                ActionRow.of(removeChannelSelect),
-                ActionRow.of(addCategorySelect),
-                ActionRow.of(removeCategorySelect),
-                ActionRow.of(Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")))
+                PanelComponentRenderer.buildRow(addChannelSelect),
+                PanelComponentRenderer.buildRow(removeChannelSelect),
+                PanelComponentRenderer.buildRow(addCategorySelect),
+                PanelComponentRenderer.buildRow(removeCategorySelect),
+                PanelComponentRenderer.buildActionRow(
+                    List.of(new ButtonView(BUTTON_BACK, "⬅️ 返回主選單", ButtonStyle.SECONDARY, false))))
             .queue();
       }
     } else {
@@ -2564,21 +2567,6 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
 
     if (result.isOk()) {
       java.util.List<Long> enabledChannels = result.getValue();
-      EmbedBuilder embed = new EmbedBuilder();
-      embed.setColor(EMBED_COLOR);
-      embed.setTitle("🤖 AI Agent 頻道配置");
-      embed.setDescription("管理哪些頻道啟用 AI Agent 模式");
-
-      if (enabledChannels.isEmpty()) {
-        embed.addField("已啟用頻道", "目前沒有啟用 AI Agent 的頻道", false);
-      } else {
-        StringBuilder sb = new StringBuilder();
-        for (Long channelId : enabledChannels) {
-          sb.append("<#").append(channelId).append(">\n");
-        }
-        embed.addField("已啟用頻道 (" + enabledChannels.size() + ")", sb.toString(), false);
-      }
-
       EntitySelectMenu channelSelect =
           EntitySelectMenu.create(SELECT_AI_AGENT_CHANNEL, EntitySelectMenu.SelectTarget.CHANNEL)
               .setPlaceholder("選擇頻道進行操作")
@@ -2586,9 +2574,11 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
               .build();
 
       event
-          .editMessageEmbeds(embed.build())
+          .editMessageEmbeds(buildAIAgentConfigOverviewEmbed(enabledChannels))
           .setComponents(
-              ActionRow.of(channelSelect), ActionRow.of(Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")))
+              PanelComponentRenderer.buildRow(channelSelect),
+              PanelComponentRenderer.buildActionRow(
+                  List.of(new ButtonView(BUTTON_BACK, "⬅️ 返回主選單", ButtonStyle.SECONDARY, false))))
           .queue();
     } else {
       event.reply("❌ 獲取 AI Agent 頻道配置失敗：" + result.getError().message()).setEphemeral(true).queue();
@@ -2604,24 +2594,22 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     long channelId = event.getValues().get(0).getIdLong();
     boolean isEnabled = adminPanelService.isAgentEnabled(guildId, channelId);
 
-    EmbedBuilder embed = new EmbedBuilder();
-    embed.setColor(EMBED_COLOR);
-    embed.setTitle("🤖 AI Agent 頻道設定");
-    embed.setDescription("頻道：<#" + channelId + ">\n" + "狀態：" + (isEnabled ? "✅ 已啟用" : "❌ 未啟用"));
-
     String statusMessage =
         isEnabled ? "此頻道的 AI Agent 模式已啟用，AI 可以在此頻道調用系統工具" : "此頻道的 AI Agent 模式已停用，AI 將無法調用工具";
 
-    embed.addField("目前狀態", statusMessage, false);
-
-    Button enableBtn = Button.success(BUTTON_AI_AGENT_ENABLE, "✅ 啟用 AI Agent");
-    Button disableBtn = Button.danger(BUTTON_AI_AGENT_DISABLE, "❌ 停用 AI Agent");
-    Button removeBtn = Button.secondary(BUTTON_AI_AGENT_REMOVE, "🗑️ 移除配置");
-    Button backBtn = Button.secondary(BUTTON_BACK, "⬅️ 返回");
-
     event
-        .editMessageEmbeds(embed.build())
-        .setComponents(ActionRow.of(enableBtn, disableBtn, removeBtn), ActionRow.of(backBtn))
+        .editMessageEmbeds(buildAIAgentChannelEmbed(channelId, isEnabled, statusMessage))
+        .setComponents(
+            PanelComponentRenderer.buildActionRows(
+                List.of(
+                    List.of(
+                        new ButtonView(
+                            BUTTON_AI_AGENT_ENABLE, "✅ 啟用 AI Agent", ButtonStyle.SUCCESS, false),
+                        new ButtonView(
+                            BUTTON_AI_AGENT_DISABLE, "❌ 停用 AI Agent", ButtonStyle.DANGER, false),
+                        new ButtonView(
+                            BUTTON_AI_AGENT_REMOVE, "🗑️ 移除配置", ButtonStyle.SECONDARY, false)),
+                    List.of(new ButtonView(BUTTON_BACK, "⬅️ 返回", ButtonStyle.SECONDARY, false)))))
         .queue();
   }
 
@@ -2689,6 +2677,36 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     }
   }
 
+  private MessageEmbed buildAdminEmbed(
+      String title, String description, List<EmbedView.FieldView> fields, String footer) {
+    return PanelComponentRenderer.buildEmbed(
+        new EmbedView(title, description, EMBED_COLOR, fields, footer));
+  }
+
+  private MessageEmbed buildAIAgentConfigOverviewEmbed(List<Long> enabledChannels) {
+    List<EmbedView.FieldView> fields = new ArrayList<>();
+    if (enabledChannels.isEmpty()) {
+      fields.add(new EmbedView.FieldView("已啟用頻道", "目前沒有啟用 AI Agent 的頻道", false));
+    } else {
+      StringBuilder sb = new StringBuilder();
+      for (Long channelId : enabledChannels) {
+        sb.append("<#").append(channelId).append(">\n");
+      }
+      fields.add(
+          new EmbedView.FieldView("已啟用頻道 (" + enabledChannels.size() + ")", sb.toString(), false));
+    }
+    return buildAdminEmbed("🤖 AI Agent 頻道配置", "管理哪些頻道啟用 AI Agent 模式", fields, null);
+  }
+
+  private MessageEmbed buildAIAgentChannelEmbed(
+      long channelId, boolean isEnabled, String statusMessage) {
+    return buildAdminEmbed(
+        "🤖 AI Agent 頻道設定",
+        "頻道：<#" + channelId + ">\n狀態：" + (isEnabled ? "✅ 已啟用" : "❌ 未啟用"),
+        List.of(new EmbedView.FieldView("目前狀態", statusMessage, false)),
+        null);
+  }
+
   private long extractChannelIdFromDescription(String description) {
     if (description == null) return 0;
     // 描述格式: "頻道：<#123456789>\n..."
@@ -2704,27 +2722,11 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
   }
 
   private void showAIAgentConfigAfterAction(ButtonInteractionEvent event, long guildId) {
-    // 就地更新原本的 AI Agent 配置頁面，避免刪除並重新發送
     Result<java.util.List<Long>, DomainError> result =
         adminPanelService.getEnabledAgentChannels(guildId);
 
     if (result.isOk()) {
       java.util.List<Long> enabledChannels = result.getValue();
-      EmbedBuilder embed = new EmbedBuilder();
-      embed.setColor(EMBED_COLOR);
-      embed.setTitle("🤖 AI Agent 頻道配置");
-      embed.setDescription("管理哪些頻道啟用 AI Agent 模式");
-
-      if (enabledChannels.isEmpty()) {
-        embed.addField("已啟用頻道", "目前沒有啟用 AI Agent 的頻道", false);
-      } else {
-        StringBuilder sb = new StringBuilder();
-        for (Long channelId : enabledChannels) {
-          sb.append("<#").append(channelId).append(">\n");
-        }
-        embed.addField("已啟用頻道 (" + enabledChannels.size() + ")", sb.toString(), false);
-      }
-
       EntitySelectMenu channelSelect =
           EntitySelectMenu.create(SELECT_AI_AGENT_CHANNEL, EntitySelectMenu.SelectTarget.CHANNEL)
               .setPlaceholder("選擇頻道進行操作")
@@ -2733,9 +2735,11 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
 
       event
           .getMessage()
-          .editMessageEmbeds(embed.build())
+          .editMessageEmbeds(buildAIAgentConfigOverviewEmbed(enabledChannels))
           .setComponents(
-              ActionRow.of(channelSelect), ActionRow.of(Button.secondary(BUTTON_BACK, "⬅️ 返回主選單")))
+              PanelComponentRenderer.buildRow(channelSelect),
+              PanelComponentRenderer.buildActionRow(
+                  List.of(new ButtonView(BUTTON_BACK, "⬅️ 返回主選單", ButtonStyle.SECONDARY, false))))
           .queue(
               success -> LOG.trace("Updated AI agent config panel for guildId={}", guildId),
               failure -> LOG.warn("Failed to update AI agent config panel", failure));

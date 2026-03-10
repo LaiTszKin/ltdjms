@@ -3,10 +3,12 @@ package ltdjms.discord.dispatch.commands;
 import java.awt.Color;
 import java.util.List;
 
-import net.dv8tion.jda.api.EmbedBuilder;
+import ltdjms.discord.discord.domain.ButtonView;
+import ltdjms.discord.discord.domain.EmbedView;
+import ltdjms.discord.discord.services.DiscordComponentRenderer;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
-import net.dv8tion.jda.api.interactions.components.buttons.Button;
+import net.dv8tion.jda.api.interactions.components.buttons.ButtonStyle;
 import net.dv8tion.jda.api.interactions.components.selections.EntitySelectMenu;
 
 /** 派單面板的視圖組裝工具。 */
@@ -35,20 +37,19 @@ public final class DispatchPanelView {
 
   public static MessageEmbed buildPanelEmbed(
       String escortUserMention, String customerUserMention, String statusMessage) {
-    EmbedBuilder builder =
-        new EmbedBuilder()
-            .setTitle("🛡️ 護航派單面板")
-            .setColor(EMBED_COLOR)
-            .setDescription("請選擇護航者與客戶，完成後點擊「建立派單」。")
-            .addField("護航者", fallback(escortUserMention), true)
-            .addField("客戶", fallback(customerUserMention), true)
-            .setFooter("限制：護航者與客戶不可為同一人");
+    List<EmbedView.FieldView> fields =
+        new java.util.ArrayList<>(
+            List.of(
+                new EmbedView.FieldView("護航者", fallback(escortUserMention), true),
+                new EmbedView.FieldView("客戶", fallback(customerUserMention), true)));
 
     if (statusMessage != null && !statusMessage.isBlank()) {
-      builder.addField("狀態", statusMessage, false);
+      fields.add(new EmbedView.FieldView("狀態", statusMessage, false));
     }
 
-    return builder.build();
+    return DiscordComponentRenderer.buildEmbed(
+        new EmbedView(
+            "🛡️ 護航派單面板", "請選擇護航者與客戶，完成後點擊「建立派單」。", EMBED_COLOR, fields, "限制：護航者與客戶不可為同一人"));
   }
 
   public static List<ActionRow> buildPanelComponents(boolean canCreateOrder) {
@@ -64,16 +65,13 @@ public final class DispatchPanelView {
             .setRequiredRange(1, 1)
             .build();
 
-    Button createButton =
-        canCreateOrder
-            ? Button.success(BUTTON_CREATE_ORDER, "✅ 建立派單")
-            : Button.success(BUTTON_CREATE_ORDER, "✅ 建立派單").asDisabled();
-    Button historyButton = Button.secondary(BUTTON_HISTORY, "📜 歷史記錄");
-
     return List.of(
-        ActionRow.of(escortUserSelect),
-        ActionRow.of(customerUserSelect),
-        ActionRow.of(createButton, historyButton));
+        DiscordComponentRenderer.buildRow(escortUserSelect),
+        DiscordComponentRenderer.buildRow(customerUserSelect),
+        DiscordComponentRenderer.buildActionRow(
+            List.of(
+                new ButtonView(BUTTON_CREATE_ORDER, "✅ 建立派單", ButtonStyle.SUCCESS, !canCreateOrder),
+                new ButtonView(BUTTON_HISTORY, "📜 歷史記錄", ButtonStyle.SECONDARY, false))));
   }
 
   private static String fallback(String value) {

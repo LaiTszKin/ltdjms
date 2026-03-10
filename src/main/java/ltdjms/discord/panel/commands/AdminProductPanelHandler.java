@@ -13,6 +13,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ltdjms.discord.discord.domain.ButtonView;
+import ltdjms.discord.discord.domain.EmbedView;
+import ltdjms.discord.panel.components.PanelComponentRenderer;
 import ltdjms.discord.panel.services.AdminPanelSessionManager;
 import ltdjms.discord.product.domain.EscortOrderOptionCatalog;
 import ltdjms.discord.product.domain.Product;
@@ -23,7 +26,6 @@ import ltdjms.discord.redemption.services.RedemptionService;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 import ltdjms.discord.shared.Unit;
-import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -34,7 +36,7 @@ import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionE
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
-import net.dv8tion.jda.api.interactions.components.buttons.Button;
+import net.dv8tion.jda.api.interactions.components.buttons.ButtonStyle;
 import net.dv8tion.jda.api.interactions.components.selections.StringSelectMenu;
 import net.dv8tion.jda.api.interactions.components.text.TextInput;
 import net.dv8tion.jda.api.interactions.components.text.TextInputStyle;
@@ -285,27 +287,24 @@ public class AdminProductPanelHandler extends ListenerAdapter {
   }
 
   private MessageEmbed buildProductListEmbed(List<Product> products) {
-    EmbedBuilder builder = new EmbedBuilder().setTitle("📦 商品管理").setColor(EMBED_COLOR);
-
     if (products.isEmpty()) {
-      builder.setDescription("目前沒有任何商品\n\n點擊「建立商品」新增第一個商品");
-    } else {
-      StringBuilder sb = new StringBuilder();
-      sb.append("共 ").append(products.size()).append(" 個商品\n\n");
-
-      for (Product product : products) {
-        sb.append("**").append(product.name()).append("**");
-        if (product.hasReward()) {
-          sb.append(" — ").append(product.formatReward());
-        }
-        sb.append("\n");
-      }
-
-      builder.setDescription(sb.toString());
-      builder.setFooter("從下拉選單選擇商品查看詳情");
+      return PanelComponentRenderer.buildEmbed(
+          new EmbedView("📦 商品管理", "目前沒有任何商品\n\n點擊「建立商品」新增第一個商品", EMBED_COLOR, List.of(), null));
     }
 
-    return builder.build();
+    StringBuilder sb = new StringBuilder();
+    sb.append("共 ").append(products.size()).append(" 個商品\n\n");
+
+    for (Product product : products) {
+      sb.append("**").append(product.name()).append("**");
+      if (product.hasReward()) {
+        sb.append(" — ").append(product.formatReward());
+      }
+      sb.append("\n");
+    }
+
+    return PanelComponentRenderer.buildEmbed(
+        new EmbedView("📦 商品管理", sb.toString(), EMBED_COLOR, List.of(), "從下拉選單選擇商品查看詳情"));
   }
 
   // ===== Product Selection and Detail =====
@@ -371,76 +370,88 @@ public class AdminProductPanelHandler extends ListenerAdapter {
   }
 
   private MessageEmbed buildProductDetailEmbed(Product product) {
-    EmbedBuilder builder =
-        new EmbedBuilder().setTitle("📦 " + product.name()).setColor(EMBED_COLOR);
+    List<EmbedView.FieldView> fields = new java.util.ArrayList<>();
 
-    if (product.description() != null && !product.description().isBlank()) {
-      builder.setDescription(product.description());
-    }
-
-    // Reward info
     if (product.hasReward()) {
       String rewardTypeName =
           switch (product.rewardType()) {
             case CURRENCY -> "貨幣";
             case TOKEN -> "代幣";
           };
-      builder.addField("獎勵類型", rewardTypeName, true);
-      builder.addField("獎勵數量", String.format("%,d", product.rewardAmount()), true);
+      fields.add(new EmbedView.FieldView("獎勵類型", rewardTypeName, true));
+      fields.add(
+          new EmbedView.FieldView("獎勵數量", String.format("%,d", product.rewardAmount()), true));
     } else {
-      builder.addField("獎勵", "無自動獎勵（僅限人工處理）", false);
+      fields.add(new EmbedView.FieldView("獎勵", "無自動獎勵（僅限人工處理）", false));
     }
 
-    // Currency price info
-    if (product.hasCurrencyPrice()) {
-      builder.addField("貨幣價格", product.formatCurrencyPrice(), true);
-    } else {
-      builder.addField("貨幣價格", "不可用貨幣購買", true);
-    }
-    if (product.hasFiatPriceTwd()) {
-      builder.addField("實際價值（TWD）", product.formatFiatPriceTwd(), true);
-    } else {
-      builder.addField("實際價值（TWD）", "未設定", true);
-    }
-    if (product.hasBackendApiIntegration()) {
-      builder.addField("後端履約 API", product.backendApiUrl(), false);
-    } else {
-      builder.addField("後端履約 API", "未設定", false);
-    }
-    if (product.shouldAutoCreateEscortOrder()) {
-      builder.addField("自動護航開單", "已啟用\n選項代碼：" + product.escortOptionCode(), false);
-    } else {
-      builder.addField("自動護航開單", "未啟用", false);
-    }
+    fields.add(
+        new EmbedView.FieldView(
+            "貨幣價格", product.hasCurrencyPrice() ? product.formatCurrencyPrice() : "不可用貨幣購買", true));
+    fields.add(
+        new EmbedView.FieldView(
+            "實際價值（TWD）", product.hasFiatPriceTwd() ? product.formatFiatPriceTwd() : "未設定", true));
+    fields.add(
+        new EmbedView.FieldView(
+            "後端履約 API",
+            product.hasBackendApiIntegration() ? product.backendApiUrl() : "未設定",
+            false));
+    fields.add(
+        new EmbedView.FieldView(
+            "自動護航開單",
+            product.shouldAutoCreateEscortOrder()
+                ? "已啟用\n選項代碼：" + product.escortOptionCode()
+                : "未啟用",
+            false));
 
-    // Code stats
     RedemptionCodeRepository.CodeStats stats = redemptionService.getCodeStats(product.id());
-    builder.addField(
-        "兌換碼統計",
-        String.format(
-            "總數：%d\n已使用：%d\n未使用：%d",
-            stats.totalCount(), stats.redeemedCount(), stats.unusedCount()),
-        false);
+    fields.add(
+        new EmbedView.FieldView(
+            "兌換碼統計",
+            String.format(
+                "總數：%d\n已使用：%d\n未使用：%d",
+                stats.totalCount(), stats.redeemedCount(), stats.unusedCount()),
+            false));
 
-    builder.setFooter("ID: " + product.id());
-
-    return builder.build();
+    String description =
+        product.description() != null && !product.description().isBlank()
+            ? product.description()
+            : null;
+    return PanelComponentRenderer.buildEmbed(
+        new EmbedView(
+            "📦 " + product.name(), description, EMBED_COLOR, fields, "ID: " + product.id()));
   }
 
   private List<ActionRow> buildProductDetailComponents(
       Product product, RedemptionCodeRepository.CodeStats stats) {
-    return List.of(
-        ActionRow.of(
-            Button.success(BUTTON_GENERATE_CODES, "🎫 生成兌換碼"),
-            stats.totalCount() > 0
-                ? Button.primary(BUTTON_VIEW_CODES, "📋 查看兌換碼")
-                : Button.primary(BUTTON_VIEW_CODES, "📋 查看兌換碼").asDisabled()),
-        ActionRow.of(
-            Button.secondary(BUTTON_PREFIX_EDIT_PRODUCT + product.id(), "✏️ 編輯"),
-            Button.secondary(BUTTON_PREFIX_SET_FIAT_VALUE + product.id(), "💵 設定實際價值"),
-            Button.secondary(BUTTON_PREFIX_INTEGRATION_CONFIG + product.id(), "🔗 接入設定"),
-            Button.danger(BUTTON_PREFIX_DELETE_PRODUCT + product.id(), "🗑️ 刪除"),
-            Button.secondary(BUTTON_PRODUCT_BACK, "⬅️ 返回列表")));
+    return PanelComponentRenderer.buildActionRows(
+        List.of(
+            List.of(
+                new ButtonView(BUTTON_GENERATE_CODES, "🎫 生成兌換碼", ButtonStyle.SUCCESS, false),
+                new ButtonView(
+                    BUTTON_VIEW_CODES, "📋 查看兌換碼", ButtonStyle.PRIMARY, stats.totalCount() <= 0)),
+            List.of(
+                new ButtonView(
+                    BUTTON_PREFIX_EDIT_PRODUCT + product.id(),
+                    "✏️ 編輯",
+                    ButtonStyle.SECONDARY,
+                    false),
+                new ButtonView(
+                    BUTTON_PREFIX_SET_FIAT_VALUE + product.id(),
+                    "💵 設定實際價值",
+                    ButtonStyle.SECONDARY,
+                    false),
+                new ButtonView(
+                    BUTTON_PREFIX_INTEGRATION_CONFIG + product.id(),
+                    "🔗 接入設定",
+                    ButtonStyle.SECONDARY,
+                    false),
+                new ButtonView(
+                    BUTTON_PREFIX_DELETE_PRODUCT + product.id(),
+                    "🗑️ 刪除",
+                    ButtonStyle.DANGER,
+                    false),
+                new ButtonView(BUTTON_PRODUCT_BACK, "⬅️ 返回列表", ButtonStyle.SECONDARY, false))));
   }
 
   // ===== Create Product =====
@@ -988,39 +999,36 @@ public class AdminProductPanelHandler extends ListenerAdapter {
     integrationConfigSessions.remove(sessionKey);
 
     MessageEmbed closedEmbed =
-        new EmbedBuilder()
-            .setTitle("🔗 接入設定面板")
-            .setColor(EMBED_COLOR)
-            .setDescription("已關閉設定面板")
-            .build();
+        PanelComponentRenderer.buildEmbed(
+            new EmbedView("🔗 接入設定面板", "已關閉設定面板", EMBED_COLOR, List.of(), null));
     event.editMessageEmbeds(closedEmbed).setComponents(List.of()).queue();
   }
 
   private MessageEmbed buildIntegrationConfigPanelEmbed(IntegrationConfigSessionState state) {
-    EmbedBuilder builder =
-        new EmbedBuilder()
-            .setTitle("🔗 接入設定面板")
-            .setColor(EMBED_COLOR)
-            .setDescription("調整設定後按「確認送出」才會套用")
-            .addField("商品", state.productName + " (`" + state.productId + "`)", false)
-            .addField(
-                "後端 API URL",
-                state.backendApiUrl == null || state.backendApiUrl.isBlank()
-                    ? "未設定"
-                    : state.backendApiUrl,
-                false)
-            .addField("自動護航開單", state.autoCreateEscortOrder ? "已啟用" : "未啟用", true)
-            .addField(
-                "護航選項代碼",
-                state.escortOptionCode == null || state.escortOptionCode.isBlank()
-                    ? "未設定"
-                    : "`" + state.escortOptionCode + "`",
-                true);
+    List<EmbedView.FieldView> fields =
+        new java.util.ArrayList<>(
+            List.of(
+                new EmbedView.FieldView(
+                    "商品", state.productName + " (`" + state.productId + "`)", false),
+                new EmbedView.FieldView(
+                    "後端 API URL",
+                    state.backendApiUrl == null || state.backendApiUrl.isBlank()
+                        ? "未設定"
+                        : state.backendApiUrl,
+                    false),
+                new EmbedView.FieldView(
+                    "自動護航開單", state.autoCreateEscortOrder ? "已啟用" : "未啟用", true),
+                new EmbedView.FieldView(
+                    "護航選項代碼",
+                    state.escortOptionCode == null || state.escortOptionCode.isBlank()
+                        ? "未設定"
+                        : "`" + state.escortOptionCode + "`",
+                    true)));
     if (state.statusMessage != null && !state.statusMessage.isBlank()) {
-      builder.addField("狀態", state.statusMessage, false);
+      fields.add(new EmbedView.FieldView("狀態", state.statusMessage, false));
     }
-    builder.setFooter("確認前不會修改實際設定");
-    return builder.build();
+    return PanelComponentRenderer.buildEmbed(
+        new EmbedView("🔗 接入設定面板", "調整設定後按「確認送出」才會套用", EMBED_COLOR, fields, "確認前不會修改實際設定"));
   }
 
   private List<ActionRow> buildIntegrationConfigPanelComponents(
@@ -1100,22 +1108,27 @@ public class AdminProductPanelHandler extends ListenerAdapter {
       escortOptionExtra = escortOptionExtraBuilder.build();
     }
 
-    Button confirmButton =
-        canSubmitIntegrationConfig(state)
-            ? Button.success(BUTTON_INTEGRATION_PANEL_CONFIRM, "✅ 確認送出")
-            : Button.success(BUTTON_INTEGRATION_PANEL_CONFIRM, "✅ 確認送出").asDisabled();
-
     List<ActionRow> rows = new java.util.ArrayList<>();
-    rows.add(ActionRow.of(autoEscortSelect));
-    rows.add(ActionRow.of(escortOptionPrimary));
+    rows.add(PanelComponentRenderer.buildRow(autoEscortSelect));
+    rows.add(PanelComponentRenderer.buildRow(escortOptionPrimary));
     if (escortOptionExtra != null) {
-      rows.add(ActionRow.of(escortOptionExtra));
+      rows.add(PanelComponentRenderer.buildRow(escortOptionExtra));
     }
     rows.add(
-        ActionRow.of(
-            Button.secondary(BUTTON_INTEGRATION_PANEL_EDIT_BACKEND, "🌐 設定後端 URL"),
-            confirmButton,
-            Button.secondary(BUTTON_INTEGRATION_PANEL_CLOSE, "✖ 關閉")));
+        PanelComponentRenderer.buildActionRow(
+            List.of(
+                new ButtonView(
+                    BUTTON_INTEGRATION_PANEL_EDIT_BACKEND,
+                    "🌐 設定後端 URL",
+                    ButtonStyle.SECONDARY,
+                    false),
+                new ButtonView(
+                    BUTTON_INTEGRATION_PANEL_CONFIRM,
+                    "✅ 確認送出",
+                    ButtonStyle.SUCCESS,
+                    !canSubmitIntegrationConfig(state)),
+                new ButtonView(
+                    BUTTON_INTEGRATION_PANEL_CLOSE, "✖ 關閉", ButtonStyle.SECONDARY, false))));
     return rows;
   }
 
@@ -1398,11 +1411,9 @@ public class AdminProductPanelHandler extends ListenerAdapter {
   }
 
   private MessageEmbed buildCodeListEmbed(Product product, RedemptionService.CodePage codePage) {
-    EmbedBuilder builder =
-        new EmbedBuilder().setTitle("📋 " + product.name() + " 的兌換碼").setColor(EMBED_COLOR);
-
+    String description;
     if (codePage.isEmpty()) {
-      builder.setDescription("目前沒有任何兌換碼");
+      description = "目前沒有任何兌換碼";
     } else {
       StringBuilder sb = new StringBuilder();
       for (RedemptionCode code : codePage.codes()) {
@@ -1414,33 +1425,43 @@ public class AdminProductPanelHandler extends ListenerAdapter {
         } else {
           sb.append(" 🟢 可使用");
         }
-        // 顯示 quantity 資訊
-        sb.append(" (數量:").append(code.quantity()).append(")");
-        sb.append("\n");
+        sb.append(" (數量:").append(code.quantity()).append(")\n");
       }
-      builder.setDescription(sb.toString());
+      description = sb.toString();
     }
 
-    builder.setFooter(codePage.formatPageIndicator());
-
-    return builder.build();
+    return PanelComponentRenderer.buildEmbed(
+        new EmbedView(
+            "📋 " + product.name() + " 的兌換碼",
+            description,
+            EMBED_COLOR,
+            List.of(),
+            codePage.formatPageIndicator()));
   }
 
   private List<ActionRow> buildCodeListComponents(RedemptionService.CodePage codePage) {
-    List<Button> navButtons = new java.util.ArrayList<>();
-    navButtons.add(Button.secondary(BUTTON_CODE_BACK, "⬅️ 返回商品"));
+    List<ButtonView> navButtons = new java.util.ArrayList<>();
+    navButtons.add(new ButtonView(BUTTON_CODE_BACK, "⬅️ 返回商品", ButtonStyle.SECONDARY, false));
 
     if (codePage.hasPreviousPage()) {
       navButtons.add(
-          Button.secondary(BUTTON_PREFIX_CODE_PAGE + (codePage.currentPage() - 1), "上一頁"));
+          new ButtonView(
+              BUTTON_PREFIX_CODE_PAGE + (codePage.currentPage() - 1),
+              "上一頁",
+              ButtonStyle.SECONDARY,
+              false));
     }
 
     if (codePage.hasNextPage()) {
       navButtons.add(
-          Button.secondary(BUTTON_PREFIX_CODE_PAGE + (codePage.currentPage() + 1), "下一頁"));
+          new ButtonView(
+              BUTTON_PREFIX_CODE_PAGE + (codePage.currentPage() + 1),
+              "下一頁",
+              ButtonStyle.SECONDARY,
+              false));
     }
 
-    return List.of(ActionRow.of(navButtons));
+    return List.of(PanelComponentRenderer.buildActionRow(navButtons));
   }
 
   // ===== Helpers =====
@@ -1638,9 +1659,14 @@ public class AdminProductPanelHandler extends ListenerAdapter {
   private List<ActionRow> buildProductListComponents(List<Product> products) {
     if (products.isEmpty()) {
       return List.of(
-          ActionRow.of(
-              Button.success(BUTTON_CREATE_PRODUCT, "➕ 建立商品"),
-              Button.secondary(AdminPanelButtonHandler.BUTTON_BACK, "⬅️ 返回主選單")));
+          PanelComponentRenderer.buildActionRow(
+              List.of(
+                  new ButtonView(BUTTON_CREATE_PRODUCT, "➕ 建立商品", ButtonStyle.SUCCESS, false),
+                  new ButtonView(
+                      AdminPanelButtonHandler.BUTTON_BACK,
+                      "⬅️ 返回主選單",
+                      ButtonStyle.SECONDARY,
+                      false))));
     }
 
     StringSelectMenu.Builder menuBuilder =
@@ -1659,10 +1685,15 @@ public class AdminProductPanelHandler extends ListenerAdapter {
     }
 
     return List.of(
-        ActionRow.of(menuBuilder.build()),
-        ActionRow.of(
-            Button.success(BUTTON_CREATE_PRODUCT, "➕ 建立商品"),
-            Button.secondary(AdminPanelButtonHandler.BUTTON_BACK, "⬅️ 返回主選單")));
+        PanelComponentRenderer.buildRow(menuBuilder.build()),
+        PanelComponentRenderer.buildActionRow(
+            List.of(
+                new ButtonView(BUTTON_CREATE_PRODUCT, "➕ 建立商品", ButtonStyle.SUCCESS, false),
+                new ButtonView(
+                    AdminPanelButtonHandler.BUTTON_BACK,
+                    "⬅️ 返回主選單",
+                    ButtonStyle.SECONDARY,
+                    false))));
   }
 
   private boolean isAdmin(Member member, Guild guild) {

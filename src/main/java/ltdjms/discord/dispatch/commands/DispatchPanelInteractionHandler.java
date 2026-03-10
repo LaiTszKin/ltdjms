@@ -12,12 +12,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ltdjms.discord.discord.domain.ButtonView;
+import ltdjms.discord.discord.domain.EmbedView;
+import ltdjms.discord.discord.services.DiscordComponentRenderer;
 import ltdjms.discord.dispatch.domain.EscortDispatchOrder;
 import ltdjms.discord.dispatch.services.DispatchAfterSalesStaffService;
 import ltdjms.discord.dispatch.services.EscortDispatchOrderService;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
-import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
@@ -28,8 +30,7 @@ import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.EntitySelectInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.InteractionHook;
-import net.dv8tion.jda.api.interactions.components.ActionRow;
-import net.dv8tion.jda.api.interactions.components.buttons.Button;
+import net.dv8tion.jda.api.interactions.components.buttons.ButtonStyle;
 
 /**
  * 派單面板互動處理器：
@@ -308,7 +309,12 @@ public class DispatchPanelInteractionHandler extends ListenerAdapter {
             channel ->
                 channel
                     .sendMessageEmbeds(dmEmbed)
-                    .addActionRow(Button.success(confirmButtonId, "✅ 確認接單"))
+                    .setComponents(
+                        List.of(
+                            DiscordComponentRenderer.buildActionRow(
+                                List.of(
+                                    new ButtonView(
+                                        confirmButtonId, "✅ 確認接單", ButtonStyle.SUCCESS, false)))))
                     .queue(
                         success -> {
                           sessionStates.remove(sessionKey);
@@ -367,7 +373,11 @@ public class DispatchPanelInteractionHandler extends ListenerAdapter {
 
     event
         .editMessageEmbeds(buildEscortConfirmedEmbed(confirmedOrder))
-        .setComponents(ActionRow.of(Button.primary(completeButtonId, "🏁 完成訂單")))
+        .setComponents(
+            List.of(
+                DiscordComponentRenderer.buildActionRow(
+                    List.of(
+                        new ButtonView(completeButtonId, "🏁 完成訂單", ButtonStyle.PRIMARY, false)))))
         .queue(
             success -> notifyCustomerOrderConfirmed(event, confirmedOrder),
             failure -> {
@@ -521,7 +531,12 @@ public class DispatchPanelInteractionHandler extends ListenerAdapter {
     event
         .editMessageEmbeds(
             buildAfterSalesClaimedEmbed(claimedOrder, event.getUser().getAsMention()))
-        .setComponents(ActionRow.of(Button.success(closeButtonId, "✅ 完成 / close file")))
+        .setComponents(
+            List.of(
+                DiscordComponentRenderer.buildActionRow(
+                    List.of(
+                        new ButtonView(
+                            closeButtonId, "✅ 完成 / close file", ButtonStyle.SUCCESS, false)))))
         .queue(
             success ->
                 notifyCustomerAfterSalesAssigned(
@@ -623,9 +638,20 @@ public class DispatchPanelInteractionHandler extends ListenerAdapter {
                             channel
                                 .sendMessageEmbeds(
                                     buildCustomerCompletionActionEmbed(order, escortMention))
-                                .addActionRow(
-                                    Button.success(customerCompleteButtonId, "✅ 確認完成"),
-                                    Button.secondary(afterSalesButtonId, "🧰 申請售後"))
+                                .setComponents(
+                                    List.of(
+                                        DiscordComponentRenderer.buildActionRow(
+                                            List.of(
+                                                new ButtonView(
+                                                    customerCompleteButtonId,
+                                                    "✅ 確認完成",
+                                                    ButtonStyle.SUCCESS,
+                                                    false),
+                                                new ButtonView(
+                                                    afterSalesButtonId,
+                                                    "🧰 申請售後",
+                                                    ButtonStyle.SECONDARY,
+                                                    false)))))
                                 .queue(),
                         failure ->
                             LOG.warn(
@@ -703,7 +729,15 @@ public class DispatchPanelInteractionHandler extends ListenerAdapter {
                           channel ->
                               channel
                                   .sendMessageEmbeds(embed)
-                                  .addActionRow(Button.primary(claimButtonId, "🧰 接手案件"))
+                                  .setComponents(
+                                      List.of(
+                                          DiscordComponentRenderer.buildActionRow(
+                                              List.of(
+                                                  new ButtonView(
+                                                      claimButtonId,
+                                                      "🧰 接手案件",
+                                                      ButtonStyle.PRIMARY,
+                                                      false)))))
                                   .queue(),
                           failure ->
                               LOG.warn(
@@ -761,13 +795,15 @@ public class DispatchPanelInteractionHandler extends ListenerAdapter {
                         channel ->
                             channel
                                 .sendMessageEmbeds(
-                                    new EmbedBuilder()
-                                        .setTitle("🧰 售後已接手")
-                                        .setColor(INFO_COLOR)
-                                        .setDescription("你的售後申請已有專人接手。")
-                                        .addField("訂單編號", "`" + order.orderNumber() + "`", false)
-                                        .addField("接手售後", assigneeMention, false)
-                                        .build())
+                                    buildDispatchEmbed(
+                                        "🧰 售後已接手",
+                                        INFO_COLOR,
+                                        "你的售後申請已有專人接手。",
+                                        List.of(
+                                            new EmbedView.FieldView(
+                                                "訂單編號", "`" + order.orderNumber() + "`", false),
+                                            new EmbedView.FieldView(
+                                                "接手售後", assigneeMention, false))))
                                 .queue(),
                         failure ->
                             LOG.warn(
@@ -796,13 +832,14 @@ public class DispatchPanelInteractionHandler extends ListenerAdapter {
                         channel ->
                             channel
                                 .sendMessageEmbeds(
-                                    new EmbedBuilder()
-                                        .setTitle("✅ 售後已結案")
-                                        .setColor(INFO_COLOR)
-                                        .setDescription("你的售後案件已完成處理並結案。")
-                                        .addField("訂單編號", "`" + order.orderNumber() + "`", false)
-                                        .addField("結案人員", closerMention, false)
-                                        .build())
+                                    buildDispatchEmbed(
+                                        "✅ 售後已結案",
+                                        INFO_COLOR,
+                                        "你的售後案件已完成處理並結案。",
+                                        List.of(
+                                            new EmbedView.FieldView(
+                                                "訂單編號", "`" + order.orderNumber() + "`", false),
+                                            new EmbedView.FieldView("結案人員", closerMention, false))))
                                 .queue(),
                         failure ->
                             LOG.warn(
@@ -821,10 +858,8 @@ public class DispatchPanelInteractionHandler extends ListenerAdapter {
   }
 
   private MessageEmbed buildHistoryEmbed(List<EscortDispatchOrder> orders) {
-    EmbedBuilder builder = new EmbedBuilder().setTitle("📜 護航派單歷史").setColor(INFO_COLOR);
-
     if (orders.isEmpty()) {
-      return builder.setDescription("目前沒有歷史訂單。").build();
+      return buildDispatchEmbed("📜 護航派單歷史", INFO_COLOR, "目前沒有歷史訂單。", List.of());
     }
 
     StringBuilder history = new StringBuilder();
@@ -848,7 +883,7 @@ public class DispatchPanelInteractionHandler extends ListenerAdapter {
           .append(":R>\n\n");
     }
 
-    return builder.setDescription(history.toString()).build();
+    return buildDispatchEmbed("📜 護航派單歷史", INFO_COLOR, history.toString(), List.of());
   }
 
   private String toStatusText(EscortDispatchOrder.Status status) {
@@ -864,140 +899,156 @@ public class DispatchPanelInteractionHandler extends ListenerAdapter {
   }
 
   private MessageEmbed buildEscortPendingEmbed(EscortDispatchOrder order, String customerMention) {
-    return new EmbedBuilder()
-        .setTitle("📩 新護航派單通知")
-        .setColor(INFO_COLOR)
-        .setDescription("你收到一張新的護航訂單，請點擊下方按鈕確認接單。")
-        .addField("訂單編號", "`" + order.orderNumber() + "`", false)
-        .addField("客戶", customerMention, false)
-        .addField("建立時間", "<t:" + order.createdAt().getEpochSecond() + ":F>", false)
-        .build();
+    return buildDispatchEmbed(
+        "📩 新護航派單通知",
+        INFO_COLOR,
+        "你收到一張新的護航訂單，請點擊下方按鈕確認接單。",
+        List.of(
+            new EmbedView.FieldView("訂單編號", "`" + order.orderNumber() + "`", false),
+            new EmbedView.FieldView("客戶", customerMention, false),
+            new EmbedView.FieldView(
+                "建立時間", "<t:" + order.createdAt().getEpochSecond() + ":F>", false)));
   }
 
   private MessageEmbed buildEscortConfirmedEmbed(EscortDispatchOrder order) {
     Instant confirmedAt = order.confirmedAt() != null ? order.confirmedAt() : Instant.now();
-    return new EmbedBuilder()
-        .setTitle("✅ 已確認接單")
-        .setColor(INFO_COLOR)
-        .setDescription("你已成功確認此護航訂單。服務完成後請點擊下方按鈕。")
-        .addField("訂單編號", "`" + order.orderNumber() + "`", false)
-        .addField("確認時間", "<t:" + confirmedAt.getEpochSecond() + ":F>", false)
-        .build();
+    return buildDispatchEmbed(
+        "✅ 已確認接單",
+        INFO_COLOR,
+        "你已成功確認此護航訂單。服務完成後請點擊下方按鈕。",
+        List.of(
+            new EmbedView.FieldView("訂單編號", "`" + order.orderNumber() + "`", false),
+            new EmbedView.FieldView("確認時間", "<t:" + confirmedAt.getEpochSecond() + ":F>", false)));
   }
 
   private MessageEmbed buildEscortCompletionRequestedEmbed(EscortDispatchOrder order) {
     Instant requestedAt =
         order.completionRequestedAt() != null ? order.completionRequestedAt() : Instant.now();
-    return new EmbedBuilder()
-        .setTitle("⏳ 已送出完成請求")
-        .setColor(WARNING_COLOR)
-        .setDescription("系統已通知客戶確認完成，若客戶 24 小時未回應將自動完成。")
-        .addField("訂單編號", "`" + order.orderNumber() + "`", false)
-        .addField("送出時間", "<t:" + requestedAt.getEpochSecond() + ":F>", false)
-        .build();
+    return buildDispatchEmbed(
+        "⏳ 已送出完成請求",
+        WARNING_COLOR,
+        "系統已通知客戶確認完成，若客戶 24 小時未回應將自動完成。",
+        List.of(
+            new EmbedView.FieldView("訂單編號", "`" + order.orderNumber() + "`", false),
+            new EmbedView.FieldView("送出時間", "<t:" + requestedAt.getEpochSecond() + ":F>", false)));
   }
 
   private MessageEmbed buildCustomerOrderConfirmedEmbed(
       EscortDispatchOrder order, String escortMention) {
     Instant confirmedAt = order.confirmedAt() != null ? order.confirmedAt() : Instant.now();
-    return new EmbedBuilder()
-        .setTitle("📣 護航訂單已確認")
-        .setColor(INFO_COLOR)
-        .setDescription("你的護航訂單已由護航者確認。")
-        .addField("訂單編號", "`" + order.orderNumber() + "`", false)
-        .addField("護航者", escortMention, false)
-        .addField("確認時間", "<t:" + confirmedAt.getEpochSecond() + ":F>", false)
-        .build();
+    return buildDispatchEmbed(
+        "📣 護航訂單已確認",
+        INFO_COLOR,
+        "你的護航訂單已由護航者確認。",
+        List.of(
+            new EmbedView.FieldView("訂單編號", "`" + order.orderNumber() + "`", false),
+            new EmbedView.FieldView("護航者", escortMention, false),
+            new EmbedView.FieldView("確認時間", "<t:" + confirmedAt.getEpochSecond() + ":F>", false)));
   }
 
   private MessageEmbed buildCustomerCompletionActionEmbed(
       EscortDispatchOrder order, String escortMention) {
     Instant requestedAt =
         order.completionRequestedAt() != null ? order.completionRequestedAt() : Instant.now();
-    return new EmbedBuilder()
-        .setTitle("🧾 請確認護航訂單狀態")
-        .setColor(WARNING_COLOR)
-        .setDescription("護航者已提交完成，請選擇確認完成或申請售後。")
-        .addField("訂單編號", "`" + order.orderNumber() + "`", false)
-        .addField("護航者", escortMention, false)
-        .addField("送出時間", "<t:" + requestedAt.getEpochSecond() + ":F>", false)
-        .setFooter("24 小時未確認將視為訂單完成")
-        .build();
+    return buildDispatchEmbed(
+        "🧾 請確認護航訂單狀態",
+        WARNING_COLOR,
+        "護航者已提交完成，請選擇確認完成或申請售後。",
+        List.of(
+            new EmbedView.FieldView("訂單編號", "`" + order.orderNumber() + "`", false),
+            new EmbedView.FieldView("護航者", escortMention, false),
+            new EmbedView.FieldView("送出時間", "<t:" + requestedAt.getEpochSecond() + ":F>", false)),
+        "24 小時未確認將視為訂單完成");
   }
 
   private MessageEmbed buildCustomerCompletedEmbed(EscortDispatchOrder order) {
     Instant completedAt = order.completedAt() != null ? order.completedAt() : Instant.now();
-    return new EmbedBuilder()
-        .setTitle("✅ 訂單已完成")
-        .setColor(INFO_COLOR)
-        .setDescription("你已確認此訂單完成。")
-        .addField("訂單編號", "`" + order.orderNumber() + "`", false)
-        .addField("完成時間", "<t:" + completedAt.getEpochSecond() + ":F>", false)
-        .build();
+    return buildDispatchEmbed(
+        "✅ 訂單已完成",
+        INFO_COLOR,
+        "你已確認此訂單完成。",
+        List.of(
+            new EmbedView.FieldView("訂單編號", "`" + order.orderNumber() + "`", false),
+            new EmbedView.FieldView("完成時間", "<t:" + completedAt.getEpochSecond() + ":F>", false)));
   }
 
   private MessageEmbed buildEscortOrderCompletedEmbed(EscortDispatchOrder order) {
     Instant completedAt = order.completedAt() != null ? order.completedAt() : Instant.now();
-    return new EmbedBuilder()
-        .setTitle("✅ 客戶已確認完成")
-        .setColor(INFO_COLOR)
-        .setDescription("客戶已確認訂單完成。")
-        .addField("訂單編號", "`" + order.orderNumber() + "`", false)
-        .addField("完成時間", "<t:" + completedAt.getEpochSecond() + ":F>", false)
-        .build();
+    return buildDispatchEmbed(
+        "✅ 客戶已確認完成",
+        INFO_COLOR,
+        "客戶已確認訂單完成。",
+        List.of(
+            new EmbedView.FieldView("訂單編號", "`" + order.orderNumber() + "`", false),
+            new EmbedView.FieldView("完成時間", "<t:" + completedAt.getEpochSecond() + ":F>", false)));
   }
 
   private MessageEmbed buildCustomerAfterSalesRequestedEmbed(
       EscortDispatchOrder order, String statusText) {
     Instant requestedAt =
         order.afterSalesRequestedAt() != null ? order.afterSalesRequestedAt() : Instant.now();
-    return new EmbedBuilder()
-        .setTitle("🧰 已提交售後申請")
-        .setColor(ERROR_COLOR)
-        .setDescription(statusText)
-        .addField("訂單編號", "`" + order.orderNumber() + "`", false)
-        .addField("申請時間", "<t:" + requestedAt.getEpochSecond() + ":F>", false)
-        .build();
+    return buildDispatchEmbed(
+        "🧰 已提交售後申請",
+        ERROR_COLOR,
+        statusText,
+        List.of(
+            new EmbedView.FieldView("訂單編號", "`" + order.orderNumber() + "`", false),
+            new EmbedView.FieldView("申請時間", "<t:" + requestedAt.getEpochSecond() + ":F>", false)));
   }
 
   private MessageEmbed buildAfterSalesNotificationEmbed(EscortDispatchOrder order) {
     Instant requestedAt =
         order.afterSalesRequestedAt() != null ? order.afterSalesRequestedAt() : Instant.now();
-    return new EmbedBuilder()
-        .setTitle("🧰 新售後申請")
-        .setColor(ERROR_COLOR)
-        .setDescription("有客戶提交了護航售後申請，請接手處理。")
-        .addField("訂單編號", "`" + order.orderNumber() + "`", false)
-        .addField("護航者", "<@" + order.escortUserId() + ">", true)
-        .addField("客戶", "<@" + order.customerUserId() + ">", true)
-        .addField("申請時間", "<t:" + requestedAt.getEpochSecond() + ":F>", false)
-        .build();
+    return buildDispatchEmbed(
+        "🧰 新售後申請",
+        ERROR_COLOR,
+        "有客戶提交了護航售後申請，請接手處理。",
+        List.of(
+            new EmbedView.FieldView("訂單編號", "`" + order.orderNumber() + "`", false),
+            new EmbedView.FieldView("護航者", "<@" + order.escortUserId() + ">", true),
+            new EmbedView.FieldView("客戶", "<@" + order.customerUserId() + ">", true),
+            new EmbedView.FieldView("申請時間", "<t:" + requestedAt.getEpochSecond() + ":F>", false)));
   }
 
   private MessageEmbed buildAfterSalesClaimedEmbed(
       EscortDispatchOrder order, String assigneeMention) {
     Instant assignedAt =
         order.afterSalesAssignedAt() != null ? order.afterSalesAssignedAt() : Instant.now();
-    return new EmbedBuilder()
-        .setTitle("🛠️ 已接手售後案件")
-        .setColor(INFO_COLOR)
-        .setDescription("你已成功接手此售後案件，完成後請點擊 close file。")
-        .addField("訂單編號", "`" + order.orderNumber() + "`", false)
-        .addField("接手人員", assigneeMention, false)
-        .addField("接手時間", "<t:" + assignedAt.getEpochSecond() + ":F>", false)
-        .build();
+    return buildDispatchEmbed(
+        "🛠️ 已接手售後案件",
+        INFO_COLOR,
+        "你已成功接手此售後案件，完成後請點擊 close file。",
+        List.of(
+            new EmbedView.FieldView("訂單編號", "`" + order.orderNumber() + "`", false),
+            new EmbedView.FieldView("接手人員", assigneeMention, false),
+            new EmbedView.FieldView("接手時間", "<t:" + assignedAt.getEpochSecond() + ":F>", false)));
   }
 
   private MessageEmbed buildAfterSalesClosedEmbed(EscortDispatchOrder order) {
     Instant closedAt =
         order.afterSalesClosedAt() != null ? order.afterSalesClosedAt() : Instant.now();
-    return new EmbedBuilder()
-        .setTitle("✅ 售後案件已結案")
-        .setColor(INFO_COLOR)
-        .setDescription("你已完成此售後案件。")
-        .addField("訂單編號", "`" + order.orderNumber() + "`", false)
-        .addField("結案時間", "<t:" + closedAt.getEpochSecond() + ":F>", false)
-        .build();
+    return buildDispatchEmbed(
+        "✅ 售後案件已結案",
+        INFO_COLOR,
+        "你已完成此售後案件。",
+        List.of(
+            new EmbedView.FieldView("訂單編號", "`" + order.orderNumber() + "`", false),
+            new EmbedView.FieldView("結案時間", "<t:" + closedAt.getEpochSecond() + ":F>", false)));
+  }
+
+  private MessageEmbed buildDispatchEmbed(
+      String title, Color color, String description, List<EmbedView.FieldView> fields) {
+    return buildDispatchEmbed(title, color, description, fields, null);
+  }
+
+  private MessageEmbed buildDispatchEmbed(
+      String title,
+      Color color,
+      String description,
+      List<EmbedView.FieldView> fields,
+      String footer) {
+    return DiscordComponentRenderer.buildEmbed(
+        new EmbedView(title, description, color, fields, footer));
   }
 
   private String extractOrderNumber(String buttonId, String prefix) {

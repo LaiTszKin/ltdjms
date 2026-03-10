@@ -6,6 +6,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ltdjms.discord.currency.services.BalanceService;
+import ltdjms.discord.discord.domain.ButtonView;
+import ltdjms.discord.discord.services.DiscordComponentRenderer;
 import ltdjms.discord.product.domain.Product;
 import ltdjms.discord.product.services.ProductService;
 import ltdjms.discord.shared.DomainError;
@@ -17,8 +19,7 @@ import ltdjms.discord.shop.services.ShopView;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import net.dv8tion.jda.api.interactions.components.ActionRow;
-import net.dv8tion.jda.api.interactions.components.buttons.Button;
+import net.dv8tion.jda.api.interactions.components.buttons.ButtonStyle;
 
 /** Handles select menu and button interactions for shop purchase. */
 public class ShopSelectMenuHandler extends ListenerAdapter {
@@ -95,9 +96,18 @@ public class ShopSelectMenuHandler extends ListenerAdapter {
                     .editMessageEmbeds(ShopView.buildPurchaseConfirmEmbed(product, userBalance))
                     .setComponents(
                         List.of(
-                            ActionRow.of(
-                                Button.success(BUTTON_CONFIRM_PURCHASE + productId, "確認購買"),
-                                Button.secondary(BUTTON_CANCEL_PURCHASE, "取消"))))
+                            DiscordComponentRenderer.buildActionRow(
+                                List.of(
+                                    new ButtonView(
+                                        BUTTON_CONFIRM_PURCHASE + productId,
+                                        "確認購買",
+                                        ButtonStyle.SUCCESS,
+                                        false),
+                                    new ButtonView(
+                                        BUTTON_CANCEL_PURCHASE,
+                                        "取消",
+                                        ButtonStyle.SECONDARY,
+                                        false)))))
                     .queue();
               },
               () -> event.reply("找不到該商品").setEphemeral(true).queue());
