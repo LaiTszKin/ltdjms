@@ -181,4 +181,25 @@ class AIChatResponseTest {
     // 驗證
     assertThat(content).isEmpty();
   }
+
+  @Test
+  void testGetContent_withNullMessageContent_shouldReturnEmptyString() {
+    // 前置
+    AIChatResponse response =
+        new AIChatResponse(
+            "chatcmpl-123",
+            "chat.completion",
+            1677652288L,
+            "gpt-3.5-turbo",
+            List.of(
+                new AIChatResponse.Choice(
+                    0, new AIChatResponse.Choice.AIMessage("assistant", null, null), "stop")),
+            new AIChatResponse.Usage(10, 20, 30));
+
+    // 執行
+    String content = response.getContent();
+
+    // 驗證
+    assertThat(content).isEmpty();
+  }
 }

@@ -73,6 +73,7 @@ public record AIChatResponse(
     if (first.message() == null) {
       return "";
     }
-    return first.message().content();
+    String content = first.message().content();
+    return content == null ? "" : content;
   }
 }
