@@ -300,6 +300,29 @@ class ProductServiceTest {
     }
 
     @Test
+    @DisplayName("should reject IPv6 ULA backend API target")
+    void shouldRejectIpv6UniqueLocalBackendApiUrl() {
+      when(productRepository.existsByGuildIdAndName(TEST_GUILD_ID, "Unsafe IPv6 Backend"))
+          .thenReturn(false);
+
+      Result<Product, DomainError> result =
+          productService.createProduct(
+              TEST_GUILD_ID,
+              "Unsafe IPv6 Backend",
+              "desc",
+              null,
+              null,
+              300L,
+              null,
+              "http://[fc00::1]/internal",
+              false,
+              null);
+
+      assertThat(result.isErr()).isTrue();
+      assertThat(result.getError().message()).contains("localhost 或內網位址");
+    }
+
+    @Test
     @DisplayName("should handle persistence failure on create")
     void shouldHandlePersistenceFailureOnCreate() {
       // Given

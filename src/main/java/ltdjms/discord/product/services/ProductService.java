@@ -1,5 +1,6 @@
 package ltdjms.discord.product.services;
 
+import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.URI;
 import java.util.List;
@@ -415,10 +416,19 @@ public class ProductService {
           || address.isLoopbackAddress()
           || address.isLinkLocalAddress()
           || address.isSiteLocalAddress()
-          || address.isMulticastAddress();
+          || address.isMulticastAddress()
+          || isIpv6UniqueLocalAddress(address);
     } catch (Exception e) {
       return true;
     }
+  }
+
+  private boolean isIpv6UniqueLocalAddress(InetAddress address) {
+    if (!(address instanceof Inet6Address inet6)) {
+      return false;
+    }
+    byte[] raw = inet6.getAddress();
+    return raw.length > 0 && (raw[0] & (byte) 0xFE) == (byte) 0xFC;
   }
 
   private boolean looksLikeIpLiteral(String host) {

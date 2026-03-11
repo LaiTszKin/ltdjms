@@ -295,4 +295,51 @@ class ProductFulfillmentApiServiceTest {
     assertThat(result.getError().message()).contains("localhost 或內網位址");
     verify(httpClient, never()).send(any(), anyStringBodyHandler());
   }
+
+  @Test
+  @DisplayName("應拒絕解析到 IPv6 ULA 私網位址，避免 SSRF")
+  void shouldRejectDomainResolvingToIpv6UniqueLocalAddress() throws Exception {
+    ProductFulfillmentApiService securedService =
+        new ProductFulfillmentApiService(
+            escortOptionPricingService,
+            httpClient,
+            new ObjectMapper(),
+            Clock.fixed(Instant.parse("2026-03-04T00:00:00Z"), ZoneOffset.UTC),
+            host -> {
+              if ("attacker-v6.example".equals(host)) {
+                return new InetAddress[] {InetAddress.getByName("fc00::1")};
+              }
+              throw new java.net.UnknownHostException(host);
+            });
+
+    Product product =
+        new Product(
+            1L,
+            GUILD_ID,
+            "Unsafe IPv6 Backend Domain",
+            null,
+            Product.RewardType.CURRENCY,
+            100L,
+            200L,
+            null,
+            "https://attacker-v6.example/internal",
+            false,
+            null,
+            Instant.now(),
+            Instant.now());
+
+    Result<ltdjms.discord.shared.Unit, DomainError> result =
+        securedService.notifyFulfillment(
+            new ProductFulfillmentApiService.FulfillmentRequest(
+                GUILD_ID,
+                USER_ID,
+                product,
+                ProductFulfillmentApiService.PurchaseSource.CURRENCY_PURCHASE,
+                null,
+                null));
+
+    assertThat(result.isErr()).isTrue();
+    assertThat(result.getError().message()).contains("localhost 或內網位址");
+    verify(httpClient, never()).send(any(), anyStringBodyHandler());
+  }
 }

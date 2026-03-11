@@ -1,5 +1,6 @@
 package ltdjms.discord.shop.services;
 
+import java.net.Inet6Address;
 import java.net.URI;
 import java.net.UnknownHostException;
 import java.net.http.HttpClient;
@@ -258,7 +259,16 @@ public class ProductFulfillmentApiService {
         || address.isLoopbackAddress()
         || address.isLinkLocalAddress()
         || address.isSiteLocalAddress()
-        || address.isMulticastAddress();
+        || address.isMulticastAddress()
+        || isIpv6UniqueLocalAddress(address);
+  }
+
+  private boolean isIpv6UniqueLocalAddress(java.net.InetAddress address) {
+    if (!(address instanceof Inet6Address inet6)) {
+      return false;
+    }
+    byte[] raw = inet6.getAddress();
+    return raw.length > 0 && (raw[0] & (byte) 0xFE) == (byte) 0xFC;
   }
 
   @FunctionalInterface
