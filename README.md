@@ -344,6 +344,11 @@ database {
 - [變更日誌](CHANGELOG.md)
 - [行為準則](CODE_OF_CONDUCT.md)
 
+## 授權
+
+本專案採用 [GNU Affero General Public License v3.0](LICENSE) 授權。  
+Copyright (C) 2026 LTDJ
+
 ## Docker / Schema 手動驗證建議
 
 以下步驟可幫助你確認新的建置與自動遷移流程：
