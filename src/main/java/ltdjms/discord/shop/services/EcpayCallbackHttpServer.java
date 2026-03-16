@@ -5,7 +5,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -48,6 +51,11 @@ public class EcpayCallbackHttpServer {
     String bindHost = sanitizeBindHost(config.getEcpayCallbackBindHost());
     int bindPort = normalizeBindPort(config.getEcpayCallbackBindPort());
     String callbackPath = normalizePath(config.getEcpayCallbackPath());
+    if (isPubliclyExposedBindHost(bindHost)
+        && (config.getEcpayCallbackSharedSecret() == null
+            || config.getEcpayCallbackSharedSecret().isBlank())) {
+      throw new IllegalStateException("公開 ECPay callback 綁定必須設定 shared secret");
+    }
 
     try {
       server = HttpServer.create(new InetSocketAddress(bindHost, bindPort), 0);
@@ -87,6 +95,10 @@ public class EcpayCallbackHttpServer {
       writeResponse(exchange, 405, "Method Not Allowed");
       return;
     }
+    if (!isAuthorizedRequest(exchange)) {
+      writeResponse(exchange, 401, "Unauthorized");
+      return;
+    }
 
     String contentType = exchange.getRequestHeaders().getFirst("Content-Type");
     String requestBody;
@@ -115,7 +127,7 @@ public class EcpayCallbackHttpServer {
 
   private String sanitizeBindHost(String bindHost) {
     if (bindHost == null || bindHost.isBlank()) {
-      return "0.0.0.0";
+      return "127.0.0.1";
     }
     return bindHost.trim();
   }
@@ -154,6 +166,46 @@ public class EcpayCallbackHttpServer {
       }
       return output.toString(StandardCharsets.UTF_8);
     }
+  }
+
+  private boolean isAuthorizedRequest(HttpExchange exchange) {
+    String expectedSecret = config.getEcpayCallbackSharedSecret();
+    if (expectedSecret == null || expectedSecret.isBlank()) {
+      return true;
+    }
+
+    Map<String, String> queryParameters =
+        parseQueryParameters(exchange.getRequestURI().getRawQuery());
+    String actualSecret = queryParameters.get("token");
+    return expectedSecret.equals(actualSecret);
+  }
+
+  private boolean isPubliclyExposedBindHost(String bindHost) {
+    String normalized = bindHost.trim().toLowerCase();
+    return !normalized.equals("127.0.0.1")
+        && !normalized.equals("localhost")
+        && !normalized.equals("::1")
+        && !normalized.equals("[::1]");
+  }
+
+  private Map<String, String> parseQueryParameters(String rawQuery) {
+    Map<String, String> parameters = new LinkedHashMap<>();
+    if (rawQuery == null || rawQuery.isBlank()) {
+      return parameters;
+    }
+
+    for (String pair : rawQuery.split("&")) {
+      if (pair.isBlank()) {
+        continue;
+      }
+      int separatorIndex = pair.indexOf('=');
+      String key = separatorIndex >= 0 ? pair.substring(0, separatorIndex) : pair;
+      String value = separatorIndex >= 0 ? pair.substring(separatorIndex + 1) : "";
+      parameters.put(
+          URLDecoder.decode(key, StandardCharsets.UTF_8),
+          URLDecoder.decode(value, StandardCharsets.UTF_8));
+    }
+    return parameters;
   }
 
   private void shutdownExecutor() {

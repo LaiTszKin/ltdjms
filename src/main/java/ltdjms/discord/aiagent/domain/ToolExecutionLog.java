@@ -6,16 +6,16 @@ import java.util.Objects;
 /**
  * 工具執行日誌。
  *
- * <p>記錄所有 AI 工具調用的詳細資訊，用於審計和除錯。
+ * <p>記錄所有 AI 工具調用的去敏摘要，用於審計和除錯。
  *
  * @param id 主鍵
  * @param guildId 伺服器 ID
  * @param channelId 頻道 ID
  * @param triggerUserId 觸發用戶 ID
  * @param toolName 工具名稱
- * @param parameters 參數 JSON
- * @param executionResult 執行結果（成功時的回傳值）
- * @param errorMessage 錯誤訊息（失敗時）
+ * @param parameters 參數摘要 JSON
+ * @param executionResult 執行結果摘要（成功時）
+ * @param errorMessage 錯誤摘要（失敗時）
  * @param status 執行狀態
  * @param executedAt 執行時間
  */
@@ -56,8 +56,8 @@ public record ToolExecutionLog(
    * @param channelId 頻道 ID
    * @param triggerUserId 觸發用戶 ID
    * @param toolName 工具名稱
-   * @param parameters 參數 JSON
-   * @param result 執行結果
+   * @param parameters 參數摘要 JSON
+   * @param result 執行結果摘要
    * @return 成功日誌
    */
   public static ToolExecutionLog success(
@@ -87,8 +87,8 @@ public record ToolExecutionLog(
    * @param channelId 頻道 ID
    * @param triggerUserId 觸發用戶 ID
    * @param toolName 工具名稱
-   * @param parameters 參數 JSON
-   * @param error 錯誤訊息
+   * @param parameters 參數摘要 JSON
+   * @param error 錯誤摘要
    * @return 失敗日誌
    */
   public static ToolExecutionLog failure(

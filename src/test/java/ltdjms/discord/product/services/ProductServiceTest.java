@@ -291,12 +291,81 @@ class ProductServiceTest {
               null,
               300L,
               null,
-              "http://127.0.0.1/internal",
+              "https://127.0.0.1/internal",
               false,
               null);
 
       assertThat(result.isErr()).isTrue();
       assertThat(result.getError().message()).contains("localhost 或內網位址");
+    }
+
+    @Test
+    @DisplayName("should reject special-use IPv4 backend API target")
+    void shouldRejectSpecialUseIpv4BackendApiUrl() {
+      when(productRepository.existsByGuildIdAndName(TEST_GUILD_ID, "Unsafe Backend"))
+          .thenReturn(false);
+
+      Result<Product, DomainError> result =
+          productService.createProduct(
+              TEST_GUILD_ID,
+              "Unsafe Backend",
+              "desc",
+              null,
+              null,
+              300L,
+              null,
+              "https://100.64.0.10/internal",
+              false,
+              null);
+
+      assertThat(result.isErr()).isTrue();
+      assertThat(result.getError().message()).contains("localhost 或內網位址");
+    }
+
+    @Test
+    @DisplayName("should reject ipv6 ula backend API target")
+    void shouldRejectIpv6UlaBackendApiUrl() {
+      when(productRepository.existsByGuildIdAndName(TEST_GUILD_ID, "Unsafe Backend"))
+          .thenReturn(false);
+
+      Result<Product, DomainError> result =
+          productService.createProduct(
+              TEST_GUILD_ID,
+              "Unsafe Backend",
+              "desc",
+              null,
+              null,
+              300L,
+              null,
+              "https://[fd00::1234]/internal",
+              false,
+              null);
+
+      assertThat(result.isErr()).isTrue();
+      assertThat(result.getError().message()).contains("localhost 或內網位址");
+    }
+
+    @Test
+    @DisplayName("should reject non-https backend API URL")
+    void shouldRejectNonHttpsBackendApiUrl() {
+      when(productRepository.existsByGuildIdAndName(TEST_GUILD_ID, "Unsafe Backend"))
+          .thenReturn(false);
+
+      Result<Product, DomainError> result =
+          productService.createProduct(
+              TEST_GUILD_ID,
+              "Unsafe Backend",
+              "desc",
+              null,
+              null,
+              300L,
+              null,
+              "http://backend.example.com/internal",
+              false,
+              null);
+
+      assertThat(result.isErr()).isTrue();
+      assertThat(result.getError().message()).contains("https://");
     }
 
     @Test

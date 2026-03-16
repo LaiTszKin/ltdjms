@@ -1,15 +1,24 @@
 package ltdjms.discord.shop.services;
 
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.net.URI;
 import java.net.UnknownHostException;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import javax.net.ssl.SNIHostName;
+import javax.net.ssl.SSLParameters;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,6 +29,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import ltdjms.discord.dispatch.services.EscortOptionPricingService;
 import ltdjms.discord.product.domain.Product;
 import ltdjms.discord.shared.DomainError;
+import ltdjms.discord.shared.EnvironmentConfig;
 import ltdjms.discord.shared.Result;
 import ltdjms.discord.shared.Unit;
 
@@ -30,47 +40,82 @@ public class ProductFulfillmentApiService {
   private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
 
   private final EscortOptionPricingService escortOptionPricingService;
-  private final HttpClient httpClient;
+  private final FulfillmentTransport fulfillmentTransport;
   private final ObjectMapper objectMapper;
   private final Clock clock;
   private final HostAddressResolver hostAddressResolver;
+  private final String webhookSigningSecret;
 
   public ProductFulfillmentApiService(EscortOptionPricingService escortOptionPricingService) {
     this(
         escortOptionPricingService,
-        HttpClient.newBuilder().connectTimeout(REQUEST_TIMEOUT).build(),
+        new PinnedHttpsFulfillmentTransport(REQUEST_TIMEOUT),
         new ObjectMapper(),
         Clock.systemUTC(),
-        java.net.InetAddress::getAllByName);
+        InetAddress::getAllByName,
+        null);
+  }
+
+  public ProductFulfillmentApiService(
+      EscortOptionPricingService escortOptionPricingService, EnvironmentConfig config) {
+    this(
+        escortOptionPricingService,
+        new PinnedHttpsFulfillmentTransport(REQUEST_TIMEOUT),
+        new ObjectMapper(),
+        Clock.systemUTC(),
+        InetAddress::getAllByName,
+        config == null ? null : config.getProductFulfillmentSigningSecret());
   }
 
   ProductFulfillmentApiService(
       EscortOptionPricingService escortOptionPricingService,
-      HttpClient httpClient,
+      FulfillmentTransport fulfillmentTransport,
       ObjectMapper objectMapper,
       Clock clock) {
     this(
         escortOptionPricingService,
-        httpClient,
+        fulfillmentTransport,
         objectMapper,
         clock,
-        java.net.InetAddress::getAllByName);
+        InetAddress::getAllByName,
+        null);
   }
 
   ProductFulfillmentApiService(
       EscortOptionPricingService escortOptionPricingService,
-      HttpClient httpClient,
+      FulfillmentTransport fulfillmentTransport,
       ObjectMapper objectMapper,
       Clock clock,
       HostAddressResolver hostAddressResolver) {
+    this(
+        escortOptionPricingService,
+        fulfillmentTransport,
+        objectMapper,
+        clock,
+        hostAddressResolver,
+        null);
+  }
+
+  ProductFulfillmentApiService(
+      EscortOptionPricingService escortOptionPricingService,
+      FulfillmentTransport fulfillmentTransport,
+      ObjectMapper objectMapper,
+      Clock clock,
+      HostAddressResolver hostAddressResolver,
+      String webhookSigningSecret) {
     this.escortOptionPricingService =
         Objects.requireNonNull(
             escortOptionPricingService, "escortOptionPricingService must not be null");
-    this.httpClient = Objects.requireNonNull(httpClient, "httpClient must not be null");
+    this.fulfillmentTransport =
+        Objects.requireNonNull(fulfillmentTransport, "fulfillmentTransport must not be null");
     this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper must not be null");
     this.clock = Objects.requireNonNull(clock, "clock must not be null");
     this.hostAddressResolver =
         Objects.requireNonNull(hostAddressResolver, "hostAddressResolver must not be null");
+    this.webhookSigningSecret =
+        webhookSigningSecret == null || webhookSigningSecret.isBlank()
+            ? null
+            : webhookSigningSecret;
   }
 
   /** Sends fulfillment payload to product backend API when product integration is configured. */
@@ -89,14 +134,17 @@ public class ProductFulfillmentApiService {
     if (product.backendApiUrl() == null || product.backendApiUrl().isBlank()) {
       return Result.err(DomainError.invalidInput("商品尚未設定後端 API URL"));
     }
+    if (webhookSigningSecret == null) {
+      return Result.err(DomainError.invalidInput("後端履約 webhook 簽章密鑰尚未設定"));
+    }
 
     try {
-      Result<URI, DomainError> targetUriResult =
+      Result<ResolvedTarget, DomainError> targetUriResult =
           resolveAndValidateTargetUri(product.backendApiUrl());
       if (targetUriResult.isErr()) {
         return Result.err(targetUriResult.getError());
       }
-      URI targetUri = targetUriResult.getValue();
+      ResolvedTarget target = targetUriResult.getValue();
 
       Long escortPriceTwd = null;
       if (product.shouldAutoCreateEscortOrder()) {
@@ -110,15 +158,11 @@ public class ProductFulfillmentApiService {
       }
 
       ObjectNode payload = buildPayload(request, escortPriceTwd);
-      HttpRequest httpRequest =
-          HttpRequest.newBuilder()
-              .uri(targetUri)
-              .timeout(REQUEST_TIMEOUT)
-              .header("Content-Type", "application/json")
-              .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(payload)))
-              .build();
-      HttpResponse<String> response =
-          httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+      String requestBody = objectMapper.writeValueAsString(payload);
+      Map<String, String> headers = new LinkedHashMap<>();
+      headers.put("Content-Type", "application/json");
+      addSignatureHeaders(headers, requestBody);
+      TransportResponse response = fulfillmentTransport.sendJson(target, requestBody, headers);
 
       if (response.statusCode() < 200 || response.statusCode() >= 300) {
         LOG.warn(
@@ -213,12 +257,17 @@ public class ProductFulfillmentApiService {
     return root;
   }
 
-  private Result<URI, DomainError> resolveAndValidateTargetUri(String rawUrl) {
+  private Result<ResolvedTarget, DomainError> resolveAndValidateTargetUri(String rawUrl) {
     URI uri;
     try {
       uri = URI.create(rawUrl.trim());
     } catch (Exception e) {
       return Result.err(DomainError.invalidInput("後端履約 API URL 格式無效"));
+    }
+
+    String scheme = uri.getScheme();
+    if (scheme == null || !"https".equalsIgnoreCase(scheme)) {
+      return Result.err(DomainError.invalidInput("後端履約 API URL 必須使用 https://"));
     }
 
     String host = uri.getHost();
@@ -232,11 +281,11 @@ public class ProductFulfillmentApiService {
     }
 
     try {
-      java.net.InetAddress[] resolvedAddresses = hostAddressResolver.resolve(host);
+      InetAddress[] resolvedAddresses = hostAddressResolver.resolve(host);
       if (resolvedAddresses == null || resolvedAddresses.length == 0) {
         return Result.err(DomainError.invalidInput("後端履約 API URL 主機格式無效"));
       }
-      for (java.net.InetAddress address : resolvedAddresses) {
+      for (InetAddress address : resolvedAddresses) {
         if (isDisallowedAddress(address)) {
           LOG.warn(
               "Blocked backend fulfillment target resolving to non-public address: host={},"
@@ -246,24 +295,243 @@ public class ProductFulfillmentApiService {
           return Result.err(DomainError.invalidInput("後端履約 API URL 不可使用 localhost 或內網位址"));
         }
       }
+
+      InetAddress selectedAddress = resolvedAddresses[0];
+      int port = uri.getPort() > 0 ? uri.getPort() : 443;
+      String path = uri.getRawPath();
+      if (path == null || path.isBlank()) {
+        path = "/";
+      }
+      if (uri.getRawQuery() != null && !uri.getRawQuery().isBlank()) {
+        path += "?" + uri.getRawQuery();
+      }
+      String hostHeader = port == 443 ? host : host + ":" + port;
+      return Result.ok(new ResolvedTarget(uri, selectedAddress, port, hostHeader, path));
     } catch (UnknownHostException e) {
       return Result.err(DomainError.invalidInput("後端履約 API URL 主機格式無效"));
     }
-
-    return Result.ok(uri);
   }
 
-  private boolean isDisallowedAddress(java.net.InetAddress address) {
-    return address.isAnyLocalAddress()
+  private boolean isDisallowedAddress(InetAddress address) {
+    if (address.isAnyLocalAddress()
         || address.isLoopbackAddress()
         || address.isLinkLocalAddress()
         || address.isSiteLocalAddress()
-        || address.isMulticastAddress();
+        || address.isMulticastAddress()) {
+      return true;
+    }
+
+    byte[] rawAddress = address.getAddress();
+    if (rawAddress.length == 4) {
+      int firstOctet = rawAddress[0] & 0xff;
+      int secondOctet = rawAddress[1] & 0xff;
+      return firstOctet == 0
+          || firstOctet >= 224
+          || (firstOctet == 100 && secondOctet >= 64 && secondOctet <= 127)
+          || (firstOctet == 198 && (secondOctet == 18 || secondOctet == 19));
+    }
+
+    if (rawAddress.length == 16) {
+      int firstByte = rawAddress[0] & 0xff;
+      int secondByte = rawAddress[1] & 0xff;
+      return (firstByte & 0xfe) == 0xfc || (firstByte == 0xfe && (secondByte & 0xc0) == 0x80);
+    }
+
+    return true;
+  }
+
+  private void addSignatureHeaders(Map<String, String> headers, String requestBody)
+      throws Exception {
+    if (webhookSigningSecret == null) {
+      return;
+    }
+
+    String timestamp = Instant.now(clock).toString();
+    headers.put("X-LTDJMS-Signature-Version", "v1");
+    headers.put("X-LTDJMS-Timestamp", timestamp);
+    headers.put("X-LTDJMS-Signature", signPayload(timestamp, requestBody));
+  }
+
+  private String signPayload(String timestamp, String requestBody) throws Exception {
+    Mac mac = Mac.getInstance("HmacSHA256");
+    mac.init(
+        new SecretKeySpec(webhookSigningSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+    byte[] signatureBytes =
+        mac.doFinal((timestamp + "." + requestBody).getBytes(StandardCharsets.UTF_8));
+    return bytesToHex(signatureBytes);
+  }
+
+  private String bytesToHex(byte[] bytes) {
+    StringBuilder result = new StringBuilder(bytes.length * 2);
+    for (byte value : bytes) {
+      result.append(Character.forDigit((value >> 4) & 0xf, 16));
+      result.append(Character.forDigit(value & 0xf, 16));
+    }
+    return result.toString();
   }
 
   @FunctionalInterface
   interface HostAddressResolver {
-    java.net.InetAddress[] resolve(String host) throws UnknownHostException;
+    InetAddress[] resolve(String host) throws UnknownHostException;
+  }
+
+  interface FulfillmentTransport {
+    TransportResponse sendJson(
+        ResolvedTarget target, String requestBody, Map<String, String> headers) throws Exception;
+  }
+
+  record ResolvedTarget(
+      URI originalUri,
+      InetAddress resolvedAddress,
+      int port,
+      String hostHeader,
+      String requestPath) {}
+
+  record TransportResponse(int statusCode, String body) {}
+
+  private static final class PinnedHttpsFulfillmentTransport implements FulfillmentTransport {
+
+    private final Duration timeout;
+    private final SSLSocketFactory sslSocketFactory;
+
+    private PinnedHttpsFulfillmentTransport(Duration timeout) {
+      this.timeout = timeout;
+      this.sslSocketFactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+    }
+
+    @Override
+    public TransportResponse sendJson(
+        ResolvedTarget target, String requestBody, Map<String, String> headers) throws Exception {
+      byte[] bodyBytes = requestBody.getBytes(StandardCharsets.UTF_8);
+      int timeoutMillis = Math.toIntExact(timeout.toMillis());
+
+      try (Socket plainSocket = new Socket()) {
+        plainSocket.connect(
+            new InetSocketAddress(target.resolvedAddress(), target.port()), timeoutMillis);
+        plainSocket.setSoTimeout(timeoutMillis);
+
+        try (SSLSocket socket =
+            (SSLSocket)
+                sslSocketFactory.createSocket(
+                    plainSocket, target.originalUri().getHost(), target.port(), true)) {
+          SSLParameters sslParameters = socket.getSSLParameters();
+          sslParameters.setEndpointIdentificationAlgorithm("HTTPS");
+          sslParameters.setServerNames(List.of(new SNIHostName(target.originalUri().getHost())));
+          socket.setSSLParameters(sslParameters);
+          socket.startHandshake();
+          socket.setSoTimeout(timeoutMillis);
+
+          StringBuilder requestHead = new StringBuilder();
+          requestHead.append("POST ").append(target.requestPath()).append(" HTTP/1.1\r\n");
+          requestHead.append("Host: ").append(target.hostHeader()).append("\r\n");
+          for (Map.Entry<String, String> header : headers.entrySet()) {
+            requestHead
+                .append(header.getKey())
+                .append(": ")
+                .append(header.getValue())
+                .append("\r\n");
+          }
+          requestHead.append("Content-Length: ").append(bodyBytes.length).append("\r\n");
+          requestHead.append("Connection: close\r\n\r\n");
+
+          socket
+              .getOutputStream()
+              .write(requestHead.toString().getBytes(StandardCharsets.US_ASCII));
+          socket.getOutputStream().write(bodyBytes);
+          socket.getOutputStream().flush();
+
+          return readResponse(socket);
+        }
+      }
+    }
+
+    private TransportResponse readResponse(SSLSocket socket) throws Exception {
+      java.io.BufferedInputStream inputStream =
+          new java.io.BufferedInputStream(socket.getInputStream());
+      String statusLine = readAsciiLine(inputStream);
+      if (statusLine == null || statusLine.isBlank()) {
+        throw new java.io.IOException("Missing HTTP response status line");
+      }
+
+      String[] statusParts = statusLine.split(" ", 3);
+      if (statusParts.length < 2) {
+        throw new java.io.IOException("Invalid HTTP response status line: " + statusLine);
+      }
+      int statusCode = Integer.parseInt(statusParts[1]);
+
+      Map<String, String> responseHeaders = new LinkedHashMap<>();
+      String headerLine;
+      while ((headerLine = readAsciiLine(inputStream)) != null && !headerLine.isEmpty()) {
+        int separatorIndex = headerLine.indexOf(':');
+        if (separatorIndex <= 0) {
+          continue;
+        }
+        responseHeaders.put(
+            headerLine.substring(0, separatorIndex).trim().toLowerCase(),
+            headerLine.substring(separatorIndex + 1).trim());
+      }
+
+      byte[] bodyBytes;
+      String transferEncoding = responseHeaders.getOrDefault("transfer-encoding", "");
+      if ("chunked".equalsIgnoreCase(transferEncoding)) {
+        bodyBytes = readChunkedBody(inputStream);
+      } else if (responseHeaders.containsKey("content-length")) {
+        int contentLength = Integer.parseInt(responseHeaders.get("content-length"));
+        bodyBytes = inputStream.readNBytes(contentLength);
+      } else {
+        bodyBytes = inputStream.readAllBytes();
+      }
+
+      return new TransportResponse(statusCode, new String(bodyBytes, StandardCharsets.UTF_8));
+    }
+
+    private byte[] readChunkedBody(java.io.BufferedInputStream inputStream) throws Exception {
+      try (java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream()) {
+        while (true) {
+          String sizeLine = readAsciiLine(inputStream);
+          if (sizeLine == null) {
+            throw new java.io.IOException(
+                "Unexpected end of stream while reading chunked response");
+          }
+
+          int delimiterIndex = sizeLine.indexOf(';');
+          String normalizedSize =
+              delimiterIndex >= 0 ? sizeLine.substring(0, delimiterIndex) : sizeLine;
+          int chunkSize = Integer.parseInt(normalizedSize.trim(), 16);
+          if (chunkSize == 0) {
+            while (true) {
+              String trailerLine = readAsciiLine(inputStream);
+              if (trailerLine == null || trailerLine.isEmpty()) {
+                return output.toByteArray();
+              }
+            }
+          }
+
+          output.write(inputStream.readNBytes(chunkSize));
+          readAsciiLine(inputStream);
+        }
+      }
+    }
+
+    private String readAsciiLine(java.io.BufferedInputStream inputStream) throws Exception {
+      java.io.ByteArrayOutputStream line = new java.io.ByteArrayOutputStream();
+      int nextByte;
+      while ((nextByte = inputStream.read()) != -1) {
+        if (nextByte == '\r') {
+          int lineFeed = inputStream.read();
+          if (lineFeed != '\n') {
+            throw new java.io.IOException("Malformed HTTP line ending");
+          }
+          return line.toString(StandardCharsets.US_ASCII);
+        }
+        line.write(nextByte);
+      }
+
+      if (line.size() == 0) {
+        return null;
+      }
+      return line.toString(StandardCharsets.US_ASCII);
+    }
   }
 
   public enum PurchaseSource {

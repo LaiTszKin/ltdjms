@@ -170,21 +170,38 @@ public class FiatPaymentCallbackService {
     }
 
     if (product.shouldAutoCreateEscortOrder() && !order.isAdminNotified()) {
-      try {
-        adminNotificationService.notifyAdminsOrderCreated(
-            order.guildId(), order.buyerUserId(), product, "法幣付款完成", order.orderNumber());
-        fiatOrderRepository.markAdminNotifiedIfNeeded(order.orderNumber(), Instant.now(clock));
-      } catch (Exception e) {
-        LOG.warn(
-            "Failed to notify admins for paid escort order: orderNumber={}, reason={}",
-            order.orderNumber(),
-            e.getMessage(),
-            e);
+      Instant claimTime = Instant.now(clock);
+      if (fiatOrderRepository.claimAdminNotificationProcessing(order.orderNumber(), claimTime)) {
+        try {
+          adminNotificationService.notifyAdminsOrderCreated(
+              order.guildId(), order.buyerUserId(), product, "法幣付款完成", order.orderNumber());
+          fiatOrderRepository.markAdminNotifiedIfNeeded(order.orderNumber(), claimTime);
+        } catch (Exception e) {
+          fiatOrderRepository.releaseAdminNotificationProcessing(order.orderNumber());
+          LOG.warn(
+              "Failed to notify admins for paid escort order: orderNumber={}, reason={}",
+              order.orderNumber(),
+              e.getMessage(),
+              e);
+        }
+      } else {
+        LOG.info(
+            "Skip duplicate admin notification processing for paid order: orderNumber={}",
+            order.orderNumber());
       }
     }
 
+    Instant fulfillmentClaimTime = Instant.now(clock);
+    if (!fiatOrderRepository.claimFulfillmentProcessing(
+        order.orderNumber(), fulfillmentClaimTime)) {
+      LOG.info(
+          "Skip duplicate fulfillment processing for paid order: orderNumber={}",
+          order.orderNumber());
+      return;
+    }
+
     if (!product.shouldCallBackendFulfillment()) {
-      fiatOrderRepository.markFulfilledIfNeeded(order.orderNumber(), Instant.now(clock));
+      fiatOrderRepository.markFulfilledIfNeeded(order.orderNumber(), fulfillmentClaimTime);
       return;
     }
 
@@ -198,6 +215,7 @@ public class FiatPaymentCallbackService {
                 order.orderNumber(),
                 order.paymentNo()));
     if (fulfillmentResult.isErr()) {
+      fiatOrderRepository.releaseFulfillmentProcessing(order.orderNumber());
       LOG.warn(
           "Backend fulfillment failed after paid callback: orderNumber={}, reason={}",
           order.orderNumber(),
@@ -205,7 +223,7 @@ public class FiatPaymentCallbackService {
       return;
     }
 
-    fiatOrderRepository.markFulfilledIfNeeded(order.orderNumber(), Instant.now(clock));
+    fiatOrderRepository.markFulfilledIfNeeded(order.orderNumber(), fulfillmentClaimTime);
   }
 
   private JsonNode parseCallbackNode(String requestBody, String contentType) {

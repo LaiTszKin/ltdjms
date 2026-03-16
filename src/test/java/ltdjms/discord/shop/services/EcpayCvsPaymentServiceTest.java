@@ -52,4 +52,14 @@ class EcpayCvsPaymentServiceTest {
     assertThat(result.getError().category()).isEqualTo(DomainError.Category.INVALID_INPUT);
     assertThat(result.getError().message()).contains("綠界金流尚未完成設定");
   }
+
+  @Test
+  @DisplayName("設定 callback shared secret 時應附加授權查詢參數")
+  void shouldAppendCallbackSharedSecretToReturnUrl() {
+    when(config.getEcpayCallbackSharedSecret()).thenReturn("shared secret");
+
+    String securedUrl = service.buildCallbackReturnUrl("https://example.com/ecpay/callback");
+
+    assertThat(securedUrl).isEqualTo("https://example.com/ecpay/callback?token=shared+secret");
+  }
 }

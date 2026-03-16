@@ -55,9 +55,8 @@ public record Product(
     if (backendApiUrl != null && !backendApiUrl.isBlank()) {
       String trimmedBackendApiUrl = backendApiUrl.trim();
       String normalizedBackendApiUrl = trimmedBackendApiUrl.toLowerCase(Locale.ROOT);
-      if (!(normalizedBackendApiUrl.startsWith("http://")
-          || normalizedBackendApiUrl.startsWith("https://"))) {
-        throw new IllegalArgumentException("backendApiUrl must start with http:// or https://");
+      if (!normalizedBackendApiUrl.startsWith("https://")) {
+        throw new IllegalArgumentException("backendApiUrl must start with https://");
       }
     }
     if (escortOptionCode != null && escortOptionCode.length() > 120) {

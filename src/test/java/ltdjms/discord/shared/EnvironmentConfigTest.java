@@ -37,4 +37,14 @@ class EnvironmentConfigTest {
 
     assertThat(config.getAIServiceTemperature()).isEqualTo(0.7);
   }
+
+  @Test
+  void fulfillmentSigningSecretUsesDotEnvValueWhenProvided() throws IOException {
+    Files.writeString(
+        tempDir.resolve(".env"), "PRODUCT_FULFILLMENT_SIGNING_SECRET=super-secret-value\n");
+
+    EnvironmentConfig config = new EnvironmentConfig(tempDir);
+
+    assertThat(config.getProductFulfillmentSigningSecret()).isEqualTo("super-secret-value");
+  }
 }

@@ -66,6 +66,12 @@ class FiatPaymentCallbackServiceTest {
     lenient().when(config.getEcpayMerchantId()).thenReturn(MERCHANT_ID);
     when(config.getEcpayHashKey()).thenReturn(HASH_KEY);
     when(config.getEcpayHashIv()).thenReturn(HASH_IV);
+    lenient()
+        .when(fiatOrderRepository.claimAdminNotificationProcessing(any(), any(Instant.class)))
+        .thenReturn(true);
+    lenient()
+        .when(fiatOrderRepository.claimFulfillmentProcessing(any(), any(Instant.class)))
+        .thenReturn(true);
     service =
         new FiatPaymentCallbackService(
             config,
@@ -128,6 +134,58 @@ class FiatPaymentCallbackServiceTest {
         .notifyAdminsOrderCreated(GUILD_ID, BUYER_ID, escortProduct(), "法幣付款完成", ORDER_NUMBER);
     verify(productFulfillmentApiService).notifyFulfillment(any());
     verify(fiatOrderRepository).markFulfilledIfNeeded(eq(ORDER_NUMBER), any(Instant.class));
+  }
+
+  @Test
+  @DisplayName("重複 paid callback 遇到已被 claim 的副作用時不應重複通知或履約")
+  void shouldSkipDuplicateSideEffectsWhenClaimsAlreadyHeld() {
+    FiatOrder paidOrder =
+        new FiatOrder(
+            1L,
+            GUILD_ID,
+            BUYER_ID,
+            PRODUCT_ID,
+            "護航商品",
+            ORDER_NUMBER,
+            "ABC123456789",
+            1200L,
+            FiatOrder.Status.PAID,
+            "1",
+            "付款成功",
+            Instant.now(fixedClock),
+            null,
+            null,
+            null,
+            Instant.now(fixedClock),
+            Instant.now(fixedClock));
+
+    when(fiatOrderRepository.findByOrderNumber(ORDER_NUMBER))
+        .thenReturn(Optional.of(pendingOrder()));
+    when(fiatOrderRepository.markPaidIfPending(
+            eq(ORDER_NUMBER), eq("1"), eq("付款成功"), any(), any(Instant.class)))
+        .thenReturn(Optional.empty());
+    when(fiatOrderRepository.updateCallbackStatus(eq(ORDER_NUMBER), eq("1"), eq("付款成功"), any()))
+        .thenReturn(Optional.of(paidOrder));
+    when(fiatOrderRepository.claimAdminNotificationProcessing(eq(ORDER_NUMBER), any(Instant.class)))
+        .thenReturn(false);
+    when(fiatOrderRepository.claimFulfillmentProcessing(eq(ORDER_NUMBER), any(Instant.class)))
+        .thenReturn(false);
+    when(productService.getProduct(PRODUCT_ID)).thenReturn(Optional.of(escortProduct()));
+
+    FiatPaymentCallbackService.CallbackResult result =
+        service.handleCallback(
+            encryptedPayload(
+                """
+                {"MerchantID":"2000132","MerchantTradeNo":"FD260304000001","TradeAmt":"1200","TradeStatus":"1","RtnCode":1,"RtnMsg":"付款成功"}
+                """),
+            "application/json");
+
+    assertThat(result.httpStatus()).isEqualTo(200);
+    verify(adminNotificationService, never())
+        .notifyAdminsOrderCreated(anyLong(), anyLong(), any(), any(), any());
+    verify(productFulfillmentApiService, never()).notifyFulfillment(any());
+    verify(fiatOrderRepository, never()).markAdminNotifiedIfNeeded(any(), any(Instant.class));
+    verify(fiatOrderRepository, never()).markFulfilledIfNeeded(any(), any(Instant.class));
   }
 
   @Test
@@ -314,8 +372,58 @@ class FiatPaymentCallbackServiceTest {
 
     assertThat(result.httpStatus()).isEqualTo(200);
     verify(fiatOrderRepository, never()).markAdminNotifiedIfNeeded(any(), any(Instant.class));
+    verify(fiatOrderRepository).releaseAdminNotificationProcessing(eq(ORDER_NUMBER));
     verify(productFulfillmentApiService).notifyFulfillment(any());
     verify(fiatOrderRepository).markFulfilledIfNeeded(eq(ORDER_NUMBER), any(Instant.class));
+  }
+
+  @Test
+  @DisplayName("履約失敗時應釋放 fulfillment claim 以便後續重試")
+  void shouldReleaseFulfillmentClaimWhenWebhookFails() {
+    FiatOrder pendingOrder = pendingOrder();
+    FiatOrder paidOrder =
+        new FiatOrder(
+            1L,
+            GUILD_ID,
+            BUYER_ID,
+            PRODUCT_ID,
+            "護航商品",
+            ORDER_NUMBER,
+            "ABC123456789",
+            1200L,
+            FiatOrder.Status.PAID,
+            "1",
+            "付款成功",
+            Instant.now(fixedClock),
+            null,
+            null,
+            null,
+            Instant.now(fixedClock),
+            Instant.now(fixedClock));
+
+    when(fiatOrderRepository.findByOrderNumber(ORDER_NUMBER)).thenReturn(Optional.of(pendingOrder));
+    when(fiatOrderRepository.markPaidIfPending(
+            eq(ORDER_NUMBER), eq("1"), eq("付款成功"), any(), any(Instant.class)))
+        .thenReturn(Optional.of(paidOrder));
+    when(fiatOrderRepository.markAdminNotifiedIfNeeded(eq(ORDER_NUMBER), any(Instant.class)))
+        .thenReturn(Optional.of(paidOrder));
+    when(productService.getProduct(PRODUCT_ID)).thenReturn(Optional.of(escortProduct()));
+    when(productFulfillmentApiService.notifyFulfillment(any()))
+        .thenReturn(
+            Result.err(
+                ltdjms.discord.shared.DomainError.unexpectedFailure("webhook failed", null)));
+
+    FiatPaymentCallbackService.CallbackResult result =
+        service.handleCallback(
+            encryptedPayload(
+                """
+                {"MerchantID":"2000132","MerchantTradeNo":"FD260304000001","TradeAmt":"1200","TradeStatus":"1","RtnCode":1,"RtnMsg":"付款成功"}
+                """),
+            "application/json");
+
+    assertThat(result.httpStatus()).isEqualTo(200);
+    verify(fiatOrderRepository).releaseFulfillmentProcessing(eq(ORDER_NUMBER));
+    verify(fiatOrderRepository, never()).markFulfilledIfNeeded(any(), any(Instant.class));
   }
 
   @Test

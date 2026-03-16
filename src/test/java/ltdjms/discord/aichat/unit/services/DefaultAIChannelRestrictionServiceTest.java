@@ -41,14 +41,14 @@ class DefaultAIChannelRestrictionServiceTest {
   class IsChannelAllowed {
 
     @Test
-    @DisplayName("當允許清單為空時，應返回 true（無限制模式）")
-    void shouldReturnTrueWhenEmpty() {
+    @DisplayName("當允許清單為空時，應返回 false（預設拒絕）")
+    void shouldReturnFalseWhenEmpty() {
       AIChannelRestriction restriction = new AIChannelRestriction(123L, Set.of());
       when(repository.findRestrictionByGuildId(123L)).thenReturn(Result.ok(restriction));
 
       boolean allowed = service.isChannelAllowed(123L, 1001L);
 
-      assertTrue(allowed);
+      assertFalse(allowed);
     }
 
     @Test

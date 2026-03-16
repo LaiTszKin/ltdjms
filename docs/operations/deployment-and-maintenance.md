@@ -139,9 +139,9 @@ V{版本號}__{描述}.sql
 
 ```bash
 # 設定資料庫連線
-export DATABASE_URL=jdbc:postgresql://localhost:5432/ltdjms
-export DATABASE_USERNAME=postgres
-export DATABASE_PASSWORD=postgres
+export DB_URL=jdbc:postgresql://localhost:5432/currency_bot
+export DB_USERNAME=postgres
+export DB_PASSWORD=postgres
 
 ./scripts/db/migrate.sh info
 ```

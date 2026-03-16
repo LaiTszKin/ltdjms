@@ -25,7 +25,7 @@ import ltdjms.discord.shared.Unit;
  *   <li>T038: add-remove-flow - 新增與移除頻道的完整流程
  *   <li>T039: channel-check-flow - 頻道檢查流程
  *   <li>T040: deleted-channel-cleanup - 已刪除頻道的清理流程
- *   <li>T041: unrestricted-mode - 無限制模式（空清單）測試
+ *   <li>T041: empty-allowlist-mode - 空清單預設拒絕測試
  * </ul>
  */
 @DisplayName("AI 頻道限制整合測試")
@@ -192,8 +192,8 @@ class AIChannelRestrictionIntegrationTest extends PostgresIntegrationTestBase {
     }
 
     @Test
-    @DisplayName("清空所有頻道應該恢復無限制模式")
-    void shouldReturnToUnrestrictedModeWhenAllChannelsRemoved() {
+    @DisplayName("清空所有頻道應該恢復空 allowlist 並拒絕所有頻道")
+    void shouldReturnToEmptyAllowlistWhenAllChannelsRemoved() {
       // Given
       AllowedChannel channel1 = new AllowedChannel(TEST_CHANNEL_1, "test-channel-1");
       service.addAllowedChannel(TEST_GUILD_ID, channel1);
@@ -202,8 +202,8 @@ class AIChannelRestrictionIntegrationTest extends PostgresIntegrationTestBase {
       // When
       service.removeAllowedChannel(TEST_GUILD_ID, TEST_CHANNEL_1);
 
-      // Then - 無限制模式，所有頻道都允許
-      assertThat(service.isChannelAllowed(TEST_GUILD_ID, TEST_CHANNEL_2)).isTrue();
+      // Then - 空 allowlist 預設拒絕所有頻道
+      assertThat(service.isChannelAllowed(TEST_GUILD_ID, TEST_CHANNEL_2)).isFalse();
     }
   }
 
@@ -212,17 +212,17 @@ class AIChannelRestrictionIntegrationTest extends PostgresIntegrationTestBase {
   class ChannelCheckFlowTests {
 
     @Test
-    @DisplayName("在無限制模式下，所有頻道都應該被允許")
-    void shouldAllowAllChannelsInUnrestrictedMode() {
+    @DisplayName("在空 allowlist 下，所有頻道都應該被拒絕")
+    void shouldDenyAllChannelsWhenAllowlistEmpty() {
       // When - 未設定任何頻道限制
       boolean allowed1 = service.isChannelAllowed(TEST_GUILD_ID, TEST_CHANNEL_1);
       boolean allowed2 = service.isChannelAllowed(TEST_GUILD_ID, TEST_CHANNEL_2);
       boolean allowed3 = service.isChannelAllowed(TEST_GUILD_ID, 999L);
 
       // Then
-      assertThat(allowed1).isTrue();
-      assertThat(allowed2).isTrue();
-      assertThat(allowed3).isTrue();
+      assertThat(allowed1).isFalse();
+      assertThat(allowed2).isFalse();
+      assertThat(allowed3).isFalse();
     }
 
     @Test
@@ -310,8 +310,8 @@ class AIChannelRestrictionIntegrationTest extends PostgresIntegrationTestBase {
     }
 
     @Test
-    @DisplayName("清理所有頻道應該恢復無限制模式")
-    void shouldReturnToUnrestrictedModeAfterCleanup() {
+    @DisplayName("清理所有頻道應該恢復空 allowlist 並拒絕所有頻道")
+    void shouldReturnToEmptyAllowlistAfterCleanup() {
       // Given
       AllowedChannel channel1 = new AllowedChannel(TEST_CHANNEL_1, "test-channel-1");
       AllowedChannel channel2 = new AllowedChannel(TEST_CHANNEL_2, "test-channel-2");
@@ -322,8 +322,8 @@ class AIChannelRestrictionIntegrationTest extends PostgresIntegrationTestBase {
       // When - 清空所有頻道
       repository.deleteRemovedChannels(TEST_GUILD_ID, Set.of());
 
-      // Then - 應該恢復無限制模式
-      assertThat(service.isChannelAllowed(TEST_GUILD_ID, 999L)).isTrue();
+      // Then - 應該恢復空 allowlist 並拒絕所有頻道
+      assertThat(service.isChannelAllowed(TEST_GUILD_ID, 999L)).isFalse();
       Result<Set<AllowedChannel>, DomainError> channels = service.getAllowedChannels(TEST_GUILD_ID);
       assertThat(channels.isOk()).isTrue();
       assertThat(channels.getValue()).isEmpty();
@@ -331,42 +331,42 @@ class AIChannelRestrictionIntegrationTest extends PostgresIntegrationTestBase {
   }
 
   @Nested
-  @DisplayName("T041: unrestricted-mode (empty list) 整合測試")
-  class UnrestrictedModeTests {
+  @DisplayName("T041: empty-allowlist-mode 整合測試")
+  class EmptyAllowlistModeTests {
 
     @Test
-    @DisplayName("空清單應該被視為無限制模式")
-    void emptyListShouldBeUnrestrictedMode() {
+    @DisplayName("空清單應該預設拒絕所有頻道")
+    void emptyListShouldDenyAllChannels() {
       // When - 未新增任何頻道
       Result<Set<AllowedChannel>, DomainError> result = service.getAllowedChannels(TEST_GUILD_ID);
 
       // Then
       assertThat(result.isOk()).isTrue();
       assertThat(result.getValue()).isEmpty();
-      assertThat(service.isChannelAllowed(TEST_GUILD_ID, 123L)).isTrue();
-      assertThat(service.isChannelAllowed(TEST_GUILD_ID, 456L)).isTrue();
-      assertThat(service.isChannelAllowed(TEST_GUILD_ID, 789L)).isTrue();
+      assertThat(service.isChannelAllowed(TEST_GUILD_ID, 123L)).isFalse();
+      assertThat(service.isChannelAllowed(TEST_GUILD_ID, 456L)).isFalse();
+      assertThat(service.isChannelAllowed(TEST_GUILD_ID, 789L)).isFalse();
     }
 
     @Test
-    @DisplayName("從無限制模式切換到限制模式")
-    void shouldSwitchFromUnrestrictedToRestricted() {
-      // Given - 無限制模式
-      assertThat(service.isChannelAllowed(TEST_GUILD_ID, 999L)).isTrue();
+    @DisplayName("從空 allowlist 切換到允許清單模式")
+    void shouldSwitchFromEmptyAllowlistToAllowlistMode() {
+      // Given - 空 allowlist
+      assertThat(service.isChannelAllowed(TEST_GUILD_ID, 999L)).isFalse();
 
       // When - 新增第一個頻道
       AllowedChannel channel1 = new AllowedChannel(TEST_CHANNEL_1, "test-channel-1");
       service.addAllowedChannel(TEST_GUILD_ID, channel1);
 
-      // Then - 應該切換到限制模式
+      // Then - 應該切換到允許清單模式
       assertThat(service.isChannelAllowed(TEST_GUILD_ID, TEST_CHANNEL_1)).isTrue();
       assertThat(service.isChannelAllowed(TEST_GUILD_ID, 999L)).isFalse();
     }
 
     @Test
-    @DisplayName("從限制模式恢復到無限制模式")
-    void shouldSwitchFromRestrictedToUnrestricted() {
-      // Given - 限制模式
+    @DisplayName("從允許清單模式恢復到空 allowlist")
+    void shouldSwitchFromAllowlistModeToEmptyAllowlist() {
+      // Given - 允許清單模式
       AllowedChannel channel1 = new AllowedChannel(TEST_CHANNEL_1, "test-channel-1");
       service.addAllowedChannel(TEST_GUILD_ID, channel1);
       assertThat(service.isChannelAllowed(TEST_GUILD_ID, 999L)).isFalse();
@@ -374,8 +374,8 @@ class AIChannelRestrictionIntegrationTest extends PostgresIntegrationTestBase {
       // When - 移除所有頻道
       service.removeAllowedChannel(TEST_GUILD_ID, TEST_CHANNEL_1);
 
-      // Then - 應該恢復無限制模式
-      assertThat(service.isChannelAllowed(TEST_GUILD_ID, 999L)).isTrue();
+      // Then - 應該恢復空 allowlist
+      assertThat(service.isChannelAllowed(TEST_GUILD_ID, 999L)).isFalse();
       Result<Set<AllowedChannel>, DomainError> result = service.getAllowedChannels(TEST_GUILD_ID);
       assertThat(result.isOk()).isTrue();
       assertThat(result.getValue()).isEmpty();
@@ -392,13 +392,13 @@ class AIChannelRestrictionIntegrationTest extends PostgresIntegrationTestBase {
       // When - Guild 1 設定頻道限制
       service.addAllowedChannel(guild1, channel1);
 
-      // Then - Guild 1 應該是限制模式，Guild 2 應該是無限制模式
+      // Then - Guild 1 應該是允許清單模式，Guild 2 應該維持空 allowlist
       assertThat(service.isChannelAllowed(guild1, TEST_CHANNEL_1)).isTrue();
       assertThat(service.isChannelAllowed(guild1, 999L)).isFalse();
 
-      // Guild 2 是無限制模式，所有頻道都允許
-      assertThat(service.isChannelAllowed(guild2, TEST_CHANNEL_1)).isTrue();
-      assertThat(service.isChannelAllowed(guild2, 999L)).isTrue();
+      // Guild 2 維持空 allowlist，所有頻道都拒絕
+      assertThat(service.isChannelAllowed(guild2, TEST_CHANNEL_1)).isFalse();
+      assertThat(service.isChannelAllowed(guild2, 999L)).isFalse();
     }
   }
 }

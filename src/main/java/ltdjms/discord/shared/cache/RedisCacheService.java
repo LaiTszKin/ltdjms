@@ -1,5 +1,6 @@
 package ltdjms.discord.shared.cache;
 
+import java.net.URI;
 import java.util.Optional;
 
 import org.slf4j.Logger;
@@ -55,7 +56,33 @@ public class RedisCacheService implements CacheService {
     this.redisClient = RedisClient.create(uri);
     this.connection = redisClient.connect();
     this.objectMapper = objectMapper;
-    logger.info("Redis 緩存服務已初始化，連線至 {}", redisUri);
+    logger.info("Redis 緩存服務已初始化，連線至 {}", redactRedisUri(redisUri));
+  }
+
+  static String redactRedisUri(String redisUri) {
+    if (redisUri == null || redisUri.isBlank()) {
+      return redisUri;
+    }
+
+    try {
+      URI uri = URI.create(redisUri);
+      if (uri.getUserInfo() == null) {
+        return redisUri;
+      }
+
+      URI redactedUri =
+          new URI(
+              uri.getScheme(),
+              "***",
+              uri.getHost(),
+              uri.getPort(),
+              uri.getPath(),
+              uri.getQuery(),
+              uri.getFragment());
+      return redactedUri.toString();
+    } catch (Exception ignored) {
+      return redisUri.replaceFirst("://[^@]+@", "://***@");
+    }
   }
 
   private static ObjectMapper createDefaultObjectMapper() {

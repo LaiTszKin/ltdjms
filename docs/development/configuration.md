@@ -79,7 +79,19 @@
   - 對應 config key：`redis.uri`
   - 格式：`redis://[host]:[port]`
 
-### 2.5 AI 服務設定（V010 新增）
+### 2.5 Webhook / Payment 安全設定
+
+- `ECPAY_CALLBACK_SHARED_SECRET`
+  - 預設：空字串
+  - 對應 config key：`shop.ecpay.callback.shared-secret`
+  - 說明：綠界付款回推的共享密鑰；若 `ECPAY_CALLBACK_BIND_HOST` 綁定公網位址，必須設定此值
+
+- `PRODUCT_FULFILLMENT_SIGNING_SECRET`
+  - 預設：空字串
+  - 對應 config key：`product.fulfillment.signing-secret`
+  - 說明：商品履約 webhook 的 HMAC 簽章密鑰；啟用商品履約時必須設定
+
+### 2.6 AI 服務設定（V010 新增）
 
 以下設定對應 AI Chat 功能的 AI 服務連線與參數：
 
@@ -117,7 +129,7 @@
   - 驗證範圍：`1` - `120`
   - 說明：AI 服務連線逾時秒數（不限制推理時間）
 
-### 2.6 Markdown 驗證設定（V018 新增）
+### 2.7 Markdown 驗證設定（V018 新增）
 
 以下設定對應 AI 回應的 Markdown 格式驗證功能：
 
@@ -135,7 +147,7 @@
   - 啟用後串流回應會直接傳送，不進行驗證
 
 
-### 2.7 提示詞載入器設定（V015 新增）
+### 2.8 提示詞載入器設定（V015 新增）
 
 以下設定對應外部提示詞載入功能：
 
@@ -151,7 +163,7 @@
   - 驗證範圍：`1024` - `10485760`（1 KB - 10 MB）
   - 說明：單一提示詞檔案的大小上限（位元組）
 
-### 2.8 日誌設定
+### 2.9 日誌設定
 
 以下設定對應 `logback.xml` 的持久化與滾動策略：
 

@@ -168,8 +168,8 @@ public class JdbcFiatOrderRepository implements FiatOrderRepository {
   @Override
   public Optional<FiatOrder> markFulfilledIfNeeded(String orderNumber, Instant fulfilledAt) {
     String sql =
-        "UPDATE fiat_order SET fulfilled_at = ?, updated_at = NOW()"
-            + " WHERE order_number = ? AND fulfilled_at IS NULL RETURNING "
+        "UPDATE fiat_order SET fulfilled_at = ?, fulfillment_processing_at = NULL, updated_at ="
+            + " NOW() WHERE order_number = ? AND fulfilled_at IS NULL RETURNING "
             + SELECT_COLUMNS;
     try (Connection conn = dataSource.getConnection();
         PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -190,7 +190,8 @@ public class JdbcFiatOrderRepository implements FiatOrderRepository {
   @Override
   public Optional<FiatOrder> markAdminNotifiedIfNeeded(String orderNumber, Instant notifiedAt) {
     String sql =
-        "UPDATE fiat_order SET admin_notified_at = ?, updated_at = NOW()"
+        "UPDATE fiat_order SET admin_notified_at = ?, admin_notification_processing_at = NULL,"
+            + " updated_at = NOW()"
             + " WHERE order_number = ? AND admin_notified_at IS NULL RETURNING "
             + SELECT_COLUMNS;
     try (Connection conn = dataSource.getConnection();
@@ -206,6 +207,71 @@ public class JdbcFiatOrderRepository implements FiatOrderRepository {
     } catch (SQLException e) {
       LOG.error("Failed to mark fiat admin notified: orderNumber={}", orderNumber, e);
       throw new RepositoryException("Failed to mark fiat admin notified", e);
+    }
+  }
+
+  @Override
+  public boolean claimFulfillmentProcessing(String orderNumber, Instant claimedAt) {
+    String sql =
+        "UPDATE fiat_order SET fulfillment_processing_at = ?, updated_at = NOW() WHERE order_number"
+            + " = ? AND fulfilled_at IS NULL AND fulfillment_processing_at IS NULL";
+    try (Connection conn = dataSource.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(sql)) {
+      stmt.setTimestamp(1, Timestamp.from(claimedAt));
+      stmt.setString(2, orderNumber);
+      return stmt.executeUpdate() > 0;
+    } catch (SQLException e) {
+      LOG.error("Failed to claim fiat fulfillment processing: orderNumber={}", orderNumber, e);
+      throw new RepositoryException("Failed to claim fiat fulfillment processing", e);
+    }
+  }
+
+  @Override
+  public void releaseFulfillmentProcessing(String orderNumber) {
+    String sql =
+        "UPDATE fiat_order SET fulfillment_processing_at = NULL, updated_at = NOW()"
+            + " WHERE order_number = ? AND fulfilled_at IS NULL";
+    try (Connection conn = dataSource.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(sql)) {
+      stmt.setString(1, orderNumber);
+      stmt.executeUpdate();
+    } catch (SQLException e) {
+      LOG.error("Failed to release fiat fulfillment processing: orderNumber={}", orderNumber, e);
+      throw new RepositoryException("Failed to release fiat fulfillment processing", e);
+    }
+  }
+
+  @Override
+  public boolean claimAdminNotificationProcessing(String orderNumber, Instant claimedAt) {
+    String sql =
+        "UPDATE fiat_order SET admin_notification_processing_at = ?, updated_at = NOW()"
+            + " WHERE order_number = ? AND admin_notified_at IS NULL"
+            + " AND admin_notification_processing_at IS NULL";
+    try (Connection conn = dataSource.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(sql)) {
+      stmt.setTimestamp(1, Timestamp.from(claimedAt));
+      stmt.setString(2, orderNumber);
+      return stmt.executeUpdate() > 0;
+    } catch (SQLException e) {
+      LOG.error(
+          "Failed to claim fiat admin notification processing: orderNumber={}", orderNumber, e);
+      throw new RepositoryException("Failed to claim fiat admin notification processing", e);
+    }
+  }
+
+  @Override
+  public void releaseAdminNotificationProcessing(String orderNumber) {
+    String sql =
+        "UPDATE fiat_order SET admin_notification_processing_at = NULL, updated_at = NOW()"
+            + " WHERE order_number = ? AND admin_notified_at IS NULL";
+    try (Connection conn = dataSource.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(sql)) {
+      stmt.setString(1, orderNumber);
+      stmt.executeUpdate();
+    } catch (SQLException e) {
+      LOG.error(
+          "Failed to release fiat admin notification processing: orderNumber={}", orderNumber, e);
+      throw new RepositoryException("Failed to release fiat admin notification processing", e);
     }
   }
 

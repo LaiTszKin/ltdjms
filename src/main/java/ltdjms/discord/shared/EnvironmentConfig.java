@@ -66,6 +66,9 @@ public final class EnvironmentConfig {
   private static final String ENV_ECPAY_CALLBACK_BIND_HOST = "ECPAY_CALLBACK_BIND_HOST";
   private static final String ENV_ECPAY_CALLBACK_BIND_PORT = "ECPAY_CALLBACK_BIND_PORT";
   private static final String ENV_ECPAY_CALLBACK_PATH = "ECPAY_CALLBACK_PATH";
+  private static final String ENV_ECPAY_CALLBACK_SHARED_SECRET = "ECPAY_CALLBACK_SHARED_SECRET";
+  private static final String ENV_PRODUCT_FULFILLMENT_SIGNING_SECRET =
+      "PRODUCT_FULFILLMENT_SIGNING_SECRET";
 
   // Config paths for Typesafe Config
   private static final String CFG_DISCORD_BOT_TOKEN = "discord.bot.token";
@@ -103,6 +106,10 @@ public final class EnvironmentConfig {
   private static final String CFG_ECPAY_CALLBACK_BIND_HOST = "payment.ecpay.callback.bind-host";
   private static final String CFG_ECPAY_CALLBACK_BIND_PORT = "payment.ecpay.callback.bind-port";
   private static final String CFG_ECPAY_CALLBACK_PATH = "payment.ecpay.callback.path";
+  private static final String CFG_ECPAY_CALLBACK_SHARED_SECRET =
+      "payment.ecpay.callback.shared-secret";
+  private static final String CFG_PRODUCT_FULFILLMENT_SIGNING_SECRET =
+      "shop.fulfillment.signing-secret";
 
   // Default values
   private static final String DEFAULT_REDIS_URI = "redis://localhost:6379";
@@ -129,9 +136,11 @@ public final class EnvironmentConfig {
   private static final String DEFAULT_ECPAY_RETURN_URL = "";
   private static final boolean DEFAULT_ECPAY_STAGE_MODE = true;
   private static final int DEFAULT_ECPAY_CVS_EXPIRE_MINUTES = 10080;
-  private static final String DEFAULT_ECPAY_CALLBACK_BIND_HOST = "0.0.0.0";
+  private static final String DEFAULT_ECPAY_CALLBACK_BIND_HOST = "127.0.0.1";
   private static final int DEFAULT_ECPAY_CALLBACK_BIND_PORT = 8085;
   private static final String DEFAULT_ECPAY_CALLBACK_PATH = "/ecpay/callback";
+  private static final String DEFAULT_ECPAY_CALLBACK_SHARED_SECRET = "";
+  private static final String DEFAULT_PRODUCT_FULFILLMENT_SIGNING_SECRET = "";
 
   private final Config config;
   private final Map<String, String> dotEnvValues;
@@ -190,6 +199,9 @@ public final class EnvironmentConfig {
     defaults.put(CFG_ECPAY_CALLBACK_BIND_HOST, DEFAULT_ECPAY_CALLBACK_BIND_HOST);
     defaults.put(CFG_ECPAY_CALLBACK_BIND_PORT, DEFAULT_ECPAY_CALLBACK_BIND_PORT);
     defaults.put(CFG_ECPAY_CALLBACK_PATH, DEFAULT_ECPAY_CALLBACK_PATH);
+    defaults.put(CFG_ECPAY_CALLBACK_SHARED_SECRET, DEFAULT_ECPAY_CALLBACK_SHARED_SECRET);
+    defaults.put(
+        CFG_PRODUCT_FULFILLMENT_SIGNING_SECRET, DEFAULT_PRODUCT_FULFILLMENT_SIGNING_SECRET);
     Config defaultsConfig = ConfigFactory.parseMap(defaults);
 
     // Load application.conf/properties (standard Typesafe Config behavior)
@@ -231,6 +243,12 @@ public final class EnvironmentConfig {
     mapEnvToConfig(dotEnvMapped, ENV_ECPAY_CALLBACK_BIND_HOST, CFG_ECPAY_CALLBACK_BIND_HOST);
     mapEnvToConfigInt(dotEnvMapped, ENV_ECPAY_CALLBACK_BIND_PORT, CFG_ECPAY_CALLBACK_BIND_PORT);
     mapEnvToConfig(dotEnvMapped, ENV_ECPAY_CALLBACK_PATH, CFG_ECPAY_CALLBACK_PATH);
+    mapEnvToConfig(
+        dotEnvMapped, ENV_ECPAY_CALLBACK_SHARED_SECRET, CFG_ECPAY_CALLBACK_SHARED_SECRET);
+    mapEnvToConfig(
+        dotEnvMapped,
+        ENV_PRODUCT_FULFILLMENT_SIGNING_SECRET,
+        CFG_PRODUCT_FULFILLMENT_SIGNING_SECRET);
     Config dotEnvConfig = ConfigFactory.parseMap(dotEnvMapped);
 
     // Build system env vars as config (highest priority)
@@ -270,6 +288,12 @@ public final class EnvironmentConfig {
     mapSysEnvToConfig(sysEnvMapped, ENV_ECPAY_CALLBACK_BIND_HOST, CFG_ECPAY_CALLBACK_BIND_HOST);
     mapSysEnvToConfigInt(sysEnvMapped, ENV_ECPAY_CALLBACK_BIND_PORT, CFG_ECPAY_CALLBACK_BIND_PORT);
     mapSysEnvToConfig(sysEnvMapped, ENV_ECPAY_CALLBACK_PATH, CFG_ECPAY_CALLBACK_PATH);
+    mapSysEnvToConfig(
+        sysEnvMapped, ENV_ECPAY_CALLBACK_SHARED_SECRET, CFG_ECPAY_CALLBACK_SHARED_SECRET);
+    mapSysEnvToConfig(
+        sysEnvMapped,
+        ENV_PRODUCT_FULFILLMENT_SIGNING_SECRET,
+        CFG_PRODUCT_FULFILLMENT_SIGNING_SECRET);
     Config sysEnvConfig = ConfigFactory.parseMap(sysEnvMapped);
 
     // Layer configs: sysEnv > dotEnv > application > defaults
@@ -830,5 +854,23 @@ public final class EnvironmentConfig {
    */
   public String getEcpayCallbackPath() {
     return config.getString(CFG_ECPAY_CALLBACK_PATH);
+  }
+
+  /**
+   * Gets the shared secret used to authenticate ECPay callback requests.
+   *
+   * @return callback shared secret, empty string when not configured
+   */
+  public String getEcpayCallbackSharedSecret() {
+    return config.getString(CFG_ECPAY_CALLBACK_SHARED_SECRET);
+  }
+
+  /**
+   * Gets the signing secret used for outbound product fulfillment webhooks.
+   *
+   * @return signing secret, empty string when not configured
+   */
+  public String getProductFulfillmentSigningSecret() {
+    return config.getString(CFG_PRODUCT_FULFILLMENT_SIGNING_SECRET);
   }
 }

@@ -312,8 +312,8 @@ public class CommandHandlerModule {
   @Provides
   @Singleton
   public ProductFulfillmentApiService provideProductFulfillmentApiService(
-      EscortOptionPricingService escortOptionPricingService) {
-    return new ProductFulfillmentApiService(escortOptionPricingService);
+      EscortOptionPricingService escortOptionPricingService, EnvironmentConfig config) {
+    return new ProductFulfillmentApiService(escortOptionPricingService, config);
   }
 
   @Provides

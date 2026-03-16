@@ -22,25 +22,25 @@ class AIChannelRestrictionTest {
   private static final AllowedChannel CHANNEL_2 = new AllowedChannel(1002L, "ai-chat");
 
   @Nested
-  @DisplayName("無限制模式判斷")
-  class UnrestrictedMode {
+  @DisplayName("空 allowlist 狀態判斷")
+  class EmptyAllowlistState {
 
     @Test
-    @DisplayName("當允許頻道清單為空時，應為無限制模式")
+    @DisplayName("當允許頻道清單為空時，應標記為空 allowlist")
     void shouldReturnTrueWhenEmpty() {
       AIChannelRestriction restriction = new AIChannelRestriction(GUILD_ID, Set.of());
       assertTrue(restriction.isUnrestricted());
     }
 
     @Test
-    @DisplayName("當使用無參數建構式時，應為無限制模式")
+    @DisplayName("當使用無參數建構式時，應標記為空 allowlist")
     void shouldReturnTrueWhenUsingNoArgConstructor() {
       AIChannelRestriction restriction = new AIChannelRestriction(GUILD_ID);
       assertTrue(restriction.isUnrestricted());
     }
 
     @Test
-    @DisplayName("當允許頻道清單非空時，不應為無限制模式")
+    @DisplayName("當允許頻道清單非空時，不應標記為空 allowlist")
     void shouldReturnFalseWhenNotEmpty() {
       AIChannelRestriction restriction = new AIChannelRestriction(GUILD_ID, Set.of(CHANNEL_1));
       assertFalse(restriction.isUnrestricted());
@@ -52,12 +52,12 @@ class AIChannelRestrictionTest {
   class ChannelCheck {
 
     @Test
-    @DisplayName("當為無限制模式時，任何頻道都應被允許")
-    void shouldAllowAllChannelsWhenUnrestricted() {
+    @DisplayName("當允許清單為空時，應預設拒絕所有頻道")
+    void shouldDenyAllChannelsWhenAllowlistEmpty() {
       AIChannelRestriction restriction = new AIChannelRestriction(GUILD_ID, Set.of());
-      assertTrue(restriction.isChannelAllowed(1001L));
-      assertTrue(restriction.isChannelAllowed(9999L));
-      assertTrue(restriction.isChannelAllowed(0L)); // 無論是否有效 ID
+      assertFalse(restriction.isChannelAllowed(1001L));
+      assertFalse(restriction.isChannelAllowed(9999L));
+      assertFalse(restriction.isChannelAllowed(0L));
     }
 
     @Test
@@ -90,12 +90,12 @@ class AIChannelRestrictionTest {
 
       AIChannelRestriction updated = restriction.withChannelAdded(newChannel);
 
-      // 新物件包含新頻道且不再為無限制模式
+      // 新物件包含新頻道且不再為空 allowlist
       assertTrue(updated.isChannelAllowed(1003L));
       assertFalse(updated.isUnrestricted());
       assertEquals(1, updated.allowedChannels().size());
 
-      // 原物件仍為無限制模式（空集合）
+      // 原物件仍為空 allowlist（空集合）
       assertTrue(restriction.isUnrestricted());
       assertEquals(0, restriction.allowedChannels().size());
     }
@@ -131,13 +131,14 @@ class AIChannelRestrictionTest {
     }
 
     @Test
-    @DisplayName("移除所有頻道後，應變為無限制模式")
-    void shouldBecomeUnrestrictedWhenAllRemoved() {
+    @DisplayName("移除所有頻道後，應恢復為空 allowlist 並拒絕所有頻道")
+    void shouldBecomeEmptyAllowlistWhenAllRemoved() {
       AIChannelRestriction restriction = new AIChannelRestriction(GUILD_ID, Set.of(CHANNEL_1));
 
       AIChannelRestriction updated = restriction.withChannelRemoved(1001L);
 
       assertTrue(updated.isUnrestricted());
+      assertFalse(updated.isChannelAllowed(1001L));
     }
 
     @Test

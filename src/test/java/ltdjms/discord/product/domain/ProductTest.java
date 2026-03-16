@@ -112,6 +112,29 @@ class ProductTest {
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining("both");
     }
+
+    @Test
+    @DisplayName("should reject non-https backend API URL")
+    void shouldRejectNonHttpsBackendApiUrl() {
+      assertThatThrownBy(
+              () ->
+                  new Product(
+                      1L,
+                      TEST_GUILD_ID,
+                      "Test",
+                      "desc",
+                      null,
+                      null,
+                      100L,
+                      null,
+                      "http://backend.example.com/fulfill",
+                      false,
+                      null,
+                      Instant.now(),
+                      Instant.now()))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("https://");
+    }
   }
 
   @Nested

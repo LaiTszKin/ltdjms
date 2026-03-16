@@ -20,7 +20,7 @@ public interface AIChannelRestrictionRepository {
    * 查詢伺服器的所有允許頻道。
    *
    * @param guildId 伺服器 ID
-   * @return 允許頻道集合（空集合表示無限制模式）
+   * @return 允許頻道集合（空集合表示尚未設定任何允許頻道）
    */
   Result<Set<AllowedChannel>, DomainError> findByGuildId(long guildId);
 
@@ -28,7 +28,7 @@ public interface AIChannelRestrictionRepository {
    * 查詢完整頻道與類別限制聚合。
    *
    * @param guildId 伺服器 ID
-   * @return AIChannelRestriction 聚合，空集合表示無限制模式
+   * @return AIChannelRestriction 聚合，空集合表示尚未設定任何允許目標
    */
   Result<AIChannelRestriction, DomainError> findRestrictionByGuildId(long guildId);
 

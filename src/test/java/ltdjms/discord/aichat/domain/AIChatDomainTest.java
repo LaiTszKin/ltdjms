@@ -459,8 +459,8 @@ class AIChatDomainTest {
   class AIChannelRestrictionTests {
 
     @Test
-    @DisplayName("should create unrestricted mode")
-    void shouldCreateUnrestrictedMode() {
+    @DisplayName("should create empty allowlist mode")
+    void shouldCreateEmptyAllowlistMode() {
       // When
       AIChannelRestriction restriction = new AIChannelRestriction(123L);
 
@@ -536,8 +536,8 @@ class AIChatDomainTest {
     }
 
     @Test
-    @DisplayName("should allow channel when unrestricted")
-    void shouldAllowChannelWhenUnrestricted() {
+    @DisplayName("should deny channel when allowlist is empty")
+    void shouldDenyChannelWhenAllowlistIsEmpty() {
       // Given
       AIChannelRestriction restriction = new AIChannelRestriction(123L);
 
@@ -545,7 +545,7 @@ class AIChatDomainTest {
       boolean result = restriction.isChannelAllowed(456L);
 
       // Then
-      assertThat(result).isTrue();
+      assertThat(result).isFalse();
     }
 
     @Test

@@ -8,13 +8,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.net.InetAddress;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Map;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -35,21 +35,17 @@ class ProductFulfillmentApiServiceTest {
   private static final long USER_ID = 456L;
 
   private EscortOptionPricingService escortOptionPricingService;
-  private HttpClient httpClient;
+  private ProductFulfillmentApiService.FulfillmentTransport fulfillmentTransport;
   private ProductFulfillmentApiService service;
-
-  private static HttpResponse.BodyHandler<String> anyStringBodyHandler() {
-    return org.mockito.ArgumentMatchers.<HttpResponse.BodyHandler<String>>any();
-  }
 
   @BeforeEach
   void setUp() {
     escortOptionPricingService = mock(EscortOptionPricingService.class);
-    httpClient = mock(HttpClient.class);
+    fulfillmentTransport = mock(ProductFulfillmentApiService.FulfillmentTransport.class);
     service =
         new ProductFulfillmentApiService(
             escortOptionPricingService,
-            httpClient,
+            fulfillmentTransport,
             new ObjectMapper(),
             Clock.fixed(Instant.parse("2026-03-04T00:00:00Z"), ZoneOffset.UTC),
             host -> {
@@ -60,7 +56,8 @@ class ProductFulfillmentApiServiceTest {
                 return new InetAddress[] {InetAddress.getByName("127.0.0.1")};
               }
               throw new java.net.UnknownHostException(host);
-            });
+            },
+            "test-signing-secret");
   }
 
   @Test
@@ -93,7 +90,7 @@ class ProductFulfillmentApiServiceTest {
                 null));
 
     assertThat(result.isOk()).isTrue();
-    verify(httpClient, never()).send(any(), anyStringBodyHandler());
+    verify(fulfillmentTransport, never()).sendJson(any(), any(), any());
   }
 
   @Test
@@ -117,11 +114,8 @@ class ProductFulfillmentApiServiceTest {
     when(escortOptionPricingService.getEffectivePrice(GUILD_ID, "CONF_DAM_300W"))
         .thenReturn(Result.ok(650L));
 
-    @SuppressWarnings("unchecked")
-    HttpResponse<String> response = mock(HttpResponse.class);
-    when(response.statusCode()).thenReturn(200);
-    when(response.body()).thenReturn("{\"ok\":true}");
-    when(httpClient.send(any(), anyStringBodyHandler())).thenReturn(response);
+    when(fulfillmentTransport.sendJson(any(), any(), any()))
+        .thenReturn(new ProductFulfillmentApiService.TransportResponse(200, "{\"ok\":true}"));
 
     Result<ltdjms.discord.shared.Unit, DomainError> result =
         service.notifyFulfillment(
@@ -135,9 +129,75 @@ class ProductFulfillmentApiServiceTest {
 
     assertThat(result.isOk()).isTrue();
     verify(escortOptionPricingService).getEffectivePrice(GUILD_ID, "CONF_DAM_300W");
-    ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
-    verify(httpClient).send(requestCaptor.capture(), anyStringBodyHandler());
-    assertThat(requestCaptor.getValue().timeout()).contains(Duration.ofSeconds(10));
+    ArgumentCaptor<ProductFulfillmentApiService.ResolvedTarget> targetCaptor =
+        ArgumentCaptor.forClass(ProductFulfillmentApiService.ResolvedTarget.class);
+    ArgumentCaptor<String> bodyCaptor = ArgumentCaptor.forClass(String.class);
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Map<String, String>> headersCaptor = ArgumentCaptor.forClass(Map.class);
+    verify(fulfillmentTransport)
+        .sendJson(targetCaptor.capture(), bodyCaptor.capture(), headersCaptor.capture());
+    assertThat(targetCaptor.getValue().originalUri().toString())
+        .isEqualTo("https://backend.example.com/fulfill");
+    assertThat(targetCaptor.getValue().resolvedAddress().getHostAddress())
+        .isEqualTo("93.184.216.34");
+    assertThat(targetCaptor.getValue().requestPath()).isEqualTo("/fulfill");
+    assertThat(headersCaptor.getValue()).containsEntry("Content-Type", "application/json");
+    assertThat(bodyCaptor.getValue()).contains("\"priceTwd\":650");
+  }
+
+  @Test
+  @DisplayName("設定簽章密鑰時應附帶 webhook 驗證標頭")
+  void shouldAddSigningHeadersWhenSecretConfigured() throws Exception {
+    ProductFulfillmentApiService signedService =
+        new ProductFulfillmentApiService(
+            escortOptionPricingService,
+            fulfillmentTransport,
+            new ObjectMapper(),
+            Clock.fixed(Instant.parse("2026-03-04T00:00:00Z"), ZoneOffset.UTC),
+            host -> new InetAddress[] {InetAddress.getByName("93.184.216.34")},
+            "super-secret");
+    when(fulfillmentTransport.sendJson(any(), any(), any()))
+        .thenReturn(new ProductFulfillmentApiService.TransportResponse(200, "{\"ok\":true}"));
+
+    Product product =
+        new Product(
+            1L,
+            GUILD_ID,
+            "Signed Backend",
+            null,
+            Product.RewardType.CURRENCY,
+            100L,
+            200L,
+            null,
+            "https://backend.example.com/fulfill",
+            false,
+            null,
+            Instant.now(),
+            Instant.now());
+
+    Result<ltdjms.discord.shared.Unit, DomainError> result =
+        signedService.notifyFulfillment(
+            new ProductFulfillmentApiService.FulfillmentRequest(
+                GUILD_ID,
+                USER_ID,
+                product,
+                ProductFulfillmentApiService.PurchaseSource.CURRENCY_PURCHASE,
+                null,
+                null));
+
+    assertThat(result.isOk()).isTrue();
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Map<String, String>> headersCaptor = ArgumentCaptor.forClass(Map.class);
+    ArgumentCaptor<String> bodyCaptor = ArgumentCaptor.forClass(String.class);
+    verify(fulfillmentTransport).sendJson(any(), bodyCaptor.capture(), headersCaptor.capture());
+
+    String expectedTimestamp = "2026-03-04T00:00:00Z";
+    String expectedSignature =
+        sign(expectedTimestamp + "." + bodyCaptor.getValue(), "super-secret");
+    assertThat(headersCaptor.getValue())
+        .containsEntry("X-LTDJMS-Signature-Version", "v1")
+        .containsEntry("X-LTDJMS-Timestamp", expectedTimestamp)
+        .containsEntry("X-LTDJMS-Signature", expectedSignature);
   }
 
   @Test
@@ -159,11 +219,8 @@ class ProductFulfillmentApiServiceTest {
             Instant.now(),
             Instant.now());
 
-    @SuppressWarnings("unchecked")
-    HttpResponse<String> response = mock(HttpResponse.class);
-    when(response.statusCode()).thenReturn(500);
-    when(response.body()).thenReturn("error");
-    when(httpClient.send(any(), anyStringBodyHandler())).thenReturn(response);
+    when(fulfillmentTransport.sendJson(any(), any(), any()))
+        .thenReturn(new ProductFulfillmentApiService.TransportResponse(500, "error"));
 
     Result<ltdjms.discord.shared.Unit, DomainError> result =
         service.notifyFulfillment(
@@ -212,7 +269,7 @@ class ProductFulfillmentApiServiceTest {
 
     assertThat(result.isErr()).isTrue();
     assertThat(result.getError().message()).contains("護航價格不存在");
-    verify(httpClient, never()).send(any(), anyStringBodyHandler());
+    verify(fulfillmentTransport, never()).sendJson(any(), any(), any());
   }
 
   @Test
@@ -228,7 +285,7 @@ class ProductFulfillmentApiServiceTest {
             100L,
             200L,
             null,
-            "http://localhost:8080/internal",
+            "https://localhost/internal",
             false,
             null,
             Instant.now(),
@@ -246,7 +303,7 @@ class ProductFulfillmentApiServiceTest {
 
     assertThat(result.isErr()).isTrue();
     assertThat(result.getError().message()).contains("localhost 或內網位址");
-    verify(httpClient, never()).send(any(), anyStringBodyHandler());
+    verify(fulfillmentTransport, never()).sendJson(any(), any(), any());
   }
 
   @Test
@@ -255,7 +312,7 @@ class ProductFulfillmentApiServiceTest {
     ProductFulfillmentApiService securedService =
         new ProductFulfillmentApiService(
             escortOptionPricingService,
-            httpClient,
+            fulfillmentTransport,
             new ObjectMapper(),
             Clock.fixed(Instant.parse("2026-03-04T00:00:00Z"), ZoneOffset.UTC),
             host -> {
@@ -263,7 +320,8 @@ class ProductFulfillmentApiServiceTest {
                 return new InetAddress[] {InetAddress.getByName("127.0.0.1")};
               }
               throw new java.net.UnknownHostException(host);
-            });
+            },
+            "test-signing-secret");
 
     Product product =
         new Product(
@@ -293,6 +351,157 @@ class ProductFulfillmentApiServiceTest {
 
     assertThat(result.isErr()).isTrue();
     assertThat(result.getError().message()).contains("localhost 或內網位址");
-    verify(httpClient, never()).send(any(), anyStringBodyHandler());
+    verify(fulfillmentTransport, never()).sendJson(any(), any(), any());
+  }
+
+  @Test
+  @DisplayName("應拒絕解析到 CGNAT 特殊用途位址的網域目標")
+  void shouldRejectDomainResolvingToSpecialUseIpv4Address() throws Exception {
+    ProductFulfillmentApiService securedService =
+        new ProductFulfillmentApiService(
+            escortOptionPricingService,
+            fulfillmentTransport,
+            new ObjectMapper(),
+            Clock.fixed(Instant.parse("2026-03-04T00:00:00Z"), ZoneOffset.UTC),
+            host -> {
+              if ("attacker.example".equals(host)) {
+                return new InetAddress[] {InetAddress.getByName("100.64.0.10")};
+              }
+              throw new java.net.UnknownHostException(host);
+            },
+            "test-signing-secret");
+
+    Product product =
+        new Product(
+            1L,
+            GUILD_ID,
+            "Unsafe Backend Domain",
+            null,
+            Product.RewardType.CURRENCY,
+            100L,
+            200L,
+            null,
+            "https://attacker.example/internal",
+            false,
+            null,
+            Instant.now(),
+            Instant.now());
+
+    Result<ltdjms.discord.shared.Unit, DomainError> result =
+        securedService.notifyFulfillment(
+            new ProductFulfillmentApiService.FulfillmentRequest(
+                GUILD_ID,
+                USER_ID,
+                product,
+                ProductFulfillmentApiService.PurchaseSource.CURRENCY_PURCHASE,
+                null,
+                null));
+
+    assertThat(result.isErr()).isTrue();
+    assertThat(result.getError().message()).contains("localhost 或內網位址");
+    verify(fulfillmentTransport, never()).sendJson(any(), any(), any());
+  }
+
+  @Test
+  @DisplayName("應拒絕解析到 IPv6 ULA 位址的網域目標")
+  void shouldRejectDomainResolvingToIpv6UlaAddress() throws Exception {
+    ProductFulfillmentApiService securedService =
+        new ProductFulfillmentApiService(
+            escortOptionPricingService,
+            fulfillmentTransport,
+            new ObjectMapper(),
+            Clock.fixed(Instant.parse("2026-03-04T00:00:00Z"), ZoneOffset.UTC),
+            host -> {
+              if ("attacker.example".equals(host)) {
+                return new InetAddress[] {InetAddress.getByName("fd00::1")};
+              }
+              throw new java.net.UnknownHostException(host);
+            },
+            "test-signing-secret");
+
+    Product product =
+        new Product(
+            1L,
+            GUILD_ID,
+            "Unsafe Backend Domain",
+            null,
+            Product.RewardType.CURRENCY,
+            100L,
+            200L,
+            null,
+            "https://attacker.example/internal",
+            false,
+            null,
+            Instant.now(),
+            Instant.now());
+
+    Result<ltdjms.discord.shared.Unit, DomainError> result =
+        securedService.notifyFulfillment(
+            new ProductFulfillmentApiService.FulfillmentRequest(
+                GUILD_ID,
+                USER_ID,
+                product,
+                ProductFulfillmentApiService.PurchaseSource.CURRENCY_PURCHASE,
+                null,
+                null));
+
+    assertThat(result.isErr()).isTrue();
+    assertThat(result.getError().message()).contains("localhost 或內網位址");
+    verify(fulfillmentTransport, never()).sendJson(any(), any(), any());
+  }
+
+  @Test
+  @DisplayName("未設定簽章密鑰時不應送出 webhook")
+  void shouldRejectWhenSigningSecretMissing() throws Exception {
+    ProductFulfillmentApiService unsignedService =
+        new ProductFulfillmentApiService(
+            escortOptionPricingService,
+            fulfillmentTransport,
+            new ObjectMapper(),
+            Clock.fixed(Instant.parse("2026-03-04T00:00:00Z"), ZoneOffset.UTC),
+            host -> new InetAddress[] {InetAddress.getByName("93.184.216.34")},
+            null);
+
+    Product product =
+        new Product(
+            1L,
+            GUILD_ID,
+            "Unsigned Backend",
+            null,
+            Product.RewardType.CURRENCY,
+            100L,
+            200L,
+            null,
+            "https://backend.example.com/fulfill",
+            false,
+            null,
+            Instant.now(),
+            Instant.now());
+
+    Result<ltdjms.discord.shared.Unit, DomainError> result =
+        unsignedService.notifyFulfillment(
+            new ProductFulfillmentApiService.FulfillmentRequest(
+                GUILD_ID,
+                USER_ID,
+                product,
+                ProductFulfillmentApiService.PurchaseSource.CURRENCY_PURCHASE,
+                null,
+                null));
+
+    assertThat(result.isErr()).isTrue();
+    assertThat(result.getError().message()).contains("簽章密鑰");
+    verify(fulfillmentTransport, never()).sendJson(any(), any(), any());
+  }
+
+  private String sign(String payload, String secret) throws Exception {
+    Mac mac = Mac.getInstance("HmacSHA256");
+    mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+    byte[] signatureBytes = mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
+    StringBuilder result = new StringBuilder(signatureBytes.length * 2);
+    for (byte value : signatureBytes) {
+      result.append(Character.forDigit((value >> 4) & 0xf, 16));
+      result.append(Character.forDigit(value & 0xf, 16));
+    }
+    return result.toString();
   }
 }

@@ -381,9 +381,8 @@ public class ProductService {
     try {
       URI uri = URI.create(normalized);
       String scheme = uri.getScheme();
-      if (scheme == null
-          || (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme))) {
-        return Result.err(DomainError.invalidInput("後端 API URL 必須使用 http:// 或 https://"));
+      if (scheme == null || !"https".equalsIgnoreCase(scheme)) {
+        return Result.err(DomainError.invalidInput("後端 API URL 必須使用 https://"));
       }
       if (uri.getHost() == null || uri.getHost().isBlank()) {
         return Result.err(DomainError.invalidInput("後端 API URL 格式無效"));
@@ -411,14 +410,38 @@ public class ProductService {
     }
     try {
       InetAddress address = InetAddress.getByName(normalizedHost);
-      return address.isAnyLocalAddress()
-          || address.isLoopbackAddress()
-          || address.isLinkLocalAddress()
-          || address.isSiteLocalAddress()
-          || address.isMulticastAddress();
+      return isDisallowedBackendAddress(address);
     } catch (Exception e) {
       return true;
     }
+  }
+
+  private boolean isDisallowedBackendAddress(InetAddress address) {
+    if (address.isAnyLocalAddress()
+        || address.isLoopbackAddress()
+        || address.isLinkLocalAddress()
+        || address.isSiteLocalAddress()
+        || address.isMulticastAddress()) {
+      return true;
+    }
+
+    byte[] rawAddress = address.getAddress();
+    if (rawAddress.length == 4) {
+      int firstOctet = rawAddress[0] & 0xff;
+      int secondOctet = rawAddress[1] & 0xff;
+      return firstOctet == 0
+          || firstOctet >= 224
+          || (firstOctet == 100 && secondOctet >= 64 && secondOctet <= 127)
+          || (firstOctet == 198 && (secondOctet == 18 || secondOctet == 19));
+    }
+
+    if (rawAddress.length == 16) {
+      int firstByte = rawAddress[0] & 0xff;
+      int secondByte = rawAddress[1] & 0xff;
+      return (firstByte & 0xfe) == 0xfc || (firstByte == 0xfe && (secondByte & 0xc0) == 0x80);
+    }
+
+    return true;
   }
 
   private boolean looksLikeIpLiteral(String host) {

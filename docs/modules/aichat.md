@@ -4,7 +4,7 @@
 
 AI Chat 模組提供 Discord 機器人的 AI 聊天功能。當使用者在 Discord 頻道中提及機器人時，機器人會使用 AI 服務生成並發送回應訊息。
 
-**AI 頻道限制功能**（V016 新增）：管理員可以限制 AI 功能僅在特定頻道使用，未設定的情況下 AI 可在所有頻道使用（無限制模式）。
+**AI 頻道限制功能**（V016 新增）：管理員可以限制 AI 功能僅在特定頻道使用；未設定任何允許頻道或類別時，AI 預設不會在任何頻道回應。
 
 ## 架構
 
@@ -368,8 +368,8 @@ mvn test -Dtest='ltdjms.discord.aichat.integration.*'
 AI 頻道限制功能允許管理員控制 AI 功能可以在哪些頻道中使用。
 
 **核心特性**：
-- **無限制模式**（預設）：未設定任何頻道時，AI 可在所有頻道使用
-- **限制模式**：設定允許頻道清單後，AI 僅在清單中的頻道回應
+- **預設拒絕**：未設定任何允許頻道或類別時，AI 不會在任何頻道回應
+- **允許清單模式**：設定允許頻道或類別後，AI 僅在允許目標中回應
 - **獨立設定**：每個 Discord 伺服器有獨立的頻道限制設定
 - **即時生效**：設定變更後立即生效，無需重啟機器人
 
@@ -384,8 +384,8 @@ public record AIChannelRestriction(
     long guildId,
     Set<AllowedChannel> allowedChannels
 ) {
-    // 空集合 = 無限制模式
-    public boolean isUnrestricted();
+    // 空集合 = 尚未設定任何允許目標（預設拒絕）
+    public boolean hasNoAllowedTargets();
 
     // 檢查頻道是否被允許
     public boolean isChannelAllowed(long channelId);
@@ -462,10 +462,10 @@ CREATE INDEX idx_ai_channel_restriction_guild_id
 
 | 操作 | 行為 |
 |------|------|
-| 未設定任何頻道 | AI 在所有頻道可用（無限制模式） |
-| 新增第一個頻道 | 切換到限制模式，僅該頻道可使用 AI |
+| 未設定任何頻道 | AI 在所有頻道都不可用（空 allowlist） |
+| 新增第一個頻道 | 切換到允許清單模式，僅該頻道可使用 AI |
 | 新增多個頻道 | 這些頻道都可使用 AI |
-| 移除所有頻道 | 恢復無限制模式 |
+| 移除所有頻道 | 恢復空 allowlist，AI 不再回應 |
 | 移除頻道時進行中的對話 | 正在進行的對話繼續完成，新設定僅對後續請求生效 |
 
 ### 錯誤處理
@@ -502,7 +502,7 @@ mvn test -Dtest=AIChannelRestrictionIntegrationTest
 - 新增與移除頻道流程
 - 頻道檢查流程
 - 已刪除頻道的清理
-- 無限制模式（空清單）
+- 空 allowlist 預設拒絕
 - 多伺服器獨立設定
 
 ---
@@ -641,7 +641,7 @@ try {
 
 #### ToolExecutionInterceptor
 
-工具執行審計攔截器，記錄所有工具調用：
+工具執行審計攔截器，記錄所有工具調用的去敏摘要：
 
 ```java
 public final class ToolExecutionInterceptor {
@@ -653,7 +653,7 @@ public final class ToolExecutionInterceptor {
 
 **功能**：
 - 記錄工具執行開始
-- 記錄工具執行成功/失敗
+- 記錄工具執行成功/失敗的去敏摘要
 - 發布 `LangChain4jToolExecutedEvent` 事件
 - 保存到 `ai_tool_execution_log` 表
 

@@ -7,13 +7,13 @@ import java.util.stream.Collectors;
 /**
  * AI 頻道限制聚合根。
  *
- * <p>管理一個 Discord 伺服器的 AI 功能允許頻道與類別清單。 空清單代表無限制模式（AI 可在所有頻道使用）。
+ * <p>管理一個 Discord 伺服器的 AI 功能允許頻道與類別清單。空清單代表尚未設定任何允許目標， 因此 AI 功能預設在所有頻道都不可使用。
  */
 public record AIChannelRestriction(
     long guildId, Set<AllowedChannel> allowedChannels, Set<AllowedCategory> allowedCategories) {
 
   /**
-   * 建立無限制模式的新配置。
+   * 建立空 allowlist 的新配置。
    *
    * @param guildId 伺服器 ID
    */
@@ -51,18 +51,22 @@ public record AIChannelRestriction(
   }
 
   /**
-   * 檢查是否為無限制模式。
-   *
    * @return 如果允許頻道與類別清單皆為空，返回 true
    */
-  public boolean isUnrestricted() {
+  public boolean hasNoAllowedTargets() {
     return allowedChannels.isEmpty() && allowedCategories.isEmpty();
   }
 
   /**
+   * @deprecated 空 allowlist 現在代表預設拒絕；請改用 {@link #hasNoAllowedTargets()} 表達狀態。
+   */
+  @Deprecated
+  public boolean isUnrestricted() {
+    return hasNoAllowedTargets();
+  }
+
+  /**
    * 檢查頻道是否被允許使用 AI 功能。
-   *
-   * <p>如果為無限制模式，任何頻道都被允許。
    *
    * @param channelId 頻道 ID
    * @return 如果頻道被允許，返回 true
@@ -77,7 +81,7 @@ public record AIChannelRestriction(
    * <ol>
    *   <li>若該頻道已被明確加入允許清單，直接允許。
    *   <li>若頻道未明確設定、但其所屬類別被允許，則允許。
-   *   <li>若為無限制模式（頻道與類別皆為空），允許所有頻道。
+   *   <li>若頻道與類別 allowlist 皆為空，視為尚未授權任何目標，拒絕。
    *   <li>其餘情況一律拒絕。
    * </ol>
    *
@@ -94,7 +98,7 @@ public record AIChannelRestriction(
       return true;
     }
 
-    return isUnrestricted();
+    return false;
   }
 
   /**

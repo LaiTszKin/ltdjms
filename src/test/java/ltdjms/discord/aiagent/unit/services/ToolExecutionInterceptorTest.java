@@ -13,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -60,6 +61,13 @@ class ToolExecutionInterceptorTest {
     mockLogRepository = mock(ToolExecutionLogRepository.class);
     mockObjectMapper = mock(ObjectMapper.class);
     mockEventPublisher = mock(DomainEventPublisher.class);
+    ObjectMapper jsonMapper = new ObjectMapper();
+    try {
+      when(mockObjectMapper.writeValueAsString(any()))
+          .thenAnswer(invocation -> jsonMapper.writeValueAsString(invocation.getArgument(0)));
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
     interceptor =
         new ToolExecutionInterceptor(mockLogRepository, mockObjectMapper, mockEventPublisher);
   }
@@ -118,8 +126,6 @@ class ToolExecutionInterceptorTest {
       interceptor.onToolExecutionStarted(
           "createChannel", Map.of("name", "test-channel", "type", "text"));
 
-      when(mockObjectMapper.writeValueAsString(any())).thenReturn("{\"name\":\"test-channel\"}");
-
       // When
       String result = interceptor.onToolExecutionCompleted("Channel created successfully");
 
@@ -128,7 +134,15 @@ class ToolExecutionInterceptorTest {
       assertThat(result).contains("創建頻道");
       assertThat(result).contains("執行成功");
 
-      verify(mockLogRepository).save(any(ToolExecutionLog.class));
+      ArgumentCaptor<ToolExecutionLog> captor = ArgumentCaptor.forClass(ToolExecutionLog.class);
+      verify(mockLogRepository).save(captor.capture());
+
+      ToolExecutionLog savedLog = captor.getValue();
+      assertThat(savedLog.parameters()).contains("\"redacted\":true");
+      assertThat(savedLog.parameters()).contains("\"sha256\"");
+      assertThat(savedLog.parameters()).doesNotContain("test-channel");
+      assertThat(savedLog.executionResult()).contains("\"redacted\":true");
+      assertThat(savedLog.executionResult()).doesNotContain("Channel created successfully");
     }
 
     @Test
@@ -157,8 +171,6 @@ class ToolExecutionInterceptorTest {
         ToolExecutionContext.setContext(TEST_GUILD_ID, TEST_CHANNEL_ID, TEST_USER_ID);
         interceptor.onToolExecutionStarted(toolName, Map.of());
 
-        when(mockObjectMapper.writeValueAsString(any())).thenReturn("{}");
-
         // When
         String result = interceptor.onToolExecutionCompleted("Success");
 
@@ -183,8 +195,8 @@ class ToolExecutionInterceptorTest {
     }
 
     @Test
-    @DisplayName("當參數為空時，應使用空 JSON 物件")
-    void shouldUseEmptyJsonWhenNoParameters() throws Exception {
+    @DisplayName("當參數為空時，應保存空摘要而非原始內容")
+    void shouldStoreEmptySummaryWhenNoParameters() throws Exception {
       // Given
       ToolExecutionContext.setContext(TEST_GUILD_ID, TEST_CHANNEL_ID, TEST_USER_ID);
       interceptor.onToolExecutionStarted("testTool", null);
@@ -193,12 +205,15 @@ class ToolExecutionInterceptorTest {
       interceptor.onToolExecutionCompleted("Success");
 
       // Then
-      verify(mockLogRepository).save(any(ToolExecutionLog.class));
+      ArgumentCaptor<ToolExecutionLog> captor = ArgumentCaptor.forClass(ToolExecutionLog.class);
+      verify(mockLogRepository).save(captor.capture());
+      assertThat(captor.getValue().parameters())
+          .isEqualTo("{\"redacted\":true,\"entryCount\":0,\"keys\":[]}");
     }
 
     @Test
-    @DisplayName("當參數序列化失敗時，應使用空 JSON 物件")
-    void shouldUseEmptyJsonOnSerializationFailure() throws Exception {
+    @DisplayName("當摘要序列化失敗時，應使用安全 fallback")
+    void shouldUseSafeFallbackOnSerializationFailure() throws Exception {
       // Given
       ToolExecutionContext.setContext(TEST_GUILD_ID, TEST_CHANNEL_ID, TEST_USER_ID);
       interceptor.onToolExecutionStarted("testTool", Map.of("key", "value"));
@@ -209,8 +224,13 @@ class ToolExecutionInterceptorTest {
       // When
       String result = interceptor.onToolExecutionCompleted("Success");
 
-      // Then - 應使用空 JSON 作為參數
-      verify(mockLogRepository).save(any(ToolExecutionLog.class));
+      // Then
+      ArgumentCaptor<ToolExecutionLog> captor = ArgumentCaptor.forClass(ToolExecutionLog.class);
+      verify(mockLogRepository).save(captor.capture());
+      assertThat(captor.getValue().parameters())
+          .isEqualTo("{\"redacted\":true,\"entryCount\":0,\"keys\":[]}");
+      assertThat(captor.getValue().executionResult())
+          .isEqualTo("{\"redacted\":true,\"type\":\"text\"}");
       assertThat(result).contains("✅");
     }
   }
@@ -226,8 +246,6 @@ class ToolExecutionInterceptorTest {
       ToolExecutionContext.setContext(TEST_GUILD_ID, TEST_CHANNEL_ID, TEST_USER_ID);
       interceptor.onToolExecutionStarted("createChannel", Map.of("name", "test-channel"));
 
-      when(mockObjectMapper.writeValueAsString(any())).thenReturn("{\"name\":\"test-channel\"}");
-
       // When
       String result = interceptor.onToolExecutionFailed("Permission denied");
 
@@ -236,7 +254,14 @@ class ToolExecutionInterceptorTest {
       assertThat(result).contains("執行失敗");
       assertThat(result).contains("Permission denied");
 
-      verify(mockLogRepository).save(any(ToolExecutionLog.class));
+      ArgumentCaptor<ToolExecutionLog> captor = ArgumentCaptor.forClass(ToolExecutionLog.class);
+      verify(mockLogRepository).save(captor.capture());
+
+      ToolExecutionLog savedLog = captor.getValue();
+      assertThat(savedLog.parameters()).contains("\"redacted\":true");
+      assertThat(savedLog.parameters()).doesNotContain("test-channel");
+      assertThat(savedLog.errorMessage()).contains("\"redacted\":true");
+      assertThat(savedLog.errorMessage()).doesNotContain("Permission denied");
     }
 
     @Test
@@ -245,8 +270,6 @@ class ToolExecutionInterceptorTest {
       // Given
       ToolExecutionContext.setContext(TEST_GUILD_ID, TEST_CHANNEL_ID, TEST_USER_ID);
       interceptor.onToolExecutionStarted("createChannel", Map.of());
-
-      when(mockObjectMapper.writeValueAsString(any())).thenReturn("{}");
 
       // When
       interceptor.onToolExecutionFailed("Error occurred");
@@ -282,8 +305,6 @@ class ToolExecutionInterceptorTest {
       ToolExecutionContext.setContext(TEST_GUILD_ID, TEST_CHANNEL_ID, TEST_USER_ID);
       interceptor.onToolExecutionStarted("testTool", Map.of());
 
-      when(mockObjectMapper.writeValueAsString(any())).thenReturn("{}");
-
       // When
       interceptor.onToolExecutionCompleted("Success");
 
@@ -298,8 +319,6 @@ class ToolExecutionInterceptorTest {
       // Given
       ToolExecutionContext.setContext(TEST_GUILD_ID, TEST_CHANNEL_ID, TEST_USER_ID);
       interceptor.onToolExecutionStarted("testTool", Map.of());
-
-      when(mockObjectMapper.writeValueAsString(any())).thenReturn("{}");
 
       // When
       interceptor.onToolExecutionFailed("Error");

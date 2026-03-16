@@ -23,4 +23,12 @@ public interface FiatOrderRepository {
   Optional<FiatOrder> markFulfilledIfNeeded(String orderNumber, Instant fulfilledAt);
 
   Optional<FiatOrder> markAdminNotifiedIfNeeded(String orderNumber, Instant notifiedAt);
+
+  boolean claimFulfillmentProcessing(String orderNumber, Instant claimedAt);
+
+  void releaseFulfillmentProcessing(String orderNumber);
+
+  boolean claimAdminNotificationProcessing(String orderNumber, Instant claimedAt);
+
+  void releaseAdminNotificationProcessing(String orderNumber);
 }

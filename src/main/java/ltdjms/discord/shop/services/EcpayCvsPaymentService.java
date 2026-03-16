@@ -101,7 +101,7 @@ public class EcpayCvsPaymentService {
               totalAmountTwd,
               itemName.trim(),
               tradeDesc == null || tradeDesc.isBlank() ? "Discord 商品下單" : tradeDesc,
-              returnUrl,
+              buildCallbackReturnUrl(returnUrl),
               clampCvsExpireMinutes(config.getEcpayCvsExpireMinutes()));
       String encryptedData = encryptData(dataPayload, hashKey, hashIv);
 
@@ -202,6 +202,19 @@ public class EcpayCvsPaymentService {
     cvsInfo.put("CVSCode", "CVS");
 
     return objectMapper.writeValueAsString(data);
+  }
+
+  String buildCallbackReturnUrl(String returnUrl) {
+    String sharedSecret = config.getEcpayCallbackSharedSecret();
+    if (sharedSecret == null || sharedSecret.isBlank()) {
+      return returnUrl;
+    }
+
+    String separator = returnUrl.contains("?") ? "&" : "?";
+    return returnUrl
+        + separator
+        + "token="
+        + URLEncoder.encode(sharedSecret, StandardCharsets.UTF_8);
   }
 
   private String encryptData(String plainJson, String hashKey, String hashIv)

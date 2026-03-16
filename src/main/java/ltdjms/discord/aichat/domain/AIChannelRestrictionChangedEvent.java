@@ -30,10 +30,9 @@ public record AIChannelRestrictionChangedEvent(
   }
 
   /**
-   * 檢查是否為無限制模式。
-   *
-   * @return 如果允許頻道清單為空，返回 true
+   * @deprecated 空集合現在表示尚未設定任何允許頻道，不代表允許所有頻道。
    */
+  @Deprecated
   public boolean isUnrestricted() {
     return allowedChannels.isEmpty();
   }

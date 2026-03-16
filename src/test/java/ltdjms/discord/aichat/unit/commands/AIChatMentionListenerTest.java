@@ -36,7 +36,7 @@ import net.dv8tion.jda.api.requests.restaction.MessageCreateAction;
  * <ul>
  *   <li>允許的頻道會觸發 AI 回應
  *   <li>不允許的頻道會安靜忽略
- *   <li>無限制模式（空清單）允許所有頻道
+ *   <li>是否觸發回應完全取決於限制服務的判定結果
  * </ul>
  */
 @DisplayName("AIChatMentionListener 頻道檢查測試")
@@ -128,8 +128,8 @@ class AIChatMentionListenerTest {
     }
 
     @Test
-    @DisplayName("當允許清單為空（無限制模式）時，應觸發 AI 回應")
-    void shouldTriggerAIResponseWhenUnrestrictedMode() {
+    @DisplayName("當限制服務允許頻道時，應觸發 AI 回應")
+    void shouldTriggerAIResponseWhenRestrictionServiceAllowsChannel() {
       // Arrange
       when(channelRestrictionService.isChannelAllowed(123L, 456L, 0L)).thenReturn(true);
       when(guild.getIdLong()).thenReturn(123L);
@@ -140,7 +140,7 @@ class AIChatMentionListenerTest {
       // Act
       listener.onMessageReceived(event);
 
-      // Assert - 無限制模式應該觸發 AI 回應
+      // Assert - 允許時應該觸發 AI 回應
       verify(messageChannel).sendMessage(any(CharSequence.class));
     }
 

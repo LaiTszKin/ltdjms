@@ -1,6 +1,14 @@
 package ltdjms.discord.aiagent.services;
 
+import java.lang.reflect.Array;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.util.Collection;
+import java.util.HexFormat;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import javax.inject.Inject;
 
@@ -18,7 +26,7 @@ import ltdjms.discord.shared.events.LangChain4jToolExecutionStartedEvent;
 /**
  * 工具執行審計攔截器。
  *
- * <p>記錄所有 LangChain4J 工具調用到 tool_execution_log 表，並發布事件通知。
+ * <p>記錄所有 LangChain4J 工具調用到 tool_execution_log 表，並發布事件通知。 審計紀錄只保存去敏摘要，不保存原始參數、回傳內容或錯誤內容。
  *
  * <p>使用 ThreadLocal 存儲當前執行上下文，當工具執行完成時記錄審計日誌。
  */
@@ -89,10 +97,16 @@ public final class ToolExecutionInterceptor {
     }
 
     try {
-      String parametersJson = convertParametersToJson(ctx.parameters());
+      String parametersJson = summarizeParameters(ctx.parameters());
+      String resultSummary = summarizeTextPayload(result);
       ToolExecutionLog log =
           ToolExecutionLog.success(
-              ctx.guildId(), ctx.channelId(), ctx.userId(), ctx.toolName(), parametersJson, result);
+              ctx.guildId(),
+              ctx.channelId(),
+              ctx.userId(),
+              ctx.toolName(),
+              parametersJson,
+              resultSummary);
       logRepository.save(log);
 
       // 發布工具執行事件
@@ -134,10 +148,16 @@ public final class ToolExecutionInterceptor {
     }
 
     try {
-      String parametersJson = convertParametersToJson(ctx.parameters());
+      String parametersJson = summarizeParameters(ctx.parameters());
+      String errorSummary = summarizeTextPayload(error);
       ToolExecutionLog log =
           ToolExecutionLog.failure(
-              ctx.guildId(), ctx.channelId(), ctx.userId(), ctx.toolName(), parametersJson, error);
+              ctx.guildId(),
+              ctx.channelId(),
+              ctx.userId(),
+              ctx.toolName(),
+              parametersJson,
+              errorSummary);
       logRepository.save(log);
 
       // 發布工具執行失敗事件
@@ -188,21 +208,88 @@ public final class ToolExecutionInterceptor {
     };
   }
 
-  /**
-   * 將參數 Map 轉換為 JSON 字串。
-   *
-   * @param parameters 參數 Map
-   * @return JSON 字串
-   */
-  private String convertParametersToJson(Map<String, Object> parameters) {
+  private String summarizeParameters(Map<String, Object> parameters) {
     if (parameters == null || parameters.isEmpty()) {
-      return "{}";
+      return "{\"redacted\":true,\"entryCount\":0,\"keys\":[]}";
     }
+
+    Map<String, Object> summary = new LinkedHashMap<>();
+    Map<String, Object> valueSummaries = new LinkedHashMap<>();
+    List<String> keys = parameters.keySet().stream().sorted().toList();
+
+    summary.put("redacted", true);
+    summary.put("entryCount", parameters.size());
+    summary.put("keys", keys);
+
+    for (String key : keys) {
+      valueSummaries.put(key, summarizeValue(parameters.get(key)));
+    }
+    summary.put("values", valueSummaries);
+
+    return toJson(summary, "{\"redacted\":true,\"entryCount\":0,\"keys\":[]}");
+  }
+
+  private Map<String, Object> summarizeValue(Object value) {
+    Map<String, Object> summary = new LinkedHashMap<>();
+    summary.put("redacted", true);
+
+    if (value == null) {
+      summary.put("type", "null");
+      return summary;
+    }
+
+    summary.put("type", value.getClass().getSimpleName());
+
+    if (value instanceof CharSequence text) {
+      summary.put("length", text.length());
+      summary.put("blank", text.toString().isBlank());
+    } else if (value instanceof Collection<?> collection) {
+      summary.put("size", collection.size());
+    } else if (value instanceof Map<?, ?> map) {
+      summary.put("size", map.size());
+    } else if (value.getClass().isArray()) {
+      summary.put("size", Array.getLength(value));
+    }
+
+    summary.put("sha256", sha256Hex(safeValueFingerprint(value)));
+    return summary;
+  }
+
+  private String summarizeTextPayload(String payload) {
+    Map<String, Object> summary = new LinkedHashMap<>();
+    summary.put("redacted", true);
+    summary.put("type", "text");
+    summary.put("length", payload == null ? 0 : payload.length());
+    summary.put("blank", payload == null || payload.isBlank());
+    summary.put("sha256", sha256Hex(payload == null ? "" : payload));
+    return toJson(summary, "{\"redacted\":true,\"type\":\"text\"}");
+  }
+
+  private String safeValueFingerprint(Object value) {
     try {
-      return objectMapper.writeValueAsString(parameters);
+      return objectMapper.writeValueAsString(value);
     } catch (Exception e) {
-      LOGGER.warn("轉換參數為 JSON 失敗", e);
-      return "{}";
+      LOGGER.warn("無法序列化工具參數摘要來源，改用字串雜湊", e);
+      return String.valueOf(value);
+    }
+  }
+
+  private String toJson(Object value, String fallback) {
+    try {
+      return objectMapper.writeValueAsString(value);
+    } catch (Exception e) {
+      LOGGER.warn("轉換工具審計摘要為 JSON 失敗", e);
+      return fallback;
+    }
+  }
+
+  private String sha256Hex(String value) {
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      byte[] hash = digest.digest(value.getBytes(StandardCharsets.UTF_8));
+      return HexFormat.of().formatHex(hash);
+    } catch (NoSuchAlgorithmException e) {
+      throw new IllegalStateException("SHA-256 not available", e);
     }
   }
 
