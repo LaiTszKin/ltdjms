@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.33.1] - 2026-03-17
+
+### Changed
+- **license**: 專案授權改為 GNU Affero General Public License v3.0，並同步 README 與 Maven 授權 metadata
+- **aichat**: AI 頻道限制改為空 allowlist 預設拒絕，未設定任何允許頻道或類別時不再回應
+- **aiagent/audit**: 工具執行審計日誌改為只保存去敏摘要與雜湊，避免落庫原始參數、結果與錯誤內容
+
+### Fixed
+- **aichat**: AI 回應內容為 `null` 時會回退為空字串，避免訊息組裝失敗
+- **shop/ecpay**: 綠界 callback 預設綁定改為 `127.0.0.1`，公網綁定需共享密鑰，並加入付款履約與管理員通知 processing claim 避免重複處理
+- **shop/fulfillment-security**: 商品履約 webhook 強制要求簽章密鑰、限制公開 HTTPS 目標，並加強傳輸與來源驗證
+
+### Tests
+- 執行 `mvn -Ptype-safety -DskipTests test-compile`，檢查通過
+- 執行 `make test`，共 `2507` tests（`0` failures / `0` errors，`14` skipped），測試通過
+
 ## [0.33.0] - 2026-03-10
 
 ### Added
