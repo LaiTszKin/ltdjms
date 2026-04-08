@@ -23,6 +23,7 @@ docs/
 
 # Environment
 .env*
+!.env
 .envrc
 
 # Logs

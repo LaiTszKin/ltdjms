@@ -23,11 +23,25 @@ WORKDIR /app
 
 # Copy the built JAR from builder stage
 COPY --from=builder /app/app.jar app.jar
+COPY .env /app/.env
 
 # Create non-root user for security and prepare writable log directory
 RUN groupadd -r botuser 2>/dev/null || true && \
     useradd -r -u 1000 -g botuser botuser 2>/dev/null || \
     useradd -r -u 1001 -g botuser botuser && \
+    sed -i 's/\r$//' /app/.env && \
+    REAL_JAVA_PATH="$(readlink -f /usr/bin/java)" && \
+    printf '%s\n' \
+      '#!/bin/sh' \
+      'set -eu' \
+      'if [ -f /app/.env ]; then' \
+      '  set -a' \
+      '  . /app/.env' \
+      '  set +a' \
+      'fi' \
+      "exec \"${REAL_JAVA_PATH}\" \"\$@\"" \
+      > /usr/local/bin/java && \
+    chmod 755 /usr/local/bin/java && \
     mkdir -p /app/logs && \
     chown -R botuser:botuser /app
 USER botuser
