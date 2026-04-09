@@ -70,8 +70,9 @@
 - Operational constraints: VPS 必須有穩定公開 domain 與開放 `80/443`；自動簽證是否成功取決於真實 DNS/網路環境，無法只靠本地單元測試保證
 
 ## Validation Plan
-- Tests: `docker compose config`、Caddyfile 靜態檢查、必要時在 VPS 以實際 domain 驗證 `https://` 可達；property-based `N/A`
+- Tests: `docker compose config`、`CaddyIngressConfigTest`、必要時在 VPS 以實際 domain 驗證 `https://` 可達；property-based `N/A`
 - Contract checks: 對照 Caddy docs 確認 site address/automatic HTTPS/reverse_proxy 用法；對照 Compose docs 確認 ports/volumes/service wiring 合法
+- Execution notes: 已以 sample env 執行 `docker compose config`；嘗試以 `docker run ... caddy validate` 做額外靜態檢查，但本機 Docker daemon 不可用，因此保留到 VPS/可用 Docker 環境再跑
 - Rollback / fallback: 可回退到現有 Nginx sidecar 與外部 TLS termination；應用層 `APP_PUBLIC_BASE_URL` / callback route 不需回滾變更
 
 ## Open Questions

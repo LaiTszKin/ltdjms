@@ -79,12 +79,14 @@
 | `ECPAY_MERCHANT_ID` | 啟用法幣付款時 | 綠界 Merchant ID | 空字串 |
 | `ECPAY_HASH_KEY` | 啟用法幣付款時 | 綠界 HashKey | 空字串 |
 | `ECPAY_HASH_IV` | 啟用法幣付款時 | 綠界 HashIV | 空字串 |
-| `APP_PUBLIC_BASE_URL` | 使用 Compose 自架 ingress 啟用 callback 時 | 自架部署的公開 base URL；可填裸網域或完整 URL | 空字串；若 `ECPAY_RETURN_URL` 空白，系統會用它加上 `ECPAY_CALLBACK_PATH` 推導 callback URL |
+| `APP_PUBLIC_DOMAIN` | 使用 repo 內 Compose ingress 時 | Caddy 對外簽證與接流量的公開網域 | 必填；需解析到部署主機且讓 `80/443` 可對外連入 |
+| `CADDY_ACME_EMAIL` | 使用 repo 內 Compose ingress 時 | Caddy automatic HTTPS 的 ACME 聯絡 email | 必填；供憑證簽發/續期通知使用 |
+| `APP_PUBLIC_BASE_URL` | 使用 Compose 自架 ingress 啟用 callback 時 | 自架部署的公開 base URL；可填裸網域或完整 URL | 空字串；若使用 Caddy ingress，通常應設為 `https://<APP_PUBLIC_DOMAIN>`；`ECPAY_RETURN_URL` 空白時，系統會用它加上 `ECPAY_CALLBACK_PATH` 推導 callback URL |
 | `ECPAY_RETURN_URL` | callback URL 需要顯式 override 時 | 綠界回推 URL | 空字串；優先於 `APP_PUBLIC_BASE_URL` 推導值 |
 | `ECPAY_STAGE_MODE` | 想切正式 / 測試環境時 | 是否使用測試端點 | `true` |
 | `ECPAY_CVS_EXPIRE_MINUTES` | 想調整超商代碼期限時 | 超商代碼有效分鐘數 | `10080` |
-| `ECPAY_CALLBACK_BIND_HOST` | 不使用 Compose 內建 ingress、需要進階 override 時 | 內嵌 HTTP server 綁定 host | `127.0.0.1`；Compose 自架預設由 repo 內 Nginx 代理到 loopback |
-| `ECPAY_CALLBACK_BIND_PORT` | 不使用 Compose 內建 ingress、需要進階 override 時 | 內嵌 HTTP server 綁定 port | `8085`；Compose 自架預設由 repo 內 Nginx 代理到這個內部 port |
+| `ECPAY_CALLBACK_BIND_HOST` | 不使用 Compose 內建 ingress、需要進階 override 時 | 內嵌 HTTP server 綁定 host | `127.0.0.1`；Compose 自架預設由 repo 內 Caddy 代理到 loopback |
+| `ECPAY_CALLBACK_BIND_PORT` | 不使用 Compose 內建 ingress、需要進階 override 時 | 內嵌 HTTP server 綁定 port | `8085`；Compose 自架預設由 repo 內 Caddy 代理到這個內部 port |
 | `ECPAY_CALLBACK_PATH` | 想調整 callback path 時 | 綠界回推接收路徑 | `/ecpay/callback` |
 | `ECPAY_CALLBACK_SHARED_SECRET` | 舊部署仍保留設定時 | 舊版 callback query token 相容欄位 | 現行流程不再使用 |
 
@@ -129,14 +131,16 @@
 
 ### ECPay
 
+- 使用 repo 內 Compose ingress 時，請提供 `APP_PUBLIC_DOMAIN`、`CADDY_ACME_EMAIL`，並讓 `APP_PUBLIC_BASE_URL` 對齊同一公開入口（通常為 `https://<APP_PUBLIC_DOMAIN>`）
 - Compose 自架部署建議把 `APP_PUBLIC_BASE_URL` 當成主要設定入口；系統會在 `ECPAY_RETURN_URL` 留空時，自動推導 `APP_PUBLIC_BASE_URL + ECPAY_CALLBACK_PATH`
 - 若 `APP_PUBLIC_BASE_URL` 與 `ECPAY_RETURN_URL` 都未設定，不會啟動 callback server
 - `ECPAY_RETURN_URL` 仍可作為進階 override；當 callback URL 與公開 base URL 不同時再手動指定
 - callback server 啟動後同時提供：
   - `/`：宣傳首頁
   - `ECPAY_CALLBACK_PATH`：綠界付款回推
-- Docker Compose 現在會帶出 repo 內管理的 `nginx` ingress，對外代理 `/` 與 callback route 到 bot 內嵌 HTTP server
+- Docker Compose 現在會帶出 repo 內管理的 `Caddy` ingress，對外代理請求到 bot 內嵌 HTTP server，並嘗試為 `APP_PUBLIC_DOMAIN` 自動簽發/續期 HTTPS 憑證
 - `ECPAY_STAGE_MODE=true` 時，callback server 只能綁定 `127.0.0.1` / `localhost` / `::1`
+- 若 Caddy 無法啟動 HTTPS，優先檢查 DNS 是否已指向主機、主機是否開放 `80/443`，再查看 `docker compose logs caddy`
 - 取號若回傳 `The parameter [Data] decrypt fail`，優先檢查 `ECPAY_STAGE_MODE` 是否和 `MerchantID` / `HashKey` / `HashIV` 對應同一環境
 - 已付款 callback 會經過驗證、解密、冪等更新與後續履約
 

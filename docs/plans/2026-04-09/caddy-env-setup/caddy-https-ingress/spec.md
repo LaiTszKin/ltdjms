@@ -30,9 +30,9 @@
 **AND** Caddy 必須為設定的 domain 自動簽發與續期 HTTPS 憑證，並把首頁與 callback 請求代理到 bot 的 loopback HTTP server
 
 **Requirements**:
-- [ ] R1.1 `docker-compose.yml` 必須以 Caddy 取代既有 Nginx sidecar，並對外開放 `80` / `443`。
-- [ ] R1.2 Caddy 設定必須由 repo 管理，使用公開 domain 與 ACME email 啟用 automatic HTTPS。
-- [ ] R1.3 Caddy 憑證資料與設定狀態必須使用持久化 volume，避免容器重建後重複註冊憑證或遺失狀態。
+- [x] R1.1 `docker-compose.yml` 已以 Caddy 取代既有 Nginx sidecar，並對外開放 `80` / `443`。
+- [x] R1.2 Caddy 設定已由 repo 管理，使用公開 domain 與 ACME email 啟用 automatic HTTPS。
+- [x] R1.3 Caddy 憑證資料與設定狀態已使用持久化 volume，避免容器重建後重複註冊憑證或遺失狀態。
 
 ### Requirement 2: Caddy ingress 不得破壞既有 callback 內部安全邊界
 **GIVEN** `EcpayCallbackHttpServer` 目前固定綁定 loopback 並提供 `/` 與 callback route  
@@ -42,16 +42,16 @@
 **AND** Caddy 只能代理既有 HTTP route，不得要求 callback server 改成 public bind 或改寫 business path semantics
 
 **Requirements**:
-- [ ] R2.1 Caddy 必須代理 `/` 與 `ECPAY_CALLBACK_PATH` 到 bot 的 `127.0.0.1:8085`。
-- [ ] R2.2 既有 `APP_PUBLIC_BASE_URL` / `ECPAY_RETURN_URL` 推導與 override 優先序不得改變。
-- [ ] R2.3 若 TLS / domain 設定缺失，部署文件與啟動行為必須讓 operator 能明確辨識無法對外提供安全 callback 入口。
+- [x] R2.1 Caddy 已代理對外請求到 bot 的 `127.0.0.1:8085`，保留 `/` 與 `ECPAY_CALLBACK_PATH` 既有處理邏輯。
+- [x] R2.2 既有 `APP_PUBLIC_BASE_URL` / `ECPAY_RETURN_URL` 推導與 override 優先序未改變。
+- [x] R2.3 若 TLS / domain 設定缺失，Compose required env 與部署文件已讓 operator 能明確辨識無法對外提供安全 callback 入口。
 
 ## Error and Edge Cases
-- [ ] domain 未設或填入無效 host 時，Compose / Caddy 設定必須能及早暴露錯誤，而不是悄悄退回不安全的對外模式。
-- [ ] `80` / `443` 未對外開通、DNS 未指向 VPS、或 ACME 驗證失敗時，operator 必須能從 Caddy 日誌辨識簽證失敗原因。
-- [ ] callback payload 與首頁請求都必須維持原本代理到 loopback server 的行為，不得因 ingress 切換造成 path 衝突。
-- [ ] Caddy 持久化資料遺失或 volume 未掛載時，不得讓部署流程誤以為憑證已安全保存。
-- [ ] stage mode 仍必須避免 public bind；TLS termination 只能發生在 ingress 層。
+- [x] domain 未設時，Compose required env 會及早失敗；無效 host 會在 Caddy 啟動/驗證階段暴露錯誤，而不是悄悄退回不安全的對外模式。
+- [x] `80` / `443` 未對外開通、DNS 未指向 VPS、或 ACME 驗證失敗時，文件已指引 operator 從 Caddy 日誌辨識簽證失敗原因。
+- [x] callback payload 與首頁請求都維持原本代理到 loopback server 的行為，不因 ingress 切換造成 path 衝突。
+- [x] Caddy 持久化資料已透過 named volume 掛載；volume 遺失時不會誤以為憑證狀態被保留。
+- [x] stage mode 仍維持 loopback bind；TLS termination 只發生在 ingress 層。
 
 ## Clarification Questions
 None
@@ -59,6 +59,7 @@ None
 ## References
 - Official docs:
   - https://caddyserver.com/docs/quick-starts/https
+  - https://caddyserver.com/docs/caddyfile/concepts#environment-variables
   - https://caddyserver.com/docs/caddyfile/directives/reverse_proxy
   - https://docs.docker.com/reference/compose-file/services/
 - Related code files:

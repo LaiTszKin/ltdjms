@@ -33,11 +33,11 @@
   - Error modes: certificate issuance/renewal can fail when DNS, port reachability, or ACME validation is broken
   - Caller obligations: provide correct domain/email, persist Caddy data, inspect Caddy logs when issuance fails
   - Forbidden assumptions: do not assume a domain-less deploy can still provide trusted HTTPS; do not assume cert state is safe without persistent storage
-- Verification Plan:
-  - Spec mapping: `R1.1-R1.3`, `R2.1`, `R2.3`
-  - Design mapping: `Proposed Architecture`, `Component Changes`, `Validation Plan`
-  - Planned coverage: `IT-CADDY-01` compose config validation, `IT-CADDY-02` proxy wiring check, log/document review
-  - Evidence notes: Caddy docs state site addresses activate automatic HTTPS and `reverse_proxy` forwards to upstream backends
+  - Verification Plan:
+    - Spec mapping: `R1.1-R1.3`, `R2.1`, `R2.3`
+    - Design mapping: `Proposed Architecture`, `Component Changes`, `Validation Plan`
+    - Planned coverage: `IT-CADDY-01` compose config validation, `IT-CADDY-02` proxy wiring check, log/document review
+    - Evidence notes: Caddy docs state site addresses activate automatic HTTPS, environment variables can be expanded in Caddyfile config, and `reverse_proxy` forwards to upstream backends
 
 ### Dependency 2: Docker Compose service and volume wiring
 - Type: platform
@@ -58,8 +58,8 @@
   - Error modes: startup failure, invalid compose config, unavailable published ports, lost certificate state if volumes are missing
   - Caller obligations: validate config with `docker compose config`, keep `.env` complete, preserve named volumes across redeploys
   - Forbidden assumptions: do not assume Caddy can keep cert history without mounted data volume; do not assume Compose will silently normalize invalid service wiring
-- Verification Plan:
-  - Spec mapping: `R1.1-R1.3`, `R2.1-R2.3`
-  - Design mapping: `Component Changes`, `Data / State Impact`, `Validation Plan`
-  - Planned coverage: `IT-CADDY-01`, config diff review, documentation sync review
-  - Evidence notes: Compose spec defines service fields and mounted volume behavior that govern ingress replacement
+  - Verification Plan:
+    - Spec mapping: `R1.1-R1.3`, `R2.1-R2.3`
+    - Design mapping: `Component Changes`, `Data / State Impact`, `Validation Plan`
+    - Planned coverage: `IT-CADDY-01`, config diff review, documentation sync review
+    - Evidence notes: Compose spec defines service fields, `network_mode`, environment interpolation, published ports, and mounted volume behavior that govern ingress replacement

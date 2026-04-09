@@ -41,7 +41,7 @@ make logs
 - 可連線的 PostgreSQL
 - 可連線的 Redis
 - `AI_SERVICE_API_KEY`
-- 若要啟用綠界付款，請再提供 `APP_PUBLIC_BASE_URL` 與 `ECPAY_*` 憑證
+- 若要啟用 Compose 自架綠界付款 callback，請再提供 `APP_PUBLIC_DOMAIN`、`CADDY_ACME_EMAIL`、`APP_PUBLIC_BASE_URL` 與 `ECPAY_*` 憑證
 
 ### 本機 JVM 直跑
 
@@ -84,10 +84,12 @@ java -jar target/ltdjms-*.jar
 ## 啟動前必知
 
 - `AI_SERVICE_API_KEY` 目前在啟動時就會驗證，缺少時應用會直接失敗。
-- Docker Compose 自架路徑現在內建 repo 管理的 `nginx` ingress；一般只要填 `APP_PUBLIC_BASE_URL`，程式會自動推導 `ECPAY_RETURN_URL`。
+- Docker Compose 自架路徑現在內建 repo 管理的 `Caddy` ingress，會直接對外接 `80/443` 並為 `APP_PUBLIC_DOMAIN` 自動管理 HTTPS。
+- 使用 repo 內 Caddy ingress 時，`APP_PUBLIC_BASE_URL` 應與公開網域對齊，通常就是 `https://<APP_PUBLIC_DOMAIN>`；程式會在 `ECPAY_RETURN_URL` 留空時自動推導 callback URL。
 - `ECPAY_RETURN_URL` 仍可保留為進階 override；只有當公開 callback URL 必須和 `APP_PUBLIC_BASE_URL + ECPAY_CALLBACK_PATH` 不同時才需要手動指定。
 - `ECPAY_CALLBACK_BIND_HOST=127.0.0.1` 與 `ECPAY_CALLBACK_BIND_PORT=8085` 在 Compose 自架模式下屬內部 wiring，通常不需要手動設定。
 - 若 `APP_PUBLIC_BASE_URL` 與 `ECPAY_RETURN_URL` 都未設定，綠界 callback server 不會啟動。
+- 若 Caddy 無法簽出憑證，優先檢查 `APP_PUBLIC_DOMAIN` DNS 是否已指向主機、`80/443` 是否對外開放，並查看 `docker compose logs caddy`。
 - 本機直跑沒有 `make run`；請使用 `java -jar target/ltdjms-*.jar`。
 - 宣傳首頁的 Vercel 自動部署 workflow 位於 `.github/workflows/vercel-landing-page.yml`；它是獨立於 Compose 自架 ingress 的另一條發布路徑，只有 `VERCEL_TRUSTED_AUTHORS` 名單中的 GitHub 使用者修改 `src/main/resources/web/` 並 push 到 `main` 時才會自動部署。
 - GitHub repository 需設定 `VERCEL_TOKEN` secret，以及 `VERCEL_ORG_ID`、`VERCEL_PROJECT_ID`、`VERCEL_TRUSTED_AUTHORS` variables，Vercel 專案則需預先建立並可由該 token 部署。
