@@ -30,9 +30,9 @@
 **AND** 腳本必須在結尾輸出摘要與下一步操作建議
 
 **Requirements**:
-- [ ] R1.1 新的 `setup-env` 必須以互動方式詢問公開 domain、TLS email，以及是否使用 `APP_PUBLIC_BASE_URL` 自動推導 callback URL。
-- [ ] R1.2 腳本必須把 bare host 正規化為 `https://<domain>` 形式的 `APP_PUBLIC_BASE_URL`，並在預設情況下保持 `ECPAY_RETURN_URL` 空白，讓應用程式自行推導。
-- [ ] R1.3 腳本必須明確指出哪些敏感值仍需 operator 手動填寫或保留現值（例如 Discord token、ECPay 金鑰）。
+- [x] R1.1 新的 `setup-env` 以互動方式詢問公開 domain / base URL、TLS email，以及是否使用 `APP_PUBLIC_BASE_URL` 自動推導 callback URL；實作於 `scripts/setup-env.sh` 與 `make setup-env`。
+- [x] R1.2 腳本會把 bare host 正規化為 `https://<domain>` 形式的 `APP_PUBLIC_BASE_URL`，並在預設情況下保持 `ECPAY_RETURN_URL` 空白，讓應用程式自行推導。
+- [x] R1.3 腳本會在摘要後列出敏感欄位現況，區分「已保留現值」、「仍是範例值」與「請手動填寫」。
 
 ### Requirement 2: `update-env` 應保留非互動同步能力且不破壞既有 `.env`
 **GIVEN** operator 可能已經有現成 `.env`，其中包含敏感憑證與客製值  
@@ -42,16 +42,16 @@
 **AND** 既有純同步邏輯必須以 `update-env` 名稱保留，方便自動化與維運補欄位
 
 **Requirements**:
-- [ ] R2.1 互動式流程必須建立 `.env.bak` 或等價備份，`.env` 不存在時要能從 `.env.example` 安全建立新檔。
-- [ ] R2.2 互動式流程只可覆寫使用者確認的欄位，未觸及欄位需保留既有值。
-- [ ] R2.3 目前的 `make setup-env` 與說明文件必須改為指向新的互動式入口；既有同步流程則以 `update-env` 暴露。
+- [x] R2.1 互動式流程在既有 `.env` 存在時建立 `.env.bak`，不存在時從 `.env.example` 安全建立新檔並避免留下半套寫入。
+- [x] R2.2 互動式流程只覆寫 operator 回答涉及的欄位，其他欄位先以 `.env.example` 對齊再保留既有值。
+- [x] R2.3 `make setup-env` 已改為互動式入口，既有同步流程改由 `make update-env` 暴露，並同步更新 README / docs 說明。
 
 ## Error and Edge Cases
-- [ ] `.env` 不存在時，新的 `setup-env` 必須能安全建立新檔。
-- [ ] operator 輸入 bare host、完整 URL、空值、或含尾斜線時，正規化結果必須可預期。
-- [ ] operator 選擇保留顯式 `ECPAY_RETURN_URL` override 時，腳本必須明確提示與自動推導互斥。
-- [ ] 腳本在非 TTY 或使用者中途取消時，必須避免留下半套寫入的 `.env`。
-- [ ] 非互動 `update-env` 不得因新命名而改變既有同步語意（新增缺漏欄位、保留現值、備份舊檔）。
+- [x] `.env` 不存在時，新的 `setup-env` 能安全建立新檔。
+- [x] operator 輸入 bare host、完整 URL、空值、或含尾斜線時，正規化結果可預期（以 shell fixture 測試覆蓋）。
+- [x] operator 選擇保留顯式 `ECPAY_RETURN_URL` override 時，腳本會明確提示與自動推導互斥。
+- [x] 腳本在非 TTY 或使用者中途取消時，不會留下半套寫入的 `.env`。
+- [x] 非互動 `update-env` 維持既有同步語意（新增缺漏欄位、保留現值、備份舊檔）。
 
 ## Clarification Questions
 None

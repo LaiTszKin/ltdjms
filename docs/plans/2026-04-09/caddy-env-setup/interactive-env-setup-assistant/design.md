@@ -14,7 +14,7 @@
 
 ## Scope Mapping
 - Spec requirements covered: `R1.1-R1.3`, `R2.1-R2.3`
-- Affected modules: `scripts/sync-env.sh`, `scripts/setup-env.sh`（新檔，名稱待實作時確認）, `Makefile`
+- Affected modules: `scripts/sync-env.sh`, `scripts/setup-env.sh`, `scripts/setup-env.test.sh`, `Makefile`, `.env.example`, `README.md`, `docs/getting-started.md`, `docs/configuration.md`
 - External contracts involved: `None`
 - Coordination reference: `../coordination.md`
 
@@ -61,7 +61,7 @@
 5. 若 operator 只想把 `.env.example` 的新增欄位同步進現有 `.env`，則執行 `update-env` 走非互動同步路徑。
 
 ## Data / State Impact
-- Created or updated data: `.env`, `.env.bak`, 可能新增的互動式腳本檔案
+- Created or updated data: `.env`, `.env.bak`, 新增 `scripts/setup-env.sh` / `scripts/setup-env.test.sh`，以及更新後的 `.env.example` / operator docs
 - Consistency rules: `.env.example` 仍是模板真相來源；互動式流程不得產生 `.env.example` 未知的新 key，除非 batch coordination 明確定義
 - Migration / rollout needs: 更新 Makefile 命令名稱與 README 入口說明；提醒 operator 舊 `setup-env` 已改為 `update-env`
 
@@ -74,7 +74,7 @@
 - Operational constraints: script 必須在一般 bash 環境可執行；非 TTY/取消流程需保守退出
 
 ## Validation Plan
-- Tests: shell fixture tests、scripted stdin integration、舊同步語意回歸檢查
+- Tests: `scripts/setup-env.test.sh` 覆蓋新建 `.env`、保留既有值、取消流程、非 TTY 防護與 `update-env` 同步語意回歸
 - Contract checks: `None`（此 spec 無外部依賴契約）
 - Rollback / fallback: 若互動式入口有問題，可暫時保留/回退到純 `update-env` 同步並手動編輯 `.env`
 

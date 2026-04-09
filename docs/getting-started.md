@@ -32,7 +32,7 @@
 ```bash
 git clone <your-repo-url>
 cd ltdjms
-cp .env.example .env
+make setup-env
 mkdir -p prompts
 make build
 make start-dev
@@ -49,7 +49,7 @@ make logs
 ## 本機 JVM 直跑
 
 ```bash
-cp .env.example .env
+make setup-env
 mkdir -p prompts
 make db-up
 make build
@@ -59,6 +59,7 @@ java -jar target/ltdjms-*.jar
 注意：
 
 - `Makefile` 目前沒有 `make run` target。
+- `make setup-env` 會互動式建立 / 更新 `.env`；之後若只是要把 `.env.example` 的新增欄位同步進現有 `.env`，請用 `make update-env`。
 - 若不是用 Docker Compose 啟動整套環境，請自己確認 `REDIS_URI` 與資料庫連線可用。
 - 若要在 Compose 自架模式啟用綠界 callback，請設定 `APP_PUBLIC_DOMAIN`、`CADDY_ACME_EMAIL`，並讓 `APP_PUBLIC_BASE_URL` 對齊同一公開入口；通常不需要自己再填 `127.0.0.1` 之類的 bind host。
 - 若 `APP_PUBLIC_BASE_URL` 與 `ECPAY_RETURN_URL` 都沒設定，callback server 會跳過啟動，這是正常行為。
@@ -75,6 +76,7 @@ make start
 ### 部署前檢查
 
 - `.env` / 環境變數已填入必要 secrets
+- 若剛 pull 新版本且 `.env.example` 有變動，已執行 `make update-env`
 - PostgreSQL schema 能接受啟動時的 Flyway migration
 - `AI_SERVICE_API_KEY` 已設定
 - 若啟用 repo 內 Compose ingress，已填 `APP_PUBLIC_DOMAIN`、`CADDY_ACME_EMAIL`，且 `APP_PUBLIC_BASE_URL` 已對齊同一公開網址

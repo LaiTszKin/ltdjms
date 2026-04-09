@@ -38,6 +38,13 @@ log_error() {
     echo -e "${COLOR_RED}[✗]${COLOR_RESET} $1"
 }
 
+ensure_example_file() {
+    if [ ! -f "$EXAMPLE_FILE" ]; then
+        log_error "$EXAMPLE_FILE 檔案不存在"
+        exit 1
+    fi
+}
+
 contains_key() {
     local keys="$1"
     local key="$2"
@@ -104,44 +111,48 @@ replace_key_value_in_file() {
     mv "$next_file" "$file"
 }
 
-check_files() {
-    if [ ! -f "$EXAMPLE_FILE" ]; then
-        log_error "$EXAMPLE_FILE 檔案不存在"
-        exit 1
-    fi
-
-    if [ ! -f "$ENV_FILE" ]; then
-        log_warning "$ENV_FILE 檔案不存在，將以 $EXAMPLE_FILE 建立"
-        cp "$EXAMPLE_FILE" "$ENV_FILE"
-        log_success "已建立 ${ENV_FILE}（此次無舊檔可備份）"
-        exit 0
-    fi
+create_env_from_example() {
+    local target_file="${1:-$ENV_FILE}"
+    cp "$EXAMPLE_FILE" "$target_file"
 }
 
 backup_env() {
-    log_info "備份 $ENV_FILE 到 $BACKUP_FILE"
-    cp "$ENV_FILE" "$BACKUP_FILE"
+    local source_file="${1:-$ENV_FILE}"
+    local target_file="${2:-$BACKUP_FILE}"
+
+    log_info "備份 $source_file 到 $target_file"
+    cp "$source_file" "$target_file"
     log_success "備份完成"
 }
 
-sync_env() {
-    local example_keys="$1"
-    local env_keys="$2"
-    local temp_file
+build_synced_env_file() {
+    local source_file="$1"
+    local target_file="$2"
+    local example_keys
+    local env_keys
 
-    temp_file=$(mktemp "${ENV_FILE}.tmp.XXXXXX")
-    trap 'rm -f "$temp_file" "${temp_file}.next"' EXIT
+    example_keys="$(parse_env_keys "$EXAMPLE_FILE")"
+    env_keys="$(parse_env_keys "$source_file")"
 
-    cp "$EXAMPLE_FILE" "$temp_file"
+    create_env_from_example "$target_file"
 
     while IFS= read -r key; do
         [ -z "$key" ] && continue
         if contains_key "$example_keys" "$key"; then
             local value
-            value="$(get_env_value "$ENV_FILE" "$key")"
-            replace_key_value_in_file "$temp_file" "$key" "$value"
+            value="$(get_env_value "$source_file" "$key")"
+            replace_key_value_in_file "$target_file" "$key" "$value"
         fi
     done <<< "$env_keys"
+}
+
+sync_env() {
+    local temp_file
+
+    temp_file=$(mktemp "${ENV_FILE}.tmp.XXXXXX")
+    trap 'rm -f "$temp_file" "${temp_file}.next"' EXIT
+
+    build_synced_env_file "$ENV_FILE" "$temp_file"
 
     mv "$temp_file" "$ENV_FILE"
     trap - EXIT
@@ -153,8 +164,16 @@ main() {
     echo -e "${COLOR_CYAN}========================================${COLOR_RESET}"
     echo ""
 
-    check_files
-    backup_env
+    ensure_example_file
+
+    if [ ! -f "$ENV_FILE" ]; then
+        log_warning "$ENV_FILE 檔案不存在，將以 $EXAMPLE_FILE 建立"
+        create_env_from_example "$ENV_FILE"
+        log_success "已建立 ${ENV_FILE}（此次無舊檔可備份）"
+        exit 0
+    fi
+
+    backup_env "$ENV_FILE" "$BACKUP_FILE"
 
     local example_keys
     local env_keys
@@ -230,4 +249,6 @@ main() {
     log_info "舊版 $ENV_FILE 已備份至 $BACKUP_FILE"
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main "$@"
+fi
