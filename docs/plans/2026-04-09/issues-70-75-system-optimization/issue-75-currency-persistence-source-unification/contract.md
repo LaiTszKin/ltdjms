@@ -36,4 +36,4 @@
   - Spec mapping: `R1.x-R3.x`
   - Design mapping: `Current Architecture`, `Proposed Architecture`
   - Planned coverage: `IT-75-01`, `IT-75-02`, `PT-75-01`
-  - Evidence notes: 官方 jOOQ manual 將 `DSLContext` 視為查詢構建的中心，production path 與測試 path 若不同，就不是同一實作真相
+  - Evidence notes: 官方 jOOQ manual 將 `DSLContext` 視為查詢構建的中心，production path 與測試 path 若不同，就不是同一實作真相；本次已讓 `PostgresIntegrationTestBase` 提供共用 `DSLContext`，並把主 currency integration/performance suites 對齊到同一路徑

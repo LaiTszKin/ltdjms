@@ -11,8 +11,8 @@ import ltdjms.discord.currency.domain.CurrencyTransactionRepository;
 import ltdjms.discord.currency.domain.GuildCurrencyConfig;
 import ltdjms.discord.currency.persistence.GuildCurrencyConfigRepository;
 import ltdjms.discord.currency.persistence.JdbcCurrencyTransactionRepository;
-import ltdjms.discord.currency.persistence.JdbcGuildCurrencyConfigRepository;
-import ltdjms.discord.currency.persistence.JdbcMemberCurrencyAccountRepository;
+import ltdjms.discord.currency.persistence.JooqGuildCurrencyConfigRepository;
+import ltdjms.discord.currency.persistence.JooqMemberCurrencyAccountRepository;
 import ltdjms.discord.currency.persistence.MemberCurrencyAccountRepository;
 import ltdjms.discord.currency.services.BalanceAdjustmentService;
 import ltdjms.discord.currency.services.BalanceAdjustmentService.BalanceAdjustmentResult;
@@ -68,9 +68,9 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
     @DisplayName("should preserve balances after simulated restart")
     void shouldPreserveBalancesAfterSimulatedRestart() {
       // Given - set up initial state with services
-      GuildCurrencyConfigRepository configRepo1 = new JdbcGuildCurrencyConfigRepository(dataSource);
+      GuildCurrencyConfigRepository configRepo1 = new JooqGuildCurrencyConfigRepository(dslContext);
       MemberCurrencyAccountRepository accountRepo1 =
-          new JdbcMemberCurrencyAccountRepository(dataSource);
+          new JooqMemberCurrencyAccountRepository(dslContext);
       DefaultBalanceService balanceService1 =
           new DefaultBalanceService(
               accountRepo1,
@@ -89,9 +89,9 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
       assertThat(initialBalance.balance()).isEqualTo(500L);
 
       // When - simulate restart by creating new service instances (new connections)
-      GuildCurrencyConfigRepository configRepo2 = new JdbcGuildCurrencyConfigRepository(dataSource);
+      GuildCurrencyConfigRepository configRepo2 = new JooqGuildCurrencyConfigRepository(dslContext);
       MemberCurrencyAccountRepository accountRepo2 =
-          new JdbcMemberCurrencyAccountRepository(dataSource);
+          new JooqMemberCurrencyAccountRepository(dslContext);
       DefaultBalanceService balanceService2 =
           new DefaultBalanceService(
               accountRepo2,
@@ -112,9 +112,9 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
       long user2 = TEST_USER_ID + 1;
       long user3 = TEST_USER_ID + 2;
 
-      GuildCurrencyConfigRepository configRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
+      GuildCurrencyConfigRepository configRepo = new JooqGuildCurrencyConfigRepository(dslContext);
       MemberCurrencyAccountRepository accountRepo =
-          new JdbcMemberCurrencyAccountRepository(dataSource);
+          new JooqMemberCurrencyAccountRepository(dslContext);
       BalanceAdjustmentService adjustmentService = createAdjustmentService(accountRepo, configRepo);
 
       adjustmentService.adjustBalance(TEST_GUILD_ID, user1, 100L);
@@ -123,9 +123,9 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
 
       // When - simulate restart
       GuildCurrencyConfigRepository newConfigRepo =
-          new JdbcGuildCurrencyConfigRepository(dataSource);
+          new JooqGuildCurrencyConfigRepository(dslContext);
       MemberCurrencyAccountRepository newAccountRepo =
-          new JdbcMemberCurrencyAccountRepository(dataSource);
+          new JooqMemberCurrencyAccountRepository(dslContext);
       DefaultBalanceService newBalanceService =
           new DefaultBalanceService(
               newAccountRepo,
@@ -146,9 +146,9 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
       long guild1 = TEST_GUILD_ID;
       long guild2 = TEST_GUILD_ID + 1;
 
-      GuildCurrencyConfigRepository configRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
+      GuildCurrencyConfigRepository configRepo = new JooqGuildCurrencyConfigRepository(dslContext);
       MemberCurrencyAccountRepository accountRepo =
-          new JdbcMemberCurrencyAccountRepository(dataSource);
+          new JooqMemberCurrencyAccountRepository(dslContext);
       BalanceAdjustmentService adjustmentService = createAdjustmentService(accountRepo, configRepo);
 
       adjustmentService.adjustBalance(guild1, TEST_USER_ID, 300L);
@@ -156,9 +156,9 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
 
       // When - simulate restart
       GuildCurrencyConfigRepository newConfigRepo =
-          new JdbcGuildCurrencyConfigRepository(dataSource);
+          new JooqGuildCurrencyConfigRepository(dslContext);
       MemberCurrencyAccountRepository newAccountRepo =
-          new JdbcMemberCurrencyAccountRepository(dataSource);
+          new JooqMemberCurrencyAccountRepository(dslContext);
       DefaultBalanceService newBalanceService =
           new DefaultBalanceService(
               newAccountRepo,
@@ -184,7 +184,7 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
     @DisplayName("should preserve currency configuration after restart")
     void shouldPreserveCurrencyConfigurationAfterRestart() {
       // Given
-      GuildCurrencyConfigRepository configRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
+      GuildCurrencyConfigRepository configRepo = new JooqGuildCurrencyConfigRepository(dslContext);
       EmojiValidator emojiValidator = new NoOpEmojiValidator();
       DomainEventPublisher eventPublisher = new DomainEventPublisher();
       CurrencyConfigService configService =
@@ -194,7 +194,7 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
 
       // When - simulate restart
       GuildCurrencyConfigRepository newConfigRepo =
-          new JdbcGuildCurrencyConfigRepository(dataSource);
+          new JooqGuildCurrencyConfigRepository(dslContext);
       DomainEventPublisher newEventPublisher = new DomainEventPublisher();
       CurrencyConfigService newConfigService =
           new CurrencyConfigService(newConfigRepo, emojiValidator, newEventPublisher);
@@ -212,7 +212,7 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
       long guild1 = TEST_GUILD_ID;
       long guild2 = TEST_GUILD_ID + 1;
 
-      GuildCurrencyConfigRepository configRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
+      GuildCurrencyConfigRepository configRepo = new JooqGuildCurrencyConfigRepository(dslContext);
       EmojiValidator emojiValidator = new NoOpEmojiValidator();
       DomainEventPublisher eventPublisher = new DomainEventPublisher();
       CurrencyConfigService configService =
@@ -223,7 +223,7 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
 
       // When - simulate restart
       GuildCurrencyConfigRepository newConfigRepo =
-          new JdbcGuildCurrencyConfigRepository(dataSource);
+          new JooqGuildCurrencyConfigRepository(dslContext);
       DomainEventPublisher newEventPublisher = new DomainEventPublisher();
       CurrencyConfigService newConfigService =
           new CurrencyConfigService(newConfigRepo, emojiValidator, newEventPublisher);
@@ -251,9 +251,9 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
     @DisplayName("should not duplicate adjustment on successful complete operation")
     void shouldNotDuplicateAdjustmentOnSuccessfulOperation() {
       // Given
-      GuildCurrencyConfigRepository configRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
+      GuildCurrencyConfigRepository configRepo = new JooqGuildCurrencyConfigRepository(dslContext);
       MemberCurrencyAccountRepository accountRepo =
-          new JdbcMemberCurrencyAccountRepository(dataSource);
+          new JooqMemberCurrencyAccountRepository(dslContext);
       BalanceAdjustmentService adjustmentService = createAdjustmentService(accountRepo, configRepo);
 
       // Initial adjustment
@@ -263,9 +263,9 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
 
       // When - simulate restart and verify
       GuildCurrencyConfigRepository newConfigRepo =
-          new JdbcGuildCurrencyConfigRepository(dataSource);
+          new JooqGuildCurrencyConfigRepository(dslContext);
       MemberCurrencyAccountRepository newAccountRepo =
-          new JdbcMemberCurrencyAccountRepository(dataSource);
+          new JooqMemberCurrencyAccountRepository(dslContext);
       DefaultBalanceService newBalanceService =
           new DefaultBalanceService(
               newAccountRepo,
@@ -282,9 +282,9 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
     @DisplayName("should handle sequential adjustments correctly without duplication")
     void shouldHandleSequentialAdjustmentsCorrectlyWithoutDuplication() {
       // Given
-      GuildCurrencyConfigRepository configRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
+      GuildCurrencyConfigRepository configRepo = new JooqGuildCurrencyConfigRepository(dslContext);
       MemberCurrencyAccountRepository accountRepo =
-          new JdbcMemberCurrencyAccountRepository(dataSource);
+          new JooqMemberCurrencyAccountRepository(dslContext);
       BalanceAdjustmentService adjustmentService = createAdjustmentService(accountRepo, configRepo);
 
       // Multiple sequential adjustments
@@ -294,9 +294,9 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
 
       // Simulate restart between adjustments
       GuildCurrencyConfigRepository newConfigRepo =
-          new JdbcGuildCurrencyConfigRepository(dataSource);
+          new JooqGuildCurrencyConfigRepository(dslContext);
       MemberCurrencyAccountRepository newAccountRepo =
-          new JdbcMemberCurrencyAccountRepository(dataSource);
+          new JooqMemberCurrencyAccountRepository(dslContext);
       BalanceAdjustmentService newAdjustmentService =
           createAdjustmentService(newAccountRepo, newConfigRepo);
       ;
@@ -322,9 +322,9 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
             + " restart")
     void shouldMaintainConsistencyWhenInterleavedWithRestart() {
       // Given - initial setup
-      GuildCurrencyConfigRepository configRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
+      GuildCurrencyConfigRepository configRepo = new JooqGuildCurrencyConfigRepository(dslContext);
       MemberCurrencyAccountRepository accountRepo =
-          new JdbcMemberCurrencyAccountRepository(dataSource);
+          new JooqMemberCurrencyAccountRepository(dslContext);
       BalanceAdjustmentService adjustmentService = createAdjustmentService(accountRepo, configRepo);
       DefaultBalanceService balanceService =
           new DefaultBalanceService(
@@ -341,9 +341,9 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
 
       // Simulate restart
       GuildCurrencyConfigRepository newConfigRepo =
-          new JdbcGuildCurrencyConfigRepository(dataSource);
+          new JooqGuildCurrencyConfigRepository(dslContext);
       MemberCurrencyAccountRepository newAccountRepo =
-          new JdbcMemberCurrencyAccountRepository(dataSource);
+          new JooqMemberCurrencyAccountRepository(dslContext);
       DefaultBalanceService newBalanceService =
           new DefaultBalanceService(
               newAccountRepo,
@@ -379,9 +379,9 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
     @DisplayName("should preserve both balance and config together after restart")
     void shouldPreserveBothBalanceAndConfigAfterRestart() {
       // Given - set up config and balance
-      GuildCurrencyConfigRepository configRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
+      GuildCurrencyConfigRepository configRepo = new JooqGuildCurrencyConfigRepository(dslContext);
       MemberCurrencyAccountRepository accountRepo =
-          new JdbcMemberCurrencyAccountRepository(dataSource);
+          new JooqMemberCurrencyAccountRepository(dslContext);
       EmojiValidator emojiValidator = new NoOpEmojiValidator();
       DomainEventPublisher eventPublisher = new DomainEventPublisher();
       CurrencyConfigService configService =
@@ -405,9 +405,9 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
 
       // When - simulate restart
       GuildCurrencyConfigRepository newConfigRepo =
-          new JdbcGuildCurrencyConfigRepository(dataSource);
+          new JooqGuildCurrencyConfigRepository(dslContext);
       MemberCurrencyAccountRepository newAccountRepo =
-          new JdbcMemberCurrencyAccountRepository(dataSource);
+          new JooqMemberCurrencyAccountRepository(dslContext);
       DefaultBalanceService newBalanceService =
           new DefaultBalanceService(
               newAccountRepo,
@@ -426,9 +426,9 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
     @DisplayName("should display correct currency after config update and restart")
     void shouldDisplayCorrectCurrencyAfterConfigUpdateAndRestart() {
       // Given - initial setup
-      GuildCurrencyConfigRepository configRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
+      GuildCurrencyConfigRepository configRepo = new JooqGuildCurrencyConfigRepository(dslContext);
       MemberCurrencyAccountRepository accountRepo =
-          new JdbcMemberCurrencyAccountRepository(dataSource);
+          new JooqMemberCurrencyAccountRepository(dslContext);
       EmojiValidator emojiValidator = new NoOpEmojiValidator();
       DomainEventPublisher eventPublisher = new DomainEventPublisher();
       CurrencyConfigService configService =
@@ -440,9 +440,9 @@ class BotRestartIntegrationTest extends PostgresIntegrationTestBase {
 
       // Simulate restart
       GuildCurrencyConfigRepository newConfigRepo =
-          new JdbcGuildCurrencyConfigRepository(dataSource);
+          new JooqGuildCurrencyConfigRepository(dslContext);
       MemberCurrencyAccountRepository newAccountRepo =
-          new JdbcMemberCurrencyAccountRepository(dataSource);
+          new JooqMemberCurrencyAccountRepository(dslContext);
       DomainEventPublisher newEventPublisher = new DomainEventPublisher();
       CurrencyConfigService newConfigService =
           new CurrencyConfigService(newConfigRepo, emojiValidator, newEventPublisher);

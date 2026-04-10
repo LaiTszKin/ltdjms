@@ -10,8 +10,8 @@ import ltdjms.discord.currency.domain.BalanceView;
 import ltdjms.discord.currency.domain.CurrencyTransactionRepository;
 import ltdjms.discord.currency.persistence.GuildCurrencyConfigRepository;
 import ltdjms.discord.currency.persistence.JdbcCurrencyTransactionRepository;
-import ltdjms.discord.currency.persistence.JdbcGuildCurrencyConfigRepository;
-import ltdjms.discord.currency.persistence.JdbcMemberCurrencyAccountRepository;
+import ltdjms.discord.currency.persistence.JooqGuildCurrencyConfigRepository;
+import ltdjms.discord.currency.persistence.JooqMemberCurrencyAccountRepository;
 import ltdjms.discord.currency.persistence.MemberCurrencyAccountRepository;
 import ltdjms.discord.currency.persistence.NegativeBalanceException;
 import ltdjms.discord.currency.services.BalanceAdjustmentService;
@@ -46,8 +46,8 @@ class BalanceAdjustmentCommandIntegrationTest extends PostgresIntegrationTestBas
 
   @BeforeEach
   void setUp() {
-    configRepository = new JdbcGuildCurrencyConfigRepository(dataSource);
-    accountRepository = new JdbcMemberCurrencyAccountRepository(dataSource);
+    configRepository = new JooqGuildCurrencyConfigRepository(dslContext);
+    accountRepository = new JooqMemberCurrencyAccountRepository(dslContext);
     CurrencyTransactionRepository transactionRepository =
         new JdbcCurrencyTransactionRepository(dataSource);
     CurrencyTransactionService transactionService =

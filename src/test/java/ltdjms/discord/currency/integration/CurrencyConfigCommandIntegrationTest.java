@@ -10,8 +10,8 @@ import org.junit.jupiter.api.Test;
 import ltdjms.discord.currency.domain.BalanceView;
 import ltdjms.discord.currency.domain.GuildCurrencyConfig;
 import ltdjms.discord.currency.persistence.GuildCurrencyConfigRepository;
-import ltdjms.discord.currency.persistence.JdbcGuildCurrencyConfigRepository;
-import ltdjms.discord.currency.persistence.JdbcMemberCurrencyAccountRepository;
+import ltdjms.discord.currency.persistence.JooqGuildCurrencyConfigRepository;
+import ltdjms.discord.currency.persistence.JooqMemberCurrencyAccountRepository;
 import ltdjms.discord.currency.persistence.MemberCurrencyAccountRepository;
 import ltdjms.discord.currency.services.CurrencyConfigService;
 import ltdjms.discord.currency.services.DefaultBalanceService;
@@ -42,8 +42,8 @@ class CurrencyConfigCommandIntegrationTest extends PostgresIntegrationTestBase {
 
   @BeforeEach
   void setUp() {
-    configRepository = new JdbcGuildCurrencyConfigRepository(dataSource);
-    accountRepository = new JdbcMemberCurrencyAccountRepository(dataSource);
+    configRepository = new JooqGuildCurrencyConfigRepository(dslContext);
+    accountRepository = new JooqMemberCurrencyAccountRepository(dslContext);
     emojiValidator = new NoOpEmojiValidator();
     DomainEventPublisher eventPublisher = new DomainEventPublisher();
     configService = new CurrencyConfigService(configRepository, emojiValidator, eventPublisher);

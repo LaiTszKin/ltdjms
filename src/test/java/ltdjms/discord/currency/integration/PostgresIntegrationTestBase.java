@@ -8,6 +8,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import javax.sql.DataSource;
 
+import org.jooq.DSLContext;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -16,6 +17,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+
+import ltdjms.discord.shared.JooqDSLContextFactory;
 
 /**
  * Base class for integration tests that require a PostgreSQL database. Uses Testcontainers to start
@@ -34,6 +37,7 @@ public abstract class PostgresIntegrationTestBase {
           .withPassword("test");
 
   protected static DataSource dataSource;
+  protected static DSLContext dslContext;
 
   @BeforeAll
   static void setUpDataSource() {
@@ -46,6 +50,7 @@ public abstract class PostgresIntegrationTestBase {
     config.setPoolName("TestPool");
 
     dataSource = new HikariDataSource(config);
+    dslContext = JooqDSLContextFactory.create(dataSource);
 
     // Apply schema
     applySchema();

@@ -21,8 +21,8 @@ import ltdjms.discord.currency.domain.CurrencyTransactionRepository;
 import ltdjms.discord.currency.integration.PostgresIntegrationTestBase;
 import ltdjms.discord.currency.persistence.GuildCurrencyConfigRepository;
 import ltdjms.discord.currency.persistence.JdbcCurrencyTransactionRepository;
-import ltdjms.discord.currency.persistence.JdbcGuildCurrencyConfigRepository;
-import ltdjms.discord.currency.persistence.JdbcMemberCurrencyAccountRepository;
+import ltdjms.discord.currency.persistence.JooqGuildCurrencyConfigRepository;
+import ltdjms.discord.currency.persistence.JooqMemberCurrencyAccountRepository;
 import ltdjms.discord.currency.persistence.MemberCurrencyAccountRepository;
 import ltdjms.discord.currency.services.BalanceAdjustmentService;
 import ltdjms.discord.currency.services.CurrencyConfigService;
@@ -62,9 +62,9 @@ class SlashCommandPerformanceTest extends PostgresIntegrationTestBase {
 
   @BeforeEach
   void setUp() {
-    GuildCurrencyConfigRepository configRepo = new JdbcGuildCurrencyConfigRepository(dataSource);
+    GuildCurrencyConfigRepository configRepo = new JooqGuildCurrencyConfigRepository(dslContext);
     MemberCurrencyAccountRepository accountRepo =
-        new JdbcMemberCurrencyAccountRepository(dataSource);
+        new JooqMemberCurrencyAccountRepository(dslContext);
     CurrencyTransactionRepository transactionRepo =
         new JdbcCurrencyTransactionRepository(dataSource);
     CurrencyTransactionService transactionService = new CurrencyTransactionService(transactionRepo);

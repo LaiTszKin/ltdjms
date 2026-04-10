@@ -5,19 +5,19 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Optional;
 
-import org.jooq.DSLContext;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import ltdjms.discord.currency.domain.GuildCurrencyConfig;
 import ltdjms.discord.currency.domain.MemberCurrencyAccount;
+import ltdjms.discord.currency.persistence.GuildCurrencyConfigRepository;
+import ltdjms.discord.currency.persistence.JooqGuildCurrencyConfigRepository;
 import ltdjms.discord.currency.persistence.JooqMemberCurrencyAccountRepository;
 import ltdjms.discord.currency.persistence.MemberCurrencyAccountRepository;
 import ltdjms.discord.currency.persistence.NegativeBalanceException;
 import ltdjms.discord.shared.DomainError;
-import ltdjms.discord.shared.JooqDSLContextFactory;
 import ltdjms.discord.shared.Result;
 
 /**
@@ -26,20 +26,75 @@ import ltdjms.discord.shared.Result;
  */
 class JooqRepositoryIntegrationTest extends PostgresIntegrationTestBase {
 
-  private static DSLContext dslContext;
   private MemberCurrencyAccountRepository accountRepository;
+  private GuildCurrencyConfigRepository configRepository;
 
   private static final long TEST_GUILD_ID = 123456789012345678L;
   private static final long TEST_USER_ID = 987654321098765432L;
 
-  @BeforeAll
-  static void setUpDslContext() {
-    dslContext = JooqDSLContextFactory.create(dataSource);
-  }
-
   @BeforeEach
   void setUp() {
     accountRepository = new JooqMemberCurrencyAccountRepository(dslContext);
+    configRepository = new JooqGuildCurrencyConfigRepository(dslContext);
+  }
+
+  @Nested
+  @DisplayName("JooqGuildCurrencyConfigRepository Tests")
+  class JooqGuildCurrencyConfigRepositoryTests {
+
+    @Test
+    @DisplayName("should save and find guild currency config")
+    void shouldSaveAndFindConfig() {
+      GuildCurrencyConfig config = GuildCurrencyConfig.createDefault(TEST_GUILD_ID);
+
+      configRepository.save(config);
+      Optional<GuildCurrencyConfig> found = configRepository.findByGuildId(TEST_GUILD_ID);
+
+      assertThat(found).isPresent();
+      assertThat(found.get().guildId()).isEqualTo(TEST_GUILD_ID);
+      assertThat(found.get().currencyName()).isEqualTo(GuildCurrencyConfig.DEFAULT_NAME);
+      assertThat(found.get().currencyIcon()).isEqualTo(GuildCurrencyConfig.DEFAULT_ICON);
+    }
+
+    @Test
+    @DisplayName("should update existing guild currency config")
+    void shouldUpdateConfig() {
+      GuildCurrencyConfig original = GuildCurrencyConfig.createDefault(TEST_GUILD_ID);
+      configRepository.save(original);
+
+      GuildCurrencyConfig updated = original.withUpdates("Gold", "💰");
+      configRepository.update(updated);
+
+      Optional<GuildCurrencyConfig> found = configRepository.findByGuildId(TEST_GUILD_ID);
+      assertThat(found).isPresent();
+      assertThat(found.get().currencyName()).isEqualTo("Gold");
+      assertThat(found.get().currencyIcon()).isEqualTo("💰");
+    }
+
+    @Test
+    @DisplayName("should save or update guild currency config")
+    void shouldSaveOrUpdateConfig() {
+      GuildCurrencyConfig config = GuildCurrencyConfig.createDefault(TEST_GUILD_ID);
+
+      configRepository.saveOrUpdate(config);
+      configRepository.saveOrUpdate(config.withUpdates("Silver", "🥈"));
+
+      Optional<GuildCurrencyConfig> found = configRepository.findByGuildId(TEST_GUILD_ID);
+      assertThat(found).isPresent();
+      assertThat(found.get().currencyName()).isEqualTo("Silver");
+      assertThat(found.get().currencyIcon()).isEqualTo("🥈");
+    }
+
+    @Test
+    @DisplayName("should delete guild currency config")
+    void shouldDeleteConfig() {
+      configRepository.save(GuildCurrencyConfig.createDefault(TEST_GUILD_ID));
+
+      boolean deleted = configRepository.deleteByGuildId(TEST_GUILD_ID);
+
+      assertThat(deleted).isTrue();
+      assertThat(configRepository.findByGuildId(TEST_GUILD_ID)).isEmpty();
+    }
   }
 
   @Nested

@@ -31,8 +31,8 @@
 **AND** 不可再讓主回歸套件只驗證 JDBC 平行實作
 
 **Requirements**:
-- [ ] R1.1 主要 integration / performance 測試改為使用 JOOQ account / config repositories。
-- [ ] R1.2 測試中的 repository 建構方式需與 production wiring 對齊（直接使用 JOOQ 或共用 factory / module）。
+- [x] R1.1 主要 integration / performance 測試改為使用 JOOQ account / config repositories。
+- [x] R1.2 測試中的 repository 建構方式需與 production wiring 對齊（直接使用 JOOQ 或共用 factory / module）。
 
 ### Requirement 2: Canonical path 的 coverage 必須覆蓋 account 與 guild config
 **GIVEN** production 會同時使用 member account 與 guild currency config repositories  
@@ -41,9 +41,9 @@
 **AND** 不可只測到其中一半而把另一半交給舊 JDBC 路徑代測
 
 **Requirements**:
-- [ ] R2.1 `JooqGuildCurrencyConfigRepository` 補上完整 integration coverage。
-- [ ] R2.2 `BalanceServiceIntegrationTest`、`RepositoryIntegrationTest`、performance suite 等至少一條主回歸路徑必須驗證 JOOQ config + account 組合。
-- [ ] R2.3 測試命名與結構需讓維護者一眼看出「這是 production path coverage」。
+- [x] R2.1 `JooqGuildCurrencyConfigRepository` 補上完整 integration coverage。
+- [x] R2.2 `BalanceServiceIntegrationTest`、`RepositoryIntegrationTest`、performance suite 等至少一條主回歸路徑必須驗證 JOOQ config + account 組合。
+- [x] R2.3 測試命名與結構需讓維護者一眼看出「這是 production path coverage」。
 
 ### Requirement 3: 平行 JDBC 真相必須退出主程式責任範圍
 **GIVEN** repository contract 最終只能有一套 canonical owner  
@@ -52,16 +52,16 @@
 **AND** 不可再讓 main-source JDBC 與 JOOQ 同時承擔相同 contract 的 live ownership
 
 **Requirements**:
-- [ ] R3.1 `JdbcMemberCurrencyAccountRepository` / `JdbcGuildCurrencyConfigRepository` 必須有明確處置：刪除、移至 test fixture，或標示為 transitional adapter 並附清理終點。
-- [ ] R3.2 任何仍存在的 transitional path 都不得再作為主要 integration / performance coverage 的預設路徑。
-- [ ] R3.3 service 對 repository contract 的外部行為不變。
+- [x] R3.1 `JdbcMemberCurrencyAccountRepository` / `JdbcGuildCurrencyConfigRepository` 必須有明確處置：刪除、移至 test fixture，或標示為 transitional adapter 並附清理終點。
+- [x] R3.2 任何仍存在的 transitional path 都不得再作為主要 integration / performance coverage 的預設路徑。
+- [x] R3.3 service 對 repository contract 的外部行為不變。
 
 ## Error and Edge Cases
-- [ ] JOOQ config repository 的 save / update / saveOrUpdate / delete / find 不可因測試切換而出現 coverage 盲點。
-- [ ] 多執行緒 performance test 需驗證的仍是 production path，而不是因簡化而退回 JDBC。
-- [ ] 若保留 transitional JDBC path，必須避免維護者誤把它當 production owner。
-- [ ] 測試 factory / helper 不可偷偷改變 repository 行為或交易邊界。
-- [ ] 既有 `Result` / exception semantics、negative balance、guild isolation 等核心行為不可回歸。
+- [x] JOOQ config repository 的 save / update / saveOrUpdate / delete / find 不可因測試切換而出現 coverage 盲點。
+- [x] 多執行緒 performance test 需驗證的仍是 production path，而不是因簡化而退回 JDBC。
+- [x] 若保留 transitional JDBC path，必須避免維護者誤把它當 production owner。
+- [x] 測試 factory / helper 不可偷偷改變 repository 行為或交易邊界。
+- [x] 既有 `Result` / exception semantics、negative balance、guild isolation 等核心行為不可回歸。
 
 ## Clarification Questions
 None
@@ -73,8 +73,6 @@ None
   - `src/main/java/ltdjms/discord/shared/di/CurrencyRepositoryModule.java`
   - `src/main/java/ltdjms/discord/currency/persistence/JooqMemberCurrencyAccountRepository.java`
   - `src/main/java/ltdjms/discord/currency/persistence/JooqGuildCurrencyConfigRepository.java`
-  - `src/main/java/ltdjms/discord/currency/persistence/JdbcMemberCurrencyAccountRepository.java`
-  - `src/main/java/ltdjms/discord/currency/persistence/JdbcGuildCurrencyConfigRepository.java`
   - `src/test/java/ltdjms/discord/currency/integration/RepositoryIntegrationTest.java`
   - `src/test/java/ltdjms/discord/currency/integration/BalanceServiceIntegrationTest.java`
   - `src/test/java/ltdjms/discord/currency/performance/SlashCommandPerformanceTest.java`

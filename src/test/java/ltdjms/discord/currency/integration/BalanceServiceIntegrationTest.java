@@ -9,8 +9,8 @@ import org.junit.jupiter.api.Test;
 import ltdjms.discord.currency.domain.BalanceView;
 import ltdjms.discord.currency.domain.GuildCurrencyConfig;
 import ltdjms.discord.currency.persistence.GuildCurrencyConfigRepository;
-import ltdjms.discord.currency.persistence.JdbcGuildCurrencyConfigRepository;
-import ltdjms.discord.currency.persistence.JdbcMemberCurrencyAccountRepository;
+import ltdjms.discord.currency.persistence.JooqGuildCurrencyConfigRepository;
+import ltdjms.discord.currency.persistence.JooqMemberCurrencyAccountRepository;
 import ltdjms.discord.currency.persistence.MemberCurrencyAccountRepository;
 import ltdjms.discord.currency.services.BalanceService;
 import ltdjms.discord.currency.services.DefaultBalanceService;
@@ -35,8 +35,8 @@ class BalanceServiceIntegrationTest extends PostgresIntegrationTestBase {
 
   @BeforeEach
   void setUp() {
-    accountRepository = new JdbcMemberCurrencyAccountRepository(dataSource);
-    configRepository = new JdbcGuildCurrencyConfigRepository(dataSource);
+    accountRepository = new JooqMemberCurrencyAccountRepository(dslContext);
+    configRepository = new JooqGuildCurrencyConfigRepository(dslContext);
     CacheService cacheService = NoOpCacheService.getInstance();
     CacheKeyGenerator cacheKeyGenerator = new DefaultCacheKeyGenerator();
     balanceService =

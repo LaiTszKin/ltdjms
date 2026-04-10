@@ -37,6 +37,12 @@
 - test construction path：主要 integration / performance suites 一律透過 JOOQ path 建構 repository/service graph。
 - legacy path handling：JDBC account / config repositories 被移除，或降級為短期 transitional/test-only compatibility layer，但不再是主要 coverage owner。
 
+## Implemented Delta
+- `PostgresIntegrationTestBase` 現在建立共用 `DSLContext`，讓 currency integration/performance suites 直接使用 production-aligned JOOQ repository path。
+- `RepositoryIntegrationTest`、`BalanceServiceIntegrationTest`、`BalanceAdjustmentCommandIntegrationTest`、`CurrencyConfigCommandIntegrationTest`、`BotRestartIntegrationTest` 與 `SlashCommandPerformanceTest` 已切換到 `JooqMemberCurrencyAccountRepository` / `JooqGuildCurrencyConfigRepository`。
+- `JooqRepositoryIntegrationTest` 已補上 guild config 的 save / find / update / saveOrUpdate / delete 覆蓋。
+- `JdbcMemberCurrencyAccountRepository` 與 `JdbcGuildCurrencyConfigRepository` 已自 main source 移除，只保留 transaction repository 的 JDBC path。
+
 ## Component Changes
 
 ### Component 1: `CurrencyRepositoryModule`

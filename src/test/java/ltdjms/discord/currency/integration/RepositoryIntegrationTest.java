@@ -12,14 +12,14 @@ import org.junit.jupiter.api.Test;
 import ltdjms.discord.currency.domain.GuildCurrencyConfig;
 import ltdjms.discord.currency.domain.MemberCurrencyAccount;
 import ltdjms.discord.currency.persistence.GuildCurrencyConfigRepository;
-import ltdjms.discord.currency.persistence.JdbcGuildCurrencyConfigRepository;
-import ltdjms.discord.currency.persistence.JdbcMemberCurrencyAccountRepository;
+import ltdjms.discord.currency.persistence.JooqGuildCurrencyConfigRepository;
+import ltdjms.discord.currency.persistence.JooqMemberCurrencyAccountRepository;
 import ltdjms.discord.currency.persistence.MemberCurrencyAccountRepository;
 import ltdjms.discord.currency.persistence.NegativeBalanceException;
 
 /**
- * Integration tests for guild and member repositories. Tests repository operations against a real
- * PostgreSQL database.
+ * Production-path integration tests for guild and member repositories. Tests JOOQ repository
+ * operations against a real PostgreSQL database.
  */
 class RepositoryIntegrationTest extends PostgresIntegrationTestBase {
 
@@ -31,12 +31,12 @@ class RepositoryIntegrationTest extends PostgresIntegrationTestBase {
 
   @BeforeEach
   void setUp() {
-    configRepository = new JdbcGuildCurrencyConfigRepository(dataSource);
-    accountRepository = new JdbcMemberCurrencyAccountRepository(dataSource);
+    configRepository = new JooqGuildCurrencyConfigRepository(dslContext);
+    accountRepository = new JooqMemberCurrencyAccountRepository(dslContext);
   }
 
   @Nested
-  @DisplayName("GuildCurrencyConfigRepository Tests")
+  @DisplayName("Production JOOQ GuildCurrencyConfigRepository Tests")
   class GuildCurrencyConfigRepositoryTests {
 
     @Test
@@ -126,7 +126,7 @@ class RepositoryIntegrationTest extends PostgresIntegrationTestBase {
   }
 
   @Nested
-  @DisplayName("MemberCurrencyAccountRepository Tests")
+  @DisplayName("Production JOOQ MemberCurrencyAccountRepository Tests")
   class MemberCurrencyAccountRepositoryTests {
 
     @Test
