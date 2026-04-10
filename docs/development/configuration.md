@@ -97,7 +97,7 @@
 - `ECPAY_CALLBACK_SHARED_SECRET`
   - 預設：空字串
   - 對應 config key：`payment.ecpay.callback.shared-secret`
-  - 說明：綠界付款回推的共享密鑰；若 `ECPAY_CALLBACK_BIND_HOST` 綁定公網位址，必須設定此值
+  - 說明：保留中的舊相容欄位；現行 callback 驗證不依賴 query token 或 shared-secret 授權流程，新部署不應將它視為必填安全設定
 
 - `PRODUCT_FULFILLMENT_SIGNING_SECRET`
   - 預設：空字串

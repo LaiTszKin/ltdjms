@@ -15,7 +15,7 @@ flowchart LR
   Adapter["Discord Adapter\n(SlashCommandAdapter, etc.)"]
   Handler["Command Handlers\n(currency-config, dice-game-1, user-panel, ... )"]
   Service["Domain Services\n(BalanceService, GameTokenService, ...)"]
-  Repo["Repositories\n(Jdbc*/Jooq*Repository)"]
+  Repo["Repositories\n(JOOQ / JDBC Repository)"]
   Cache["Redis Cache\n(Optional)"]
   DB["PostgreSQL\n(currency_bot)"]
 
@@ -37,8 +37,8 @@ flowchart LR
 - **PostgreSQL**：資料儲存，schema 定義在 `src/main/resources/db/schema.sql`。
 - **Redis（可選）**：分散式快取，Redis 不可用時自動降級為 NoOp 快取（詳細說明：`docs/architecture/cache-architecture.md`）。
 - **Flyway**：資料庫 migration 管理，migration 檔案位於 `src/main/resources/db/migration/`。
-- **JDBC / jOOQ**：資料存取層，提供型別安全的 SQL 操作。
-- **Typesafe Config**：設定載入與合併（環境變數、`.env`、`application.conf` 等）。
+- **JDBC / jOOQ**：資料存取層；guild currency account/config 已以 jOOQ 為主要 production path，部分 legacy / transaction repository 仍保留 JDBC。
+- **Typesafe Config**：設定合併機制；runtime 由環境變數、`.env`、`application.properties` 與內建預設值組成。
 
 ## 2. 啟動流程
 
@@ -48,7 +48,7 @@ flowchart LR
 
 啟動順序概略如下：
 
-1. 建立 `EnvironmentConfig`，從環境變數／`.env`／設定檔載入設定。
+1. 建立 `EnvironmentConfig`，從環境變數／`.env`／`application.properties`／內建預設值載入設定。
 2. 使用 `AppComponentFactory.create(envConfig)` 建立 Dagger `AppComponent`。
 3. 從 `AppComponent` 取得：
    - `DatabaseConfig` 與 `DataSource`
@@ -130,7 +130,7 @@ flowchart LR
   - 不包含基礎設施細節，專注在商業規則（例如餘額不得為負）。
 
 - `persistence/`  
-  - Repository 介面與 JDBC/jOOQ 實作（例如 `JdbcMemberCurrencyAccountRepository`）
+  - Repository 介面與資料存取實作；currency account/config 目前以 jOOQ repository 為主要路徑，部分 transaction/legacy repository 仍使用 JDBC
   - 負責將 domain 物件映射到資料庫表格。
 
 - `services/`  

@@ -50,14 +50,14 @@ src/main/java/ltdjms/discord/shared/
 ```java
 // src/main/java/ltdjms/discord/shared/EnvironmentConfig.java
 public final class EnvironmentConfig {
-    // 優先順序：系統環境變數 > .env > application.conf > 內建預設值
+    // 優先順序：系統環境變數 > .env > application.properties > 內建預設值
 }
 ```
 
 **主要功能：**
 
 - 載入 `.env` 檔案（支援自訂目錄）
-- 整合 Typesafe Config 系統
+- 整合 Typesafe Config，但 runtime 只採用 `application.properties` 作為 packaged defaults
 - 支援環境變數覆寫
 - 提供型別安全的設定值取得方法
 

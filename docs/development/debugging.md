@@ -39,7 +39,7 @@ LOG_LEVEL=DEBUG
 2. 設定斷點：
    - Service 層：`BalanceService.java:45`
    - Handler 層：`DiceGame1CommandHandler.java:32`
-   - Repository 層：`JdbcMemberCurrencyAccountRepository.java:28`
+  - Repository 層：`JooqMemberCurrencyAccountRepository.java:28`
 
 **VS Code 除錯設定：**
 

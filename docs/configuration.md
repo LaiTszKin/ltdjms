@@ -6,7 +6,7 @@
 
 1. 系統環境變數
 2. 專案根目錄 `.env`
-3. `application.conf` / `application.properties`
+3. `application.properties`
 4. 程式內建預設值
 
 另外有兩個實務上很重要的優先規則：
@@ -29,8 +29,8 @@
 | --- | --- | --- |
 | `.env.example` | 本機設定範本 | 新環境建議從這裡複製 |
 | `.env` | 本機覆蓋值 | 不應提交到版本控制 |
-| `src/main/resources/application.properties` | 預設值與部分註解 | 與 `application.conf` 並存 |
-| `src/main/resources/application.conf` | 較舊的 Typesafe Config 鍵名 | 仍被 `EnvironmentConfig` 載入 |
+| `src/main/resources/application.properties` | 唯一的 packaged defaults | 會參與 runtime fallback chain |
+| `src/main/resources/application.conf` | 相容性 shim / 文件提示 | 不再承載 live defaults，也不參與 runtime schema |
 | `src/main/resources/logback.xml` | log level、輸出目錄、輪替 | Docker 與本機都共用 |
 | `docker-compose.yml` | 容器環境變數映射 | 單機部署與本機整套啟動入口 |
 | `prompts/` | 外部提示詞目錄 | AI Chat / Agent 會讀取這裡的內容 |
@@ -94,7 +94,7 @@
 | `ECPAY_CALLBACK_BIND_HOST` | 不使用 Compose 內建 ingress、需要進階 override 時 | 內嵌 HTTP server 綁定 host | `127.0.0.1`；Compose 自架預設由 repo 內 Caddy 代理到 loopback |
 | `ECPAY_CALLBACK_BIND_PORT` | 不使用 Compose 內建 ingress、需要進階 override 時 | 內嵌 HTTP server 綁定 port | `8085`；Compose 自架預設由 repo 內 Caddy 代理到這個內部 port |
 | `ECPAY_CALLBACK_PATH` | 想調整 callback path 時 | 綠界回推接收路徑 | `/ecpay/callback` |
-| `ECPAY_CALLBACK_SHARED_SECRET` | 舊部署仍保留設定時 | 舊版 callback query token 相容欄位 | 現行流程不再使用 |
+| `ECPAY_CALLBACK_SHARED_SECRET` | 舊部署環境仍保留欄位時 | 舊相容欄位；現行 callback 驗證不依賴 query token 授權 | 空字串；新部署不應把它當成 callback 授權機制 |
 
 ### 履約與日誌
 

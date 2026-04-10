@@ -7,13 +7,13 @@
 在不改變 LTDJMS 核心經濟、付款、履約與 AI 互動對外功能的前提下，將 issue 70-75 拆成 5 份可獨立審批、獨立實作、獨立驗證的優化／硬化 spec，分別處理履約傳輸安全、ECPay callback 風險、Agent 記憶體資料外洩面、設定來源正規化，以及 currency persistence 單一路徑化。
 
 ## Batch Scope
-- Included spec sets:
-  - `issue-75-currency-persistence-source-unification`
+- Included spec sets: `None`
 - Archived completed spec sets:
   - `issue-70-fulfillment-url-ssrf-hardening` → `docs/plans/archive/2026-04-09/issues-70-75-system-optimization/issue-70-fulfillment-url-ssrf-hardening`
   - `issues-71-72-ecpay-callback-auth-hardening` → `docs/plans/archive/2026-04-09/issues-70-75-system-optimization/issues-71-72-ecpay-callback-auth-hardening`
   - `issue-73-agent-tool-memory-isolation` → `docs/plans/archive/2026-04-09/issues-70-75-system-optimization/issue-73-agent-tool-memory-isolation`
   - `issue-74-config-schema-canonicalization` → `docs/plans/archive/2026-04-09/issues-70-75-system-optimization/issue-74-config-schema-canonicalization`
+  - `issue-75-currency-persistence-source-unification` → `docs/plans/archive/2026-04-09/issues-70-75-system-optimization/issue-75-currency-persistence-source-unification`
 - Shared outcome: 系統在付款／履約／AI／設定／currency persistence 五個高風險面向上都有更清楚的單一真相與回歸保護，但 slash commands、shop、AI thread、guild currency 對使用者的主流程維持相容。
 - Out of scope:
   - 新增終端使用者功能

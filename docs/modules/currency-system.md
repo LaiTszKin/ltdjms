@@ -48,8 +48,9 @@
 
 實作類別：
 
-- `JdbcMemberCurrencyAccountRepository` / `JooqMemberCurrencyAccountRepository`
-- `JdbcGuildCurrencyConfigRepository` / `JooqGuildCurrencyConfigRepository`
+- `JooqMemberCurrencyAccountRepository`
+- `JooqGuildCurrencyConfigRepository`
+- `JdbcCurrencyTransactionRepository`（交易流水仍走獨立 JDBC 路徑）
 
 職責：
 

@@ -68,5 +68,5 @@ LTDJMS 目前把 Discord guild 中最常見的四類流程放進同一個 bot：
 - 多數互動只支援 guild，不支援在 DM 直接執行 slash command
 - `/currency-config`、`/admin-panel`、`/dispatch-panel` 需要管理員權限
 - AI 不在白名單頻道時會直接忽略 mention
-- 未設定 `ECPAY_RETURN_URL` 時，不會啟用付款回推服務
+- 僅當 `APP_PUBLIC_BASE_URL` 與 `ECPAY_RETURN_URL` 都未設定時，付款回推服務才不會啟動
 - 付款、派單、售後這三類流程都依賴狀態轉移與冪等控制，不能只看表面 UI 流程

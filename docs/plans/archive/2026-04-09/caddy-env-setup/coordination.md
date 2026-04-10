@@ -7,9 +7,10 @@
 把自架部署的公開入口、TLS、自動憑證與 `.env` operator 體驗收斂成一致的受版本控管流程：Caddy spec 負責 ingress/TLS，設定助手 spec 負責讓 operator 正確填出同一組 env contract。
 
 ## Batch Scope
-- Included spec sets: `caddy-https-ingress`
+- Included spec sets: `None`
 - Archived completed spec sets:
   - `interactive-env-setup-assistant` → `docs/plans/archive/2026-04-09/caddy-env-setup/interactive-env-setup-assistant`
+  - `caddy-https-ingress` → `docs/plans/archive/2026-04-09/caddy-env-setup/caddy-https-ingress`
 - Shared outcome: operator 只需在互動式 `setup-env` 中回答公開 domain / TLS 等問題，就能生成符合 Caddy ingress 的 `.env`，並由 Compose 以 Caddy 安全對外提供 landing page 與 ECPay callback
 - Out of scope: Vercel proxy callback、DNS provider API 自動化、付款 business logic 變更
 - Independence rule: 兩份 spec 都以同一組 env names 為前提，但各自都能獨立實作與驗證；設定助手不依賴 Caddy code 先落地，Caddy spec 也不依賴互動腳本先存在

@@ -80,7 +80,7 @@ LTDJMS 透過 `EnvironmentConfig` 載入設定，優先順序如下：
 
 1. 系統環境變數
 2. 專案根目錄的 `.env` 檔案
-3. `application.conf` / `application.properties`
+3. `application.properties`
 4. 內建預設值
 
 ### 4.1 使用 `.env` 檔案（本機開發推薦）

@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 - **aiagent/memory**: 工具執行歷史改為只保留可安全重放的摘要，跨回合 chat memory 不再重新注入 raw tool result
 - **shared/config**: `EnvironmentConfig`、packaged defaults 與開發文件已對齊同一套 canonical schema，`application.properties` 成為唯一 live packaged defaults
 - **currency/persistence**: 主要 currency integration / performance 測試改走 production-aligned JOOQ account + config path，退出 main-source JDBC account/config 平行真相
+- **docs/plans**: 歸檔 issues 70-75 與 `caddy-env-setup` 已完成 spec sets，並同步修正文檔中的設定、currency persistence 與 AI Agent 記憶體描述
 
 ### Fixed
 - **ops/caddy**: 修正 `network_mode: service:bot` 與 published ports 的 Docker 衝突，改由 `bot` service 發佈 `80/443`，讓共享 network namespace 的 Caddy ingress 可正常啟動
