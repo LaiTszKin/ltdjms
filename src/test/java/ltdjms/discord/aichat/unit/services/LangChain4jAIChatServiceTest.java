@@ -4,7 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.InvocationHandler;
@@ -54,7 +58,11 @@ import ltdjms.discord.aichat.services.PromptLoader;
 import ltdjms.discord.aichat.services.StreamingResponseHandler;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
+import ltdjms.discord.shared.di.JDAProvider;
 import ltdjms.discord.shared.events.DomainEventPublisher;
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.channel.concrete.ThreadChannel;
 
 /**
  * 測試 {@link LangChain4jAIChatService}。
@@ -102,6 +110,7 @@ class LangChain4jAIChatServiceTest {
   @BeforeEach
   void setUp() {
     ToolExecutionContext.clearContext();
+    JDAProvider.clear();
     // 使用真實的 AIServiceConfig，但配置測試用的值
     config =
         new AIServiceConfig(
@@ -449,6 +458,54 @@ class LangChain4jAIChatServiceTest {
       assertTrue(callbackInvoked.get());
       assertNotNull(capturedError.get());
       assertFalse(ToolExecutionContext.isContextSet());
+    }
+  }
+
+  @Nested
+  @DisplayName("工具記憶隔離")
+  class ToolMemoryIsolation {
+
+    @Test
+    @DisplayName("應將高風險工具結果轉為紅線化摘要後再寫入歷史")
+    void shouldStoreRedactedSummaryForSensitiveToolResults() throws Exception {
+      JDA jda = mock(JDA.class);
+      Guild guild = mock(Guild.class);
+      ThreadChannel threadChannel = mock(ThreadChannel.class);
+      when(jda.getGuildById(123L)).thenReturn(guild);
+      when(guild.getThreadChannelById(456L)).thenReturn(threadChannel);
+      JDAProvider.setJda(jda);
+
+      dev.langchain4j.service.tool.ToolExecution toolExecution =
+          mock(dev.langchain4j.service.tool.ToolExecution.class, RETURNS_DEEP_STUBS);
+      when(toolExecution.hasFailed()).thenReturn(false);
+      when(toolExecution.result())
+          .thenReturn(
+              "{\"matches\":[{\"snippet\":\"敏感片段\",\"jumpUrl\":\"https://discord.com/channels/1/2/3\"}]}");
+      when(toolExecution.request().name()).thenReturn("searchMessages");
+      when(toolExecution.request().arguments()).thenReturn("{\"keywords\":\"secret\"}");
+
+      Method handleToolExecuted =
+          LangChain4jAIChatService.class.getDeclaredMethod(
+              "handleToolExecuted",
+              long.class,
+              String.class,
+              long.class,
+              dev.langchain4j.service.tool.ToolExecution.class);
+      handleToolExecuted.setAccessible(true);
+
+      handleToolExecuted.invoke(service, 123L, "456", 789L, toolExecution);
+
+      verify(mockToolCallHistory)
+          .addToolCall(
+              anyLong(),
+              anyLong(),
+              argThat(
+                  entry ->
+                      entry.toolName().equals("searchMessages")
+                          && entry.redactionMode() == InMemoryToolCallHistory.RedactionMode.REDACTED
+                          && entry.memorySummary().contains("已從跨回合記憶隔離")
+                          && !entry.memorySummary().contains("敏感片段")
+                          && !entry.memorySummary().contains("discord.com/channels/")));
     }
   }
 

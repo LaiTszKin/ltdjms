@@ -31,8 +31,8 @@
 **AND** 後續回合的 model context 只能看到經過收斂的安全摘要或完全看不到該結果
 
 **Requirements**:
-- [ ] R1.1 `InMemoryToolCallHistory` 不再把 `entry.result()` 直接格式化成 assistant message。
-- [ ] R1.2 `SimplifiedChatMemoryProvider` 不再將 raw tool result 當作 chat memory message 重新加入。
+- [x] R1.1 `InMemoryToolCallHistory` 不再把 raw tool result 直接格式化成 assistant message。
+- [x] R1.2 `SimplifiedChatMemoryProvider` 不再將 raw tool result 當作 chat memory message 重新加入。
 
 ### Requirement 2: 審計資訊與模型上下文必須分流
 **GIVEN** 維運仍需要知道工具是否執行成功、是哪個工具、由誰在何時呼叫  
@@ -41,9 +41,9 @@
 **AND** 模型上下文只能使用安全摘要，而不是完整執行結果
 
 **Requirements**:
-- [ ] R2.1 工具歷史資料模型需區分 audit record 與 memory-safe summary。
-- [ ] R2.2 至少保留 tool name、timestamp、success/failure、request metadata、summary/redaction state 等審計必要資訊。
-- [ ] R2.3 若結果被判定為敏感，summary 必須為固定模板或紅線化內容，不能含原始訊息片段與 jump URL。
+- [x] R2.1 工具歷史資料模型已區分 audit record 與 memory-safe summary。
+- [x] R2.2 已保留 tool name、timestamp、success/failure、request metadata、summary/redaction state 等審計必要資訊。
+- [x] R2.3 敏感結果 summary 已改為固定紅線化模板，不含原始訊息片段與 jump URL。
 
 ### Requirement 3: 高風險工具跨回合不得再洩漏結果內容
 **GIVEN** `searchMessages` 等工具可能回傳私密訊息片段與 jump URL  
@@ -52,16 +52,16 @@
 **AND** 相關測試需證明高風險工具結果在 memory rehydration 階段已被隔離
 
 **Requirements**:
-- [ ] R3.1 高風險工具至少要覆蓋 `searchMessages` 的隔離案例。
-- [ ] R3.2 合法的 thread history 與 user-scoped memory 邊界維持不變。
-- [ ] R3.3 當回合工具使用成功率與回應流程不因記憶隔離而中斷。
+- [x] R3.1 高風險工具已覆蓋 `searchMessages` 的隔離案例。
+- [x] R3.2 合法的 thread history 與 user-scoped memory 邊界維持不變。
+- [x] R3.3 當回合工具使用成功率與回應流程不因記憶隔離而中斷。
 
 ## Error and Edge Cases
-- [ ] 工具執行失敗時，錯誤訊息同樣不得把敏感原文直接回灌進後續 memory。
-- [ ] 同一 thread 不同 user 的工具歷史隔離規則必須保持既有語意。
-- [ ] legacy API (`userId=0`) 不可因資料模型調整而失效。
-- [ ] 若沒有可安全摘要的結果，系統應改存固定提示，而不是退回 raw result。
-- [ ] thread history 仍須正常載入，不可因工具歷史重構而丟失一般對話上下文。
+- [x] 工具執行失敗時，錯誤訊息同樣不得把敏感原文直接回灌進後續 memory。
+- [x] 同一 thread 不同 user 的工具歷史隔離規則保持既有語意。
+- [x] legacy API (`userId=0`) 未因資料模型調整而失效。
+- [x] 若沒有可安全摘要的結果，系統改存固定提示，而不是退回 raw result。
+- [x] thread history 仍可正常載入，未因工具歷史重構而丟失一般對話上下文。
 
 ## Clarification Questions
 None

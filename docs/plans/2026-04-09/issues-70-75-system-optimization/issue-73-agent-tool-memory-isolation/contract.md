@@ -36,4 +36,4 @@
   - Spec mapping: `R1.x-R3.x`
   - Design mapping: `Component 2`, `Component 3`
   - Planned coverage: `UT-73-01`, `UT-73-02`, `UT-73-03`
-  - Evidence notes: LangChain4j 文件將 memory 視為後續 prompt context 的來源，敏感資料過濾需由應用層負責
+  - Evidence notes: LangChain4j 文件將 memory 視為後續 prompt context 的來源，敏感資料過濾需由應用層負責；本次實作已將 `searchMessages` 等高風險結果固定紅線化，並僅把安全摘要重新注入 memory

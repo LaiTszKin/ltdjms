@@ -16,8 +16,8 @@ import ltdjms.discord.aiagent.services.InMemoryToolCallHistory;
 class InMemoryToolCallHistoryTest {
 
   @Test
-  @DisplayName("應將工具執行結果保存為助手訊息而非 tool 訊息")
-  void shouldStoreToolResultsAsAssistantMessages() {
+  @DisplayName("應只將記憶安全摘要保存為助手訊息")
+  void shouldStoreOnlyMemorySafeSummaryAsAssistantMessages() {
     InMemoryToolCallHistory history = new InMemoryToolCallHistory();
     long threadId = 42L;
 
@@ -28,14 +28,47 @@ class InMemoryToolCallHistoryTest {
             "listChannels",
             Map.of("limit", 3),
             true,
-            "列出 3 個頻道"));
+            "工具「listChannels」已成功執行；完整結果不會保留於跨回合記憶。",
+            InMemoryToolCallHistory.RedactionMode.NONE));
 
     List<ChatMessage> messages = history.getToolCallMessages(threadId);
 
     assertThat(messages).hasSize(1);
     assertThat(messages.get(0)).isInstanceOf(AiMessage.class);
     AiMessage msg = (AiMessage) messages.get(0);
-    assertThat(msg.text()).isEqualTo("工具「listChannels」執行結果：✅ 列出 3 個頻道");
+    assertThat(msg.text()).isEqualTo("工具「listChannels」已成功執行；完整結果不會保留於跨回合記憶。");
+  }
+
+  @Test
+  @DisplayName("高風險工具摘要不應包含原始 snippet 或 jump URL")
+  void shouldRedactSensitiveToolSummaries() {
+    InMemoryToolCallHistory history = new InMemoryToolCallHistory();
+    long threadId = 42L;
+
+    history.addToolCall(
+        threadId,
+        1001L,
+        new InMemoryToolCallHistory.ToolCallEntry(
+            Instant.parse("2026-01-01T00:00:00Z"),
+            "searchMessages",
+            Map.of("keywords", "secret"),
+            true,
+            "工具「searchMessages」已執行，結果因敏感內容已從跨回合記憶隔離。",
+            InMemoryToolCallHistory.RedactionMode.REDACTED));
+
+    List<ChatMessage> messages = history.getToolCallMessages(threadId, 1001L);
+    List<InMemoryToolCallHistory.ToolCallEntry> auditEntries =
+        history.getAuditEntries(threadId, 1001L);
+
+    assertThat(messages).hasSize(1);
+    assertThat(((AiMessage) messages.get(0)).text())
+        .contains("已從跨回合記憶隔離")
+        .doesNotContain("jumpUrl")
+        .doesNotContain("discord.com/channels/")
+        .doesNotContain("敏感片段");
+    assertThat(auditEntries).hasSize(1);
+    assertThat(auditEntries.get(0).redactionMode())
+        .isEqualTo(InMemoryToolCallHistory.RedactionMode.REDACTED);
   }
 
   @Test
@@ -50,12 +83,22 @@ class InMemoryToolCallHistoryTest {
         threadId,
         userA,
         new InMemoryToolCallHistory.ToolCallEntry(
-            Instant.parse("2026-01-01T00:00:00Z"), "toolA", Map.of(), true, "A"));
+            Instant.parse("2026-01-01T00:00:00Z"),
+            "toolA",
+            Map.of(),
+            true,
+            "工具「toolA」已成功執行；完整結果不會保留於跨回合記憶。",
+            InMemoryToolCallHistory.RedactionMode.NONE));
     history.addToolCall(
         threadId,
         userB,
         new InMemoryToolCallHistory.ToolCallEntry(
-            Instant.parse("2026-01-01T00:00:01Z"), "toolB", Map.of(), true, "B"));
+            Instant.parse("2026-01-01T00:00:01Z"),
+            "toolB",
+            Map.of(),
+            true,
+            "工具「toolB」已成功執行；完整結果不會保留於跨回合記憶。",
+            InMemoryToolCallHistory.RedactionMode.NONE));
 
     List<ChatMessage> userAMessages = history.getToolCallMessages(threadId, userA);
     List<ChatMessage> userBMessages = history.getToolCallMessages(threadId, userB);
@@ -78,12 +121,22 @@ class InMemoryToolCallHistoryTest {
         threadId,
         userA,
         new InMemoryToolCallHistory.ToolCallEntry(
-            Instant.parse("2026-01-01T00:00:00Z"), "toolA", Map.of(), true, "A"));
+            Instant.parse("2026-01-01T00:00:00Z"),
+            "toolA",
+            Map.of(),
+            true,
+            "工具「toolA」已成功執行；完整結果不會保留於跨回合記憶。",
+            InMemoryToolCallHistory.RedactionMode.NONE));
     history.addToolCall(
         threadId,
         userB,
         new InMemoryToolCallHistory.ToolCallEntry(
-            Instant.parse("2026-01-01T00:00:01Z"), "toolB", Map.of(), true, "B"));
+            Instant.parse("2026-01-01T00:00:01Z"),
+            "toolB",
+            Map.of(),
+            true,
+            "工具「toolB」已成功執行；完整結果不會保留於跨回合記憶。",
+            InMemoryToolCallHistory.RedactionMode.NONE));
 
     history.clearHistory(threadId, userA);
 
@@ -100,7 +153,12 @@ class InMemoryToolCallHistoryTest {
     history.addToolCall(
         threadId,
         new InMemoryToolCallHistory.ToolCallEntry(
-            Instant.parse("2026-01-01T00:00:00Z"), "legacyTool", Map.of(), true, "ok"));
+            Instant.parse("2026-01-01T00:00:00Z"),
+            "legacyTool",
+            Map.of(),
+            true,
+            "工具「legacyTool」已成功執行；完整結果不會保留於跨回合記憶。",
+            InMemoryToolCallHistory.RedactionMode.NONE));
 
     List<ChatMessage> legacyMessages = history.getToolCallMessages(threadId);
     List<ChatMessage> scopedMessages = history.getToolCallMessages(threadId, 0L);

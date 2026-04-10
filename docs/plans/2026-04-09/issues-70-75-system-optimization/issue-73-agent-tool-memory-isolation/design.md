@@ -77,6 +77,11 @@
   - 當回合工具使用能力不因後續記憶隔離而中斷
 - Migration / rollout needs: `None`（純 in-memory 調整，重啟即可切換）
 
+## Implemented Notes
+- `LangChain4jAIChatService.handleToolExecuted()` 已改為建立 `memorySummary` 與 `redactionMode`，不再把 raw result 傳入跨回合記憶資料模型。
+- `InMemoryToolCallHistory` 已保留結構化審計條目與 `getAuditEntries()`，並讓 `getToolCallMessages()` 只輸出記憶安全摘要。
+- `searchMessages` 及含敏感訊號的結果會固定輸出紅線化摘要模板，不再包含 snippet、jump URL 或作者資訊。
+
 ## Risk and Tradeoffs
 - Key risks:
   - 摘要過度保守可能降低 agent 後續回合的便利性。

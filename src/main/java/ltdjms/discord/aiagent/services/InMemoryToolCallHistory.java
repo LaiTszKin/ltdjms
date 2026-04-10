@@ -12,7 +12,7 @@ import dev.langchain4j.data.message.ChatMessage;
 /**
  * 記憶體中的工具調用歷史管理器。
  *
- * <p>維護 Thread 級別的工具調用歷史，用於在對話上下文中保留工具執行記錄。
+ * <p>維護 Thread 級別的工具調用歷史，用於保留可審計的工具執行記錄，並只向後續對話 暴露記憶安全的摘要。
  *
  * <h2>設計原則</h2>
  *
@@ -42,14 +42,23 @@ public final class InMemoryToolCallHistory {
    * @param toolName 工具名稱
    * @param parameters 調用參數
    * @param success 是否成功
-   * @param result 執行結果
+   * @param memorySummary 可安全注入 chat memory 的摘要
+   * @param redactionMode 摘要紅線化狀態
    */
   public record ToolCallEntry(
       Instant timestamp,
       String toolName,
       Map<String, Object> parameters,
       boolean success,
-      String result) {}
+      String memorySummary,
+      RedactionMode redactionMode) {}
+
+  /** 工具結果在跨回合記憶中的紅線化模式。 */
+  public enum RedactionMode {
+    NONE,
+    REDACTED,
+    OMITTED
+  }
 
   /**
    * 添加工具調用記錄。
@@ -104,15 +113,28 @@ public final class InMemoryToolCallHistory {
    * @return 工具調用訊息列表
    */
   public List<ChatMessage> getToolCallMessages(long threadId, long userId) {
-    List<ToolCallEntry> history = historyMap.getOrDefault(buildKey(threadId, userId), List.of());
+    List<ToolCallEntry> history = getAuditEntries(threadId, userId);
     List<ChatMessage> messages = new ArrayList<>();
 
     for (ToolCallEntry entry : history) {
-      String summary = formatToolCallSummary(entry);
-      messages.add(AiMessage.from(summary));
+      if (entry.memorySummary() == null || entry.memorySummary().isBlank()) {
+        continue;
+      }
+      messages.add(AiMessage.from(entry.memorySummary()));
     }
 
     return messages;
+  }
+
+  /**
+   * 獲取 Thread + 使用者 的原始審計條目（不供模型直接使用）。
+   *
+   * @param threadId Discord Thread ID
+   * @param userId 發起工具調用的使用者 ID
+   * @return 審計條目快照
+   */
+  public List<ToolCallEntry> getAuditEntries(long threadId, long userId) {
+    return List.copyOf(historyMap.getOrDefault(buildKey(threadId, userId), List.of()));
   }
 
   /**
@@ -163,10 +185,5 @@ public final class InMemoryToolCallHistory {
 
   private String buildKey(long threadId, long userId) {
     return threadId + ":" + userId;
-  }
-
-  private String formatToolCallSummary(ToolCallEntry entry) {
-    String statusPrefix = entry.success() ? "✅ " : "❌ ";
-    return "工具「" + entry.toolName() + "」執行結果：" + statusPrefix + entry.result();
   }
 }

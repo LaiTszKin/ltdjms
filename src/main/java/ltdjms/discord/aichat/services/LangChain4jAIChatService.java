@@ -2,6 +2,7 @@ package ltdjms.discord.aichat.services;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import javax.inject.Inject;
@@ -830,7 +831,12 @@ public final class LangChain4jAIChatService implements AIChatService {
             threadId,
             userId,
             new InMemoryToolCallHistory.ToolCallEntry(
-                Instant.now(), toolExecution.request().name(), params, success, resultText));
+                Instant.now(),
+                toolExecution.request().name(),
+                params,
+                success,
+                buildMemorySafeSummary(toolExecution.request().name(), success, resultText),
+                determineRedactionMode(toolExecution.request().name(), resultText)));
       }
     } catch (Exception e) {
       LOG.error("處理工具執行回調時發生錯誤", e);
@@ -845,6 +851,45 @@ public final class LangChain4jAIChatService implements AIChatService {
     }
     // 無法存取 LangChain4J 內部解析工具，改存原始參數字串以供審計
     return Map.of("arguments", rawArguments);
+  }
+
+  private String buildMemorySafeSummary(String toolName, boolean success, String resultText) {
+    if (shouldFullyRedact(toolName, resultText)) {
+      if (success) {
+        return "工具「" + toolName + "」已執行，結果因敏感內容已從跨回合記憶隔離。";
+      }
+      return "工具「" + toolName + "」執行失敗，錯誤細節已從跨回合記憶隔離。";
+    }
+
+    if (success) {
+      return "工具「" + toolName + "」已成功執行；完整結果不會保留於跨回合記憶。";
+    }
+    return "工具「" + toolName + "」執行失敗；已僅保留安全摘要於跨回合記憶。";
+  }
+
+  private InMemoryToolCallHistory.RedactionMode determineRedactionMode(
+      String toolName, String resultText) {
+    return shouldFullyRedact(toolName, resultText)
+        ? InMemoryToolCallHistory.RedactionMode.REDACTED
+        : InMemoryToolCallHistory.RedactionMode.NONE;
+  }
+
+  private boolean shouldFullyRedact(String toolName, String resultText) {
+    String normalizedToolName = toolName == null ? "" : toolName.toLowerCase(Locale.ROOT);
+    if ("searchmessages".equals(normalizedToolName)) {
+      return true;
+    }
+
+    if (resultText == null || resultText.isBlank()) {
+      return false;
+    }
+
+    String normalizedResult = resultText.toLowerCase(Locale.ROOT);
+    return normalizedResult.contains("jumpurl")
+        || normalizedResult.contains("snippet")
+        || normalizedResult.contains("authorname")
+        || normalizedResult.contains("https://discord.com/channels/")
+        || normalizedResult.contains("https://canary.discord.com/channels/");
   }
 
   /**

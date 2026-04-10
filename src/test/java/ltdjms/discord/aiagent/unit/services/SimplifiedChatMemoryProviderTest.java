@@ -14,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import ltdjms.discord.aiagent.services.DiscordThreadHistoryProvider;
 import ltdjms.discord.aiagent.services.InMemoryToolCallHistory;
@@ -81,6 +82,45 @@ class SimplifiedChatMemoryProviderTest {
     assertThat(memory).isNotNull();
     verify(threadHistoryProvider).getThreadHistory(100L, 200L, 300L, 900L);
     verify(toolCallHistory).getToolCallMessages(200L, 300L);
+  }
+
+  @Test
+  @DisplayName("rehydration 時只應加入安全摘要而非 raw tool result")
+  void shouldOnlyInjectMemorySafeToolSummaries() {
+    JDA jda = mock(JDA.class);
+    SelfUser selfUser = mock(SelfUser.class);
+    when(selfUser.getIdLong()).thenReturn(900L);
+    when(jda.getSelfUser()).thenReturn(selfUser);
+    JDAProvider.setJda(jda);
+
+    InMemoryToolCallHistory realHistory = new InMemoryToolCallHistory();
+    provider = new SimplifiedChatMemoryProvider(threadHistoryProvider, realHistory);
+
+    when(threadHistoryProvider.getThreadHistory(100L, 200L, 300L, 900L))
+        .thenReturn(List.of(UserMessage.from("請幫我找關鍵字訊息")));
+
+    realHistory.addToolCall(
+        200L,
+        300L,
+        new InMemoryToolCallHistory.ToolCallEntry(
+            java.time.Instant.parse("2026-01-01T00:00:00Z"),
+            "searchMessages",
+            java.util.Map.of("keywords", "secret"),
+            true,
+            "工具「searchMessages」已執行，結果因敏感內容已從跨回合記憶隔離。",
+            InMemoryToolCallHistory.RedactionMode.REDACTED));
+
+    var memory = provider.get("100:200:300");
+    var messages = memory.messages();
+
+    assertThat(messages).hasSize(2);
+    assertThat(((UserMessage) messages.get(0)).singleText()).isEqualTo("請幫我找關鍵字訊息");
+    assertThat(messages.get(1)).isInstanceOf(AiMessage.class);
+    assertThat(((AiMessage) messages.get(1)).text())
+        .contains("已從跨回合記憶隔離")
+        .doesNotContain("jumpUrl")
+        .doesNotContain("discord.com/channels/")
+        .doesNotContain("作者");
   }
 
   @Test
