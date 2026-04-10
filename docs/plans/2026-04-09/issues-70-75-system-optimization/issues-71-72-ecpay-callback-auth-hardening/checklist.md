@@ -4,13 +4,13 @@
 - Feature: Issues 71-72 綠界 Callback 驗證強化
 
 ## Clarification & Approval Gate
-- [ ] User clarification responses are recorded — `N/A`（目前需求已足夠明確）
-- [ ] Affected plans are reviewed/updated — `N/A`（尚未進入 clarification update）
-- [ ] Explicit user approval on updated specs is obtained（待本批 specs 審核）
+- [x] User clarification responses are recorded — `N/A`（目前需求已足夠明確）
+- [x] Affected plans are reviewed/updated — 本次依實作與驗證結果回填
+- [x] Explicit user approval on updated specs is obtained（使用者已明確要求執行此 spec set）
 
 ## Behavior-to-Test Checklist
 
-- [ ] CL-71-01 建立綠界 ReturnURL 時不再附加 query token
+- [x] CL-71-01 建立綠界 ReturnURL 時不再附加 query token
   - Requirement mapping: `R1.1-R1.2`
   - Actual test case IDs: `UT-71-01`
   - Test level: `Unit`
@@ -18,21 +18,21 @@
   - Property/matrix focus: `exact output`
   - External dependency strategy: `none`
   - Oracle/assertion focus: `exact output`
-  - Test result: `NOT RUN`
-  - Notes (optional): 驗證 legacy token expectation 已移除
+  - Test result: `PASS`
+  - Notes (optional): `EcpayCvsPaymentServiceTest#shouldKeepReturnUrlUnchanged`
 
-- [ ] CL-71-02 `ECPAY_STAGE_MODE=true` + public bind 會在啟動階段 fail closed
+- [x] CL-71-02 `ECPAY_STAGE_MODE=true` + public bind 會在啟動階段 fail closed
   - Requirement mapping: `R2.1-R2.3`
-  - Actual test case IDs: `UT-71-02`, `IT-71-01`
+  - Actual test case IDs: `UT-71-02`, `IT-71-01`, `IT-71-02`
   - Test level: `Unit / Integration`
   - Risk class: `authorization`
   - Property/matrix focus: `external state matrix`
   - External dependency strategy: `none`
   - Oracle/assertion focus: `permission denial`
-  - Test result: `NOT RUN`
-  - Notes (optional): 需涵蓋 `0.0.0.0`、public IP、loopback 對照矩陣
+  - Test result: `PASS`
+  - Notes (optional): `EcpayCallbackHttpServerTest#shouldRejectPublicBindWhenStageModeEnabled`、`EcpayCallbackHttpServerTest#shouldAllowPublicBindWhenStageModeDisabled`、`EcpayCallbackHttpServerTest#shouldAcceptCallbackWithoutQueryToken`
 
-- [ ] CL-71-03 legit production callback、duplicate callback 與 validation failure 不回歸
+- [x] CL-71-03 legit production callback、duplicate callback 與 validation failure 不回歸
   - Requirement mapping: `R3.1-R3.3`
   - Actual test case IDs: `UT-71-03`, `UT-71-04`
   - Test level: `Unit`
@@ -40,17 +40,17 @@
   - Property/matrix focus: `external state matrix`
   - External dependency strategy: `mocked service states`
   - Oracle/assertion focus: `persisted state`
-  - Test result: `NOT RUN`
-  - Notes (optional): 驗證 mark-paid、duplicate callback、unpaid callback、merchant/amount mismatch
+  - Test result: `PASS`
+  - Notes (optional): `FiatPaymentCallbackServiceTest` 已覆蓋 mark-paid、duplicate callback、unpaid callback、merchant mismatch、amount mismatch、decrypt failure、missing order number
 
 ## Required Hardening Records
-- [ ] Regression tests are added/updated for bug-prone or high-risk behavior
-- [ ] Property-based coverage is added/updated for changed business logic, or `N/A` is recorded with a concrete reason
-- [ ] External services in the business logic chain are mocked/faked for scenario testing
-- [ ] Adversarial/penetration-style cases are added/updated for abuse paths and edge combinations
-- [ ] Authorization, invalid transition, replay/idempotency, and concurrency risks are evaluated; uncovered items are marked `N/A` with concrete reasons
-- [ ] Assertions verify business outcomes and side effects/no-side-effects, not only "returns 200" or "does not throw"
-- [ ] Test fixtures are reproducible (fixed seed/clock/fixtures)
+- [x] Regression tests are added/updated for bug-prone or high-risk behavior
+- [x] Property-based coverage is added/updated for changed business logic, or `N/A` is recorded with a concrete reason
+- [x] External services in the business logic chain are mocked/faked for scenario testing
+- [x] Adversarial/penetration-style cases are added/updated for abuse paths and edge combinations
+- [x] Authorization, invalid transition, replay/idempotency, and concurrency risks are evaluated; uncovered items are marked `N/A` with concrete reasons
+- [x] Assertions verify business outcomes and side effects/no-side-effects, not only "returns 200" or "does not throw"
+- [x] Test fixtures are reproducible (fixed seed/clock/fixtures)
 
 ## E2E / Integration Decision Records
 
@@ -67,24 +67,24 @@
 - Reason: 業務風險集中於 service 分支與 repository 協作，單元／近整合測試比真實 ECPay E2E 更穩定
 
 ## Execution Summary
-- [ ] Unit tests: `NOT RUN`
-- [ ] Regression tests: `NOT RUN`
-- [ ] Property-based tests: `N/A`
-- [ ] Integration tests: `NOT RUN`
-- [ ] E2E tests: `N/A`
-- [ ] External service mock scenarios: `NOT RUN`
-- [ ] Adversarial/penetration-style cases: `NOT RUN`
+- [x] Unit tests: `PASS` — `mvn -q -Dtest=EcpayCvsPaymentServiceTest,EcpayCallbackHttpServerTest,FiatPaymentCallbackServiceTest test`
+- [x] Regression tests: `PASS`
+- [x] Property-based tests: `N/A`（本次是 trust boundary 與 admission policy 回歸強化，無適合的生成式商業不變量可驗證）
+- [x] Integration tests: `PASS`（`EcpayCallbackHttpServerTest` 以實際內嵌 HTTP server 啟停驗證）
+- [x] E2E tests: `N/A`（已以 service/unit + 近整合 server coverage 覆蓋主要風險）
+- [x] External service mock scenarios: `PASS`
+- [x] Adversarial/penetration-style cases: `PASS`
 
 ## Completion Records
 
 ### Completion Record 1: 規格與設計
 - Requirement mapping: `R1.x-R3.x / Task 1-3 / CL-71-01~03`
 - Completion status: `completed`
-- Remaining applicable items: `Implementation and verification`
-- Notes: 本 spec 將 query-token 移除與 stage/public fail-closed 綁在同一組 trust-boundary 調整中，避免兩個 issue 分開修卻互相留下漏洞
+- Remaining applicable items: `None`
+- Notes: 本 spec 已依現況實作與驗證結果完成回填，測試證據已對齊實際交付
 
 ### Completion Record 2: 實作與測試
 - Requirement mapping: `Task 1-3`
-- Completion status: `deferred`
-- Remaining applicable items: `All implementation and test tasks`
-- Notes: 本文件目前僅為待審批的 planning set
+- Completion status: `completed`
+- Remaining applicable items: `None`
+- Notes: callback URL secret 移除、stage/public fail-closed 與 paid callback 回歸保護皆已在目前基線完成並驗證

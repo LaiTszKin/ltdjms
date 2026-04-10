@@ -49,6 +49,25 @@ class EcpayCallbackHttpServerTest {
   }
 
   @Test
+  @DisplayName("正式環境仍允許公開綁定 callback")
+  void shouldAllowPublicBindWhenStageModeDisabled() throws Exception {
+    int port = reserveFreePort();
+    EnvironmentConfig config = mock(EnvironmentConfig.class);
+    FiatPaymentCallbackService callbackService = mock(FiatPaymentCallbackService.class);
+    when(config.getEcpayReturnUrl()).thenReturn("https://merchant.example/ecpay/callback");
+    when(config.getEcpayCallbackBindHost()).thenReturn("0.0.0.0");
+    when(config.getEcpayCallbackBindPort()).thenReturn(port);
+    when(config.getEcpayCallbackPath()).thenReturn("/ecpay/callback");
+    when(config.getEcpayStageMode()).thenReturn(false);
+
+    server = new EcpayCallbackHttpServer(config, callbackService);
+
+    server.start();
+
+    assertThat(server).isNotNull();
+  }
+
+  @Test
   @DisplayName("callback 路徑不應與首頁路徑衝突")
   void shouldRejectCallbackPathConflictWithLandingPage() {
     EnvironmentConfig config = mock(EnvironmentConfig.class);

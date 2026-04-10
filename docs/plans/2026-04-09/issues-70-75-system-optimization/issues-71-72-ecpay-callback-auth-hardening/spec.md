@@ -31,8 +31,8 @@
 **AND** callback admission control 必須改由伺服器端 exposure policy 決定，而非 URL secret
 
 **Requirements**:
-- [ ] R1.1 `buildCallbackReturnUrl()` 回傳的 URL 與 operator 設定值一致，不追加 query token。
-- [ ] R1.2 對應單元測試與文件不得再固化 `?token=` 行為。
+- [x] R1.1 `buildCallbackReturnUrl()` 回傳的 URL 與 operator 設定值一致，不追加 query token。
+- [x] R1.2 對應單元測試與文件不得再固化 `?token=` 行為。
 
 ### Requirement 2: 危險的 stage/public callback 暴露預設必須 fail closed
 **GIVEN** `ECPAY_STAGE_MODE=true` 代表使用公開測試金鑰與測試環境  
@@ -42,9 +42,9 @@
 **AND** 不可再以 query token 當作唯一授權因子來彌補這個風險
 
 **Requirements**:
-- [ ] R2.1 `EcpayCallbackHttpServer` 不再接受 query token 授權。
-- [ ] R2.2 當 `ECPAY_STAGE_MODE=true` 且 bind host 為 public / non-loopback 時，server 必須在啟動階段 fail closed 並給出可操作錯誤訊息。
-- [ ] R2.3 production + public bind 的合法場景仍可保留 callback server 啟動能力。
+- [x] R2.1 `EcpayCallbackHttpServer` 不再接受 query token 授權。
+- [x] R2.2 當 `ECPAY_STAGE_MODE=true` 且 bind host 為 public / non-loopback 時，server 必須在啟動階段 fail closed 並給出可操作錯誤訊息。
+- [x] R2.3 production + public bind 的合法場景仍可保留 callback server 啟動能力。
 
 ### Requirement 3: Paid callback 驗證邊界收斂且不破壞既有冪等流程
 **GIVEN** 綠界 callback 送來加密 `Data`，且系統需驗證 merchant / amount / order / paid status  
@@ -53,16 +53,24 @@
 **AND** exposure policy 不得造成 production happy path 的誤阻擋
 
 **Requirements**:
-- [ ] R3.1 既有 decrypt、merchant、amount、paid-status、idempotency 驗證語意保持不變。
-- [ ] R3.2 duplicate paid callback 仍只會記錄狀態與跳過重複 fulfillment。
-- [ ] R3.3 測試需同時覆蓋 legit production flow 與 stage/public fail-closed flow。
+- [x] R3.1 既有 decrypt、merchant、amount、paid-status、idempotency 驗證語意保持不變。
+- [x] R3.2 duplicate paid callback 仍只會記錄狀態與跳過重複 fulfillment。
+- [x] R3.3 測試需同時覆蓋 legit production flow 與 stage/public fail-closed flow。
 
 ## Error and Edge Cases
-- [ ] callback body 缺少 `Data`、解密失敗、merchant 不符、amount 不符、order 不存在。
-- [ ] `ECPAY_STAGE_MODE=true` 且 bind host 為 `0.0.0.0` / public IP / `localhost` 以外值時，server 不可默默啟動。
-- [ ] 移除 query token 後，legacy 測試或部署若仍假設 `?token=` 存在，應得到明確失敗訊號。
-- [ ] production public callback 不可因 stage 限制邏輯而被誤拒。
-- [ ] duplicate callback 與未付款 callback 不可破壞既有 callback payload 記錄與 claim / mark 流程。
+- [x] callback body 缺少 `Data`、解密失敗、merchant 不符、amount 不符、order 不存在。
+- [x] `ECPAY_STAGE_MODE=true` 且 bind host 為 `0.0.0.0` / public IP / `localhost` 以外值時，server 不可默默啟動。
+- [x] 移除 query token 後，legacy 測試或部署若仍假設 `?token=` 存在，應得到明確失敗訊號。
+- [x] production public callback 不可因 stage 限制邏輯而被誤拒。
+- [x] duplicate callback 與未付款 callback 不可破壞既有 callback payload 記錄與 claim / mark 流程。
+
+## Implementation Status
+- Completed on current codebase baseline.
+- Evidence:
+  - `EcpayCvsPaymentService.buildCallbackReturnUrl()` 直接回傳 operator 設定值，不再附加 query token。
+  - `EcpayCallbackHttpServer.start()` 在 stage + public/non-loopback bind 時 fail closed，production 模式仍允許 public bind。
+  - `FiatPaymentCallbackService` 維持既有 decrypt、merchant、amount、paid-status、idempotency 驗證與 duplicate side-effect 防重語意。
+  - 目標測試已通過：`EcpayCvsPaymentServiceTest`、`EcpayCallbackHttpServerTest`、`FiatPaymentCallbackServiceTest`。
 
 ## Clarification Questions
 None

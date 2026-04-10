@@ -11,6 +11,14 @@
 - 任何關於 callback 欄位、加密資料結構、ReturnURL 用法的判斷，都必須以綠界官方開發者文件為準。
 - 本 spec 不假設綠界會附帶自定義 header、nonce 或客製簽章。
 
+## Final Verification Status
+- Status: `completed`
+- Official contract check: 已依綠界開發者中心的 `ReturnURL` / callback 行為確認本地只能依官方 `Data` 載荷處理，不能假設綠界提供額外本地授權層。
+- Local evidence:
+  - `EcpayCvsPaymentService` 僅把 operator 設定的 `ReturnURL` 帶入取號請求
+  - `EcpayCallbackHttpServer` 改由本地 exposure policy 決定是否允許接收 callback
+  - `FiatPaymentCallbackService` 維持 merchant / amount / paid-status / idempotency 驗證
+
 ## Dependency Records
 
 ### Dependency 1: ECPay Payment Callback / ReturnURL

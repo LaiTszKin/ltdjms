@@ -7,10 +7,19 @@
 ## Design Goal
 把綠界 callback 的信任邊界從「URL 上是否帶了 query token」改為「此部署是否允許暴露 callback server」與「callback 內容是否通過既有 paid 驗證」，藉此消除 URL secret 洩漏面，同時維持 production happy path 相容。
 
+## Final Status
+- Status: `completed`
+- Delivered behavior:
+  - `EcpayCvsPaymentService` 已不再把 shared secret 寫進 `ReturnURL`
+  - `EcpayCallbackHttpServer` 已在 stage + public/non-loopback bind 時 fail closed，production mode 保留 public bind 啟動能力
+  - `FiatPaymentCallbackService` 維持原有 decrypt、merchant、amount、paid-status、idempotency 驗證與 duplicate side-effect 防重
+- Verification evidence:
+  - `mvn -q -Dtest=EcpayCvsPaymentServiceTest,EcpayCallbackHttpServerTest,FiatPaymentCallbackServiceTest test`
+
 ## Change Summary
 - Requested change: 依 issue #71、#72 移除 query token 授權與 stage/public 危險預設。
-- Existing baseline: `EcpayCvsPaymentService` 會把 shared secret 加到 `ReturnURL?token=...`；`EcpayCallbackHttpServer` 再從 query string 驗證 `token`；`FiatPaymentCallbackService` 則依解密後欄位決定 paid transition。
-- Proposed design delta: callback URL 不再攜帶 secret；HTTP server 不再信任 query token；stage + public bind 的組合在 server 啟動時直接 fail closed；callback service 保留既有內容驗證與 idempotency。
+- Historical baseline: `EcpayCvsPaymentService` 曾把 shared secret 加到 `ReturnURL?token=...`；`EcpayCallbackHttpServer` 曾從 query string 驗證 `token`；`FiatPaymentCallbackService` 依解密後欄位決定 paid transition。
+- Implemented design delta: callback URL 不再攜帶 secret；HTTP server 不再信任 query token；stage + public bind 的組合在 server 啟動時直接 fail closed；callback service 保留既有內容驗證與 idempotency。
 
 ## Scope Mapping
 - Spec requirements covered: `R1.1-R1.2`, `R2.1-R2.3`, `R3.1-R3.3`
