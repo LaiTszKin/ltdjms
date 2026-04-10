@@ -35,5 +35,5 @@
 - Verification Plan:
   - Spec mapping: `R1.x-R3.x`
   - Design mapping: `Current Architecture`, `Proposed Architecture`
-  - Planned coverage: `UT-74-01`, `UT-74-02`, `UT-74-03`
-  - Evidence notes: 官方文件指出標準 resource loading 與 fallback 是 library 行為，schema 一致性需由應用層負責
+  - Planned coverage: `UT-74-01`, `UT-74-02`, `UT-74-03`, `DOC-74-01`
+  - Evidence notes: 官方文件指出標準 resource loading 與 fallback 是 library 行為，schema 一致性需由應用層負責；本次實作改為只載入 `application.properties` 並以 regression tests 鎖住 `application.conf` 不再承載 live schema

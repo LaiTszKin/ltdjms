@@ -2,7 +2,7 @@
 
 本文件說明 LTDJMS 如何載入設定，以及你可以使用哪些環境變數與檔案來控制 Bot 行為。
 
-> 補充說明：目前以 `docs/configuration.md` 與 `src/main/java/ltdjms/discord/shared/EnvironmentConfig.java` 為最新設定依據；本文件保留較細的開發背景說明。
+> Canonical runtime contract 以 `src/main/java/ltdjms/discord/shared/EnvironmentConfig.java` 為準；本文件描述與其一致的 packaged defaults、fallback chain 與操作建議。
 
 核心類別為：
 
@@ -14,13 +14,14 @@
 
 1. **系統環境變數**
 2. **`.env` 檔案**（預設放在專案根目錄）
-3. **`application.conf` / `application.properties`**
+3. **`application.properties`**
 4. **程式內建預設值**
 
 這代表：
 
 - 若你同時在 `.env` 與環境變數中設定 `DISCORD_BOT_TOKEN`，則實際使用的是環境變數的值。
 - 若某設定未在上述任一處指定，則使用內建預設值（如資料庫連線預設為本機 PostgreSQL）。
+- `application.conf` 僅保留為 compatibility shim，不再承載任何 live defaults。
 
 ## 2. 主要環境變數
 
@@ -49,6 +50,16 @@
 - `DB_PASSWORD`
   - 預設：`postgres`
   - 對應 config key：`db.password`
+
+- `DATABASE_HOST` / `DATABASE_PORT` / `DATABASE_NAME`
+  - 用途：當 `DB_URL` 未設定，但有提供部分 `DATABASE_*` 時，`EnvironmentConfig` 會用這些值組出 JDBC URL
+  - 對應 config key：`database.host` / `database.port` / `database.name`
+  - packaged defaults：`localhost` / `5432` / `currency_bot`
+
+- `DATABASE_USER` / `DATABASE_PASSWORD`
+  - 用途：當 `DB_USERNAME` / `DB_PASSWORD` 未設定時的相容輸入
+  - 對應 config key：`database.username` / `database.password`
+  - packaged defaults：`postgres` / `postgres`
 
 ### 2.3 連線池設定
 
@@ -85,12 +96,12 @@
 
 - `ECPAY_CALLBACK_SHARED_SECRET`
   - 預設：空字串
-  - 對應 config key：`shop.ecpay.callback.shared-secret`
+  - 對應 config key：`payment.ecpay.callback.shared-secret`
   - 說明：綠界付款回推的共享密鑰；若 `ECPAY_CALLBACK_BIND_HOST` 綁定公網位址，必須設定此值
 
 - `PRODUCT_FULFILLMENT_SIGNING_SECRET`
   - 預設：空字串
-  - 對應 config key：`product.fulfillment.signing-secret`
+  - 對應 config key：`shop.fulfillment.signing-secret`
   - 說明：商品履約 webhook 的 HMAC 簽章密鑰；啟用商品履約時必須設定
 
 ### 2.6 AI 服務設定（V010 新增）
@@ -99,25 +110,25 @@
 
 - `AI_SERVICE_BASE_URL`（必填）
   - 預設：`https://api.openai.com/v1`
-  - 對應 config key：`aichat.base-url`
+  - 對應 config key：`ai.service.base-url`
   - 格式：有效的 HTTPS URL
   - 範例：`https://api.openai.com/v1`、`https://your-resource.openai.azure.com/openai/deployments/your-deployment`、`http://localhost:11434/v1`
 
 - `AI_SERVICE_API_KEY`（必填）
-  - 對應 config key：`aichat.api-key`
+  - 對應 config key：`ai.service.api-key`
   - 說明：AI 服務的 API 金鑰或認證 Token
   - 若未設定，程式啟動時會丟出 `IllegalStateException` 並中止
 
 - `AI_SERVICE_MODEL`
   - 預設：`gpt-3.5-turbo`
-  - 對應 config key：`aichat.model`
+  - 對應 config key：`ai.service.model`
   - 說明：使用的 AI 模型名稱
 
 - `AI_SERVICE_TEMPERATURE`
   - 預設：`0.7`
-  - 對應 config key：`aichat.temperature`
+  - 對應 config key：`ai.service.temperature`
   - 驗證範圍：`0.0` - `2.0`
-  - 說明：控制 AI 回應的隨機性（0.0 = 確定性，2.0 = 高隨機性）
+  - 說明：控制 AI 回應的隨機性（0.0 = 確定性，2.0 = 高隨機性）；範圍驗證由 `AIServiceConfig` 執行
 
 - 獨立最大 Token 環境變數
   - 現況：`EnvironmentConfig` 已不提供獨立設定
@@ -125,7 +136,7 @@
 
 - `AI_SERVICE_TIMEOUT_SECONDS`
   - 預設：`30`
-  - 對應 config key：`aichat.timeout-seconds`
+  - 對應 config key：`ai.service.timeout-seconds`
   - 驗證範圍：`1` - `120`
   - 說明：AI 服務連線逾時秒數（不限制推理時間）
 
@@ -135,14 +146,14 @@
 
 - `AI_MARKDOWN_VALIDATION_ENABLED`
   - 預設：`true`
-  - 對應 config key：`aichat.markdown-validation-enabled`
+  - 對應 config key：`ai.markdown-validation.enabled`
   - 說明：是否啟用 AI 回應的 Markdown 格式驗證
   - 啟用後會在回應生成後驗證格式，錯誤時直接重格式化
 
 
 - `AI_MARKDOWN_VALIDATION_STREAMING_BYPASS`
   - 預設：`false`
-  - 對應 config key：`aichat.markdown-validation-streaming-bypass`
+  - 對應 config key：`ai.markdown-validation.streaming-bypass`
   - 說明：串流模式是否跳過 Markdown 驗證
   - 啟用後串流回應會直接傳送，不進行驗證
 
@@ -153,13 +164,13 @@
 
 - `PROMPTS_DIR_PATH`
   - 預設：`./prompts`
-  - 對應 config key：`aichat.prompts-dir-path`
+  - 對應 config key：`prompts.dir.path`
   - 說明：提示詞檔案所在目錄的相對或絕對路徑
   - 目錄結構：包含 `.md` 檔案的資料夾（如 `personality.md`、`rules.md`）
 
 - `PROMPT_MAX_SIZE_BYTES`
   - 預設：`1048576`（1 MB）
-  - 對應 config key：`aichat.prompt-max-size-bytes`
+  - 對應 config key：`prompts.max-size`
   - 驗證範圍：`1024` - `10485760`（1 KB - 10 MB）
   - 說明：單一提示詞檔案的大小上限（位元組）
 
@@ -248,54 +259,32 @@ PROMPT_MAX_SIZE_BYTES=1048576
 
 `DotEnvLoader` 會從指定目錄（預設為 `user.dir`）讀取 `.env`，並將其中的 key 映射到對應的 config key。
 
-## 4. `application.conf` / `application.properties`
+## 4. Canonical packaged defaults：`application.properties`
 
-專案中預設包含一份 `application.conf`，作為本機開發的預設設定。  
-你可以在其中設定預設值，並於不同環境透過環境變數或 `.env` 覆寫。
+專案中的 live packaged defaults 只有 `src/main/resources/application.properties`。  
+`EnvironmentConfig` 只會把它當成 packaged defaults 載入；不同環境仍可用系統環境變數或 `.env` 覆寫。
+
+`src/main/resources/application.conf` 目前僅保留為 compatibility shim，不能放任何設定鍵。
 
 範例（簡化版）：
 
-```hocon
-discord {
-  bot {
-    token = ${?DISCORD_BOT_TOKEN}
-  }
-}
-
-db {
-  url = ${?DB_URL}
-  username = ${?DB_USERNAME}
-  password = ${?DB_PASSWORD}
-
-  pool {
-    maximum-pool-size = ${?DB_POOL_MAX_SIZE}
-    minimum-idle = ${?DB_POOL_MIN_IDLE}
-    connection-timeout = ${?DB_POOL_CONNECTION_TIMEOUT}
-    idle-timeout = ${?DB_POOL_IDLE_TIMEOUT}
-    max-lifetime = ${?DB_POOL_MAX_LIFETIME}
-  }
-}
-
-redis {
-  uri = ${?REDIS_URI}
-}
-
-aichat {
-  base-url = ${?AI_SERVICE_BASE_URL}
-  api-key = ${?AI_SERVICE_API_KEY}
-  model = ${?AI_SERVICE_MODEL}
-  temperature = ${?AI_SERVICE_TEMPERATURE}
-  timeout-seconds = ${?AI_SERVICE_TIMEOUT_SECONDS}
-
-  markdown-validation-enabled = ${?AI_MARKDOWN_VALIDATION_ENABLED}
-  markdown-validation-streaming-bypass = ${?AI_MARKDOWN_VALIDATION_STREAMING_BYPASS}
-
-  prompts-dir-path = ${?PROMPTS_DIR_PATH}
-  prompt-max-size-bytes = ${?PROMPT_MAX_SIZE_BYTES}
-}
+```properties
+discord.bot.token=
+db.url=jdbc:postgresql://localhost:5432/currency_bot
+database.host=localhost
+database.port=5432
+database.name=currency_bot
+ai.service.base-url=https://api.openai.com/v1
+ai.service.model=gpt-3.5-turbo
+ai.markdown-validation.enabled=true
+prompts.dir.path=./prompts
+prompts.max-size=1MB
+payment.ecpay.callback.path=/ecpay/callback
+payment.ecpay.callback.shared-secret=
+shop.fulfillment.signing-secret=
 ```
 
-實際內容可參考 `src/main/resources/application.conf`。
+完整內容請參考 `src/main/resources/application.properties`。
 
 ## 5. 不同環境的建議配置
 
@@ -340,9 +329,9 @@ export DB_PASSWORD=...
 在 `DiscordCurrencyBot` 的建構過程中：
 
 - 若 `EnvironmentConfig` 未取得有效的 `DISCORD_BOT_TOKEN`，會直接丟出錯誤並中止啟動。
-- 若 `EnvironmentConfig` 未取得有效的 `AI_SERVICE_API_KEY`（V010 新增），會直接丟出錯誤並中止啟動。
-- 若 AI 服務配置參數超出有效範圍（如 `AI_SERVICE_TEMPERATURE` > 2.0），會直接丟出錯誤並中止啟動。
-- 若提示詞載入器配置參數超出有效範圍（如 `PROMPT_MAX_SIZE_BYTES` > 10485760），會直接丟出錯誤並中止啟動。
+- 若 `EnvironmentConfig` 未取得有效的 `AI_SERVICE_API_KEY`，會在需要建立 AI service config 的流程中丟出錯誤並中止。
+- 若 AI 服務配置參數超出有效範圍（如 `AI_SERVICE_TEMPERATURE` > 2.0），會在 `AIServiceConfig` 驗證時失敗。
+- `PROMPT_MAX_SIZE_BYTES` 會先映射到 canonical key `prompts.max-size`，並以 bytes 形式提供給提示詞載入器使用。
 - 若資料庫連線設定錯誤，會在建立 `DataSource` 或執行 schema migration 時發生例外。
 
 建議在部署前先於目標環境實際啟動一次，並檢查日誌以確認：

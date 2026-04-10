@@ -10,6 +10,9 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 
+import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
+
 /**
  * Tests for .env integration in {@link EnvironmentConfig}. Verifies the priority order: Environment
  * variables > .env > application.properties > defaults.
@@ -19,6 +22,8 @@ import org.junit.jupiter.api.io.TempDir;
  * priority is documented and assumed to work based on code review.
  */
 class EnvironmentConfigDotEnvIntegrationTest {
+
+  private static final String DOC_PATH = "docs/development/configuration.md";
 
   @TempDir Path tempDir;
 
@@ -195,6 +200,54 @@ class EnvironmentConfigDotEnvIntegrationTest {
       assertThat(config.getAppPublicBaseUrl()).isEqualTo("https://pay.example.com/root");
       assertThat(config.getEcpayReturnUrl())
           .isEqualTo("https://pay.example.com/root/ecpay/callback");
+    }
+  }
+
+  @Nested
+  @DisplayName("Canonical Schema Regression Tests")
+  class CanonicalSchemaRegressionTests {
+
+    @Test
+    @DisplayName("should keep application.properties as the only live packaged defaults schema")
+    void shouldKeepApplicationPropertiesAsOnlyLivePackagedDefaultsSchema() {
+      Config propertiesConfig = ConfigFactory.parseResources("application.properties");
+      Config compatibilityShim = ConfigFactory.parseResources("application.conf");
+
+      assertThat(propertiesConfig.hasPath("discord.bot.token")).isTrue();
+      assertThat(propertiesConfig.hasPath("db.url")).isTrue();
+      assertThat(propertiesConfig.hasPath("database.host")).isTrue();
+      assertThat(propertiesConfig.hasPath("ai.service.base-url")).isTrue();
+      assertThat(propertiesConfig.hasPath("payment.ecpay.callback.shared-secret")).isTrue();
+      assertThat(propertiesConfig.hasPath("shop.fulfillment.signing-secret")).isTrue();
+      assertThat(propertiesConfig.hasPath("discord.bot-token")).isFalse();
+      assertThat(propertiesConfig.hasPath("aichat.base-url")).isFalse();
+      assertThat(propertiesConfig.hasPath("shop.ecpay.callback.shared-secret")).isFalse();
+      assertThat(propertiesConfig.hasPath("product.fulfillment.signing-secret")).isFalse();
+      assertThat(compatibilityShim.entrySet()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("should document the same canonical schema and fallback chain")
+    void shouldDocumentTheSameCanonicalSchemaAndFallbackChain() throws IOException {
+      String documentation = Files.readString(Path.of(DOC_PATH));
+
+      assertThat(documentation)
+          .contains("1. **系統環境變數**")
+          .contains("2. **`.env` 檔案**")
+          .contains("3. **`application.properties`**")
+          .contains("4. **程式內建預設值**");
+      assertThat(documentation)
+          .contains("`application.conf` 僅保留為 compatibility shim")
+          .contains("`discord.bot.token`")
+          .contains("`ai.service.base-url`")
+          .contains("`payment.ecpay.callback.shared-secret`")
+          .contains("`shop.fulfillment.signing-secret`")
+          .contains("`prompts.dir.path`")
+          .contains("`prompts.max-size`");
+      assertThat(documentation)
+          .doesNotContain("`aichat.base-url`")
+          .doesNotContain("`shop.ecpay.callback.shared-secret`")
+          .doesNotContain("`product.fulfillment.signing-secret`");
     }
   }
 
