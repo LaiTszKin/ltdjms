@@ -11,24 +11,28 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 
 /**
- * Loads configuration from environment variables with fallback to .env file,
- * application.conf/properties, and built-in defaults.
+ * Loads configuration from environment variables with fallback to .env file, canonical packaged
+ * defaults, and built-in defaults.
  *
  * <p>This implementation uses Typesafe Config internally to manage configuration sources while
- * maintaining backward compatibility with the existing API.
+ * maintaining backward compatibility with the existing API. {@code application.properties} is the
+ * only packaged defaults resource that participates in the runtime fallback chain; any {@code
+ * application.conf} file is treated as documentation-only compatibility shim and must not define a
+ * second live schema.
  *
  * <p>Priority order (highest to lowest):
  *
  * <ol>
  *   <li>System environment variables
  *   <li>.env file in project root
- *   <li>application.conf / application.properties
+ *   <li>{@code application.properties}
  *   <li>Built-in defaults
  * </ol>
  */
 public final class EnvironmentConfig {
 
   private static final Logger LOG = LoggerFactory.getLogger(EnvironmentConfig.class);
+  private static final String CANONICAL_PACKAGED_DEFAULTS_RESOURCE = "application.properties";
 
   // Environment variable names
   private static final String ENV_DISCORD_BOT_TOKEN = "DISCORD_BOT_TOKEN";
@@ -168,7 +172,7 @@ public final class EnvironmentConfig {
 
   /**
    * Builds the layered Typesafe Config with proper priority order. Priority: System env vars > .env
-   * values > application.conf/properties > defaults
+   * values > canonical packaged defaults > defaults
    */
   private Config buildConfig() {
     // Build defaults config
@@ -208,8 +212,8 @@ public final class EnvironmentConfig {
         CFG_PRODUCT_FULFILLMENT_SIGNING_SECRET, DEFAULT_PRODUCT_FULFILLMENT_SIGNING_SECRET);
     Config defaultsConfig = ConfigFactory.parseMap(defaults);
 
-    // Load application.conf/properties (standard Typesafe Config behavior)
-    Config applicationConfig = ConfigFactory.load();
+    // Load canonical packaged defaults only.
+    Config applicationConfig = ConfigFactory.parseResources(CANONICAL_PACKAGED_DEFAULTS_RESOURCE);
 
     // Build .env values as config (mapped to config paths)
     Map<String, Object> dotEnvMapped = new HashMap<>();

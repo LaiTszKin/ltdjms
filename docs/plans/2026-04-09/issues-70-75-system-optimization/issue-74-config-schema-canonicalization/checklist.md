@@ -4,13 +4,13 @@
 - Feature: Issue 74 設定 Schema 正規化
 
 ## Clarification & Approval Gate
-- [ ] User clarification responses are recorded — `N/A`（目前需求已足夠明確）
-- [ ] Affected plans are reviewed/updated — `N/A`（尚未進入 clarification update）
-- [ ] Explicit user approval on updated specs is obtained（待本批 specs 審核）
+- [x] User clarification responses are recorded — `N/A`（目前需求已足夠明確）
+- [x] Affected plans are reviewed/updated — `N/A`（本次未發生 clarification，僅回填實作結果）
+- [x] Explicit user approval on updated specs is obtained（使用者已指示實作此 approved spec）
 
 ## Behavior-to-Test Checklist
 
-- [ ] CL-74-01 canonical config path 與 packaged defaults 使用同一套 key namespace
+- [x] CL-74-01 canonical config path 與 packaged defaults 使用同一套 key namespace
   - Requirement mapping: `R1.1-R1.3`
   - Actual test case IDs: `UT-74-01`
   - Test level: `Unit`
@@ -18,10 +18,10 @@
   - Property/matrix focus: `invariant`
   - External dependency strategy: `none`
   - Oracle/assertion focus: `exact output`
-  - Test result: `NOT RUN`
-  - Notes (optional): 驗證 `application.properties`（以及若保留的 `application.conf`）不再承載漂移 schema
+  - Test result: `PASS`
+  - Notes (optional): `shouldKeepApplicationPropertiesAsOnlyLivePackagedDefaultsSchema`
 
-- [ ] CL-74-02 `.env`、packaged defaults、built-in defaults 的優先序與文件聲明一致
+- [x] CL-74-02 `.env`、packaged defaults、built-in defaults 的優先序與文件聲明一致
   - Requirement mapping: `R2.1-R2.3`, `R3.2`
   - Actual test case IDs: `UT-74-02`, `UT-74-03`
   - Test level: `Unit`
@@ -29,10 +29,10 @@
   - Property/matrix focus: `external state matrix`
   - External dependency strategy: `none`
   - Oracle/assertion focus: `exact output`
-  - Test result: `NOT RUN`
-  - Notes (optional): 需保留 malformed / empty `.env` 的容錯案例
+  - Test result: `PASS`
+  - Notes (optional): `EnvironmentConfigDotEnvIntegrationTest` 既有優先序案例持續通過，並保留 malformed / empty `.env` 容錯案例
 
-- [ ] CL-74-03 文件描述與實際 canonical schema 不再矛盾
+- [x] CL-74-03 文件描述與實際 canonical schema 不再矛盾
   - Requirement mapping: `R2.1-R2.3`, `R3.3`
   - Actual test case IDs: `DOC-74-01`
   - Test level: `Regression`
@@ -40,17 +40,17 @@
   - Property/matrix focus: `invariant`
   - External dependency strategy: `none`
   - Oracle/assertion focus: `exact output`
-  - Test result: `NOT RUN`
-  - Notes (optional): 至少要有人可從文件直接找出真正的 packaged defaults owner 與 key namespace
+  - Test result: `PASS`
+  - Notes (optional): `shouldDocumentTheSameCanonicalSchemaAndFallbackChain`
 
 ## Required Hardening Records
-- [ ] Regression tests are added/updated for bug-prone or high-risk behavior
-- [ ] Property-based coverage is added/updated for changed business logic, or `N/A` is recorded with a concrete reason
-- [ ] External services in the business logic chain are mocked/faked for scenario testing, or `N/A` is recorded with a concrete reason
-- [ ] Adversarial/penetration-style cases are added/updated for abuse paths and edge combinations, or `N/A` is recorded with a concrete reason
-- [ ] Authorization, invalid transition, replay/idempotency, and concurrency risks are evaluated; uncovered items are marked `N/A` with concrete reasons
-- [ ] Assertions verify business outcomes and side effects/no-side-effects, not only "returns 200" or "does not throw"
-- [ ] Test fixtures are reproducible (fixed seed/clock/fixtures) or `N/A` is recorded with a concrete reason
+- [x] Regression tests are added/updated for bug-prone or high-risk behavior
+- [x] Property-based coverage is added/updated for changed business logic, or `N/A` is recorded with a concrete reason — `N/A`（本變更為有限 config key/schema 對齊，非適合 property-based 的業務狀態空間）
+- [x] External services in the business logic chain are mocked/faked for scenario testing, or `N/A` is recorded with a concrete reason — `N/A`（設定載入流程不涉及外部服務）
+- [x] Adversarial/penetration-style cases are added/updated for abuse paths and edge combinations, or `N/A` is recorded with a concrete reason — 已涵蓋 malformed / empty / comment-only `.env`
+- [x] Authorization, invalid transition, replay/idempotency, and concurrency risks are evaluated; uncovered items are marked `N/A` with concrete reasons — `N/A`（純本地 deterministic config loading，無授權／狀態轉移／並發副作用）
+- [x] Assertions verify business outcomes and side effects/no-side-effects, not only "returns 200" or "does not throw"
+- [x] Test fixtures are reproducible (fixed seed/clock/fixtures) or `N/A` is recorded with a concrete reason
 
 ## E2E / Integration Decision Records
 
@@ -67,24 +67,24 @@
 - Reason: 文件同步不是 E2E 問題，但必須留下可回歸的審核檢查點
 
 ## Execution Summary
-- [ ] Unit tests: `NOT RUN`
-- [ ] Regression tests: `NOT RUN`
+- [x] Unit tests: `PASS`（`EnvironmentConfigTest`, `EnvironmentConfigDotEnvIntegrationTest`）
+- [x] Regression tests: `PASS`（canonical schema/documentation drift assertions）
 - [ ] Property-based tests: `N/A`
-- [ ] Integration tests: `NOT RUN`
+- [x] Integration tests: `PASS`（`.env`/packaged defaults fallback 近整合測試）
 - [ ] E2E tests: `N/A`
 - [ ] External service mock scenarios: `N/A`
-- [ ] Adversarial/penetration-style cases: `N/A`
+- [x] Adversarial/penetration-style cases: `PASS`（malformed / empty / comment-only `.env`）
 
 ## Completion Records
 
 ### Completion Record 1: 規格與設計
 - Requirement mapping: `R1.x-R3.x / Task 1-3 / CL-74-01~03`
 - Completion status: `completed`
-- Remaining applicable items: `Implementation and verification`
-- Notes: 本 spec 明確指定 `EnvironmentConfig` 與 canonical packaged defaults 的權責，避免維運再碰到「檔案存在但 runtime 不讀」的配置陷阱
+- Remaining applicable items: `None`
+- Notes: 已將 `application.properties` 收斂為唯一 live packaged defaults，並將 `application.conf` 降為不承載設定鍵的 compatibility shim
 
 ### Completion Record 2: 實作與測試
 - Requirement mapping: `Task 1-3`
-- Completion status: `deferred`
-- Remaining applicable items: `All implementation and test tasks`
-- Notes: 本文件目前僅為待審批的 planning set
+- Completion status: `completed`
+- Remaining applicable items: `None`
+- Notes: 已完成文件對齊與 drift regression tests，並執行 `mvn -q -Dtest=EnvironmentConfigTest,EnvironmentConfigDotEnvIntegrationTest test`

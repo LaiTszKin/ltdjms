@@ -31,9 +31,9 @@
 **AND** 不可再出現 `discord.bot-token`、`database.*`、`db.*` 並存但只有部分會被 runtime 讀取的情況
 
 **Requirements**:
-- [ ] R1.1 `EnvironmentConfig` 明確定義 canonical config path，並成為唯一真相來源。
-- [ ] R1.2 packaged defaults 只能描述 canonical key namespace。
-- [ ] R1.3 若保留 legacy resource，必須明確證明它不再承載獨立 schema。
+- [x] R1.1 `EnvironmentConfig` 明確定義 canonical config path，並成為唯一真相來源。
+- [x] R1.2 packaged defaults 只能描述 canonical key namespace。
+- [x] R1.3 若保留 legacy resource，必須明確證明它不再承載獨立 schema。
 
 ### Requirement 2: Packaged defaults 與文件必須描述相同 fallback chain
 **GIVEN** 系統宣稱優先序為 `system env > .env > packaged defaults > built-in defaults`  
@@ -42,9 +42,9 @@
 **AND** 不可再把 `application.conf` 說成 canonical defaults，卻實際只由 `application.properties` 被驗證
 
 **Requirements**:
-- [ ] R2.1 `docs/development/configuration.md` 必須精確描述實際的 packaged defaults 檔與 key namespace。
-- [ ] R2.2 若 `application.conf` 被移除或降為 compatibility shim，文件需同步反映。
-- [ ] R2.3 runtime fallback 順序與文件描述不可互相矛盾。
+- [x] R2.1 `docs/development/configuration.md` 必須精確描述實際的 packaged defaults 檔與 key namespace。
+- [x] R2.2 若 `application.conf` 被移除或降為 compatibility shim，文件需同步反映。
+- [x] R2.3 runtime fallback 順序與文件描述不可互相矛盾。
 
 ### Requirement 3: 自動化測試必須涵蓋 canonical schema 與 packaged defaults
 **GIVEN** config drift 容易在未來改動中再次出現  
@@ -53,16 +53,16 @@
 **AND** 對外環境變數 contract 不得被無意破壞
 
 **Requirements**:
-- [ ] R3.1 測試需覆蓋 canonical packaged defaults 檔案與主要 config key。
-- [ ] R3.2 測試需驗證 `.env` / packaged defaults / built-in defaults 之間的實際優先序。
-- [ ] R3.3 文件範例與實際 resource 檔至少要有一個同步檢查點或可回歸比對的測試證據。
+- [x] R3.1 測試需覆蓋 canonical packaged defaults 檔案與主要 config key。
+- [x] R3.2 測試需驗證 `.env` / packaged defaults / built-in defaults 之間的實際優先序。
+- [x] R3.3 文件範例與實際 resource 檔至少要有一個同步檢查點或可回歸比對的測試證據。
 
 ## Error and Edge Cases
-- [ ] `DISCORD_BOT_TOKEN` 這類 required key 缺失時，文件與 runtime 錯誤訊息需一致反映其來源要求。
-- [ ] `DB_URL` 缺省時由 `DATABASE_*` 組合產生的邏輯，不可因 schema 正規化而被破壞。
-- [ ] 若 `application.conf` 保留為 compatibility shim，不可再偷偷承載另一套 live defaults。
-- [ ] 無 `.env`、空 `.env`、 malformed `.env` 的 fallback 行為需維持。
-- [ ] 任何文件中的範例 key 若與 runtime schema 不同，必須視為 defect 而非可接受差異。
+- [x] `DISCORD_BOT_TOKEN` 這類 required key 缺失時，文件與 runtime 錯誤訊息需一致反映其來源要求。
+- [x] `DB_URL` 缺省時由 `DATABASE_*` 組合產生的邏輯，不可因 schema 正規化而被破壞。
+- [x] 若 `application.conf` 保留為 compatibility shim，不可再偷偷承載另一套 live defaults。
+- [x] 無 `.env`、空 `.env`、 malformed `.env` 的 fallback 行為需維持。
+- [x] 任何文件中的範例 key 若與 runtime schema 不同，必須視為 defect 而非可接受差異。
 
 ## Clarification Questions
 None

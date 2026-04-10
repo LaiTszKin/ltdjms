@@ -38,6 +38,12 @@
 - legacy resource handling：`application.conf` 若保留，只能作為 compatibility shim / 註解載體，不能再承載另一套 live defaults；更理想是直接移除。
 - documentation owner：`docs/development/configuration.md` 只描述 canonical path 與實際 fallback chain。
 
+## Implemented Architecture
+- `EnvironmentConfig` 改為只解析 `application.properties`，不再以 `ConfigFactory.load()` 混入 `application.conf`。
+- `application.properties` 已補齊 canonical key namespace 與對應預設值，與 runtime getter/fallback chain 對齊。
+- `application.conf` 改為 comment-only compatibility shim，避免再次成為第二套 live schema。
+- `EnvironmentConfigDotEnvIntegrationTest` 新增 canonical schema 與文件 drift regression assertions。
+
 ## Component Changes
 
 ### Component 1: `EnvironmentConfig`
@@ -101,6 +107,13 @@
   - Documentation check：文件中的範例 key 與實際 canonical schema 一致
 - Contract checks: 以 Lightbend Config 官方 load behavior 驗證「多個標準 resource 會被載入」的前提，故應用層必須明確指定 canonical defaults owner。
 - Rollback / fallback: 若 canonicalization 導致 getter fallback 錯誤，可暫時回退到上一版 resource 組合，但必須在回退後立即補 drift test，避免再次雙源化。
+
+## Execution Evidence
+- Verified tests: `mvn -q -Dtest=EnvironmentConfigTest,EnvironmentConfigDotEnvIntegrationTest test`
+- Key evidence:
+  - canonical resource regression：`shouldKeepApplicationPropertiesAsOnlyLivePackagedDefaultsSchema`
+  - documentation regression：`shouldDocumentTheSameCanonicalSchemaAndFallbackChain`
+  - fallback order / resilience：既有 `.env` precedence、missing key、malformed `.env` 案例全部持續通過
 
 ## Open Questions
 None
