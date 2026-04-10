@@ -8,11 +8,12 @@
 
 ## Batch Scope
 - Included spec sets:
-  - `issue-70-fulfillment-url-ssrf-hardening`
-  - `issues-71-72-ecpay-callback-auth-hardening`
-  - `issue-73-agent-tool-memory-isolation`
-  - `issue-74-config-schema-canonicalization`
   - `issue-75-currency-persistence-source-unification`
+- Archived completed spec sets:
+  - `issue-70-fulfillment-url-ssrf-hardening` → `docs/plans/archive/2026-04-09/issues-70-75-system-optimization/issue-70-fulfillment-url-ssrf-hardening`
+  - `issues-71-72-ecpay-callback-auth-hardening` → `docs/plans/archive/2026-04-09/issues-70-75-system-optimization/issues-71-72-ecpay-callback-auth-hardening`
+  - `issue-73-agent-tool-memory-isolation` → `docs/plans/archive/2026-04-09/issues-70-75-system-optimization/issue-73-agent-tool-memory-isolation`
+  - `issue-74-config-schema-canonicalization` → `docs/plans/archive/2026-04-09/issues-70-75-system-optimization/issue-74-config-schema-canonicalization`
 - Shared outcome: 系統在付款／履約／AI／設定／currency persistence 五個高風險面向上都有更清楚的單一真相與回歸保護，但 slash commands、shop、AI thread、guild currency 對使用者的主流程維持相容。
 - Out of scope:
   - 新增終端使用者功能

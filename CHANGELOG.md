@@ -13,9 +13,15 @@ All notable changes to this project will be documented in this file.
 - **ops/env**: 原本的 `.env` 同步流程改由 `make update-env` 暴露，保留非互動補欄位與備份語意
 - **docs/deployment**: README、設定與快速開始文件改為說明 Caddy HTTPS、自架網域 / TLS 前置條件，以及 `setup-env` / `update-env` 的新操作流程
 - **docs/shop**: README、功能總覽、架構、設定、開發指南與 AGENTS 已同步法幣買家通知與付款期限提醒流程
+- **aiagent/memory**: 工具執行歷史改為只保留可安全重放的摘要，跨回合 chat memory 不再重新注入 raw tool result
+- **shared/config**: `EnvironmentConfig`、packaged defaults 與開發文件已對齊同一套 canonical schema，`application.properties` 成為唯一 live packaged defaults
+- **currency/persistence**: 主要 currency integration / performance 測試改走 production-aligned JOOQ account + config path，退出 main-source JDBC account/config 平行真相
 
 ### Fixed
 - **ops/caddy**: 修正 `network_mode: service:bot` 與 published ports 的 Docker 衝突，改由 `bot` service 發佈 `80/443`，讓共享 network namespace 的 Caddy ingress 可正常啟動
+- **shop/fulfillment-security**: backend fulfillment transport 會固定使用驗證過的 target snapshot，避免 DNS rebinding 類型回歸並持續拒絕 non-public target
+- **shop/ecpay**: ECPay callback return URL 不再附加 query token，且 `ECPAY_STAGE_MODE=true` 搭配 public bind 會在啟動時 fail closed
+- **shop/ecpay-tests**: 補齊 callback server 對無 query token、新 stage/public 邊界與既有 paid/idempotent 驗證主流程的回歸保護
 
 ### Tests
 - 執行 `bash scripts/setup-env.test.sh`，測試通過（`PASS=5 FAIL=0`）
@@ -23,6 +29,9 @@ All notable changes to this project will be documented in this file.
 - 執行 `APP_PUBLIC_DOMAIN=example.com CADDY_ACME_EMAIL=ops@example.com docker compose config`，驗證 Compose 組態通過
 - 執行 `make test`，共 `2430` tests（`0` failures / `0` errors，`84` skipped），測試通過
 - 執行 `mvn -q -Dtest=FiatOrderServiceTest,FiatPaymentCallbackServiceTest,ShopSelectMenuHandlerTest test`，測試通過
+- 執行 `make test`，共 `2441` tests（`0` failures / `0` errors，`85` skipped），測試通過
+- 執行 `mvn -Dtest='EnvironmentConfigDotEnvIntegrationTest,ProductFulfillmentApiServiceTest,EcpayCallbackHttpServerTest,LangChain4jAIChatServiceTest,InMemoryToolCallHistoryTest,SimplifiedChatMemoryProviderTest,JooqRepositoryIntegrationTest,RepositoryIntegrationTest,BotRestartIntegrationTest,BalanceAdjustmentCommandIntegrationTest,BalanceServiceIntegrationTest,CurrencyConfigCommandIntegrationTest,SlashCommandPerformanceTest' test`，測試通過（Docker 不可用時 Testcontainers cases 依設計略過）
+- 執行 `make test-integration`，測試階段通過但最終因既有 `jacoco` 行覆蓋率門檻 `0.66 < 0.80` 失敗
 - 執行 `make format-check`，檢查通過
 
 ## [0.34.0] - 2026-04-09
