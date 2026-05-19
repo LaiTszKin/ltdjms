@@ -58,6 +58,7 @@
         <li class="feature-edges__item feature-edges__item--call"><span class="feature-edges__endpoints">shop-interaction → fiat-payment-service</span><span class="feature-edges__kind">call</span><span class="feature-edges__label">建立法幣訂單</span></li>
         <li class="feature-edges__item feature-edges__item--call"><span class="feature-edges__endpoints">fiat-payment-service → shop-db</span><span class="feature-edges__kind">call</span><span class="feature-edges__label">讀寫法幣訂單</span></li>
         <li class="feature-edges__item feature-edges__item--call"><span class="feature-edges__endpoints">product-catalog-service → shop-db</span><span class="feature-edges__kind">call</span><span class="feature-edges__label">讀寫商品/兌換碼</span></li>
+        <li class="feature-edges__item feature-edges__item--call"><span class="feature-edges__endpoints">fiat-payment-service → product-catalog-service</span><span class="feature-edges__kind">call</span><span class="feature-edges__label">法幣付款完成後經 ProductRewardService 發放獎勵</span></li>
       </ul>
     </section>
   </main>

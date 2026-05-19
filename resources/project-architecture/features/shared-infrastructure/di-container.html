@@ -31,7 +31,12 @@
     </section>
     <section class="sub-errors" aria-label="Errors">
       <h2>Errors</h2>
-      <p class="sub-section__empty">No errors recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">When</th><th scope="col">Means</th></tr></thead>
+        <tbody>
+          <tr><td>ErrComponentNotBound</td><td>Dagger 無法解析依賴（未在 Module 中提供）</td><td>啟動時拋出 RuntimeException，不應發生於執行期</td></tr>
+        </tbody>
+      </table>
     </section>
   </main>
   <script src="../../assets/viewer.client.js" defer></script>

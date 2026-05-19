@@ -39,7 +39,60 @@
     </section>
     <section class="sub-dataflow" aria-label="Internal data flow">
       <h2>Internal data flow</h2>
-      <p class="sub-dataflow__empty">No internal dataflow steps recorded.</p>
+      <div class="sub-dataflow__canvas" data-pan-zoom-container>
+        <div class="sub-dataflow__toolbar" role="toolbar" aria-label="Diagram controls">
+          <button type="button" data-pan-zoom="zoom-in" aria-label="Zoom in">+</button>
+          <button type="button" data-pan-zoom="zoom-out" aria-label="Zoom out">−</button>
+          <button type="button" data-pan-zoom="fit" aria-label="Reset view">Fit</button>
+        </div>
+        <div class="sub-dataflow__viewport" data-pan-zoom-viewport>
+          <svg class="sub-dataflow__svg" data-atlas-svg="sub-dataflow" viewBox="0 0 628 668" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Internal dataflow">
+  <defs>
+    <marker id="sub-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" /></marker>
+  </defs>
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="99" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="104" text-anchor="middle">1</text>
+    <rect class="sub-dataflow__box" x="80" y="32" width="520" height="134" rx="14" ry="14" />
+    <rect class="sub-dataflow__fn-bg" x="94" y="46" width="182.8" height="20" rx="10" ry="10" />
+    <text class="sub-dataflow__fn-text" x="104" y="60">fn createFiatOnlyOrder</text>
+    <text class="sub-dataflow__text" x="340" y="98" text-anchor="middle">建立法幣訂單：驗證商品 → ECPay API 產生 CVS 繳費碼 → INSERT FiatOrder</text>
+    <text class="sub-dataflow__text" x="340" y="118" text-anchor="middle">(PENDING_PAYMENT) → 回傳繳費資訊</text>
+    <text class="sub-dataflow__chip sub-dataflow__chip--writes" x="586" y="154" text-anchor="end">→ writes: fiatOrder</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="172" x2="340" y2="202" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="277" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="282" text-anchor="middle">2</text>
+    <rect class="sub-dataflow__box" x="80" y="210" width="520" height="134" rx="14" ry="14" />
+    <rect class="sub-dataflow__fn-bg" x="94" y="224" width="145.8" height="20" rx="10" ry="10" />
+    <text class="sub-dataflow__fn-text" x="104" y="238">fn handleCallback</text>
+    <text class="sub-dataflow__text" x="340" y="276" text-anchor="middle">ECPay 回撥：接收 POST → AES/CBC 解密 → 驗證 MerchantID/金額 →</text>
+    <text class="sub-dataflow__text" x="340" y="296" text-anchor="middle">markPaidIfPending (原子 PENDING_PAYMENT→PAID)</text>
+    <text class="sub-dataflow__chip sub-dataflow__chip--writes" x="586" y="332" text-anchor="end">→ writes: fiatOrder</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="350" x2="340" y2="380" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="452" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="457" text-anchor="middle">3</text>
+    <rect class="sub-dataflow__box" x="80" y="388" width="520" height="128" rx="14" ry="14" />
+    <rect class="sub-dataflow__fn-bg" x="94" y="402" width="190.20000000000002" height="20" rx="10" ry="10" />
+    <text class="sub-dataflow__fn-text" x="104" y="416">fn processPendingOrders</text>
+    <text class="sub-dataflow__text" x="340" y="454" text-anchor="middle">背景 Worker (每 10s)：claimFulfillmentProcessing → DM 通知買家 → 如需</text>
+    <text class="sub-dataflow__text" x="340" y="474" text-anchor="middle">Escort 則 handoffFromFiatPayment → grantReward →</text>
+    <text class="sub-dataflow__text" x="340" y="494" text-anchor="middle">markFulfilled</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="522" x2="340" y2="552" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="598" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="603" text-anchor="middle">4</text>
+    <rect class="sub-dataflow__box" x="80" y="560" width="520" height="76" rx="14" ry="14" />
+    <text class="sub-dataflow__text" x="340" y="594" text-anchor="middle">對帳 Worker (每 60s)：expire 過期訂單 → 向 ECPay QueryTradeInfo 查遺漏回撥</text>
+    <text class="sub-dataflow__text" x="340" y="614" text-anchor="middle">→ 如有則 markPaidIfPending</text>
+  </g>
+</svg>
+        </div>
+      </div>
     </section>
     <section class="sub-errors" aria-label="Errors">
       <h2>Errors</h2>

@@ -50,6 +50,7 @@
         <li class="feature-edges__item feature-edges__item--call"><span class="feature-edges__endpoints">economy-interaction → economy-service</span><span class="feature-edges__kind">call</span><span class="feature-edges__label">委派業務邏輯</span></li>
         <li class="feature-edges__item feature-edges__item--call"><span class="feature-edges__endpoints">economy-service → economy-db</span><span class="feature-edges__kind">call</span><span class="feature-edges__label">讀寫貨幣/代幣帳戶</span></li>
         <li class="feature-edges__item feature-edges__item--return"><span class="feature-edges__endpoints">economy-service → economy-interaction</span><span class="feature-edges__kind">return</span><span class="feature-edges__label">BalanceView / GameResult</span></li>
+        <li class="feature-edges__item feature-edges__item--failure"><span class="feature-edges__endpoints">economy-service → economy-interaction</span><span class="feature-edges__kind">failure</span><span class="feature-edges__label">ErrInsufficientBalance 回傳，購買/遊戲流程中斷</span></li>
       </ul>
     </section>
   </main>

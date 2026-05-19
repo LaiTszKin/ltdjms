@@ -19,11 +19,25 @@
   <main class="submodule-main">
     <section class="sub-io" aria-label="Function I/O">
       <h2>Function I/O</h2>
-      <p class="sub-section__empty">No functions recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">In</th><th scope="col">Out</th><th scope="col">Side</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>SELECT_allowlist_by_guild</td><td>guildId</td><td>List&lt;AIChannelRestriction&gt;</td><td>io</td><td>查詢 guild 的 AI 頻道/分類白名單</td></tr>
+          <tr><td>UPSERT_agent_config</td><td>guildId, channelId, enabled</td><td>void</td><td>write</td><td>啟用/停用特定頻道的 Agent 模式</td></tr>
+          <tr><td>INSERT_tool_log</td><td>ToolExecutionLog</td><td>Long id</td><td>write</td><td>寫入工具執行審計日誌（含 SHA-256 遮罩參數）</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-vars" aria-label="Variables">
       <h2>Variables</h2>
-      <p class="sub-section__empty">No variables recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Scope</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>ai_channel_restriction</td><td>table</td><td>persist</td><td>頻道/分類 ID 白名單，guild 範圍</td></tr>
+          <tr><td>ai_agent_channel_config</td><td>table</td><td>persist</td><td>頻道級 Agent 啟用開關，thread 繼承父頻道設定</td></tr>
+          <tr><td>tool_execution_log</td><td>table</td><td>persist</td><td>工具執行審計：guildId/channelId/toolName/遮罩參數/結果/耗時</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-dataflow" aria-label="Internal data flow">
       <h2>Internal data flow</h2>
@@ -31,7 +45,12 @@
     </section>
     <section class="sub-errors" aria-label="Errors">
       <h2>Errors</h2>
-      <p class="sub-section__empty">No errors recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">When</th><th scope="col">Means</th></tr></thead>
+        <tbody>
+          <tr><td>ErrChannelConfigNotFound</td><td>guild 完全未設定 AI 頻道白名單或 Agent 設定</td><td>回傳 empty list，由呼叫方決定預設行為（全部拒絕）</td></tr>
+        </tbody>
+      </table>
     </section>
   </main>
   <script src="../../assets/viewer.client.js" defer></script>

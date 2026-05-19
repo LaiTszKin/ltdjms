@@ -19,19 +19,87 @@
   <main class="submodule-main">
     <section class="sub-io" aria-label="Function I/O">
       <h2>Function I/O</h2>
-      <p class="sub-section__empty">No functions recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">In</th><th scope="col">Out</th><th scope="col">Side</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>handleShopBrowse</td><td>guildId, page</td><td>ShopPage (embed)</td><td>io</td><td>瀏覽商店商品列表，支援分頁按鈕</td></tr>
+          <tr><td>handleProductSearch</td><td>guildId, keyword, page</td><td>SearchResultPage</td><td>io</td><td>ILINE 關鍵字搜尋商品</td></tr>
+          <tr><td>handleBuySelect</td><td>productId, guildId, userId</td><td>PaymentMethodSelect</td><td>io</td><td>選擇商品後顯示付款方式選單（貨幣/法幣）</td></tr>
+          <tr><td>handleCurrencyPurchase</td><td>productId, guildId, userId</td><td>PurchaseResult</td><td>tx</td><td>貨幣扣款購買：扣 Balance → grantReward → 通知</td></tr>
+          <tr><td>handleFiatPurchase</td><td>productId, guildId, userId</td><td>FiatOrderResult (含繳費碼)</td><td>network</td><td>建立法幣訂單並產生 CVS 超商繳費碼</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-vars" aria-label="Variables">
       <h2>Variables</h2>
-      <p class="sub-section__empty">No variables recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Scope</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>inflightFiatOrders</td><td>ConcurrentHashMap</td><td>instance</td><td>避免短時間內對同一商品重複建立法幣訂單（去重）」</td></tr>
+          <tr><td>shopPageCache</td><td>Cache&lt;ShopPage&gt;</td><td>instance</td><td>商店頁面快取，減少重複查庫</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-dataflow" aria-label="Internal data flow">
       <h2>Internal data flow</h2>
-      <p class="sub-dataflow__empty">No internal dataflow steps recorded.</p>
+      <div class="sub-dataflow__canvas" data-pan-zoom-container>
+        <div class="sub-dataflow__toolbar" role="toolbar" aria-label="Diagram controls">
+          <button type="button" data-pan-zoom="zoom-in" aria-label="Zoom in">+</button>
+          <button type="button" data-pan-zoom="zoom-out" aria-label="Zoom out">−</button>
+          <button type="button" data-pan-zoom="fit" aria-label="Reset view">Fit</button>
+        </div>
+        <div class="sub-dataflow__viewport" data-pan-zoom-viewport>
+          <svg class="sub-dataflow__svg" data-atlas-svg="sub-dataflow" viewBox="0 0 628 600" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Internal dataflow">
+  <defs>
+    <marker id="sub-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" /></marker>
+  </defs>
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="68" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="73" text-anchor="middle">1</text>
+    <rect class="sub-dataflow__box" x="80" y="32" width="520" height="72" rx="14" ry="14" />
+    <text class="sub-dataflow__text" x="340" y="74" text-anchor="middle">接收 /shop 指令或按鈕事件</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="110" x2="340" y2="140" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="184" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="189" text-anchor="middle">2</text>
+    <rect class="sub-dataflow__box" x="80" y="148" width="520" height="72" rx="14" ry="14" />
+    <text class="sub-dataflow__text" x="340" y="190" text-anchor="middle">查詢 ProductRepository 取得商品列表/搜尋結果</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="226" x2="340" y2="256" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="300" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="305" text-anchor="middle">3</text>
+    <rect class="sub-dataflow__box" x="80" y="264" width="520" height="72" rx="14" ry="14" />
+    <text class="sub-dataflow__text" x="340" y="306" text-anchor="middle">貨幣付款：委派 CurrencyPurchaseService 驗證餘額→扣款→發放獎勵</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="342" x2="340" y2="372" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="416" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="421" text-anchor="middle">4</text>
+    <rect class="sub-dataflow__box" x="80" y="380" width="520" height="72" rx="14" ry="14" />
+    <text class="sub-dataflow__text" x="340" y="422" text-anchor="middle">法幣付款：委派 FiatOrderService 建立 PENDING_PAYMENT 訂單並產生繳費碼</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="458" x2="340" y2="488" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="532" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="537" text-anchor="middle">5</text>
+    <rect class="sub-dataflow__box" x="80" y="496" width="520" height="72" rx="14" ry="14" />
+    <text class="sub-dataflow__text" x="340" y="538" text-anchor="middle">回覆 Discord embed 或 DM 付款資訊</text>
+  </g>
+</svg>
+        </div>
+      </div>
     </section>
     <section class="sub-errors" aria-label="Errors">
       <h2>Errors</h2>
-      <p class="sub-section__empty">No errors recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">When</th><th scope="col">Means</th></tr></thead>
+        <tbody>
+          <tr><td>ErrProductNotFound</td><td>productId 在資料庫中不存在</td><td>Ephemeral 提示商品不存在</td></tr>
+          <tr><td>ErrInsufficientBalancePurchase</td><td>貨幣餘額不足支付商品價格</td><td>Ephemeral 提示餘額不足</td></tr>
+        </tbody>
+      </table>
     </section>
   </main>
   <script src="../../assets/viewer.client.js" defer></script>

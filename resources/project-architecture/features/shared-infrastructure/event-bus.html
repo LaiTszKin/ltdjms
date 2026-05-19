@@ -19,11 +19,22 @@
   <main class="submodule-main">
     <section class="sub-io" aria-label="Function I/O">
       <h2>Function I/O</h2>
-      <p class="sub-section__empty">No functions recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">In</th><th scope="col">Out</th><th scope="col">Side</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>publish</td><td>DomainEvent</td><td>void</td><td>io</td><td>同步發佈領域事件至所有已註冊 Consumer</td></tr>
+          <tr><td>register</td><td>Class&lt;DomainEvent&gt;, Consumer&lt;DomainEvent&gt;</td><td>void</td><td>io</td><td>註冊事件 Consumer，支援快取失效/面板更新/審計等監聽</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-vars" aria-label="Variables">
       <h2>Variables</h2>
-      <p class="sub-section__empty">No variables recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Scope</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>consumers</td><td>Map&lt;Class&lt;?&gt;, List&lt;Consumer&lt;?&gt;&gt;&gt;</td><td>instance</td><td>事件類型→Consumer 列表映射，支援多個監聽器</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-dataflow" aria-label="Internal data flow">
       <h2>Internal data flow</h2>
@@ -31,7 +42,12 @@
     </section>
     <section class="sub-errors" aria-label="Errors">
       <h2>Errors</h2>
-      <p class="sub-section__empty">No errors recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">When</th><th scope="col">Means</th></tr></thead>
+        <tbody>
+          <tr><td>ErrConsumerUnhandled</td><td>Consumer 處理事件時拋出未預期例外</td><td>log error，不影響其他 Consumer 或發佈者（fire-and-forget）</td></tr>
+        </tbody>
+      </table>
     </section>
   </main>
   <script src="../../assets/viewer.client.js" defer></script>

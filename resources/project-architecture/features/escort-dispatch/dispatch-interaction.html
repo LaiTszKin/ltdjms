@@ -19,19 +19,75 @@
   <main class="submodule-main">
     <section class="sub-io" aria-label="Function I/O">
       <h2>Function I/O</h2>
-      <p class="sub-section__empty">No functions recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">In</th><th scope="col">Out</th><th scope="col">Side</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>handleCreateOrder</td><td>guildId, customerUserId, optionCode, assignedBy</td><td>EscortDispatchOrder</td><td>io</td><td>管理員手動建立派遣單，選擇客戶與護航選項</td></tr>
+          <tr><td>handleAssignEscort</td><td>orderNumber, escortUserId</td><td>EscortDispatchOrder</td><td>io</td><td>指派護航人員至未分配訂單</td></tr>
+          <tr><td>handleConfirmOrder</td><td>orderNumber, escortUserId</td><td>EscortDispatchOrder</td><td>io</td><td>護航人員確認接單（私訊按鈕）</td></tr>
+          <tr><td>handleCustomerConfirm</td><td>orderNumber, customerUserId</td><td>EscortDispatchOrder</td><td>io</td><td>客戶確認完成或請求售後（私訊按鈕）</td></tr>
+          <tr><td>handleClaimAfterSales</td><td>orderNumber, staffUserId</td><td>EscortDispatchOrder</td><td>io</td><td>售後人員認領處理案件</td></tr>
+          <tr><td>handleCloseAfterSales</td><td>orderNumber, staffUserId</td><td>EscortDispatchOrder</td><td>io</td><td>售後人員關閉案件</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-vars" aria-label="Variables">
       <h2>Variables</h2>
-      <p class="sub-section__empty">No variables recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Scope</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>sessionState</td><td>SessionState map</td><td>instance</td><td>追蹤當前使用者在派遣面板中的操作階段（選擇客戶/選項/護航人員）</td></tr>
+          <tr><td>orderNumberCache</td><td>Map&lt;String, EscortDispatchOrder&gt;</td><td>call</td><td>當前訊息關聯的派遣訂單，用於按鈕回呼查詢</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-dataflow" aria-label="Internal data flow">
       <h2>Internal data flow</h2>
-      <p class="sub-dataflow__empty">No internal dataflow steps recorded.</p>
+      <div class="sub-dataflow__canvas" data-pan-zoom-container>
+        <div class="sub-dataflow__toolbar" role="toolbar" aria-label="Diagram controls">
+          <button type="button" data-pan-zoom="zoom-in" aria-label="Zoom in">+</button>
+          <button type="button" data-pan-zoom="zoom-out" aria-label="Zoom out">−</button>
+          <button type="button" data-pan-zoom="fit" aria-label="Reset view">Fit</button>
+        </div>
+        <div class="sub-dataflow__viewport" data-pan-zoom-viewport>
+          <svg class="sub-dataflow__svg" data-atlas-svg="sub-dataflow" viewBox="0 0 628 372" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Internal dataflow">
+  <defs>
+    <marker id="sub-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" /></marker>
+  </defs>
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="68" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="73" text-anchor="middle">1</text>
+    <rect class="sub-dataflow__box" x="80" y="32" width="520" height="72" rx="14" ry="14" />
+    <text class="sub-dataflow__text" x="340" y="74" text-anchor="middle">管理員輸入 /dispatch-panel → 顯示模式選擇（建立/指派/歷史）</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="110" x2="340" y2="140" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="186" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="191" text-anchor="middle">2</text>
+    <rect class="sub-dataflow__box" x="80" y="148" width="520" height="76" rx="14" ry="14" />
+    <text class="sub-dataflow__text" x="340" y="182" text-anchor="middle">建立單：選擇客戶 → 選擇護航選項 → 委派 dispatch-service.createOrder → DM</text>
+    <text class="sub-dataflow__text" x="340" y="202" text-anchor="middle">通知護航</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="230" x2="340" y2="260" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="304" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="309" text-anchor="middle">3</text>
+    <rect class="sub-dataflow__box" x="80" y="268" width="520" height="72" rx="14" ry="14" />
+    <text class="sub-dataflow__text" x="340" y="310" text-anchor="middle">生命週期按鈕：護航確認/回報完成/客戶確認/售後請求→ 委派 dispatch-service 對應方法 → 私訊下一方</text>
+  </g>
+</svg>
+        </div>
+      </div>
     </section>
     <section class="sub-errors" aria-label="Errors">
       <h2>Errors</h2>
-      <p class="sub-section__empty">No errors recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">When</th><th scope="col">Means</th></tr></thead>
+        <tbody>
+          <tr><td>ErrOrderNotFound</td><td>orderNumber 不存在</td><td>Ephemeral 提示訂單不存在</td></tr>
+          <tr><td>ErrUnauthorizedAction</td><td>非該訂單相關人員試圖操作</td><td>Ephemeral 拒絕操作</td></tr>
+        </tbody>
+      </table>
     </section>
   </main>
   <script src="../../assets/viewer.client.js" defer></script>

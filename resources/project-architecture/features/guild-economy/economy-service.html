@@ -40,7 +40,72 @@
     </section>
     <section class="sub-dataflow" aria-label="Internal data flow">
       <h2>Internal data flow</h2>
-      <p class="sub-dataflow__empty">No internal dataflow steps recorded.</p>
+      <div class="sub-dataflow__canvas" data-pan-zoom-container>
+        <div class="sub-dataflow__toolbar" role="toolbar" aria-label="Diagram controls">
+          <button type="button" data-pan-zoom="zoom-in" aria-label="Zoom in">+</button>
+          <button type="button" data-pan-zoom="zoom-out" aria-label="Zoom out">−</button>
+          <button type="button" data-pan-zoom="fit" aria-label="Reset view">Fit</button>
+        </div>
+        <div class="sub-dataflow__viewport" data-pan-zoom-viewport>
+          <svg class="sub-dataflow__svg" data-atlas-svg="sub-dataflow" viewBox="0 0 628 846" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Internal dataflow">
+  <defs>
+    <marker id="sub-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" /></marker>
+  </defs>
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="68" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="73" text-anchor="middle">1</text>
+    <rect class="sub-dataflow__box" x="80" y="32" width="520" height="72" rx="14" ry="14" />
+    <text class="sub-dataflow__text" x="340" y="74" text-anchor="middle">接收互動層委派的命令參數（guildId, userId, 金額/代幣數）</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="110" x2="340" y2="140" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="205" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="210" text-anchor="middle">2</text>
+    <rect class="sub-dataflow__box" x="80" y="148" width="520" height="114" rx="14" ry="14" />
+    <rect class="sub-dataflow__fn-bg" x="94" y="162" width="160.6" height="20" rx="10" ry="10" />
+    <text class="sub-dataflow__fn-text" x="104" y="176">fn tryAdjustBalance</text>
+    <text class="sub-dataflow__text" x="340" y="214" text-anchor="middle">查詢快取或資料庫取得 MemberCurrencyAccount / GameTokenAccount</text>
+    <text class="sub-dataflow__chip sub-dataflow__chip--reads" x="94" y="250">← reads: memberCurrencyAccount, gameTokenAccount</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="268" x2="340" y2="298" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="363" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="368" text-anchor="middle">3</text>
+    <rect class="sub-dataflow__box" x="80" y="306" width="520" height="114" rx="14" ry="14" />
+    <rect class="sub-dataflow__fn-bg" x="94" y="320" width="160.6" height="20" rx="10" ry="10" />
+    <text class="sub-dataflow__fn-text" x="104" y="334">fn tryAdjustBalance</text>
+    <text class="sub-dataflow__text" x="340" y="372" text-anchor="middle">執行原子增減操作（SQL WHERE balance + delta &gt;= 0 防負數）</text>
+    <text class="sub-dataflow__chip sub-dataflow__chip--writes" x="586" y="408" text-anchor="end">→ writes: memberCurrencyAccount</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="426" x2="340" y2="456" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="502" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="507" text-anchor="middle">4</text>
+    <rect class="sub-dataflow__box" x="80" y="464" width="520" height="76" rx="14" ry="14" />
+    <text class="sub-dataflow__text" x="340" y="498" text-anchor="middle">記錄 CurrencyTransaction / GameTokenTransaction，發佈</text>
+    <text class="sub-dataflow__text" x="340" y="518" text-anchor="middle">BalanceChangedEvent / GameTokenChangedEvent</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="546" x2="340" y2="576" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="641" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="646" text-anchor="middle">5</text>
+    <rect class="sub-dataflow__box" x="80" y="584" width="520" height="114" rx="14" ry="14" />
+    <rect class="sub-dataflow__fn-bg" x="94" y="598" width="131" height="20" rx="10" ry="10" />
+    <text class="sub-dataflow__fn-text" x="104" y="612">fn creditReward</text>
+    <text class="sub-dataflow__text" x="340" y="650" text-anchor="middle">遊戲流程：扣除代幣 → playDiceGame1 擲骰計算 → creditReward 發放貨幣獎勵</text>
+    <text class="sub-dataflow__chip sub-dataflow__chip--reads" x="94" y="686">← reads: gameTokenAccount</text>
+    <text class="sub-dataflow__chip sub-dataflow__chip--writes" x="586" y="686" text-anchor="end">→ writes: memberCurrencyAccount</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="704" x2="340" y2="734" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="778" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="783" text-anchor="middle">6</text>
+    <rect class="sub-dataflow__box" x="80" y="742" width="520" height="72" rx="14" ry="14" />
+    <text class="sub-dataflow__text" x="340" y="784" text-anchor="middle">回傳格式化結果（BalanceView / DiceGameResult）至互動層</text>
+  </g>
+</svg>
+        </div>
+      </div>
     </section>
     <section class="sub-errors" aria-label="Errors">
       <h2>Errors</h2>

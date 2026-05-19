@@ -6,10 +6,51 @@ submodules:
   - slug: ai-mention-interaction
     kind: api
     role: '@bot 提及監聽、AI 聊天 vs Agent 路由決策、串流回覆輸出'
-    functions: []
-    variables: []
-    dataflow: []
-    errors: []
+    functions:
+      - name: handleMessageReceived
+        in: MessageReceivedEvent
+        out: void (路由決定)
+        side: io
+        purpose: 監聽 guild 訊息，過濾非 @bot 提及、bot 自身、DM
+      - name: decideRouting
+        in: channelId, categoryId
+        out: RouteDecision (AGENT_ROUTE | AI_CHAT_ROUTE | DENY)
+        side: pure
+        purpose: Agent 啟用優先 → 頻道白名單 → 拒絕三元決策
+      - name: streamAiResponse
+        in: message, routeDecision, handler
+        out: void (串流)
+        side: network
+        purpose: 啟動 AI 串流回覆，處理 Reasoning/Content/ToolIntent 三種 chunk 輸出
+    variables:
+      - name: routeDecision
+        type: RouteDecision
+        scope: call
+        purpose: AI_CHAT_ROUTE / AGENT_ROUTE / DENY 三值，決定後續流程
+      - name: streamingBuffer
+        type: MessageChunkAccumulator
+        scope: call
+        purpose: 串流 chunk 緩衝區，在工具執行邊界或完成時 flush
+    dataflow:
+      - step: MessageReceivedEvent → 過濾 bot/DM → 解析 @bot mention → 取得 channelId/categoryId
+        fn: handleMessageReceived
+      - step: >-
+          decideRouting：查 AIAgentChannelConfig 是否啟用 → 是則 AGENT_ROUTE → 否則查 AIChannelRestriction →
+          允許則 AI_CHAT_ROUTE → 否則 DENY
+        fn: decideRouting
+      - step: >-
+          AI_CHAT_ROUTE：streamAiResponse → 委派 aiChatService.generateStreamingResponse → 串流輸出
+          Reasoning/Content 至 Discord
+        fn: streamAiResponse
+      - step: AGENT_ROUTE：同上但帶 messageId，支援 TOOL_INTENT chunk＋工具執行狀態通知
+        fn: streamAiResponse
+    errors:
+      - name: ErrChannelNotAllowed
+        when: 頻道不在 AI 白名單且未啟用 Agent
+        means: 忽略訊息不回應（DENY）
+      - name: ErrAIConfigMissing
+        when: guild 未設定 AI 服務（baseUrl/API key 缺失）
+        means: 忽略或回覆 ephemeral 提示管理員尚未設定
   - slug: ai-chat-service
     kind: service
     role: AI 串流回覆（LangChain4j）、頻道白名單檢查、提示詞系統提示載入
@@ -19,13 +60,46 @@ submodules:
         out: void (串流至 StreamingResponseHandler)
         side: network
         purpose: 透過 LangChain4j 產生 AI 串流回覆，支援 Reasoning/Content/ToolIntent 三種 chunk
+      - name: loadSystemPrompt
+        in: guildId, enableTools
+        out: SystemPrompt
+        side: io
+        purpose: 從 system/ 目錄載入 persona.md/rules.md，若啟用工具則附加 agent/ 目錄內容
+      - name: isChannelAllowed
+        in: channelId, categoryId
+        out: boolean
+        side: pure
+        purpose: 檢查頻道或其所屬分類是否在 AI 白名單中
+      - name: isAgentEnabled
+        in: channelId, guildId
+        out: boolean
+        side: pure
+        purpose: 檢查該頻道是否啟用 Agent 模式
     variables:
       - name: aiServiceConfig
         type: AIServiceConfig
         scope: persist
         purpose: 每個 guild 的 AI 設定（model、temperature、timeout、markdown validation toggle）
-    dataflow: []
-    errors: []
+    dataflow:
+      - step: 載入 AI 設定與 system prompt → 建立 LangChain4j AiServices（依工具啟開關註冊 17 Agent tools）
+        fn: loadSystemPrompt
+        reads:
+          - aiServiceConfig
+      - step: >-
+          GenerateStreamingResponse：透過 AiServices.chat() 取得 TokenStream → 註冊 callback（reasoning /
+          content / tool_execution）
+        fn: generateStreamingResponse
+      - >-
+        串流過程中：content chunk 經 markdown-validation 校驗後分段輸出；reasoning chunk 以 spoiler 格式輸出；tool_intent
+        在 Agent 路徑下緩衝
+      - 完成時發佈 AIMessageEvent 供審計日誌
+    errors:
+      - name: ErrAIServiceUnavailable
+        when: LangChain4j AI 服務連線失敗或 timeout
+        means: 回覆 Discord 錯誤訊息，提示稍後再試
+      - name: ErrSystemPromptNotFound
+        when: system/ 目錄下 persona.md 或 rules.md 不存在
+        means: 降級使用預設提示詞，log warning
   - slug: ai-agent-service
     kind: service
     role: Agent 工具執行（17 個 Discord 管理工具）、對話記憶、工具審計日誌
@@ -35,23 +109,147 @@ submodules:
         out: channelId
         side: network
         purpose: Agent 工具：建立文字頻道，需管理員權限
-    variables: []
-    dataflow: []
-    errors: []
+      - name: listChannels
+        in: guildId
+        out: List<ChannelInfo>
+        side: network
+        purpose: Agent 工具：列出 guild 所有頻道
+      - name: createRole
+        in: guildId, name, permissions
+        out: roleId
+        side: network
+        purpose: Agent 工具：建立新角色
+      - name: listRoles
+        in: guildId
+        out: List<RoleInfo>
+        side: network
+        purpose: Agent 工具：列出 guild 所有角色
+      - name: sendMessages
+        in: channelIds[], messages[]
+        out: messageIds[]
+        side: network
+        purpose: Agent 工具：發送訊息至多個頻道（max 10 channels × 10 msgs）
+      - name: modifyChannelPermissions
+        in: channelId, permissionOverrides
+        out: void
+        side: network
+        purpose: Agent 工具：修改頻道權限覆寫
+    variables:
+      - name: conversationMemory
+        type: ChatMemory
+        scope: instance
+        purpose: Thread-level 對話記憶（guildId:threadId:userId），上限 50 筆 tool call
+      - name: toolExecutionLog
+        type: ToolExecutionLog
+        scope: persist
+        purpose: SHA-256 遮罩的原始參數/結果審計日誌
+    dataflow:
+      - Agent 模式啟用 → LangChain4jAiServices 註冊 17 個 @Tool 方法 → invoke chat
+      - Tool 執行前：ToolExecutionContext.setContext → interceptor 記錄開始 → 發佈 ToolExecutionStartedEvent
+      - Tool 執行後：interceptor 紅綠遮罩參數/結果 → 記錄至 tool_execution_log → 發佈 ToolExecutedEvent
+      - Tool 失敗：遮罩錯誤訊息 → 回傳給 LLM 重試或終止
+    errors:
+      - name: ErrToolExecutionFailed
+        when: Agent 工具執行時 JDA API 回傳錯誤（如權限不足、資源不存在）
+        means: 錯誤訊息回傳 LLM 供重試或終止，記錄至 tool_execution_log
+      - name: ErrConversationMemoryOverflow
+        when: 工具呼叫歷史超過 50 筆或 token 預算超限
+        means: 截斷最舊記錄，保留最近上下文
   - slug: markdown-validation
     kind: pure-fn
     role: AI 回覆 Markdown 語法校驗與自動修正管線（CommonMark 解析器 + 13 道 Regex 修復）
-    functions: []
-    variables: []
-    dataflow: []
-    errors: []
+    functions:
+      - name: validate
+        in: markdownText
+        out: ValidationResult (Valid | Invalid)
+        side: pure
+        purpose: CommonMark 語法驗證：heading 層級/列表格式/程式碼區塊/表格/逸脫字元
+      - name: autoFix
+        in: markdownText
+        out: fixedMarkdown
+        side: pure
+        purpose: 13 道 Regex 順序修復：關閉程式碼區塊/修正 heading/轉換 bold/移除不支援語法
+      - name: sanitize
+        in: markdownText
+        out: sanitizedMarkdown
+        side: pure
+        purpose: 移除 HTML 註解/標籤、收斂巢狀 blockquote、表格轉 code block
+      - name: paginate
+        in: markdownText
+        out: List<String>
+        side: pure
+        purpose: 1900 字元分頁，以 code fence / heading 為偏好斷點
+      - name: segmentByHeading
+        in: markdownText
+        out: List<String>
+        side: pure
+        purpose: 以 heading 邊界分割串流內容，使翻頁對齊章節
+    variables:
+      - name: headingLevel
+        type: int
+        scope: call
+        purpose: 當前 heading 層級計數器，用於判斷是否超過 Discord 支援上限（H6）
+      - name: codeFenceState
+        type: boolean
+        scope: call
+        purpose: 是否在程式碼區塊內，影響分頁斷點選擇
+    dataflow:
+      - step: 接收 ai-chat-service 串流 chunk → segmentByHeading 按 heading 分割
+        fn: segmentByHeading
+      - step: sanitize 移除不安全語法 → validate 語法正確性 → 若 Invalid 則 autoFix → 再次 validate
+        fn: validate
+        reads:
+          - headingLevel
+          - codeFenceState
+      - step: paginate 以 1900 字元分頁 → 輸出至 Discord 訊息佇列
+        fn: paginate
+    errors:
+      - name: ErrHeadingLevelExceeded
+        when: heading 層級 > 6（超越 Discord 支援）
+        means: autoFix 降級至 H6
+      - name: ErrUnclosedCodeBlock
+        when: AI 回覆中三個反引號未閉合
+        means: autoFix 自動補上結尾三個反引號並輸出修復日誌
+      - name: ErrTableNotSupported
+        when: AI 回覆包含 Markdown 表格（Discord 不支援）
+        means: autoFix 轉換為 text code block
   - slug: ai-db
     kind: db
     role: ai_channel_restriction / ai_agent_channel_config / tool_execution_log 資料表
-    functions: []
-    variables: []
+    functions:
+      - name: SELECT_allowlist_by_guild
+        in: guildId
+        out: List<AIChannelRestriction>
+        side: io
+        purpose: 查詢 guild 的 AI 頻道/分類白名單
+      - name: UPSERT_agent_config
+        in: guildId, channelId, enabled
+        out: void
+        side: write
+        purpose: 啟用/停用特定頻道的 Agent 模式
+      - name: INSERT_tool_log
+        in: ToolExecutionLog
+        out: Long id
+        side: write
+        purpose: 寫入工具執行審計日誌（含 SHA-256 遮罩參數）
+    variables:
+      - name: ai_channel_restriction
+        type: table
+        scope: persist
+        purpose: 頻道/分類 ID 白名單，guild 範圍
+      - name: ai_agent_channel_config
+        type: table
+        scope: persist
+        purpose: 頻道級 Agent 啟用開關，thread 繼承父頻道設定
+      - name: tool_execution_log
+        type: table
+        scope: persist
+        purpose: 工具執行審計：guildId/channelId/toolName/遮罩參數/結果/耗時
     dataflow: []
-    errors: []
+    errors:
+      - name: ErrChannelConfigNotFound
+        when: guild 完全未設定 AI 頻道白名單或 Agent 設定
+        means: 回傳 empty list，由呼叫方決定預設行為（全部拒絕）
 edges:
   - id: e-6bh9qi
     from: ai-mention-interaction
@@ -78,3 +276,8 @@ edges:
     to: ai-db
     kind: call
     label: 讀寫 Agent 設定與工具日誌
+  - id: e-awmvrw
+    from: ai-chat-service
+    to: ai-mention-interaction
+    kind: failure
+    label: ErrAIServiceUnavailable→回覆 Discord 錯誤訊息

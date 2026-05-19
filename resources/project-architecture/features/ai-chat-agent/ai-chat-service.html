@@ -23,6 +23,9 @@
         <thead><tr><th scope="col">Name</th><th scope="col">In</th><th scope="col">Out</th><th scope="col">Side</th><th scope="col">Purpose</th></tr></thead>
         <tbody>
           <tr><td>generateStreamingResponse</td><td>message, channelId, userId, memoryId, handler</td><td>void (串流至 StreamingResponseHandler)</td><td>network</td><td>透過 LangChain4j 產生 AI 串流回覆，支援 Reasoning/Content/ToolIntent 三種 chunk</td></tr>
+          <tr><td>loadSystemPrompt</td><td>guildId, enableTools</td><td>SystemPrompt</td><td>io</td><td>從 system/ 目錄載入 persona.md/rules.md，若啟用工具則附加 agent/ 目錄內容</td></tr>
+          <tr><td>isChannelAllowed</td><td>channelId, categoryId</td><td>boolean</td><td>pure</td><td>檢查頻道或其所屬分類是否在 AI 白名單中</td></tr>
+          <tr><td>isAgentEnabled</td><td>channelId, guildId</td><td>boolean</td><td>pure</td><td>檢查該頻道是否啟用 Agent 模式</td></tr>
         </tbody>
       </table>
     </section>
@@ -37,11 +40,66 @@
     </section>
     <section class="sub-dataflow" aria-label="Internal data flow">
       <h2>Internal data flow</h2>
-      <p class="sub-dataflow__empty">No internal dataflow steps recorded.</p>
+      <div class="sub-dataflow__canvas" data-pan-zoom-container>
+        <div class="sub-dataflow__toolbar" role="toolbar" aria-label="Diagram controls">
+          <button type="button" data-pan-zoom="zoom-in" aria-label="Zoom in">+</button>
+          <button type="button" data-pan-zoom="zoom-out" aria-label="Zoom out">−</button>
+          <button type="button" data-pan-zoom="fit" aria-label="Reset view">Fit</button>
+        </div>
+        <div class="sub-dataflow__viewport" data-pan-zoom-viewport>
+          <svg class="sub-dataflow__svg" data-atlas-svg="sub-dataflow" viewBox="0 0 628 606" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Internal dataflow">
+  <defs>
+    <marker id="sub-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" /></marker>
+  </defs>
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="99" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="104" text-anchor="middle">1</text>
+    <rect class="sub-dataflow__box" x="80" y="32" width="520" height="134" rx="14" ry="14" />
+    <rect class="sub-dataflow__fn-bg" x="94" y="46" width="160.6" height="20" rx="10" ry="10" />
+    <text class="sub-dataflow__fn-text" x="104" y="60">fn loadSystemPrompt</text>
+    <text class="sub-dataflow__text" x="340" y="98" text-anchor="middle">載入 AI 設定與 system prompt → 建立 LangChain4j AiServices（依工具啟開關註冊</text>
+    <text class="sub-dataflow__text" x="340" y="118" text-anchor="middle">17 Agent tools）</text>
+    <text class="sub-dataflow__chip sub-dataflow__chip--reads" x="94" y="154">← reads: aiServiceConfig</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="172" x2="340" y2="202" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="274" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="279" text-anchor="middle">2</text>
+    <rect class="sub-dataflow__box" x="80" y="210" width="520" height="128" rx="14" ry="14" />
+    <rect class="sub-dataflow__fn-bg" x="94" y="224" width="227.20000000000002" height="20" rx="10" ry="10" />
+    <text class="sub-dataflow__fn-text" x="104" y="238">fn generateStreamingResponse</text>
+    <text class="sub-dataflow__text" x="340" y="276" text-anchor="middle">GenerateStreamingResponse：透過 AiServices.chat() 取得</text>
+    <text class="sub-dataflow__text" x="340" y="296" text-anchor="middle">TokenStream → 註冊 callback（reasoning / content /</text>
+    <text class="sub-dataflow__text" x="340" y="316" text-anchor="middle">tool_execution）</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="344" x2="340" y2="374" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="420" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="425" text-anchor="middle">3</text>
+    <rect class="sub-dataflow__box" x="80" y="382" width="520" height="76" rx="14" ry="14" />
+    <text class="sub-dataflow__text" x="340" y="416" text-anchor="middle">串流過程中：content chunk 經 markdown-validation 校驗後分段輸出；reasoning</text>
+    <text class="sub-dataflow__text" x="340" y="436" text-anchor="middle">chunk 以 spoiler 格式輸出；tool_intent 在 Agent 路徑下緩衝</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="464" x2="340" y2="494" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="538" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="543" text-anchor="middle">4</text>
+    <rect class="sub-dataflow__box" x="80" y="502" width="520" height="72" rx="14" ry="14" />
+    <text class="sub-dataflow__text" x="340" y="544" text-anchor="middle">完成時發佈 AIMessageEvent 供審計日誌</text>
+  </g>
+</svg>
+        </div>
+      </div>
     </section>
     <section class="sub-errors" aria-label="Errors">
       <h2>Errors</h2>
-      <p class="sub-section__empty">No errors recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">When</th><th scope="col">Means</th></tr></thead>
+        <tbody>
+          <tr><td>ErrAIServiceUnavailable</td><td>LangChain4j AI 服務連線失敗或 timeout</td><td>回覆 Discord 錯誤訊息，提示稍後再試</td></tr>
+          <tr><td>ErrSystemPromptNotFound</td><td>system/ 目錄下 persona.md 或 rules.md 不存在</td><td>降級使用預設提示詞，log warning</td></tr>
+        </tbody>
+      </table>
     </section>
   </main>
   <script src="../../assets/viewer.client.js" defer></script>

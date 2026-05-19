@@ -19,19 +19,82 @@
   <main class="submodule-main">
     <section class="sub-io" aria-label="Function I/O">
       <h2>Function I/O</h2>
-      <p class="sub-section__empty">No functions recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">In</th><th scope="col">Out</th><th scope="col">Side</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>validate</td><td>markdownText</td><td>ValidationResult (Valid | Invalid)</td><td>pure</td><td>CommonMark 語法驗證：heading 層級/列表格式/程式碼區塊/表格/逸脫字元</td></tr>
+          <tr><td>autoFix</td><td>markdownText</td><td>fixedMarkdown</td><td>pure</td><td>13 道 Regex 順序修復：關閉程式碼區塊/修正 heading/轉換 bold/移除不支援語法</td></tr>
+          <tr><td>sanitize</td><td>markdownText</td><td>sanitizedMarkdown</td><td>pure</td><td>移除 HTML 註解/標籤、收斂巢狀 blockquote、表格轉 code block</td></tr>
+          <tr><td>paginate</td><td>markdownText</td><td>List&lt;String&gt;</td><td>pure</td><td>1900 字元分頁，以 code fence / heading 為偏好斷點</td></tr>
+          <tr><td>segmentByHeading</td><td>markdownText</td><td>List&lt;String&gt;</td><td>pure</td><td>以 heading 邊界分割串流內容，使翻頁對齊章節</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-vars" aria-label="Variables">
       <h2>Variables</h2>
-      <p class="sub-section__empty">No variables recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Scope</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>headingLevel</td><td>int</td><td>call</td><td>當前 heading 層級計數器，用於判斷是否超過 Discord 支援上限（H6）</td></tr>
+          <tr><td>codeFenceState</td><td>boolean</td><td>call</td><td>是否在程式碼區塊內，影響分頁斷點選擇</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-dataflow" aria-label="Internal data flow">
       <h2>Internal data flow</h2>
-      <p class="sub-dataflow__empty">No internal dataflow steps recorded.</p>
+      <div class="sub-dataflow__canvas" data-pan-zoom-container>
+        <div class="sub-dataflow__toolbar" role="toolbar" aria-label="Diagram controls">
+          <button type="button" data-pan-zoom="zoom-in" aria-label="Zoom in">+</button>
+          <button type="button" data-pan-zoom="zoom-out" aria-label="Zoom out">−</button>
+          <button type="button" data-pan-zoom="fit" aria-label="Reset view">Fit</button>
+        </div>
+        <div class="sub-dataflow__viewport" data-pan-zoom-viewport>
+          <svg class="sub-dataflow__svg" data-atlas-svg="sub-dataflow" viewBox="0 0 628 462" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Internal dataflow">
+  <defs>
+    <marker id="sub-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" /></marker>
+  </defs>
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="76" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="81" text-anchor="middle">1</text>
+    <rect class="sub-dataflow__box" x="80" y="32" width="520" height="88" rx="14" ry="14" />
+    <rect class="sub-dataflow__fn-bg" x="94" y="46" width="160.6" height="20" rx="10" ry="10" />
+    <text class="sub-dataflow__fn-text" x="104" y="60">fn segmentByHeading</text>
+    <text class="sub-dataflow__text" x="340" y="98" text-anchor="middle">接收 ai-chat-service 串流 chunk → segmentByHeading 按 heading 分割</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="126" x2="340" y2="156" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="231" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="236" text-anchor="middle">2</text>
+    <rect class="sub-dataflow__box" x="80" y="164" width="520" height="134" rx="14" ry="14" />
+    <rect class="sub-dataflow__fn-bg" x="94" y="178" width="101.4" height="20" rx="10" ry="10" />
+    <text class="sub-dataflow__fn-text" x="104" y="192">fn validate</text>
+    <text class="sub-dataflow__text" x="340" y="230" text-anchor="middle">sanitize 移除不安全語法 → validate 語法正確性 → 若 Invalid 則 autoFix → 再次</text>
+    <text class="sub-dataflow__text" x="340" y="250" text-anchor="middle">validate</text>
+    <text class="sub-dataflow__chip sub-dataflow__chip--reads" x="94" y="286">← reads: headingLevel, codeFenceState</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="304" x2="340" y2="334" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="386" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="391" text-anchor="middle">3</text>
+    <rect class="sub-dataflow__box" x="80" y="342" width="520" height="88" rx="14" ry="14" />
+    <rect class="sub-dataflow__fn-bg" x="94" y="356" width="101.4" height="20" rx="10" ry="10" />
+    <text class="sub-dataflow__fn-text" x="104" y="370">fn paginate</text>
+    <text class="sub-dataflow__text" x="340" y="408" text-anchor="middle">paginate 以 1900 字元分頁 → 輸出至 Discord 訊息佇列</text>
+  </g>
+</svg>
+        </div>
+      </div>
     </section>
     <section class="sub-errors" aria-label="Errors">
       <h2>Errors</h2>
-      <p class="sub-section__empty">No errors recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">When</th><th scope="col">Means</th></tr></thead>
+        <tbody>
+          <tr><td>ErrHeadingLevelExceeded</td><td>heading 層級 &gt; 6（超越 Discord 支援）</td><td>autoFix 降級至 H6</td></tr>
+          <tr><td>ErrUnclosedCodeBlock</td><td>AI 回覆中三個反引號未閉合</td><td>autoFix 自動補上結尾三個反引號並輸出修復日誌</td></tr>
+          <tr><td>ErrTableNotSupported</td><td>AI 回覆包含 Markdown 表格（Discord 不支援）</td><td>autoFix 轉換為 text code block</td></tr>
+        </tbody>
+      </table>
     </section>
   </main>
   <script src="../../assets/viewer.client.js" defer></script>

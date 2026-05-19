@@ -19,11 +19,23 @@
   <main class="submodule-main">
     <section class="sub-io" aria-label="Function I/O">
       <h2>Function I/O</h2>
-      <p class="sub-section__empty">No functions recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">In</th><th scope="col">Out</th><th scope="col">Side</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>get</td><td>key</td><td>Optional&lt;T&gt;</td><td>io</td><td>讀取 Redis 快取</td></tr>
+          <tr><td>set</td><td>key, value, ttl</td><td>void</td><td>write</td><td>寫入 Redis 快取含 TTL</td></tr>
+          <tr><td>invalidate</td><td>key</td><td>void</td><td>write</td><td>失效特定快取鍵</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-vars" aria-label="Variables">
       <h2>Variables</h2>
-      <p class="sub-section__empty">No variables recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Scope</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>cacheEntry</td><td>Redis entry</td><td>instance</td><td>快取條目：key-value + TTL，餘額 300s / Agent 設定 3600s</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-dataflow" aria-label="Internal data flow">
       <h2>Internal data flow</h2>
@@ -31,7 +43,12 @@
     </section>
     <section class="sub-errors" aria-label="Errors">
       <h2>Errors</h2>
-      <p class="sub-section__empty">No errors recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">When</th><th scope="col">Means</th></tr></thead>
+        <tbody>
+          <tr><td>ErrCacheUnavailable</td><td>Redis 連線中斷</td><td>降級為直接查詢資料庫，log warning，恢復後繼續使用快取</td></tr>
+        </tbody>
+      </table>
     </section>
   </main>
   <script src="../../assets/viewer.client.js" defer></script>

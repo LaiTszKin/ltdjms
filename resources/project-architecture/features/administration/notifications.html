@@ -19,11 +19,26 @@
   <main class="submodule-main">
     <section class="sub-io" aria-label="Function I/O">
       <h2>Function I/O</h2>
-      <p class="sub-section__empty">No functions recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">In</th><th scope="col">Out</th><th scope="col">Side</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>notifyBuyerPaymentSuccess</td><td>userId, productName, orderNumber</td><td>void</td><td>network</td><td>法幣付款成功後 DM 買家訂單確認與商品資訊</td></tr>
+          <tr><td>notifyAdminNewFiatOrder</td><td>guildId, orderNumber, productName</td><td>void</td><td>network</td><td>新法幣訂單需手動處理時 DM 通知管理員</td></tr>
+          <tr><td>notifyEscortNewOrder</td><td>escortUserId, orderNumber, optionInfo</td><td>void</td><td>network</td><td>新派遣單 DM 通知護航人員</td></tr>
+          <tr><td>notifyCustomerOrderUpdate</td><td>customerUserId, orderNumber, newStatus</td><td>void</td><td>network</td><td>派遣單狀態變更時 DM 通知客戶</td></tr>
+          <tr><td>notifyAfterSalesStaff</td><td>guildId, orderNumber</td><td>void</td><td>network</td><td>售後請求發生時 DM 通知所有在線售後人員</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-vars" aria-label="Variables">
       <h2>Variables</h2>
-      <p class="sub-section__empty">No variables recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Scope</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>discordRuntime</td><td>DiscordRuntimeGateway</td><td>instance</td><td>Discord API 抽象，用於發送 DM／Embed／按鈕</td></tr>
+          <tr><td>adminCache</td><td>Set&lt;Long&gt;</td><td>call</td><td>去重管理員 user ID，掃描 guild 成員 ADMINISTRATOR 權限</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-dataflow" aria-label="Internal data flow">
       <h2>Internal data flow</h2>
@@ -31,7 +46,13 @@
     </section>
     <section class="sub-errors" aria-label="Errors">
       <h2>Errors</h2>
-      <p class="sub-section__empty">No errors recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">When</th><th scope="col">Means</th></tr></thead>
+        <tbody>
+          <tr><td>ErrDiscordDMFailed</td><td>DiscordRuntimeGateway.sendDM 失敗（使用者關閉私訊／bot 無共用 guild）</td><td>log error，不中斷主流程</td></tr>
+          <tr><td>ErrNoAdminFound</td><td>guild 中不存在 ADMINISTRATOR 權限成員（不應發生）</td><td>log warning，跳過管理員通知</td></tr>
+        </tbody>
+      </table>
     </section>
   </main>
   <script src="../../assets/viewer.client.js" defer></script>

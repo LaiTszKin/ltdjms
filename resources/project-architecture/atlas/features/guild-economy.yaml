@@ -6,10 +6,50 @@ submodules:
   - slug: economy-interaction
     kind: api
     role: Discord 指令處理層：貨幣設定、擲骰遊戲、交易查詢
-    functions: []
-    variables: []
-    dataflow: []
-    errors: []
+    functions:
+      - name: handleBalanceQuery
+        in: guildId, userId
+        out: BalanceView
+        side: io
+        purpose: 查詢當前成員的 guild 貨幣餘額
+      - name: handleCurrencyConfig
+        in: guildId, name?, icon?
+        out: GuildCurrencyConfig
+        side: io
+        purpose: 設定或查詢 guild 貨幣名稱與圖示
+      - name: handleDiceGame1
+        in: guildId, userId, tokenAmount
+        out: DiceGame1Result
+        side: io
+        purpose: 擲骰遊戲 1：花費代幣、擲骰、顯示獎勵
+      - name: handleDiceGame2
+        in: guildId, userId, tokenAmount
+        out: DiceGame2Result
+        side: io
+        purpose: 擲骰遊戲 2：三骰一注、順子/三條獎勵
+    variables:
+      - name: interactionContext
+        type: Discord interaction
+        scope: call
+        purpose: 當前 slash command 的互動上下文，用於回應與延遲回覆
+      - name: balanceCache
+        type: Cache<BalanceView>
+        scope: instance
+        purpose: 餘額查詢結果快取（300s TTL），減少重複查庫
+    dataflow:
+      - 接收 Discord slash command 事件（/dice-game-1, /dice-game-2, /currency-config）
+      - 驗證輸入參數（tokens 範圍、emoji 格式），若無效則回覆 ephemeral 錯誤
+      - step: 委派 economy-service 執行業務邏輯 → 取得結果 → 建構 Discord embed 回覆
+        fn: handleBalanceQuery
+        reads:
+          - interactionContext
+    errors:
+      - name: ErrInvalidTokens
+        when: tokens 參數不在 DiceGameConfig 的 [min, max] 範圍內
+        means: 回覆 ephemeral 錯誤訊息，遊戲未開始
+      - name: ErrMemberNotFound
+        when: 資料庫中無該成員的貨幣/代幣帳戶
+        means: Ephemeral 提示先使用 /user-panel 初始化
   - slug: economy-service
     kind: service
     role: 雙軌經濟核心邏輯：貨幣帳戶、代幣帳戶、交易記錄、遊戲獎勵結算
@@ -38,7 +78,25 @@ submodules:
         type: GameTokenAccount
         scope: persist
         purpose: 每個成員的遊戲代幣餘額，扣除後才可遊玩
-    dataflow: []
+    dataflow:
+      - 接收互動層委派的命令參數（guildId, userId, 金額/代幣數）
+      - step: 查詢快取或資料庫取得 MemberCurrencyAccount / GameTokenAccount
+        fn: tryAdjustBalance
+        reads:
+          - memberCurrencyAccount
+          - gameTokenAccount
+      - step: 執行原子增減操作（SQL WHERE balance + delta >= 0 防負數）
+        fn: tryAdjustBalance
+        writes:
+          - memberCurrencyAccount
+      - 記錄 CurrencyTransaction / GameTokenTransaction，發佈 BalanceChangedEvent / GameTokenChangedEvent
+      - step: 遊戲流程：扣除代幣 → playDiceGame1 擲骰計算 → creditReward 發放貨幣獎勵
+        fn: creditReward
+        reads:
+          - gameTokenAccount
+        writes:
+          - memberCurrencyAccount
+      - 回傳格式化結果（BalanceView / DiceGameResult）至互動層
     errors:
       - name: ErrInsufficientBalance
         when: 貨幣或代幣餘額不足扣款
@@ -48,10 +106,45 @@ submodules:
     role: >-
       guild_currency_config / member_currency_account / game_token_account / dice_game_config /
       transaction 資料表
-    functions: []
-    variables: []
+    functions:
+      - name: SELECT_member_balance
+        in: guildId, userId
+        out: MemberCurrencyAccount | empty
+        side: io
+        purpose: 讀取成員貨幣餘額（支援 FOR UPDATE 鎖定）
+      - name: atomic_adjust_balance
+        in: guildId, userId, delta
+        out: MemberCurrencyAccount | DomainError
+        side: tx
+        purpose: 原子增減餘額，WHERE balance + delta >= 0 保證不負數
+      - name: INSERT_transaction
+        in: CurrencyTransaction
+        out: Long id
+        side: write
+        purpose: 寫入交易記錄供審計與歷史查詢
+      - name: SELECT_game_token
+        in: guildId, userId
+        out: GameTokenAccount | empty
+        side: io
+        purpose: 讀取遊戲代幣餘額
+    variables:
+      - name: guild_currency_config
+        type: table row
+        scope: persist
+        purpose: currency_name / currency_icon 每個 guild 一行
+      - name: member_currency_account
+        type: table row
+        scope: persist
+        purpose: guildId+userId PK，balance bigint 非負約束
+      - name: game_token_account
+        type: table row
+        scope: persist
+        purpose: guildId+userId PK，tokens bigint 非負約束
     dataflow: []
-    errors: []
+    errors:
+      - name: ErrPersistenceFailure
+        when: 資料庫寫入異常（連線中斷／唯一鍵衝突）
+        means: 回傳 DomainError.persistenceFailure()，交易 rollback
 edges:
   - id: e-18pz26
     from: economy-interaction
@@ -68,3 +161,8 @@ edges:
     to: economy-interaction
     kind: return
     label: BalanceView / GameResult
+  - id: e-t7ywiw
+    from: economy-service
+    to: economy-interaction
+    kind: failure
+    label: ErrInsufficientBalance 回傳，購買/遊戲流程中斷

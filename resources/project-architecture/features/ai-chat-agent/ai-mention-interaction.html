@@ -19,19 +19,90 @@
   <main class="submodule-main">
     <section class="sub-io" aria-label="Function I/O">
       <h2>Function I/O</h2>
-      <p class="sub-section__empty">No functions recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">In</th><th scope="col">Out</th><th scope="col">Side</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>handleMessageReceived</td><td>MessageReceivedEvent</td><td>void (路由決定)</td><td>io</td><td>監聽 guild 訊息，過濾非 @bot 提及、bot 自身、DM</td></tr>
+          <tr><td>decideRouting</td><td>channelId, categoryId</td><td>RouteDecision (AGENT_ROUTE | AI_CHAT_ROUTE | DENY)</td><td>pure</td><td>Agent 啟用優先 → 頻道白名單 → 拒絕三元決策</td></tr>
+          <tr><td>streamAiResponse</td><td>message, routeDecision, handler</td><td>void (串流)</td><td>network</td><td>啟動 AI 串流回覆，處理 Reasoning/Content/ToolIntent 三種 chunk 輸出</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-vars" aria-label="Variables">
       <h2>Variables</h2>
-      <p class="sub-section__empty">No variables recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Scope</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>routeDecision</td><td>RouteDecision</td><td>call</td><td>AI_CHAT_ROUTE / AGENT_ROUTE / DENY 三值，決定後續流程</td></tr>
+          <tr><td>streamingBuffer</td><td>MessageChunkAccumulator</td><td>call</td><td>串流 chunk 緩衝區，在工具執行邊界或完成時 flush</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-dataflow" aria-label="Internal data flow">
       <h2>Internal data flow</h2>
-      <p class="sub-dataflow__empty">No internal dataflow steps recorded.</p>
+      <div class="sub-dataflow__canvas" data-pan-zoom-container>
+        <div class="sub-dataflow__toolbar" role="toolbar" aria-label="Diagram controls">
+          <button type="button" data-pan-zoom="zoom-in" aria-label="Zoom in">+</button>
+          <button type="button" data-pan-zoom="zoom-out" aria-label="Zoom out">−</button>
+          <button type="button" data-pan-zoom="fit" aria-label="Reset view">Fit</button>
+        </div>
+        <div class="sub-dataflow__viewport" data-pan-zoom-viewport>
+          <svg class="sub-dataflow__svg" data-atlas-svg="sub-dataflow" viewBox="0 0 628 628" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Internal dataflow">
+  <defs>
+    <marker id="sub-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" /></marker>
+  </defs>
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="86" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="91" text-anchor="middle">1</text>
+    <rect class="sub-dataflow__box" x="80" y="32" width="520" height="108" rx="14" ry="14" />
+    <rect class="sub-dataflow__fn-bg" x="94" y="46" width="197.60000000000002" height="20" rx="10" ry="10" />
+    <text class="sub-dataflow__fn-text" x="104" y="60">fn handleMessageReceived</text>
+    <text class="sub-dataflow__text" x="340" y="98" text-anchor="middle">MessageReceivedEvent → 過濾 bot/DM → 解析 @bot mention → 取得</text>
+    <text class="sub-dataflow__text" x="340" y="118" text-anchor="middle">channelId/categoryId</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="146" x2="340" y2="176" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="238" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="243" text-anchor="middle">2</text>
+    <rect class="sub-dataflow__box" x="80" y="184" width="520" height="108" rx="14" ry="14" />
+    <rect class="sub-dataflow__fn-bg" x="94" y="198" width="138.4" height="20" rx="10" ry="10" />
+    <text class="sub-dataflow__fn-text" x="104" y="212">fn decideRouting</text>
+    <text class="sub-dataflow__text" x="340" y="250" text-anchor="middle">decideRouting：查 AIAgentChannelConfig 是否啟用 → 是則 AGENT_ROUTE →</text>
+    <text class="sub-dataflow__text" x="340" y="270" text-anchor="middle">否則查 AIChannelRestriction → 允許則 AI_CHAT_ROUTE → 否則 DENY</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="298" x2="340" y2="328" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="400" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="405" text-anchor="middle">3</text>
+    <rect class="sub-dataflow__box" x="80" y="336" width="520" height="128" rx="14" ry="14" />
+    <rect class="sub-dataflow__fn-bg" x="94" y="350" width="160.6" height="20" rx="10" ry="10" />
+    <text class="sub-dataflow__fn-text" x="104" y="364">fn streamAiResponse</text>
+    <text class="sub-dataflow__text" x="340" y="402" text-anchor="middle">AI_CHAT_ROUTE：streamAiResponse → 委派</text>
+    <text class="sub-dataflow__text" x="340" y="422" text-anchor="middle">aiChatService.generateStreamingResponse → 串流輸出</text>
+    <text class="sub-dataflow__text" x="340" y="442" text-anchor="middle">Reasoning/Content 至 Discord</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="470" x2="340" y2="500" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="552" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="557" text-anchor="middle">4</text>
+    <rect class="sub-dataflow__box" x="80" y="508" width="520" height="88" rx="14" ry="14" />
+    <rect class="sub-dataflow__fn-bg" x="94" y="522" width="160.6" height="20" rx="10" ry="10" />
+    <text class="sub-dataflow__fn-text" x="104" y="536">fn streamAiResponse</text>
+    <text class="sub-dataflow__text" x="340" y="574" text-anchor="middle">AGENT_ROUTE：同上但帶 messageId，支援 TOOL_INTENT chunk＋工具執行狀態通知</text>
+  </g>
+</svg>
+        </div>
+      </div>
     </section>
     <section class="sub-errors" aria-label="Errors">
       <h2>Errors</h2>
-      <p class="sub-section__empty">No errors recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">When</th><th scope="col">Means</th></tr></thead>
+        <tbody>
+          <tr><td>ErrChannelNotAllowed</td><td>頻道不在 AI 白名單且未啟用 Agent</td><td>忽略訊息不回應（DENY）</td></tr>
+          <tr><td>ErrAIConfigMissing</td><td>guild 未設定 AI 服務（baseUrl/API key 缺失）</td><td>忽略或回覆 ephemeral 提示管理員尚未設定</td></tr>
+        </tbody>
+      </table>
     </section>
   </main>
   <script src="../../assets/viewer.client.js" defer></script>

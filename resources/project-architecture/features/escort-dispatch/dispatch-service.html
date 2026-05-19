@@ -24,6 +24,14 @@
         <tbody>
           <tr><td>handoffFromFiatPayment</td><td>productSnapshot, fiatOrder</td><td>EscortDispatchOrder</td><td>tx</td><td>法幣付款完成後自動建立護航派遣單（idempotent：檢查 findBySourceIdentity）</td></tr>
           <tr><td>claimAfterSales</td><td>orderNumber, staffUserId</td><td>Result&lt;EscortDispatchOrder, DomainError&gt;</td><td>tx</td><td>原子 claim：AFTER_SALES_REQUESTED→AFTER_SALES_IN_PROGRESS，防止重複領取</td></tr>
+          <tr><td>createOrder</td><td>guildId, customerUserId, optionCode, assignedBy</td><td>EscortDispatchOrder</td><td>tx</td><td>建立 PENDING_CONFIRMATION 派遣單，含來源追蹤（MANUAL/CURRENCY_PURCHASE/FIAT_PAYMENT）</td></tr>
+          <tr><td>assignEscort</td><td>orderNumber, escortUserId</td><td>Result&lt;EscortDispatchOrder, DomainError&gt;</td><td>tx</td><td>原子指派護航，WHERE status=PENDING_CONFIRMATION AND escort_user_id=0</td></tr>
+          <tr><td>confirmOrder</td><td>orderNumber, escortUserId</td><td>Result&lt;EscortDispatchOrder, DomainError&gt;</td><td>tx</td><td>原子 PENDING_CONFIRMATION→CONFIRMED</td></tr>
+          <tr><td>requestCompletion</td><td>orderNumber, escortUserId</td><td>Result&lt;EscortDispatchOrder, DomainError&gt;</td><td>tx</td><td>原子 CONFIRMED→PENDING_CUSTOMER_CONFIRMATION</td></tr>
+          <tr><td>customerConfirm</td><td>orderNumber, customerUserId</td><td>Result&lt;EscortDispatchOrder, DomainError&gt;</td><td>tx</td><td>客戶確認完成 PENDING_CUSTOMER_CONFIRMATION→COMPLETED</td></tr>
+          <tr><td>requestAfterSales</td><td>orderNumber, customerUserId</td><td>Result&lt;EscortDispatchOrder, DomainError&gt;</td><td>tx</td><td>客戶請求售後 (PENDING_CUSTOMER_CONFIRMATION 或 COMPLETED)→AFTER_SALES_REQUESTED</td></tr>
+          <tr><td>closeAfterSales</td><td>orderNumber, assigneeUserId</td><td>Result&lt;EscortDispatchOrder, DomainError&gt;</td><td>tx</td><td>原子 AFTER_SALES_IN_PROGRESS→AFTER_SALES_CLOSED，驗權 assignee</td></tr>
+          <tr><td>ensureTimeoutCompletion</td><td>EscortDispatchOrder</td><td>EscortDispatchOrder</td><td>pure</td><td>檢查 PENDING_CUSTOMER_CONFIRMATION 是否超過 24h 自動完成</td></tr>
         </tbody>
       </table>
     </section>
@@ -33,12 +41,68 @@
         <thead><tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Scope</th><th scope="col">Purpose</th></tr></thead>
         <tbody>
           <tr><td>dispatchOrder</td><td>EscortDispatchOrder</td><td>persist</td><td>含 7 階段狀態機與來源追蹤，原子狀態轉換使用 RETURNING 樂觀鎖</td></tr>
+          <tr><td>afterSalesStaff</td><td>Set&lt;Long&gt;</td><td>persist</td><td>guild 售後人員 user ID 集合，用於售後案件派發</td></tr>
+          <tr><td>escortOptionPriceOverride</td><td>Map&lt;String, Long&gt;</td><td>persist</td><td>guild 級護航選項定價覆寫（default: 目錄價格）</td></tr>
         </tbody>
       </table>
     </section>
     <section class="sub-dataflow" aria-label="Internal data flow">
       <h2>Internal data flow</h2>
-      <p class="sub-dataflow__empty">No internal dataflow steps recorded.</p>
+      <div class="sub-dataflow__canvas" data-pan-zoom-container>
+        <div class="sub-dataflow__toolbar" role="toolbar" aria-label="Diagram controls">
+          <button type="button" data-pan-zoom="zoom-in" aria-label="Zoom in">+</button>
+          <button type="button" data-pan-zoom="zoom-out" aria-label="Zoom out">−</button>
+          <button type="button" data-pan-zoom="fit" aria-label="Reset view">Fit</button>
+        </div>
+        <div class="sub-dataflow__viewport" data-pan-zoom-viewport>
+          <svg class="sub-dataflow__svg" data-atlas-svg="sub-dataflow" viewBox="0 0 628 692" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Internal dataflow">
+  <defs>
+    <marker id="sub-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" /></marker>
+  </defs>
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="99" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="104" text-anchor="middle">1</text>
+    <rect class="sub-dataflow__box" x="80" y="32" width="520" height="134" rx="14" ry="14" />
+    <rect class="sub-dataflow__fn-bg" x="94" y="46" width="123.60000000000001" height="20" rx="10" ry="10" />
+    <text class="sub-dataflow__fn-text" x="104" y="60">fn createOrder</text>
+    <text class="sub-dataflow__text" x="340" y="98" text-anchor="middle">手動/HANDOFF 建立訂單 → INSERT escort_dispatch_order</text>
+    <text class="sub-dataflow__text" x="340" y="118" text-anchor="middle">(PENDING_CONFIRMATION)</text>
+    <text class="sub-dataflow__chip sub-dataflow__chip--writes" x="586" y="154" text-anchor="end">→ writes: dispatchOrder</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="172" x2="340" y2="202" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="267" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="272" text-anchor="middle">2</text>
+    <rect class="sub-dataflow__box" x="80" y="210" width="520" height="114" rx="14" ry="14" />
+    <rect class="sub-dataflow__fn-bg" x="94" y="224" width="131" height="20" rx="10" ry="10" />
+    <text class="sub-dataflow__fn-text" x="104" y="238">fn assignEscort</text>
+    <text class="sub-dataflow__text" x="340" y="276" text-anchor="middle">狀態機流轉：每步驗證當前狀態與呼叫者身份 → UPDATE ... WHERE status=X RETURNING *</text>
+    <text class="sub-dataflow__chip sub-dataflow__chip--writes" x="586" y="312" text-anchor="end">→ writes: dispatchOrder</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="330" x2="340" y2="360" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="435" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="440" text-anchor="middle">3</text>
+    <rect class="sub-dataflow__box" x="80" y="368" width="520" height="134" rx="14" ry="14" />
+    <rect class="sub-dataflow__fn-bg" x="94" y="382" width="205" height="20" rx="10" ry="10" />
+    <text class="sub-dataflow__fn-text" x="104" y="396">fn handoffFromFiatPayment</text>
+    <text class="sub-dataflow__text" x="340" y="434" text-anchor="middle">handoffFromCurrencyPurchase / handoffFromFiatPayment：先去重</text>
+    <text class="sub-dataflow__text" x="340" y="454" text-anchor="middle">findBySourceIdentity→不存在則 createAutoHandoff</text>
+    <text class="sub-dataflow__chip sub-dataflow__chip--writes" x="586" y="490" text-anchor="end">→ writes: dispatchOrder</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="508" x2="340" y2="538" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="603" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="608" text-anchor="middle">4</text>
+    <rect class="sub-dataflow__box" x="80" y="546" width="520" height="114" rx="14" ry="14" />
+    <rect class="sub-dataflow__fn-bg" x="94" y="560" width="212.4" height="20" rx="10" ry="10" />
+    <text class="sub-dataflow__fn-text" x="104" y="574">fn ensureTimeoutCompletion</text>
+    <text class="sub-dataflow__text" x="340" y="612" text-anchor="middle">讀取時檢查自動超時：ensureTimeoutCompletion 檢查 24h 閾值→如逾期則自動完成</text>
+    <text class="sub-dataflow__chip sub-dataflow__chip--reads" x="94" y="648">← reads: dispatchOrder</text>
+  </g>
+</svg>
+        </div>
+      </div>
     </section>
     <section class="sub-errors" aria-label="Errors">
       <h2>Errors</h2>

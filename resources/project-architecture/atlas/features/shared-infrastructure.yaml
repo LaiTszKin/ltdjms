@@ -6,29 +6,107 @@ submodules:
   - slug: discord-api
     kind: external
     role: Discord JDA 抽象層：domain 介面、JDA adapter、mock 實作、Embed/Button/SelectMenu 工具
-    functions: []
+    functions:
+      - name: sendMessage
+        in: channelId, message
+        out: Message
+        side: network
+        purpose: 發送 Discord 頻道訊息
+      - name: sendDM
+        in: userId, message
+        out: Message
+        side: network
+        purpose: 發送 Discord 私訊
+      - name: createEmbed
+        in: title, description, color
+        out: EmbedBuilder
+        side: pure
+        purpose: 建立 Discord Embed 構建器
+      - name: createButton
+        in: id, label, style
+        out: Button
+        side: pure
+        purpose: 建立 Discord 按鈕元件
+      - name: createSelectMenu
+        in: id, options[]
+        out: SelectMenu
+        side: pure
+        purpose: 建立 Discord 選單元件
     variables: []
     dataflow: []
-    errors: []
+    errors:
+      - name: ErrMessageTooLong
+        when: 訊息超過 Discord 2000 字元限制（頁化前）
+        means: 由 DiscordMarkdownPaginator 處理，不在本層拋出
+      - name: ErrRateLimited
+        when: Discord API 回傳 429 Rate Limit
+        means: 由 JDA 內部退避處理，呼叫方不需處理
   - slug: event-bus
     kind: service
     role: 同步領域事件匯流排：DomainEventPublisher + Consumer 註冊，支援快取失效、面板即時更新
-    functions: []
-    variables: []
+    functions:
+      - name: publish
+        in: DomainEvent
+        out: void
+        side: io
+        purpose: 同步發佈領域事件至所有已註冊 Consumer
+      - name: register
+        in: Class<DomainEvent>, Consumer<DomainEvent>
+        out: void
+        side: io
+        purpose: 註冊事件 Consumer，支援快取失效/面板更新/審計等監聽
+    variables:
+      - name: consumers
+        type: Map<Class<?>, List<Consumer<?>>>
+        scope: instance
+        purpose: 事件類型→Consumer 列表映射，支援多個監聽器
     dataflow: []
-    errors: []
+    errors:
+      - name: ErrConsumerUnhandled
+        when: Consumer 處理事件時拋出未預期例外
+        means: log error，不影響其他 Consumer 或發佈者（fire-and-forget）
   - slug: cache-layer
     kind: service
     role: Redis 快取抽象（CacheService），用於餘額/代幣快取（300s TTL）及 Agent 設定快取（1h TTL）
-    functions: []
-    variables: []
+    functions:
+      - name: get
+        in: key
+        out: Optional<T>
+        side: io
+        purpose: 讀取 Redis 快取
+      - name: set
+        in: key, value, ttl
+        out: void
+        side: write
+        purpose: 寫入 Redis 快取含 TTL
+      - name: invalidate
+        in: key
+        out: void
+        side: write
+        purpose: 失效特定快取鍵
+    variables:
+      - name: cacheEntry
+        type: Redis entry
+        scope: instance
+        purpose: 快取條目：key-value + TTL，餘額 300s / Agent 設定 3600s
     dataflow: []
-    errors: []
+    errors:
+      - name: ErrCacheUnavailable
+        when: Redis 連線中斷
+        means: 降級為直接查詢資料庫，log warning，恢復後繼續使用快取
   - slug: di-container
     kind: service
     role: Dagger 依賴注入模組組裝，提供 RepositoryModule / ServiceModule 分層綁定
     functions: []
     variables: []
     dataflow: []
-    errors: []
-edges: []
+    errors:
+      - name: ErrComponentNotBound
+        when: Dagger 無法解析依賴（未在 Module 中提供）
+        means: 啟動時拋出 RuntimeException，不應發生於執行期
+edges:
+  - id: e-1lx4cy
+    from: event-bus
+    to: cache-layer
+    kind: call
+    label: AgentConfigCacheInvalidationListener 監聽變更事件→失效快取

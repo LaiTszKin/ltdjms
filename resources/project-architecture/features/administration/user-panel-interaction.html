@@ -19,7 +19,14 @@
   <main class="submodule-main">
     <section class="sub-io" aria-label="Function I/O">
       <h2>Function I/O</h2>
-      <p class="sub-section__empty">No functions recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">In</th><th scope="col">Out</th><th scope="col">Side</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>handleUserPanel</td><td>guildId, userId</td><td>UserPanelEmbed</td><td>io</td><td>顯示會員面板：貨幣餘額＋代幣餘額＋歷史按鈕</td></tr>
+          <tr><td>handleHistoryPage</td><td>guildId, userId, historyType, page</td><td>HistoryPageEmbed</td><td>io</td><td>分頁瀏覽貨幣/代幣/兌換記錄</td></tr>
+          <tr><td>handleRedeemModal</td><td>guildId, userId, code</td><td>RedemptionResult</td><td>io</td><td>處理使用者輸入的兌換碼（開 Modal → 送出）</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-vars" aria-label="Variables">
       <h2>Variables</h2>
@@ -31,7 +38,13 @@
     </section>
     <section class="sub-errors" aria-label="Errors">
       <h2>Errors</h2>
-      <p class="sub-section__empty">No errors recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">When</th><th scope="col">Means</th></tr></thead>
+        <tbody>
+          <tr><td>ErrPanelSessionExpired</td><td>UserPanelSession 15min TTL 到期</td><td>Ephemeral 提示重新開啟 /user-panel</td></tr>
+          <tr><td>ErrInvalidRedeemCode</td><td>兌換碼格式不符（非 16 碼大寫英數）</td><td>Modal 上顯示格式錯誤提示</td></tr>
+        </tbody>
+      </table>
     </section>
   </main>
   <script src="../../assets/viewer.client.js" defer></script>

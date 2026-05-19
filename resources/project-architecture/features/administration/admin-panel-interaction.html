@@ -19,11 +19,27 @@
   <main class="submodule-main">
     <section class="sub-io" aria-label="Function I/O">
       <h2>Function I/O</h2>
-      <p class="sub-section__empty">No functions recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">In</th><th scope="col">Out</th><th scope="col">Side</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>handleAdminPanel</td><td>guildId, userId</td><td>AdminPanelEmbed</td><td>io</td><td>顯示管理面板主選單（9 功能按鈕）</td></tr>
+          <tr><td>handleBalanceMgmt</td><td>guildId, userId, mode, amount</td><td>BalanceAdjustmentResult</td><td>io</td><td>管理員增減成員貨幣餘額</td></tr>
+          <tr><td>handleGameConfig</td><td>guildId, gameType, field, value</td><td>DiceGameConfig</td><td>io</td><td>設定骰子遊戲參數（token 範圍/獎勵倍率）</td></tr>
+          <tr><td>handleProductCRUD</td><td>guildId, action, productData</td><td>Product | void</td><td>io</td><td>管理商品目錄（建立/編輯/刪除/檢視）</td></tr>
+          <tr><td>handleAIConfig</td><td>guildId, channelId, action</td><td>AIChannelRestriction</td><td>io</td><td>管理 AI 頻道白名單與 Agent 開關</td></tr>
+          <tr><td>handleAfterSalesStaff</td><td>guildId, userId, action</td><td>void</td><td>io</td><td>新增/移除 guild 售後人員</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-vars" aria-label="Variables">
       <h2>Variables</h2>
-      <p class="sub-section__empty">No variables recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Scope</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>adminSessionState</td><td>AdminPanelSessionState</td><td>instance</td><td>管理員當前面板 view（MAIN/PRODUCT_LIST/DETAIL/CODE_LIST）+ 中繼資料</td></tr>
+          <tr><td>escortPricingState</td><td>EscortPricingPanelState</td><td>instance</td><td>護航定價編輯階段狀態（選擇選項→輸入價格→確認）</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-dataflow" aria-label="Internal data flow">
       <h2>Internal data flow</h2>
@@ -31,7 +47,13 @@
     </section>
     <section class="sub-errors" aria-label="Errors">
       <h2>Errors</h2>
-      <p class="sub-section__empty">No errors recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">When</th><th scope="col">Means</th></tr></thead>
+        <tbody>
+          <tr><td>ErrUnauthorizedAccess</td><td>非管理員（無 ADMINISTRATOR 權限）嘗試使用 /admin-panel</td><td>Ephemeral 拒絕訊息，不顯示面板</td></tr>
+          <tr><td>ErrSessionExpired</td><td>AdminPanelSession TTL 到期，面板按鈕失效</td><td>Ephemeral 提示重新開啟 /admin-panel</td></tr>
+        </tbody>
+      </table>
     </section>
   </main>
   <script src="../../assets/viewer.client.js" defer></script>

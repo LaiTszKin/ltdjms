@@ -19,7 +19,16 @@
   <main class="submodule-main">
     <section class="sub-io" aria-label="Function I/O">
       <h2>Function I/O</h2>
-      <p class="sub-section__empty">No functions recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">In</th><th scope="col">Out</th><th scope="col">Side</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>sendMessage</td><td>channelId, message</td><td>Message</td><td>network</td><td>發送 Discord 頻道訊息</td></tr>
+          <tr><td>sendDM</td><td>userId, message</td><td>Message</td><td>network</td><td>發送 Discord 私訊</td></tr>
+          <tr><td>createEmbed</td><td>title, description, color</td><td>EmbedBuilder</td><td>pure</td><td>建立 Discord Embed 構建器</td></tr>
+          <tr><td>createButton</td><td>id, label, style</td><td>Button</td><td>pure</td><td>建立 Discord 按鈕元件</td></tr>
+          <tr><td>createSelectMenu</td><td>id, options[]</td><td>SelectMenu</td><td>pure</td><td>建立 Discord 選單元件</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-vars" aria-label="Variables">
       <h2>Variables</h2>
@@ -31,7 +40,13 @@
     </section>
     <section class="sub-errors" aria-label="Errors">
       <h2>Errors</h2>
-      <p class="sub-section__empty">No errors recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">When</th><th scope="col">Means</th></tr></thead>
+        <tbody>
+          <tr><td>ErrMessageTooLong</td><td>訊息超過 Discord 2000 字元限制（頁化前）</td><td>由 DiscordMarkdownPaginator 處理，不在本層拋出</td></tr>
+          <tr><td>ErrRateLimited</td><td>Discord API 回傳 429 Rate Limit</td><td>由 JDA 內部退避處理，呼叫方不需處理</td></tr>
+        </tbody>
+      </table>
     </section>
   </main>
   <script src="../../assets/viewer.client.js" defer></script>

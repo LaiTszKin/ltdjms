@@ -19,19 +19,96 @@
   <main class="submodule-main">
     <section class="sub-io" aria-label="Function I/O">
       <h2>Function I/O</h2>
-      <p class="sub-section__empty">No functions recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">In</th><th scope="col">Out</th><th scope="col">Side</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>createProduct</td><td>guildId, name, desc, price, rewardType, rewardAmount</td><td>Product</td><td>tx</td><td>建立新商品，含貨幣/法幣雙軌定價與獎勵設定</td></tr>
+          <tr><td>updateProduct</td><td>productId, fields...</td><td>Product</td><td>tx</td><td>更新商品欄位（名稱、價格、獎勵、護航選項）</td></tr>
+          <tr><td>deleteProduct</td><td>productId</td><td>void</td><td>tx</td><td>軟刪除商品，連帶失效所有未使用的兌換碼</td></tr>
+          <tr><td>generateRedemptionCodes</td><td>guildId, productId, count, quantity, expiresAt</td><td>List&lt;RedemptionCode&gt;</td><td>tx</td><td>批次產生 cryptographically secure 兌換碼（16 碼，去重）</td></tr>
+          <tr><td>redeemCode</td><td>guildId, userId, code</td><td>ProductRedemptionTransaction</td><td>tx</td><td>驗證兌換碼 → markAsRedeemedIfAvailable → grantReward → 二階段原子兌換</td></tr>
+          <tr><td>grantReward</td><td>guildId, userId, rewardType, rewardAmount</td><td>Result&lt;Unit, DomainError&gt;</td><td>tx</td><td>跨模組獎勵派送：Currency→BalanceAdjustmentService, TOKEN→GameTokenService</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-vars" aria-label="Variables">
       <h2>Variables</h2>
-      <p class="sub-section__empty">No variables recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Scope</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>product</td><td>Product</td><td>persist</td><td>商品定義：名稱/描述/定價/獎勵/護航選項/軟刪除標記</td></tr>
+          <tr><td>redemptionCode</td><td>RedemptionCode</td><td>persist</td><td>16 碼兌換碼：productId/expiresAt/redeemedBy/redeemedAt 狀態</td></tr>
+          <tr><td>productRedemptionTransaction</td><td>ProductRedemptionTransaction</td><td>persist</td><td>兌換審計記錄（含商品名稱快照，不隨商品修改而變）</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-dataflow" aria-label="Internal data flow">
       <h2>Internal data flow</h2>
-      <p class="sub-dataflow__empty">No internal dataflow steps recorded.</p>
+      <div class="sub-dataflow__canvas" data-pan-zoom-container>
+        <div class="sub-dataflow__toolbar" role="toolbar" aria-label="Diagram controls">
+          <button type="button" data-pan-zoom="zoom-in" aria-label="Zoom in">+</button>
+          <button type="button" data-pan-zoom="zoom-out" aria-label="Zoom out">−</button>
+          <button type="button" data-pan-zoom="fit" aria-label="Reset view">Fit</button>
+        </div>
+        <div class="sub-dataflow__viewport" data-pan-zoom-viewport>
+          <svg class="sub-dataflow__svg" data-atlas-svg="sub-dataflow" viewBox="0 0 628 660" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Internal dataflow">
+  <defs>
+    <marker id="sub-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" /></marker>
+  </defs>
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="89" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="94" text-anchor="middle">1</text>
+    <rect class="sub-dataflow__box" x="80" y="32" width="520" height="114" rx="14" ry="14" />
+    <rect class="sub-dataflow__fn-bg" x="94" y="46" width="138.4" height="20" rx="10" ry="10" />
+    <text class="sub-dataflow__fn-text" x="104" y="60">fn createProduct</text>
+    <text class="sub-dataflow__text" x="340" y="98" text-anchor="middle">建立商品：驗證參數 → INSERT product → 發佈 ProductChangedEvent</text>
+    <text class="sub-dataflow__chip sub-dataflow__chip--writes" x="586" y="134" text-anchor="end">→ writes: product</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="152" x2="340" y2="182" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="244" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="249" text-anchor="middle">2</text>
+    <rect class="sub-dataflow__box" x="80" y="190" width="520" height="108" rx="14" ry="14" />
+    <rect class="sub-dataflow__fn-bg" x="94" y="204" width="138.4" height="20" rx="10" ry="10" />
+    <text class="sub-dataflow__fn-text" x="104" y="218">fn deleteProduct</text>
+    <text class="sub-dataflow__text" x="340" y="256" text-anchor="middle">刪除商品：UPDATE product.deleted_at →</text>
+    <text class="sub-dataflow__text" x="340" y="276" text-anchor="middle">RedemptionCodeRepository.invalidateByProductId → 發佈事件</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="304" x2="340" y2="334" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="409" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="414" text-anchor="middle">3</text>
+    <rect class="sub-dataflow__box" x="80" y="342" width="520" height="134" rx="14" ry="14" />
+    <rect class="sub-dataflow__fn-bg" x="94" y="356" width="116.2" height="20" rx="10" ry="10" />
+    <text class="sub-dataflow__fn-text" x="104" y="370">fn redeemCode</text>
+    <text class="sub-dataflow__text" x="340" y="408" text-anchor="middle">兌換碼兌換：驗證格式/未過期/未兌換 → markAsRedeemedIfAvailable（原子）→</text>
+    <text class="sub-dataflow__text" x="340" y="428" text-anchor="middle">grantReward → 失敗則 rollback clearRedeemedIfMatches</text>
+    <text class="sub-dataflow__chip sub-dataflow__chip--writes" x="586" y="464" text-anchor="end">→ writes: redemptionCode</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="482" x2="340" y2="512" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="574" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="579" text-anchor="middle">4</text>
+    <rect class="sub-dataflow__box" x="80" y="520" width="520" height="108" rx="14" ry="14" />
+    <rect class="sub-dataflow__fn-bg" x="94" y="534" width="123.60000000000001" height="20" rx="10" ry="10" />
+    <text class="sub-dataflow__fn-text" x="104" y="548">fn grantReward</text>
+    <text class="sub-dataflow__text" x="340" y="586" text-anchor="middle">獎勵派送：依 rewardType 分流至 currency BalanceAdjustmentService 或</text>
+    <text class="sub-dataflow__text" x="340" y="606" text-anchor="middle">gametoken GameTokenService</text>
+  </g>
+</svg>
+        </div>
+      </div>
     </section>
     <section class="sub-errors" aria-label="Errors">
       <h2>Errors</h2>
-      <p class="sub-section__empty">No errors recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">When</th><th scope="col">Means</th></tr></thead>
+        <tbody>
+          <tr><td>ErrCodeAlreadyRedeemed</td><td>兌換碼已被使用（redeemedBy != NULL）</td><td>回傳 DomainError，兌換流程中止</td></tr>
+          <tr><td>ErrCodeExpired</td><td>兌換碼已超過 expiresAt</td><td>回傳 DomainError，提示使用者過期</td></tr>
+          <tr><td>ErrProductDeleted</td><td>商品已被軟刪除</td><td>回傳 DomainError，無法購買或兌換</td></tr>
+        </tbody>
+      </table>
     </section>
   </main>
   <script src="../../assets/viewer.client.js" defer></script>

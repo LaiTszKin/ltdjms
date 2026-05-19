@@ -19,11 +19,26 @@
   <main class="submodule-main">
     <section class="sub-io" aria-label="Function I/O">
       <h2>Function I/O</h2>
-      <p class="sub-section__empty">No functions recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">In</th><th scope="col">Out</th><th scope="col">Side</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>SELECT_product_by_guild</td><td>guildId, page, pageSize</td><td>List&lt;Product&gt;</td><td>io</td><td>分頁查詢 guild 商品列表</td></tr>
+          <tr><td>INSERT_fiat_order</td><td>FiatOrder</td><td>orderNumber</td><td>write</td><td>寫入法幣訂單</td></tr>
+          <tr><td>mark_paid_if_pending</td><td>orderNumber</td><td>1 | 0</td><td>tx</td><td>原子 PENDING_PAYMENT→PAID，WHERE status= PENDING_PAYMENT</td></tr>
+          <tr><td>mark_as_redeemed_if_available</td><td>code, userId</td><td>1 | 0</td><td>tx</td><td>原子鎖定兌換碼，WHERE 未兌換/未失效/未過期</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-vars" aria-label="Variables">
       <h2>Variables</h2>
-      <p class="sub-section__empty">No variables recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Scope</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>product</td><td>table</td><td>persist</td><td>商品定義表：guild_id+name 唯一，含 RewardType/價格/護航選項</td></tr>
+          <tr><td>fiat_order</td><td>table</td><td>persist</td><td>法幣訂單表：狀態機欄位（paid_at/fulfilled_at/notified_at）+ 商品快照</td></tr>
+          <tr><td>redemption_code</td><td>table</td><td>persist</td><td>兌換碼表：code PK，product_id/redeemed_by/expires_at 狀態欄位</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-dataflow" aria-label="Internal data flow">
       <h2>Internal data flow</h2>
@@ -31,7 +46,12 @@
     </section>
     <section class="sub-errors" aria-label="Errors">
       <h2>Errors</h2>
-      <p class="sub-section__empty">No errors recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">When</th><th scope="col">Means</th></tr></thead>
+        <tbody>
+          <tr><td>ErrFiatOrderConcurrentClaim</td><td>claimFulfillmentProcessing 回傳 0 列（已被其他 worker claim）</td><td>本次跳過，下個排程週期重試</td></tr>
+        </tbody>
+      </table>
     </section>
   </main>
   <script src="../../assets/viewer.client.js" defer></script>

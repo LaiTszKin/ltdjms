@@ -23,20 +23,80 @@
         <thead><tr><th scope="col">Name</th><th scope="col">In</th><th scope="col">Out</th><th scope="col">Side</th><th scope="col">Purpose</th></tr></thead>
         <tbody>
           <tr><td>createChannel</td><td>guildId, name, categoryId, permissions</td><td>channelId</td><td>network</td><td>Agent 工具：建立文字頻道，需管理員權限</td></tr>
+          <tr><td>listChannels</td><td>guildId</td><td>List&lt;ChannelInfo&gt;</td><td>network</td><td>Agent 工具：列出 guild 所有頻道</td></tr>
+          <tr><td>createRole</td><td>guildId, name, permissions</td><td>roleId</td><td>network</td><td>Agent 工具：建立新角色</td></tr>
+          <tr><td>listRoles</td><td>guildId</td><td>List&lt;RoleInfo&gt;</td><td>network</td><td>Agent 工具：列出 guild 所有角色</td></tr>
+          <tr><td>sendMessages</td><td>channelIds[], messages[]</td><td>messageIds[]</td><td>network</td><td>Agent 工具：發送訊息至多個頻道（max 10 channels × 10 msgs）</td></tr>
+          <tr><td>modifyChannelPermissions</td><td>channelId, permissionOverrides</td><td>void</td><td>network</td><td>Agent 工具：修改頻道權限覆寫</td></tr>
         </tbody>
       </table>
     </section>
     <section class="sub-vars" aria-label="Variables">
       <h2>Variables</h2>
-      <p class="sub-section__empty">No variables recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Scope</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>conversationMemory</td><td>ChatMemory</td><td>instance</td><td>Thread-level 對話記憶（guildId:threadId:userId），上限 50 筆 tool call</td></tr>
+          <tr><td>toolExecutionLog</td><td>ToolExecutionLog</td><td>persist</td><td>SHA-256 遮罩的原始參數/結果審計日誌</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-dataflow" aria-label="Internal data flow">
       <h2>Internal data flow</h2>
-      <p class="sub-dataflow__empty">No internal dataflow steps recorded.</p>
+      <div class="sub-dataflow__canvas" data-pan-zoom-container>
+        <div class="sub-dataflow__toolbar" role="toolbar" aria-label="Diagram controls">
+          <button type="button" data-pan-zoom="zoom-in" aria-label="Zoom in">+</button>
+          <button type="button" data-pan-zoom="zoom-out" aria-label="Zoom out">−</button>
+          <button type="button" data-pan-zoom="fit" aria-label="Reset view">Fit</button>
+        </div>
+        <div class="sub-dataflow__viewport" data-pan-zoom-viewport>
+          <svg class="sub-dataflow__svg" data-atlas-svg="sub-dataflow" viewBox="0 0 628 496" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Internal dataflow">
+  <defs>
+    <marker id="sub-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" /></marker>
+  </defs>
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="70" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="75" text-anchor="middle">1</text>
+    <rect class="sub-dataflow__box" x="80" y="32" width="520" height="76" rx="14" ry="14" />
+    <text class="sub-dataflow__text" x="340" y="66" text-anchor="middle">Agent 模式啟用 → LangChain4jAiServices 註冊 17 個 @Tool 方法 → invoke</text>
+    <text class="sub-dataflow__text" x="340" y="86" text-anchor="middle">chat</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="114" x2="340" y2="144" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="190" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="195" text-anchor="middle">2</text>
+    <rect class="sub-dataflow__box" x="80" y="152" width="520" height="76" rx="14" ry="14" />
+    <text class="sub-dataflow__text" x="340" y="186" text-anchor="middle">Tool 執行前：ToolExecutionContext.setContext → interceptor 記錄開始</text>
+    <text class="sub-dataflow__text" x="340" y="206" text-anchor="middle">→ 發佈 ToolExecutionStartedEvent</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="234" x2="340" y2="264" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="310" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="315" text-anchor="middle">3</text>
+    <rect class="sub-dataflow__box" x="80" y="272" width="520" height="76" rx="14" ry="14" />
+    <text class="sub-dataflow__text" x="340" y="306" text-anchor="middle">Tool 執行後：interceptor 紅綠遮罩參數/結果 → 記錄至 tool_execution_log → 發佈</text>
+    <text class="sub-dataflow__text" x="340" y="326" text-anchor="middle">ToolExecutedEvent</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="354" x2="340" y2="384" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="428" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="433" text-anchor="middle">4</text>
+    <rect class="sub-dataflow__box" x="80" y="392" width="520" height="72" rx="14" ry="14" />
+    <text class="sub-dataflow__text" x="340" y="434" text-anchor="middle">Tool 失敗：遮罩錯誤訊息 → 回傳給 LLM 重試或終止</text>
+  </g>
+</svg>
+        </div>
+      </div>
     </section>
     <section class="sub-errors" aria-label="Errors">
       <h2>Errors</h2>
-      <p class="sub-section__empty">No errors recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">When</th><th scope="col">Means</th></tr></thead>
+        <tbody>
+          <tr><td>ErrToolExecutionFailed</td><td>Agent 工具執行時 JDA API 回傳錯誤（如權限不足、資源不存在）</td><td>錯誤訊息回傳 LLM 供重試或終止，記錄至 tool_execution_log</td></tr>
+          <tr><td>ErrConversationMemoryOverflow</td><td>工具呼叫歷史超過 50 筆或 token 預算超限</td><td>截斷最舊記錄，保留最近上下文</td></tr>
+        </tbody>
+      </table>
     </section>
   </main>
   <script src="../../assets/viewer.client.js" defer></script>

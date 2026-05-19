@@ -19,19 +19,76 @@
   <main class="submodule-main">
     <section class="sub-io" aria-label="Function I/O">
       <h2>Function I/O</h2>
-      <p class="sub-section__empty">No functions recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">In</th><th scope="col">Out</th><th scope="col">Side</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>handleBalanceQuery</td><td>guildId, userId</td><td>BalanceView</td><td>io</td><td>查詢當前成員的 guild 貨幣餘額</td></tr>
+          <tr><td>handleCurrencyConfig</td><td>guildId, name?, icon?</td><td>GuildCurrencyConfig</td><td>io</td><td>設定或查詢 guild 貨幣名稱與圖示</td></tr>
+          <tr><td>handleDiceGame1</td><td>guildId, userId, tokenAmount</td><td>DiceGame1Result</td><td>io</td><td>擲骰遊戲 1：花費代幣、擲骰、顯示獎勵</td></tr>
+          <tr><td>handleDiceGame2</td><td>guildId, userId, tokenAmount</td><td>DiceGame2Result</td><td>io</td><td>擲骰遊戲 2：三骰一注、順子/三條獎勵</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-vars" aria-label="Variables">
       <h2>Variables</h2>
-      <p class="sub-section__empty">No variables recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Scope</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>interactionContext</td><td>Discord interaction</td><td>call</td><td>當前 slash command 的互動上下文，用於回應與延遲回覆</td></tr>
+          <tr><td>balanceCache</td><td>Cache&lt;BalanceView&gt;</td><td>instance</td><td>餘額查詢結果快取（300s TTL），減少重複查庫</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-dataflow" aria-label="Internal data flow">
       <h2>Internal data flow</h2>
-      <p class="sub-dataflow__empty">No internal dataflow steps recorded.</p>
+      <div class="sub-dataflow__canvas" data-pan-zoom-container>
+        <div class="sub-dataflow__toolbar" role="toolbar" aria-label="Diagram controls">
+          <button type="button" data-pan-zoom="zoom-in" aria-label="Zoom in">+</button>
+          <button type="button" data-pan-zoom="zoom-out" aria-label="Zoom out">−</button>
+          <button type="button" data-pan-zoom="fit" aria-label="Reset view">Fit</button>
+        </div>
+        <div class="sub-dataflow__viewport" data-pan-zoom-viewport>
+          <svg class="sub-dataflow__svg" data-atlas-svg="sub-dataflow" viewBox="0 0 628 414" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Internal dataflow">
+  <defs>
+    <marker id="sub-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" /></marker>
+  </defs>
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="70" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="75" text-anchor="middle">1</text>
+    <rect class="sub-dataflow__box" x="80" y="32" width="520" height="76" rx="14" ry="14" />
+    <text class="sub-dataflow__text" x="340" y="66" text-anchor="middle">接收 Discord slash command 事件（/dice-game-1, /dice-game-2,</text>
+    <text class="sub-dataflow__text" x="340" y="86" text-anchor="middle">/currency-config）</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="114" x2="340" y2="144" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="188" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="193" text-anchor="middle">2</text>
+    <rect class="sub-dataflow__box" x="80" y="152" width="520" height="72" rx="14" ry="14" />
+    <text class="sub-dataflow__text" x="340" y="194" text-anchor="middle">驗證輸入參數（tokens 範圍、emoji 格式），若無效則回覆 ephemeral 錯誤</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="230" x2="340" y2="260" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="325" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="330" text-anchor="middle">3</text>
+    <rect class="sub-dataflow__box" x="80" y="268" width="520" height="114" rx="14" ry="14" />
+    <rect class="sub-dataflow__fn-bg" x="94" y="282" width="175.4" height="20" rx="10" ry="10" />
+    <text class="sub-dataflow__fn-text" x="104" y="296">fn handleBalanceQuery</text>
+    <text class="sub-dataflow__text" x="340" y="334" text-anchor="middle">委派 economy-service 執行業務邏輯 → 取得結果 → 建構 Discord embed 回覆</text>
+    <text class="sub-dataflow__chip sub-dataflow__chip--reads" x="94" y="370">← reads: interactionContext</text>
+  </g>
+</svg>
+        </div>
+      </div>
     </section>
     <section class="sub-errors" aria-label="Errors">
       <h2>Errors</h2>
-      <p class="sub-section__empty">No errors recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">When</th><th scope="col">Means</th></tr></thead>
+        <tbody>
+          <tr><td>ErrInvalidTokens</td><td>tokens 參數不在 DiceGameConfig 的 [min, max] 範圍內</td><td>回覆 ephemeral 錯誤訊息，遊戲未開始</td></tr>
+          <tr><td>ErrMemberNotFound</td><td>資料庫中無該成員的貨幣/代幣帳戶</td><td>Ephemeral 提示先使用 /user-panel 初始化</td></tr>
+        </tbody>
+      </table>
     </section>
   </main>
   <script src="../../assets/viewer.client.js" defer></script>

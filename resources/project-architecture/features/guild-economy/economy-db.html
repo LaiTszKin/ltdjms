@@ -19,11 +19,26 @@
   <main class="submodule-main">
     <section class="sub-io" aria-label="Function I/O">
       <h2>Function I/O</h2>
-      <p class="sub-section__empty">No functions recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">In</th><th scope="col">Out</th><th scope="col">Side</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>SELECT_member_balance</td><td>guildId, userId</td><td>MemberCurrencyAccount | empty</td><td>io</td><td>讀取成員貨幣餘額（支援 FOR UPDATE 鎖定）</td></tr>
+          <tr><td>atomic_adjust_balance</td><td>guildId, userId, delta</td><td>MemberCurrencyAccount | DomainError</td><td>tx</td><td>原子增減餘額，WHERE balance + delta &gt;= 0 保證不負數</td></tr>
+          <tr><td>INSERT_transaction</td><td>CurrencyTransaction</td><td>Long id</td><td>write</td><td>寫入交易記錄供審計與歷史查詢</td></tr>
+          <tr><td>SELECT_game_token</td><td>guildId, userId</td><td>GameTokenAccount | empty</td><td>io</td><td>讀取遊戲代幣餘額</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-vars" aria-label="Variables">
       <h2>Variables</h2>
-      <p class="sub-section__empty">No variables recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Scope</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>guild_currency_config</td><td>table row</td><td>persist</td><td>currency_name / currency_icon 每個 guild 一行</td></tr>
+          <tr><td>member_currency_account</td><td>table row</td><td>persist</td><td>guildId+userId PK，balance bigint 非負約束</td></tr>
+          <tr><td>game_token_account</td><td>table row</td><td>persist</td><td>guildId+userId PK，tokens bigint 非負約束</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-dataflow" aria-label="Internal data flow">
       <h2>Internal data flow</h2>
@@ -31,7 +46,12 @@
     </section>
     <section class="sub-errors" aria-label="Errors">
       <h2>Errors</h2>
-      <p class="sub-section__empty">No errors recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">When</th><th scope="col">Means</th></tr></thead>
+        <tbody>
+          <tr><td>ErrPersistenceFailure</td><td>資料庫寫入異常（連線中斷／唯一鍵衝突）</td><td>回傳 DomainError.persistenceFailure()，交易 rollback</td></tr>
+        </tbody>
+      </table>
     </section>
   </main>
   <script src="../../assets/viewer.client.js" defer></script>

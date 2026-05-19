@@ -19,11 +19,25 @@
   <main class="submodule-main">
     <section class="sub-io" aria-label="Function I/O">
       <h2>Function I/O</h2>
-      <p class="sub-section__empty">No functions recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">In</th><th scope="col">Out</th><th scope="col">Side</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>INSERT_order</td><td>EscortDispatchOrder</td><td>Long id</td><td>write</td><td>寫入派遣訂單</td></tr>
+          <tr><td>atomic_state_transition</td><td>orderNumber, fromStatus, toStatus</td><td>EscortDispatchOrder | empty</td><td>tx</td><td>原子狀態轉換 UPDATE ... WHERE status=X RETURNING *</td></tr>
+          <tr><td>SELECT_pending_by_guild</td><td>guildId</td><td>List&lt;EscortDispatchOrder&gt;</td><td>io</td><td>查詢 guild 內待指派的訂單</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-vars" aria-label="Variables">
       <h2>Variables</h2>
-      <p class="sub-section__empty">No variables recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Scope</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>escort_dispatch_order</td><td>table</td><td>persist</td><td>派遣訂單表：23 欄位含 7 階段狀態機＋來源追蹤＋時間戳</td></tr>
+          <tr><td>guild_escort_option_price</td><td>table</td><td>persist</td><td>guild 級護航選項定價覆寫表</td></tr>
+          <tr><td>dispatch_after_sales_staff</td><td>table</td><td>persist</td><td>售後人員 user_id 表，guild 範圍</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-dataflow" aria-label="Internal data flow">
       <h2>Internal data flow</h2>
@@ -31,7 +45,12 @@
     </section>
     <section class="sub-errors" aria-label="Errors">
       <h2>Errors</h2>
-      <p class="sub-section__empty">No errors recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">When</th><th scope="col">Means</th></tr></thead>
+        <tbody>
+          <tr><td>ErrConcurrentStateModification</td><td>UPDATE ... WHERE status=X RETURNING * 回傳 0 列（狀態已被其他請求變更）</td><td>回傳 DomainError，呼叫方重試或提示使用者</td></tr>
+        </tbody>
+      </table>
     </section>
   </main>
   <script src="../../assets/viewer.client.js" defer></script>
