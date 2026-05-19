@@ -59,6 +59,23 @@ export class BalanceAdjustmentService {
       const current = await this.accountRepository.findOrCreate(guildId, userId);
       const previousBalance = current.balance;
 
+      // Check for overflow: previousBalance + amount must not exceed MAX_SAFE_INTEGER
+      if (amount > 0 && previousBalance > Number.MAX_SAFE_INTEGER - amount) {
+        return new Err(
+          DomainError.invalidInput(
+            `Balance overflow: ${previousBalance} + ${amount} exceeds maximum safe integer`,
+          ),
+        );
+      }
+      // Check for underflow: previousBalance + amount must not go below 0
+      if (amount < 0 && previousBalance < -amount) {
+        return new Err(
+          DomainError.invalidInput(
+            `Insufficient balance: ${previousBalance} cannot be reduced by ${Math.abs(amount)}`,
+          ),
+        );
+      }
+
       const adjustResult = await this.accountRepository.tryAdjustBalance(
         guildId,
         userId,

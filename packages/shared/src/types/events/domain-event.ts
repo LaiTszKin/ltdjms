@@ -138,6 +138,39 @@ export interface LangChain4jToolExecutedEvent extends DomainEvent {
   readonly timestamp: Date;
 }
 
+// ---- AI Channel Config Events ----
+
+export interface AIChannelConfigChangedEvent extends DomainEvent {
+  readonly guildId: number;
+  readonly channelId: string;
+  readonly allowed: boolean;
+  readonly changedAt: Date;
+}
+
+// ---- Dispatch After-Sales Events ----
+
+export interface DispatchAfterSalesConfigChangedEvent extends DomainEvent {
+  readonly guildId: number;
+  readonly staffUserId: number;
+  readonly operationType: 'ADDED' | 'REMOVED';
+}
+
+// ---- Escort Pricing Events ----
+
+export interface EscortPricingChangedEvent extends DomainEvent {
+  readonly guildId: number;
+  readonly optionCode: string;
+  readonly priceTwd: number;
+  readonly updatedByUserId: number;
+}
+
+// ---- Escort Catalog Events ----
+
+export interface EscortCatalogChangedEvent extends DomainEvent {
+  readonly optionCode: string;
+  readonly operationType: 'CREATED' | 'UPDATED' | 'DELETED';
+}
+
 // ---- Union type for any domain event ----
 
 export type AnyDomainEvent =
@@ -150,6 +183,10 @@ export type AnyDomainEvent =
   | ProductRedemptionCompletedEvent
   | AIMessageEvent
   | AIAgentChannelConfigChangedEvent
+  | AIChannelConfigChangedEvent
+  | DispatchAfterSalesConfigChangedEvent
+  | EscortPricingChangedEvent
+  | EscortCatalogChangedEvent
   | AgentCompletedEvent
   | AgentFailedEvent
   | LangChain4jToolExecutionStartedEvent

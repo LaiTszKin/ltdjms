@@ -1,4 +1,4 @@
-import type { Guild, TextChannel, ThreadChannel } from 'discord.js';
+import type { Client, Guild, TextChannel, ThreadChannel } from 'discord.js';
 import { ConversationIdBuilder } from './tool-call-history.js';
 import { InMemoryToolCallHistory } from './tool-call-history.js';
 import { ConversationIdStrategy } from '../ai-chat-service.js';
@@ -9,6 +9,10 @@ import type { DiscordRuntimeGateway } from '@ltdjms/shared';
  * Matches Java DiscordThreadHistoryProvider.
  */
 export class DiscordThreadHistoryProvider {
+  constructor(
+    private readonly runtimeGateway: DiscordRuntimeGateway,
+  ) {}
+
   /**
    * Gets thread history for a specific user.
    * Only returns the user's messages + bot replies for privacy isolation.
@@ -26,10 +30,26 @@ export class DiscordThreadHistoryProvider {
     botUserId: string,
   ): Promise<Array<{ role: string; content: string }>> {
     try {
-      // We need the guild and thread channel from discord.js
-      // This is a simplified implementation that works through the runtime gateway
+      const client = this.runtimeGateway.requireReadyClient() as Client;
+      const channel = client.channels.cache.get(threadId) ?? await client.channels.fetch(threadId).catch(() => null);
+      if (!channel || !channel.isTextBased()) {
+        return [];
+      }
+
+      const fetched = await channel.messages.fetch({ limit: 100 });
       const messages: Array<{ role: string; content: string }> = [];
-      return messages;
+
+      for (const [, msg] of fetched) {
+        // Privacy isolation: only include user's own messages and bot replies
+        if (msg.author.id === userId) {
+          messages.push({ role: 'user', content: msg.content });
+        } else if (msg.author.id === botUserId) {
+          messages.push({ role: 'assistant', content: msg.content });
+        }
+      }
+
+      // Return in chronological order (discord.js returns newest first)
+      return messages.reverse();
     } catch {
       // Fetch failure → return empty array (don't block conversation)
       return [];

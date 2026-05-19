@@ -6,6 +6,7 @@ import { type InteractionHandler } from '../../../commands/infra/CommandHandler.
 import { AdminPanelSessionManager } from '../../../session/AdminPanelSessionManager.js';
 import { AdminPanelViewState } from '../../../session/types.js';
 import { ZhTwStrings } from '../../../i18n/zh-TW.js';
+import { type ShopService } from '@ltdjms/shop';
 
 /**
  * Product-specific handler for the admin panel.
@@ -17,6 +18,7 @@ export class AdminProductPanelHandler implements InteractionHandler {
 
   constructor(
     private readonly sessionManager: AdminPanelSessionManager,
+    private readonly shopService: ShopService,
   ) {}
 
   async execute(

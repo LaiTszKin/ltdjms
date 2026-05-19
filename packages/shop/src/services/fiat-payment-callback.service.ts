@@ -126,7 +126,7 @@ export class FiatPaymentCallbackService {
     // Synchronous path - fire and forget. This is a legacy compatibility path.
     // The actual async path should be used in production.
     this.log.warn('Sync callback processing may not work with async repository. Use handleCallbackAsync.');
-    return CallbackResult.ok();
+    return CallbackResult.fail(500);
   }
 
   private async processWithOrderAsync(

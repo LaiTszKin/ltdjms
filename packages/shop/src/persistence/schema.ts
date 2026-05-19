@@ -12,7 +12,7 @@ export const fiatOrder = pgTable(
     buyerUserId: bigint('buyer_user_id', { mode: 'number' }).notNull(),
     productId: bigint('product_id', { mode: 'number' }).notNull(),
     productName: varchar('product_name', { length: 100 }).notNull(),
-    fulfillmentRewardType: varchar('fulfillment_reward_type', { length: 32 }),
+    fulfillmentRewardType: varchar('fulfillment_reward_type', { length: 16 }),
     fulfillmentRewardAmount: bigint('fulfillment_reward_amount', { mode: 'number' }),
     fulfillmentAutoCreateEscortOrder: boolean('fulfillment_auto_create_escort_order')
       .notNull()
@@ -23,11 +23,11 @@ export const fiatOrder = pgTable(
     amountTwd: bigint('amount_twd', { mode: 'number' }).notNull(),
     status: varchar('status', { length: 32 }).notNull().default('PENDING_PAYMENT'),
     tradeStatus: varchar('trade_status', { length: 32 }),
-    paymentMessage: varchar('payment_message', { length: 255 }),
+    paymentMessage: varchar('payment_message', { length: 512 }),
     paidAt: timestamp('paid_at', { withTimezone: true }),
     expireAt: timestamp('expire_at', { withTimezone: true }).notNull(),
     expiredAt: timestamp('expired_at', { withTimezone: true }),
-    terminalReason: varchar('terminal_reason', { length: 64 }),
+    terminalReason: varchar('terminal_reason', { length: 128 }),
     buyerNotifiedAt: timestamp('buyer_notified_at', { withTimezone: true }),
     rewardGrantedAt: timestamp('reward_granted_at', { withTimezone: true }),
     fulfilledAt: timestamp('fulfilled_at', { withTimezone: true }),
@@ -49,16 +49,22 @@ export const fiatOrder = pgTable(
   },
   (table) => ({
     orderNumberIdx: uniqueIndex('idx_fiat_order_number').on(table.orderNumber),
-    guildStatusIdx: index('idx_fiat_order_guild_status').on(
-      table.guildId,
+    postPaymentIdx: index('idx_fiat_order_post_payment').on(
       table.status,
-      table.createdAt,
+      table.fulfilledAt,
+      table.fulfillmentProcessingAt,
     ),
-    buyerIdx: index('idx_fiat_order_buyer').on(table.guildId, table.buyerUserId, table.createdAt),
-    pendingExpiryIdx: index('idx_fiat_order_pending_expiry').on(
+    reconciliationIdx: index('idx_fiat_order_reconciliation').on(
       table.status,
+      table.paidAt,
+      table.reconciliationProcessingAt,
       table.expireAt,
-      table.createdAt,
+    ),
+    reconciliationRetryIdx: index('idx_fiat_order_reconciliation_retry').on(
+      table.status,
+      table.paidAt,
+      table.reconciliationProcessingAt,
+      table.reconciliationNextAttemptAt,
     ),
   }),
 );

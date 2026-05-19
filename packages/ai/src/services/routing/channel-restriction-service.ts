@@ -195,10 +195,13 @@ export interface AIChannelRestrictionService {
 export class DefaultAIChannelRestrictionService
   implements AIChannelRestrictionService
 {
-  private cache: Map<string, boolean> = new Map();
+  private static readonly DEFAULT_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+  private cache: Map<string, { value: boolean; expiresAt: number }> = new Map();
 
   constructor(
     private readonly repository: AIChannelRestrictionRepository,
+    private readonly cacheTtlMs: number = DefaultAIChannelRestrictionService.DEFAULT_TTL_MS,
   ) {}
 
   async isChannelAllowed(
@@ -208,13 +211,22 @@ export class DefaultAIChannelRestrictionService
   ): Promise<boolean> {
     const cacheKey = `${guildId}:${channelId}`;
     const cached = this.cache.get(cacheKey);
-    if (cached !== undefined) return cached;
+    if (cached !== undefined) {
+      if (Date.now() < cached.expiresAt) {
+        return cached.value;
+      }
+      // Expired — remove and re-fetch
+      this.cache.delete(cacheKey);
+    }
+
+    const now = Date.now();
+    const ttl = this.cacheTtlMs;
 
     // Check channel-level allowlist first
     const channels = await this.repository.findByGuildId(guildId);
     const channelMatch = channels.some((c) => c.channelId === channelId);
     if (channelMatch) {
-      this.cache.set(cacheKey, true);
+      this.cache.set(cacheKey, { value: true, expiresAt: now + ttl });
       return true;
     }
 
@@ -224,12 +236,12 @@ export class DefaultAIChannelRestrictionService
       const categoryMatch = categories.some(
         (c) => c.categoryId === categoryId,
       );
-      this.cache.set(cacheKey, categoryMatch);
+      this.cache.set(cacheKey, { value: categoryMatch, expiresAt: now + ttl });
       return categoryMatch;
     }
 
     // Empty allowlist = default deny
-    this.cache.set(cacheKey, false);
+    this.cache.set(cacheKey, { value: false, expiresAt: now + ttl });
     return false;
   }
 

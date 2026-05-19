@@ -4,10 +4,10 @@
  */
 export interface DiscordInteraction {
   /** Gets the guild ID. */
-  getGuildId(): number;
+  getGuildId(): string;
 
   /** Gets the user ID. */
-  getUserId(): number;
+  getUserId(): string;
 
   /** Gets the channel ID. */
   getChannelId(): string;

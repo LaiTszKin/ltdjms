@@ -6,6 +6,7 @@ import { type CommandHandler } from '../../commands/infra/CommandHandler.js';
 import { AdminPanelSessionManager } from '../../session/AdminPanelSessionManager.js';
 import { AdminPanelViewFactory } from './views/AdminPanelViewFactory.js';
 import { ZhTwStrings } from '../../i18n/zh-TW.js';
+import { PermissionFlagsBits } from 'discord.js';
 
 /**
  * /admin-panel slash command handler.
@@ -25,7 +26,7 @@ export class AdminPanelCommand implements CommandHandler {
     context: DiscordContext,
   ): Promise<void> {
     // Permission check (second layer)
-    if (!this.hasAdminPermission(context)) {
+    if (!this.hasAdminPermission(interaction)) {
       await interaction.reply(ZhTwStrings.permissionAdminRequired);
       return;
     }
@@ -58,9 +59,26 @@ export class AdminPanelCommand implements CommandHandler {
     await interaction.reply(panelText);
   }
 
-  private hasAdminPermission(_context: DiscordContext): boolean {
-    // In production, this checks context for ADMINISTRATOR permission
-    // For now, we allow all users (Discord handles the first layer)
-    return true;
+  private hasAdminPermission(interaction: DiscordInteraction): boolean {
+    try {
+      const raw = interaction.getHook() as {
+        memberPermissions?: { has(permission: bigint): boolean };
+        guild?: { ownerId: string };
+      };
+      const userId = String(interaction.getUserId());
+
+      // Check ADMINISTRATOR permission
+      if (raw.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
+        return true;
+      }
+
+      // Check guild owner
+      if (raw.guild?.ownerId === userId) {
+        return true;
+      }
+    } catch {
+      // If we cannot access the raw interaction, deny access
+    }
+    return false;
   }
 }

@@ -44,7 +44,7 @@ export class BotErrorHandler {
       if (interaction.isAcknowledged()) {
         await interaction.editEmbed({
           description: message,
-          color: 0xff0000,
+          color: 0xED4245,
           title: '錯誤',
         } as never);
       } else {

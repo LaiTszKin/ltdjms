@@ -4,10 +4,16 @@ import type { BalanceService, BalanceAdjustmentService, CurrencyConfigService } 
 import type { CurrencyTransactionService, GameTokenService, GameTokenTransactionService } from '@ltdjms/economy';
 import type { DiceConfigRepository } from '@ltdjms/economy';
 import { ECONOMY_TOKENS } from '@ltdjms/economy';
-import type { RedemptionService } from '@ltdjms/shop';
+import type { RedemptionService, ShopService } from '@ltdjms/shop';
 import { SHOP_TOKENS } from '@ltdjms/shop';
 import type { AIChannelRestrictionService, AIAgentChannelConfigService } from '@ltdjms/ai';
 import { AI_TOKENS } from '@ltdjms/ai';
+import type {
+  DispatchAfterSalesStaffService,
+  EscortOptionPricingService,
+  EscortOptionCatalogRepository,
+} from '@ltdjms/dispatch';
+import { DISPATCH_TOKENS } from '@ltdjms/dispatch';
 
 // Facades
 import { CurrencyManagementFacade } from '../facades/CurrencyManagementFacade.js';
@@ -31,7 +37,6 @@ import { AdminPanelRouter } from '../panel/admin/AdminPanelRouter.js';
 import { BalanceManagementHandler } from '../panel/admin/handlers/BalanceManagementHandler.js';
 import { TokenManagementHandler } from '../panel/admin/handlers/TokenManagementHandler.js';
 import { GameSettingsHandler } from '../panel/admin/handlers/GameSettingsHandler.js';
-import { ProductManagementHandler } from '../panel/admin/handlers/ProductManagementHandler.js';
 import { AIChannelConfigHandler } from '../panel/admin/handlers/AIChannelConfigHandler.js';
 import { AIAgentConfigHandler } from '../panel/admin/handlers/AIAgentConfigHandler.js';
 import { DispatchAfterSalesHandler } from '../panel/admin/handlers/DispatchAfterSalesHandler.js';
@@ -89,6 +94,7 @@ export const ADMIN_TOKENS = {
   DispatchAfterSalesHandler: Symbol('DispatchAfterSalesHandler'),
   EscortPricingHandler: Symbol('EscortPricingHandler'),
   EscortCatalogHandler: Symbol('EscortCatalogHandler'),
+  EscortOptionCatalogRepository: Symbol('EscortOptionCatalogRepository'),
   AdminProductPanelHandler: Symbol('AdminProductPanelHandler'),
 
   // User commands
@@ -117,8 +123,9 @@ export const ADMIN_TOKENS = {
  * - ECONOMY_TOKENS.BalanceService, BalanceAdjustmentService, CurrencyConfigService
  * - ECONOMY_TOKENS.CurrencyTransactionService, GameTokenService, GameTokenTransactionService
  * - ECONOMY_TOKENS.DiceConfigRepository
- * - SHOP_TOKENS.RedemptionService
+ * - SHOP_TOKENS.RedemptionService, SHOP_TOKENS.ShopService
  * - AI_TOKENS.AIChannelRestrictionService, AIAgentChannelConfigService
+ * - DISPATCH_TOKENS.DispatchAfterSalesStaffService, EscortOptionPricingService
  */
 export function configureAdminContainer(): void {
   const eventPublisher = container.resolve<DomainEventPublisher>(
@@ -342,13 +349,6 @@ export function configureAdminContainer(): void {
   );
   slashCommandListener.registerInteractionHandler(gameHandler);
 
-  const productHandler = new ProductManagementHandler(adminSessionManager);
-  container.registerInstance(
-    ADMIN_TOKENS.ProductManagementHandler,
-    productHandler,
-  );
-  slashCommandListener.registerInteractionHandler(productHandler);
-
   const aiChannelHandler = new AIChannelConfigHandler(
     aiConfigFacade,
     adminSessionManager,
@@ -369,29 +369,57 @@ export function configureAdminContainer(): void {
   );
   slashCommandListener.registerInteractionHandler(aiAgentHandler);
 
-  const dispatchHandler = new DispatchAfterSalesHandler(adminSessionManager);
+  // Resolve dispatch services
+  const afterSalesStaffService = container.resolve<DispatchAfterSalesStaffService>(
+    DISPATCH_TOKENS.DispatchAfterSalesStaffService,
+  );
+  const escortPricingService = container.resolve<EscortOptionPricingService>(
+    DISPATCH_TOKENS.EscortOptionPricingService,
+  );
+
+  const dispatchHandler = new DispatchAfterSalesHandler(
+    adminSessionManager,
+    afterSalesStaffService,
+  );
   container.registerInstance(
     ADMIN_TOKENS.DispatchAfterSalesHandler,
     dispatchHandler,
   );
   slashCommandListener.registerInteractionHandler(dispatchHandler);
 
-  const escortPriceHandler = new EscortPricingHandler(adminSessionManager);
+  const escortPriceHandler = new EscortPricingHandler(
+    adminSessionManager,
+    escortPricingService,
+  );
   container.registerInstance(
     ADMIN_TOKENS.EscortPricingHandler,
     escortPriceHandler,
   );
   slashCommandListener.registerInteractionHandler(escortPriceHandler);
 
-  const escortCatalogHandler = new EscortCatalogHandler(adminSessionManager);
+  // EscortOptionCatalogRepository is not yet registered in any DI module.
+  // At runtime this resolution will throw until the dispatch module provides
+  // a concrete binding. The token ADMIN_TOKENS.EscortOptionCatalogRepository
+  // is defined locally as a placeholder for when the implementation arrives.
+  const escortCatalogHandler = new EscortCatalogHandler(
+    adminSessionManager,
+    container.resolve<EscortOptionCatalogRepository>(
+      ADMIN_TOKENS.EscortOptionCatalogRepository,
+    ),
+  );
   container.registerInstance(
     ADMIN_TOKENS.EscortCatalogHandler,
     escortCatalogHandler,
   );
   slashCommandListener.registerInteractionHandler(escortCatalogHandler);
 
+  const shopService = container.resolve<ShopService>(
+    SHOP_TOKENS.ShopService,
+  );
+
   const adminProductPanelHandler = new AdminProductPanelHandler(
     adminSessionManager,
+    shopService,
   );
   container.registerInstance(
     ADMIN_TOKENS.AdminProductPanelHandler,

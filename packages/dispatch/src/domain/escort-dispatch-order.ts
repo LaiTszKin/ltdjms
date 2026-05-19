@@ -237,6 +237,59 @@ export function createManualOpenOrder(
   });
 }
 
+/** Creates an EscortDispatchOrder from database row, preserving ALL columns exactly as stored. */
+export function fromDbRow(params: {
+  id: number | null;
+  orderNumber: string;
+  guildId: number;
+  assignedByUserId: number;
+  escortUserId: number;
+  customerUserId: number;
+  status: EscortDispatchOrderStatus;
+  createdAt: Date;
+  confirmedAt: Date | null;
+  completionRequestedAt: Date | null;
+  completedAt: Date | null;
+  afterSalesRequestedAt: Date | null;
+  afterSalesAssigneeUserId: number | null;
+  afterSalesAssignedAt: Date | null;
+  afterSalesClosedAt: Date | null;
+  updatedAt: Date;
+  sourceType: SourceType;
+  sourceReference: string | null;
+  sourceProductId: number | null;
+  sourceProductName: string | null;
+  sourceCurrencyPrice: number | null;
+  sourceFiatPriceTwd: number | null;
+  sourceEscortOptionCode: string | null;
+}): EscortDispatchOrder {
+  return createOrder({
+    id: params.id,
+    orderNumber: params.orderNumber,
+    guildId: params.guildId,
+    assignedByUserId: params.assignedByUserId,
+    escortUserId: params.escortUserId,
+    customerUserId: params.customerUserId,
+    status: params.status,
+    createdAt: params.createdAt,
+    confirmedAt: params.confirmedAt,
+    completionRequestedAt: params.completionRequestedAt,
+    completedAt: params.completedAt,
+    afterSalesRequestedAt: params.afterSalesRequestedAt,
+    afterSalesAssigneeUserId: params.afterSalesAssigneeUserId,
+    afterSalesAssignedAt: params.afterSalesAssignedAt,
+    afterSalesClosedAt: params.afterSalesClosedAt,
+    updatedAt: params.updatedAt,
+    sourceType: params.sourceType,
+    sourceReference: params.sourceReference,
+    sourceProductId: params.sourceProductId,
+    sourceProductName: params.sourceProductName,
+    sourceCurrencyPrice: params.sourceCurrencyPrice,
+    sourceFiatPriceTwd: params.sourceFiatPriceTwd,
+    sourceEscortOptionCode: params.sourceEscortOptionCode,
+  });
+}
+
 /** 完整參數版本的 createPending（含自動交接快照欄位的有條件校驗）。 */
 export function createPendingFull(
   orderNumber: string,

@@ -21,6 +21,7 @@ export interface RedemptionCodeRepository {
 
   saveAll(codes: RedemptionCode[]): Promise<RedemptionCode[]>;
 
+  // ADMIN: used by admin panel
   update(code: RedemptionCode): Promise<RedemptionCode>;
 
   markAsRedeemedIfAvailable(
@@ -37,6 +38,7 @@ export interface RedemptionCodeRepository {
 
   findByCode(code: string): Promise<RedemptionCode | null>;
 
+  // ADMIN: used by admin panel
   findById(id: number): Promise<RedemptionCode | null>;
 
   existsByCode(code: string): Promise<boolean>;
@@ -45,15 +47,20 @@ export interface RedemptionCodeRepository {
 
   countByProductId(productId: number): Promise<number>;
 
+  // ADMIN: used by admin panel
   countRedeemedByProductId(productId: number): Promise<number>;
 
+  // ADMIN: used by admin panel
   countUnusedByProductId(productId: number): Promise<number>;
 
+  // ADMIN: used by admin panel
   deleteUnusedByProductId(productId: number): Promise<number>;
 
   getStatsByProductId(productId: number): Promise<CodeStats>;
 
+  // ADMIN: used by admin panel
   invalidateByProductId(productId: number): Promise<number>;
 
+  // ADMIN: used by admin panel
   findInvalidatedByProductId(productId: number): Promise<RedemptionCode[]>;
 }

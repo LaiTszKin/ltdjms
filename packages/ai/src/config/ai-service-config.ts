@@ -33,7 +33,6 @@ export class AIServiceConfig {
   readonly showReasoning: boolean;
   readonly enableMarkdownValidation: boolean;
   readonly streamingBypassValidation: boolean;
-  readonly enableThinking: boolean;
 
   private constructor(values: AIServiceConfigValues) {
     this.baseUrl = values.baseUrl;
@@ -44,8 +43,6 @@ export class AIServiceConfig {
     this.showReasoning = values.showReasoning;
     this.enableMarkdownValidation = values.enableMarkdownValidation;
     this.streamingBypassValidation = values.streamingBypassValidation;
-    // DeepSeek models automatically enable thinking
-    this.enableThinking = values.showReasoning || /deepseek/i.test(values.model);
   }
 
   /**
@@ -109,8 +106,4 @@ export class AIServiceConfig {
     return okVoid<DomainError>() as unknown as Result<void, DomainError>;
   }
 
-  /** DeepSeek model detection. */
-  isDeepSeekModel(): boolean {
-    return /deepseek/i.test(this.model);
-  }
 }

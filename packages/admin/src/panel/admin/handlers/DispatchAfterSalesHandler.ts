@@ -5,6 +5,7 @@ import {
 import { type InteractionHandler } from '../../../commands/infra/CommandHandler.js';
 import { AdminPanelSessionManager } from '../../../session/AdminPanelSessionManager.js';
 import { ZhTwStrings } from '../../../i18n/zh-TW.js';
+import { type DispatchAfterSalesStaffService } from '@ltdjms/dispatch';
 
 /**
  * Handler for dispatch after-sales config interactions (admin_dispatch_*).
@@ -15,6 +16,7 @@ export class DispatchAfterSalesHandler implements InteractionHandler {
 
   constructor(
     private readonly sessionManager: AdminPanelSessionManager,
+    private readonly afterSalesStaffService: DispatchAfterSalesStaffService,
   ) {}
 
   async execute(

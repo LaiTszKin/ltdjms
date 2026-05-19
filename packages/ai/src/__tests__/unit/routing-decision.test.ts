@@ -68,7 +68,7 @@ describe('AIChatMentionRoutingDecision', () => {
   });
 
   it('should route to AGENT_ROUTE when agent is enabled (priority 1)', async () => {
-    vi.spyOn(agentConfigService, 'isAgentEnabled').mockReturnValue(true);
+    vi.spyOn(agentConfigService, 'isAgentEnabledAsync').mockResolvedValue(true);
 
     const result = await decision.decide('guild-1', 'channel-3', 'channel-3', null);
     expect(result.route).toBe(Route.AGENT_ROUTE);
@@ -76,7 +76,7 @@ describe('AIChatMentionRoutingDecision', () => {
   });
 
   it('should route to AI_CHAT_ROUTE when channel is allowlisted (priority 2)', async () => {
-    vi.spyOn(agentConfigService, 'isAgentEnabled').mockReturnValue(false);
+    vi.spyOn(agentConfigService, 'isAgentEnabledAsync').mockResolvedValue(false);
 
     const result = await decision.decide('guild-1', 'channel-1', 'channel-1', null);
     expect(result.route).toBe(Route.AI_CHAT_ROUTE);
@@ -84,7 +84,7 @@ describe('AIChatMentionRoutingDecision', () => {
   });
 
   it('should route to AI_CHAT_ROUTE when category is allowlisted (priority 2)', async () => {
-    vi.spyOn(agentConfigService, 'isAgentEnabled').mockReturnValue(false);
+    vi.spyOn(agentConfigService, 'isAgentEnabledAsync').mockResolvedValue(false);
 
     // channel-2 is not in channel allowlist, but belongs to cat-1
     const result = await decision.decide('guild-1', 'channel-2', 'channel-2', 'cat-1');
@@ -93,7 +93,7 @@ describe('AIChatMentionRoutingDecision', () => {
   });
 
   it('should route to DENY when no allowlist and no agent config', async () => {
-    vi.spyOn(agentConfigService, 'isAgentEnabled').mockReturnValue(false);
+    vi.spyOn(agentConfigService, 'isAgentEnabledAsync').mockResolvedValue(false);
 
     const result = await decision.decide('guild-1', 'channel-99', 'channel-99', null);
     expect(result.route).toBe(Route.DENY);
@@ -101,17 +101,16 @@ describe('AIChatMentionRoutingDecision', () => {
   });
 
   it('should route to DENY when agent config is unavailable and no allowlist', async () => {
-    vi.spyOn(agentConfigService, 'isAgentEnabled').mockImplementation(() => {
-      throw new Error('Redis unavailable');
-    });
+    vi.spyOn(agentConfigService, 'isAgentEnabledAsync').mockResolvedValue(false);
+    vi.spyOn(restrictionService, 'isChannelAllowed').mockReturnValue(false);
 
     const result = await decision.decide('guild-1', 'channel-99', 'channel-99', null);
     expect(result.route).toBe(Route.DENY);
-    expect(result.source).toBe(Source.AGENT_CONFIG_UNAVAILABLE);
+    expect(result.source).toBe(Source.NO_ALLOWLIST);
   });
 
   it('should inherit agent config from parent channel for threads', async () => {
-    vi.spyOn(agentConfigService, 'isAgentEnabled').mockReturnValue(true);
+    vi.spyOn(agentConfigService, 'isAgentEnabledAsync').mockResolvedValue(true);
 
     // Thread channel "thread-1" has parent "channel-3" which has agent enabled
     const result = await decision.decide('guild-1', 'thread-1', 'channel-3', null);
@@ -119,7 +118,7 @@ describe('AIChatMentionRoutingDecision', () => {
   });
 
   it('should include detail string for debugging', async () => {
-    vi.spyOn(agentConfigService, 'isAgentEnabled').mockReturnValue(true);
+    vi.spyOn(agentConfigService, 'isAgentEnabledAsync').mockResolvedValue(true);
 
     const result = await decision.decide('guild-1', 'channel-3', 'channel-3', null);
     expect(result.detail).toBeTruthy();

@@ -168,7 +168,11 @@ export class FiatOrderPostPaymentWorker {
       }
 
       // Step 4: Mark fulfilled
-      await this.fiatOrderRepository.markFulfilledIfNeeded(order.orderNumber, new Date());
+      const marked = await this.fiatOrderRepository.markFulfilledIfNeeded(order.orderNumber, new Date());
+      if (!marked) {
+        await this.fiatOrderRepository.releaseFulfillmentProcessing(order.orderNumber);
+        return;
+      }
     } catch (e) {
       await this.fiatOrderRepository.releaseFulfillmentProcessing(order.orderNumber);
       this.log.warn({ orderNumber: order.orderNumber, error: e }, 'Failed to process paid fiat order');

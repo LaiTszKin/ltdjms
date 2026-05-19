@@ -5,7 +5,7 @@ import {
   type EscortDispatchOrder,
   EscortDispatchOrderStatus,
   SourceType,
-  createPendingFull,
+  fromDbRow,
 } from '../domain/index.js';
 import type { EscortDispatchOrderRepo } from './escort-dispatch-order.repo.js';
 
@@ -221,20 +221,31 @@ export class DrizzleEscortDispatchOrderRepo implements EscortDispatchOrderRepo {
   }
 }
 
-/** Maps a DB row to domain EscortDispatchOrder. */
+/** Maps a DB row to domain EscortDispatchOrder, preserving ALL stored columns. */
 function mapRowToDomain(row: Record<string, unknown>): EscortDispatchOrder {
-  return createPendingFull(
-    row.orderNumber as string,
-    row.guildId as number,
-    row.assignedByUserId as number,
-    row.escortUserId as number,
-    row.customerUserId as number,
-    row.sourceType as SourceType,
-    (row.sourceReference as string) ?? null,
-    (row.sourceProductId as number) ?? null,
-    (row.sourceProductName as string) ?? null,
-    (row.sourceCurrencyPrice as number) ?? null,
-    (row.sourceFiatPriceTwd as number) ?? null,
-    (row.sourceEscortOptionCode as string) ?? null,
-  );
+  return fromDbRow({
+    id: (row.id as number) ?? null,
+    orderNumber: row.orderNumber as string,
+    guildId: row.guildId as number,
+    assignedByUserId: row.assignedByUserId as number,
+    escortUserId: row.escortUserId as number,
+    customerUserId: row.customerUserId as number,
+    status: row.status as EscortDispatchOrderStatus,
+    createdAt: row.createdAt as Date,
+    confirmedAt: (row.confirmedAt as Date) ?? null,
+    completionRequestedAt: (row.completionRequestedAt as Date) ?? null,
+    completedAt: (row.completedAt as Date) ?? null,
+    afterSalesRequestedAt: (row.afterSalesRequestedAt as Date) ?? null,
+    afterSalesAssigneeUserId: (row.afterSalesAssigneeUserId as number) ?? null,
+    afterSalesAssignedAt: (row.afterSalesAssignedAt as Date) ?? null,
+    afterSalesClosedAt: (row.afterSalesClosedAt as Date) ?? null,
+    updatedAt: row.updatedAt as Date,
+    sourceType: row.sourceType as SourceType,
+    sourceReference: (row.sourceReference as string) ?? null,
+    sourceProductId: (row.sourceProductId as number) ?? null,
+    sourceProductName: (row.sourceProductName as string) ?? null,
+    sourceCurrencyPrice: (row.sourceCurrencyPrice as number) ?? null,
+    sourceFiatPriceTwd: (row.sourceFiatPriceTwd as number) ?? null,
+    sourceEscortOptionCode: (row.sourceEscortOptionCode as string) ?? null,
+  });
 }

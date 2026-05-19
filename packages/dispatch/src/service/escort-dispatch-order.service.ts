@@ -3,6 +3,7 @@ import { Ok, Err, DomainError } from '@ltdjms/shared';
 
 import type { EscortDispatchOrderRepo } from '../repo/escort-dispatch-order.repo.js';
 import { EscortDispatchOrderNumberGenerator } from '../domain/order-number-generator.js';
+import type { EscortOptionCatalogRepository } from './escort-option-pricing.service.js';
 import {
   type EscortDispatchOrder,
   EscortDispatchOrderStatus,
@@ -43,6 +44,7 @@ export class EscortDispatchOrderService {
     private readonly repository: EscortDispatchOrderRepo,
     private readonly orderNumberGenerator?: EscortDispatchOrderNumberGenerator,
     private readonly clock?: () => number,
+    private readonly catalogRepository?: EscortOptionCatalogRepository,
   ) {
     this.orderNumberGenerator = orderNumberGenerator ?? new EscortDispatchOrderNumberGenerator();
     this.clock = clock ?? (() => Date.now());
@@ -79,6 +81,20 @@ export class EscortDispatchOrderService {
   ): Promise<Result<EscortDispatchOrder, DomainError>> {
     if (customerUserId <= 0) {
       return new Err(DomainError.invalidInput('請選擇客戶'));
+    }
+
+    if (!escortOptionCode || escortOptionCode.trim().length === 0) {
+      return new Err(DomainError.invalidInput('護航品類代碼無效'));
+    }
+
+    if (this.catalogRepository) {
+      const exists = await this.catalogRepository.existsByCode(escortOptionCode.trim().toUpperCase());
+      if (!exists) {
+        const allCodes = (await this.catalogRepository.findAll())
+          .map((c) => c.code)
+          .join(', ');
+        return new Err(DomainError.invalidInput(`護航品類無效，可用代碼：${allCodes}`));
+      }
     }
 
     try {

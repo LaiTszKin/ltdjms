@@ -147,25 +147,6 @@ export class DiceGame2Service {
   }
 
   /**
-   * Reward analysis result.
-   */
-  private rewardAnalysis = (
-    straightSegments: number[][],
-    tripleSegments: number[][],
-    straightReward: number,
-    nonStraightReward: number,
-    tripleReward: number,
-    totalReward: number,
-  ) => ({
-    straightSegments,
-    tripleSegments,
-    straightReward,
-    nonStraightReward,
-    tripleReward,
-    totalReward,
-  });
-
-  /**
    * Analyzes the dice rolls to identify straights, triples, and calculate rewards.
    * This logic must match Java DefaultDiceGame2Service.analyzeRolls() exactly.
    *

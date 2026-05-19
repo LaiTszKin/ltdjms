@@ -22,10 +22,18 @@ export class AIConfigManagementFacade {
   // ============================================================
 
   /**
+   * Gets all allowed AI channels for a guild.
+   */
+  async getAllowedChannels(guildId: string): Promise<Result<AllowedChannel[], DomainError>> {
+    return this.channelRestrictionService.getAllowedChannels(guildId);
+  }
+
+  /**
    * Lists all allowed AI channels for a guild.
+   * @deprecated Use {@link getAllowedChannels} instead.
    */
   async listAllowedChannels(guildId: string): Promise<Result<AllowedChannel[], DomainError>> {
-    return this.channelRestrictionService.getAllowedChannels(guildId);
+    return this.getAllowedChannels(guildId);
   }
 
   /**
@@ -57,10 +65,18 @@ export class AIConfigManagementFacade {
   // ============================================================
 
   /**
+   * Gets all allowed AI categories for a guild.
+   */
+  async getAllowedCategories(guildId: string): Promise<Result<AllowedCategory[], DomainError>> {
+    return this.channelRestrictionService.getAllowedCategories(guildId);
+  }
+
+  /**
    * Lists all allowed AI categories for a guild.
+   * @deprecated Use {@link getAllowedCategories} instead.
    */
   async listAllowedCategories(guildId: string): Promise<Result<AllowedCategory[], DomainError>> {
-    return this.channelRestrictionService.getAllowedCategories(guildId);
+    return this.getAllowedCategories(guildId);
   }
 
   /**
@@ -92,21 +108,54 @@ export class AIConfigManagementFacade {
   // ============================================================
 
   /**
-   * Lists all channels with agent configuration for a guild.
+   * Gets all channels with agent configuration for a guild.
    */
-  async listAgentChannels(guildId: string): Promise<Result<string[], DomainError>> {
+  async getAgentConfigs(guildId: string): Promise<Result<string[], DomainError>> {
     return this.agentConfigService.getEnabledChannels(guildId);
   }
 
   /**
+   * Lists all channels with agent configuration for a guild.
+   * @deprecated Use {@link getAgentConfigs} instead.
+   */
+  async listAgentChannels(guildId: string): Promise<Result<string[], DomainError>> {
+    return this.getAgentConfigs(guildId);
+  }
+
+  /**
+   * Enables agent mode for a channel with the specified mode.
+   */
+  async enableAgent(
+    guildId: string,
+    channelId: string,
+    _mode: string,
+  ): Promise<Result<void, DomainError>> {
+    return this.agentConfigService.setAgentEnabled(guildId, channelId, true);
+  }
+
+  /**
+   * Disables agent mode for a channel.
+   */
+  async disableAgent(
+    guildId: string,
+    channelId: string,
+  ): Promise<Result<void, DomainError>> {
+    return this.agentConfigService.setAgentEnabled(guildId, channelId, false);
+  }
+
+  /**
    * Enables or disables agent mode for a channel.
+   * Convenience method that delegates to enableAgent/disableAgent.
    */
   async setAgentEnabled(
     guildId: string,
     channelId: string,
     enabled: boolean,
   ): Promise<Result<void, DomainError>> {
-    return this.agentConfigService.setAgentEnabled(guildId, channelId, enabled);
+    if (enabled) {
+      return this.enableAgent(guildId, channelId, 'default');
+    }
+    return this.disableAgent(guildId, channelId);
   }
 
   /**

@@ -5,17 +5,21 @@ import {
   type ProductChangedEvent,
   type RedemptionCodesGeneratedEvent,
   type AIAgentChannelConfigChangedEvent,
+  type AIChannelConfigChangedEvent,
   type BalanceChangedEvent,
   type GameTokenChangedEvent,
   type ProductRedemptionCompletedEvent,
   type AgentFailedEvent,
+  type DispatchAfterSalesConfigChangedEvent,
+  type EscortPricingChangedEvent,
+  type EscortCatalogChangedEvent,
 } from '@ltdjms/shared';
 import { AdminPanelSessionManager } from '../../session/AdminPanelSessionManager.js';
 import { AdminPanelViewState } from '../../session/types.js';
 
 /**
  * Listens to domain events and updates active admin panel sessions.
- * Handles 9+ event types across different admin panel view states.
+ * Handles 13+ event types across different admin panel view states.
  * Matches Java AdminPanelUpdateListener.
  */
 export class AdminPanelUpdateListener {
@@ -64,10 +68,14 @@ export class AdminPanelUpdateListener {
       this.isProductChanged(event) ||
       this.isCodesGenerated(event) ||
       this.isAIAgentChannelConfigChanged(event) ||
+      this.isAIChannelConfigChanged(event) ||
       this.isBalanceChanged(event) ||
       this.isGameTokenChanged(event) ||
       this.isProductRedemptionCompleted(event) ||
-      this.isAgentFailed(event)
+      this.isAgentFailed(event) ||
+      this.isDispatchAfterSalesConfigChanged(event) ||
+      this.isEscortPricingChanged(event) ||
+      this.isEscortCatalogChanged(event)
     );
   }
 
@@ -102,6 +110,11 @@ export class AdminPanelUpdateListener {
       return true;
     }
 
+    if (this.isAIChannelConfigChanged(event)) {
+      // AI channel allowlist changes trigger main panel refresh
+      return true;
+    }
+
     if (this.isBalanceChanged(event)) {
       // Balance changes are always admin-relevant (user panels)
       return true;
@@ -119,6 +132,21 @@ export class AdminPanelUpdateListener {
     if (this.isAgentFailed(event)) {
       // Agent failures are always admin-relevant for monitoring
       return true;
+    }
+
+    if (this.isDispatchAfterSalesConfigChanged(event)) {
+      // After-sales config changes trigger main panel refresh
+      return true;
+    }
+
+    if (this.isEscortPricingChanged(event)) {
+      // Escort pricing changes trigger main panel refresh
+      return true;
+    }
+
+    if (this.isEscortCatalogChanged(event)) {
+      // Escort catalog changes trigger main panel refresh
+      return viewState === AdminPanelViewState.MAIN;
     }
 
     return false;
@@ -144,6 +172,10 @@ export class AdminPanelUpdateListener {
     return 'agentEnabled' in event && 'changedAt' in event;
   }
 
+  private isAIChannelConfigChanged(event: DomainEvent): event is AIChannelConfigChangedEvent {
+    return 'channelId' in event && 'allowed' in event;
+  }
+
   private isBalanceChanged(event: DomainEvent): event is BalanceChangedEvent {
     return 'newBalance' in event;
   }
@@ -158,5 +190,17 @@ export class AdminPanelUpdateListener {
 
   private isAgentFailed(event: DomainEvent): event is AgentFailedEvent {
     return 'reason' in event;
+  }
+
+  private isDispatchAfterSalesConfigChanged(event: DomainEvent): event is DispatchAfterSalesConfigChangedEvent {
+    return 'staffUserId' in event && 'operationType' in event;
+  }
+
+  private isEscortPricingChanged(event: DomainEvent): event is EscortPricingChangedEvent {
+    return 'optionCode' in event && 'priceTwd' in event;
+  }
+
+  private isEscortCatalogChanged(event: DomainEvent): event is EscortCatalogChangedEvent {
+    return 'optionCode' in event && 'operationType' in event;
   }
 }

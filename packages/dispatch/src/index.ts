@@ -29,6 +29,7 @@ export {
   createManualOpenOrder,
   createPendingFull,
   createAutoHandoff,
+  fromDbRow,
   isPendingEscortConfirmation,
   isConfirmed,
   isPendingCustomerConfirmation,
@@ -94,3 +95,9 @@ export {
 // ============================================================
 
 export { DISPATCH_TOKENS, configureDispatchContainer } from './di/index.js';
+// Events (re-exported from shared for convenience)
+export type {
+  DispatchAfterSalesConfigChangedEvent,
+  EscortPricingChangedEvent,
+  EscortCatalogChangedEvent,
+} from "@ltdjms/shared";

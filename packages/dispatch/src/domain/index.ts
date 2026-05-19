@@ -2,6 +2,7 @@ export {
   EscortDispatchOrderStatus,
   SourceType,
   CUSTOMER_CONFIRM_TIMEOUT_MS,
+  fromDbRow,
   createPending,
   createManualOpenOrder,
   createPendingFull,

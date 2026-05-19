@@ -3,7 +3,9 @@ import {
   bigint,
   varchar,
   timestamp,
+  serial,
   index,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
 
 /**
@@ -13,6 +15,7 @@ import {
 export const guildEscortOptionPrice = pgTable(
   'guild_escort_option_price',
   {
+    id: serial('id').primaryKey(),
     guildId: bigint('guild_id', { mode: 'number' }).notNull(),
     optionCode: varchar('option_code', { length: 120 }).notNull(),
     priceTwd: bigint('price_twd', { mode: 'number' }).notNull(),
@@ -21,9 +24,7 @@ export const guildEscortOptionPrice = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    pk: {
-      columns: [table.guildId, table.optionCode],
-    },
+    uqGuildOption: uniqueIndex('uq_guild_escort_option_price').on(table.guildId, table.optionCode),
     guildIdx: index('idx_guild_escort_option_price_guild').on(table.guildId),
   }),
 );

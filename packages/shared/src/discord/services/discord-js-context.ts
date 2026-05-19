@@ -17,18 +17,16 @@ export class DiscordJsContext implements DiscordContext {
       | ModalSubmitInteraction,
   ) {}
 
-  getGuildId(): number {
-    return this.interaction.guildId ? Number(this.interaction.guildId) : 0;
+  getGuildId(): string {
+    return this.interaction.guildId ?? '0';
   }
 
-  getUserId(): number {
-    return Number(this.interaction.user.id);
+  getUserId(): string {
+    return this.interaction.user.id;
   }
 
-  getChannelId(): number {
-    return this.interaction.channelId
-      ? Number(this.interaction.channelId)
-      : 0;
+  getChannelId(): string {
+    return this.interaction.channelId ?? '0';
   }
 
   getUserMention(): string {

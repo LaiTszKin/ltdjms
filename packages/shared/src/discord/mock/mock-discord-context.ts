@@ -6,21 +6,21 @@ import { type DiscordContext } from '../domain/discord-context.js';
  * Matches Java MockDiscordContext.
  */
 export class MockDiscordContext implements DiscordContext {
-  private readonly _guildId: number;
-  private readonly _userId: number;
-  private readonly _channelId: number;
+  private readonly _guildId: string;
+  private readonly _userId: string;
+  private readonly _channelId: string;
   private readonly _userMention: string;
   private readonly options: Map<string, unknown> = new Map();
 
   constructor(
-    guildId: number,
-    userId: number,
-    channelId: number,
+    guildId: string,
+    userId: string,
+    channelId: string,
     userMention: string,
   ) {
-    if (guildId <= 0) throw new Error('guildId must be positive');
-    if (userId <= 0) throw new Error('userId must be positive');
-    if (channelId <= 0) throw new Error('channelId must be positive');
+    if (!guildId || guildId === '0') throw new Error('guildId must be a valid non-zero id');
+    if (!userId || userId === '0') throw new Error('userId must be a valid non-zero id');
+    if (!channelId || channelId === '0') throw new Error('channelId must be a valid non-zero id');
     if (!userMention) throw new Error('userMention must not be empty');
 
     this._guildId = guildId;
@@ -29,15 +29,15 @@ export class MockDiscordContext implements DiscordContext {
     this._userMention = userMention;
   }
 
-  getGuildId(): number {
+  getGuildId(): string {
     return this._guildId;
   }
 
-  getUserId(): number {
+  getUserId(): string {
     return this._userId;
   }
 
-  getChannelId(): number {
+  getChannelId(): string {
     return this._channelId;
   }
 

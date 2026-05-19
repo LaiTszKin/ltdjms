@@ -22,12 +22,12 @@ export class DiscordJsInteraction implements DiscordInteraction {
     this.acknowledged = interaction.replied || interaction.deferred;
   }
 
-  getGuildId(): number {
-    return this.interaction.guildId ? Number(this.interaction.guildId) : 0;
+  getGuildId(): string {
+    return this.interaction.guildId ?? '0';
   }
 
-  getUserId(): number {
-    return Number(this.interaction.user.id);
+  getUserId(): string {
+    return this.interaction.user.id;
   }
 
   getChannelId(): string {

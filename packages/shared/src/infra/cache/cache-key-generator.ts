@@ -7,10 +7,10 @@ export interface CacheKeyGenerator {
   readonly NAMESPACE: string;
 
   /** Generates a cache key for balance lookups. */
-  balanceKey(guildId: number, userId: number): string;
+  balanceKey(guildId: string, userId: string): string;
 
   /** Generates a cache key for game token lookups. */
-  gameTokenKey(guildId: number, userId: number): string;
+  gameTokenKey(guildId: string, userId: string): string;
 }
 
 /**
@@ -24,11 +24,11 @@ export class DefaultCacheKeyGenerator implements CacheKeyGenerator {
   private static readonly ENTITY_BALANCE = 'balance';
   private static readonly ENTITY_GAME_TOKEN = 'gametoken';
 
-  balanceKey(guildId: number, userId: number): string {
+  balanceKey(guildId: string, userId: string): string {
     return `${this.NAMESPACE}:${DefaultCacheKeyGenerator.ENTITY_BALANCE}:${guildId}:${userId}`;
   }
 
-  gameTokenKey(guildId: number, userId: number): string {
+  gameTokenKey(guildId: string, userId: string): string {
     return `${this.NAMESPACE}:${DefaultCacheKeyGenerator.ENTITY_GAME_TOKEN}:${guildId}:${userId}`;
   }
 }

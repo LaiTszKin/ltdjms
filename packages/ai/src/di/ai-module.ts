@@ -263,7 +263,7 @@ export function initializeAIModule(): void {
   const toolCallHistory = new InMemoryToolCallHistory();
   container.registerInstance(AI_TOKENS.InMemoryToolCallHistory, toolCallHistory);
 
-  const threadHistoryProvider = new DiscordThreadHistoryProvider();
+  const threadHistoryProvider = new DiscordThreadHistoryProvider(runtimeGateway);
   container.registerInstance(AI_TOKENS.DiscordThreadHistoryProvider, threadHistoryProvider);
 
   const memoryProvider = new SimplifiedChatMemoryProvider(

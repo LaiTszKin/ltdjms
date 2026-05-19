@@ -3,27 +3,27 @@ import { MockDiscordContext } from '../mock-discord-context.js';
 
 describe('MockDiscordContext', () => {
   it('returns configured guild/user/channel ids', () => {
-    const ctx = new MockDiscordContext(123, 456, 789, '<@456>');
-    expect(ctx.getGuildId()).toBe(123);
-    expect(ctx.getUserId()).toBe(456);
-    expect(ctx.getChannelId()).toBe(789);
+    const ctx = new MockDiscordContext('123', '456', '789', '<@456>');
+    expect(ctx.getGuildId()).toBe('123');
+    expect(ctx.getUserId()).toBe('456');
+    expect(ctx.getChannelId()).toBe('789');
     expect(ctx.getUserMention()).toBe('<@456>');
   });
 
   it('validates positive ids', () => {
-    expect(() => new MockDiscordContext(0, 456, 789, '<@456>')).toThrow(
-      'guildId must be positive',
+    expect(() => new MockDiscordContext('', '456', '789', '<@456>')).toThrow(
+      'guildId must be a valid non-zero id',
     );
-    expect(() => new MockDiscordContext(123, 0, 789, '<@456>')).toThrow(
-      'userId must be positive',
+    expect(() => new MockDiscordContext('123', '', '789', '<@456>')).toThrow(
+      'userId must be a valid non-zero id',
     );
-    expect(() => new MockDiscordContext(123, 456, 0, '<@456>')).toThrow(
-      'channelId must be positive',
+    expect(() => new MockDiscordContext('123', '456', '', '<@456>')).toThrow(
+      'channelId must be a valid non-zero id',
     );
   });
 
   it('validates non-empty user mention', () => {
-    expect(() => new MockDiscordContext(123, 456, 789, '')).toThrow(
+    expect(() => new MockDiscordContext('123', '456', '789', '')).toThrow(
       'userMention must not be empty',
     );
   });

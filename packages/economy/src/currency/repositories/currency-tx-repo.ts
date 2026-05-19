@@ -1,5 +1,5 @@
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq, and, desc, count, sql } from 'drizzle-orm';
+import { eq, and, desc, count } from 'drizzle-orm';
 import { currencyTransaction } from '../../domain/schema.js';
 import type { CurrencyTransaction } from '../../domain/types.js';
 import { CurrencyTransactionSource } from '../../domain/types.js';

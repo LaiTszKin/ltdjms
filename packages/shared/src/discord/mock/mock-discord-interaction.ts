@@ -6,8 +6,8 @@ import { type DiscordInteraction } from '../domain/discord-interaction.js';
  * Matches Java MockDiscordInteraction.
  */
 export class MockDiscordInteraction implements DiscordInteraction {
-  private readonly _guildId: number;
-  private readonly _userId: number;
+  private readonly _guildId: string;
+  private readonly _userId: string;
   private readonly _channelId: string;
   private readonly _ephemeral: boolean;
   private _acknowledged = false;
@@ -18,8 +18,8 @@ export class MockDiscordInteraction implements DiscordInteraction {
   private _deferReplyCount = 0;
 
   constructor(
-    guildId: number,
-    userId: number,
+    guildId: string,
+    userId: string,
     channelId: string = '0',
     ephemeral = false,
   ) {
@@ -29,11 +29,11 @@ export class MockDiscordInteraction implements DiscordInteraction {
     this._ephemeral = ephemeral;
   }
 
-  getGuildId(): number {
+  getGuildId(): string {
     return this._guildId;
   }
 
-  getUserId(): number {
+  getUserId(): string {
     return this._userId;
   }
 

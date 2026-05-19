@@ -65,7 +65,7 @@ export function buildShopEmbed(
   const footer =
     totalPages > 1
       ? `第 ${currentPage} / ${totalPages} 頁`
-      : `共 ${products.size} 個商品`;
+      : `共 ${products.length} 個商品`;
 
   return {
     title: '🏪 商店',

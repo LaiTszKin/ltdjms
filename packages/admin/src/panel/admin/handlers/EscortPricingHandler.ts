@@ -5,6 +5,7 @@ import {
 import { type InteractionHandler } from '../../../commands/infra/CommandHandler.js';
 import { AdminPanelSessionManager } from '../../../session/AdminPanelSessionManager.js';
 import { ZhTwStrings } from '../../../i18n/zh-TW.js';
+import { type EscortOptionPricingService } from '@ltdjms/dispatch';
 
 /**
  * Handler for escort pricing interactions (admin_escortprice_*).
@@ -15,6 +16,7 @@ export class EscortPricingHandler implements InteractionHandler {
 
   constructor(
     private readonly sessionManager: AdminPanelSessionManager,
+    private readonly pricingService: EscortOptionPricingService,
   ) {}
 
   async execute(

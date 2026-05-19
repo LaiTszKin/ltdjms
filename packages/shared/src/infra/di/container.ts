@@ -94,12 +94,12 @@ export function initializeContainer(options?: {
 
   // Logger
   if (options?.logger) {
-    tsyringeContainer.registerInstance('Logger', options.logger);
+    tsyringeContainer.registerInstance(TOKENS.Logger, options.logger);
   }
 
   // Database pool
   if (options?.databasePool) {
-    tsyringeContainer.registerInstance('DatabasePool', options.databasePool);
+    tsyringeContainer.registerInstance(TOKENS.DatabasePool, options.databasePool);
   }
 }
 
