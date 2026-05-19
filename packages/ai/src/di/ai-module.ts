@@ -1,0 +1,282 @@
+import { container, TOKENS } from '@ltdjms/shared';
+import type { EnvironmentConfig, CacheService, DomainEventPublisher, DiscordRuntimeGateway } from '@ltdjms/shared';
+
+import { AIServiceConfig } from '../config/ai-service-config.js';
+import { DefaultPromptLoader, type PromptLoader } from '../prompts/prompt-loader.js';
+
+// Routing Services
+import { AIChatMentionRoutingDecision } from '../services/routing/routing-decision.js';
+import {
+  DefaultAIChannelRestrictionService,
+  type AIChannelRestrictionService,
+  InMemoryAIChannelRestrictionRepository,
+  type AIChannelRestrictionRepository,
+} from '../services/routing/channel-restriction-service.js';
+import {
+  DefaultAIAgentChannelConfigService,
+  type AIAgentChannelConfigService,
+  InMemoryAIAgentChannelConfigRepository,
+  type AIAgentChannelConfigRepository,
+} from '../services/routing/agent-config-service.js';
+
+// AI Chat Service
+import { type AIChatService } from '../services/ai-chat-service.js';
+import { LangChainAIChatService } from '../services/LangChainAIChatService.js';
+import { MarkdownValidatingAIChatService } from '../markdown/services/MarkdownValidatingAIChatService.js';
+
+// Tools
+import { ToolCallerAuthorizationGuard } from '../tools/ToolCallerAuthorizationGuard.js';
+import { PermissionParser } from '../tools/PermissionParser.js';
+import { CreateChannelTool } from '../tools/CreateChannelTool.js';
+import { CreateCategoryTool } from '../tools/CreateCategoryTool.js';
+import { CreateRoleTool } from '../tools/CreateRoleTool.js';
+import { ListChannelsTool } from '../tools/ListChannelsTool.js';
+import { ListCategoriesTool } from '../tools/ListCategoriesTool.js';
+import { ListRolesTool } from '../tools/ListRolesTool.js';
+import { GetChannelPermissionsTool } from '../tools/GetChannelPermissionsTool.js';
+import { GetCategoryPermissionsTool } from '../tools/GetCategoryPermissionsTool.js';
+import { GetRolePermissionsTool } from '../tools/GetRolePermissionsTool.js';
+import { ModifyChannelPermissionsTool } from '../tools/ModifyChannelPermissionsTool.js';
+import { ModifyCategoryPermissionsTool } from '../tools/ModifyCategoryPermissionsTool.js';
+import { ModifyRolePermissionsTool } from '../tools/ModifyRolePermissionsTool.js';
+import { SendMessagesTool } from '../tools/SendMessagesTool.js';
+import { SearchMessagesTool } from '../tools/SearchMessagesTool.js';
+import { ManageMessageTool } from '../tools/ManageMessageTool.js';
+import { MoveChannelTool } from '../tools/MoveChannelTool.js';
+import { DeleteDiscordResourceTool } from '../tools/DeleteDiscordResourceTool.js';
+
+// Memory
+import { InMemoryToolCallHistory } from '../services/memory/tool-call-history.js';
+import { DiscordThreadHistoryProvider } from '../services/memory/chat-memory-provider.js';
+import { SimplifiedChatMemoryProvider } from '../services/memory/chat-memory-provider.js';
+
+// Markdown
+import { CommonMarkValidator } from '../markdown/validation/CommonMarkValidator.js';
+import { RegexBasedAutoFixer } from '../markdown/autofix/RegexBasedAutoFixer.js';
+import { DiscordMarkdownSanitizer } from '../markdown/services/DiscordMarkdownSanitizer.js';
+import { DiscordMarkdownPaginator } from '../markdown/services/DiscordMarkdownPaginator.js';
+
+// Commands
+import { AIChatMentionListener } from '../commands/ai-chat-mention-listener.js';
+
+/**
+ * AI Module DI Tokens.
+ */
+export const AI_TOKENS = {
+  AIServiceConfig: Symbol('AIServiceConfig'),
+  PromptLoader: Symbol('PromptLoader'),
+  AIChannelRestrictionRepository: Symbol('AIChannelRestrictionRepository'),
+  AIChannelRestrictionService: Symbol('AIChannelRestrictionService'),
+  AIAgentChannelConfigRepository: Symbol('AIAgentChannelConfigRepository'),
+  AIAgentChannelConfigService: Symbol('AIAgentChannelConfigService'),
+  AIChatService: Symbol('AIChatService'),
+  LangChainAIChatService: Symbol('LangChainAIChatService'),
+  AIChatMentionRoutingDecision: Symbol('AIChatMentionRoutingDecision'),
+  AIChatMentionListener: Symbol('AIChatMentionListener'),
+  InMemoryToolCallHistory: Symbol('InMemoryToolCallHistory'),
+  DiscordThreadHistoryProvider: Symbol('DiscordThreadHistoryProvider'),
+  SimplifiedChatMemoryProvider: Symbol('SimplifiedChatMemoryProvider'),
+  CommonMarkValidator: Symbol('CommonMarkValidator'),
+  RegexBasedAutoFixer: Symbol('RegexBasedAutoFixer'),
+  DiscordMarkdownSanitizer: Symbol('DiscordMarkdownSanitizer'),
+  DiscordMarkdownPaginator: Symbol('DiscordMarkdownPaginator'),
+  ToolCallerAuthorizationGuard: Symbol('ToolCallerAuthorizationGuard'),
+  PermissionParser: Symbol('PermissionParser'),
+
+  // Tools
+  CreateChannelTool: Symbol('CreateChannelTool'),
+  CreateCategoryTool: Symbol('CreateCategoryTool'),
+  CreateRoleTool: Symbol('CreateRoleTool'),
+  ListChannelsTool: Symbol('ListChannelsTool'),
+  ListCategoriesTool: Symbol('ListCategoriesTool'),
+  ListRolesTool: Symbol('ListRolesTool'),
+  GetChannelPermissionsTool: Symbol('GetChannelPermissionsTool'),
+  GetCategoryPermissionsTool: Symbol('GetCategoryPermissionsTool'),
+  GetRolePermissionsTool: Symbol('GetRolePermissionsTool'),
+  ModifyChannelPermissionsTool: Symbol('ModifyChannelPermissionsTool'),
+  ModifyCategoryPermissionsTool: Symbol('ModifyCategoryPermissionsTool'),
+  ModifyRolePermissionsTool: Symbol('ModifyRolePermissionsTool'),
+  SendMessagesTool: Symbol('SendMessagesTool'),
+  SearchMessagesTool: Symbol('SearchMessagesTool'),
+  ManageMessageTool: Symbol('ManageMessageTool'),
+  MoveChannelTool: Symbol('MoveChannelTool'),
+  DeleteDiscordResourceTool: Symbol('DeleteDiscordResourceTool'),
+};
+
+/**
+ * Initializes the AI module in the tsyringe DI container.
+ */
+export function initializeAIModule(): void {
+  const envConfig = container.resolve<EnvironmentConfig>(TOKENS.EnvironmentConfig);
+  const cacheService = container.resolve<CacheService>(TOKENS.CacheService);
+  const eventPublisher = container.resolve<DomainEventPublisher>(TOKENS.DomainEventPublisher);
+  const runtimeGateway = container.resolve<DiscordRuntimeGateway>(TOKENS.DiscordRuntimeGateway);
+
+  // ===== Config =====
+  const aiConfig = AIServiceConfig.from(envConfig);
+  container.registerInstance(AI_TOKENS.AIServiceConfig, aiConfig);
+
+  // ===== Prompt Loader =====
+  const promptLoader = new DefaultPromptLoader(
+    envConfig.getPromptsDirPath(),
+    envConfig.getPromptMaxSizeBytes(),
+  );
+  container.registerInstance<PromptLoader>(AI_TOKENS.PromptLoader, promptLoader);
+
+  // ===== Channel Restriction =====
+  const restrictionRepo = new InMemoryAIChannelRestrictionRepository();
+  container.registerInstance<AIChannelRestrictionRepository>(
+    AI_TOKENS.AIChannelRestrictionRepository,
+    restrictionRepo,
+  );
+
+  const restrictionService = new DefaultAIChannelRestrictionService(restrictionRepo);
+  container.registerInstance<AIChannelRestrictionService>(
+    AI_TOKENS.AIChannelRestrictionService,
+    restrictionService,
+  );
+
+  // ===== Agent Config =====
+  const agentConfigRepo = new InMemoryAIAgentChannelConfigRepository();
+  container.registerInstance<AIAgentChannelConfigRepository>(
+    AI_TOKENS.AIAgentChannelConfigRepository,
+    agentConfigRepo,
+  );
+
+  const agentConfigService = new DefaultAIAgentChannelConfigService(
+    agentConfigRepo,
+    cacheService,
+    eventPublisher,
+  );
+  container.registerInstance<AIAgentChannelConfigService>(
+    AI_TOKENS.AIAgentChannelConfigService,
+    agentConfigService,
+  );
+
+  // ===== Routing Decision =====
+  const routingDecision = new AIChatMentionRoutingDecision(
+    agentConfigService,
+    restrictionService,
+  );
+  container.registerInstance(AI_TOKENS.AIChatMentionRoutingDecision, routingDecision);
+
+  // ===== AI Chat Service =====
+  const langChainService = new LangChainAIChatService(aiConfig, promptLoader);
+  container.registerInstance(AI_TOKENS.LangChainAIChatService, langChainService);
+
+  // Wrap with Markdown validation decorator if enabled
+  let aiChatService: AIChatService;
+  if (aiConfig.enableMarkdownValidation) {
+    aiChatService = new MarkdownValidatingAIChatService(langChainService);
+  } else {
+    aiChatService = langChainService;
+  }
+  container.registerInstance<AIChatService>(AI_TOKENS.AIChatService, aiChatService);
+
+  // ===== Tools =====
+  const authGuard = new ToolCallerAuthorizationGuard();
+  container.registerInstance(AI_TOKENS.ToolCallerAuthorizationGuard, authGuard);
+
+  const permissionParser = new PermissionParser();
+  container.registerInstance(AI_TOKENS.PermissionParser, permissionParser);
+
+  // Register all 17 tools
+  container.registerInstance(
+    AI_TOKENS.CreateChannelTool,
+    new CreateChannelTool(authGuard, permissionParser),
+  );
+  container.registerInstance(
+    AI_TOKENS.CreateCategoryTool,
+    new CreateCategoryTool(authGuard, permissionParser),
+  );
+  container.registerInstance(
+    AI_TOKENS.CreateRoleTool,
+    new CreateRoleTool(authGuard),
+  );
+  container.registerInstance(
+    AI_TOKENS.ListChannelsTool,
+    new ListChannelsTool(authGuard),
+  );
+  container.registerInstance(
+    AI_TOKENS.ListCategoriesTool,
+    new ListCategoriesTool(authGuard),
+  );
+  container.registerInstance(
+    AI_TOKENS.ListRolesTool,
+    new ListRolesTool(authGuard),
+  );
+  container.registerInstance(
+    AI_TOKENS.GetChannelPermissionsTool,
+    new GetChannelPermissionsTool(authGuard),
+  );
+  container.registerInstance(
+    AI_TOKENS.GetCategoryPermissionsTool,
+    new GetCategoryPermissionsTool(authGuard),
+  );
+  container.registerInstance(
+    AI_TOKENS.GetRolePermissionsTool,
+    new GetRolePermissionsTool(authGuard),
+  );
+  container.registerInstance(
+    AI_TOKENS.ModifyChannelPermissionsTool,
+    new ModifyChannelPermissionsTool(authGuard, permissionParser),
+  );
+  container.registerInstance(
+    AI_TOKENS.ModifyCategoryPermissionsTool,
+    new ModifyCategoryPermissionsTool(authGuard, permissionParser),
+  );
+  container.registerInstance(
+    AI_TOKENS.ModifyRolePermissionsTool,
+    new ModifyRolePermissionsTool(authGuard),
+  );
+  container.registerInstance(
+    AI_TOKENS.SendMessagesTool,
+    new SendMessagesTool(authGuard),
+  );
+  container.registerInstance(
+    AI_TOKENS.SearchMessagesTool,
+    new SearchMessagesTool(authGuard),
+  );
+  container.registerInstance(
+    AI_TOKENS.ManageMessageTool,
+    new ManageMessageTool(authGuard),
+  );
+  container.registerInstance(
+    AI_TOKENS.MoveChannelTool,
+    new MoveChannelTool(authGuard),
+  );
+  container.registerInstance(
+    AI_TOKENS.DeleteDiscordResourceTool,
+    new DeleteDiscordResourceTool(authGuard),
+  );
+
+  // ===== Memory =====
+  const toolCallHistory = new InMemoryToolCallHistory();
+  container.registerInstance(AI_TOKENS.InMemoryToolCallHistory, toolCallHistory);
+
+  const threadHistoryProvider = new DiscordThreadHistoryProvider();
+  container.registerInstance(AI_TOKENS.DiscordThreadHistoryProvider, threadHistoryProvider);
+
+  const memoryProvider = new SimplifiedChatMemoryProvider(
+    threadHistoryProvider,
+    toolCallHistory,
+    runtimeGateway,
+  );
+  container.registerInstance(AI_TOKENS.SimplifiedChatMemoryProvider, memoryProvider);
+
+  // ===== Markdown Pipeline =====
+  container.registerInstance(AI_TOKENS.CommonMarkValidator, new CommonMarkValidator());
+  container.registerInstance(AI_TOKENS.RegexBasedAutoFixer, new RegexBasedAutoFixer());
+  container.registerInstance(AI_TOKENS.DiscordMarkdownSanitizer, new DiscordMarkdownSanitizer());
+  container.registerInstance(AI_TOKENS.DiscordMarkdownPaginator, new DiscordMarkdownPaginator());
+
+  // ===== AIChatMentionListener =====
+  const listener = new AIChatMentionListener(
+    routingDecision,
+    aiChatService,
+    runtimeGateway.selfUserId(),
+    aiConfig.showReasoning,
+    aiConfig.streamingBypassValidation,
+  );
+  container.registerInstance(AI_TOKENS.AIChatMentionListener, listener);
+}
