@@ -1,0 +1,55 @@
+{
+  "name": "@ltdjms/admin",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./i18n": {
+      "types": "./dist/i18n/index.d.ts",
+      "import": "./dist/i18n/index.js"
+    },
+    "./facades": {
+      "types": "./dist/facades/index.d.ts",
+      "import": "./dist/facades/index.js"
+    },
+    "./session": {
+      "types": "./dist/session/index.d.ts",
+      "import": "./dist/session/index.js"
+    },
+    "./di": {
+      "types": "./dist/di/index.d.ts",
+      "import": "./dist/di/index.js"
+    },
+    "./commands/infra": {
+      "types": "./dist/commands/infra/index.d.ts",
+      "import": "./dist/commands/infra/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ltdjms/shared": "workspace:*",
+    "@ltdjms/economy": "workspace:*",
+    "@ltdjms/shop": "workspace:*",
+    "@ltdjms/dispatch": "workspace:*",
+    "@ltdjms/ai": "workspace:*",
+    "discord.js": "^14.18.0",
+    "zod": "^3.24.0",
+    "tsyringe": "^4.8.0",
+    "reflect-metadata": "^0.2.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "vitest": "^3.0.0",
+    "@types/node": "^20.0.0"
+  }
+}
