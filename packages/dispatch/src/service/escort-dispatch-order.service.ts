@@ -219,7 +219,7 @@ export class EscortDispatchOrderService {
     }
 
     try {
-      const normalized = this.ensureTimeoutCompletion(order);
+      const normalized = await this.ensureTimeoutCompletion(order);
       if (isCompleted(normalized)) {
         return new Ok(normalized);
       }
@@ -250,7 +250,7 @@ export class EscortDispatchOrderService {
     }
 
     try {
-      const normalized = this.ensureTimeoutCompletion(order);
+      const normalized = await this.ensureTimeoutCompletion(order);
 
       if (
         normalized.status === EscortDispatchOrderStatus.AFTER_SALES_REQUESTED ||
@@ -365,7 +365,9 @@ export class EscortDispatchOrderService {
     const safeLimit = this.normalizeLimit(limit ?? DEFAULT_HISTORY_LIMIT);
     try {
       const orders = await this.repository.findRecentByGuildId(guildId, safeLimit);
-      const normalizedOrders = orders.map((o) => this.ensureTimeoutCompletion(o));
+      const normalizedOrders = await Promise.all(
+        orders.map((o) => this.ensureTimeoutCompletion(o)),
+      );
       return new Ok(normalizedOrders);
     } catch (e) {
       const err = e instanceof Error ? e : new Error(String(e));
@@ -403,7 +405,7 @@ export class EscortDispatchOrderService {
       if (order == null) {
         return new Err(DomainError.invalidInput('找不到該訂單'));
       }
-      const normalized = this.ensureTimeoutCompletion(order);
+      const normalized = await this.ensureTimeoutCompletion(order);
       return new Ok(normalized);
     } catch (e) {
       const err = e instanceof Error ? e : new Error(String(e));
@@ -411,18 +413,21 @@ export class EscortDispatchOrderService {
     }
   }
 
-  private ensureTimeoutCompletion(order: EscortDispatchOrder): EscortDispatchOrder {
+  private async ensureTimeoutCompletion(order: EscortDispatchOrder): Promise<EscortDispatchOrder> {
     if (!hasCustomerConfirmationTimedOut(order, new Date(this.clock!()))) {
       return order;
     }
 
     try {
       const completed = withCompleted(order, new Date(this.clock!()));
-      // Note: in production this would call repository.update() and return the result
-      // For now, we return the completed domain object; the caller persists
-      return completed;
-    } catch {
-      // If auto-complete fails, return original order (non-blocking)
+      const persisted = await this.repository.update(completed);
+      return persisted;
+    } catch (e) {
+      // If auto-complete persist fails, log warning and return original order (non-blocking)
+      console.warn(
+        `Failed to persist timeout auto-completion for order ${order.orderNumber}:`,
+        e instanceof Error ? e.message : e,
+      );
       return order;
     }
   }

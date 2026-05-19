@@ -1,5 +1,5 @@
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq, desc, count, sql } from 'drizzle-orm';
+import { eq, and, desc, count, sql } from 'drizzle-orm';
 import { currencyTransaction } from '../../domain/schema.js';
 import type { CurrencyTransaction } from '../../domain/types.js';
 import { CurrencyTransactionSource } from '../../domain/types.js';
@@ -44,8 +44,10 @@ export class CurrencyTransactionRepository {
       .select()
       .from(currencyTransaction)
       .where(
-        eq(currencyTransaction.guildId, guildId) &&
+        and(
+          eq(currencyTransaction.guildId, guildId),
           eq(currencyTransaction.userId, userId),
+        ),
       )
       .orderBy(desc(currencyTransaction.createdAt))
       .limit(limit)
@@ -62,8 +64,10 @@ export class CurrencyTransactionRepository {
       .select({ count: count() })
       .from(currencyTransaction)
       .where(
-        eq(currencyTransaction.guildId, guildId) &&
+        and(
+          eq(currencyTransaction.guildId, guildId),
           eq(currencyTransaction.userId, userId),
+        ),
       );
 
     return result[0]?.count ?? 0;
@@ -76,8 +80,10 @@ export class CurrencyTransactionRepository {
     await this.db
       .delete(currencyTransaction)
       .where(
-        eq(currencyTransaction.guildId, guildId) &&
+        and(
+          eq(currencyTransaction.guildId, guildId),
           eq(currencyTransaction.userId, userId),
+        ),
       );
   }
 }

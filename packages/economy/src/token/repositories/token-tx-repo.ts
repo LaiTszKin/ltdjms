@@ -1,5 +1,5 @@
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq, desc, count } from 'drizzle-orm';
+import { eq, and, desc, count } from 'drizzle-orm';
 import { gameTokenTransaction } from '../../domain/schema.js';
 import type { GameTokenTransaction } from '../../domain/types.js';
 import { GameTokenTransactionSource } from '../../domain/types.js';
@@ -44,8 +44,10 @@ export class TokenTransactionRepository {
       .select()
       .from(gameTokenTransaction)
       .where(
-        eq(gameTokenTransaction.guildId, guildId) &&
+        and(
+          eq(gameTokenTransaction.guildId, guildId),
           eq(gameTokenTransaction.userId, userId),
+        ),
       )
       .orderBy(desc(gameTokenTransaction.createdAt))
       .limit(limit)
@@ -62,8 +64,10 @@ export class TokenTransactionRepository {
       .select({ count: count() })
       .from(gameTokenTransaction)
       .where(
-        eq(gameTokenTransaction.guildId, guildId) &&
+        and(
+          eq(gameTokenTransaction.guildId, guildId),
           eq(gameTokenTransaction.userId, userId),
+        ),
       );
 
     return result[0]?.count ?? 0;
@@ -76,8 +80,10 @@ export class TokenTransactionRepository {
     await this.db
       .delete(gameTokenTransaction)
       .where(
-        eq(gameTokenTransaction.guildId, guildId) &&
+        and(
+          eq(gameTokenTransaction.guildId, guildId),
           eq(gameTokenTransaction.userId, userId),
+        ),
       );
   }
 }

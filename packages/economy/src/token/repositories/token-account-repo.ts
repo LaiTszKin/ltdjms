@@ -1,5 +1,5 @@
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq, sql } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { gameTokenAccount } from '../../domain/schema.js';
 import type { GameTokenAccount } from '../../domain/types.js';
 import { DomainError, type Result, Ok, Err } from '@ltdjms/shared';
@@ -19,8 +19,10 @@ export class TokenAccountRepository {
       .select()
       .from(gameTokenAccount)
       .where(
-        eq(gameTokenAccount.guildId, guildId) &&
+        and(
+          eq(gameTokenAccount.guildId, guildId),
           eq(gameTokenAccount.userId, userId),
+        ),
       )
       .limit(1);
 
@@ -41,8 +43,10 @@ export class TokenAccountRepository {
       .select()
       .from(gameTokenAccount)
       .where(
-        eq(gameTokenAccount.guildId, guildId) &&
+        and(
+          eq(gameTokenAccount.guildId, guildId),
           eq(gameTokenAccount.userId, userId),
+        ),
       )
       .limit(1);
 
@@ -60,8 +64,10 @@ export class TokenAccountRepository {
       .select()
       .from(gameTokenAccount)
       .where(
-        eq(gameTokenAccount.guildId, guildId) &&
+        and(
+          eq(gameTokenAccount.guildId, guildId),
           eq(gameTokenAccount.userId, userId),
+        ),
       )
       .limit(1);
 
@@ -84,9 +90,11 @@ export class TokenAccountRepository {
         updatedAt: sql`NOW()`,
       })
       .where(
-        eq(gameTokenAccount.guildId, guildId) &&
-          eq(gameTokenAccount.userId, userId) &&
+        and(
+          eq(gameTokenAccount.guildId, guildId),
+          eq(gameTokenAccount.userId, userId),
           sql`${gameTokenAccount.tokens} + ${delta} >= 0`,
+        ),
       )
       .returning();
 
@@ -115,9 +123,11 @@ export class TokenAccountRepository {
           updatedAt: sql`NOW()`,
         })
         .where(
-          eq(gameTokenAccount.guildId, guildId) &&
-            eq(gameTokenAccount.userId, userId) &&
+          and(
+            eq(gameTokenAccount.guildId, guildId),
+            eq(gameTokenAccount.userId, userId),
             sql`${gameTokenAccount.tokens} + ${delta} >= 0`,
+          ),
         )
         .returning();
 
@@ -161,8 +171,10 @@ export class TokenAccountRepository {
         updatedAt: sql`NOW()`,
       })
       .where(
-        eq(gameTokenAccount.guildId, guildId) &&
+        and(
+          eq(gameTokenAccount.guildId, guildId),
           eq(gameTokenAccount.userId, userId),
+        ),
       )
       .returning();
 
@@ -176,8 +188,10 @@ export class TokenAccountRepository {
     await this.db
       .delete(gameTokenAccount)
       .where(
-        eq(gameTokenAccount.guildId, guildId) &&
+        and(
+          eq(gameTokenAccount.guildId, guildId),
           eq(gameTokenAccount.userId, userId),
+        ),
       );
   }
 }

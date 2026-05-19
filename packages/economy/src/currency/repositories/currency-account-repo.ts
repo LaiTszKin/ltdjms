@@ -1,5 +1,5 @@
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq, sql } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { memberCurrencyAccount } from '../../domain/schema.js';
 import type { MemberCurrencyAccount } from '../../domain/types.js';
 import { DomainError, type Result, Ok, Err, okVoid } from '@ltdjms/shared';
@@ -20,8 +20,10 @@ export class CurrencyAccountRepository {
       .select()
       .from(memberCurrencyAccount)
       .where(
-        eq(memberCurrencyAccount.guildId, guildId) &&
+        and(
+          eq(memberCurrencyAccount.guildId, guildId),
           eq(memberCurrencyAccount.userId, userId),
+        ),
       )
       .limit(1);
 
@@ -44,8 +46,10 @@ export class CurrencyAccountRepository {
       .select()
       .from(memberCurrencyAccount)
       .where(
-        eq(memberCurrencyAccount.guildId, guildId) &&
+        and(
+          eq(memberCurrencyAccount.guildId, guildId),
           eq(memberCurrencyAccount.userId, userId),
+        ),
       )
       .limit(1);
 
@@ -64,8 +68,10 @@ export class CurrencyAccountRepository {
       .select()
       .from(memberCurrencyAccount)
       .where(
-        eq(memberCurrencyAccount.guildId, guildId) &&
+        and(
+          eq(memberCurrencyAccount.guildId, guildId),
           eq(memberCurrencyAccount.userId, userId),
+        ),
       )
       .limit(1);
 
@@ -88,9 +94,11 @@ export class CurrencyAccountRepository {
         updatedAt: sql`NOW()`,
       })
       .where(
-        eq(memberCurrencyAccount.guildId, guildId) &&
-          eq(memberCurrencyAccount.userId, userId) &&
+        and(
+          eq(memberCurrencyAccount.guildId, guildId),
+          eq(memberCurrencyAccount.userId, userId),
           sql`${memberCurrencyAccount.balance} + ${delta} >= 0`,
+        ),
       )
       .returning();
 
@@ -119,9 +127,11 @@ export class CurrencyAccountRepository {
           updatedAt: sql`NOW()`,
         })
         .where(
-          eq(memberCurrencyAccount.guildId, guildId) &&
-            eq(memberCurrencyAccount.userId, userId) &&
+          and(
+            eq(memberCurrencyAccount.guildId, guildId),
+            eq(memberCurrencyAccount.userId, userId),
             sql`${memberCurrencyAccount.balance} + ${delta} >= 0`,
+          ),
         )
         .returning();
 
@@ -166,8 +176,10 @@ export class CurrencyAccountRepository {
         updatedAt: sql`NOW()`,
       })
       .where(
-        eq(memberCurrencyAccount.guildId, guildId) &&
+        and(
+          eq(memberCurrencyAccount.guildId, guildId),
           eq(memberCurrencyAccount.userId, userId),
+        ),
       )
       .returning();
 
@@ -181,8 +193,10 @@ export class CurrencyAccountRepository {
     await this.db
       .delete(memberCurrencyAccount)
       .where(
-        eq(memberCurrencyAccount.guildId, guildId) &&
+        and(
+          eq(memberCurrencyAccount.guildId, guildId),
           eq(memberCurrencyAccount.userId, userId),
+        ),
       );
   }
 }
