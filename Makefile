@@ -28,6 +28,22 @@ clean:
 coverage:
 	mvn clean test jacoco:report
 	open target/site/jacoco/index.html
+
+# TypeScript commands (pnpm monorepo)
+ts-build:
+	pnpm -r exec tsc
+
+ts-test:
+	pnpm vitest run
+
+ts-format:
+	pnpm prettier --write "packages/*/src/**/*.ts"
+
+ts-format-check:
+	pnpm prettier --check "packages/*/src/**/*.ts"
+
+ts-lint:
+	pnpm eslint packages/*/src/
 	
 # Docker commands
 update:

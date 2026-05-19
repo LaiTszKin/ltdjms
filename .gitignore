@@ -45,6 +45,12 @@ Thumbs.db
 # Docker
 docker-compose.override.yml
 
+# Node.js
+node_modules/
+
+# pnpm
+.pnpm-store/
+
 # backups
 *.backups
 *.backup
