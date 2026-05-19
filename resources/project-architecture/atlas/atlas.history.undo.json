@@ -1,0 +1,823 @@
+{
+  "base": {
+    "meta": {
+      "title": "LTDJMS — Discord Bot 專案架構",
+      "summary": "基於 Java/JDA 的 Discord bot，在單一 guild 內承載經濟互動、商品交易、護航協作與 AI 頻道治理。涵蓋 guild 貨幣與遊戲代幣的雙軌經濟系統、商品商店與法幣付款（ECPay）、護航派單狀態機、AI 聊天與 Agent 工具執行、以及管理面板。掃描範圍：src/main/java/ltdjms/discord/ 下所有業務模組與共用基礎設施。",
+      "updatedAt": "2026-05-19T15:49:22.961Z"
+    },
+    "actors": [
+      {
+        "id": "member",
+        "label": "一般成員"
+      },
+      {
+        "id": "admin",
+        "label": "管理員"
+      },
+      {
+        "id": "escort",
+        "label": "護航人員"
+      },
+      {
+        "id": "after-sales-staff",
+        "label": "售後人員"
+      }
+    ],
+    "features": [
+      {
+        "slug": "guild-economy",
+        "title": "Guild Economy",
+        "story": "成員可以在 guild 內查詢餘額、參與骰子遊戲賺取貨幣。管理員可設定貨幣名稱與圖示。雙軌經濟：guild 貨幣（用於購物）與遊戲代幣（用於遊玩），遊戲獎勵以貨幣發放。",
+        "dependsOn": [],
+        "submodules": [
+          {
+            "slug": "economy-interaction",
+            "kind": "api",
+            "role": "Discord 指令處理層：貨幣設定、擲骰遊戲、交易查詢",
+            "functions": [],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          },
+          {
+            "slug": "economy-service",
+            "kind": "service",
+            "role": "雙軌經濟核心邏輯：貨幣帳戶、代幣帳戶、交易記錄、遊戲獎勵結算",
+            "functions": [
+              {
+                "name": "tryAdjustBalance",
+                "in": "guildId, userId, delta",
+                "out": "Result<MemberCurrencyAccount, DomainError>",
+                "side": "tx",
+                "purpose": "原子增減貨幣餘額，禁止負數"
+              },
+              {
+                "name": "playDiceGame1",
+                "in": "guildId, userId, tokens",
+                "out": "DiceGame1Result",
+                "side": "tx",
+                "purpose": "擲骰遊戲：花費代幣、計算獎勵、發放貨幣"
+              },
+              {
+                "name": "creditReward",
+                "in": "guildId, userId, amount, source",
+                "out": "BalanceAdjustmentResult",
+                "side": "tx",
+                "purpose": "遊戲/商品/兌換碼獎勵發放至貨幣帳戶"
+              }
+            ],
+            "variables": [
+              {
+                "name": "memberCurrencyAccount",
+                "type": "MemberCurrencyAccount",
+                "scope": "persist",
+                "purpose": "每個成員的 guild 貨幣餘額，更新後通知面板即時更新"
+              },
+              {
+                "name": "gameTokenAccount",
+                "type": "GameTokenAccount",
+                "scope": "persist",
+                "purpose": "每個成員的遊戲代幣餘額，扣除後才可遊玩"
+              }
+            ],
+            "dataflow": [],
+            "errors": [
+              {
+                "name": "ErrInsufficientBalance",
+                "when": "貨幣或代幣餘額不足扣款",
+                "means": "回傳 DomainError.insufficientBalance()，購買/遊戲流程中斷"
+              }
+            ]
+          },
+          {
+            "slug": "economy-db",
+            "kind": "db",
+            "role": "guild_currency_config / member_currency_account / game_token_account / dice_game_config / transaction 資料表",
+            "functions": [],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          }
+        ],
+        "edges": [
+          {
+            "id": "e-18pz26",
+            "from": "economy-interaction",
+            "to": "economy-service",
+            "kind": "call",
+            "label": "委派業務邏輯"
+          },
+          {
+            "id": "e-6xj3m1",
+            "from": "economy-service",
+            "to": "economy-db",
+            "kind": "call",
+            "label": "讀寫貨幣/代幣帳戶"
+          },
+          {
+            "id": "e-ille99",
+            "from": "economy-service",
+            "to": "economy-interaction",
+            "kind": "return",
+            "label": "BalanceView / GameResult"
+          }
+        ]
+      },
+      {
+        "slug": "shop-payment",
+        "title": "Shop & Payment",
+        "story": "成員可在商店瀏覽商品，以貨幣或法幣付款購買，並使用兌換碼兌換商品。管理員可管理商品目錄與產生兌換碼。",
+        "dependsOn": [
+          "guild-economy"
+        ],
+        "submodules": [
+          {
+            "slug": "shop-interaction",
+            "kind": "api",
+            "role": "商店瀏覽、搜尋、購買流程處理（含按鈕、選單、Modal 互動）",
+            "functions": [],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          },
+          {
+            "slug": "product-catalog-service",
+            "kind": "service",
+            "role": "商品定義 CRUD、兌換碼產生與驗證、跨模組獎勵派送引擎",
+            "functions": [],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          },
+          {
+            "slug": "fiat-payment-service",
+            "kind": "service",
+            "role": "ECPay 法幣付款整合、CVS 超商繳費碼、回撥 HTTP Server、付款後處理 Worker、對帳",
+            "functions": [
+              {
+                "name": "createFiatOnlyOrder",
+                "in": "guildId, userId, productId",
+                "out": "FiatOrderResult",
+                "side": "network",
+                "purpose": "產生 ECPay CVS 超商繳費碼並建立 PENDING_PAYMENT 訂單"
+              },
+              {
+                "name": "handleCallback",
+                "in": "encryptedPayload",
+                "out": "CallbackResult",
+                "side": "io",
+                "purpose": "ECPay 回撥解密與驗證，原子轉移 PENDING_PAYMENT→PAID"
+              },
+              {
+                "name": "processPendingOrders",
+                "in": "none",
+                "out": "void",
+                "side": "tx",
+                "purpose": "Scheduler 每 10s：claim→通知買家→自動派遣→發放獎勵→mark fulfilled"
+              }
+            ],
+            "variables": [
+              {
+                "name": "fiatOrder",
+                "type": "FiatOrder",
+                "scope": "persist",
+                "purpose": "法幣訂單，含商品快照與處理狀態標記（fulfilled/rewarded/notified）"
+              }
+            ],
+            "dataflow": [],
+            "errors": [
+              {
+                "name": "ErrCallbackValidation",
+                "when": "ECPay 回撥 MerchantID 或金額與訂單不符",
+                "means": "回傳 400，訂單維持 PENDING_PAYMENT，由 Reconciliation Worker 補償"
+              },
+              {
+                "name": "ErrPaymentExpired",
+                "when": "繳費期限已過仍未付款",
+                "means": "markExpiredIfPending，訂單終止"
+              }
+            ]
+          },
+          {
+            "slug": "shop-db",
+            "kind": "db",
+            "role": "product / fiat_order / redemption_code / product_redemption_transaction 資料表",
+            "functions": [],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          }
+        ],
+        "edges": [
+          {
+            "id": "e-sfy2u5",
+            "from": "shop-interaction",
+            "to": "product-catalog-service",
+            "kind": "call",
+            "label": "商品查詢與購買"
+          },
+          {
+            "id": "e-k3dm3i",
+            "from": "shop-interaction",
+            "to": "fiat-payment-service",
+            "kind": "call",
+            "label": "建立法幣訂單"
+          },
+          {
+            "id": "e-stzw97",
+            "from": "fiat-payment-service",
+            "to": "shop-db",
+            "kind": "call",
+            "label": "讀寫法幣訂單"
+          },
+          {
+            "id": "e-tf7hxu",
+            "from": "product-catalog-service",
+            "to": "shop-db",
+            "kind": "call",
+            "label": "讀寫商品/兌換碼"
+          }
+        ]
+      },
+      {
+        "slug": "escort-dispatch",
+        "title": "Escort Dispatch",
+        "story": "管理員可為護航人員派單，護航人員確認接單後完成服務，客戶可請求售後。支援從商店購買自動建立派遣單。",
+        "dependsOn": [
+          "shop-payment"
+        ],
+        "submodules": [
+          {
+            "slug": "dispatch-interaction",
+            "kind": "api",
+            "role": "派遣面板指令、私訊流程、狀態轉換按鈕處理",
+            "functions": [],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          },
+          {
+            "slug": "dispatch-service",
+            "kind": "service",
+            "role": "訂單狀態機（7 階段）、自動超時完成、跨模組 Handoff、售後人員管理、護航選項定價",
+            "functions": [
+              {
+                "name": "handoffFromFiatPayment",
+                "in": "productSnapshot, fiatOrder",
+                "out": "EscortDispatchOrder",
+                "side": "tx",
+                "purpose": "法幣付款完成後自動建立護航派遣單（idempotent：檢查 findBySourceIdentity）"
+              },
+              {
+                "name": "claimAfterSales",
+                "in": "orderNumber, staffUserId",
+                "out": "Result<EscortDispatchOrder, DomainError>",
+                "side": "tx",
+                "purpose": "原子 claim：AFTER_SALES_REQUESTED→AFTER_SALES_IN_PROGRESS，防止重複領取"
+              }
+            ],
+            "variables": [
+              {
+                "name": "dispatchOrder",
+                "type": "EscortDispatchOrder",
+                "scope": "persist",
+                "purpose": "含 7 階段狀態機與來源追蹤，原子狀態轉換使用 RETURNING 樂觀鎖"
+              }
+            ],
+            "dataflow": [],
+            "errors": [
+              {
+                "name": "ErrInvalidStateTransition",
+                "when": "狀態不合法（如 COMPLETED 不能直接 claim after-sales）或權限不符",
+                "means": "回傳 DomainError，操作被拒絕"
+              }
+            ]
+          },
+          {
+            "slug": "dispatch-db",
+            "kind": "db",
+            "role": "escort_dispatch_order / guild_escort_option_price / dispatch_after_sales_staff 資料表",
+            "functions": [],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          }
+        ],
+        "edges": [
+          {
+            "id": "e-bacx43",
+            "from": "dispatch-interaction",
+            "to": "dispatch-service",
+            "kind": "call",
+            "label": "委派派遣業務"
+          },
+          {
+            "id": "e-m19qs9",
+            "from": "dispatch-service",
+            "to": "dispatch-db",
+            "kind": "call",
+            "label": "讀寫派遣訂單"
+          }
+        ]
+      },
+      {
+        "slug": "ai-chat-agent",
+        "title": "AI Chat & Agent",
+        "story": "成員在允許頻道提及 @bot 可獲得 AI 回覆或啟動 Agent 執行 Discord 管理工具。管理員可設定頻道白名單與 Agent 啟用。",
+        "dependsOn": [],
+        "submodules": [
+          {
+            "slug": "ai-mention-interaction",
+            "kind": "api",
+            "role": "@bot 提及監聽、AI 聊天 vs Agent 路由決策、串流回覆輸出",
+            "functions": [],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          },
+          {
+            "slug": "ai-chat-service",
+            "kind": "service",
+            "role": "AI 串流回覆（LangChain4j）、頻道白名單檢查、提示詞系統提示載入",
+            "functions": [
+              {
+                "name": "generateStreamingResponse",
+                "in": "message, channelId, userId, memoryId, handler",
+                "out": "void (串流至 StreamingResponseHandler)",
+                "side": "network",
+                "purpose": "透過 LangChain4j 產生 AI 串流回覆，支援 Reasoning/Content/ToolIntent 三種 chunk"
+              }
+            ],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          },
+          {
+            "slug": "ai-agent-service",
+            "kind": "service",
+            "role": "Agent 工具執行（17 個 Discord 管理工具）、對話記憶、工具審計日誌",
+            "functions": [
+              {
+                "name": "createChannel",
+                "in": "guildId, name, categoryId, permissions",
+                "out": "channelId",
+                "side": "network",
+                "purpose": "Agent 工具：建立文字頻道，需管理員權限"
+              }
+            ],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          },
+          {
+            "slug": "markdown-validation",
+            "kind": "pure-fn",
+            "role": "AI 回覆 Markdown 語法校驗與自動修正管線（CommonMark 解析器 + 13 道 Regex 修復）",
+            "functions": [],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          },
+          {
+            "slug": "ai-db",
+            "kind": "db",
+            "role": "ai_channel_restriction / ai_agent_channel_config / tool_execution_log 資料表",
+            "functions": [],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          }
+        ],
+        "edges": [
+          {
+            "id": "e-6bh9qi",
+            "from": "ai-mention-interaction",
+            "to": "ai-chat-service",
+            "kind": "call",
+            "label": "路由至 AI 聊天"
+          },
+          {
+            "id": "e-33cm2i",
+            "from": "ai-chat-service",
+            "to": "ai-agent-service",
+            "kind": "call",
+            "label": "Agent 模式啟用時路由至工具執行"
+          },
+          {
+            "id": "e-6qkcsb",
+            "from": "ai-chat-service",
+            "to": "markdown-validation",
+            "kind": "call",
+            "label": "串流回覆 Markdown 校驗"
+          },
+          {
+            "id": "e-dxigb4",
+            "from": "ai-chat-service",
+            "to": "ai-db",
+            "kind": "call",
+            "label": "讀寫頻道白名單"
+          },
+          {
+            "id": "e-my4xly",
+            "from": "ai-agent-service",
+            "to": "ai-db",
+            "kind": "call",
+            "label": "讀寫 Agent 設定與工具日誌"
+          }
+        ]
+      },
+      {
+        "slug": "administration",
+        "title": "Administration",
+        "story": "管理員透過管理面板設定貨幣經濟參數、管理商品與兌換碼、配置 AI 與護航規則。一般成員透過會員面板查餘額、交易記錄與歷史。",
+        "dependsOn": [
+          "guild-economy",
+          "shop-payment",
+          "escort-dispatch",
+          "ai-chat-agent"
+        ],
+        "submodules": [
+          {
+            "slug": "admin-panel-interaction",
+            "kind": "api",
+            "role": "管理面板指令、按鈕、Modal，含產品管理、AI 設定、護航設定子面板",
+            "functions": [],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          },
+          {
+            "slug": "user-panel-interaction",
+            "kind": "api",
+            "role": "會員面板指令與按鈕：餘額查詢、交易記錄、兌換碼輸入",
+            "functions": [],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          },
+          {
+            "slug": "panel-service",
+            "kind": "service",
+            "role": "面板業務邏輯 Facades，彙整經濟、AI、派遣、商品設定與即時事件更新",
+            "functions": [],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          },
+          {
+            "slug": "notifications",
+            "kind": "service",
+            "role": "跨模組通知：買家付款成功 DM、管理員新訂單通知、護航/售後私訊",
+            "functions": [],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          }
+        ],
+        "edges": [
+          {
+            "id": "e-xzgwfu",
+            "from": "admin-panel-interaction",
+            "to": "panel-service",
+            "kind": "call",
+            "label": "委派管理操作"
+          },
+          {
+            "id": "e-ejuqec",
+            "from": "user-panel-interaction",
+            "to": "panel-service",
+            "kind": "call",
+            "label": "會員資訊查詢"
+          },
+          {
+            "id": "e-j8lbve",
+            "from": "panel-service",
+            "to": "notifications",
+            "kind": "call",
+            "label": "觸發訂單/付款通知"
+          }
+        ]
+      },
+      {
+        "slug": "shared-infrastructure",
+        "title": "Shared Infrastructure",
+        "story": "提供基礎設施服務給所有業務模組：Discord JDA 抽象層、領域事件系統、Redis 快取、Dagger DI 容器、共用結果型別。",
+        "dependsOn": [],
+        "submodules": [
+          {
+            "slug": "discord-api",
+            "kind": "external",
+            "role": "Discord JDA 抽象層：domain 介面、JDA adapter、mock 實作、Embed/Button/SelectMenu 工具",
+            "functions": [],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          },
+          {
+            "slug": "event-bus",
+            "kind": "service",
+            "role": "同步領域事件匯流排：DomainEventPublisher + Consumer 註冊，支援快取失效、面板即時更新",
+            "functions": [],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          },
+          {
+            "slug": "cache-layer",
+            "kind": "service",
+            "role": "Redis 快取抽象（CacheService），用於餘額/代幣快取（300s TTL）及 Agent 設定快取（1h TTL）",
+            "functions": [],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          },
+          {
+            "slug": "di-container",
+            "kind": "service",
+            "role": "Dagger 依賴注入模組組裝，提供 RepositoryModule / ServiceModule 分層綁定",
+            "functions": [],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          }
+        ],
+        "edges": []
+      }
+    ],
+    "edges": [
+      {
+        "id": "e-eq4hb7",
+        "from": {
+          "feature": "shop-payment",
+          "submodule": "shop-interaction"
+        },
+        "to": {
+          "feature": "guild-economy",
+          "submodule": "economy-service"
+        },
+        "kind": "call",
+        "label": "貨幣扣款購買"
+      },
+      {
+        "id": "e-grlykf",
+        "from": {
+          "feature": "shop-payment",
+          "submodule": "product-catalog-service"
+        },
+        "to": {
+          "feature": "guild-economy",
+          "submodule": "economy-service"
+        },
+        "kind": "call",
+        "label": "貨幣/代幣獎勵派送"
+      },
+      {
+        "id": "e-uu0dn6",
+        "from": {
+          "feature": "shop-payment",
+          "submodule": "fiat-payment-service"
+        },
+        "to": {
+          "feature": "escort-dispatch",
+          "submodule": "dispatch-service"
+        },
+        "kind": "call",
+        "label": "法幣付款成功→自動派遣"
+      },
+      {
+        "id": "e-ua3eyh",
+        "from": {
+          "feature": "ai-chat-agent",
+          "submodule": "ai-mention-interaction"
+        },
+        "to": {
+          "feature": "escort-dispatch",
+          "submodule": "dispatch-service"
+        },
+        "kind": "call",
+        "label": "Agent 執行 Discord 管理工具"
+      },
+      {
+        "id": "e-cioa3m",
+        "from": {
+          "feature": "administration",
+          "submodule": "panel-service"
+        },
+        "to": {
+          "feature": "guild-economy",
+          "submodule": "economy-service"
+        },
+        "kind": "call",
+        "label": "貨幣/代幣管理與查詢"
+      },
+      {
+        "id": "e-x791qu",
+        "from": {
+          "feature": "administration",
+          "submodule": "panel-service"
+        },
+        "to": {
+          "feature": "shop-payment",
+          "submodule": "product-catalog-service"
+        },
+        "kind": "call",
+        "label": "商品管理與兌換碼產生"
+      },
+      {
+        "id": "e-k1luxm",
+        "from": {
+          "feature": "administration",
+          "submodule": "panel-service"
+        },
+        "to": {
+          "feature": "escort-dispatch",
+          "submodule": "dispatch-service"
+        },
+        "kind": "call",
+        "label": "護航設定與售後人員管理"
+      },
+      {
+        "id": "e-dw1qkt",
+        "from": {
+          "feature": "administration",
+          "submodule": "panel-service"
+        },
+        "to": {
+          "feature": "ai-chat-agent",
+          "submodule": "ai-chat-service"
+        },
+        "kind": "call",
+        "label": "AI 頻道白名單設定"
+      },
+      {
+        "id": "e-xy49n7",
+        "from": {
+          "feature": "administration",
+          "submodule": "panel-service"
+        },
+        "to": {
+          "feature": "ai-chat-agent",
+          "submodule": "ai-agent-service"
+        },
+        "kind": "call",
+        "label": "Agent 啟用切換"
+      },
+      {
+        "id": "e-e0ewop",
+        "from": {
+          "feature": "shared-infrastructure",
+          "submodule": "discord-api"
+        },
+        "to": {
+          "feature": "guild-economy",
+          "submodule": "economy-interaction"
+        },
+        "kind": "call",
+        "label": "JDA Event 派發"
+      },
+      {
+        "id": "e-6u75kt",
+        "from": {
+          "feature": "shared-infrastructure",
+          "submodule": "discord-api"
+        },
+        "to": {
+          "feature": "shop-payment",
+          "submodule": "shop-interaction"
+        },
+        "kind": "call",
+        "label": "JDA Event 派發"
+      },
+      {
+        "id": "e-xxrg1y",
+        "from": {
+          "feature": "shared-infrastructure",
+          "submodule": "discord-api"
+        },
+        "to": {
+          "feature": "escort-dispatch",
+          "submodule": "dispatch-interaction"
+        },
+        "kind": "call",
+        "label": "JDA Event 派發"
+      },
+      {
+        "id": "e-2nap9y",
+        "from": {
+          "feature": "shared-infrastructure",
+          "submodule": "discord-api"
+        },
+        "to": {
+          "feature": "ai-chat-agent",
+          "submodule": "ai-mention-interaction"
+        },
+        "kind": "call",
+        "label": "JDA Event 派發"
+      },
+      {
+        "id": "e-xzxf69",
+        "from": {
+          "feature": "shared-infrastructure",
+          "submodule": "discord-api"
+        },
+        "to": {
+          "feature": "administration",
+          "submodule": "admin-panel-interaction"
+        },
+        "kind": "call",
+        "label": "JDA Event 派發"
+      },
+      {
+        "id": "e-9orgqk",
+        "from": {
+          "feature": "shared-infrastructure",
+          "submodule": "discord-api"
+        },
+        "to": {
+          "feature": "administration",
+          "submodule": "user-panel-interaction"
+        },
+        "kind": "call",
+        "label": "JDA Event 派發"
+      },
+      {
+        "id": "e-zd0f36",
+        "from": {
+          "feature": "shared-infrastructure",
+          "submodule": "event-bus"
+        },
+        "to": {
+          "feature": "administration",
+          "submodule": "panel-service"
+        },
+        "kind": "call",
+        "label": "領域事件驅動面板即時更新"
+      },
+      {
+        "id": "e-mcyh07",
+        "from": {
+          "feature": "shared-infrastructure",
+          "submodule": "cache-layer"
+        },
+        "to": {
+          "feature": "guild-economy",
+          "submodule": "economy-service"
+        },
+        "kind": "call",
+        "label": "餘額/代幣快取（300s TTL）"
+      },
+      {
+        "id": "e-8vnyj8",
+        "from": {
+          "feature": "shared-infrastructure",
+          "submodule": "cache-layer"
+        },
+        "to": {
+          "feature": "ai-chat-agent",
+          "submodule": "ai-agent-service"
+        },
+        "kind": "call",
+        "label": "Agent 設定快取（1h TTL）"
+      },
+      {
+        "id": "e-sh27ca",
+        "from": {
+          "feature": "shop-payment",
+          "submodule": "fiat-payment-service"
+        },
+        "to": {
+          "feature": "guild-economy",
+          "submodule": "economy-service"
+        },
+        "kind": "call",
+        "label": "法幣付款完成後獎勵派送"
+      },
+      {
+        "id": "e-nek8hi",
+        "from": {
+          "feature": "shop-payment",
+          "submodule": "fiat-payment-service"
+        },
+        "to": {
+          "feature": "shared-infrastructure",
+          "submodule": "discord-api"
+        },
+        "kind": "call",
+        "label": "DM 買家付款資訊"
+      },
+      {
+        "id": "e-t51w8w",
+        "from": {
+          "feature": "administration",
+          "submodule": "notifications"
+        },
+        "to": {
+          "feature": "shared-infrastructure",
+          "submodule": "discord-api"
+        },
+        "kind": "call",
+        "label": "發送 Discord DM 通知"
+      }
+    ]
+  }
+}

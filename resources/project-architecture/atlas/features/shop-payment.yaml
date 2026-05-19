@@ -1,0 +1,80 @@
+slug: shop-payment
+title: Shop & Payment
+story: 成員可在商店瀏覽商品，以貨幣或法幣付款購買，並使用兌換碼兌換商品。管理員可管理商品目錄與產生兌換碼。
+dependsOn:
+  - guild-economy
+submodules:
+  - slug: shop-interaction
+    kind: api
+    role: 商店瀏覽、搜尋、購買流程處理（含按鈕、選單、Modal 互動）
+    functions: []
+    variables: []
+    dataflow: []
+    errors: []
+  - slug: product-catalog-service
+    kind: service
+    role: 商品定義 CRUD、兌換碼產生與驗證、跨模組獎勵派送引擎
+    functions: []
+    variables: []
+    dataflow: []
+    errors: []
+  - slug: fiat-payment-service
+    kind: service
+    role: ECPay 法幣付款整合、CVS 超商繳費碼、回撥 HTTP Server、付款後處理 Worker、對帳
+    functions:
+      - name: createFiatOnlyOrder
+        in: guildId, userId, productId
+        out: FiatOrderResult
+        side: network
+        purpose: 產生 ECPay CVS 超商繳費碼並建立 PENDING_PAYMENT 訂單
+      - name: handleCallback
+        in: encryptedPayload
+        out: CallbackResult
+        side: io
+        purpose: ECPay 回撥解密與驗證，原子轉移 PENDING_PAYMENT→PAID
+      - name: processPendingOrders
+        in: none
+        out: void
+        side: tx
+        purpose: Scheduler 每 10s：claim→通知買家→自動派遣→發放獎勵→mark fulfilled
+    variables:
+      - name: fiatOrder
+        type: FiatOrder
+        scope: persist
+        purpose: 法幣訂單，含商品快照與處理狀態標記（fulfilled/rewarded/notified）
+    dataflow: []
+    errors:
+      - name: ErrCallbackValidation
+        when: ECPay 回撥 MerchantID 或金額與訂單不符
+        means: 回傳 400，訂單維持 PENDING_PAYMENT，由 Reconciliation Worker 補償
+      - name: ErrPaymentExpired
+        when: 繳費期限已過仍未付款
+        means: markExpiredIfPending，訂單終止
+  - slug: shop-db
+    kind: db
+    role: product / fiat_order / redemption_code / product_redemption_transaction 資料表
+    functions: []
+    variables: []
+    dataflow: []
+    errors: []
+edges:
+  - id: e-sfy2u5
+    from: shop-interaction
+    to: product-catalog-service
+    kind: call
+    label: 商品查詢與購買
+  - id: e-k3dm3i
+    from: shop-interaction
+    to: fiat-payment-service
+    kind: call
+    label: 建立法幣訂單
+  - id: e-stzw97
+    from: fiat-payment-service
+    to: shop-db
+    kind: call
+    label: 讀寫法幣訂單
+  - id: e-tf7hxu
+    from: product-catalog-service
+    to: shop-db
+    kind: call
+    label: 讀寫商品/兌換碼

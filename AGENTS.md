@@ -50,6 +50,9 @@ LTDJMS 的目標是在單一 Discord bot 內承載 guild 的經濟互動、商�
 - `testing-patterns.md` — 單元測試、契約測試、整合測試、Mock 策略
 - `code-organization.md` — 模組獨立性、Handler 薄度、Facade 模式
 
+### Architecture Atlas
+- `resources/project-architecture/index.html` — 互動式 SVG 架構圖（6 功能模塊 × 22 子模塊），含跨模組邊界與子模組細節頁面
+
 ### Root Documents
 - `README.md` — 專案簡介、快速啟動、核心能力
 - `docs/README.md` — 完整文件導覽與建議閱讀順序

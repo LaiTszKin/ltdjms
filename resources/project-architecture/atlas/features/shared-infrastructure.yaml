@@ -1,0 +1,34 @@
+slug: shared-infrastructure
+title: Shared Infrastructure
+story: 提供基礎設施服務給所有業務模組：Discord JDA 抽象層、領域事件系統、Redis 快取、Dagger DI 容器、共用結果型別。
+dependsOn: []
+submodules:
+  - slug: discord-api
+    kind: external
+    role: Discord JDA 抽象層：domain 介面、JDA adapter、mock 實作、Embed/Button/SelectMenu 工具
+    functions: []
+    variables: []
+    dataflow: []
+    errors: []
+  - slug: event-bus
+    kind: service
+    role: 同步領域事件匯流排：DomainEventPublisher + Consumer 註冊，支援快取失效、面板即時更新
+    functions: []
+    variables: []
+    dataflow: []
+    errors: []
+  - slug: cache-layer
+    kind: service
+    role: Redis 快取抽象（CacheService），用於餘額/代幣快取（300s TTL）及 Agent 設定快取（1h TTL）
+    functions: []
+    variables: []
+    dataflow: []
+    errors: []
+  - slug: di-container
+    kind: service
+    role: Dagger 依賴注入模組組裝，提供 RepositoryModule / ServiceModule 分層綁定
+    functions: []
+    variables: []
+    dataflow: []
+    errors: []
+edges: []

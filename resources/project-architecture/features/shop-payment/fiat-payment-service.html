@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en" data-atlas-page="submodule">
+<head>
+  <meta charset="utf-8">
+  <title>Shop &amp; Payment · fiat-payment-service</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..500&family=Geist:wght@300..700&family=JetBrains+Mono:wght@400..600&display=swap">
+  <link rel="stylesheet" href="../../assets/architecture.css">
+</head>
+<body>
+  <header class="submodule-header">
+    <nav class="submodule-breadcrumb"><a href="../../index.html">← Atlas</a> · <a href="index.html">← Shop &amp; Payment</a></nav>
+    <h1>fiat-payment-service <small class="submodule-kind submodule-kind--service">Service</small></h1>
+    <p class="submodule-role">ECPay 法幣付款整合、CVS 超商繳費碼、回撥 HTTP Server、付款後處理 Worker、對帳</p>
+  </header>
+  <main class="submodule-main">
+    <section class="sub-io" aria-label="Function I/O">
+      <h2>Function I/O</h2>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">In</th><th scope="col">Out</th><th scope="col">Side</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>createFiatOnlyOrder</td><td>guildId, userId, productId</td><td>FiatOrderResult</td><td>network</td><td>產生 ECPay CVS 超商繳費碼並建立 PENDING_PAYMENT 訂單</td></tr>
+          <tr><td>handleCallback</td><td>encryptedPayload</td><td>CallbackResult</td><td>io</td><td>ECPay 回撥解密與驗證，原子轉移 PENDING_PAYMENT→PAID</td></tr>
+          <tr><td>processPendingOrders</td><td>none</td><td>void</td><td>tx</td><td>Scheduler 每 10s：claim→通知買家→自動派遣→發放獎勵→mark fulfilled</td></tr>
+        </tbody>
+      </table>
+    </section>
+    <section class="sub-vars" aria-label="Variables">
+      <h2>Variables</h2>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Scope</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>fiatOrder</td><td>FiatOrder</td><td>persist</td><td>法幣訂單，含商品快照與處理狀態標記（fulfilled/rewarded/notified）</td></tr>
+        </tbody>
+      </table>
+    </section>
+    <section class="sub-dataflow" aria-label="Internal data flow">
+      <h2>Internal data flow</h2>
+      <p class="sub-dataflow__empty">No internal dataflow steps recorded.</p>
+    </section>
+    <section class="sub-errors" aria-label="Errors">
+      <h2>Errors</h2>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">When</th><th scope="col">Means</th></tr></thead>
+        <tbody>
+          <tr><td>ErrCallbackValidation</td><td>ECPay 回撥 MerchantID 或金額與訂單不符</td><td>回傳 400，訂單維持 PENDING_PAYMENT，由 Reconciliation Worker 補償</td></tr>
+          <tr><td>ErrPaymentExpired</td><td>繳費期限已過仍未付款</td><td>markExpiredIfPending，訂單終止</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+  <script src="../../assets/viewer.client.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+slug: administration
+title: Administration
+story: 管理員透過管理面板設定貨幣經濟參數、管理商品與兌換碼、配置 AI 與護航規則。一般成員透過會員面板查餘額、交易記錄與歷史。
+dependsOn:
+  - guild-economy
+  - shop-payment
+  - escort-dispatch
+  - ai-chat-agent
+submodules:
+  - slug: admin-panel-interaction
+    kind: api
+    role: 管理面板指令、按鈕、Modal，含產品管理、AI 設定、護航設定子面板
+    functions: []
+    variables: []
+    dataflow: []
+    errors: []
+  - slug: user-panel-interaction
+    kind: api
+    role: 會員面板指令與按鈕：餘額查詢、交易記錄、兌換碼輸入
+    functions: []
+    variables: []
+    dataflow: []
+    errors: []
+  - slug: panel-service
+    kind: service
+    role: 面板業務邏輯 Facades，彙整經濟、AI、派遣、商品設定與即時事件更新
+    functions: []
+    variables: []
+    dataflow: []
+    errors: []
+  - slug: notifications
+    kind: service
+    role: 跨模組通知：買家付款成功 DM、管理員新訂單通知、護航/售後私訊
+    functions: []
+    variables: []
+    dataflow: []
+    errors: []
+edges:
+  - id: e-xzgwfu
+    from: admin-panel-interaction
+    to: panel-service
+    kind: call
+    label: 委派管理操作
+  - id: e-ejuqec
+    from: user-panel-interaction
+    to: panel-service
+    kind: call
+    label: 會員資訊查詢
+  - id: e-j8lbve
+    from: panel-service
+    to: notifications
+    kind: call
+    label: 觸發訂單/付款通知

@@ -1,0 +1,213 @@
+meta:
+  title: LTDJMS — Discord Bot 專案架構
+  summary: >-
+    基於 Java/JDA 的 Discord bot，在單一 guild 內承載經濟互動、商品交易、護航協作與 AI 頻道治理。涵蓋 guild
+    貨幣與遊戲代幣的雙軌經濟系統、商品商店與法幣付款（ECPay）、護航派單狀態機、AI 聊天與 Agent
+    工具執行、以及管理面板。掃描範圍：src/main/java/ltdjms/discord/ 下所有業務模組與共用基礎設施。
+  updatedAt: '2026-05-19T15:49:23.919Z'
+actors:
+  - id: member
+    label: 一般成員
+  - id: admin
+    label: 管理員
+  - id: escort
+    label: 護航人員
+  - id: after-sales-staff
+    label: 售後人員
+features:
+  - guild-economy
+  - shop-payment
+  - escort-dispatch
+  - ai-chat-agent
+  - administration
+  - shared-infrastructure
+edges:
+  - id: e-eq4hb7
+    from:
+      feature: shop-payment
+      submodule: shop-interaction
+    to:
+      feature: guild-economy
+      submodule: economy-service
+    kind: call
+    label: 貨幣扣款購買
+  - id: e-grlykf
+    from:
+      feature: shop-payment
+      submodule: product-catalog-service
+    to:
+      feature: guild-economy
+      submodule: economy-service
+    kind: call
+    label: 貨幣/代幣獎勵派送
+  - id: e-uu0dn6
+    from:
+      feature: shop-payment
+      submodule: fiat-payment-service
+    to:
+      feature: escort-dispatch
+      submodule: dispatch-service
+    kind: call
+    label: 法幣付款成功→自動派遣
+  - id: e-ua3eyh
+    from:
+      feature: ai-chat-agent
+      submodule: ai-mention-interaction
+    to:
+      feature: escort-dispatch
+      submodule: dispatch-service
+    kind: call
+    label: Agent 執行 Discord 管理工具
+  - id: e-cioa3m
+    from:
+      feature: administration
+      submodule: panel-service
+    to:
+      feature: guild-economy
+      submodule: economy-service
+    kind: call
+    label: 貨幣/代幣管理與查詢
+  - id: e-x791qu
+    from:
+      feature: administration
+      submodule: panel-service
+    to:
+      feature: shop-payment
+      submodule: product-catalog-service
+    kind: call
+    label: 商品管理與兌換碼產生
+  - id: e-k1luxm
+    from:
+      feature: administration
+      submodule: panel-service
+    to:
+      feature: escort-dispatch
+      submodule: dispatch-service
+    kind: call
+    label: 護航設定與售後人員管理
+  - id: e-dw1qkt
+    from:
+      feature: administration
+      submodule: panel-service
+    to:
+      feature: ai-chat-agent
+      submodule: ai-chat-service
+    kind: call
+    label: AI 頻道白名單設定
+  - id: e-xy49n7
+    from:
+      feature: administration
+      submodule: panel-service
+    to:
+      feature: ai-chat-agent
+      submodule: ai-agent-service
+    kind: call
+    label: Agent 啟用切換
+  - id: e-e0ewop
+    from:
+      feature: shared-infrastructure
+      submodule: discord-api
+    to:
+      feature: guild-economy
+      submodule: economy-interaction
+    kind: call
+    label: JDA Event 派發
+  - id: e-6u75kt
+    from:
+      feature: shared-infrastructure
+      submodule: discord-api
+    to:
+      feature: shop-payment
+      submodule: shop-interaction
+    kind: call
+    label: JDA Event 派發
+  - id: e-xxrg1y
+    from:
+      feature: shared-infrastructure
+      submodule: discord-api
+    to:
+      feature: escort-dispatch
+      submodule: dispatch-interaction
+    kind: call
+    label: JDA Event 派發
+  - id: e-2nap9y
+    from:
+      feature: shared-infrastructure
+      submodule: discord-api
+    to:
+      feature: ai-chat-agent
+      submodule: ai-mention-interaction
+    kind: call
+    label: JDA Event 派發
+  - id: e-xzxf69
+    from:
+      feature: shared-infrastructure
+      submodule: discord-api
+    to:
+      feature: administration
+      submodule: admin-panel-interaction
+    kind: call
+    label: JDA Event 派發
+  - id: e-9orgqk
+    from:
+      feature: shared-infrastructure
+      submodule: discord-api
+    to:
+      feature: administration
+      submodule: user-panel-interaction
+    kind: call
+    label: JDA Event 派發
+  - id: e-zd0f36
+    from:
+      feature: shared-infrastructure
+      submodule: event-bus
+    to:
+      feature: administration
+      submodule: panel-service
+    kind: call
+    label: 領域事件驅動面板即時更新
+  - id: e-mcyh07
+    from:
+      feature: shared-infrastructure
+      submodule: cache-layer
+    to:
+      feature: guild-economy
+      submodule: economy-service
+    kind: call
+    label: 餘額/代幣快取（300s TTL）
+  - id: e-8vnyj8
+    from:
+      feature: shared-infrastructure
+      submodule: cache-layer
+    to:
+      feature: ai-chat-agent
+      submodule: ai-agent-service
+    kind: call
+    label: Agent 設定快取（1h TTL）
+  - id: e-sh27ca
+    from:
+      feature: shop-payment
+      submodule: fiat-payment-service
+    to:
+      feature: guild-economy
+      submodule: economy-service
+    kind: call
+    label: 法幣付款完成後獎勵派送
+  - id: e-nek8hi
+    from:
+      feature: shop-payment
+      submodule: fiat-payment-service
+    to:
+      feature: shared-infrastructure
+      submodule: discord-api
+    kind: call
+    label: DM 買家付款資訊
+  - id: e-t51w8w
+    from:
+      feature: administration
+      submodule: notifications
+    to:
+      feature: shared-infrastructure
+      submodule: discord-api
+    kind: call
+    label: 發送 Discord DM 通知

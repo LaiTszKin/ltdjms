@@ -1,0 +1,55 @@
+slug: escort-dispatch
+title: Escort Dispatch
+story: 管理員可為護航人員派單，護航人員確認接單後完成服務，客戶可請求售後。支援從商店購買自動建立派遣單。
+dependsOn:
+  - shop-payment
+submodules:
+  - slug: dispatch-interaction
+    kind: api
+    role: 派遣面板指令、私訊流程、狀態轉換按鈕處理
+    functions: []
+    variables: []
+    dataflow: []
+    errors: []
+  - slug: dispatch-service
+    kind: service
+    role: 訂單狀態機（7 階段）、自動超時完成、跨模組 Handoff、售後人員管理、護航選項定價
+    functions:
+      - name: handoffFromFiatPayment
+        in: productSnapshot, fiatOrder
+        out: EscortDispatchOrder
+        side: tx
+        purpose: 法幣付款完成後自動建立護航派遣單（idempotent：檢查 findBySourceIdentity）
+      - name: claimAfterSales
+        in: orderNumber, staffUserId
+        out: Result<EscortDispatchOrder, DomainError>
+        side: tx
+        purpose: 原子 claim：AFTER_SALES_REQUESTED→AFTER_SALES_IN_PROGRESS，防止重複領取
+    variables:
+      - name: dispatchOrder
+        type: EscortDispatchOrder
+        scope: persist
+        purpose: 含 7 階段狀態機與來源追蹤，原子狀態轉換使用 RETURNING 樂觀鎖
+    dataflow: []
+    errors:
+      - name: ErrInvalidStateTransition
+        when: 狀態不合法（如 COMPLETED 不能直接 claim after-sales）或權限不符
+        means: 回傳 DomainError，操作被拒絕
+  - slug: dispatch-db
+    kind: db
+    role: escort_dispatch_order / guild_escort_option_price / dispatch_after_sales_staff 資料表
+    functions: []
+    variables: []
+    dataflow: []
+    errors: []
+edges:
+  - id: e-bacx43
+    from: dispatch-interaction
+    to: dispatch-service
+    kind: call
+    label: 委派派遣業務
+  - id: e-m19qs9
+    from: dispatch-service
+    to: dispatch-db
+    kind: call
+    label: 讀寫派遣訂單

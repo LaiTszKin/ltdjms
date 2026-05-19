@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en" data-atlas-page="feature">
+<head>
+  <meta charset="utf-8">
+  <title>Escort Dispatch</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..500&family=Geist:wght@300..700&family=JetBrains+Mono:wght@400..600&display=swap">
+  <link rel="stylesheet" href="../../assets/architecture.css">
+</head>
+<body>
+  <header class="feature-header">
+    <nav class="feature-breadcrumb"><a href="../../index.html">← Atlas</a></nav>
+    <h1>Escort Dispatch</h1>
+    <p class="feature-depends">Depends on: <a href="../shop-payment/index.html">shop-payment</a></p>
+  </header>
+  <main class="feature-main">
+    <section class="feature-story"><p>管理員可為護航人員派單，護航人員確認接單後完成服務，客戶可請求售後。支援從商店購買自動建立派遣單。</p></section>
+    <section class="feature-submodules" aria-label="Submodules">
+      <h2>Submodules</h2>
+      <ul class="submodule-nav">
+      <li class="submodule-card">
+        <a class="submodule-card__link" href="dispatch-interaction.html">
+          <span class="submodule-card__name">dispatch-interaction</span>
+          <span class="submodule-card__kind submodule-card__kind--api">API</span>
+        </a>
+        <p class="submodule-card__role">派遣面板指令、私訊流程、狀態轉換按鈕處理</p>
+      </li>
+      <li class="submodule-card">
+        <a class="submodule-card__link" href="dispatch-service.html">
+          <span class="submodule-card__name">dispatch-service</span>
+          <span class="submodule-card__kind submodule-card__kind--service">Service</span>
+        </a>
+        <p class="submodule-card__role">訂單狀態機（7 階段）、自動超時完成、跨模組 Handoff、售後人員管理、護航選項定價</p>
+      </li>
+      <li class="submodule-card">
+        <a class="submodule-card__link" href="dispatch-db.html">
+          <span class="submodule-card__name">dispatch-db</span>
+          <span class="submodule-card__kind submodule-card__kind--db">DB</span>
+        </a>
+        <p class="submodule-card__role">escort_dispatch_order / guild_escort_option_price / dispatch_after_sales_staff 資料表</p>
+      </li>
+      </ul>
+    </section>
+    <section class="feature-edges" aria-label="Intra-feature edges">
+      <h2>Intra-feature edges</h2>
+      <ul class="feature-edges__list">
+        <li class="feature-edges__item feature-edges__item--call"><span class="feature-edges__endpoints">dispatch-interaction → dispatch-service</span><span class="feature-edges__kind">call</span><span class="feature-edges__label">委派派遣業務</span></li>
+        <li class="feature-edges__item feature-edges__item--call"><span class="feature-edges__endpoints">dispatch-service → dispatch-db</span><span class="feature-edges__kind">call</span><span class="feature-edges__label">讀寫派遣訂單</span></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

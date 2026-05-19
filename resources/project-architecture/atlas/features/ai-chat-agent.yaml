@@ -1,0 +1,80 @@
+slug: ai-chat-agent
+title: AI Chat & Agent
+story: 成員在允許頻道提及 @bot 可獲得 AI 回覆或啟動 Agent 執行 Discord 管理工具。管理員可設定頻道白名單與 Agent 啟用。
+dependsOn: []
+submodules:
+  - slug: ai-mention-interaction
+    kind: api
+    role: '@bot 提及監聽、AI 聊天 vs Agent 路由決策、串流回覆輸出'
+    functions: []
+    variables: []
+    dataflow: []
+    errors: []
+  - slug: ai-chat-service
+    kind: service
+    role: AI 串流回覆（LangChain4j）、頻道白名單檢查、提示詞系統提示載入
+    functions:
+      - name: generateStreamingResponse
+        in: message, channelId, userId, memoryId, handler
+        out: void (串流至 StreamingResponseHandler)
+        side: network
+        purpose: 透過 LangChain4j 產生 AI 串流回覆，支援 Reasoning/Content/ToolIntent 三種 chunk
+    variables:
+      - name: aiServiceConfig
+        type: AIServiceConfig
+        scope: persist
+        purpose: 每個 guild 的 AI 設定（model、temperature、timeout、markdown validation toggle）
+    dataflow: []
+    errors: []
+  - slug: ai-agent-service
+    kind: service
+    role: Agent 工具執行（17 個 Discord 管理工具）、對話記憶、工具審計日誌
+    functions:
+      - name: createChannel
+        in: guildId, name, categoryId, permissions
+        out: channelId
+        side: network
+        purpose: Agent 工具：建立文字頻道，需管理員權限
+    variables: []
+    dataflow: []
+    errors: []
+  - slug: markdown-validation
+    kind: pure-fn
+    role: AI 回覆 Markdown 語法校驗與自動修正管線（CommonMark 解析器 + 13 道 Regex 修復）
+    functions: []
+    variables: []
+    dataflow: []
+    errors: []
+  - slug: ai-db
+    kind: db
+    role: ai_channel_restriction / ai_agent_channel_config / tool_execution_log 資料表
+    functions: []
+    variables: []
+    dataflow: []
+    errors: []
+edges:
+  - id: e-6bh9qi
+    from: ai-mention-interaction
+    to: ai-chat-service
+    kind: call
+    label: 路由至 AI 聊天
+  - id: e-33cm2i
+    from: ai-chat-service
+    to: ai-agent-service
+    kind: call
+    label: Agent 模式啟用時路由至工具執行
+  - id: e-6qkcsb
+    from: ai-chat-service
+    to: markdown-validation
+    kind: call
+    label: 串流回覆 Markdown 校驗
+  - id: e-dxigb4
+    from: ai-chat-service
+    to: ai-db
+    kind: call
+    label: 讀寫頻道白名單
+  - id: e-my4xly
+    from: ai-agent-service
+    to: ai-db
+    kind: call
+    label: 讀寫 Agent 設定與工具日誌

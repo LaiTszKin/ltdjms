@@ -1,0 +1,70 @@
+slug: guild-economy
+title: Guild Economy
+story: 成員可以在 guild 內查詢餘額、參與骰子遊戲賺取貨幣。管理員可設定貨幣名稱與圖示。雙軌經濟：guild 貨幣（用於購物）與遊戲代幣（用於遊玩），遊戲獎勵以貨幣發放。
+dependsOn: []
+submodules:
+  - slug: economy-interaction
+    kind: api
+    role: Discord 指令處理層：貨幣設定、擲骰遊戲、交易查詢
+    functions: []
+    variables: []
+    dataflow: []
+    errors: []
+  - slug: economy-service
+    kind: service
+    role: 雙軌經濟核心邏輯：貨幣帳戶、代幣帳戶、交易記錄、遊戲獎勵結算
+    functions:
+      - name: tryAdjustBalance
+        in: guildId, userId, delta
+        out: Result<MemberCurrencyAccount, DomainError>
+        side: tx
+        purpose: 原子增減貨幣餘額，禁止負數
+      - name: playDiceGame1
+        in: guildId, userId, tokens
+        out: DiceGame1Result
+        side: tx
+        purpose: 擲骰遊戲：花費代幣、計算獎勵、發放貨幣
+      - name: creditReward
+        in: guildId, userId, amount, source
+        out: BalanceAdjustmentResult
+        side: tx
+        purpose: 遊戲/商品/兌換碼獎勵發放至貨幣帳戶
+    variables:
+      - name: memberCurrencyAccount
+        type: MemberCurrencyAccount
+        scope: persist
+        purpose: 每個成員的 guild 貨幣餘額，更新後通知面板即時更新
+      - name: gameTokenAccount
+        type: GameTokenAccount
+        scope: persist
+        purpose: 每個成員的遊戲代幣餘額，扣除後才可遊玩
+    dataflow: []
+    errors:
+      - name: ErrInsufficientBalance
+        when: 貨幣或代幣餘額不足扣款
+        means: 回傳 DomainError.insufficientBalance()，購買/遊戲流程中斷
+  - slug: economy-db
+    kind: db
+    role: >-
+      guild_currency_config / member_currency_account / game_token_account / dice_game_config /
+      transaction 資料表
+    functions: []
+    variables: []
+    dataflow: []
+    errors: []
+edges:
+  - id: e-18pz26
+    from: economy-interaction
+    to: economy-service
+    kind: call
+    label: 委派業務邏輯
+  - id: e-6xj3m1
+    from: economy-service
+    to: economy-db
+    kind: call
+    label: 讀寫貨幣/代幣帳戶
+  - id: e-ille99
+    from: economy-service
+    to: economy-interaction
+    kind: return
+    label: BalanceView / GameResult

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en" data-atlas-page="submodule">
+<head>
+  <meta charset="utf-8">
+  <title>Guild Economy · economy-service</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..500&family=Geist:wght@300..700&family=JetBrains+Mono:wght@400..600&display=swap">
+  <link rel="stylesheet" href="../../assets/architecture.css">
+</head>
+<body>
+  <header class="submodule-header">
+    <nav class="submodule-breadcrumb"><a href="../../index.html">← Atlas</a> · <a href="index.html">← Guild Economy</a></nav>
+    <h1>economy-service <small class="submodule-kind submodule-kind--service">Service</small></h1>
+    <p class="submodule-role">雙軌經濟核心邏輯：貨幣帳戶、代幣帳戶、交易記錄、遊戲獎勵結算</p>
+  </header>
+  <main class="submodule-main">
+    <section class="sub-io" aria-label="Function I/O">
+      <h2>Function I/O</h2>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">In</th><th scope="col">Out</th><th scope="col">Side</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>tryAdjustBalance</td><td>guildId, userId, delta</td><td>Result&lt;MemberCurrencyAccount, DomainError&gt;</td><td>tx</td><td>原子增減貨幣餘額，禁止負數</td></tr>
+          <tr><td>playDiceGame1</td><td>guildId, userId, tokens</td><td>DiceGame1Result</td><td>tx</td><td>擲骰遊戲：花費代幣、計算獎勵、發放貨幣</td></tr>
+          <tr><td>creditReward</td><td>guildId, userId, amount, source</td><td>BalanceAdjustmentResult</td><td>tx</td><td>遊戲/商品/兌換碼獎勵發放至貨幣帳戶</td></tr>
+        </tbody>
+      </table>
+    </section>
+    <section class="sub-vars" aria-label="Variables">
+      <h2>Variables</h2>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Scope</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>memberCurrencyAccount</td><td>MemberCurrencyAccount</td><td>persist</td><td>每個成員的 guild 貨幣餘額，更新後通知面板即時更新</td></tr>
+          <tr><td>gameTokenAccount</td><td>GameTokenAccount</td><td>persist</td><td>每個成員的遊戲代幣餘額，扣除後才可遊玩</td></tr>
+        </tbody>
+      </table>
+    </section>
+    <section class="sub-dataflow" aria-label="Internal data flow">
+      <h2>Internal data flow</h2>
+      <p class="sub-dataflow__empty">No internal dataflow steps recorded.</p>
+    </section>
+    <section class="sub-errors" aria-label="Errors">
+      <h2>Errors</h2>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">When</th><th scope="col">Means</th></tr></thead>
+        <tbody>
+          <tr><td>ErrInsufficientBalance</td><td>貨幣或代幣餘額不足扣款</td><td>回傳 DomainError.insufficientBalance()，購買/遊戲流程中斷</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+  <script src="../../assets/viewer.client.js" defer></script>
+</body>
+</html>
