@@ -64,6 +64,7 @@ export {
 } from './persistence/schema.js';
 export { DrizzleFiatOrderRepository } from './persistence/drizzle-fiat-order-repository.js';
 export { DrizzleRedemptionCodeRepository } from './persistence/drizzle-redemption-code-repository.js';
+export { DrizzleProductRepository } from './persistence/drizzle-product-repository.js';
 
 // Services
 export { EcpayCvsPaymentService } from './services/ecpay-cvs-payment.service.js';
@@ -125,4 +126,19 @@ export { ShopAdminNotificationService } from './services/shop-admin-notification
 export { EcpayCallbackHttpServer } from './web/ecpay-callback-server.js';
 
 // DI
-export { configureContainer, SHOP_TOKENS } from './di/shop-module.js';
+export {
+  configureContainer,
+  SHOP_TOKENS,
+  type ProductRepository,
+  type ProductRewardService,
+  type BalanceService,
+  type BalanceAdjustmentService,
+  type CurrencyTransactionService,
+  type RedemptionTransactionService,
+  type ShopModuleOptions,
+} from './di/shop-module.js';
+
+export type { EscortDispatchHandoffService } from './services/fiat-order-post-payment-worker.js';
+
+// Persistence (additional)
+export { DrizzleRedemptionTransactionService } from './persistence/drizzle-redemption-transaction-service.js';

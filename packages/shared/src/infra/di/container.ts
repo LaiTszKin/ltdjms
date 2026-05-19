@@ -61,9 +61,9 @@ export function initializeContainer(options?: {
       options.eventPublisher,
     );
   } else {
-    tsyringeContainer.registerSingleton(
+    tsyringeContainer.registerInstance(
       TOKENS.DomainEventPublisher,
-      DomainEventPublisher,
+      new DomainEventPublisher(options?.logger),
     );
   }
 

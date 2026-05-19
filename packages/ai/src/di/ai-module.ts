@@ -19,6 +19,10 @@ import {
   type AIAgentChannelConfigRepository,
 } from '../services/routing/agent-config-service.js';
 
+// DB-backed persistence
+import { DrizzleAIChannelRestrictionRepository } from '../persistence/drizzle-channel-restriction-repository.js';
+import { DrizzleAIAgentChannelConfigRepository } from '../persistence/drizzle-agent-config-repository.js';
+
 // AI Chat Service
 import { type AIChatService } from '../services/ai-chat-service.js';
 import { LangChainAIChatService } from '../services/LangChainAIChatService.js';
@@ -124,7 +128,10 @@ export function initializeAIModule(): void {
   container.registerInstance<PromptLoader>(AI_TOKENS.PromptLoader, promptLoader);
 
   // ===== Channel Restriction =====
-  const restrictionRepo = new InMemoryAIChannelRestrictionRepository();
+  const db = container.resolve<any>(TOKENS.DatabasePool);
+  const restrictionRepo = db
+    ? new DrizzleAIChannelRestrictionRepository(db)
+    : new InMemoryAIChannelRestrictionRepository();
   container.registerInstance<AIChannelRestrictionRepository>(
     AI_TOKENS.AIChannelRestrictionRepository,
     restrictionRepo,
@@ -137,7 +144,9 @@ export function initializeAIModule(): void {
   );
 
   // ===== Agent Config =====
-  const agentConfigRepo = new InMemoryAIAgentChannelConfigRepository();
+  const agentConfigRepo = db
+    ? new DrizzleAIAgentChannelConfigRepository(db)
+    : new InMemoryAIAgentChannelConfigRepository();
   container.registerInstance<AIAgentChannelConfigRepository>(
     AI_TOKENS.AIAgentChannelConfigRepository,
     agentConfigRepo,

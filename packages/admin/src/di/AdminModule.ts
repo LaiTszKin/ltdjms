@@ -3,8 +3,11 @@ import type { DomainEventPublisher } from '@ltdjms/shared';
 import type { BalanceService, BalanceAdjustmentService, CurrencyConfigService } from '@ltdjms/economy';
 import type { CurrencyTransactionService, GameTokenService, GameTokenTransactionService } from '@ltdjms/economy';
 import type { DiceConfigRepository } from '@ltdjms/economy';
+import { ECONOMY_TOKENS } from '@ltdjms/economy';
 import type { RedemptionService } from '@ltdjms/shop';
+import { SHOP_TOKENS } from '@ltdjms/shop';
 import type { AIChannelRestrictionService, AIAgentChannelConfigService } from '@ltdjms/ai';
+import { AI_TOKENS } from '@ltdjms/ai';
 
 // Facades
 import { CurrencyManagementFacade } from '../facades/CurrencyManagementFacade.js';
@@ -194,13 +197,13 @@ export function configureAdminContainer(): void {
 
   // CurrencyManagementFacade
   const balanceService = container.resolve<BalanceService>(
-    Symbol('BalanceService'),
+    ECONOMY_TOKENS.BalanceService,
   );
   const balanceAdjustmentService = container.resolve<BalanceAdjustmentService>(
-    Symbol('BalanceAdjustmentService'),
+    ECONOMY_TOKENS.BalanceAdjustmentService,
   );
   const currencyConfigService = container.resolve<CurrencyConfigService>(
-    Symbol('CurrencyConfigService'),
+    ECONOMY_TOKENS.CurrencyConfigService,
   );
 
   const currencyFacade = new CurrencyManagementFacade(
@@ -215,11 +218,11 @@ export function configureAdminContainer(): void {
 
   // GameTokenManagementFacade
   const gameTokenService = container.resolve<GameTokenService>(
-    Symbol('GameTokenService'),
+    ECONOMY_TOKENS.GameTokenService,
   );
   const gameTokenTxService =
     container.resolve<GameTokenTransactionService>(
-      Symbol('GameTokenTransactionService'),
+      ECONOMY_TOKENS.GameTokenTransactionService,
     );
 
   const tokenFacade = new GameTokenManagementFacade(
@@ -233,7 +236,7 @@ export function configureAdminContainer(): void {
 
   // GameConfigManagementFacade
   const diceConfigRepo = container.resolve<DiceConfigRepository>(
-    Symbol('DiceConfigRepository'),
+    ECONOMY_TOKENS.DiceConfigRepository,
   );
 
   const gameConfigFacade = new GameConfigManagementFacade(
@@ -248,11 +251,11 @@ export function configureAdminContainer(): void {
   // AIConfigManagementFacade
   const channelRestrictionService =
     container.resolve<AIChannelRestrictionService>(
-      Symbol('AIChannelRestrictionService'),
+      AI_TOKENS.AIChannelRestrictionService,
     );
   const agentConfigService =
     container.resolve<AIAgentChannelConfigService>(
-      Symbol('AIAgentChannelConfigService'),
+      AI_TOKENS.AIAgentChannelConfigService,
     );
 
   const aiConfigFacade = new AIConfigManagementFacade(
@@ -266,10 +269,10 @@ export function configureAdminContainer(): void {
 
   // MemberInfoFacade
   const currencyTxService = container.resolve<CurrencyTransactionService>(
-    Symbol('CurrencyTransactionService'),
+    ECONOMY_TOKENS.CurrencyTransactionService,
   );
   const redemptionService = container.resolve<RedemptionService>(
-    Symbol('RedemptionService'),
+    SHOP_TOKENS.RedemptionService,
   );
 
   const memberInfoFacade = new MemberInfoFacade(

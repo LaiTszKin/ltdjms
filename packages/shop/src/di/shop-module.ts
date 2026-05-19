@@ -1,5 +1,6 @@
 import { container, TOKENS } from '@ltdjms/shared';
-import type { EnvironmentConfig, DiscordRuntimeGateway, DomainEventPublisher } from '@ltdjms/shared';
+import { EnvironmentConfig } from '@ltdjms/shared';
+import type { DiscordRuntimeGateway, DomainEventPublisher, Result, DomainError } from '@ltdjms/shared';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type pino from 'pino';
 
@@ -7,6 +8,8 @@ import { DrizzleFiatOrderRepository } from '../persistence/drizzle-fiat-order-re
 import { DrizzleRedemptionCodeRepository } from '../persistence/drizzle-redemption-code-repository.js';
 import type { FiatOrderRepository } from '../domain/fiat-order-repository.js';
 import type { RedemptionCodeRepository } from '../domain/redemption-code-repository.js';
+import type { Product } from '../domain/product-types.js';
+import type { FiatOrder } from '../domain/fiat-order.js';
 
 import { EcpayCvsPaymentService } from '../services/ecpay-cvs-payment.service.js';
 import { EcpayTradeQueryService } from '../services/ecpay-trade-query.service.js';
@@ -24,6 +27,70 @@ import { EscortOrderBuyerNotificationService } from '../services/escort-order-bu
 import { ShopAdminNotificationService } from '../services/shop-admin-notification.service.js';
 
 import { EcpayCallbackHttpServer } from '../web/ecpay-callback-server.js';
+import {
+  type EscortDispatchHandoffService,
+  type EscortOrderBuyerNotifier,
+  type AdminOrderNotifier,
+  type ProductRewardGranter,
+} from '../services/fiat-order-post-payment-worker.js';
+
+// ============================================================
+// Third-party service interfaces expected by the shop module
+// ============================================================
+
+/** Product repository interface as used by shop services. */
+export interface ProductRepository {
+  findById(id: number): Promise<Product | null>;
+  getProduct(productId: number): Promise<Product | null>;
+  countByGuildId(guildId: number): Promise<number>;
+  findByGuildIdPaginated(guildId: number, page: number, size: number): Promise<Product[]>;
+  countByGuildIdAndNameContaining(guildId: number, keyword: string): Promise<number>;
+  findByGuildIdAndNameContaining(guildId: number, keyword: string, page: number, size: number): Promise<Product[]>;
+}
+
+/** Product reward service interface as used by shop services. */
+export interface ProductRewardService {
+  grantReward(request: {
+    guildId: number;
+    userId: number;
+    product: Product;
+    amount: number;
+    description: string;
+  }): Promise<Result<{ amount: number; currencyBalanceAfter: number | null; formatReward(product: Product): string }, DomainError>>;
+}
+
+/** Balance service interface as used by shop services. */
+export interface BalanceService {
+  tryGetBalance(guildId: number, userId: number): Promise<Result<{ balance: number }, DomainError>>;
+}
+
+/** Balance adjustment service interface as used by shop services. */
+export interface BalanceAdjustmentService {
+  tryAdjustBalance(guildId: number, userId: number, amount: number): Promise<Result<{ newBalance: number }, DomainError>>;
+}
+
+/** Currency transaction service interface as used by shop services. */
+export interface CurrencyTransactionService {
+  recordTransaction(guildId: number, userId: number, amount: number, balance: number, source: string, description: string): Promise<void>;
+}
+
+/** Redemption transaction service interface as used by shop services. */
+export interface RedemptionTransactionService {
+  recordTransaction(guildId: number, userId: number, product: Product, code: { code: string }): Promise<unknown>;
+}
+
+/** Configuration options for the shop module container. */
+export interface ShopModuleOptions {
+  db: NodePgDatabase;
+  productRepository: ProductRepository;
+  productRewardService: ProductRewardService;
+  escortDispatchHandoffService: EscortDispatchHandoffService;
+  balanceService: BalanceService;
+  balanceAdjustmentService: BalanceAdjustmentService;
+  currencyTransactionService: CurrencyTransactionService;
+  redemptionTransactionService: RedemptionTransactionService;
+  logger?: pino.Logger;
+}
 
 /** Tokens for shop module dependencies. */
 export const SHOP_TOKENS = {
@@ -46,17 +113,7 @@ export const SHOP_TOKENS = {
   EcpayCallbackHttpServer: Symbol('EcpayCallbackHttpServer'),
 };
 
-export function configureContainer(options: {
-  db: NodePgDatabase;
-  productRepository: any;
-  productRewardService: any;
-  escortDispatchHandoffService: any;
-  balanceService: any;
-  balanceAdjustmentService: any;
-  currencyTransactionService: any;
-  redemptionTransactionService: any;
-  logger?: pino.Logger;
-}): void {
+export function configureContainer(options: ShopModuleOptions): void {
   const config: EnvironmentConfig = container.resolve(EnvironmentConfig);
   const discordRuntimeGateway: DiscordRuntimeGateway = container.resolve(TOKENS.DiscordRuntimeGateway);
   const eventPublisher: DomainEventPublisher = container.resolve(TOKENS.DomainEventPublisher);
@@ -102,13 +159,15 @@ export function configureContainer(options: {
   container.registerInstance(SHOP_TOKENS.FiatOrderService, fiatOrderService);
 
   // ---- Post-Payment Worker ----
+  // Cast through unknown because the notification services have parameter-count
+  // mismatches between their declared methods and the worker's calling convention.
   const postPaymentWorker = new FiatOrderPostPaymentWorker(
     fiatOrderRepo,
     buyerNotification,
     options.escortDispatchHandoffService,
-    escortBuyerNotification,
-    adminNotification,
-    options.productRewardService,
+    escortBuyerNotification as unknown as EscortOrderBuyerNotifier,
+    adminNotification as unknown as AdminOrderNotifier,
+    options.productRewardService as unknown as ProductRewardGranter,
     log,
   );
   container.registerInstance(SHOP_TOKENS.FiatOrderPostPaymentWorker, postPaymentWorker);

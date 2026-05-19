@@ -1,4 +1,4 @@
-import { eq, and, isNull, lte, gte, or, asc, lt, sql } from 'drizzle-orm';
+import { eq, and, isNull, lte, gte, or, asc, gt, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { type FiatOrderRepository } from '../domain/fiat-order-repository.js';
 import { type FiatOrder, FiatOrderStatus } from '../domain/fiat-order.js';

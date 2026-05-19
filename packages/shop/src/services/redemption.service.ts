@@ -111,7 +111,7 @@ export class RedemptionService {
 
     const codes: RedemptionCode[] = [];
     for (let i = 0; i < count; i++) {
-      const codeStr = this.generateUniqueCode();
+      const codeStr = await this.generateUniqueCode();
       codes.push(createRedemptionCode(codeStr, product.id!, product.guildId, expiresAt, quantity));
     }
 
@@ -276,11 +276,15 @@ export class RedemptionService {
     return this.codeRepository.getStatsByProductId(productId);
   }
 
-  private generateUniqueCode(): string {
+  private async generateUniqueCode(): Promise<string> {
     const maxAttempts = 10;
     for (let i = 0; i < maxAttempts; i++) {
       const code = this.codeGenerator.generate();
-      return code; // In practice, the DB unique constraint handles duplicates
+      const existing = await this.codeRepository.findByCode(code);
+      if (!existing) {
+        return code;
+      }
+      this.log.debug({ code, attempt: i + 1 }, 'Duplicate code generated, retrying');
     }
     throw new Error(
       `Failed to generate unique code after ${maxAttempts} attempts`,

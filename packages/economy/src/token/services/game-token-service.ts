@@ -38,8 +38,8 @@ export class GameTokenService {
       return cachedBalance;
     }
 
-    const account = await this.accountRepository.findByGuildIdAndUserId(guildId, userId);
-    const balance = account?.tokens ?? 0;
+    const account = await this.accountRepository.findOrCreate(guildId, userId);
+    const balance = account.tokens;
     await this.cacheService.put(cacheKey, balance, GameTokenService.TOKEN_TTL_SECONDS);
     return balance;
   }
