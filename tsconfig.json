@@ -16,6 +16,7 @@
   "references": [
     { "path": "./packages/shared" },
     { "path": "./packages/shop" },
-    { "path": "./packages/economy" }
+    { "path": "./packages/economy" },
+    { "path": "./packages/dispatch" }
   ]
 }
