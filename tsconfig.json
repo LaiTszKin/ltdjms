@@ -9,10 +9,13 @@
     "outDir": "dist",
     "rootDir": ".",
     "skipLibCheck": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "composite": false
   },
   "files": [],
   "references": [
-    { "path": "./packages/shared" }
+    { "path": "./packages/shared" },
+    { "path": "./packages/shop" },
+    { "path": "./packages/economy" }
   ]
 }

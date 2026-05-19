@@ -1,0 +1,33 @@
+{
+  "name": "@ltdjms/shop",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ltdjms/shared": "workspace:*",
+    "express": "^4.21.0",
+    "zod": "^3.24.0",
+    "drizzle-orm": "^0.42.0",
+    "pg": "^8.13.0",
+    "discord.js": "^14.18.0",
+    "tsyringe": "^4.8.0",
+    "pino": "^9.6.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "vitest": "^3.0.0",
+    "@types/express": "^5.0.0",
+    "@types/pg": "^8.11.0",
+    "@types/node": "^20.0.0"
+  }
+}
