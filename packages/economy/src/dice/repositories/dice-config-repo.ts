@@ -1,5 +1,5 @@
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { diceGame1Config, diceGame2Config } from '../../domain/schema.js';
 import type { DiceGame1Config, DiceGame2Config } from '../../domain/types.js';
 
@@ -46,6 +46,7 @@ export class DiceConfigRepository {
           minTokensPerPlay: config.minTokensPerPlay,
           maxTokensPerPlay: config.maxTokensPerPlay,
           rewardPerDiceValue: config.rewardPerDiceValue,
+          updatedAt: sql`NOW()`,
         },
       })
       .returning();
@@ -104,6 +105,7 @@ export class DiceConfigRepository {
           baseMultiplier: config.baseMultiplier,
           tripleLowBonus: config.tripleLowBonus,
           tripleHighBonus: config.tripleHighBonus,
+          updatedAt: sql`NOW()`,
         },
       })
       .returning();
@@ -118,6 +120,45 @@ export class DiceConfigRepository {
     await this.db
       .delete(diceGame2Config)
       .where(eq(diceGame2Config.guildId, guildId));
+  }
+
+  /**
+   * Finds dice game 1 configuration by guild ID.
+   * Creates a default config if none exists.
+   */
+  async findOrCreateDefaultDice1(guildId: number): Promise<DiceGame1Config> {
+    const existing = await this.findDice1Config(guildId);
+    if (existing) return existing;
+
+    return this.upsertDice1Config({
+      guildId,
+      minTokensPerPlay: 1,
+      maxTokensPerPlay: 10,
+      rewardPerDiceValue: 250000,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  }
+
+  /**
+   * Finds dice game 2 configuration by guild ID.
+   * Creates a default config if none exists.
+   */
+  async findOrCreateDefaultDice2(guildId: number): Promise<DiceGame2Config> {
+    const existing = await this.findDice2Config(guildId);
+    if (existing) return existing;
+
+    return this.upsertDice2Config({
+      guildId,
+      minTokensPerPlay: 5,
+      maxTokensPerPlay: 50,
+      straightMultiplier: 100000,
+      baseMultiplier: 20000,
+      tripleLowBonus: 1500000,
+      tripleHighBonus: 2500000,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
   }
 }
 

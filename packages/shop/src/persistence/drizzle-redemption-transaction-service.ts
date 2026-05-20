@@ -15,14 +15,14 @@ export class DrizzleRedemptionTransactionService implements RedemptionTransactio
     guildId: number,
     userId: number,
     product: Product,
-    code: { code: string },
+    code: { code: string; id?: number | null },
   ): Promise<unknown> {
     return await this.db.insert(txTable).values({
       guildId: guildId,
       userId: userId,
       productId: product.id as number,
       productName: product.name,
-      redemptionCodeId: 0,
+      redemptionCodeId: code.id ?? 0,
       code: code.code,
     });
   }

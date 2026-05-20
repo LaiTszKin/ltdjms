@@ -1,5 +1,5 @@
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { guildCurrencyConfig } from '../../domain/schema.js';
 import type { GuildCurrencyConfig } from '../../domain/types.js';
 
@@ -41,6 +41,7 @@ export class CurrencyConfigRepository {
         set: {
           currencyName: config.currencyName,
           currencyIcon: config.currencyIcon,
+          updatedAt: sql`NOW()`,
         },
       })
       .returning();

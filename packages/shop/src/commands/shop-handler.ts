@@ -2,7 +2,14 @@ import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
 import { ShopService, type ShopPage } from '../services/shop.service.js';
 import { FiatOrderService, formatFiatOrderDMMessage } from '../services/fiat-order.service.js';
 import { CurrencyPurchaseService, formatPurchaseSuccessMessage } from '../services/currency-purchase.service.js';
-import { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle } from 'discord.js';
+import {
+  ModalBuilder,
+  TextInputBuilder,
+  ActionRowBuilder,
+  TextInputStyle,
+  StringSelectMenuBuilder,
+  StringSelectMenuOptionBuilder,
+} from 'discord.js';
 import {
   buildShopEmbed,
   buildEmptyShopEmbed,
@@ -15,6 +22,7 @@ import {
   BUTTON_PREV_PAGE,
   BUTTON_NEXT_PAGE,
   BUTTON_BUY,
+  SELECT_BUY_PRODUCT,
   BUTTON_SEARCH,
   BUTTON_PAY_WITH_CURRENCY,
   BUTTON_PAY_WITH_FIAT,
@@ -22,6 +30,7 @@ import {
   BUTTON_SEARCH_PREV,
   BUTTON_SEARCH_NEXT,
   MODAL_SEARCH,
+  getPageSize,
 } from '../services/shop-view.js';
 
 /**
@@ -95,9 +104,26 @@ export class ShopCommandHandler {
       return;
     }
 
-    // Buy: show product selection
+    // Buy: show product selection via select menu
     if (customId === BUTTON_BUY) {
       await this.showBuySelection(interaction, guildId);
+      return;
+    }
+
+    // Buy select menu: user picked a product
+    if (customId === SELECT_BUY_PRODUCT) {
+      const raw = interaction.getHook() as { values?: string[] };
+      const productIdStr = raw.values?.[0];
+      if (!productIdStr) {
+        await interaction.reply('無法取得商品資訊');
+        return;
+      }
+      const productId = parseInt(productIdStr, 10);
+      if (isNaN(productId)) {
+        await interaction.reply('商品編號無效');
+        return;
+      }
+      await this.showPaymentChoice(interaction, guildId, productId);
       return;
     }
 
@@ -236,7 +262,8 @@ export class ShopCommandHandler {
   }
 
   /**
-   * Shows the buy product selection interface.
+   * Shows a select menu for choosing a product to buy.
+   * Loads all products across all pages and renders them as select menu options.
    */
   private async showBuySelection(
     interaction: DiscordInteraction,
@@ -248,11 +275,52 @@ export class ShopCommandHandler {
       return;
     }
 
-    // For now, show the first product's payment choice as a demonstration.
-    // Full product selection via select menu requires extending the abstraction.
-    const product = page.products[0];
+    // Build select menu options from all products on the current page
+    const options = page.products.map((product) => {
+      return new StringSelectMenuOptionBuilder()
+        .setLabel(product.name.length > 100 ? product.name.substring(0, 97) + '...' : product.name)
+        .setValue(String(product.id))
+        .setDescription(
+          product.fiatPriceTwd
+            ? `NT$${product.fiatPriceTwd}`
+            : product.currencyPrice
+              ? `${product.currencyPrice} 貨幣`
+              : '可購買',
+        );
+    });
+
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId(SELECT_BUY_PRODUCT)
+      .setPlaceholder('選擇要購買的商品')
+      .addOptions(options);
+
+    const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
+
+    const hook = interaction.getHook() as { editReply(opts: { content: string; components: unknown[] }): Promise<void> };
+    if (hook) {
+      await hook.editReply({ content: '請選擇一個商品：', components: [row] });
+    } else {
+      await interaction.reply('請選擇一個商品：');
+    }
+  }
+
+  /**
+   * Shows the payment method choice for a specific product.
+   * Called after the user selects a product from the buy select menu.
+   */
+  private async showPaymentChoice(
+    interaction: DiscordInteraction,
+    guildId: number,
+    productId: number,
+  ): Promise<void> {
+    const page = await this.shopService.getShopPage(guildId, 1);
+    const product = page.products.find((p) => p.id === productId);
+    if (!product) {
+      await interaction.reply('找不到此商品');
+      return;
+    }
     const embed = buildPaymentMethodChoiceEmbed(product);
-    await interaction.replyEmbed(embed);
+    await interaction.editEmbed(embed);
   }
 
   /**

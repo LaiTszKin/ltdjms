@@ -56,7 +56,7 @@ export interface ProductRewardService {
     product: Product;
     amount: number;
     description: string;
-  }): Promise<Result<{ amount: number; currencyBalanceAfter: number | null; formatReward(product: Product): string }, DomainError>>;
+  }): Promise<Result<{ amount: number; currencyBalanceAfter: number | null }, DomainError>>;
 }
 
 /** Balance service interface as used by shop services. */
@@ -169,15 +169,27 @@ export function configureContainer(options: ShopModuleOptions): void {
   container.registerInstance(SHOP_TOKENS.FiatOrderService, fiatOrderService);
 
   // ---- Post-Payment Worker ----
-  // Cast through unknown because the notification services have parameter-count
-  // mismatches between their declared methods and the worker's calling convention.
+  // Type-safe wrappers to avoid unchecked `as unknown as` casts.
+  const escortBuyerNotifier: EscortOrderBuyerNotifier = {
+    notifyEscortOrderCreated: (dispatchOrder) =>
+      escortBuyerNotification.notifyEscortOrderCreated(dispatchOrder),
+  };
+  const productRewardGranter: ProductRewardGranter = {
+    grantReward: async (request) => {
+      const result = await options.productRewardService.grantReward(request);
+      return {
+        isErr: () => result.isErr(),
+        getError: () => result.getError(),
+      };
+    },
+  };
   const postPaymentWorker = new FiatOrderPostPaymentWorker(
     fiatOrderRepo,
     buyerNotification,
     options.escortDispatchHandoffService,
-    escortBuyerNotification as unknown as EscortOrderBuyerNotifier,
+    escortBuyerNotifier,
     adminNotification,
-    options.productRewardService as unknown as ProductRewardGranter,
+    productRewardGranter,
     log,
   );
   container.registerInstance(SHOP_TOKENS.FiatOrderPostPaymentWorker, postPaymentWorker);
