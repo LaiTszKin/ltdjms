@@ -14,7 +14,7 @@ export class RedisCacheService implements CacheService {
   constructor(redisUri: string, logger?: Logger) {
     this.logger = logger ?? pino({ level: 'silent' });
     this.redis = new Redis(redisUri, {
-      maxRetriesPerRequest: null,
+      maxRetriesPerRequest: 3,
       enableReadyCheck: true,
       connectTimeout: 5000,
       enableOfflineQueue: false,
