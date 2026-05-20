@@ -1,4 +1,4 @@
-import { lexer, type Tokens } from 'marked';
+import { lexer, type Token, type Tokens } from 'marked';
 import { MarkdownValidator } from './MarkdownValidator.js';
 import {
   ErrorType,
@@ -33,7 +33,7 @@ export class CommonMarkValidator implements MarkdownValidator {
     const lines = markdown.split('\n');
 
     // Parse using marked.lexer() to get AST tokens
-    let tokens: Tokens.Token[];
+    let tokens: Token[];
     try {
       tokens = lexer(markdown);
     } catch {
@@ -82,7 +82,7 @@ export class CommonMarkValidator implements MarkdownValidator {
   }
 
   private walkTokens(
-    tokens: Tokens.Token[],
+    tokens: Token[],
     lines: string[],
     markdown: string,
     errors: MarkdownError[],
@@ -135,7 +135,7 @@ export class CommonMarkValidator implements MarkdownValidator {
       }
 
       // Recurse into nested tokens (e.g. list items)
-      const tok = token as Tokens.Token & { tokens?: Tokens.Token[] };
+      const tok = token as Token & { tokens?: Token[] };
       if (tok.tokens && tok.tokens.length > 0) {
         this.walkTokens(tok.tokens, lines, markdown, errors, token.raw, pos >= 0 ? pos : 0);
       }

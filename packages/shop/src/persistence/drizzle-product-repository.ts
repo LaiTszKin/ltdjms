@@ -84,7 +84,7 @@ export class DrizzleProductRepository implements ProductRepository {
     const rows = await this.db
       .insert(productTable)
       .values({
-        guildId: BigInt(data.guildId),
+        guildId: Number(data.guildId),
         name: data.name,
         description: data.description,
         rewardType: data.rewardType,
