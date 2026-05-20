@@ -38,6 +38,10 @@ const EVENT_TYPES = {
   PRODUCT_REDEMPTION_COMPLETED: 'product_redemption_completed',
   AI_AGENT_CHANNEL_CONFIG_CHANGED: 'ai_agent_channel_config_changed',
   AGENT_FAILED: 'agent_failed',
+  AI_CHANNEL_CONFIG_CHANGED: 'ai_channel_config_changed',
+  DISPATCH_AFTER_SALES_CONFIG_CHANGED: 'dispatch_after_sales_config_changed',
+  ESCORT_PRICING_CHANGED: 'escort_pricing_changed',
+  ESCORT_CATALOG_CHANGED: 'escort_catalog_changed',
 } as const;
 
 /**
@@ -213,7 +217,7 @@ export class AdminPanelUpdateListener {
       for (let i = 0; i < buttons.length; i += 3) {
         rows.push(
           new ActionRowBuilder<ButtonBuilder>().addComponents(
-            buttons.slice(i, i + 5),
+            buttons.slice(i, i + 3),
           ),
         );
       }
@@ -239,6 +243,10 @@ export class AdminPanelUpdateListener {
       EVENT_TYPES.GAME_TOKEN_CHANGED,
       EVENT_TYPES.PRODUCT_REDEMPTION_COMPLETED,
       EVENT_TYPES.AGENT_FAILED,
+      EVENT_TYPES.AI_CHANNEL_CONFIG_CHANGED,
+      EVENT_TYPES.DISPATCH_AFTER_SALES_CONFIG_CHANGED,
+      EVENT_TYPES.ESCORT_PRICING_CHANGED,
+      EVENT_TYPES.ESCORT_CATALOG_CHANGED,
     ]);
     return relevantTypes.has(event.eventType);
   }
@@ -278,6 +286,18 @@ export class AdminPanelUpdateListener {
 
       case EVENT_TYPES.AGENT_FAILED:
         return true;
+
+      case EVENT_TYPES.AI_CHANNEL_CONFIG_CHANGED:
+        return viewState === AdminPanelViewState.AI_CHANNEL;
+
+      case EVENT_TYPES.DISPATCH_AFTER_SALES_CONFIG_CHANGED:
+        return viewState === AdminPanelViewState.DISPATCH_STAFF;
+
+      case EVENT_TYPES.ESCORT_PRICING_CHANGED:
+        return viewState === AdminPanelViewState.ESCORT_PRICING;
+
+      case EVENT_TYPES.ESCORT_CATALOG_CHANGED:
+        return viewState === AdminPanelViewState.ESCORT_CATALOG;
 
       default:
         return false;

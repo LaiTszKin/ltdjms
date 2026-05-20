@@ -7,6 +7,7 @@ import { type CommandHandler } from '../../commands/infra/CommandHandler.js';
 import { AdminPanelSessionManager } from '../../session/AdminPanelSessionManager.js';
 import { AdminPanelViewFactory } from './views/AdminPanelViewFactory.js';
 import { CurrencyManagementFacade } from '../../facades/CurrencyManagementFacade.js';
+import { DispatchManagementFacade } from '../../facades/DispatchManagementFacade.js';
 import { ZhTwStrings } from '../../i18n/zh-TW.js';
 
 /**
@@ -21,6 +22,7 @@ export class AdminPanelCommand implements CommandHandler {
     private readonly sessionManager: AdminPanelSessionManager,
     private readonly viewFactory: AdminPanelViewFactory,
     private readonly currencyFacade: CurrencyManagementFacade,
+    private readonly dispatchFacade: DispatchManagementFacade,
   ) {}
 
   async execute(
@@ -42,9 +44,8 @@ export class AdminPanelCommand implements CommandHandler {
     const configResult = await this.currencyFacade.getConfig(guildId);
     const currencyConfig = configResult.isOk() ? configResult.getValue() : null;
 
-    // TODO(P1-37): Query active dispatch order count from a dispatch service
-    // (e.g., EscortOrderService) once it is available. Currently hardcoded to 0.
-    const dispatchCount = 0;
+    const dispatchResult = await this.dispatchFacade.countActiveOrders(guildId);
+    const dispatchCount = dispatchResult.isOk() ? dispatchResult.getValue() : 0;
 
     // Attempt to get the actual guild name from the raw interaction
     const rawHook = interaction.getHook() as { guild?: { name?: string } };

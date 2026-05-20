@@ -16,6 +16,7 @@ import {
   type EscortOptionCatalogEntry,
   type EscortOptionPriceRepo,
   type OptionPriceView,
+  type EscortDispatchOrderService,
 } from '@ltdjms/dispatch';
 
 /**
@@ -48,6 +49,7 @@ export class DispatchManagementFacade {
     private readonly catalogRepository: EscortOptionCatalogRepository,
     private readonly priceRepo: EscortOptionPriceRepo,
     private readonly eventPublisher: DomainEventPublisher,
+    private readonly dispatchOrderService: EscortDispatchOrderService,
   ) {}
 
   // ================================================================
@@ -91,6 +93,17 @@ export class DispatchManagementFacade {
       return new Ok(true);
     }
     return new Err(result.getError());
+  }
+
+  // ================================================================
+  // Dispatch Orders
+  // ================================================================
+
+  /**
+   * Counts active (non-terminal) escort dispatch orders for a guild.
+   */
+  async countActiveOrders(guildId: string): Promise<Result<number, DomainError>> {
+    return this.dispatchOrderService.countActiveOrders(Number(guildId));
   }
 
   // ================================================================

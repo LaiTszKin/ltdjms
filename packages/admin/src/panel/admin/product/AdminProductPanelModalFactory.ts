@@ -27,6 +27,7 @@ export class AdminProductPanelModalFactory {
         { label: ZhTwStrings.productModalDesc, placeholder: ZhTwStrings.productModalDescPlaceholder, minLength: 0, maxLength: 1000, required: false },
         { label: ZhTwStrings.productModalPrice, placeholder: ZhTwStrings.productModalPricePlaceholder, minLength: 0, maxLength: 20, required: true },
         { label: ZhTwStrings.productModalFiatPrice, placeholder: ZhTwStrings.productModalFiatPricePlaceholder, minLength: 0, maxLength: 20, required: false },
+        { label: ZhTwStrings.productModalImageUrl, placeholder: ZhTwStrings.productModalImageUrlPlaceholder, minLength: 0, maxLength: 500, required: false },
         { label: ZhTwStrings.productModalStock, placeholder: ZhTwStrings.productModalStockPlaceholder, minLength: 1, maxLength: 10, required: false },
       ],
     };
@@ -46,6 +47,7 @@ export class AdminProductPanelModalFactory {
         { label: ZhTwStrings.productModalDesc, value: product.description ?? '', minLength: 0, maxLength: 1000, required: false },
         { label: ZhTwStrings.productModalPrice, value: product.currencyPrice?.toString() ?? '0', minLength: 1, maxLength: 20, required: true },
         { label: ZhTwStrings.productModalFiatPrice, value: product.fiatPriceTwd?.toString() ?? '', minLength: 0, maxLength: 20, required: false },
+        { label: ZhTwStrings.productModalImageUrl, value: '', minLength: 0, maxLength: 500, required: false },
       ],
     };
   }

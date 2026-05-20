@@ -101,6 +101,13 @@ export class EscortCatalogHandler extends BaseAdminHandler {
       return;
     }
 
+    // Handle back to catalog list
+    if (fullCustomId === 'admin_escortcatalog_back') {
+      this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.ESCORT_CATALOG);
+      await this.showCatalog(interaction);
+      return;
+    }
+
     await this.showCatalog(interaction);
   }
 
