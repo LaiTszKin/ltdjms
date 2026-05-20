@@ -64,8 +64,6 @@ export class DrizzleEscortDispatchOrderRepo implements EscortDispatchOrderRepo {
         afterSalesAssignedAt: order.afterSalesAssignedAt,
         afterSalesClosedAt: order.afterSalesClosedAt,
         updatedAt: order.updatedAt,
-        escortUserId: order.escortUserId,
-        assignedByUserId: order.assignedByUserId,
       })
       .where(and(...conditions))
       .returning();
@@ -182,6 +180,30 @@ export class DrizzleEscortDispatchOrderRepo implements EscortDispatchOrderRepo {
           eq(escortDispatchOrder.orderNumber, orderNumber),
           eq(escortDispatchOrder.status, EscortDispatchOrderStatus.AFTER_SALES_REQUESTED),
           isNull(escortDispatchOrder.afterSalesAssigneeUserId),
+        ),
+      )
+      .returning();
+
+    return rows.length > 0 ? mapRowToDomain(rows[0]) : null;
+  }
+
+  async confirmOrder(
+    orderNumber: string,
+    expectedEscortUserId: number,
+    confirmedAt: Date,
+  ): Promise<EscortDispatchOrder | null> {
+    const rows = await this.db
+      .update(escortDispatchOrder)
+      .set({
+        status: EscortDispatchOrderStatus.CONFIRMED,
+        confirmedAt,
+        updatedAt: confirmedAt,
+      })
+      .where(
+        and(
+          eq(escortDispatchOrder.orderNumber, orderNumber),
+          eq(escortDispatchOrder.status, EscortDispatchOrderStatus.PENDING_CONFIRMATION),
+          eq(escortDispatchOrder.escortUserId, expectedEscortUserId),
         ),
       )
       .returning();

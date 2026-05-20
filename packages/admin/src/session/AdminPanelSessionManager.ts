@@ -21,6 +21,12 @@ const DEFAULT_TTL_MS = DEFAULT_TTL_S * 1000;
  * Optionally backed by a CacheService (Redis) for distributed session support.
  * Each guild+user can have at most one active session.
  * Matches Java AdminPanelSessionManager.
+ *
+ * NOTE(P2-2): 與 PanelSessionManager 有大量重複程式碼（createSession、getSession、
+ * removeSession、getAllForGuild、cleanupExpired 等）。兩者的差異在於：
+ * - 本類別使用 AdminPanelSessionData（含 viewState、context）
+ * - PanelSessionManager 使用 PanelSessionData（僅 context，無 viewState）
+ * 若要抽取公用基底類別，需注意建構子和 session 類型的泛型化。
  */
 export class AdminPanelSessionManager {
   /** In-memory session store (fallback when cache is unavailable). guildId:userId → session data. */

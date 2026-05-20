@@ -8,6 +8,7 @@ export {
   type FieldView,
   type ButtonView,
   ButtonStyle,
+  createButtonView,
 } from './domain/index.js';
 
 // Services
@@ -18,7 +19,10 @@ export {
   DiscordJsRuntimeGateway,
   DiscordRuntimeNotReadyError,
 } from './services/discord-js-runtime-gateway.js';
-export { splitSelectMenus, buildSelectRows } from './services/select-menu-util.js';
+export { splitSelectMenus, splitSelectMenusGeneric, buildSelectRows } from './services/select-menu-util.js';
+
+// Embed utilities
+export { type EmbedLimits } from './services/embed-pagination.js';
 
 // Mocks
 export { MockDiscordInteraction } from './mock/mock-discord-interaction.js';

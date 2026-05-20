@@ -55,7 +55,8 @@ export class EcpayCallbackHttpServer {
     this.app.post(callbackPath, async (req, res) => {
       try {
         const bodyStr = typeof req.body === 'string' ? req.body : JSON.stringify(req.body ?? '');
-        const result = await this.callbackService.handleCallback(bodyStr, null);
+        const contentType = req.headers['content-type'] ?? null;
+        const result = await this.callbackService.handleCallback(bodyStr, contentType);
         res.status(result.httpStatus).send(result.responseBody);
       } catch (e) {
         this.log.error({ error: e }, 'ECPay callback handler error');

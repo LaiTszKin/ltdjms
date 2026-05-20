@@ -40,10 +40,13 @@ const MAX_PENDING_ASSIGNMENT_LIMIT = 25;
  * Matches Java EscortDispatchOrderService exactly.
  */
 export class EscortDispatchOrderService {
+  private readonly orderNumberGenerator: EscortDispatchOrderNumberGenerator;
+  private readonly clock: () => number;
+
   constructor(
     private readonly repository: EscortDispatchOrderRepo,
-    private readonly orderNumberGenerator?: EscortDispatchOrderNumberGenerator,
-    private readonly clock?: () => number,
+    orderNumberGenerator?: EscortDispatchOrderNumberGenerator,
+    clock?: () => number,
     private readonly catalogRepository?: EscortOptionCatalogRepository,
     private readonly afterSalesStaffService?: DispatchAfterSalesStaffService,
     private readonly logger?: TokenMap['Logger'],
@@ -177,9 +180,16 @@ export class EscortDispatchOrderService {
     }
 
     try {
-      const confirmed = withConfirmed(order, new Date(this.clock!()));
-      const updated = await this.repository.update(confirmed, EscortDispatchOrderStatus.PENDING_CONFIRMATION);
-      return new Ok(updated);
+      const confirmedAt = new Date(this.clock!());
+      const updated = await this.repository.confirmOrder(
+        order.orderNumber,
+        confirmerUserId,
+        confirmedAt,
+      );
+      if (updated != null) {
+        return new Ok(updated);
+      }
+      return new Err(DomainError.invalidInput('此訂單已被確認或目前不可確認'));
     } catch (e) {
       const err = e instanceof Error ? e : new Error(String(e));
       return new Err(DomainError.persistenceFailure('確認訂單失敗', err));
@@ -402,6 +412,10 @@ export class EscortDispatchOrderService {
     const safeLimit = this.normalizeLimit(limit ?? DEFAULT_HISTORY_LIMIT, MAX_HISTORY_LIMIT);
     try {
       const orders = await this.repository.findRecentByGuildId(guildId, safeLimit);
+      // NOTE(P3-8): 每個 PENDING_CUSTOMER_CONFIRMATION 訂單獨立執行 UPDATE，
+      // 若大量訂單同時逾時會產生 N 次 DB 呼叫。可改為批次 UPDATE
+      // （WHERE status = PENDING_CUSTOMER_CONFIRMATION AND confirmedAt < ?），
+      // 但需注意 in-memory order 物件與 DB 狀態的同步。
       const normalizedOrders = await Promise.all(
         orders.map(async (o) => {
           if (!isPendingCustomerConfirmation(o)) return o;

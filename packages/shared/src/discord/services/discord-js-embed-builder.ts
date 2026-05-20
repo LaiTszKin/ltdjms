@@ -1,7 +1,7 @@
 import { EmbedBuilder, type APIEmbed } from 'discord.js';
 import { type DiscordEmbedBuilder } from '../domain/discord-embed-builder.js';
 import { type EmbedView } from '../domain/embed-view.js';
-import pino from 'pino';
+import pino, { type Logger } from 'pino';
 import { paginateEmbedView } from './embed-pagination.js';
 
 /**
@@ -19,9 +19,9 @@ export class DiscordJsEmbedBuilder implements DiscordEmbedBuilder {
 
   private readonly embed: EmbedBuilder = new EmbedBuilder();
   private fieldCount = 0;
-  private readonly logger: pino.Logger;
+  private readonly logger: Logger;
 
-  constructor(logger?: pino.Logger) {
+  constructor(logger?: Logger) {
     this.logger = logger ?? pino({ level: 'warn' });
   }
 

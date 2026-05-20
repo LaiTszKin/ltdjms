@@ -1,8 +1,8 @@
 import { DiscordMarkdownSanitizer } from './DiscordMarkdownSanitizer.js';
-import { RegexBasedAutoFixer } from '../autofix/RegexBasedAutoFixer.js';
+import { MarkdownAutoFixer } from '../autofix/MarkdownAutoFixer.js';
 import { CommonMarkValidator } from '../validation/CommonMarkValidator.js';
 import { DiscordMarkdownPaginator } from './DiscordMarkdownPaginator.js';
-import { isValid, type ValidationResult } from '../types.js';
+import { applyMarkdownPipeline } from './markdown-pipeline.js';
 
 /**
  * Processes streaming Markdown content through the sanitize → fix → validate → paginate pipeline.
@@ -13,7 +13,7 @@ export class DiscordMarkdownStreamProcessor {
 
   constructor(
     private readonly sanitizer: DiscordMarkdownSanitizer,
-    private readonly autoFixer: RegexBasedAutoFixer,
+    private readonly autoFixer: MarkdownAutoFixer,
     private readonly validator: CommonMarkValidator,
     private readonly paginator: DiscordMarkdownPaginator,
   ) {}
@@ -48,26 +48,10 @@ export class DiscordMarkdownStreamProcessor {
 
   /**
    * Processes a complete segment through the pipeline.
+   * 委派給共用工具函數 applyMarkdownPipeline（P2-4）。
    */
   private processSegment(segment: string): string[] {
-    // Pipeline: Sanitize → AutoFix → Validate → Paginate
-
-    // 1. Sanitize
-    let result = this.sanitizer.sanitize(segment);
-
-    // 2. AutoFix
-    result = this.autoFixer.autoFix(result);
-
-    // 3. Validate
-    const validationResult: ValidationResult = this.validator.validate(result);
-
-    // If invalid, try one more fix cycle
-    if (!isValid(validationResult)) {
-      result = this.autoFixer.autoFix(result);
-    }
-
-    // 4. Paginate
-    return this.paginator.paginate(result);
+    return applyMarkdownPipeline(segment, this.sanitizer, this.autoFixer, this.validator, this.paginator);
   }
 
   /**

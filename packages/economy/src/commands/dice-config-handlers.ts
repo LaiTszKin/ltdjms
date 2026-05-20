@@ -46,7 +46,7 @@ export class DiceGame1ConfigHandler {
       minTokens <= 0 ||
       maxTokens <= 0 ||
       rewardPerDiceValue <= 0 ||
-      maxTokens <= minTokens
+      maxTokens < minTokens
     ) {
       await interaction.reply(DiceGameMessages.INVALID_OPTION);
       return;
@@ -141,7 +141,7 @@ export class DiceGame2ConfigHandler {
       minTokens <= 0 || maxTokens <= 0 ||
       straightMultiplier <= 0 || baseMultiplier <= 0 ||
       tripleLowBonus <= 0 || tripleHighBonus <= 0 ||
-      maxTokens <= minTokens
+      maxTokens < minTokens
     ) {
       await interaction.reply(DiceGameMessages.INVALID_OPTION);
       return;

@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events';
 import { type DomainEvent } from '../../types/events/domain-event.js';
-import pino from 'pino';
+import pino, { type Logger } from 'pino';
 
 const EVENT_CHANNEL = 'domain-event';
 
@@ -14,12 +14,12 @@ export class DomainEventPublisher {
   private readonly emitter = new EventEmitter();
   /** Captured for testing — tracks the last published event. */
   private _lastEvent: DomainEvent | null = null;
-  private readonly logger: pino.Logger;
+  private readonly logger: Logger;
   /** Maps original listener → wrapped function for unregister support. */
   private readonly wrapperMap = new WeakMap<(event: DomainEvent) => void | Promise<void>, (event: DomainEvent) => void>();
 
-  constructor(logger?: pino.Logger) {
-    this.logger = logger ?? pino({ level: 'warn' });
+  constructor(logger?: Logger) {
+    this.logger = logger ?? pino({ level: 'silent' });
   }
 
   /**
@@ -80,7 +80,12 @@ export class DomainEventPublisher {
       try {
         listener(event);
       } catch (err) {
-        // Log but don't propagate — sync error from wrapped listener
+        // Defensive catch: listeners that were registered directly via emitter.on()
+        // (bypassing register()) are not wrapped in the error handler, so sync
+        // errors from those listeners would otherwise propagate to the caller.
+        // The inner try/catch in register() handles errors from properly
+        // registered listeners, but this outer layer ensures robustness for
+        // all code paths.
         this.logger.error(
           { eventName: typeof event, err },
           '[DomainEventPublisher] Error handling event',

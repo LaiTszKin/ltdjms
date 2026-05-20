@@ -53,7 +53,7 @@ export {
   shouldAutoCreateEscortOrder as shouldProductAutoCreateEscortOrder,
   createProduct,
 } from './domain/product-types.js';
-export type { Product } from './domain/product-types.js';
+export type { Product, ProductRepository } from './domain/product-types.js';
 
 // Persistence
 export {
@@ -132,7 +132,6 @@ export { EcpayCallbackHttpServer } from './web/ecpay-callback-server.js';
 export {
   configureContainer,
   SHOP_TOKENS,
-  type ProductRepository,
   type ProductRewardService,
   type BalanceService,
   type BalanceAdjustmentService,

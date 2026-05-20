@@ -286,7 +286,9 @@ export class ShopCommandHandler {
     interaction: DiscordInteraction,
     guildId: number,
   ): Promise<void> {
-    const page = await this.shopService.getShopPage(guildId, 1);
+    // Load all products at once (large page size) so the select menu is not
+    // restricted to the first page only.
+    const page = await this.shopService.getShopPageWithSize(guildId, 1, 100);
     if (ShopCommandHandler.pageIsEmpty(page)) {
       await interaction.reply('目前沒有可購買的商品');
       return;

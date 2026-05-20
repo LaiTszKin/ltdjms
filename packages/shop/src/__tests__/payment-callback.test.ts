@@ -26,7 +26,7 @@ describe('FiatPaymentCallbackService', () => {
     const repo = createMockRepo();
     const service = new FiatPaymentCallbackService(config, repo);
 
-    const result = await service.handleCallback(null, 'application/json', null);
+    const result = await service.handleCallback(null, 'application/json');
     expect(result.httpStatus).toBe(400);
     expect(result.responseBody).toBe('0|FAIL');
   });
@@ -36,7 +36,7 @@ describe('FiatPaymentCallbackService', () => {
     const repo = createMockRepo();
     const service = new FiatPaymentCallbackService(config, repo);
 
-    const result = await service.handleCallback('', 'application/json', null);
+    const result = await service.handleCallback('', 'application/json');
     expect(result.httpStatus).toBe(400);
   });
 
@@ -45,7 +45,7 @@ describe('FiatPaymentCallbackService', () => {
     const repo = createMockRepo();
     const service = new FiatPaymentCallbackService(config, repo);
 
-    const result = await service.handleCallback('{"key":"value"}', 'application/json', '{"key":"value"}');
+    const result = await service.handleCallback('{"key":"value"}', 'application/json');
     expect(result.httpStatus).toBe(400);
   });
 
@@ -60,7 +60,6 @@ describe('FiatPaymentCallbackService', () => {
     const result = await service.handleCallback(
       '{"Data":"dGVzdA=="}',
       'application/json',
-      '{"Data":"dGVzdA=="}',
     );
     // Without valid encrypted data, it will return 400 due to decryption failure
     // This is expected since we're not providing real encrypted data

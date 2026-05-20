@@ -145,7 +145,7 @@ function createDefaultConfig(guildId: number): GuildCurrencyConfig {
 function validateName(name: string): void {
   const result = tryValidateName(name);
   if (result.isErr()) {
-    throw new Error(result.getError().message);
+    throw result.getError();
   }
 }
 
@@ -166,7 +166,7 @@ function tryValidateName(name: string): Result<import('@ltdjms/shared').Unit, Do
 function validateIcon(icon: string): void {
   const result = tryValidateIcon(icon);
   if (result.isErr()) {
-    throw new Error(result.getError().message);
+    throw result.getError();
   }
 }
 

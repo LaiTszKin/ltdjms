@@ -47,7 +47,7 @@ export class DomainError {
     if (category === null || category === undefined) {
       throw new Error('category must not be null');
     }
-    if (!message) {
+    if (message === null || message === undefined) {
       throw new Error('message must not be null');
     }
   }

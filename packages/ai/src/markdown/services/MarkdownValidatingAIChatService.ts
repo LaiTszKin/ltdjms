@@ -6,10 +6,10 @@ import {
 } from '../../services/ai-chat-service.js';
 import { AIServiceConfig } from '../../config/ai-service-config.js';
 import { DiscordMarkdownSanitizer } from './DiscordMarkdownSanitizer.js';
-import { RegexBasedAutoFixer } from '../autofix/RegexBasedAutoFixer.js';
+import { MarkdownAutoFixer } from '../autofix/MarkdownAutoFixer.js';
 import { CommonMarkValidator } from '../validation/CommonMarkValidator.js';
 import { DiscordMarkdownPaginator } from './DiscordMarkdownPaginator.js';
-import { isValid } from '../types.js';
+import { applyMarkdownPipeline } from './markdown-pipeline.js';
 
 /**
  * Decorator that wraps an AIChatService with Markdown validation pipeline.
@@ -24,7 +24,7 @@ export class MarkdownValidatingAIChatService implements AIChatService {
   constructor(
     private readonly delegate: AIChatService,
     private readonly sanitizer: DiscordMarkdownSanitizer,
-    private readonly autoFixer: RegexBasedAutoFixer,
+    private readonly autoFixer: MarkdownAutoFixer,
     private readonly validator: CommonMarkValidator,
     private readonly paginator: DiscordMarkdownPaginator,
   ) {
@@ -157,9 +157,14 @@ export class MarkdownValidatingAIChatService implements AIChatService {
     let contentBuffer: string[] = [];
 
     /**
-     * Flushes accumulated content through the validation pipeline.
+     * Flushes accumulated CONTENT chunks through the validation pipeline
+     * and forwards validated pages via the appropriate callback.
      */
-    const flushContent = (isComplete: boolean, error: DomainError | null): void => {
+    const flushContent = (
+      isComplete: boolean,
+      error: DomainError | null,
+      useType: boolean = false,
+    ): void => {
       if (contentBuffer.length === 0) return;
 
       const fullContent = contentBuffer.join('');
@@ -168,14 +173,22 @@ export class MarkdownValidatingAIChatService implements AIChatService {
       if (!fullContent) return;
 
       if (this.config.streamingBypassValidation) {
-        handler.onChunk(fullContent, isComplete, null);
+        if (useType) {
+          handler.onChunkWithType(fullContent, isComplete, null, StreamChunkType.CONTENT);
+        } else {
+          handler.onChunk(fullContent, isComplete, null);
+        }
         return;
       }
 
       const validated = this.applyPipeline(fullContent);
       for (let i = 0; i < validated.length; i++) {
         const pageIsComplete = i === validated.length - 1;
-        handler.onChunk(validated[i], pageIsComplete, null);
+        if (useType) {
+          handler.onChunkWithType(validated[i], pageIsComplete, null, StreamChunkType.CONTENT);
+        } else {
+          handler.onChunk(validated[i], pageIsComplete, null);
+        }
       }
     };
 
@@ -191,7 +204,7 @@ export class MarkdownValidatingAIChatService implements AIChatService {
         }
 
         if (isComplete) {
-          flushContent(true, null);
+          flushContent(true, null, false);
         }
       },
       onChunkWithType: (
@@ -222,16 +235,7 @@ export class MarkdownValidatingAIChatService implements AIChatService {
         }
 
         if (isComplete) {
-          const fullContent = contentBuffer.join('');
-          contentBuffer = [];
-
-          if (fullContent) {
-            const validated = this.applyPipeline(fullContent);
-            for (let i = 0; i < validated.length; i++) {
-              const isLastPage = i === validated.length - 1;
-              handler.onChunkWithType(validated[i], isLastPage, null, StreamChunkType.CONTENT);
-            }
-          }
+          flushContent(true, null, true);
         }
       },
     };
@@ -240,25 +244,9 @@ export class MarkdownValidatingAIChatService implements AIChatService {
   /**
    * Applies the full pipeline to a markdown string.
    * Pipeline: Sanitize → AutoFix → Validate → Paginate
+   * 委派給共用工具函數 applyMarkdownPipeline（P2-4）。
    */
   private applyPipeline(markdown: string): string[] {
-    if (!markdown) return [markdown];
-
-    let result = markdown;
-
-    // 1. Sanitize
-    result = this.sanitizer.sanitize(result);
-
-    // 2. AutoFix
-    result = this.autoFixer.autoFix(result);
-
-    // 3. Validate → if invalid, retry fix once
-    const validationResult = this.validator.validate(result);
-    if (!isValid(validationResult)) {
-      result = this.autoFixer.autoFix(result);
-    }
-
-    // 4. Paginate
-    return this.paginator.paginate(result);
+    return applyMarkdownPipeline(markdown, this.sanitizer, this.autoFixer, this.validator, this.paginator);
   }
 }

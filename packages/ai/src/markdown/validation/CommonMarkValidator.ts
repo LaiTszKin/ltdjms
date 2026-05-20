@@ -323,6 +323,13 @@ export class CommonMarkValidator implements MarkdownValidator {
    * that the AST parser may not flag (since marked normalizes some syntax).
    * Uses its own code fence tracking rather than the AST-based line set.
    */
+  /**
+   * NOTE(P3-9): 每行會執行多次 regex 匹配（heading、inline heading、list 等）。
+   * 若在大量行數的大型 Markdown 上遇到效能瓶頸，可考慮：
+   * - 合併 regex 成單一複合表達式
+   * - 提前 break（遇到第一個 error 即停止該行後續檢查）
+   * 目前單次驗證的行數規模較小（< 2000 lines），暫無優化必要。
+   */
   private regexFormatPass(
     lines: string[],
     errors: MarkdownError[],

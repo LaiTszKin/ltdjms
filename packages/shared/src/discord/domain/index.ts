@@ -7,4 +7,5 @@ export {
   type FieldView,
   type ButtonView,
   ButtonStyle,
+  createButtonView,
 } from './embed-view.js';

@@ -784,6 +784,7 @@ export class DispatchPanelInteractionHandler {
     _guildId: string,
     _userId: string,
   ): Promise<boolean> {
+    // isAdministrator() 同時檢查 ADMINISTRATOR 權限與 guild owner（ownerId）
     return interaction.isAdministrator();
   }
 

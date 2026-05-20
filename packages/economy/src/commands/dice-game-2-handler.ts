@@ -111,13 +111,13 @@ export class DiceGame2Handler {
     const straightDisplay =
       gameResult.straightSegments.length > 0
         ? gameResult.straightSegments
-            .map((seg) => `[${[...seg].join('、')}]`)
+            .map((seg: readonly number[]) => `[${[...seg].join('、')}]`)
             .join(' ')
         : '無';
     const tripleDisplay =
       gameResult.tripleSegments.length > 0
         ? gameResult.tripleSegments
-            .map((seg) => `[${[...seg].join('、')}]`)
+            .map((seg: readonly number[]) => `[${[...seg].join('、')}]`)
             .join(' ')
         : '無';
 
@@ -136,8 +136,7 @@ export class DiceGame2Handler {
         .replace('{newBalance}', String(gameResult.newBalance)),
       `
 貨幣：${currencyIcon}${currencyName}`,
-    ].join('
-');
+    ].join('\n');
 
     await interaction.reply(message);
   }

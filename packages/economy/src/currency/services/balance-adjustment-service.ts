@@ -131,6 +131,8 @@ export class BalanceAdjustmentService {
 
   /**
    * Adjusts a member's balance to a specific target value.
+   * Validates the delta and delegates to tryAdjustBalance to avoid duplicating
+   * the transaction recording, event publishing, and cache update logic (P1-8).
    */
   async tryAdjustBalanceTo(
     guildId: number,
@@ -145,73 +147,25 @@ export class BalanceAdjustmentService {
       );
     }
 
-    try {
-      const current = await this.accountRepository.findOrCreate(guildId, userId);
-      const previousBalance = current.balance;
+    const current = await this.accountRepository.findOrCreate(guildId, userId);
+    const delta = targetBalance - current.balance;
 
-      const delta = targetBalance - previousBalance;
-
-      if (!Number.isFinite(delta)) {
-        return new Err(
-          DomainError.invalidInput(
-            `Adjustment would cause overflow: target=${targetBalance}, current=${previousBalance}`,
-          ),
-        );
-      }
-
-      const adjustResult = await this.accountRepository.tryAdjustBalance(
-        guildId,
-        userId,
-        delta,
-      );
-
-      if (adjustResult.isErr()) {
-        return new Err(adjustResult.getError());
-      }
-
-      const updated = adjustResult.getValue();
-
-      // Record transaction first (P1-11)
-      await this.transactionService.recordTransaction(
-        guildId,
-        userId,
-        delta,
-        updated.balance,
-        source,
-        description,
-      );
-
-      // Publish event
-      const event: BalanceChangedEvent = {
-        guildId: String(guildId),
-        userId,
-        eventType: 'balance_changed',
-        newBalance: updated.balance,
-      };
-      this.eventPublisher.publish(event);
-
-      // Update cache
-      const cacheKey = this.cacheKeyGenerator.balanceKey(String(guildId), String(userId));
-      await this.cacheService.put(cacheKey, updated.balance, BalanceAdjustmentService.BALANCE_TTL_SECONDS);
-
-      const config = await this.configRepository.findByGuildId(guildId);
-
-      return new Ok({
-        guildId,
-        userId,
-        previousBalance,
-        newBalance: updated.balance,
-        adjustment: delta,
-        currencyName: config?.currencyName ?? DEFAULT_CURRENCY_NAME,
-        currencyIcon: config?.currencyIcon ?? DEFAULT_CURRENCY_ICON,
-      });
-    } catch (err) {
+    // Validate delta the same way tryAdjustBalance does (P1-8)
+    if (!Number.isFinite(delta)) {
       return new Err(
-        DomainError.persistenceFailure(
-          `Failed to adjust balance to target for guildId=${guildId}, userId=${userId}`,
-          err instanceof Error ? err : undefined,
+        DomainError.invalidInput(
+          `Adjustment would cause overflow: target=${targetBalance}, current=${current.balance}`,
         ),
       );
     }
+    if (!isValidAdjustmentAmount(delta)) {
+      return new Err(
+        DomainError.invalidInput(`Delta exceeds maximum: |${delta}| > ${Number.MAX_SAFE_INTEGER}`),
+      );
+    }
+
+    // Delegate to tryAdjustBalance which handles findOrCreate, overflow check,
+    // adjustment, transaction recording, event publishing, and cache update.
+    return this.tryAdjustBalance(guildId, userId, delta, source, description);
   }
 }

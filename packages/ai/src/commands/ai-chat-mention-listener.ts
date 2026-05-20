@@ -180,6 +180,8 @@ export class AIChatMentionListener {
     const tracker = new ReasoningMessageTracker();
     const pendingContent: string[] = [];
     let completionProcessed = false;
+    // 互斥旗標：標記哪個 callback 已被使用，避免 onChunk 與 onChunkWithType 同時累積內容
+    let chunkTypeUsed: 'legacy' | 'typed' | null = null;
 
     // Send initial "thinking" message
     const thinkingMsg = await message.reply(':thought_balloon: AI 正在思考...');
@@ -192,6 +194,9 @@ export class AIChatMentionListener {
           thinkingMsg.edit(errorMsg).catch(() => {});
           return;
         }
+        // 若已使用 typed callback，忽略 legacy onChunk 以防止重複累積
+        if (chunkTypeUsed === 'typed') return;
+        chunkTypeUsed = 'legacy';
         if (chunk) {
           pendingContent.push(chunk);
         }
@@ -206,6 +211,12 @@ export class AIChatMentionListener {
           const errorMsg = this.mapErrorToUserMessage(error);
           thinkingMsg.edit(errorMsg).catch(() => {});
           return;
+        }
+
+        // 僅對 CONTENT 類型設定互斥旗標；REASONING 與 TOOL_INTENT 不影響
+        if (type === StreamChunkType.CONTENT) {
+          if (chunkTypeUsed === 'legacy') return;
+          chunkTypeUsed = 'typed';
         }
 
         switch (type) {

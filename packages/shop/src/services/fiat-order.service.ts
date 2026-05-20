@@ -17,6 +17,11 @@ export interface FiatOrderResult {
   paymentNo: string;
   expireDate: string | null;
   paymentUrl: string | null;
+  /**
+   * Reserved for future use: when fulfillment encounters non-blocking warnings
+   * (e.g., reward grant failed but order was already marked paid), this field
+   * will carry the warning message. Currently always null.
+   */
   fulfillmentWarning: string | null;
 }
 

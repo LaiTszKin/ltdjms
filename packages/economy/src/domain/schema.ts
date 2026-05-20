@@ -67,6 +67,7 @@ export const currencyTransaction = pgTable(
       table.createdAt,
     ),
     guildIdx: index('idx_currency_transaction_guild').on(table.guildId, table.createdAt),
+    balanceAfterCheck: check('currency_tx_balance_after_non_negative', sql`${table.balanceAfter} >= 0`),
   }),
 );
 
@@ -114,6 +115,7 @@ export const gameTokenTransaction = pgTable(
       table.createdAt,
     ),
     guildIdx: index('idx_game_token_transaction_guild').on(table.guildId, table.createdAt),
+    balanceAfterCheck: check('game_token_tx_balance_after_non_negative', sql`${table.balanceAfter} >= 0`),
   }),
 );
 
@@ -121,30 +123,51 @@ export const gameTokenTransaction = pgTable(
  * Dice game 1 configuration table.
  * Configured min/max tokens per play and reward per dice value.
  */
-export const diceGame1Config = pgTable('dice_game1_config', {
-  guildId: bigint('guild_id', { mode: 'number' }).primaryKey(),
-  minTokensPerPlay: bigint('min_tokens_per_play', { mode: 'number' }).notNull().default(1),
-  maxTokensPerPlay: bigint('max_tokens_per_play', { mode: 'number' }).notNull().default(10),
-  rewardPerDiceValue: bigint('reward_per_dice_value', { mode: 'number' }).notNull().default(250000),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+export const diceGame1Config = pgTable(
+  'dice_game1_config',
+  {
+    guildId: bigint('guild_id', { mode: 'number' }).primaryKey(),
+    minTokensPerPlay: bigint('min_tokens_per_play', { mode: 'number' }).notNull().default(1),
+    maxTokensPerPlay: bigint('max_tokens_per_play', { mode: 'number' }).notNull().default(10),
+    rewardPerDiceValue: bigint('reward_per_dice_value', { mode: 'number' }).notNull().default(250000),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    minTokensCheck: check('dice1_min_tokens_non_negative', sql`${table.minTokensPerPlay} >= 0`),
+    maxTokensCheck: check('dice1_max_tokens_non_negative', sql`${table.maxTokensPerPlay} >= 0`),
+    rewardCheck: check('dice1_reward_non_negative', sql`${table.rewardPerDiceValue} >= 0`),
+    minMaxCheck: check('dice1_min_le_max', sql`${table.minTokensPerPlay} <= ${table.maxTokensPerPlay}`),
+  }),
+);
 
 /**
  * Dice game 2 configuration table.
  * Configured multipliers for straights, base, and triple bonuses.
  */
-export const diceGame2Config = pgTable('dice_game2_config', {
-  guildId: bigint('guild_id', { mode: 'number' }).primaryKey(),
-  minTokensPerPlay: bigint('min_tokens_per_play', { mode: 'number' }).notNull().default(5),
-  maxTokensPerPlay: bigint('max_tokens_per_play', { mode: 'number' }).notNull().default(50),
-  straightMultiplier: bigint('straight_multiplier', { mode: 'number' }).notNull().default(100000),
-  baseMultiplier: bigint('base_multiplier', { mode: 'number' }).notNull().default(20000),
-  tripleLowBonus: bigint('triple_low_bonus', { mode: 'number' }).notNull().default(1500000),
-  tripleHighBonus: bigint('triple_high_bonus', { mode: 'number' }).notNull().default(2500000),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+export const diceGame2Config = pgTable(
+  'dice_game2_config',
+  {
+    guildId: bigint('guild_id', { mode: 'number' }).primaryKey(),
+    minTokensPerPlay: bigint('min_tokens_per_play', { mode: 'number' }).notNull().default(5),
+    maxTokensPerPlay: bigint('max_tokens_per_play', { mode: 'number' }).notNull().default(50),
+    straightMultiplier: bigint('straight_multiplier', { mode: 'number' }).notNull().default(100000),
+    baseMultiplier: bigint('base_multiplier', { mode: 'number' }).notNull().default(20000),
+    tripleLowBonus: bigint('triple_low_bonus', { mode: 'number' }).notNull().default(1500000),
+    tripleHighBonus: bigint('triple_high_bonus', { mode: 'number' }).notNull().default(2500000),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    minTokensCheck: check('dice2_min_tokens_non_negative', sql`${table.minTokensPerPlay} >= 0`),
+    maxTokensCheck: check('dice2_max_tokens_non_negative', sql`${table.maxTokensPerPlay} >= 0`),
+    straightMulCheck: check('dice2_straight_mul_non_negative', sql`${table.straightMultiplier} >= 0`),
+    baseMulCheck: check('dice2_base_mul_non_negative', sql`${table.baseMultiplier} >= 0`),
+    tripleLowCheck: check('dice2_triple_low_non_negative', sql`${table.tripleLowBonus} >= 0`),
+    tripleHighCheck: check('dice2_triple_high_non_negative', sql`${table.tripleHighBonus} >= 0`),
+    minMaxCheck: check('dice2_min_le_max', sql`${table.minTokensPerPlay} <= ${table.maxTokensPerPlay}`),
+  }),
+);
 
 // Type exports for select and insert
 export type GuildCurrencyConfigSelect = typeof guildCurrencyConfig.$inferSelect;

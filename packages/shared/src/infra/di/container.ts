@@ -11,7 +11,7 @@ import type { CacheKeyGenerator } from '../cache/cache-key-generator.js';
 import type { DiscordRuntimeGateway } from '../../discord/domain/discord-runtime-gateway.js';
 import type { DiscordEmbedBuilder } from '../../discord/domain/discord-embed-builder.js';
 import type { DomainEvent } from '../../types/events/domain-event.js';
-import pino from 'pino';
+import pino, { type Logger } from 'pino';
 import { type Pool } from 'pg';
 
 /**
@@ -29,8 +29,8 @@ export function initializeContainer(options?: {
   eventPublisher?: DomainEventPublisher;
   runtimeGateway?: DiscordRuntimeGateway;
   embedBuilder?: DiscordEmbedBuilder;
-  logger?: pino.Logger;
-  databasePool?: unknown;
+  logger?: Logger;
+  databasePool?: Pool;
   /** Domain event listeners to register at startup. */
   eventListeners?: Array<(event: DomainEvent) => void>;
 }): void {
@@ -141,7 +141,7 @@ export function initializeContainer(options?: {
     // In production this must be explicitly provided.
     tsyringeContainer.registerInstance(
       TOKENS.DatabasePool,
-      new Proxy({} as Pool, {
+      new Proxy({}, {
         get(_target, prop) {
           throw new Error(
             `DatabasePool.${String(prop)} accessed but no pool was provided. ` +

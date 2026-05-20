@@ -45,6 +45,11 @@ const EVENT_TYPES = {
  * Handles 13+ event types across different admin panel view states.
  * Uses eventType discriminant for type-safe event identification.
  * Matches Java AdminPanelUpdateListener.
+ *
+ * NOTE(P2-17): 目前僅注入 CurrencyManagementFacade，因此非 MAIN 視圖的更新
+ * 僅為 no-op re-edit（視覺刷新但內容不變）。若需非 MAIN 視圖的完整重建，
+ * 應注入 ProductFacade、GameTokenFacade 等對應的 facade。
+ * 見 buildMainPanelEmbed() 下方 else 分支。
  */
 export class AdminPanelUpdateListener {
   constructor(
@@ -72,6 +77,10 @@ export class AdminPanelUpdateListener {
       return;
     }
 
+    // NOTE(P3-7): 對每個 session 獨立執行 Discord API 呼叫（channel.fetch、message.fetch、message.edit）。
+    // 在高事件頻率場景（如大量餘額變更）可能觸發 Discord API rate limit。
+    // 若遇到 rate limit，可在此層加入 debounce 機制：以 guildId + eventType 為 key，
+    // 累積事件後以固定間隔（如 500ms）批量更新。
     let updatedCount = 0;
     const toRemove: Array<{ guildId: string; userId: string }> = [];
 
@@ -174,7 +183,7 @@ export class AdminPanelUpdateListener {
       const currencyConfig = configResult.isOk() ? configResult.getValue() : null;
 
       const guildName = await this.getGuildName(guildId);
-      const dispatchCount = 0; // TODO(P1-37): Query from dispatch service
+      const dispatchCount = 0; // TODO(P1-37): Query from dispatch service — 需注入 DispatchPanelService 或 EscortDispatchOrderService 來查詢 guild 的有效護航訂單數量
 
       const mainPanel = this.viewFactory.buildMainPanelEmbed(
         guildName,
