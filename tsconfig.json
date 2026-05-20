@@ -19,6 +19,7 @@
     { "path": "./packages/economy" },
     { "path": "./packages/dispatch" },
     { "path": "./packages/ai" },
-    { "path": "./packages/admin" }
+    { "path": "./packages/admin" },
+    { "path": "./apps/bot" }
   ]
 }

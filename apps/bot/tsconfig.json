@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "composite": true
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../../packages/shared" },
+    { "path": "../../packages/economy" },
+    { "path": "../../packages/dispatch" },
+    { "path": "../../packages/shop" },
+    { "path": "../../packages/ai" },
+    { "path": "../../packages/admin" }
+  ]
+}

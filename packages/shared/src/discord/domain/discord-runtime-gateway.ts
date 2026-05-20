@@ -21,4 +21,7 @@ export interface DiscordRuntimeGateway {
 
   /** Gets the bot's self user ID. */
   selfUserId(): string;
+
+  /** Finds a thread channel by guild and thread ID. */
+  findThreadChannel(guildId: string, threadId: string): unknown | null;
 }
