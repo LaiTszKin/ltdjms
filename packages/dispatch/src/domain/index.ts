@@ -12,6 +12,7 @@ export {
   withAfterSalesRequested,
   withAfterSalesInProgress,
   withAfterSalesClosed,
+  withAssignedEscort,
   isPendingEscortConfirmation,
   isConfirmed,
   isPendingCustomerConfirmation,

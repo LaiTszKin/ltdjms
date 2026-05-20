@@ -62,6 +62,7 @@ describe('EscortDispatchOrderService', () => {
       assignEscort: vi.fn(),
       claimAfterSales: vi.fn(),
       closeAfterSales: vi.fn(),
+      confirmOrder: vi.fn(),
       existsByOrderNumber: vi.fn(),
     };
 
@@ -174,7 +175,7 @@ describe('EscortDispatchOrderService', () => {
         status: EscortDispatchOrderStatus.CONFIRMED,
         confirmedAt: NOW,
       });
-      vi.mocked(mockRepo.update).mockResolvedValue(confirmedOrder);
+      vi.mocked(mockRepo.confirmOrder).mockResolvedValue(confirmedOrder);
 
       const result = await service.confirmOrder('ESC-20260520-A1B2C3', 300);
 

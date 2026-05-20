@@ -248,23 +248,11 @@ export class DispatchNotificationService {
     components?: ActionRowPayload[],
   ): Promise<boolean> {
     try {
-      const client = this.gateway.requireReadyClient() as {
-        users: {
-          fetch(id: string): Promise<{
-            send(options: { embeds: EmbedPayload[]; components?: ActionRowPayload[] }): Promise<unknown>;
-          } | null>;
-        };
-      };
-      const user = await client.users.fetch(userId);
-      if (user != null) {
-        const options: { embeds: EmbedPayload[]; components?: ActionRowPayload[] } = { embeds: [embed] };
-        if (components && components.length > 0) {
-          options.components = components;
-        }
-        await user.send(options);
-        return true;
+      const options: Record<string, unknown> = { embeds: [embed] };
+      if (components && components.length > 0) {
+        options.components = components;
       }
-      return false;
+      return await this.gateway.sendDM(userId, options);
     } catch (e) {
       console.warn(
         `Failed to send DM to user ${userId}:`,
@@ -276,13 +264,13 @@ export class DispatchNotificationService {
 
   /**
    * Filters staff user IDs to those who are currently online in the guild (parallel).
-   * Uses the discord.js Guild member cache (requires GuildPresences intent).
+   * Uses the gateway to check member presence.
    */
   private async filterOnlineStaff(guildId: number, staffIds: number[]): Promise<number[]> {
     const results = await Promise.all(
       staffIds.map(async (staffId) => {
         try {
-          const isOnline = await this.isMemberOnline(String(guildId), String(staffId));
+          const isOnline = await this.gateway.isMemberOnline(String(guildId), String(staffId));
           return { id: staffId, online: isOnline };
         } catch {
           return { id: staffId, online: false };
@@ -293,26 +281,6 @@ export class DispatchNotificationService {
   }
 
   private async isMemberOnline(guildId: string, userId: string): Promise<boolean> {
-    try {
-      const guild = this.gateway.findGuild(guildId) as {
-        members: {
-          cache: Map<string, { presence?: { status: string } | null }>;
-          fetch(id: string): Promise<{ presence?: { status: string } | null }>;
-        };
-      } | null;
-      if (!guild) return false;
-
-      // Prefer cache (populated by GuildPresences intent) to avoid API call
-      const cachedMember = guild.members.cache.get(userId);
-      if (cachedMember?.presence) {
-        return cachedMember.presence.status === 'online';
-      }
-
-      // Fall back to API fetch only if presence not in cache
-      const member = await guild.members.fetch(userId);
-      return member.presence?.status === 'online';
-    } catch {
-      return false;
-    }
+    return this.gateway.isMemberOnline(guildId, userId);
   }
 }

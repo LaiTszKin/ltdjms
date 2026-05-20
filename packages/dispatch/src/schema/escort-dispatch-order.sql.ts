@@ -59,6 +59,9 @@ export const escortDispatchOrder = pgTable(
     // P1-22: compound index for findPendingAssignmentByGuildId query pattern
     guildStatusEscortIdx: index('idx_escort_dispatch_guild_status_escort')
       .on(table.guildId, table.status, table.escortUserId),
+    // P2-3: compound index for findRecentByGuildId query pattern (guildId + createdAt DESC)
+    guildCreatedIdx: index('idx_escort_dispatch_order_guild_created')
+      .on(table.guildId, table.createdAt.desc()),
     // P3-3 evaluation: statusIdx (line 45) is retained because queries filtering by
     // status alone cannot use guildStatusEscortIdx (which starts with guildId).
     // The compound index only covers status-based scans when guildId is also filtered.

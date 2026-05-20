@@ -5,6 +5,7 @@ import type { EscortDispatchOrderRepo } from '../repo/escort-dispatch-order.repo
 import { EscortDispatchOrderNumberGenerator, generateUniqueOrderNumber } from '../domain/order-number-generator.js';
 import type { EscortOptionCatalogRepository } from './escort-option-pricing.service.js';
 import { type DispatchAfterSalesStaffService } from './dispatch-after-sales-staff.service.js';
+import type { DispatchNotificationService } from '../notification/DispatchNotificationService.js';
 import {
   type EscortDispatchOrder,
   EscortDispatchOrderStatus,
@@ -50,6 +51,7 @@ export class EscortDispatchOrderService {
     private readonly catalogRepository?: EscortOptionCatalogRepository,
     private readonly afterSalesStaffService?: DispatchAfterSalesStaffService,
     private readonly logger?: TokenMap['Logger'],
+    private readonly notificationService?: DispatchNotificationService,
   ) {
     this.orderNumberGenerator = orderNumberGenerator ?? new EscortDispatchOrderNumberGenerator();
     this.clock = clock ?? (() => Date.now());
@@ -486,6 +488,18 @@ export class EscortDispatchOrderService {
     try {
       const completed = withCompleted(order, new Date(this.clock!()));
       const updated = await this.repository.update(completed, EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION);
+
+      // P2-2: Notify customer and escort about auto-completion due to timeout
+      if (this.notificationService) {
+        this.notificationService.notifyCustomerConfirmed(updated)
+          .catch((notifyErr) => {
+            this.logWarn('Failed to send auto-completion notification', {
+              orderNumber: order.orderNumber,
+              error: notifyErr instanceof Error ? notifyErr.message : String(notifyErr),
+            });
+          });
+      }
+
       return updated;
     } catch (e) {
       // If auto-complete persist fails, log warning and return original order (non-blocking)
