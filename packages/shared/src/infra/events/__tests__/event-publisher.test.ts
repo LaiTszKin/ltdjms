@@ -7,20 +7,26 @@ function testEvent(guildId: string): DomainEvent {
   return { guildId, eventType: 'test' };
 }
 
+/** Helper: wait for setImmediate to flush. */
+function tick(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve));
+}
+
 describe('DomainEventPublisher', () => {
-  it('publishes event to registered listeners', () => {
+  it('publishes event to registered listeners', async () => {
     const publisher = new DomainEventPublisher();
     const listener = vi.fn();
 
     publisher.register(listener);
     const event = testEvent('123');
     publisher.publish(event);
+    await tick();
 
     expect(listener).toHaveBeenCalledTimes(1);
     expect(listener).toHaveBeenCalledWith(event);
   });
 
-  it('publishes to multiple listeners', () => {
+  it('publishes to multiple listeners', async () => {
     const publisher = new DomainEventPublisher();
     const listener1 = vi.fn();
     const listener2 = vi.fn();
@@ -28,12 +34,13 @@ describe('DomainEventPublisher', () => {
     publisher.register(listener1);
     publisher.register(listener2);
     publisher.publish(testEvent('456'));
+    await tick();
 
     expect(listener1).toHaveBeenCalledTimes(1);
     expect(listener2).toHaveBeenCalledTimes(1);
   });
 
-  it('isolates listener errors without propagating', () => {
+  it('isolates listener errors without propagating', async () => {
     const publisher = new DomainEventPublisher();
     const throwingListener = vi.fn(() => {
       throw new Error('listener error');
@@ -44,6 +51,7 @@ describe('DomainEventPublisher', () => {
     publisher.register(normalListener);
 
     expect(() => publisher.publish(testEvent('789'))).not.toThrow();
+    await tick();
 
     expect(throwingListener).toHaveBeenCalledTimes(1);
     expect(normalListener).toHaveBeenCalledTimes(1);
@@ -72,12 +80,13 @@ describe('DomainEventPublisher', () => {
     expect(publisher.listenerCount()).toBe(2);
   });
 
-  it('clears all listeners', () => {
+  it('clears all listeners', async () => {
     const publisher = new DomainEventPublisher();
     const listener = vi.fn();
     publisher.register(listener);
     publisher.clearListeners();
     publisher.publish(testEvent('1'));
+    await tick();
     expect(listener).not.toHaveBeenCalled();
   });
 });

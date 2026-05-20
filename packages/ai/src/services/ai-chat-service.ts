@@ -218,11 +218,7 @@ export interface ToolExecutionContext {
 
 // ===== Domain Events for AI =====
 
-export interface AgentConfigUpdatedEvent {
-  guildId: string;
-  channelId: string;
-  enabled: boolean;
-}
+// AgentConfigUpdatedEvent removed (unused; AIAgentChannelConfigChangedEvent is used instead)
 
 export interface AIMessagePublishedEvent {
   guildId: string;

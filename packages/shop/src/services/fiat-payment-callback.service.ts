@@ -183,10 +183,6 @@ export class FiatPaymentCallbackService {
     return JSON.parse(body);
   }
 
-  private isExpiredStatus(order: FiatOrder): boolean {
-    return order.status === 'EXPIRED';
-  }
-
   private parseCallbackNode(bodyObj: any, contentType: string | null): { node: any; rawDecrypted: string } {
     let encryptedData: string | null = null;
     if (bodyObj && bodyObj.Data !== null && bodyObj.Data !== undefined) {

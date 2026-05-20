@@ -63,10 +63,10 @@ export class DomainEventPublisher {
   }
 
   /**
-   * Publishes an event to all registered listeners synchronously.
-   * Listeners are invoked in registration order.
-   * NOTE: Because dispatch is synchronous, a slow listener blocks all subsequent
-   * listeners in the same tick. Consider offloading heavy work to avoid delay.
+   * Publishes an event to all registered listeners asynchronously.
+   * Listeners are dispatched via setImmediate so no single listener blocks
+   * subsequent listeners. All listeners must be registered via {@link register()};
+   * listeners attached directly via emitter.on() bypass error handling.
    * Exceptions from individual listeners are caught and logged but do not propagate.
    * @param event - the domain event to publish
    */
@@ -79,20 +79,16 @@ export class DomainEventPublisher {
     this.logger.debug({ event }, 'Publishing event');
 
     for (const listener of listeners) {
-      try {
-        listener(event);
-      } catch (err) {
-        // Defensive catch: listeners that were registered directly via emitter.on()
-        // (bypassing register()) are not wrapped in the error handler, so sync
-        // errors from those listeners would otherwise propagate to the caller.
-        // The inner try/catch in register() handles errors from properly
-        // registered listeners, but this outer layer ensures robustness for
-        // all code paths.
-        this.logger.error(
-          { eventName: typeof event, err },
-          '[DomainEventPublisher] Error handling event',
-        );
-      }
+      setImmediate(() => {
+        try {
+          listener(event);
+        } catch (err) {
+          this.logger.error(
+            { eventName: typeof event, err },
+            '[DomainEventPublisher] Error handling event',
+          );
+        }
+      });
     }
   }
 

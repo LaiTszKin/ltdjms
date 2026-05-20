@@ -48,7 +48,7 @@ export class DispatchNotificationService {
     private readonly afterSalesStaffService?: DispatchAfterSalesStaffService,
   ) {}
 
-  /** DM 給護航者：有新的派單待確認（embed 格式）。 */
+  /** @deprecated 未被外部呼叫，保留僅供向後相容。 */
   async notifyEscortOrderCreated(order: EscortDispatchOrder): Promise<boolean> {
     return this.sendDMEmbed(String(order.escortUserId), {
       title: `📋 新護航訂單 #${order.orderNumber}`,
@@ -64,7 +64,7 @@ export class DispatchNotificationService {
     ]);
   }
 
-  /** DM 給護航者：已被指派新訂單（embed 格式）。 */
+  /** @deprecated 未被外部呼叫，保留僅供向後相容。 */
   async notifyEscortAssigned(order: EscortDispatchOrder): Promise<boolean> {
     return this.sendDMEmbed(String(order.escortUserId), {
       title: `📌 已指派訂單 #${order.orderNumber}`,
@@ -278,9 +278,5 @@ export class DispatchNotificationService {
       }),
     );
     return results.filter((r) => r.online).map((r) => r.id);
-  }
-
-  private async isMemberOnline(guildId: string, userId: string): Promise<boolean> {
-    return this.gateway.isMemberOnline(guildId, userId);
   }
 }

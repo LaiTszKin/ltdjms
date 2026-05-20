@@ -8,58 +8,11 @@ import {
   isRewardGranted,
   toFulfillmentProduct,
 } from '../domain/fiat-order.js';
-import type { Product } from '../domain/product-types.js';
+import type { DispatchOrderSnapshot, EscortDispatchHandoffService } from '../domain/escort-dispatch-handoff-service.js';
+import type { EscortOrderBuyerNotifier, AdminOrderNotifier, ProductRewardGranter } from '../domain/notification-interfaces.js';
 import pino from 'pino';
 
 const DEFAULT_BATCH_SIZE = 20;
-
-/** Snapshot of a dispatch order used for notification callbacks. */
-export interface DispatchOrderSnapshot {
-  guildId: number;
-  customerUserId: number;
-  orderNumber: string;
-  sourceProductName?: string | null;
-  sourceType?: string | null;
-  sourceEscortOptionCode?: string | null;
-  sourceCurrencyPrice?: number | null;
-  sourceFiatPriceTwd?: number | null;
-  sourceReference?: string | null;
-}
-
-/** Service interface for auto-creating escort orders from fiat payments. */
-export interface EscortDispatchHandoffService {
-  handoffFromFiatPayment(
-    guildId: number,
-    buyerUserId: number,
-    product: Product | null,
-    sourceReference: string,
-  ): Promise<{ isOk: () => boolean; getError: () => { message: string }; getValue: () => DispatchOrderSnapshot }>;
-}
-
-export type EscortOrderBuyerNotifier = {
-  notifyEscortOrderCreated(dispatchOrder: DispatchOrderSnapshot): void;
-};
-
-/**
- * Service interface for notifying admins of new orders.
- */
-export type AdminOrderNotifier = {
-  notifyAdminsOrderCreated(guildId: number, buyerUserId: number, dispatchOrder: DispatchOrderSnapshot): void;
-};
-
-/** Reward grant request shape. */
-export interface GrantRewardRequest {
-  guildId: number;
-  userId: number;
-  product: Product;
-  amount: number;
-  description: string;
-}
-
-/** Service interface for granting product rewards. */
-export interface ProductRewardGranter {
-  grantReward(request: GrantRewardRequest): Promise<{ isErr: () => boolean; getError: () => { message: string } }>;
-}
 
 export class FiatOrderPostPaymentWorker {
   private readonly log: pino.Logger;

@@ -1,4 +1,5 @@
 import {
+  type ChatInputCommandInteraction,
   type CommandInteraction,
   type ButtonInteraction,
   type ModalSubmitInteraction,
@@ -41,8 +42,8 @@ export class DiscordJsContext implements DiscordContext {
     if (!this.hasOptions()) {
       return null;
     }
-    const opts = (this.interaction as any).options;
-    const option = opts.get ? opts.get(name) : null;
+    const cmdInteraction = this.interaction as ChatInputCommandInteraction;
+    const option = cmdInteraction.options.get(name);
     return option?.value?.toString() ?? null;
   }
 
@@ -50,7 +51,8 @@ export class DiscordJsContext implements DiscordContext {
     if (!this.hasOptions()) {
       return null;
     }
-    const option = (this.interaction as any).options.get(name);
+    const cmdInteraction = this.interaction as ChatInputCommandInteraction;
+    const option = cmdInteraction.options.get(name);
     if (option && typeof option.value === 'string') {
       return option.value;
     }
@@ -61,7 +63,8 @@ export class DiscordJsContext implements DiscordContext {
     if (!this.hasOptions()) {
       return null;
     }
-    const option = (this.interaction as any).options.get(name);
+    const cmdInteraction = this.interaction as ChatInputCommandInteraction;
+    const option = cmdInteraction.options.get(name);
     if (option && typeof option.value === 'number') {
       return option.value;
     }
@@ -72,7 +75,8 @@ export class DiscordJsContext implements DiscordContext {
     if (!this.hasOptions()) {
       return null;
     }
-    const option = (this.interaction as any).options.getUser?.(name);
+    const cmdInteraction = this.interaction as ChatInputCommandInteraction;
+    const option = cmdInteraction.options.getUser?.(name);
     return option ?? null;
   }
 }

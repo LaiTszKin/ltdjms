@@ -247,10 +247,16 @@ export class EscortPricingHandler extends BaseAdminHandler {
     const result = await this.facade.resetPricing(guildId, optionCode);
 
     if (result.isOk()) {
+      // Query global default price after reset
+      const catalogEntry = await this.facade.findCatalogEntry(optionCode);
+      const defaultPrice = catalogEntry.isOk() && catalogEntry.getValue()
+        ? String(catalogEntry.getValue().priceTwd)
+        : '0';
+
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.escortPricingTitle)
         .setDescription(
-          ZhTwStrings.escortPricingResetDone.replace('{name}', optionCode).replace('{price}', '0'),
+          ZhTwStrings.escortPricingResetDone.replace('{name}', optionCode).replace('{price}', defaultPrice),
         )
         .setColor(Colors.SUCCESS);
       await interaction.editEmbed(embed);

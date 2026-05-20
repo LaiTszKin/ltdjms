@@ -76,8 +76,8 @@ export class BalanceManagementHandler extends BaseAdminHandler {
 
     // Handle member selection from user select menu
     if (fullCustomId === 'admin_balance_select_member') {
-      const rawHook = interaction.getHook() as { values?: string[] };
-      const selectedUserId = rawHook.values?.[0];
+      const selectedValues = interaction.getSelectedValues();
+      const selectedUserId = selectedValues[0];
       if (selectedUserId) {
         this.sessionManager.setContext(guildId, userId, 'selectedUserId', selectedUserId);
         await this.showBalanceView(interaction, guildId, selectedUserId);
@@ -99,10 +99,6 @@ export class BalanceManagementHandler extends BaseAdminHandler {
   private async showMemberSelect(
     interaction: DiscordInteraction,
   ): Promise<void> {
-    const raw = interaction.getHook() as {
-      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<UserSelectMenuBuilder>[] }) => Promise<void>;
-    };
-
     const embed = new EmbedBuilder()
       .setTitle(ZhTwStrings.balanceTitle)
       .setDescription(ZhTwStrings.balanceSelectMember)
@@ -115,7 +111,7 @@ export class BalanceManagementHandler extends BaseAdminHandler {
 
     const row = new ActionRowBuilder<UserSelectMenuBuilder>().addComponents(select);
 
-    await raw.editReply({ embeds: [embed], components: [row] });
+    await interaction.editWithComponents(embed, [row]);
   }
 
   private async showBalanceView(
@@ -124,10 +120,6 @@ export class BalanceManagementHandler extends BaseAdminHandler {
     targetUserId: string,
   ): Promise<void> {
     const result = await this.facade.getBalance(guildId, targetUserId);
-
-    const raw = interaction.getHook() as {
-      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }) => Promise<void>;
-    };
 
     if (result.isOk()) {
       const balanceView = result.getValue();
@@ -155,13 +147,13 @@ export class BalanceManagementHandler extends BaseAdminHandler {
 
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(addBtn, deductBtn, setBtn);
 
-      await raw.editReply({ embeds: [embed], components: [row] });
+      await interaction.editWithComponents(embed, [row]);
     } else {
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.balanceTitle)
         .setDescription('無法取得該成員的餘額資訊')
         .setColor(Colors.DANGER);
-      await raw.editReply({ embeds: [embed], components: [] });
+      await interaction.editWithComponents(embed, []);
     }
   }
 
@@ -191,10 +183,7 @@ export class BalanceManagementHandler extends BaseAdminHandler {
       );
     }
 
-    const raw = interaction.getHook() as {
-      showModal: (modal: ModalBuilder) => Promise<void>;
-    };
-    await raw.showModal(modal);
+    await interaction.showModal(modal);
   }
 
   private async handleModalSubmit(
@@ -217,14 +206,8 @@ export class BalanceManagementHandler extends BaseAdminHandler {
       return;
     }
 
-    // For modal submit, the interaction is a ModalSubmitInteraction.
-    // We need to get field values from the raw interaction.
-    const raw = interaction.getHook() as {
-      fields: { getTextInputValue: (customId: string) => string };
-    };
-
-    const amountStr = raw.fields.getTextInputValue('金額');
-    const reason = raw.fields.getTextInputValue('原因');
+    const amountStr = interaction.getTextInputValue('金額');
+    const reason = interaction.getTextInputValue('原因');
     const amount = parseInt(amountStr, 10);
 
     if (isNaN(amount) || amount <= 0) {

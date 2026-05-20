@@ -31,6 +31,9 @@ export enum DomainErrorCategory {
   CHANNEL_NOT_FOUND = 'CHANNEL_NOT_FOUND',
   DUPLICATE_CATEGORY = 'DUPLICATE_CATEGORY',
   CATEGORY_NOT_FOUND = 'CATEGORY_NOT_FOUND',
+  REDEEM_CODE_USED = 'REDEEM_CODE_USED',
+  REDEEM_CODE_EXPIRED = 'REDEEM_CODE_EXPIRED',
+  REDEEM_CODE_INVALID = 'REDEEM_CODE_INVALID',
 }
 
 /**
@@ -164,5 +167,17 @@ export class DomainError {
 
   static categoryNotFound(message: string): DomainError {
     return new DomainError(DomainErrorCategory.CATEGORY_NOT_FOUND, message);
+  }
+
+  static redeemCodeUsed(message: string): DomainError {
+    return new DomainError(DomainErrorCategory.REDEEM_CODE_USED, message);
+  }
+
+  static redeemCodeExpired(message: string): DomainError {
+    return new DomainError(DomainErrorCategory.REDEEM_CODE_EXPIRED, message);
+  }
+
+  static redeemCodeInvalid(message: string): DomainError {
+    return new DomainError(DomainErrorCategory.REDEEM_CODE_INVALID, message);
   }
 }

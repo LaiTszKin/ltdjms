@@ -2,13 +2,13 @@ import { buildCheckMacValue } from '../crypto/ecpay-checkmac.js';
 import { javaUrlEncode } from '../crypto/url-encoder.js';
 import type { EnvironmentConfig } from '@ltdjms/shared';
 import { Result, ok, err, DomainError } from '@ltdjms/shared';
-import { fetch, Agent as UndiciAgent } from 'undici';
+import { fetch, Dispatcher } from 'undici';
 import pino from 'pino';
 
 const STAGE_ENDPOINT = 'https://payment-stage.ecpay.com.tw/Cashier/QueryTradeInfo/V5';
 const PROD_ENDPOINT = 'https://payment.ecpay.com.tw/Cashier/QueryTradeInfo/V5';
 
-const keepAliveDispatcher = new UndiciAgent({ keepAliveTimeout: 30000, connectTimeout: 15000, connections: 10 });
+const keepAliveDispatcher = new Dispatcher();
 
 export interface QueryTradeResult {
   orderNumber: string;
@@ -68,6 +68,8 @@ export class EcpayTradeQueryService {
       });
 
       if (!response.ok) {
+        const body = await response.text();
+        this.log.warn({ status: response.status, body }, 'ECPay query trade failed');
         return err(
           DomainError.unexpectedFailure(`綠界查單失敗（HTTP ${response.status}）`),
         );

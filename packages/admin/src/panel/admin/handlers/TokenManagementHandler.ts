@@ -76,8 +76,8 @@ export class TokenManagementHandler extends BaseAdminHandler {
 
     // Handle member selection from user select menu
     if (fullCustomId === 'admin_token_select_member') {
-      const rawHook = interaction.getHook() as { values?: string[] };
-      const selectedUserId = rawHook.values?.[0];
+      const selectedValues = interaction.getSelectedValues();
+      const selectedUserId = selectedValues[0];
       if (selectedUserId) {
         this.sessionManager.setContext(guildId, userId, 'selectedUserId', selectedUserId);
         await this.showTokenView(interaction, guildId, selectedUserId);
@@ -99,10 +99,6 @@ export class TokenManagementHandler extends BaseAdminHandler {
   private async showMemberSelect(
     interaction: DiscordInteraction,
   ): Promise<void> {
-    const raw = interaction.getHook() as {
-      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<UserSelectMenuBuilder>[] }) => Promise<void>;
-    };
-
     const embed = new EmbedBuilder()
       .setTitle(ZhTwStrings.tokenTitle)
       .setDescription(ZhTwStrings.tokenSelectMember)
@@ -114,7 +110,7 @@ export class TokenManagementHandler extends BaseAdminHandler {
       .setPlaceholder('請選擇成員');
 
     const row = new ActionRowBuilder<UserSelectMenuBuilder>().addComponents(select);
-    await raw.editReply({ embeds: [embed], components: [row] });
+    await interaction.editWithComponents(embed, [row]);
   }
 
   private async showTokenView(
@@ -123,10 +119,6 @@ export class TokenManagementHandler extends BaseAdminHandler {
     targetUserId: string,
   ): Promise<void> {
     const result = await this.facade.getTokens(guildId, targetUserId);
-
-    const raw = interaction.getHook() as {
-      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }) => Promise<void>;
-    };
 
     if (result.isOk()) {
       const embed = new EmbedBuilder()
@@ -150,13 +142,13 @@ export class TokenManagementHandler extends BaseAdminHandler {
         .setStyle(1 as any);
 
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(addBtn, deductBtn, setBtn);
-      await raw.editReply({ embeds: [embed], components: [row] });
+      await interaction.editWithComponents(embed, [row]);
     } else {
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.tokenTitle)
         .setDescription('無法取得該成員的代幣資訊')
         .setColor(Colors.PRIMARY);
-      await raw.editReply({ embeds: [embed], components: [] });
+      await interaction.editWithComponents(embed, []);
     }
   }
 
@@ -186,10 +178,7 @@ export class TokenManagementHandler extends BaseAdminHandler {
       );
     }
 
-    const raw = interaction.getHook() as {
-      showModal: (modal: ModalBuilder) => Promise<void>;
-    };
-    await raw.showModal(modal);
+    await interaction.showModal(modal);
   }
 
   private async handleModalSubmit(
@@ -210,12 +199,8 @@ export class TokenManagementHandler extends BaseAdminHandler {
       return;
     }
 
-    const raw = interaction.getHook() as {
-      fields: { getTextInputValue: (customId: string) => string };
-    };
-
-    const amountStr = raw.fields.getTextInputValue('數量');
-    const reason = raw.fields.getTextInputValue('原因');
+    const amountStr = interaction.getTextInputValue('數量');
+    const reason = interaction.getTextInputValue('原因');
     const amount = parseInt(amountStr, 10);
 
     if (isNaN(amount) || amount <= 0) {

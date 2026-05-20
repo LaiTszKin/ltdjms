@@ -8,7 +8,7 @@ import {
 } from '@ltdjms/shared';
 import { CurrencyAccountRepository } from '../repositories/currency-account-repo.js';
 import { CurrencyConfigRepository } from '../repositories/currency-config-repo.js';
-import type { BalanceView } from '../../domain/types.js';
+import type { BalanceView, GuildCurrencyConfig } from '../../domain/types.js';
 import {
   DEFAULT_CURRENCY_NAME,
   DEFAULT_CURRENCY_ICON,
@@ -21,6 +21,10 @@ import {
  */
 export class BalanceService {
   private static readonly BALANCE_TTL_SECONDS = BALANCE_CACHE_TTL;
+  private static readonly CONFIG_CACHE_TTL_SECONDS = 600;
+
+  /** In-memory cache for currency config to avoid repeated DB queries. */
+  private readonly configCache = new Map<string, { config: GuildCurrencyConfig | null; expiresAt: number }>();
 
   constructor(
     private readonly accountRepository: CurrencyAccountRepository,
@@ -28,6 +32,34 @@ export class BalanceService {
     private readonly cacheService: CacheService,
     private readonly cacheKeyGenerator: CacheKeyGenerator,
   ) {}
+
+  /**
+   * Gets the currency config from in-memory cache, falling through to DB on miss.
+   */
+  private async getCachedConfig(guildId: number): Promise<{ currencyName: string; currencyIcon: string }> {
+    const cacheKey = `currency_config:${guildId}`;
+    const now = Date.now();
+
+    const cached = this.configCache.get(cacheKey);
+    if (cached && cached.expiresAt > now) {
+      const config = cached.config;
+      return {
+        currencyName: config?.currencyName ?? DEFAULT_CURRENCY_NAME,
+        currencyIcon: config?.currencyIcon ?? DEFAULT_CURRENCY_ICON,
+      };
+    }
+
+    const config = await this.configRepository.findByGuildId(guildId);
+    this.configCache.set(cacheKey, {
+      config: config ?? null,
+      expiresAt: now + BalanceService.CONFIG_CACHE_TTL_SECONDS * 1000,
+    });
+
+    return {
+      currencyName: config?.currencyName ?? DEFAULT_CURRENCY_NAME,
+      currencyIcon: config?.currencyIcon ?? DEFAULT_CURRENCY_ICON,
+    };
+  }
 
   /**
    * Gets the balance view for a member in a guild.
@@ -50,9 +82,7 @@ export class BalanceService {
       await this.cacheService.put(cacheKey, balance, BalanceService.BALANCE_TTL_SECONDS);
     }
 
-    const config = await this.configRepository.findByGuildId(guildId);
-    const currencyName = config?.currencyName ?? DEFAULT_CURRENCY_NAME;
-    const currencyIcon = config?.currencyIcon ?? DEFAULT_CURRENCY_ICON;
+    const { currencyName, currencyIcon } = await this.getCachedConfig(guildId);
 
     return {
       guildId,

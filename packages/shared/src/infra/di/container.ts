@@ -3,8 +3,6 @@ import { EnvironmentConfig } from '../config/environment-config.js';
 import { NoOpCacheService } from '../cache/noop-cache-service.js';
 import { DefaultCacheKeyGenerator } from '../cache/cache-key-generator.js';
 import { DomainEventPublisher } from '../events/domain-event-publisher.js';
-import { DiscordJsRuntimeGateway } from '../../discord/services/discord-js-runtime-gateway.js';
-import { DiscordJsEmbedBuilder } from '../../discord/services/discord-js-embed-builder.js';
 import { TOKENS } from './tokens.js';
 import type { CacheService } from '../cache/cache-service.js';
 import type { CacheKeyGenerator } from '../cache/cache-key-generator.js';
@@ -106,22 +104,12 @@ export function initializeContainer(options?: {
       TOKENS.DiscordRuntimeGateway,
       options.runtimeGateway,
     );
-  } else {
-    tsyringeContainer.registerInstance<DiscordRuntimeGateway>(
-      TOKENS.DiscordRuntimeGateway,
-      new DiscordJsRuntimeGateway(),
-    );
   }
 
   if (options?.embedBuilder) {
     tsyringeContainer.registerInstance<DiscordEmbedBuilder>(
       TOKENS.DiscordEmbedBuilder,
       options.embedBuilder,
-    );
-  } else {
-    tsyringeContainer.registerInstance<DiscordEmbedBuilder>(
-      TOKENS.DiscordEmbedBuilder,
-      new DiscordJsEmbedBuilder(),
     );
   }
 

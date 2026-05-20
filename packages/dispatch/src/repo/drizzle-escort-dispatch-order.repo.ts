@@ -6,10 +6,6 @@ import {
   EscortDispatchOrderStatus,
   SourceType,
   fromDbRow,
-  withAssignedEscort,
-  withConfirmed,
-  withAfterSalesInProgress,
-  withAfterSalesClosed,
 } from '../domain/index.js';
 import type { EscortDispatchOrderRepo } from './escort-dispatch-order.repo.js';
 
@@ -147,17 +143,13 @@ export class DrizzleEscortDispatchOrderRepo implements EscortDispatchOrderRepo {
     escortUserIdValue: number,
     assignedAt: Date,
   ): Promise<EscortDispatchOrder | null> {
-    // 1. Query existing order for domain transition
-    const existing = await this.findByOrderNumber(orderNumber);
-    if (existing == null) return null;
-
-    // 2. Use domain transition to build new state
-    const transitioned = withAssignedEscort(existing, assignedByUserId, escortUserIdValue, assignedAt);
-
-    // 3. Derive SET clause from transitioned domain state
     const rows = await this.db
       .update(escortDispatchOrder)
-      .set(domainToSetValues(transitioned))
+      .set({
+        assignedByUserId,
+        escortUserId: escortUserIdValue,
+        updatedAt: assignedAt,
+      })
       .where(
         and(
           eq(escortDispatchOrder.orderNumber, orderNumber),
@@ -176,17 +168,15 @@ export class DrizzleEscortDispatchOrderRepo implements EscortDispatchOrderRepo {
     assigneeUserId: number,
     assignedAt: Date,
   ): Promise<EscortDispatchOrder | null> {
-    // 1. Query existing order for domain transition
-    const existing = await this.findByOrderNumber(orderNumber);
-    if (existing == null) return null;
-
-    // 2. Use domain transition to build new state
-    const transitioned = withAfterSalesInProgress(existing, assigneeUserId, assignedAt);
-
-    // 3. Derive SET clause from transitioned domain state
     const rows = await this.db
       .update(escortDispatchOrder)
-      .set(domainToSetValues(transitioned))
+      .set({
+        status: EscortDispatchOrderStatus.AFTER_SALES_IN_PROGRESS,
+        afterSalesAssigneeUserId: assigneeUserId,
+        afterSalesAssignedAt: assignedAt,
+        afterSalesClosedAt: null,
+        updatedAt: assignedAt,
+      })
       .where(
         and(
           eq(escortDispatchOrder.orderNumber, orderNumber),
@@ -204,17 +194,19 @@ export class DrizzleEscortDispatchOrderRepo implements EscortDispatchOrderRepo {
     expectedEscortUserId: number,
     confirmedAt: Date,
   ): Promise<EscortDispatchOrder | null> {
-    // 1. Query existing order for domain transition
-    const existing = await this.findByOrderNumber(orderNumber);
-    if (existing == null) return null;
-
-    // 2. Use domain transition to build new state (clears future-state timestamps)
-    const transitioned = withConfirmed(existing, confirmedAt);
-
-    // 3. Derive SET clause from transitioned domain state
     const rows = await this.db
       .update(escortDispatchOrder)
-      .set(domainToSetValues(transitioned))
+      .set({
+        status: EscortDispatchOrderStatus.CONFIRMED,
+        confirmedAt,
+        completionRequestedAt: null,
+        completedAt: null,
+        afterSalesRequestedAt: null,
+        afterSalesAssigneeUserId: null,
+        afterSalesAssignedAt: null,
+        afterSalesClosedAt: null,
+        updatedAt: confirmedAt,
+      })
       .where(
         and(
           eq(escortDispatchOrder.orderNumber, orderNumber),
@@ -232,17 +224,13 @@ export class DrizzleEscortDispatchOrderRepo implements EscortDispatchOrderRepo {
     assigneeUserId: number,
     closedAt: Date,
   ): Promise<EscortDispatchOrder | null> {
-    // 1. Query existing order for domain transition
-    const existing = await this.findByOrderNumber(orderNumber);
-    if (existing == null) return null;
-
-    // 2. Use domain transition to build new state
-    const transitioned = withAfterSalesClosed(existing, closedAt);
-
-    // 3. Derive SET clause from transitioned domain state
     const rows = await this.db
       .update(escortDispatchOrder)
-      .set(domainToSetValues(transitioned))
+      .set({
+        status: EscortDispatchOrderStatus.AFTER_SALES_CLOSED,
+        afterSalesClosedAt: closedAt,
+        updatedAt: closedAt,
+      })
       .where(
         and(
           eq(escortDispatchOrder.orderNumber, orderNumber),
@@ -265,6 +253,25 @@ export class DrizzleEscortDispatchOrderRepo implements EscortDispatchOrderRepo {
     return rows.length > 0;
   }
 
+  async batchTimeoutCompletion(): Promise<EscortDispatchOrder[]> {
+    const rows = await this.db
+      .update(escortDispatchOrder)
+      .set({
+        status: EscortDispatchOrderStatus.COMPLETED,
+        completedAt: sql`NOW()`,
+        updatedAt: sql`NOW()`,
+      })
+      .where(
+        and(
+          eq(escortDispatchOrder.status, EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION),
+          sql`${escortDispatchOrder.completionRequestedAt} < NOW() - INTERVAL '24 hours'`,
+        ),
+      )
+      .returning();
+
+    return rows.map(mapRowToDomain);
+  }
+
   async countActiveByGuildId(guildId: number): Promise<number> {
     const [row] = await this.db
       .select({ count: sql<number>`count(*)` })
@@ -280,27 +287,6 @@ export class DrizzleEscortDispatchOrderRepo implements EscortDispatchOrderRepo {
       );
     return row ? Number(row.count) : 0;
   }
-}
-
-/**
- * Extracts mutable database column values from a domain EscortDispatchOrder.
- * Used to derive the `.set()` clause from a domain transition result so that
- * the repo layer never decides which fields to set/clear outside the domain model.
- */
-function domainToSetValues(order: EscortDispatchOrder): Record<string, unknown> {
-  return {
-    status: order.status,
-    assignedByUserId: order.assignedByUserId,
-    escortUserId: order.escortUserId,
-    confirmedAt: order.confirmedAt,
-    completionRequestedAt: order.completionRequestedAt,
-    completedAt: order.completedAt,
-    afterSalesRequestedAt: order.afterSalesRequestedAt,
-    afterSalesAssigneeUserId: order.afterSalesAssigneeUserId,
-    afterSalesAssignedAt: order.afterSalesAssignedAt,
-    afterSalesClosedAt: order.afterSalesClosedAt,
-    updatedAt: order.updatedAt,
-  };
 }
 
 /** Maps a DB row to domain EscortDispatchOrder, preserving ALL stored columns. */

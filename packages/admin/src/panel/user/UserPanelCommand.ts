@@ -52,15 +52,15 @@ export class UserPanelCommand implements CommandHandler {
     // Build action buttons
     const buttons = [
       new ButtonBuilder()
-        .setCustomId('user_currency_history')
+        .setCustomId('user_history_currency')
         .setLabel(ZhTwStrings.userPanelBtnCurrencyHistory)
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
-        .setCustomId('user_token_history')
+        .setCustomId('user_history_token')
         .setLabel(ZhTwStrings.userPanelBtnTokenHistory)
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
-        .setCustomId('user_redemption_history')
+        .setCustomId('user_history_redemption')
         .setLabel(ZhTwStrings.userPanelBtnRedemptionHistory)
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
@@ -71,25 +71,15 @@ export class UserPanelCommand implements CommandHandler {
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(buttons);
 
-    // Use the raw discord.js interaction to send embed with components
-    const raw = interaction.getHook() as {
-      reply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }) => Promise<unknown>;
-      fetchReply: () => Promise<{ channelId: string; id: string }>;
-    };
-    await raw.reply({ embeds: [embed], components: [row] });
+    // Send embed with components and store channelId/messageId for real-time push updates
+    const replyMeta = await interaction.replyWithComponents(embed, [row]);
 
-    // Store channelId and messageId for real-time push updates via listeners
-    try {
-      const replyMsg = await raw.fetchReply();
-      if (replyMsg && 'channelId' in replyMsg && 'id' in replyMsg) {
-        const session = this.sessionManager.getSession(guildId, userId);
-        if (session) {
-          session.channelId = String(replyMsg.channelId);
-          session.messageId = String(replyMsg.id);
-        }
+    if (replyMeta) {
+      const session = this.sessionManager.getSession(guildId, userId);
+      if (session) {
+        session.channelId = replyMeta.channelId;
+        session.messageId = replyMeta.id;
       }
-    } catch {
-      // Non-critical: push updates will not be available but the panel still works
     }
   }
 }

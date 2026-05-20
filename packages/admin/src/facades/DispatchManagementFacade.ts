@@ -37,9 +37,17 @@ export interface CreateCatalogData {
 export type UpdateCatalogData = Partial<Omit<EscortOptionCatalogEntry, 'code'>>;
 
 /**
- * Facade that aggregates dispatch module operations.
+ * Facade that aggregates dispatch module operations from four domains:
+ *
+ * 1. After-sales Staff — listStaff, addStaff, removeStaff
+ * 2. Dispatch Orders — countActiveOrders
+ * 3. Escort Pricing — listPricing, updatePricing, resetPricing
+ * 4. Escort Catalog — listCatalog, findCatalogEntry, createCatalogEntry,
+ *    updateCatalogEntry, deleteCatalogEntry, checkCatalogRefCount
+ *
  * Wraps DispatchAfterSalesStaffService, EscortOptionPricingService,
- * EscortOptionCatalogRepository, and EscortOptionPriceRepo.
+ * EscortOptionCatalogRepository, EscortOptionPriceRepo, and
+ * EscortDispatchOrderService.
  * Publishes domain events on successful mutations.
  */
 export class DispatchManagementFacade {
@@ -297,6 +305,24 @@ export class DispatchManagementFacade {
       return new Err(
         DomainError.persistenceFailure(
           `Failed to count price references for: ${code}`,
+          err instanceof Error ? err : undefined,
+        ),
+      );
+    }
+  }
+
+  /**
+   * Returns the guild IDs that have price overrides for the given option code.
+   * Used to display specific guild names in deletion-blocked messages.
+   */
+  async findCatalogRefGuildIds(code: string): Promise<Result<number[], DomainError>> {
+    try {
+      const ids = await this.priceRepo.findGuildIdsByOptionCode(code);
+      return new Ok(ids);
+    } catch (err) {
+      return new Err(
+        DomainError.persistenceFailure(
+          `Failed to find guild IDs for option code: ${code}`,
           err instanceof Error ? err : undefined,
         ),
       );

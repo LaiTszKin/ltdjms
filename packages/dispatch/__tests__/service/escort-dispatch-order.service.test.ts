@@ -64,6 +64,7 @@ describe('EscortDispatchOrderService', () => {
       closeAfterSales: vi.fn(),
       confirmOrder: vi.fn(),
       existsByOrderNumber: vi.fn(),
+      batchTimeoutCompletion: vi.fn().mockResolvedValue([]),
     };
 
     service = new EscortDispatchOrderService(mockRepo, undefined, fixedClock);

@@ -1,4 +1,4 @@
-import type { Result, TokenMap } from '@ltdjms/shared';
+import type { Result, TokenMap, DiscordRuntimeGateway } from '@ltdjms/shared';
 import { Ok, Err, DomainError } from '@ltdjms/shared';
 
 import type { EscortDispatchOrderRepo } from '../repo/escort-dispatch-order.repo.js';
@@ -52,6 +52,7 @@ export class EscortDispatchOrderService {
     private readonly afterSalesStaffService?: DispatchAfterSalesStaffService,
     private readonly logger?: TokenMap['Logger'],
     private readonly notificationService?: DispatchNotificationService,
+    private readonly gateway?: DiscordRuntimeGateway,
   ) {
     this.orderNumberGenerator = orderNumberGenerator ?? new EscortDispatchOrderNumberGenerator();
     this.clock = clock ?? (() => Date.now());
@@ -66,6 +67,14 @@ export class EscortDispatchOrderService {
   ): Promise<Result<EscortDispatchOrder, DomainError>> {
     if (escortUserId === customerUserId) {
       return new Err(DomainError.invalidInput('護航者與客戶不能是同一人'));
+    }
+
+    // P1-13: 驗證客戶存在於伺服器中
+    if (this.gateway) {
+      const memberExists = await this.gateway.retrieveMemberById(String(guildId), String(customerUserId));
+      if (!memberExists) {
+        return new Err(DomainError.invalidInput('找不到指定客戶'));
+      }
     }
 
     try {
@@ -88,6 +97,14 @@ export class EscortDispatchOrderService {
   ): Promise<Result<EscortDispatchOrder, DomainError>> {
     if (customerUserId <= 0) {
       return new Err(DomainError.invalidInput('請選擇客戶'));
+    }
+
+    // P1-13: 驗證客戶存在於伺服器中
+    if (this.gateway) {
+      const memberExists = await this.gateway.retrieveMemberById(String(guildId), String(customerUserId));
+      if (!memberExists) {
+        return new Err(DomainError.invalidInput('找不到指定客戶'));
+      }
     }
 
     if (!escortOptionCode || escortOptionCode.trim().length === 0) {
@@ -413,18 +430,10 @@ export class EscortDispatchOrderService {
   ): Promise<Result<EscortDispatchOrder[], DomainError>> {
     const safeLimit = this.normalizeLimit(limit ?? DEFAULT_HISTORY_LIMIT, MAX_HISTORY_LIMIT);
     try {
+      // P2-21: 批次處理所有逾時訂單，避免 N 次獨立 UPDATE
+      await this.repository.batchTimeoutCompletion();
       const orders = await this.repository.findRecentByGuildId(guildId, safeLimit);
-      // NOTE(P3-8): 每個 PENDING_CUSTOMER_CONFIRMATION 訂單獨立執行 UPDATE，
-      // 若大量訂單同時逾時會產生 N 次 DB 呼叫。可改為批次 UPDATE
-      // （WHERE status = PENDING_CUSTOMER_CONFIRMATION AND confirmedAt < ?），
-      // 但需注意 in-memory order 物件與 DB 狀態的同步。
-      const normalizedOrders = await Promise.all(
-        orders.map(async (o) => {
-          if (!isPendingCustomerConfirmation(o)) return o;
-          return this.ensureTimeoutCompletion(o);
-        }),
-      );
-      return new Ok(normalizedOrders);
+      return new Ok(orders);
     } catch (e) {
       const err = e instanceof Error ? e : new Error(String(e));
       return new Err(DomainError.persistenceFailure('查詢歷史訂單失敗', err));

@@ -95,12 +95,4 @@ export class ShopService {
     return { products, currentPage: validPage + 1, totalPages };
   }
 
-  async getProductCount(guildId: number): Promise<number> {
-    return this.productRepository.countByGuildId(guildId);
-  }
-
-  async hasProducts(guildId: number): Promise<boolean> {
-    const count = await this.productRepository.countByGuildId(guildId);
-    return count > 0;
-  }
 }

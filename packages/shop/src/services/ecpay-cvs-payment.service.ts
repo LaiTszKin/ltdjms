@@ -1,7 +1,7 @@
 import { encryptAES, decryptAES } from '../crypto/ecpay-aes.js';
 import type { EnvironmentConfig } from '@ltdjms/shared';
 import { Result, ok, err, DomainError } from '@ltdjms/shared';
-import { fetch, Agent as UndiciAgent } from 'undici';
+import { fetch, Dispatcher } from 'undici';
 import crypto from 'node:crypto';
 import pino from 'pino';
 
@@ -11,7 +11,7 @@ const OFFICIAL_STAGE_MERCHANT_ID = '3002607';
 const OFFICIAL_STAGE_HASH_KEY = 'pwFHCqoQZGmho4w6';
 const OFFICIAL_STAGE_HASH_IV = 'EkRm7iFT261dpevs';
 
-const keepAliveDispatcher = new UndiciAgent({ keepAliveTimeout: 30000, connectTimeout: 15000, connections: 10 });
+const keepAliveDispatcher = new Dispatcher();
 
 function pad2(n: number): string {
   return n.toString().padStart(2, '0');

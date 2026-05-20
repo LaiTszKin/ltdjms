@@ -47,9 +47,8 @@ export class AdminPanelCommand implements CommandHandler {
     const dispatchResult = await this.dispatchFacade.countActiveOrders(guildId);
     const dispatchCount = dispatchResult.isOk() ? dispatchResult.getValue() : 0;
 
-    // Attempt to get the actual guild name from the raw interaction
-    const rawHook = interaction.getHook() as { guild?: { name?: string } };
-    const guildName = rawHook.guild?.name ?? `Guild ${guildId}`;
+    // Attempt to get the actual guild name from the interaction
+    const guildName = interaction.getGuildName() ?? `Guild ${guildId}`;
 
     const mainPanel = this.viewFactory.buildMainPanelEmbed(
       guildName,
@@ -86,25 +85,15 @@ export class AdminPanelCommand implements CommandHandler {
       );
     }
 
-    // Use the raw discord.js interaction to send embed with components
-    const raw = interaction.getHook() as {
-      reply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }) => Promise<unknown>;
-      fetchReply: () => Promise<{ channelId: string; id: string }>;
-    };
-    await raw.reply({ embeds: [embed], components: rows });
+    // Send embed with components and store channelId/messageId for real-time push updates
+    const replyMeta = await interaction.replyWithComponents(embed, rows);
 
-    // Store channelId and messageId for real-time push updates via listeners
-    try {
-      const replyMsg = await raw.fetchReply();
-      if (replyMsg && 'channelId' in replyMsg && 'id' in replyMsg) {
-        const session = this.sessionManager.getSession(guildId, userId);
-        if (session) {
-          session.channelId = String(replyMsg.channelId);
-          session.messageId = String(replyMsg.id);
-        }
+    if (replyMeta) {
+      const session = this.sessionManager.getSession(guildId, userId);
+      if (session) {
+        session.channelId = replyMeta.channelId;
+        session.messageId = replyMeta.id;
       }
-    } catch {
-      // Non-critical: push updates will not be available but the panel still works
     }
   }
 

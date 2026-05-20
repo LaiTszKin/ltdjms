@@ -123,8 +123,7 @@ export class GameSettingsHandler extends BaseAdminHandler {
         ),
       );
 
-      const raw = interaction.getHook() as { showModal: (m: ModalBuilder) => Promise<void> };
-      await raw.showModal(modal);
+      await interaction.showModal(modal);
     } else {
       const configResult = await this.facade.getDiceGame2Config(guildId);
       if (configResult.isErr()) {
@@ -180,25 +179,22 @@ export class GameSettingsHandler extends BaseAdminHandler {
         ),
       );
 
-      // Add the 6th field in a separate modal call stack
-      // TODO(P1-34): Spec R4.3 requires six individual dice face multipliers
-      // (one per dice value 1-6). DiceGame2Config currently only has four
-      // multiplier fields (straightMultiplier, baseMultiplier, tripleLowBonus,
-      // tripleHighBonus). When DiceGame2Config is extended with per-face multipliers,
-      // add the corresponding modal fields here.
-      modal.addComponents(
-        new ActionRowBuilder<TextInputBuilder>().addComponents(
-          new TextInputBuilder()
-            .setCustomId('tripleHighBonus')
-            .setLabel(ZhTwStrings.gameModalTripleHigh)
-            .setStyle(TextInputStyle.Short)
-            .setValue(String(cfg.tripleHighBonus))
-            .setMinLength(1).setMaxLength(10).setRequired(true),
-        ),
-      );
+      // Add face multiplier fields (faceMultiplier1 through faceMultiplier6)
+      for (let i = 0; i < 6; i++) {
+        const faceValue = cfg.faceMultipliers?.[i] ?? 1;
+        modal.addComponents(
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId(`faceMultiplier${i + 1}`)
+              .setLabel(`骰面 ${i + 1} 倍率`)
+              .setStyle(TextInputStyle.Short)
+              .setValue(String(faceValue))
+              .setMinLength(1).setMaxLength(10).setRequired(true),
+          ),
+        );
+      }
 
-      const raw = interaction.getHook() as { showModal: (m: ModalBuilder) => Promise<void> };
-      await raw.showModal(modal);
+      await interaction.showModal(modal);
     }
   }
 
@@ -207,14 +203,10 @@ export class GameSettingsHandler extends BaseAdminHandler {
     guildId: string,
     gameNumber: '1' | '2',
   ): Promise<void> {
-    const raw = interaction.getHook() as {
-      fields: { getTextInputValue: (id: string) => string };
-    };
-
     if (gameNumber === '1') {
-      const min = parseInt(raw.fields.getTextInputValue('minTokensPerPlay'), 10);
-      const max = parseInt(raw.fields.getTextInputValue('maxTokensPerPlay'), 10);
-      const reward = parseInt(raw.fields.getTextInputValue('rewardPerDiceValue'), 10);
+      const min = parseInt(interaction.getTextInputValue('minTokensPerPlay'), 10);
+      const max = parseInt(interaction.getTextInputValue('maxTokensPerPlay'), 10);
+      const reward = parseInt(interaction.getTextInputValue('rewardPerDiceValue'), 10);
 
       if (isNaN(min) || isNaN(max) || isNaN(reward)) {
         const embed = new EmbedBuilder()
@@ -241,12 +233,12 @@ export class GameSettingsHandler extends BaseAdminHandler {
         await this.errorHandler.handle(result.getError(), interaction);
       }
     } else {
-      const min = parseInt(raw.fields.getTextInputValue('minTokensPerPlay'), 10);
-      const max = parseInt(raw.fields.getTextInputValue('maxTokensPerPlay'), 10);
-      const straight = parseFloat(raw.fields.getTextInputValue('straightMultiplier'));
-      const base = parseFloat(raw.fields.getTextInputValue('baseMultiplier'));
-      const tripleLow = parseFloat(raw.fields.getTextInputValue('tripleLowBonus'));
-      const tripleHigh = parseFloat(raw.fields.getTextInputValue('tripleHighBonus'));
+      const min = parseInt(interaction.getTextInputValue('minTokensPerPlay'), 10);
+      const max = parseInt(interaction.getTextInputValue('maxTokensPerPlay'), 10);
+      const straight = parseFloat(interaction.getTextInputValue('straightMultiplier'));
+      const base = parseFloat(interaction.getTextInputValue('baseMultiplier'));
+      const tripleLow = parseFloat(interaction.getTextInputValue('tripleLowBonus'));
+      const tripleHigh = parseFloat(interaction.getTextInputValue('tripleHighBonus'));
 
       if (isNaN(min) || isNaN(max) || isNaN(straight) || isNaN(base) || isNaN(tripleLow) || isNaN(tripleHigh)) {
         const embed = new EmbedBuilder()
@@ -257,6 +249,13 @@ export class GameSettingsHandler extends BaseAdminHandler {
         return;
       }
 
+      // Parse face multiplier fields (optional, default to 1 if not present)
+      const faceMultipliers: [number, number, number, number, number, number] = [1, 1, 1, 1, 1, 1];
+      for (let i = 0; i < 6; i++) {
+        const val = parseFloat(interaction.getTextInputValue(`faceMultiplier${i + 1}`));
+        if (!isNaN(val)) faceMultipliers[i] = val;
+      }
+
       const result = await this.facade.updateDiceGame2Config(guildId, {
         minTokensPerPlay: min,
         maxTokensPerPlay: max,
@@ -264,6 +263,7 @@ export class GameSettingsHandler extends BaseAdminHandler {
         baseMultiplier: base,
         tripleLowBonus: tripleLow,
         tripleHighBonus: tripleHigh,
+        faceMultipliers,
       });
 
       if (result.isOk()) {

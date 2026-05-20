@@ -202,6 +202,7 @@ export class AdminPanelSessionManager {
    * Cleans up all expired sessions.
    */
   cleanupExpired(): number {
+    if (this.sessions.size === 0) return 0;
     let removed = 0;
     for (const [key, session] of this.sessions) {
       if (this.isExpired(session)) {

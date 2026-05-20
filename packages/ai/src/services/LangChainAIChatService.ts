@@ -159,13 +159,21 @@ export class LangChainAIChatService implements AIChatService {
     history: Array<{ role: string; content: string }>,
     handler: StreamingResponseHandler,
   ): Promise<void> {
-    // Extract last user message from history
-    const lastUserMsg = [...history]
-      .reverse()
-      .find((m) => m.role === 'user');
+    // Find the last user message in history
+    const lastUserMsgIndex = (() => {
+      for (let i = history.length - 1; i >= 0; i--) {
+        if (history[i].role === 'user') return i;
+      }
+      return -1;
+    })();
 
-    const userMessage = lastUserMsg?.content ?? '';
-    await this.doStream(guildId, _channelId, _userId, userMessage, history, handler);
+    const userMessage = lastUserMsgIndex >= 0 ? history[lastUserMsgIndex].content : '';
+    // Remove last user message from history to avoid duplication in buildMessages (P2-14)
+    const filteredHistory = lastUserMsgIndex >= 0
+      ? [...history.slice(0, lastUserMsgIndex), ...history.slice(lastUserMsgIndex + 1)]
+      : history;
+
+    await this.doStream(guildId, _channelId, _userId, userMessage, filteredHistory, handler);
   }
 
   /**
@@ -200,6 +208,20 @@ export class LangChainAIChatService implements AIChatService {
       let totalContent = '';
       let reasoningBuffer = '';
 
+      /**
+       * Manual agent iteration loop instead of LangChain's built-in AgentExecutor.
+       *
+       * LangChain's AgentExecutor was not used because:
+       * 1. The custom tool-calling loop provides fine-grained control over streaming
+       *    chunk handling (CONTENT, REASONING, TOOL_INTENT) which AgentExecutor does not expose.
+       * 2. The loop integrates with the project's telemetry/interceptor pipeline (ToolExecutionInterceptor)
+       *    which requires explicit lifecycle hooks around each tool execution.
+       * 3. AgentExecutor's built-in iteration handling would conflict with the existing
+       *    streaming response handler architecture that emits typed chunks in real-time.
+       *
+       * If LangChain's AgentExecutor is extended in the future to support custom streaming
+       * chunk types and interceptor hooks, this loop should be replaced.
+       */
       for (let iteration = 0; iteration < maxIterations; iteration++) {
         const pendingToolCalls = new Map<number, AccumulatedToolCall>();
         const stream = await chatModel.stream(messages);
@@ -377,13 +399,17 @@ export class LangChainAIChatService implements AIChatService {
             }
             return noGuildMsg;
           }
-          // P1-13: Per-tool execution timeout (30 seconds)
-          const result = await Promise.race([
-            tool.execute(args, guild),
-            new Promise<never>((_, reject) =>
-              setTimeout(() => reject(new Error(`工具「${tc.name}」執行逾時 (30 秒)`)), 30000),
-            ),
-          ]);
+          // P1-13: Per-tool execution timeout (30 seconds) with timer cleanup (P2-15)
+          let result: string;
+          let timer: NodeJS.Timeout | undefined;
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            timer = setTimeout(() => reject(new Error(`工具「${tc.name}」執行逾時 (30 秒)`)), 30000);
+          });
+          try {
+            result = await Promise.race([tool.execute(args, guild), timeoutPromise]);
+          } finally {
+            clearTimeout(timer);
+          }
 
           // P0-8: Interceptor completion
           if (correlationId) {

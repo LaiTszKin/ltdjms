@@ -1,206 +1,44 @@
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq, and, sql } from 'drizzle-orm';
 import { gameTokenAccount } from '../../domain/schema.js';
 import type { GameTokenAccount } from '../../domain/types.js';
-import { DomainError, type Result, Ok, Err } from '@ltdjms/shared';
+import { DomainError } from '@ltdjms/shared';
+import { BaseAccountRepository } from '../../shared/base-account-repo.js';
 
 /**
  * Repository for game token account operations using Drizzle ORM.
  * Matches Java GameTokenAccountRepository behavior.
  */
-export class TokenAccountRepository {
-  constructor(private readonly db: NodePgDatabase) {}
-
-  /**
-   * Finds or creates a token account for a member.
-   * Uses INSERT...ON CONFLICT DO NOTHING with RETURNING to minimise DB round-trips.
-   */
-  async findOrCreate(guildId: number, userId: number): Promise<GameTokenAccount> {
-    const existing = await this.db
-      .select()
-      .from(gameTokenAccount)
-      .where(
-        and(
-          eq(gameTokenAccount.guildId, guildId),
-          eq(gameTokenAccount.userId, userId),
-        ),
-      )
-      .limit(1);
-
-    if (existing.length > 0) {
-      return mapToDomain(existing[0]);
-    }
-
-    // Create new account with zero tokens and return it in one round-trip
-    const [created] = await this.db
-      .insert(gameTokenAccount)
-      .values({
-        guildId,
-        userId,
-        tokens: 0,
-      })
-      .onConflictDoNothing()
-      .returning();
-
-    if (created) {
-      return mapToDomain(created);
-    }
-
-    // Race condition: another thread inserted between our SELECT and INSERT
-    const retry = await this.db
-      .select()
-      .from(gameTokenAccount)
-      .where(
-        and(
-          eq(gameTokenAccount.guildId, guildId),
-          eq(gameTokenAccount.userId, userId),
-        ),
-      )
-      .limit(1);
-
-    return mapToDomain(retry[0]);
+export class TokenAccountRepository extends BaseAccountRepository<GameTokenAccount> {
+  constructor(db: NodePgDatabase) {
+    super(db, {
+      table: gameTokenAccount,
+      balanceFieldName: 'tokens',
+      updatedAtFieldName: 'updatedAt',
+      defaultValues: { tokens: 0 },
+      mapToDomain,
+      newInsufficientError: (msg) => new InsufficientTokensError(msg),
+      domainInsufficientError: (msg) => DomainError.insufficientTokens(msg),
+    });
   }
 
-  /**
-   * Finds a token account by guild and user IDs.
-   */
-  async findByGuildIdAndUserId(
-    guildId: number,
-    userId: number,
-  ): Promise<GameTokenAccount | null> {
-    const rows = await this.db
-      .select()
-      .from(gameTokenAccount)
-      .where(
-        and(
-          eq(gameTokenAccount.guildId, guildId),
-          eq(gameTokenAccount.userId, userId),
-        ),
-      )
-      .limit(1);
-
-    return rows.length > 0 ? mapToDomain(rows[0]) : null;
+  async adjustTokens(guildId: number, userId: number, delta: number): Promise<GameTokenAccount> {
+    return this.adjust(guildId, userId, delta);
   }
 
-  /**
-   * Adjusts tokens by delta with guard: tokens + delta >= 0.
-   * Throws InsufficientTokensError if constraint would be violated.
-   */
-  async adjustTokens(
-    guildId: number,
-    userId: number,
-    delta: number,
-  ): Promise<GameTokenAccount> {
-    const result = await this.db
-      .update(gameTokenAccount)
-      .set({
-        tokens: sql`${gameTokenAccount.tokens} + ${delta}`,
-        updatedAt: sql`NOW()`,
-      })
-      .where(
-        and(
-          eq(gameTokenAccount.guildId, guildId),
-          eq(gameTokenAccount.userId, userId),
-          sql`${gameTokenAccount.tokens} + ${delta} >= 0`,
-        ),
-      )
-      .returning();
-
-    if (result.length === 0) {
-      throw new InsufficientTokensError(
-        `Cannot adjust tokens by ${delta}: would result in negative balance or account not found`,
-      );
-    }
-
-    return mapToDomain(result[0]);
-  }
-
-  /**
-   * Adjusts tokens with Result-based error handling.
-   */
   async tryAdjustTokens(
     guildId: number,
     userId: number,
     delta: number,
-  ): Promise<Result<GameTokenAccount, DomainError>> {
-    try {
-      const result = await this.db
-        .update(gameTokenAccount)
-        .set({
-          tokens: sql`${gameTokenAccount.tokens} + ${delta}`,
-          updatedAt: sql`NOW()`,
-        })
-        .where(
-          and(
-            eq(gameTokenAccount.guildId, guildId),
-            eq(gameTokenAccount.userId, userId),
-            sql`${gameTokenAccount.tokens} + ${delta} >= 0`,
-          ),
-        )
-        .returning();
-
-      if (result.length === 0) {
-        return new Err(
-          DomainError.insufficientTokens(
-            `Cannot adjust tokens by ${delta}: would result in negative balance`,
-          ),
-        );
-      }
-
-      return new Ok(mapToDomain(result[0]));
-    } catch (err) {
-      return new Err(
-        DomainError.persistenceFailure(
-          `Failed to adjust tokens for guildId=${guildId}, userId=${userId}`,
-          err instanceof Error ? err : undefined,
-        ),
-      );
-    }
+  ): ReturnType<BaseAccountRepository<GameTokenAccount>['tryAdjust']> {
+    return this.tryAdjust(guildId, userId, delta);
   }
 
-  /**
-   * Sets tokens to an exact value.
-   */
   async setTokens(
     guildId: number,
     userId: number,
     newTokens: number,
   ): Promise<GameTokenAccount> {
-    if (newTokens < 0) {
-      throw new Error(`Cannot set negative token count: ${newTokens}`);
-    }
-
-    await this.findOrCreate(guildId, userId);
-
-    const result = await this.db
-      .update(gameTokenAccount)
-      .set({
-        tokens: newTokens,
-        updatedAt: sql`NOW()`,
-      })
-      .where(
-        and(
-          eq(gameTokenAccount.guildId, guildId),
-          eq(gameTokenAccount.userId, userId),
-        ),
-      )
-      .returning();
-
-    return mapToDomain(result[0]);
-  }
-
-  /**
-   * Deletes a token account.
-   */
-  async delete(guildId: number, userId: number): Promise<void> {
-    await this.db
-      .delete(gameTokenAccount)
-      .where(
-        and(
-          eq(gameTokenAccount.guildId, guildId),
-          eq(gameTokenAccount.userId, userId),
-        ),
-      );
+    return this.set(guildId, userId, newTokens);
   }
 }
 

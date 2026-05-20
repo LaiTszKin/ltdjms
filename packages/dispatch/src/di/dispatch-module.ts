@@ -122,6 +122,7 @@ export function configureDispatchContainer(): void {
     afterSalesStaffService,
     logger,
     notificationService,
+    discordRuntimeGateway,
   );
   container.registerInstance(DISPATCH_TOKENS.EscortDispatchOrderService, dispatchOrderService);
 
@@ -153,6 +154,7 @@ export function configureDispatchContainer(): void {
     afterSalesStaffService,
     notificationService,
     sessionManager,
+    discordRuntimeGateway,
   );
   container.registerInstance(
     DISPATCH_TOKENS.DispatchPanelInteractionHandler,

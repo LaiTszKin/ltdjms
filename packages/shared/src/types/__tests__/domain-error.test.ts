@@ -175,12 +175,27 @@ describe('DomainError', () => {
       const e = DomainError.categoryNotFound('cat not found');
       expect(e.category).toBe(DomainErrorCategory.CATEGORY_NOT_FOUND);
     });
+
+    it('redeemCodeUsed', () => {
+      const e = DomainError.redeemCodeUsed('used');
+      expect(e.category).toBe(DomainErrorCategory.REDEEM_CODE_USED);
+    });
+
+    it('redeemCodeExpired', () => {
+      const e = DomainError.redeemCodeExpired('expired');
+      expect(e.category).toBe(DomainErrorCategory.REDEEM_CODE_EXPIRED);
+    });
+
+    it('redeemCodeInvalid', () => {
+      const e = DomainError.redeemCodeInvalid('invalid');
+      expect(e.category).toBe(DomainErrorCategory.REDEEM_CODE_INVALID);
+    });
   });
 
   describe('all categories exist', () => {
     it('has the correct enum values', () => {
       const values = Object.values(DomainErrorCategory);
-      expect(values).toHaveLength(28);
+      expect(values).toHaveLength(31);
       expect(values).toContain(DomainErrorCategory.INVALID_INPUT);
       expect(values).toContain(DomainErrorCategory.CATEGORY_NOT_FOUND);
     });

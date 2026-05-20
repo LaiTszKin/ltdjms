@@ -119,7 +119,7 @@ export class DrizzleAIAgentChannelConfigRepository implements AIAgentChannelConf
           ),
         );
       if (result.rowCount === 0) {
-        return okVoid<DomainError>() as unknown as Result<void, DomainError>;
+        return err(DomainError.invalidInput('找不到指定的頻道設定'));
       }
       return okVoid<DomainError>() as unknown as Result<void, DomainError>;
     } catch (cause) {

@@ -1,6 +1,7 @@
 import {
-  type DiscordInteraction, type DiscordContext,
+  type DiscordInteraction, type DiscordContext, type DiscordRuntimeGateway,
   type EmbedView, type ButtonView,
+  ButtonStyle,
 } from '@ltdjms/shared';
 import {
   type EscortDispatchOrderService,
@@ -45,6 +46,8 @@ import {
   BUTTON_REQUEST_AFTER_SALES,
   BUTTON_CLAIM_AFTER_SALES,
   BUTTON_CLOSE_AFTER_SALES,
+  BUTTON_CREATE_CONFIRM,
+  BUTTON_ASSIGN_CONFIRM,
   SELECT_ESCORT_OPTION,
   SELECT_ESCORT_OPTION_EXTRA,
   SELECT_PENDING_ORDER,
@@ -82,6 +85,7 @@ export class DispatchPanelInteractionHandler {
     private readonly afterSalesStaffService: DispatchAfterSalesStaffService,
     private readonly notificationService: DispatchNotificationService,
     private readonly sessionManager: DispatchPanelSessionManager,
+    private readonly gateway?: DiscordRuntimeGateway,
   ) {}
 
   async execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void> {
@@ -167,6 +171,26 @@ export class DispatchPanelInteractionHandler {
         break;
       case BUTTON_CLOSE_AFTER_SALES:
         await this.handleCloseAfterSales(interaction, userId, session);
+        break;
+
+      // ---- Create Mode Order Confirm ----
+      case BUTTON_CREATE_CONFIRM:
+        await this.handleCreateOrderConfirm(interaction, guildId, userId, session);
+        break;
+
+      // ---- Assign Mode Confirm ----
+      case BUTTON_ASSIGN_CONFIRM:
+        await this.handleAssignOrder(interaction, guildId, userId, session);
+        break;
+
+      // ---- Create Customer Modal Submit ----
+      case 'dispatch_create_customer_modal':
+        await this.handleCreateCustomerModal(customId, interaction, guildId, session);
+        break;
+
+      // ---- Escort Member Select Menu ----
+      case 'dispatch_select_escort_member':
+        await this.handleEscortMemberSelect(interaction, session);
         break;
 
       // ---- Select Menu Interactions (R2.3, R3) ----
@@ -560,8 +584,9 @@ export class DispatchPanelInteractionHandler {
     userId: string,
     session: DispatchSessionState,
   ): Promise<void> {
-    // Extract selected value from the interaction
-    const selectedValue = this.getValues(interaction)?.[0];
+    // Extract selected value from the interaction using the interface method
+    const values = interaction.getSelectedValues();
+    const selectedValue = values.length > 0 ? values[0] : undefined;
     if (!selectedValue) {
       await interaction.reply('請選擇一個選項。');
       return;
@@ -569,7 +594,28 @@ export class DispatchPanelInteractionHandler {
 
     if (customId === SELECT_ESCORT_OPTION || customId === SELECT_ESCORT_OPTION_EXTRA) {
       session.selectedOptionCode = selectedValue;
-      await interaction.reply(`已選擇護航品類：${selectedValue}。請輸入客戶 ID。`);
+      // P0-1: 顯示 Modal 讓管理員輸入客戶 Discord ID
+      await interaction.showModal({
+        title: '輸入客戶 ID',
+        custom_id: 'dispatch_create_customer_modal',
+        components: [
+          {
+            type: 1,
+            components: [
+              {
+                type: 4,
+                custom_id: 'customer_user_id',
+                label: '客戶 Discord ID',
+                style: 1,
+                min_length: 1,
+                max_length: 32,
+                required: true,
+                placeholder: '請輸入客戶的 Discord 使用者 ID',
+              },
+            ],
+          },
+        ],
+      });
     } else if (customId === SELECT_PENDING_ORDER) {
       session.selectedOrderNumber = selectedValue;
       await this.handleOrderSelected(interaction, selectedValue, userId, session);
@@ -603,7 +649,224 @@ export class DispatchPanelInteractionHandler {
       isAfterSalesInProgress(order) &&
       isAfterSalesAssignee(order, Number(userId));
     const buttons = buildOrderDetailActionRow(canConfirm, canComplete, canRequestAfterSales, canClaimAfterSales, canCloseAfterSales);
+
+    // P0-2: 在 Assign Mode 中顯示 member select menu + 派發訂單按鈕
+    if (session.mode === 'assign' && isPendingEscortConfirmation(order)) {
+      const memberSelectComponent = {
+        type: 5 as const, // UserSelect
+        custom_id: 'dispatch_select_escort_member',
+        placeholder: '請選擇要指派的護航者',
+      };
+      const assignActionRow = {
+        type: 1 as const,
+        components: [
+          { type: 2 as const, style: ButtonStyle.PRIMARY, custom_id: BUTTON_ASSIGN_CONFIRM, label: '派發訂單' },
+        ],
+      };
+      const payload = buildPanelReplyPayload(detailView, buttons);
+      const hook = interaction.getHook() as any;
+      const components = [
+        { type: 1 as const, components: [memberSelectComponent] },
+        assignActionRow,
+        ...payload.components,
+      ];
+      if (interaction.isAcknowledged()) {
+        await hook.editReply({ embeds: [payload.embed], components });
+      } else {
+        await hook.reply({ embeds: [payload.embed], components, ephemeral: payload.ephemeral });
+      }
+      return;
+    }
+
     await this.replyWithPayload(interaction, detailView, buttons);
+  }
+
+  // ============================================================
+  // Create Mode Handlers (P0-1)
+  // ============================================================
+
+  /**
+   * Handles the modal submit from the create customer modal.
+   * Validates the customer ID and shows a confirmation embed.
+   */
+  private async handleCreateCustomerModal(
+    _customId: string,
+    interaction: DiscordInteraction,
+    guildId: string,
+    session: DispatchSessionState,
+  ): Promise<void> {
+    const customerUserId: string = interaction.getTextInputValue('customer_user_id');
+
+    if (!customerUserId || !/^\d{17,19}$/.test(customerUserId)) {
+      const errorView = buildErrorEmbed('請輸入有效的 Discord 使用者 ID（必須為 17-19 位數字）。');
+      await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
+      return;
+    }
+
+    // Validate customer exists in guild via DiscordRuntimeGateway
+    if (this.gateway) {
+      const memberExists = await this.gateway.retrieveMemberById(guildId, customerUserId);
+      if (!memberExists) {
+        const errorView = buildErrorEmbed('找不到指定客戶，請確認客戶 ID 是否正確。');
+        await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
+        return;
+      }
+    }
+
+    session.selectedCustomerId = Number(customerUserId);
+
+    const optionCode = session.selectedOptionCode ?? '未指定';
+    const view: EmbedView = {
+      title: '📋 確認建立派單',
+      description: `請確認以下資訊：\n• 護航品類：${optionCode}\n• 客戶 ID：${customerUserId}`,
+      color: COLOR_INFO,
+      fields: [
+        { name: '護航品類', value: optionCode, inline: true },
+        { name: '客戶 ID', value: customerUserId, inline: true },
+      ],
+      footer: '確認後將建立新的護航派單',
+    };
+
+    const buttons: ButtonView[] = [
+      { id: BUTTON_CREATE_CONFIRM, label: '確認建立', style: ButtonStyle.SUCCESS, disabled: false },
+      { id: BUTTON_BACK_TO_MODE, label: '取消', style: ButtonStyle.SECONDARY, disabled: false },
+    ];
+
+    await this.replyWithPayload(interaction, view, buttons);
+  }
+
+  /**
+   * Handles the "確認建立" button click.
+   * Calls dispatchOrderService.createManualOpenOrder() to create the order.
+   */
+  private async handleCreateOrderConfirm(
+    interaction: DiscordInteraction,
+    guildId: string,
+    userId: string,
+    session: DispatchSessionState,
+  ): Promise<void> {
+    const guildIdNum = Number(guildId);
+    if (Number.isNaN(guildIdNum)) {
+      const errorView = buildQueryFailedEmbed();
+      await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
+      return;
+    }
+
+    if (!session.selectedCustomerId || !session.selectedOptionCode) {
+      const errorView = buildErrorEmbed('遺失客戶 ID 或護航品類資訊，請重新選擇。');
+      await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
+      return;
+    }
+
+    const result = await this.dispatchOrderService.createManualOpenOrder(
+      guildIdNum,
+      Number(userId),
+      session.selectedCustomerId,
+      session.selectedOptionCode,
+    );
+
+    if (result.isErr()) {
+      const errorView = buildErrorEmbed(result.getError().message);
+      await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
+      return;
+    }
+
+    const order = result.getValue();
+    const successView = buildOrderCreatedEmbed(order);
+    await this.replyWithPayload(interaction, successView);
+    session.mode = null;
+  }
+
+  // ============================================================
+  // Assign Mode Handlers (P0-2)
+  // ============================================================
+
+  /**
+   * Handles the escort member select menu.
+   * Saves the selected escort user ID to the session.
+   */
+  private async handleEscortMemberSelect(
+    interaction: DiscordInteraction,
+    session: DispatchSessionState,
+  ): Promise<void> {
+    const selectedEscortId = interaction.getSelectedValues()[0];
+    if (!selectedEscortId || !/^\d{17,19}$/.test(selectedEscortId)) {
+      await interaction.reply('請選擇有效的護航者。');
+      return;
+    }
+
+    session.selectedEscortUserId = Number(selectedEscortId);
+
+    // Acknowledge the select menu interaction with an ephemeral message
+    const hook = interaction.getHook() as any;
+    if (interaction.isAcknowledged()) {
+      await hook.followUp({ content: `已選擇護航者：<@${selectedEscortId}>`, ephemeral: true });
+    } else {
+      await hook.reply({ content: `已選擇護航者：<@${selectedEscortId}>`, ephemeral: true });
+    }
+  }
+
+  /**
+   * Handles the "派發訂單" button click.
+   * Calls dispatchOrderService.assignPendingOrder() and sends DM to escort.
+   */
+  private async handleAssignOrder(
+    interaction: DiscordInteraction,
+    guildId: string,
+    _userId: string,
+    session: DispatchSessionState,
+  ): Promise<void> {
+    const guildIdNum = Number(guildId);
+    if (Number.isNaN(guildIdNum)) {
+      const errorView = buildQueryFailedEmbed();
+      await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
+      return;
+    }
+
+    if (!session.selectedOrderNumber || !session.selectedEscortUserId) {
+      const errorView = buildErrorEmbed('請選擇訂單與護航者後再派發。');
+      await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
+      return;
+    }
+
+    // 使用 raw hook 以支援 ephemeral defer（介面未暴露 ephemeral 參數）
+    const hook = interaction.getHook() as any;
+    await hook.deferReply({ ephemeral: true });
+
+    const result = await this.dispatchOrderService.assignPendingOrder(
+      session.selectedOrderNumber,
+      Number(_userId),
+      session.selectedEscortUserId,
+    );
+
+    if (result.isErr()) {
+      const errorView = buildErrorEmbed(result.getError().message);
+      await hook.editReply({ embeds: [embedViewToApiEmbed(errorView)] });
+      session.mode = null;
+      return;
+    }
+
+    const order = result.getValue();
+
+    // P1-14: 即使 DM 發送失敗，指派仍然視為成功
+    let dmWarning = '';
+    try {
+      const dmSent = await this.notificationService.notifyEscortAssigned(order);
+      if (!dmSent) {
+        dmWarning = '\n\n⚠️ 護航者 DM 發送失敗，請手動通知。';
+      }
+    } catch {
+      dmWarning = '\n\n⚠️ 護航者 DM 發送失敗，請手動通知。';
+    }
+
+    const assignedView = buildOrderAssignedEmbed(order);
+    const updatedDescription = `${assignedView.description ?? ''}${dmWarning}`;
+    const updatedEmbed = {
+      ...embedViewToApiEmbed(assignedView),
+      description: updatedDescription,
+    };
+    await hook.editReply({ embeds: [updatedEmbed] });
+    session.mode = null;
   }
 
   // ============================================================
@@ -798,15 +1061,7 @@ export class DispatchPanelInteractionHandler {
 
   /** Checks if the interaction originates from a guild channel. */
   private getInGuild(interaction: DiscordInteraction): boolean {
-    return (interaction as unknown as { inGuild?: boolean }).inGuild ?? false;
-  }
-
-  /** Extracts selected values from a select menu interaction. */
-  private getValues(interaction: DiscordInteraction): string[] | undefined {
-    if ('values' in interaction) {
-      return (interaction as { values?: string[] }).values;
-    }
-    return undefined;
+    return interaction.getGuildId() !== '0';
   }
 
   /**

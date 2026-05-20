@@ -308,12 +308,18 @@ export class EscortCatalogHandler extends BaseAdminHandler {
     const refCountResult = await this.facade.checkCatalogRefCount(entryCode);
     const refCount = refCountResult.isOk() ? refCountResult.getValue() : 0;
     if (refCount > 0) {
+      // Query guild names for the referencing guilds
+      const guildIdsResult = await this.facade.findCatalogRefGuildIds(entryCode);
+      const guildList = guildIdsResult.isOk() && guildIdsResult.getValue().length > 0
+        ? guildIdsResult.getValue().map((id) => `Guild ${id}`).join('\n')
+        : `${refCount} 個 guild`;
+
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.escortCatalogTitle)
         .setDescription(
           ZhTwStrings.escortCatalogDeleteBlocked
             .replace('{name}', name)
-            .replace('{guilds}', `${refCount} 個 guild`),
+            .replace('{guilds}', guildList),
         )
         .setColor(Colors.WARNING);
       await interaction.editEmbed(embed);
@@ -395,7 +401,42 @@ export class EscortCatalogHandler extends BaseAdminHandler {
         .setTitle(ZhTwStrings.escortCatalogTitle)
         .setDescription(description)
         .setColor(Colors.PRIMARY);
-      await interaction.editEmbed(embed);
+
+      // Build action row with "add item" button
+      const rows: ActionRowBuilder<ButtonBuilder>[] = [];
+
+      const addBtn = new ButtonBuilder()
+        .setCustomId('admin_escortcatalog_create')
+        .setLabel(ZhTwStrings.escortCatalogCreateBtn)
+        .setStyle(ButtonStyle.Success);
+
+      rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(addBtn));
+
+      // Per-item edit/delete buttons
+      if (entries.length > 0) {
+        const entryButtons = entries.flatMap((entry) => {
+          const editBtn = new ButtonBuilder()
+            .setCustomId('admin_escortcatalog_edit_' + entry.code)
+            .setLabel(`${ZhTwStrings.escortCatalogEditBtn} ${entry.code}`)
+            .setStyle(ButtonStyle.Primary);
+          const deleteBtn = new ButtonBuilder()
+            .setCustomId('admin_escortcatalog_delete_' + entry.code)
+            .setLabel(`${ZhTwStrings.escortCatalogDeleteBtn} ${entry.code}`)
+            .setStyle(ButtonStyle.Danger);
+          return [editBtn, deleteBtn];
+        });
+
+        // Group into rows of 2 (one edit + delete pair per row)
+        for (let i = 0; i < entryButtons.length; i += 2) {
+          const chunk = entryButtons.slice(i, i + 2);
+          rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(chunk));
+        }
+      }
+
+      const raw = interaction.getHook() as {
+        editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }) => Promise<void>;
+      };
+      await raw.editReply({ embeds: [embed], components: rows });
     } else {
       await this.errorHandler.handle(result.getError(), interaction);
     }
