@@ -3,6 +3,24 @@ import { GameRewardService } from '../dice/services/game-reward-service.js';
 import type { CurrencyTransactionSource } from '../domain/types.js';
 
 describe('GameRewardService', () => {
+  /** Creates a mock CacheService for DI (P0-2). */
+  function createMockCacheService() {
+    return {
+      get: vi.fn(),
+      put: vi.fn().mockResolvedValue(undefined),
+      invalidate: vi.fn(),
+    };
+  }
+
+  /** Creates a mock CacheKeyGenerator for DI (P0-2). */
+  function createMockCacheKeyGenerator() {
+    return {
+      balanceKey: vi.fn().mockReturnValue('cache:balance:1:1'),
+      gameTokenKey: vi.fn(),
+      NAMESPACE: 'cache',
+    };
+  }
+
   describe('creditReward', () => {
     it('should return current balance when reward is 0', async () => {
       const mockAccountRepo = {
@@ -29,6 +47,8 @@ describe('GameRewardService', () => {
         mockAccountRepo as any,
         mockTxService as any,
         mockEventPublisher as any,
+        createMockCacheService(),
+        createMockCacheKeyGenerator(),
       );
 
       const balance = await service.creditReward(1, 1, 0, 'DICE_GAME_1_WIN' as CurrencyTransactionSource);
@@ -39,7 +59,7 @@ describe('GameRewardService', () => {
     });
 
     it('should throw on negative reward', async () => {
-      const service = new GameRewardService({} as any, {} as any, {} as any);
+      const service = new GameRewardService({} as any, {} as any, {} as any, createMockCacheService(), createMockCacheKeyGenerator());
 
       await expect(
         service.creditReward(1, 1, -100, 'DICE_GAME_1_WIN' as CurrencyTransactionSource),
@@ -77,6 +97,8 @@ describe('GameRewardService', () => {
         mockAccountRepo as any,
         mockTxService as any,
         mockEventPublisher as any,
+        createMockCacheService(),
+        createMockCacheKeyGenerator(),
       );
 
       const balance = await service.creditReward(1, 1, 2500, 'DICE_GAME_1_WIN' as CurrencyTransactionSource);
@@ -154,6 +176,8 @@ describe('GameRewardService', () => {
         mockAccountRepo as any,
         mockTxService as any,
         mockEventPublisher as any,
+        createMockCacheService(),
+        createMockCacheKeyGenerator(),
       );
 
       const balance = await service.creditReward(1, 1, 500, 'DICE_GAME_1_WIN' as CurrencyTransactionSource);

@@ -137,6 +137,8 @@ export function configureEconomyContainer(): void {
     currencyAccountRepo,
     currencyTxService,
     eventPublisher,
+    cacheService,
+    cacheKeyGenerator,
   );
   container.registerInstance(ECONOMY_TOKENS.GameRewardService, gameRewardService);
 
@@ -186,6 +188,6 @@ export function configureEconomyContainer(): void {
   const diceGame2ConfigHandler = new DiceGame2ConfigHandler(diceConfigRepo, eventPublisher);
   container.registerInstance(ECONOMY_TOKENS.DiceGame2ConfigHandler, diceGame2ConfigHandler);
 
-  const gameTokenAdjustHandler = new GameTokenAdjustHandler(gameTokenService, gameTokenTxService);
+  const gameTokenAdjustHandler = new GameTokenAdjustHandler(gameTokenService);
   container.registerInstance(ECONOMY_TOKENS.GameTokenAdjustHandler, gameTokenAdjustHandler);
 }

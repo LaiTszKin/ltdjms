@@ -31,46 +31,31 @@ export class BalanceAdjustmentService {
   ) {}
 
   /**
-   * Adjusts a member's balance by the specified amount with Result-based error handling.
-   * Validates overflow (via safe integer check), applies adjustment, records transaction,
-   * publishes event, and updates cache.
+   * Processes a balance adjustment using a pre-fetched current balance.
+   * Handles overflow check, repository adjustment, transaction recording,
+   * event publishing, and cache update.
+   *
+   * This is extracted to avoid redundant findOrCreate queries when the caller
+   * already has the current balance (P2-5).
    */
-  async tryAdjustBalance(
+  private async processAdjustment(
     guildId: number,
     userId: number,
     amount: number,
-    source: CurrencyTransactionSource = CurrencyTransactionSource.ADMIN_ADJUSTMENT,
-    description: string | null = null,
+    previousBalance: number,
+    source: CurrencyTransactionSource,
+    description: string | null,
   ): Promise<Result<BalanceAdjustmentResult, DomainError>> {
-    if (!Number.isFinite(amount)) {
+    // Check for overflow: previousBalance + amount must not exceed MAX_SAFE_INTEGER
+    if (amount > 0 && previousBalance > Number.MAX_SAFE_INTEGER - amount) {
       return new Err(
-        DomainError.invalidInput(`Invalid adjustment amount: ${amount}`),
-      );
-    }
-
-    // Overflow check using safe integer boundaries (spec R1.4)
-    if (!isValidAdjustmentAmount(amount)) {
-      return new Err(
-        DomainError.invalidInput(`Amount exceeds maximum: |${amount}| > ${Number.MAX_SAFE_INTEGER}`),
+        DomainError.invalidInput(
+          `Balance overflow: ${previousBalance} + ${amount} exceeds maximum safe integer`,
+        ),
       );
     }
 
     try {
-      const current = await this.accountRepository.findOrCreate(guildId, userId);
-      const previousBalance = current.balance;
-
-      // Check for overflow: previousBalance + amount must not exceed MAX_SAFE_INTEGER
-      if (amount > 0 && previousBalance > Number.MAX_SAFE_INTEGER - amount) {
-        return new Err(
-          DomainError.invalidInput(
-            `Balance overflow: ${previousBalance} + ${amount} exceeds maximum safe integer`,
-          ),
-        );
-      }
-      // Underflow (insufficient balance) is enforced by the repository's
-      // conditional UPDATE SQL; tryAdjustBalance returns the correct
-      // DomainError.insufficientBalance when the constraint is violated.
-
       const adjustResult = await this.accountRepository.tryAdjustBalance(
         guildId,
         userId,
@@ -130,9 +115,47 @@ export class BalanceAdjustmentService {
   }
 
   /**
+   * Adjusts a member's balance by the specified amount with Result-based error handling.
+   * Validates overflow (via safe integer check), applies adjustment, records transaction,
+   * publishes event, and updates cache.
+   */
+  async tryAdjustBalance(
+    guildId: number,
+    userId: number,
+    amount: number,
+    source: CurrencyTransactionSource = CurrencyTransactionSource.ADMIN_ADJUSTMENT,
+    description: string | null = null,
+  ): Promise<Result<BalanceAdjustmentResult, DomainError>> {
+    if (!Number.isFinite(amount)) {
+      return new Err(
+        DomainError.invalidInput(`Invalid adjustment amount: ${amount}`),
+      );
+    }
+
+    // Overflow check using safe integer boundaries (spec R1.4)
+    if (!isValidAdjustmentAmount(amount)) {
+      return new Err(
+        DomainError.invalidInput(`Amount exceeds maximum: |${amount}| > ${Number.MAX_SAFE_INTEGER}`),
+      );
+    }
+
+    try {
+      const current = await this.accountRepository.findOrCreate(guildId, userId);
+      return await this.processAdjustment(guildId, userId, amount, current.balance, source, description);
+    } catch (err) {
+      return new Err(
+        DomainError.persistenceFailure(
+          `Failed to adjust balance for guildId=${guildId}, userId=${userId}`,
+          err instanceof Error ? err : undefined,
+        ),
+      );
+    }
+  }
+
+  /**
    * Adjusts a member's balance to a specific target value.
-   * Validates the delta and delegates to tryAdjustBalance to avoid duplicating
-   * the transaction recording, event publishing, and cache update logic (P1-8).
+   * Computes the delta from the current balance and delegates to processAdjustment,
+   * avoiding a redundant findOrCreate query (P2-5).
    */
   async tryAdjustBalanceTo(
     guildId: number,
@@ -164,8 +187,8 @@ export class BalanceAdjustmentService {
       );
     }
 
-    // Delegate to tryAdjustBalance which handles findOrCreate, overflow check,
-    // adjustment, transaction recording, event publishing, and cache update.
-    return this.tryAdjustBalance(guildId, userId, delta, source, description);
+    // Delegate to processAdjustment which handles adjustment, transaction recording,
+    // event publishing, and cache update — without a redundant findOrCreate query (P2-5).
+    return this.processAdjustment(guildId, userId, delta, current.balance, source, description);
   }
 }

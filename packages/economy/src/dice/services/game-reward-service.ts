@@ -1,6 +1,8 @@
 import {
   type DomainEventPublisher,
   type BalanceChangedEvent,
+  type CacheService,
+  type CacheKeyGenerator,
 } from '@ltdjms/shared';
 import { CurrencyAccountRepository } from '../../currency/repositories/currency-account-repo.js';
 import { CurrencyTransactionService } from '../../currency/services/currency-tx-service.js';
@@ -15,10 +17,14 @@ import { MAX_ADJUSTMENT_AMOUNT } from '../../domain/types.js';
  * The threshold is injectable for testing with smaller values.
  */
 export class GameRewardService {
+  private static readonly BALANCE_TTL_SECONDS = 300;
+
   constructor(
     private readonly accountRepository: CurrencyAccountRepository,
     private readonly transactionService: CurrencyTransactionService,
     private readonly eventPublisher: DomainEventPublisher,
+    private readonly cacheService: CacheService,
+    private readonly cacheKeyGenerator: CacheKeyGenerator,
     private readonly maxAdjustmentAmount: number = MAX_ADJUSTMENT_AMOUNT,
   ) {}
 
@@ -58,6 +64,10 @@ export class GameRewardService {
     // so applyRewardToAccount returns the final balance, eliminating the
     // duplicate findByGuildIdAndUserId query that previously followed.
     const newBalance = await this.applyRewardToAccount(guildId, userId, rewardAmount);
+
+    // Update cache with final balance (P0-2)
+    const cacheKey = this.cacheKeyGenerator.balanceKey(String(guildId), String(userId));
+    await this.cacheService.put(cacheKey, newBalance, GameRewardService.BALANCE_TTL_SECONDS);
 
     // Record transaction
     await this.transactionService.recordTransaction(
@@ -99,6 +109,10 @@ export class GameRewardService {
       const account = await this.accountRepository.adjustBalance(guildId, userId, adjustment);
       newBalance = account.balance;
       remaining -= adjustment;
+
+      // Update cache after each adjustment (P0-2)
+      const cacheKey = this.cacheKeyGenerator.balanceKey(String(guildId), String(userId));
+      await this.cacheService.put(cacheKey, newBalance, GameRewardService.BALANCE_TTL_SECONDS);
     }
 
     return newBalance;
