@@ -141,17 +141,11 @@ export function configureEconomyContainer(): void {
   container.registerInstance(ECONOMY_TOKENS.GameRewardService, gameRewardService);
 
   const diceGame1Service = new DiceGame1Service(
-    diceConfigRepo,
-    gameTokenService,
-    gameTokenTxService,
     gameRewardService,
   );
   container.registerInstance(ECONOMY_TOKENS.DiceGame1Service, diceGame1Service);
 
   const diceGame2Service = new DiceGame2Service(
-    diceConfigRepo,
-    gameTokenService,
-    gameTokenTxService,
     gameRewardService,
   );
   container.registerInstance(ECONOMY_TOKENS.DiceGame2Service, diceGame2Service);
@@ -170,10 +164,22 @@ export function configureEconomyContainer(): void {
   const currencyConfigHandler = new CurrencyConfigHandler(currencyConfigService);
   container.registerInstance(ECONOMY_TOKENS.CurrencyConfigHandler, currencyConfigHandler);
 
-  const diceGame1Handler = new DiceGame1Handler(diceGame1Service);
+  const diceGame1Handler = new DiceGame1Handler(
+    diceGame1Service,
+    diceConfigRepo,
+    gameTokenService,
+    gameTokenTxService,
+    currencyConfigRepo,
+  );
   container.registerInstance(ECONOMY_TOKENS.DiceGame1Handler, diceGame1Handler);
 
-  const diceGame2Handler = new DiceGame2Handler(diceGame2Service);
+  const diceGame2Handler = new DiceGame2Handler(
+    diceGame2Service,
+    diceConfigRepo,
+    gameTokenService,
+    gameTokenTxService,
+    currencyConfigRepo,
+  );
   container.registerInstance(ECONOMY_TOKENS.DiceGame2Handler, diceGame2Handler);
 
   const diceGame1ConfigHandler = new DiceGame1ConfigHandler(diceConfigRepo);

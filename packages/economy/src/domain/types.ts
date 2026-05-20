@@ -147,6 +147,8 @@ export interface DiceGame1Result {
   readonly totalReward: number;
   readonly previousBalance: number;
   readonly newBalance: number;
+  readonly currencyName: string;
+  readonly currencyIcon: string;
 }
 
 /** Result of a dice game 2 play. */
@@ -162,6 +164,8 @@ export interface DiceGame2Result {
   readonly straightReward: number;
   readonly nonStraightReward: number;
   readonly tripleReward: number;
+  readonly currencyName: string;
+  readonly currencyIcon: string;
 }
 
 // ============================================================

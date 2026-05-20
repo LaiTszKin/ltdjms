@@ -53,6 +53,12 @@ export const escortDispatchOrder = pgTable(
     sourceIdentityUq: uniqueIndex('uq_escort_dispatch_order_source_identity')
       .on(table.sourceType, table.sourceReference)
       .where(sql`${table.sourceReference} IS NOT NULL`),
+    // P1-21: unique index on orderNumber for quick lookup and uniqueness enforcement
+    orderNumberUq: uniqueIndex('uq_escort_dispatch_order_number')
+      .on(table.orderNumber),
+    // P1-22: compound index for findPendingAssignmentByGuildId query pattern
+    guildStatusEscortIdx: index('idx_escort_dispatch_guild_status_escort')
+      .on(table.guildId, table.status, table.escortUserId),
   }),
 );
 

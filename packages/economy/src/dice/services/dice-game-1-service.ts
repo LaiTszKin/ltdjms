@@ -4,13 +4,9 @@ import {
   Err,
   DomainError,
 } from '@ltdjms/shared';
-import { DiceConfigRepository } from '../repositories/dice-config-repo.js';
-import { GameTokenService } from '../../token/services/game-token-service.js';
 import { GameRewardService } from './game-reward-service.js';
-import { GameTokenTransactionService } from '../../token/services/game-token-tx-service.js';
 import type { DiceGame1Config, DiceGame1Result } from '../../domain/types.js';
 import {
-  GameTokenTransactionSource,
   CurrencyTransactionSource,
 } from '../../domain/types.js';
 
@@ -45,6 +41,12 @@ export class SeededRandom implements Random {
   /**
    * Simple Linear Congruential Generator for deterministic testing.
    * nextInt(6) + 1 gives dice values 1-6.
+   *
+   * NOTE: This implementation does NOT exactly match Java's java.util.Random.nextInt(int).
+   * Java's LCG uses a different multiplier (25214903917) and additive factor (11), and applies
+   * Gaussian rejection when `bound` is not a power of two. This version uses a simpler LCG with
+   * (1664525, 1013904223) from Numerical Recipes, which is sufficient for game dice rolls but
+   * will produce different sequences than Java's standard library for the same seed.
    */
   nextInt(bound: number): number {
     this.state = (this.state * 1664525 + 1013904223) & 0x7fffffff;
@@ -56,96 +58,57 @@ export class SeededRandom implements Random {
  * Dice Game 1 service implementation.
  * One token = one die rolled. Reward = sum(dice) * rewardPerDiceValue.
  * Matches Java DefaultDiceGame1Service behavior exactly.
+ *
+ * This service focuses on game logic only: rolling dice and calculating rewards.
+ * Config lookup and token deduction are handled by the command handler.
  */
 export class DiceGame1Service {
   constructor(
-    private readonly diceConfigRepository: DiceConfigRepository,
-    private readonly gameTokenService: GameTokenService,
-    private readonly gameTokenTransactionService: GameTokenTransactionService,
     private readonly gameRewardService: GameRewardService,
     private readonly random: Random = DefaultRandom,
   ) {}
 
   /**
-   * Plays the dice game. Deducts tokens first, then rolls dice and calculates reward.
+   * Plays the dice game. Rolls dice and calculates reward.
    * The number of dice equals the number of tokens spent.
+   * Config validation and token deduction must be done by the caller (handler).
    */
   async play(
     guildId: number,
     userId: number,
     tokenCount: number,
-    config?: DiceGame1Config,
+    config: DiceGame1Config,
   ): Promise<Result<DiceGame1Result, DomainError>> {
-    // Get or use provided config
-    let effectiveConfig = config;
-    if (!effectiveConfig) {
-      const found = await this.diceConfigRepository.findDice1Config(guildId);
-      if (!found) {
-        return new Err(
-          DomainError.invalidInput(
-            `Dice game 1 configuration not found for guild ${guildId}`,
-          ),
-        );
-      }
-      effectiveConfig = found;
-    }
-
-    // Validate token count
-    if (tokenCount < effectiveConfig.minTokensPerPlay) {
+    // Validate token count against config
+    if (tokenCount < config.minTokensPerPlay) {
       return new Err(
         DomainError.invalidInput(
-          `Token count ${tokenCount} is less than minimum ${effectiveConfig.minTokensPerPlay}`,
+          `Token count ${tokenCount} is less than minimum ${config.minTokensPerPlay}`,
         ),
       );
     }
-    if (tokenCount > effectiveConfig.maxTokensPerPlay) {
+    if (tokenCount > config.maxTokensPerPlay) {
       return new Err(
         DomainError.invalidInput(
-          `Token count ${tokenCount} exceeds maximum ${effectiveConfig.maxTokensPerPlay}`,
+          `Token count ${tokenCount} exceeds maximum ${config.maxTokensPerPlay}`,
         ),
       );
     }
-
-    // Deduct tokens first
-    const deductResult = await this.gameTokenService.tryDeductTokens(
-      guildId,
-      userId,
-      tokenCount,
-    );
-
-    if (deductResult.isErr()) {
-      return new Err(deductResult.getError());
-    }
-
-    const updatedAccount = deductResult.getValue();
-
-    // Record token transaction for the deduction
-    await this.gameTokenTransactionService.recordTransaction(
-      guildId,
-      userId,
-      -tokenCount,
-      updatedAccount.tokens,
-      GameTokenTransactionSource.DICE_GAME_1_PLAY,
-      null,
-    );
 
     // Roll dice - one die per token
     const diceRolls: number[] = [];
     for (let i = 0; i < tokenCount; i++) {
-      // random.nextInt(6) + 1 gives values 1-6 (matching Java's Random.nextInt(6) + 1)
+      // random.nextInt(6) + 1 gives values 1-6 (matching Java''s Random.nextInt(6) + 1)
       diceRolls.push(this.random.nextInt(6) + 1);
     }
 
     // Calculate total reward: sum(dice) * rewardPerDiceValue
     const sum = diceRolls.reduce((acc, val) => acc + val, 0);
-    const totalReward = sum * effectiveConfig.rewardPerDiceValue;
+    const totalReward = sum * config.rewardPerDiceValue;
 
     // Get previous balance (0 amount call).
     // creditReward(0) triggers a DB read even though no reward is applied.
     // This is deliberate to match Java GameRewardService behavior exactly (fidelity to original).
-    // From the account fetched during token deduction above, we could extract previousBalance
-    // directly via updatedAccount.tokens (token balance) — however the currency account is a
-    // separate row, so the DB round-trip is acceptable for correctness.
     const previousBalance = await this.gameRewardService.creditReward(
       guildId,
       userId,
@@ -168,6 +131,8 @@ export class DiceGame1Service {
       totalReward,
       previousBalance,
       newBalance,
+      currencyName: '',
+      currencyIcon: '',
     });
   }
 

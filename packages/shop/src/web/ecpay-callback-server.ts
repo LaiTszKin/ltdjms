@@ -45,10 +45,7 @@ export class EcpayCallbackHttpServer {
 
     this.app = express();
 
-    // Raw body parser (runs before json/urlencoded to capture raw body bytes)
-    this.app.use(express.raw({ type: '*/*', limit: '64kb' }));
-
-    // Body parsers with 64KB limit
+    // Body parsers with 64KB limit (applied globally except for the raw callback route)
     this.app.use(
       express.json({
         limit: '64kb',
@@ -58,7 +55,9 @@ export class EcpayCallbackHttpServer {
     this.app.use(express.urlencoded({ extended: true, limit: '64kb' }));
 
     // Callback route - POST only
-    this.app.post(callbackPath, async (req, res) => {
+    // express.json/urlencoded already consume bodies for non-raw content types,
+    // so install express.raw ONLY on the callback route to avoid consuming all content types.
+    this.app.post(callbackPath, express.raw({ type: '*/*', limit: '64kb' }), async (req, res) => {
       try {
         const contentType = req.headers['content-type'] ?? null;
         const rawBody = req.body instanceof Buffer

@@ -28,7 +28,8 @@ export class GameTokenService {
 
   /**
    * Gets the current token balance for a member.
-   * Uses cache (TTL 300s) - cache miss falls through to DB (auto-create via findOrCreate).
+   * Uses cache (TTL 300s) - cache miss falls through to DB query.
+   * Returns 0 if no account exists (no auto-create, matching Java behavior).
    */
   async getBalance(guildId: number, userId: number): Promise<number> {
     const cacheKey = this.cacheKeyGenerator.gameTokenKey(String(guildId), String(userId));
@@ -38,9 +39,9 @@ export class GameTokenService {
       return cachedBalance;
     }
 
-    // Cache miss or no cache - query DB with auto-create
-    const account = await this.accountRepository.findOrCreate(guildId, userId);
-    const balance = account.tokens;
+    // Cache miss or no cache - query DB without auto-create
+    const account = await this.accountRepository.findByGuildIdAndUserId(guildId, userId);
+    const balance = account?.tokens ?? 0;
     await this.cacheService.put(cacheKey, balance, GameTokenService.TOKEN_TTL_SECONDS);
     return balance;
   }

@@ -4,13 +4,9 @@ import {
   Err,
   DomainError,
 } from '@ltdjms/shared';
-import { DiceConfigRepository } from '../repositories/dice-config-repo.js';
-import { GameTokenService } from '../../token/services/game-token-service.js';
 import { GameRewardService } from './game-reward-service.js';
-import { GameTokenTransactionService } from '../../token/services/game-token-tx-service.js';
 import type { DiceGame2Config, DiceGame2Result } from '../../domain/types.js';
 import {
-  GameTokenTransactionSource,
   CurrencyTransactionSource,
   DICE_GAME_2_DICE_PER_TOKEN,
 } from '../../domain/types.js';
@@ -26,89 +22,52 @@ import { DefaultRandom } from './dice-game-1-service.js';
  *
  * Straights are prioritized over triples.
  * Matches Java DefaultDiceGame2Service behavior exactly.
+ *
+ * This service focuses on game logic only: rolling dice, analyzing rolls, and calculating rewards.
+ * Config lookup and token deduction are handled by the command handler.
  */
 export class DiceGame2Service {
   constructor(
-    private readonly diceConfigRepository: DiceConfigRepository,
-    private readonly gameTokenService: GameTokenService,
-    private readonly gameTokenTransactionService: GameTokenTransactionService,
     private readonly gameRewardService: GameRewardService,
     private readonly random: Random = DefaultRandom,
   ) {}
 
   /**
-   * Plays dice game 2. Deducts tokens, rolls 3 dice per token,
+   * Plays dice game 2. Rolls 3 dice per token,
    * analyzes straights and triples, calculates reward.
+   * Config and token deduction MUST be done by the caller (handler).
    */
   async play(
     guildId: number,
     userId: number,
     tokenCount: number,
-    config?: DiceGame2Config,
+    config: DiceGame2Config,
   ): Promise<Result<DiceGame2Result, DomainError>> {
-    let effectiveConfig = config;
-    if (!effectiveConfig) {
-      const found = await this.diceConfigRepository.findDice2Config(guildId);
-      if (!found) {
-        return new Err(
-          DomainError.invalidInput(
-            `Dice game 2 configuration not found for guild ${guildId}`,
-          ),
-        );
-      }
-      effectiveConfig = found;
-    }
-
-    if (tokenCount < effectiveConfig.minTokensPerPlay) {
+    if (tokenCount < config.minTokensPerPlay) {
       return new Err(
         DomainError.invalidInput(
-          `Token count ${tokenCount} is less than minimum ${effectiveConfig.minTokensPerPlay}`,
+          `Token count ${tokenCount} is less than minimum ${config.minTokensPerPlay}`,
         ),
       );
     }
-    if (tokenCount > effectiveConfig.maxTokensPerPlay) {
+    if (tokenCount > config.maxTokensPerPlay) {
       return new Err(
         DomainError.invalidInput(
-          `Token count ${tokenCount} exceeds maximum ${effectiveConfig.maxTokensPerPlay}`,
+          `Token count ${tokenCount} exceeds maximum ${config.maxTokensPerPlay}`,
         ),
       );
     }
-
-    // Deduct tokens first
-    const deductResult = await this.gameTokenService.tryDeductTokens(
-      guildId,
-      userId,
-      tokenCount,
-    );
-
-    if (deductResult.isErr()) {
-      return new Err(deductResult.getError());
-    }
-
-    const updatedAccount = deductResult.getValue();
-
-    // Record token transaction
-    await this.gameTokenTransactionService.recordTransaction(
-      guildId,
-      userId,
-      -tokenCount,
-      updatedAccount.tokens,
-      GameTokenTransactionSource.DICE_GAME_2_PLAY,
-      null,
-    );
 
     // Roll dice: 3 dice per token
     const diceCount = tokenCount * DICE_GAME_2_DICE_PER_TOKEN;
     const diceRolls = this.rollDice(diceCount);
 
     // Analyze rolls
-    const analysis = this.analyzeRolls(diceRolls, effectiveConfig);
+    const analysis = this.analyzeRolls(diceRolls, config);
 
     // Get previous balance (0 amount call).
     // creditReward(0) triggers a DB read even though no reward is applied.
     // This is deliberate to match Java GameRewardService behavior exactly (fidelity to original).
-    // The currency account and game token account are separate rows, so the DB round-trip
-    // is acceptable for correctness.
     const previousBalance = await this.gameRewardService.creditReward(
       guildId,
       userId,
@@ -136,6 +95,8 @@ export class DiceGame2Service {
       straightReward: analysis.straightReward,
       nonStraightReward: analysis.nonStraightReward,
       tripleReward: analysis.tripleReward,
+      currencyName: '',
+      currencyIcon: '',
     });
   }
 
@@ -289,7 +250,7 @@ export class DiceGame2Service {
         }
         triples.push(segment);
       }
-      // If length > 3, it's NOT a triple - these dice will be counted as non-straight
+      // If length > 3, it''s NOT a triple - these dice will be counted as non-straight
 
       i++;
     }

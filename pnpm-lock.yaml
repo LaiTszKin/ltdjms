@@ -27,6 +27,61 @@ importers:
         specifier: ^3.0.0
         version: 3.2.4(@types/node@20.19.41)(tsx@4.22.2)
 
+  apps/bot:
+    dependencies:
+      '@ltdjms/admin':
+        specifier: workspace:*
+        version: link:../../packages/admin
+      '@ltdjms/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
+      '@ltdjms/dispatch':
+        specifier: workspace:*
+        version: link:../../packages/dispatch
+      '@ltdjms/economy':
+        specifier: workspace:*
+        version: link:../../packages/economy
+      '@ltdjms/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      '@ltdjms/shop':
+        specifier: workspace:*
+        version: link:../../packages/shop
+      discord.js:
+        specifier: ^14.18.0
+        version: 14.26.4
+      drizzle-orm:
+        specifier: ^0.42.0
+        version: 0.42.0(@types/pg@8.20.0)(gel@2.2.0)(pg@8.21.0)
+      ioredis:
+        specifier: ^5.6.0
+        version: 5.10.1
+      pg:
+        specifier: ^8.13.0
+        version: 8.21.0
+      pino:
+        specifier: ^9.6.0
+        version: 9.14.0
+      tsyringe:
+        specifier: ^4.8.0
+        version: 4.10.0
+      zod:
+        specifier: ^3.24.0
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.41
+      '@types/pg':
+        specifier: ^8.11.0
+        version: 8.20.0
+      typescript:
+        specifier: ^5.5.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/node@20.19.41)(tsx@4.22.2)
+
   packages/admin:
     dependencies:
       '@ltdjms/ai':

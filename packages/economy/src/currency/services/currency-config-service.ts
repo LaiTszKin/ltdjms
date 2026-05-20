@@ -195,6 +195,12 @@ function tryValidateIcon(icon: string): Result<import('@ltdjms/shared').Unit, Do
   return okVoid();
 }
 
+/**
+ * Checks whether a string "looks like" a Discord custom emoji attempt.
+ * Uses a loose heuristic (starts with `<`) so that the strict CUSTOM_EMOJI_PATTERN
+ * validation in tryValidateIcon has a chance to reject malformed custom emoji strings.
+ * Plain Unicode emoji (e.g. 🪙) do NOT start with `<` and bypass the custom emoji check.
+ */
 function looksLikeCustomEmoji(icon: string): boolean {
-  return CUSTOM_EMOJI_PATTERN.test(icon);
+  return icon.startsWith('<');
 }

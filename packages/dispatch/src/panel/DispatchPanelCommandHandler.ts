@@ -4,8 +4,7 @@ import {
   buildModeSelectEmbed,
   buildModeSelectActionRow,
   embedViewToApiEmbed,
-  buttonsToComponents,
-  formatPanelText,
+  buildPanelReplyPayload,
 } from './DispatchPanelView.js';
 import { buildErrorEmbed } from './DispatchPanelMessageFactory.js';
 
@@ -22,27 +21,32 @@ export class DispatchPanelCommandHandler {
     try {
       // Admin permission check (spec R14.1) — also enforced by
       // defaultMemberPermissions on the command definition.
-      const memberPermissions = (interaction as unknown as { memberPermissions?: string }).memberPermissions;
-      if (memberPermissions && (BigInt(memberPermissions) & 0x8n) === 0n) {
+      // Allow through if user has ADMINISTRATOR permission (0x8) or is the guild owner.
+      const casted = interaction as unknown as {
+        memberPermissions?: string;
+        guild?: { ownerId?: string };
+        user?: { id?: string };
+      };
+      const memberPermissions = casted.memberPermissions;
+      const hasAdmin = memberPermissions && (BigInt(memberPermissions) & 0x8n) !== 0n;
+      const isOwner =
+        casted.guild?.ownerId != null &&
+        casted.user?.id != null &&
+        casted.guild.ownerId === casted.user.id;
+      if (!hasAdmin && !isOwner) {
         await interaction.reply('你沒有權限使用派單面板。');
         return;
       }
 
       const view = buildModeSelectEmbed();
       const buttons = buildModeSelectActionRow();
-      const panelText = this.formatPanelText(view, buttons);
-      await interaction.reply(panelText);
+      const payload = buildPanelReplyPayload(view, buttons);
+      const hook = interaction.getHook() as any;
+      await hook.reply({ embeds: [payload.embed], components: payload.components, ephemeral: true });
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       const errorView = buildErrorEmbed(`無法開啟派單面板：${message}`);
       await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
     }
-  }
-
-  private formatPanelText(
-    view: ReturnType<typeof buildModeSelectEmbed>,
-    buttons: ReturnType<typeof buildModeSelectActionRow>,
-  ): string {
-    return formatPanelText(view, buttons);
   }
 }

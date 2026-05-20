@@ -127,13 +127,13 @@ export class FiatOrderService {
         fulfillmentWarning: null,
       });
     } catch (e: any) {
-      if (e instanceof Error && e.message) {
-        return err(DomainError.invalidInput(e.message));
-      }
       this.log.error(
-        { guildId, userId, productId, orderNumber: paymentCode.orderNumber },
+        { guildId, userId, productId, orderNumber: paymentCode.orderNumber, error: e },
         'Failed to persist fiat order',
       );
+      if (e instanceof Error && e.message) {
+        return err(DomainError.persistenceFailure(`建立法幣訂單失敗：${e.message}`));
+      }
       return err(DomainError.persistenceFailure('建立法幣訂單失敗，請稍後再試'));
     }
   }
