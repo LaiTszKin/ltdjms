@@ -1,4 +1,4 @@
-import { eq, and, isNull, lte, gte, or, asc, gt, sql } from 'drizzle-orm';
+import { eq, and, isNull, lte, gte, or, asc, gt, lt, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { type FiatOrderRepository } from '../domain/fiat-order-repository.js';
 import { type FiatOrder, FiatOrderStatus } from '../domain/fiat-order.js';
@@ -251,7 +251,10 @@ export class DrizzleFiatOrderRepository implements FiatOrderRepository {
         and(
           eq(fiatOrderTable.status, FiatOrderStatus.PAID),
           isNull(fiatOrderTable.fulfilledAt),
-          isNull(fiatOrderTable.fulfillmentProcessingAt),
+          or(
+            isNull(fiatOrderTable.fulfillmentProcessingAt),
+            lt(fiatOrderTable.fulfillmentProcessingAt, sql`now() - interval '5 minutes'`),
+          ),
         ),
       )
       .orderBy(sql`${fiatOrderTable.paidAt} ASC NULLS LAST`, asc(fiatOrderTable.createdAt))
@@ -272,7 +275,10 @@ export class DrizzleFiatOrderRepository implements FiatOrderRepository {
           eq(fiatOrderTable.status, FiatOrderStatus.PENDING_PAYMENT),
           isNull(fiatOrderTable.paidAt),
           gte(fiatOrderTable.createdAt, createdAfter),
-          isNull(fiatOrderTable.reconciliationProcessingAt),
+          or(
+            isNull(fiatOrderTable.reconciliationProcessingAt),
+            lt(fiatOrderTable.reconciliationProcessingAt, sql`now() - interval '5 minutes'`),
+          ),
           or(
             isNull(fiatOrderTable.reconciliationNextAttemptAt),
             lte(fiatOrderTable.reconciliationNextAttemptAt, notBefore),
@@ -326,7 +332,10 @@ export class DrizzleFiatOrderRepository implements FiatOrderRepository {
         and(
           eq(fiatOrderTable.orderNumber, orderNumber),
           isNull(fiatOrderTable.fulfilledAt),
-          isNull(fiatOrderTable.fulfillmentProcessingAt),
+          or(
+            isNull(fiatOrderTable.fulfillmentProcessingAt),
+            lt(fiatOrderTable.fulfillmentProcessingAt, sql`now() - interval '5 minutes'`),
+          ),
         ),
       );
     return result.rowCount !== null && result.rowCount > 0;
@@ -352,7 +361,10 @@ export class DrizzleFiatOrderRepository implements FiatOrderRepository {
         and(
           eq(fiatOrderTable.orderNumber, orderNumber),
           isNull(fiatOrderTable.adminNotifiedAt),
-          isNull(fiatOrderTable.adminNotificationProcessingAt),
+          or(
+            isNull(fiatOrderTable.adminNotificationProcessingAt),
+            lt(fiatOrderTable.adminNotificationProcessingAt, sql`now() - interval '5 minutes'`),
+          ),
         ),
       );
     return result.rowCount !== null && result.rowCount > 0;
@@ -379,7 +391,10 @@ export class DrizzleFiatOrderRepository implements FiatOrderRepository {
           eq(fiatOrderTable.orderNumber, orderNumber),
           eq(fiatOrderTable.status, FiatOrderStatus.PENDING_PAYMENT),
           isNull(fiatOrderTable.paidAt),
-          isNull(fiatOrderTable.reconciliationProcessingAt),
+          or(
+            isNull(fiatOrderTable.reconciliationProcessingAt),
+            lt(fiatOrderTable.reconciliationProcessingAt, sql`now() - interval '5 minutes'`),
+          ),
           gt(
             sql`COALESCE(${fiatOrderTable.expireAt}, ${fiatOrderTable.createdAt} + INTERVAL '7 days')`,
             claimedAt,

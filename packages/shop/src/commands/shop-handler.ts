@@ -295,7 +295,8 @@ export class ShopCommandHandler {
     }
 
     // Build select menu options from all products on the current page
-    const options = page.products.map((product) => {
+    // Discord enforces a maximum of 25 options per select menu (P0-5)
+    const options = page.products.slice(0, 25).map((product) => {
       return new StringSelectMenuOptionBuilder()
         .setLabel(product.name.length > 100 ? product.name.substring(0, 97) + '...' : product.name)
         .setValue(String(product.id))
