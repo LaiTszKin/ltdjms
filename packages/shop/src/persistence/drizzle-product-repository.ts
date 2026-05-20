@@ -1,8 +1,7 @@
 import { eq, and, ilike, count, asc, sql } from 'drizzle-orm';;
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { type Product } from '../domain/product-types.js';
+import { type Product, type ProductRepository } from '../domain/product-types.js';
 import { product as productTable } from './schema.js';
-import type { ProductRepository } from '../di/shop-module.js';
 
 /**
  * Drizzle-based product repository used by shop services.

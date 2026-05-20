@@ -2,8 +2,7 @@ import { sql } from 'drizzle-orm';
 import { type NodePgDatabase, drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { type Pool } from 'pg';
-import pino from 'pino';
-import { type Logger } from 'pino';
+import pino, { type Logger } from 'pino';
 import { SchemaMigrationException } from './schema-migration-exception.js';
 
 /**
@@ -16,7 +15,7 @@ export async function runMigrations(
   migrationsDir: string,
   logger?: Logger,
 ): Promise<void> {
-  const log = logger ?? (pino({ level: 'silent' }) as Logger);
+  const log = logger ?? pino({ level: 'silent' });
   let lastError: Error | undefined;
 
   for (let attempt = 1; attempt <= 3; attempt++) {

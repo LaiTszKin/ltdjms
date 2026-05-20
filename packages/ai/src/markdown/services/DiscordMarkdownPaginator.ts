@@ -190,6 +190,7 @@ export class DiscordMarkdownPaginator {
     }
     // else: no open fence and fences are balanced → newFence stays null
 
-    return { closed: result.replace(/[ \t]+$/gm, ''), fence: newFence };
+    // 行尾空白清除已移至 pipeline 前端的 sanitize 階段（P3-10）
+    return { closed: result, fence: newFence };
   }
 }

@@ -3,6 +3,10 @@ import { join } from 'node:path';
 
 /**
  * Loads environment variables from a .env file.
+ * Uses synchronous readFileSync because this is called once at startup
+ * during configuration initialization, before any async operations begin.
+ * The blocking nature has no measurable performance impact in this context.
+ *
  * Supports:
  * - Lines starting with # as comments
  * - Quoted values (single or double quotes)

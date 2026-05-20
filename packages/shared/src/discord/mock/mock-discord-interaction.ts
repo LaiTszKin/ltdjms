@@ -8,6 +8,7 @@ import { type DiscordInteraction } from '../domain/discord-interaction.js';
 export class MockDiscordInteraction implements DiscordInteraction {
   private readonly _guildId: string;
   private readonly _userId: string;
+  private readonly _channelId: string | undefined;
   private readonly _ephemeral: boolean;
   private readonly _customId: string;
   private _isAdministrator: boolean;
@@ -21,16 +22,21 @@ export class MockDiscordInteraction implements DiscordInteraction {
   constructor(
     guildId: string,
     userId: string,
-    _channelId?: string,
+    channelId?: string,
     ephemeral = false,
     customId = '',
     isAdmin = false,
   ) {
     this._guildId = guildId;
     this._userId = userId;
+    this._channelId = channelId;
     this._ephemeral = ephemeral;
     this._customId = customId;
     this._isAdministrator = isAdmin;
+  }
+
+  getChannelId(): string | undefined {
+    return this._channelId;
   }
 
   getGuildId(): string {

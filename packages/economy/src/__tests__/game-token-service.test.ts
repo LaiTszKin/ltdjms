@@ -40,7 +40,6 @@ describe('GameTokenService', () => {
         get: vi.fn().mockResolvedValue(100),
         put: vi.fn(),
         invalidate: vi.fn(),
-        exists: vi.fn(),
       };
 
       const mockAccountRepo = {
@@ -68,11 +67,10 @@ describe('GameTokenService', () => {
         get: vi.fn().mockResolvedValue(null),
         put: vi.fn(),
         invalidate: vi.fn(),
-        exists: vi.fn(),
       };
 
       const mockAccountRepo = {
-        findByGuildIdAndUserId: vi.fn().mockResolvedValue({
+        findOrCreate: vi.fn().mockResolvedValue({
           guildId: 1,
           userId: 1,
           tokens: 50,
@@ -92,7 +90,7 @@ describe('GameTokenService', () => {
       const balance = await service.getBalance(1, 1);
 
       expect(balance).toBe(50);
-      expect(mockAccountRepo.findByGuildIdAndUserId).toHaveBeenCalledWith(1, 1);
+      expect(mockAccountRepo.findOrCreate).toHaveBeenCalledWith(1, 1);
       expect(mockCacheService.put).toHaveBeenCalledWith(
         'cache:gametoken:1:1',
         50,
@@ -100,16 +98,21 @@ describe('GameTokenService', () => {
       );
     });
 
-    it('should return 0 when account does not exist (no auto-create)', async () => {
+    it('should auto-create account when one does not exist', async () => {
       const mockCacheService: CacheService = {
         get: vi.fn().mockResolvedValue(null),
         put: vi.fn(),
         invalidate: vi.fn(),
-        exists: vi.fn(),
       };
 
       const mockAccountRepo = {
-        findByGuildIdAndUserId: vi.fn().mockResolvedValue(null),
+        findOrCreate: vi.fn().mockResolvedValue({
+          guildId: 1,
+          userId: 1,
+          tokens: 0,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }),
       };
 
       const service = new GameTokenService(
@@ -123,7 +126,7 @@ describe('GameTokenService', () => {
       const balance = await service.getBalance(1, 1);
 
       expect(balance).toBe(0);
-      expect(mockAccountRepo.findByGuildIdAndUserId).toHaveBeenCalledWith(1, 1);
+      expect(mockAccountRepo.findOrCreate).toHaveBeenCalledWith(1, 1);
     });
   });
 
@@ -133,7 +136,6 @@ describe('GameTokenService', () => {
         get: vi.fn(),
         put: vi.fn(),
         invalidate: vi.fn(),
-        exists: vi.fn(),
       };
 
       const eventPublisher = createMockEventPublisher();
@@ -240,7 +242,6 @@ describe('GameTokenService', () => {
         get: vi.fn().mockResolvedValue(100),
         put: vi.fn(),
         invalidate: vi.fn(),
-        exists: vi.fn(),
       };
 
       const service = new GameTokenService(
@@ -260,7 +261,6 @@ describe('GameTokenService', () => {
         get: vi.fn().mockResolvedValue(10),
         put: vi.fn(),
         invalidate: vi.fn(),
-        exists: vi.fn(),
       };
 
       const service = new GameTokenService(

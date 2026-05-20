@@ -114,7 +114,7 @@ export class DiceGame1Handler {
       '',
       DiceGameMessages.GAME_1_RESULT
         .replace('{dice}', diceDisplay)
-        .replace('{sum}', String(gameResult.diceRolls.reduce((a, b) => a + b, 0)))
+        .replace('{sum}', String(gameResult.diceRolls.reduce((a: number, b: number) => a + b, 0)))
         .replace('{reward}', rewardDisplay),
       '',
       `餘額變動：${String(gameResult.previousBalance)} → ${String(gameResult.newBalance)} ${currencyIcon}${currencyName}`,
@@ -122,8 +122,7 @@ export class DiceGame1Handler {
       `_${DiceGameMessages.GAME_1_DESCRIPTION
         .replace('{count}', String(tokenCount))
         .replace('{reward}', String(gameResult.totalReward))}_`,
-    ].join('
-');
+    ].join('\n');
 
     await interaction.reply(message);
   }

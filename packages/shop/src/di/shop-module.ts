@@ -8,7 +8,7 @@ import { DrizzleFiatOrderRepository } from '../persistence/drizzle-fiat-order-re
 import { DrizzleRedemptionCodeRepository } from '../persistence/drizzle-redemption-code-repository.js';
 import type { FiatOrderRepository } from '../domain/fiat-order-repository.js';
 import type { RedemptionCodeRepository } from '../domain/redemption-code-repository.js';
-import type { Product } from '../domain/product-types.js';
+import type { Product, ProductRepository } from '../domain/product-types.js';
 import type { FiatOrder } from '../domain/fiat-order.js';
 
 import { EcpayCvsPaymentService } from '../services/ecpay-cvs-payment.service.js';
@@ -39,17 +39,7 @@ import {
 // Third-party service interfaces expected by the shop module
 // ============================================================
 
-/** Product repository interface as used by shop services. */
-export interface ProductRepository {
-  findById(id: number): Promise<Product | null>;
-  countByGuildId(guildId: number): Promise<number>;
-  findByGuildIdPaginated(guildId: number, page: number, size: number): Promise<Product[]>;
-  countByGuildIdAndNameContaining(guildId: number, keyword: string): Promise<number>;
-  findByGuildIdAndNameContaining(guildId: number, keyword: string, page: number, size: number): Promise<Product[]>;
-  create(data: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Promise<Product>;
-  update(id: number, data: Partial<Omit<Product, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Product | null>;
-  delete(id: number): Promise<boolean>;
-}
+// ProductRepository is defined in domain/product-types.ts and imported above.
 
 /** Product reward service interface as used by shop services. */
 export interface ProductRewardService {

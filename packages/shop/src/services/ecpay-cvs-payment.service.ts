@@ -206,6 +206,10 @@ export class EcpayCvsPaymentService {
   }
 
   // Atomic counter for same-millisecond sequence numbers
+  // NOTE: In-memory static counter is safe under current single-process deployment.
+  // If the application needs to scale horizontally in the future, this must be
+  // replaced with a Redis atomic INCR or equivalent distributed sequence generator
+  // to guarantee uniqueness across processes.
   private static sequenceCounter = 0;
   private static lastTimestampMs = 0;
 

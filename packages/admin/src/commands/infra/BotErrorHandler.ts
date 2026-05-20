@@ -65,18 +65,10 @@ export class BotErrorHandler {
       return this.handleDomainError(error);
     }
 
-    // Check for DiscordAPIError (discord.js native error type)
-    if (error instanceof DiscordAPIError) {
-      const code = typeof error.code === 'number' ? error.code : Number(error.code);
-      const discordMsg = getDiscordErrorMessage(code);
-      if (discordMsg) {
-        return discordMsg;
-      }
-    }
-
-    // Fallback: check for DiscordAPIError-like objects
-    if (isDiscordApiError(error)) {
-      const discordMsg = getDiscordErrorMessage(error.code);
+    // 合併 DiscordAPIError 與 DiscordAPIError-like 物件的錯誤碼查找（P3-19）
+    const discordCode = extractDiscordErrorCode(error);
+    if (discordCode != null) {
+      const discordMsg = getDiscordErrorMessage(discordCode);
       if (discordMsg) {
         return discordMsg;
       }
@@ -105,14 +97,22 @@ export class BotErrorHandler {
 }
 
 /**
- * Type guard for Discord API error-like objects.
+ * Extracts a numeric Discord API error code from any error type.
+ * Handles both discord.js native DiscordAPIError and DiscordAPIError-like objects.
+ * Replaces the separate instanceof/isDiscordApiError checks (P3-19).
  */
-function isDiscordApiError(
-  err: unknown,
-): err is { code: number; message: string } {
+function extractDiscordErrorCode(err: unknown): number | null {
   if (err && typeof err === 'object') {
     const obj = err as Record<string, unknown>;
-    return typeof obj.code === 'number';
+    if (typeof obj.code === 'number') {
+      return obj.code;
+    }
+    if (obj.code != null) {
+      const parsed = Number(obj.code);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
   }
-  return false;
+  return null;
 }

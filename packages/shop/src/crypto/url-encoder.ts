@@ -10,6 +10,7 @@ export function javaUrlEncode(str: string): string {
     .replace(/'/g, '%27')
     .replace(/\(/g, '%28')
     .replace(/\)/g, '%29')
+    .replace(/\*/g, '%2A')
     .replace(/~/g, '%7E')
     // Java URLEncoder.encode encodes space as +, not %20
     .replace(/%20/g, '+');

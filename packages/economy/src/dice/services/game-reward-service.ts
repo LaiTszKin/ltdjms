@@ -49,6 +49,10 @@ export class GameRewardService {
       return account.balance;
     }
 
+    // Ensure account exists before applying reward, matching Java
+    // GameRewardService behavior (P0-2).
+    await this.accountRepository.findOrCreate(guildId, userId);
+
     // Apply reward (may need multiple adjustments due to MAX_ADJUSTMENT_AMOUNT).
     // adjustBalance already returns the updated account via RETURNING (P1-13),
     // so applyRewardToAccount returns the final balance, eliminating the

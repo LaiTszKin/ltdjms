@@ -56,13 +56,7 @@ export class GameTokenService {
   /**
    * Gets the current token balance for a member.
    * Uses cache (TTL 300s) - cache miss falls through to DB query.
-   * Returns 0 if no account exists (no auto-create, matching Java behavior).
-   *
-   * Design decision: does NOT auto-create a token account on balance query,
-   * mirroring the Java GameTokenService behaviour. Spec R4.1 originally
-   * required symmetry with the currency system, but the Java reference
-   * implementation also omits auto-create in getBalance, so this is kept
-   * as-is. Callers that need an account should use findOrCreate explicitly.
+   * Auto-creates the token account if it does not exist (P3-16).
    */
   async getBalance(guildId: number, userId: number): Promise<number> {
     const cacheKey = this.cacheKeyGenerator.gameTokenKey(String(guildId), String(userId));
@@ -72,9 +66,9 @@ export class GameTokenService {
       return cachedBalance;
     }
 
-    // Cache miss or no cache - query DB without auto-create
-    const account = await this.accountRepository.findByGuildIdAndUserId(guildId, userId);
-    const balance = account?.tokens ?? 0;
+    // Cache miss or no cache - query DB with auto-create (P3-16)
+    const account = await this.accountRepository.findOrCreate(guildId, userId);
+    const balance = account.tokens;
     await this.cacheService.put(cacheKey, balance, GameTokenService.TOKEN_TTL_SECONDS);
     return balance;
   }
@@ -189,6 +183,7 @@ export class GameTokenService {
   /**
    * Adjusts tokens (deducts if negative, adds if positive).
    * Deduct path that throws on insufficient - use tryAdjustTokens for Result-based.
+   * Records a transaction after successful deduction (P1-9).
    */
   async deductTokens(
     guildId: number,
@@ -207,6 +202,17 @@ export class GameTokenService {
 
     // Update cache and publish event
     await this.updateCacheAndPublishEvent(guildId, userId, updated.tokens);
+
+    // Record transaction after successful deduction (P1-9), matching
+    // the pattern used by tryDeductTokens (P1-10).
+    await this.transactionService.recordTransaction(
+      guildId,
+      userId,
+      -tokens,
+      updated.tokens,
+      GameTokenTransactionSource.GAME_PLAY,
+      null,
+    );
 
     return updated;
   }

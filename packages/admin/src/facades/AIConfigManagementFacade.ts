@@ -116,6 +116,9 @@ export class AIConfigManagementFacade {
    * TODO(P2-8): Once AIAgentChannelConfigService.setAgentEnabled supports a mode
    * parameter (chat/agent/hybrid), update the handler to collect the mode choice
    * from the admin and pass it here instead of the hardcoded 'default'.
+   * TODO(P2-7): 目前 _mode 被忽略；當 setAgentEnabled 支援 mode 參數時，
+   * 將 `_mode` 傳入 service call：
+   * return this.agentConfigService.setAgentEnabled(guildId, channelId, true, _mode);
    */
   async enableAgent(
     guildId: string,

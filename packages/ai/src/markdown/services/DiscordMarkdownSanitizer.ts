@@ -38,6 +38,9 @@ export class DiscordMarkdownSanitizer {
     // 4. Convert tables to ```text code blocks
     result = this.convertTablesToCodeBlocks(result);
 
+    // 5. Remove trailing whitespace on each line（P3-10：移至 pipeline 前端，僅執行一次）
+    result = result.replace(/[ \t]+$/gm, '');
+
     // Restore code blocks
     result = this.restoreCodeBlocks(result, codeBlocks);
 
