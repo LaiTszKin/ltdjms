@@ -51,6 +51,16 @@ node_modules/
 # pnpm
 .pnpm-store/
 
+# TypeScript builds
+*.tsbuildinfo
+dist/
+
+# Playwright MCP
+.playwright-mcp/
+
+# Vite
+.vite/
+
 # backups
 *.backups
 *.backup
