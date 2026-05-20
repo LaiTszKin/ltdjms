@@ -139,7 +139,7 @@ export interface DiceGame2Config {
   readonly updatedAt: Date;
 }
 
-/** Result of a dice game 1 play. */
+/** Result of a dice game 1 play (currency display info is resolved by the handler). */
 export interface DiceGame1Result {
   readonly guildId: number;
   readonly userId: number;
@@ -147,11 +147,9 @@ export interface DiceGame1Result {
   readonly totalReward: number;
   readonly previousBalance: number;
   readonly newBalance: number;
-  readonly currencyName: string;
-  readonly currencyIcon: string;
 }
 
-/** Result of a dice game 2 play. */
+/** Result of a dice game 2 play (currency display info is resolved by the handler). */
 export interface DiceGame2Result {
   readonly guildId: number;
   readonly userId: number;
@@ -164,8 +162,6 @@ export interface DiceGame2Result {
   readonly straightReward: number;
   readonly nonStraightReward: number;
   readonly tripleReward: number;
-  readonly currencyName: string;
-  readonly currencyIcon: string;
 }
 
 // ============================================================
@@ -221,12 +217,22 @@ export const DEFAULT_CURRENCY_NAME = 'Coins';
 /** Default currency icon. */
 export const DEFAULT_CURRENCY_ICON = '🪙';
 
-/** Maximum amount that can be adjusted in a single operation. Matches Java Long.MAX_VALUE. */
+/**
+ * Maximum amount that can be adjusted in a single operation.
+ * Uses Number.MAX_SAFE_INTEGER (9,007,199,254,740,991) rather than Java's
+ * Long.MAX_VALUE (9,223,372,036,854,775,807) because JS number cannot precisely
+ * represent values beyond MAX_SAFE_INTEGER. Adjustments exceeding this limit
+ * are split into multiple operations by the caller.
+ */
 export const MAX_ADJUSTMENT_AMOUNT = Number.MAX_SAFE_INTEGER;
 
 /**
  * Validates that an adjustment amount does not exceed the maximum allowed value.
  * Used by BalanceAdjustmentService for spec R1.4 compliance.
+ *
+ * Intentionally exported for external consumers (e.g., admin commands) that
+ * need pre-flight validation before calling the service. Currently consumed
+ * by BalanceAdjustmentService.tryAdjustBalance().
  */
 export function isValidAdjustmentAmount(amount: number): boolean {
   return Math.abs(amount) <= MAX_ADJUSTMENT_AMOUNT;

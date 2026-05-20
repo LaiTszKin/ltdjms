@@ -181,6 +181,11 @@ export class GameSettingsHandler extends BaseAdminHandler {
       );
 
       // Add the 6th field in a separate modal call stack
+      // TODO(P1-34): Spec R4.3 requires six individual dice face multipliers
+      // (one per dice value 1-6). DiceGame2Config currently only has four
+      // multiplier fields (straightMultiplier, baseMultiplier, tripleLowBonus,
+      // tripleHighBonus). When DiceGame2Config is extended with per-face multipliers,
+      // add the corresponding modal fields here.
       modal.addComponents(
         new ActionRowBuilder<TextInputBuilder>().addComponents(
           new TextInputBuilder()

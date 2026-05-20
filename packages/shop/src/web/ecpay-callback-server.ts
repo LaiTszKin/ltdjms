@@ -45,25 +45,17 @@ export class EcpayCallbackHttpServer {
 
     this.app = express();
 
-    // Body parsers with 64KB limit (applied globally except for the raw callback route)
-    this.app.use(
-      express.json({
-        limit: '64kb',
-        type: ['application/json', 'text/plain'],
-      }),
-    );
-    this.app.use(express.urlencoded({ extended: true, limit: '64kb' }));
-
     // Callback route - POST only
-    // express.json/urlencoded already consume bodies for non-raw content types,
-    // so install express.raw ONLY on the callback route to avoid consuming all content types.
+    // express.raw is installed ONLY on the callback route via route-specific middleware.
+    // Global express.json() / express.urlencoded() are intentionally omitted to prevent
+    // premature body consumption that would make express.raw() receive an empty body.
     this.app.post(callbackPath, express.raw({ type: '*/*', limit: '64kb' }), async (req, res) => {
       try {
         const contentType = req.headers['content-type'] ?? null;
         const rawBody = req.body instanceof Buffer
           ? req.body.toString('utf-8')
           : JSON.stringify(req.body);
-        const result = await this.callbackService.handleCallback(rawBody, contentType, rawBody);
+        const result = await this.callbackService.handleCallback(rawBody, contentType);
         res.status(result.httpStatus).send(result.responseBody);
       } catch (e) {
         this.log.error({ error: e }, 'ECPay callback handler error');

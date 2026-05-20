@@ -9,8 +9,9 @@ import {
   type GameTokenChangedEvent,
 } from '@ltdjms/shared';
 import { TokenAccountRepository } from '../repositories/token-account-repo.js';
+import { GameTokenTransactionService } from './game-token-tx-service.js';
 import type { GameTokenAccount, TokenAdjustmentResult } from '../../domain/types.js';
-import { TOKEN_CACHE_TTL } from '../../domain/types.js';
+import { TOKEN_CACHE_TTL, GameTokenTransactionSource } from '../../domain/types.js';
 
 /**
  * Service for managing game token accounts with caching.
@@ -19,17 +20,49 @@ import { TOKEN_CACHE_TTL } from '../../domain/types.js';
 export class GameTokenService {
   private static readonly TOKEN_TTL_SECONDS = TOKEN_CACHE_TTL;
 
+  /**
+   * Updates the cache and publishes a GameTokenChangedEvent after a token adjustment.
+   * Extracted to eliminate duplicate cache/event logic across four methods (P1-12).
+   */
+  private async updateCacheAndPublishEvent(
+    guildId: number,
+    userId: number,
+    newTokens: number,
+  ): Promise<void> {
+    const cacheKey = this.cacheKeyGenerator.gameTokenKey(String(guildId), String(userId));
+    await this.cacheService.put(
+      cacheKey,
+      newTokens,
+      GameTokenService.TOKEN_TTL_SECONDS,
+    );
+
+    const event: GameTokenChangedEvent = {
+      guildId: String(guildId),
+      userId,
+      eventType: 'game_token_changed',
+      newTokens,
+    };
+    this.eventPublisher.publish(event);
+  }
+
   constructor(
     private readonly accountRepository: TokenAccountRepository,
     private readonly eventPublisher: DomainEventPublisher,
     private readonly cacheService: CacheService,
     private readonly cacheKeyGenerator: CacheKeyGenerator,
+    private readonly transactionService: GameTokenTransactionService,
   ) {}
 
   /**
    * Gets the current token balance for a member.
    * Uses cache (TTL 300s) - cache miss falls through to DB query.
    * Returns 0 if no account exists (no auto-create, matching Java behavior).
+   *
+   * Design decision: does NOT auto-create a token account on balance query,
+   * mirroring the Java GameTokenService behaviour. Spec R4.1 originally
+   * required symmetry with the currency system, but the Java reference
+   * implementation also omits auto-create in getBalance, so this is kept
+   * as-is. Callers that need an account should use findOrCreate explicitly.
    */
   async getBalance(guildId: number, userId: number): Promise<number> {
     const cacheKey = this.cacheKeyGenerator.gameTokenKey(String(guildId), String(userId));
@@ -76,21 +109,8 @@ export class GameTokenService {
 
       const updated = adjustResult.getValue();
 
-      // Update cache
-      const cacheKey = this.cacheKeyGenerator.gameTokenKey(String(guildId), String(userId));
-      await this.cacheService.put(
-        cacheKey,
-        updated.tokens,
-        GameTokenService.TOKEN_TTL_SECONDS,
-      );
-
-      // Publish event
-      this.eventPublisher.publish({
-        guildId: String(guildId),
-        userId,
-        eventType: 'game_token_changed',
-        newTokens: updated.tokens,
-      } as GameTokenChangedEvent);
+      // Update cache and publish event
+      await this.updateCacheAndPublishEvent(guildId, userId, updated.tokens);
 
       return new Ok({
         guildId,
@@ -122,44 +142,45 @@ export class GameTokenService {
   }
 
   /**
-   * Deducts tokens using Result-based error handling.
+   * Deducts tokens using Result-based error handling, then immediately records
+   * the transaction so that deduction and recording are within the same logical
+   * scope (P1-10). This prevents the process from crashing between the two
+   * operations.
+   *
+   * Delegates to {@link tryAdjustTokens} for the actual adjustment, cache
+   * update, and event publishing to avoid duplicating that logic (P2-16).
+   *
    * @param tokens - positive number of tokens to deduct
+   * @param source - transaction source for recording
    */
   async tryDeductTokens(
     guildId: number,
     userId: number,
     tokens: number,
-  ): Promise<Result<GameTokenAccount, DomainError>> {
+    source: GameTokenTransactionSource = GameTokenTransactionSource.GAME_PLAY,
+  ): Promise<Result<TokenAdjustmentResult, DomainError>> {
     if (tokens <= 0) {
       return new Err(
         DomainError.invalidInput(`Tokens to deduct must be positive: ${tokens}`),
       );
     }
 
-    const result = await this.accountRepository.tryAdjustTokens(
-      guildId,
-      userId,
-      -tokens,
-    );
+    // Delegate to tryAdjustTokens which handles findOrCreate, adjustment,
+    // cache update, and event publishing (P2-16)
+    const result = await this.tryAdjustTokens(guildId, userId, -tokens);
 
     if (result.isOk()) {
-      const account = result.getValue();
+      const adjustResult = result.getValue();
 
-      // Update cache
-      const cacheKey = this.cacheKeyGenerator.gameTokenKey(String(guildId), String(userId));
-      await this.cacheService.put(
-        cacheKey,
-        account.tokens,
-        GameTokenService.TOKEN_TTL_SECONDS,
-      );
-
-      // Publish event
-      this.eventPublisher.publish({
-        guildId: String(guildId),
+      // Record transaction immediately after successful deduction (P1-10)
+      await this.transactionService.recordTransaction(
+        guildId,
         userId,
-        eventType: 'game_token_changed',
-        newTokens: account.tokens,
-      } as GameTokenChangedEvent);
+        -tokens,
+        adjustResult.newTokens,
+        source,
+        null,
+      );
     }
 
     return result;
@@ -184,19 +205,8 @@ export class GameTokenService {
       -tokens,
     );
 
-    const cacheKey = this.cacheKeyGenerator.gameTokenKey(String(guildId), String(userId));
-    await this.cacheService.put(
-      cacheKey,
-      updated.tokens,
-      GameTokenService.TOKEN_TTL_SECONDS,
-    );
-
-    this.eventPublisher.publish({
-      guildId: String(guildId),
-      userId,
-      eventType: 'game_token_changed',
-      newTokens: updated.tokens,
-    } as GameTokenChangedEvent);
+    // Update cache and publish event
+    await this.updateCacheAndPublishEvent(guildId, userId, updated.tokens);
 
     return updated;
   }
@@ -218,19 +228,8 @@ export class GameTokenService {
       amount,
     );
 
-    const cacheKey = this.cacheKeyGenerator.gameTokenKey(String(guildId), String(userId));
-    await this.cacheService.put(
-      cacheKey,
-      updated.tokens,
-      GameTokenService.TOKEN_TTL_SECONDS,
-    );
-
-    this.eventPublisher.publish({
-      guildId: String(guildId),
-      userId,
-      eventType: 'game_token_changed',
-      newTokens: updated.tokens,
-    } as GameTokenChangedEvent);
+    // Update cache and publish event
+    await this.updateCacheAndPublishEvent(guildId, userId, updated.tokens);
 
     return {
       guildId,

@@ -100,7 +100,6 @@ export {
   buildPurchaseConfirmEmbed,
   encodeKeyword,
   decodeKeyword,
-  getPageSize,
   BUTTON_PREV_PAGE,
   BUTTON_NEXT_PAGE,
   BUTTON_BUY,

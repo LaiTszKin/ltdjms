@@ -179,6 +179,7 @@ export class AIChatMentionListener {
   ): Promise<void> {
     const tracker = new ReasoningMessageTracker();
     const pendingContent: string[] = [];
+    let completionProcessed = false;
 
     // Send initial "thinking" message
     const thinkingMsg = await message.reply(':thought_balloon: AI 正在思考...');
@@ -218,11 +219,9 @@ export class AIChatMentionListener {
             break;
 
           case StreamChunkType.TOOL_INTENT:
-            // TODO (P2-27): TOOL_INTENT is not currently emitted by the streaming service.
-            // It will be emitted once the agent tool execution loop is fully wired
-            // (see P0-7: LangChainAIChatService tool_call_chunks handling).
+            // Show tool execution status to the user as a compact note
             if (chunk) {
-              this.sendToChannel(message, chunk);
+              this.sendToChannel(message, `-# ${chunk}`);
             }
             break;
 
@@ -233,24 +232,34 @@ export class AIChatMentionListener {
             break;
         }
 
-        if (isComplete) {
+        if (isComplete && !completionProcessed) {
+          completionProcessed = true;
+
           // Delete reasoning messages first, then edit thinking message with final content
           tracker.deleteReasoningMessages().then(() => {
-            const fullContent = pendingContent.join('');
-
-            if (!fullContent) {
+            if (pendingContent.length === 0) {
               thinkingMsg.edit(':question: AI 沒有產生回應').catch(() => {});
               return;
             }
 
-            const pages = this.splitter.split(fullContent);
-            // P2-41: Fallback for empty split result with non-empty content
-            if (pages.length === 0 && fullContent) {
-              thinkingMsg.edit(fullContent).catch(() => {});
+            if (this.streamingBypassValidation) {
+              // Content was not pre-paginated — split with MessageSplitter
+              const fullContent = pendingContent.join('');
+              const pages = this.splitter.split(fullContent);
+              // P2-41: Fallback for empty split result with non-empty content
+              if (pages.length === 0 && fullContent) {
+                thinkingMsg.edit(fullContent).catch(() => {});
+              } else {
+                thinkingMsg.edit(pages[0]).catch(() => {});
+                for (let i = 1; i < pages.length; i++) {
+                  this.sendToChannel(message, pages[i]);
+                }
+              }
             } else {
-              thinkingMsg.edit(pages[0]).catch(() => {});
-              for (let i = 1; i < pages.length; i++) {
-                this.sendToChannel(message, pages[i]);
+              // Content already paginated by markdown validation pipeline
+              thinkingMsg.edit(pendingContent[0]).catch(() => {});
+              for (let i = 1; i < pendingContent.length; i++) {
+                this.sendToChannel(message, pendingContent[i]);
               }
             }
           });

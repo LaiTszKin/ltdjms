@@ -72,6 +72,9 @@ export const DiceGameMessages = {
   TOKEN_COUNT_TOO_LOW: '代幣數量低於最低限制（{min}）',
   TOKEN_COUNT_TOO_HIGH: '代幣數量超過最高限制（{max}）',
   INVALID_OPTION: '指令參數無效',
+  INSUFFICIENT_BALANCE: '餘額不足',
+  OVERFLOW_ERROR: '操作導致數值溢位，請聯絡管理員',
+  INVALID_CURRENCY_CONFIG: '貨幣設定無效',
 } as const;
 
 export type DiceGameMessagesType = typeof DiceGameMessages;

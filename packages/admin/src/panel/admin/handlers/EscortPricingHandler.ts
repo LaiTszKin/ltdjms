@@ -1,6 +1,8 @@
 import {
   type DiscordInteraction,
   type DiscordContext,
+  type DomainEventPublisher,
+  type EscortPricingChangedEvent,
 } from '@ltdjms/shared';
 import {
   EmbedBuilder,
@@ -8,6 +10,8 @@ import {
   TextInputBuilder,
   TextInputStyle,
   ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
 } from 'discord.js';
 import { AdminPanelSessionManager } from '../../../session/AdminPanelSessionManager.js';
 import { AdminPanelViewState } from '../../../session/types.js';
@@ -29,6 +33,7 @@ export class EscortPricingHandler extends BaseAdminHandler {
     sessionManager: AdminPanelSessionManager,
     private readonly pricingService: EscortOptionPricingService,
     private readonly modalFactory: AdminPanelModalFactory,
+    private readonly eventPublisher: DomainEventPublisher,
     errorHandler: BotErrorHandler,
   ) {
     super(sessionManager, errorHandler);
@@ -66,9 +71,18 @@ export class EscortPricingHandler extends BaseAdminHandler {
       return;
     }
 
-    // Handle reset confirmation
+    // Handle reset confirmation dialog
     if (fullCustomId.startsWith('admin_escortprice_reset_')) {
       const optionCode = fullCustomId.replace('admin_escortprice_reset_', '');
+      if (optionCode) {
+        await this.showResetConfirmation(interaction, guildId, optionCode);
+      }
+      return;
+    }
+
+    // Handle confirmed reset execution
+    if (fullCustomId.startsWith('admin_escortprice_confirm_reset_')) {
+      const optionCode = fullCustomId.replace('admin_escortprice_confirm_reset_', '');
       if (optionCode) {
         await this.handleResetPrice(interaction, guildId, userId, optionCode);
       }
@@ -169,6 +183,13 @@ export class EscortPricingHandler extends BaseAdminHandler {
 
     if (result.isOk()) {
       const updated = result.getValue();
+      this.eventPublisher.publish({
+        eventType: 'escort_pricing_changed',
+        guildId,
+        optionCode,
+        newPrice: price,
+      } as EscortPricingChangedEvent);
+
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.escortPricingTitle)
         .setDescription(
@@ -183,6 +204,47 @@ export class EscortPricingHandler extends BaseAdminHandler {
     }
   }
 
+  private async showResetConfirmation(
+    interaction: DiscordInteraction,
+    guildId: string,
+    optionCode: string,
+  ): Promise<void> {
+    const pricesResult = await this.pricingService.listOptionPrices(Number(guildId));
+    let optionName = optionCode;
+
+    if (pricesResult.isOk()) {
+      const prices = pricesResult.getValue();
+      const found = prices.find((p) => p.optionCode === optionCode);
+      if (found) {
+        optionName = `${found.option.type} - ${found.option.target}`;
+      }
+    }
+
+    const embed = new EmbedBuilder()
+      .setTitle(ZhTwStrings.escortPricingTitle)
+      .setDescription(
+        ZhTwStrings.escortPricingResetConfirm.replace('{name}', optionName),
+      )
+      .setColor(Colors.WARNING);
+
+    const confirmBtn = new ButtonBuilder()
+      .setCustomId('admin_escortprice_confirm_reset_' + optionCode)
+      .setLabel('確認重設')
+      .setStyle(ButtonStyle.Danger);
+
+    const cancelBtn = new ButtonBuilder()
+      .setCustomId('admin_escortprice_back')
+      .setLabel('取消')
+      .setStyle(ButtonStyle.Secondary);
+
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(confirmBtn, cancelBtn);
+
+    const raw = interaction.getHook() as {
+      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }) => Promise<void>;
+    };
+    await raw.editReply({ embeds: [embed], components: [row] });
+  }
+
   private async handleResetPrice(
     interaction: DiscordInteraction,
     guildId: string,
@@ -192,6 +254,13 @@ export class EscortPricingHandler extends BaseAdminHandler {
     const result = await this.pricingService.resetOptionPrice(Number(guildId), optionCode);
 
     if (result.isOk()) {
+      this.eventPublisher.publish({
+        eventType: 'escort_pricing_changed',
+        guildId,
+        optionCode,
+        newPrice: 0,
+      } as EscortPricingChangedEvent);
+
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.escortPricingTitle)
         .setDescription(

@@ -1,5 +1,4 @@
-import { container, TOKENS } from '@ltdjms/shared';
-import type { CacheService, CacheKeyGenerator, DomainEventPublisher } from '@ltdjms/shared';
+import { container, TOKENS, type CacheService, type CacheKeyGenerator, type DomainEventPublisher } from '@ltdjms/shared';
 
 // Repositories
 import { CurrencyAccountRepository } from '../currency/repositories/currency-account-repo.js';
@@ -130,6 +129,7 @@ export function configureEconomyContainer(): void {
     eventPublisher,
     cacheService,
     cacheKeyGenerator,
+    gameTokenTxService,
   );
   container.registerInstance(ECONOMY_TOKENS.GameTokenService, gameTokenService);
 
@@ -168,7 +168,6 @@ export function configureEconomyContainer(): void {
     diceGame1Service,
     diceConfigRepo,
     gameTokenService,
-    gameTokenTxService,
     currencyConfigRepo,
   );
   container.registerInstance(ECONOMY_TOKENS.DiceGame1Handler, diceGame1Handler);
@@ -177,15 +176,14 @@ export function configureEconomyContainer(): void {
     diceGame2Service,
     diceConfigRepo,
     gameTokenService,
-    gameTokenTxService,
     currencyConfigRepo,
   );
   container.registerInstance(ECONOMY_TOKENS.DiceGame2Handler, diceGame2Handler);
 
-  const diceGame1ConfigHandler = new DiceGame1ConfigHandler(diceConfigRepo);
+  const diceGame1ConfigHandler = new DiceGame1ConfigHandler(diceConfigRepo, eventPublisher);
   container.registerInstance(ECONOMY_TOKENS.DiceGame1ConfigHandler, diceGame1ConfigHandler);
 
-  const diceGame2ConfigHandler = new DiceGame2ConfigHandler(diceConfigRepo);
+  const diceGame2ConfigHandler = new DiceGame2ConfigHandler(diceConfigRepo, eventPublisher);
   container.registerInstance(ECONOMY_TOKENS.DiceGame2ConfigHandler, diceGame2ConfigHandler);
 
   const gameTokenAdjustHandler = new GameTokenAdjustHandler(gameTokenService, gameTokenTxService);

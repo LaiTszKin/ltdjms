@@ -2,7 +2,6 @@ import {
   StringSelectMenuBuilder,
   type StringSelectMenuOptionBuilder,
   ActionRowBuilder,
-  type StringSelectMenuComponent,
 } from 'discord.js';
 
 /**

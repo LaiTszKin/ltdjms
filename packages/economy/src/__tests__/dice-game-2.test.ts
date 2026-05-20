@@ -1,10 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { DiceGame2Service } from '../dice/services/dice-game-2-service.js';
 import type { DiceGame2Config } from '../domain/types.js';
-import type { DiceConfigRepository } from '../dice/repositories/dice-config-repo.js';
-import type { GameTokenService } from '../token/services/game-token-service.js';
-import type { GameTokenTransactionService } from '../token/services/game-token-tx-service.js';
-import type { GameRewardService } from '../dice/services/game-reward-service.js';
+import { GameRewardService } from '../dice/services/game-reward-service.js';
 
 const defaultConfig: DiceGame2Config = {
   guildId: 1,
@@ -21,37 +18,11 @@ const defaultConfig: DiceGame2Config = {
 describe('DiceGame2Service - analyzeRolls', () => {
   const noopRandom = { nextInt: () => 0 };
 
-  const mockDiceConfigRepo = {
-    findDice1Config: vi.fn(),
-    upsertDice1Config: vi.fn(),
-    deleteDice1Config: vi.fn(),
-    findDice2Config: vi.fn(),
-    upsertDice2Config: vi.fn(),
-    deleteDice2Config: vi.fn(),
-  } as unknown as DiceConfigRepository;
-
-  const mockGameTokenService = {
-    getBalance: vi.fn(),
-    tryAdjustTokens: vi.fn(),
-    hasEnoughTokens: vi.fn(),
-    tryDeductTokens: vi.fn(),
-    deductTokens: vi.fn(),
-    adjustTokens: vi.fn(),
-  } as unknown as GameTokenService;
-
-  const mockGameTokenTxService = {
-    getTransactionPage: vi.fn(),
-    recordTransaction: vi.fn(),
-  } as unknown as GameTokenTransactionService;
-
   const mockGameRewardService = {
     creditReward: vi.fn(),
   } as unknown as GameRewardService;
 
   const service = new DiceGame2Service(
-    mockDiceConfigRepo,
-    mockGameTokenService,
-    mockGameTokenTxService,
     mockGameRewardService,
     noopRandom,
   );
@@ -81,14 +52,22 @@ describe('DiceGame2Service - analyzeRolls', () => {
       expect(analysis.straightSegments).toHaveLength(0);
     });
 
-    it('should detect multiple straight segments', () => {
-      // [1, 2, 3, 2, 4, 5, 6]
+    it('should detect a straight in unsorted input', () => {
+      // [3, 5, 1, 2, 4, 6] sorted -> [1, 2, 3, 4, 5, 6] is a straight of length 6
+      const rolls = [3, 5, 1, 2, 4, 6];
+      const analysis = service.analyzeRolls(rolls, defaultConfig);
+
+      expect(analysis.straightSegments).toHaveLength(1);
+      expect(analysis.straightSegments[0]).toEqual([1, 2, 3, 4, 5, 6]);
+    });
+
+    it('should detect straight in input with duplicates', () => {
+      // [1, 2, 3, 2, 4, 5, 6] sorted -> [1, 2, 2, 3, 4, 5, 6], unique -> [1, 2, 3, 4, 5, 6]
       const rolls = [1, 2, 3, 2, 4, 5, 6];
       const analysis = service.analyzeRolls(rolls, defaultConfig);
 
-      expect(analysis.straightSegments).toHaveLength(2);
-      expect(analysis.straightSegments[0]).toEqual([1, 2, 3]);
-      expect(analysis.straightSegments[1]).toEqual([4, 5, 6]);
+      expect(analysis.straightSegments).toHaveLength(1);
+      expect(analysis.straightSegments[0]).toEqual([1, 2, 3, 4, 5, 6]);
     });
   });
 
@@ -152,18 +131,14 @@ describe('DiceGame2Service - analyzeRolls', () => {
     });
 
     it('should not use straight-marked dice in triples', () => {
-      // The triple at positions 2,3,4 overlaps with the start of a straight
-      // [5, 5, 5, 2, 3, 4]
-      // Wait, 5,5,5 is a triple (positions 0,1,2)
-      // Then 2,3,4 is a straight (positions 3,4,5)
-      // No overlap
-      const rolls = [5, 5, 5, 2, 3, 4];
+      // [2, 2, 2] = triple, [4, 5, 6] = straight (disjoint values)
+      const rolls = [2, 2, 2, 4, 5, 6];
       const analysis = service.analyzeRolls(rolls, defaultConfig);
 
       expect(analysis.tripleSegments).toHaveLength(1);
       expect(analysis.straightSegments).toHaveLength(1);
-      expect(analysis.tripleSegments[0]).toEqual([5, 5, 5]);
-      expect(analysis.straightSegments[0]).toEqual([2, 3, 4]);
+      expect(analysis.tripleSegments[0]).toEqual([2, 2, 2]);
+      expect(analysis.straightSegments[0]).toEqual([4, 5, 6]);
     });
   });
 
@@ -196,17 +171,17 @@ describe('DiceGame2Service - analyzeRolls', () => {
     });
 
     it('should calculate base reward for non-straight/non-triple dice', () => {
-      // Dice: [1, 2, 4, 6, 3]
-      // No straights (max consecutive is 1,2 then breaks)
+      // Dice: [1, 2, 4, 6, 8]
+      // Sorted: [1, 2, 4, 6, 8] - max consecutive length is 2 ([1,2])
       // No triples (no 3 same values)
-      // Non-straight sum = 1+2+4+6+3 = 16, reward = 16 * 20000 = 320000
-      const rolls = [1, 2, 4, 6, 3];
+      // Non-straight sum = 1+2+4+6+8 = 21, reward = 21 * 20000 = 420000
+      const rolls = [1, 2, 4, 6, 8];
       const analysis = service.analyzeRolls(rolls, defaultConfig);
 
       expect(analysis.straightSegments).toHaveLength(0);
       expect(analysis.tripleSegments).toHaveLength(0);
-      expect(analysis.nonStraightReward).toBe(320000);
-      expect(analysis.totalReward).toBe(320000);
+      expect(analysis.nonStraightReward).toBe(420000);
+      expect(analysis.totalReward).toBe(420000);
     });
 
     it('should calculate combined reward correctly', () => {

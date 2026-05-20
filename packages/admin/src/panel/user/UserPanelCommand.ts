@@ -73,8 +73,23 @@ export class UserPanelCommand implements CommandHandler {
 
     // Use the raw discord.js interaction to send embed with components
     const raw = interaction.getHook() as {
-      reply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }) => Promise<void>;
+      reply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }) => Promise<unknown>;
+      fetchReply: () => Promise<{ channelId: string; id: string }>;
     };
     await raw.reply({ embeds: [embed], components: [row] });
+
+    // Store channelId and messageId for real-time push updates via listeners
+    try {
+      const replyMsg = await raw.fetchReply();
+      if (replyMsg && 'channelId' in replyMsg && 'id' in replyMsg) {
+        const session = this.sessionManager.getSession(guildId, userId);
+        if (session) {
+          session.channelId = String(replyMsg.channelId);
+          session.messageId = String(replyMsg.id);
+        }
+      }
+    } catch {
+      // Non-critical: push updates will not be available but the panel still works
+    }
   }
 }

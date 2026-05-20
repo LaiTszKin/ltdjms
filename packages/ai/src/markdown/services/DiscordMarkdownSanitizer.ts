@@ -30,7 +30,9 @@ export class DiscordMarkdownSanitizer {
     // 3. Flatten nested blockquotes (e.g. ">> > text" → "> text")
     result = result.replace(/^(?:\s*>\s*)+/gm, (match) => {
       // Collapse multiple > levels into single level
-      return '> ' + match.replace(/^(?:\s*>\s*)+/, '').trimStart();
+      const content = match.replace(/^(?:\s*>\s*)+/, '').trimStart();
+      if (!content) return '>';
+      return '> ' + content;
     });
 
     // 4. Convert tables to ```text code blocks
@@ -62,73 +64,55 @@ export class DiscordMarkdownSanitizer {
   /**
    * Converts Markdown tables to ```text code blocks.
    * Detects tables by header separator line pattern.
+   * Two-phase processing: first scan to identify table regions, then build result.
    */
   private convertTablesToCodeBlocks(text: string): string {
     const lines = text.split('\n');
-    const result: string[] = [];
-    let inTable = false;
-    let tableLines: string[] = [];
-    let tableStartIndex = -1;
-
     const TABLE_SEPARATOR = /^\s*\|?\s*[:\-]+(?:\s*\|\s*[:\-]+)+\s*\|?\s*$/;
 
-    for (let i = 0; i < lines.length; i++) {
+    // Phase 1: Scan for table regions (ranges of line indices [start, end))
+    const tableRegions: Array<{ start: number; end: number }> = [];
+    let i = 0;
+    while (i < lines.length) {
       const line = lines[i];
-
-      // Check if this is a table separator line
       if (TABLE_SEPARATOR.test(line)) {
-        if (!inTable) {
-          inTable = true;
-          tableLines = [];
+        // Table starts at the previous line (header) or this line if at index 0
+        const start = i > 0 ? i - 1 : i;
+        let end = i + 1; // end is exclusive
 
-          // Include the previous line as table header
-          if (i > 0) {
-            tableLines.push(lines[i - 1]);
-            // Remove the header line from result
-            if (result.length > 0) {
-              let popped = result.pop();
-              // Skip if it's already a code block marker
-              if (popped && (popped.startsWith('```') || popped.startsWith('~~~'))) {
-                result.push(popped);
-                tableLines = [];
-                inTable = false;
-                result.push(line);
-                continue;
-              }
-            }
+        // Scan forward for table rows (lines starting with | or containing |)
+        i++;
+        while (i < lines.length) {
+          const nextLine = lines[i];
+          if (nextLine.trimStart().startsWith('|') || nextLine.includes('|')) {
+            end = i + 1;
+            i++;
+          } else {
+            break;
           }
-
-          tableLines.push(line);
-          tableStartIndex = result.length;
-        } else {
-          tableLines.push(line);
         }
-        continue;
+        tableRegions.push({ start, end });
+      } else {
+        i++;
       }
-
-      if (inTable) {
-        // Check if line is a table row (starts with |)
-        if (line.trimStart().startsWith('|') || line.includes('|')) {
-          tableLines.push(line);
-          continue;
-        } else {
-          // End of table — convert to code block
-          if (tableLines.length > 0) {
-            const codeBlock = '```text\n' + tableLines.join('\n') + '\n```';
-            result.push(codeBlock);
-          }
-          inTable = false;
-          tableLines = [];
-        }
-      }
-
-      result.push(line);
     }
 
-    // Handle table at end of content
-    if (inTable && tableLines.length > 0) {
-      const codeBlock = '```text\n' + tableLines.join('\n') + '\n```';
-      result.push(codeBlock);
+    // Phase 2: Build result, replacing table regions with code blocks
+    const result: string[] = [];
+    let lastEnd = 0;
+    for (const region of tableRegions) {
+      // Add lines before this table
+      for (let j = lastEnd; j < region.start; j++) {
+        result.push(lines[j]);
+      }
+      // Convert table region to code block
+      const tableContent = lines.slice(region.start, region.end).join('\n');
+      result.push('```text\n' + tableContent + '\n```');
+      lastEnd = region.end;
+    }
+    // Add remaining lines after last table
+    for (let j = lastEnd; j < lines.length; j++) {
+      result.push(lines[j]);
     }
 
     return result.join('\n');

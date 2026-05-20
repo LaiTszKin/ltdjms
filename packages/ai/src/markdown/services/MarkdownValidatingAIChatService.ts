@@ -9,11 +9,7 @@ import { DiscordMarkdownSanitizer } from './DiscordMarkdownSanitizer.js';
 import { RegexBasedAutoFixer } from '../autofix/RegexBasedAutoFixer.js';
 import { CommonMarkValidator } from '../validation/CommonMarkValidator.js';
 import { DiscordMarkdownPaginator } from './DiscordMarkdownPaginator.js';
-// TODO (P2-39, P3-21): DiscordMarkdownStreamProcessor is not yet wired into this service.
-// It can be used here when streaming markdown processing (per-chunk validate/fix)
-// is needed instead of the current post-processing pipeline.
 import { isValid } from '../types.js';
-import { MessageSplitter } from '../../services/MessageSplitter.js';
 
 /**
  * Decorator that wraps an AIChatService with Markdown validation pipeline.
@@ -24,14 +20,13 @@ import { MessageSplitter } from '../../services/MessageSplitter.js';
  */
 export class MarkdownValidatingAIChatService implements AIChatService {
   readonly config: AIServiceConfig;
-  private sanitizer = new DiscordMarkdownSanitizer();
-  private autoFixer = new RegexBasedAutoFixer();
-  private validator = new CommonMarkValidator();
-  private paginator = new DiscordMarkdownPaginator();
-  private messageSplitter = new MessageSplitter();
 
   constructor(
     private readonly delegate: AIChatService,
+    private readonly sanitizer: DiscordMarkdownSanitizer,
+    private readonly autoFixer: RegexBasedAutoFixer,
+    private readonly validator: CommonMarkValidator,
+    private readonly paginator: DiscordMarkdownPaginator,
   ) {
     this.config = delegate.config;
   }
@@ -178,8 +173,9 @@ export class MarkdownValidatingAIChatService implements AIChatService {
       }
 
       const validated = this.applyPipeline(fullContent);
-      for (const page of validated) {
-        handler.onChunk(page, isComplete, null);
+      for (let i = 0; i < validated.length; i++) {
+        const pageIsComplete = i === validated.length - 1;
+        handler.onChunk(validated[i], pageIsComplete, null);
       }
     };
 
@@ -231,8 +227,9 @@ export class MarkdownValidatingAIChatService implements AIChatService {
 
           if (fullContent) {
             const validated = this.applyPipeline(fullContent);
-            for (const page of validated) {
-              handler.onChunkWithType(page, true, null, StreamChunkType.CONTENT);
+            for (let i = 0; i < validated.length; i++) {
+              const isLastPage = i === validated.length - 1;
+              handler.onChunkWithType(validated[i], isLastPage, null, StreamChunkType.CONTENT);
             }
           }
         }

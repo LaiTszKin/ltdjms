@@ -1,3 +1,4 @@
+import { type APIEmbed } from 'discord.js';
 import { type EmbedView } from './embed-view.js';
 
 /**
@@ -37,8 +38,8 @@ export interface DiscordEmbedBuilder {
   setFooter(text: string): DiscordEmbedBuilder;
 
   /** Builds a single embed. */
-  build(): unknown;
+  build(): APIEmbed;
 
   /** Builds multiple embeds with automatic pagination. */
-  buildPaginated(data: EmbedView): unknown[];
+  buildPaginated(data: EmbedView): APIEmbed[];
 }

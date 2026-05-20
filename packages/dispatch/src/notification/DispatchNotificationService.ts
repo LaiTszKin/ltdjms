@@ -60,7 +60,7 @@ export class DispatchNotificationService {
       ],
       footer: { text: '請前往面板確認接單' },
     }, [
-      { type: 1, components: [{ type: 2, style: 3, custom_id: NOTIFY_CONFIRM, label: '確認接單' }] },
+      { type: 1, components: [{ type: 2, style: 3, custom_id: `${NOTIFY_PREFIX}confirm:${order.orderNumber}`, label: '確認接單' }] },
     ]);
   }
 
@@ -76,7 +76,7 @@ export class DispatchNotificationService {
       ],
       footer: { text: '請前往面板確認接單' },
     }, [
-      { type: 1, components: [{ type: 2, style: 3, custom_id: NOTIFY_CONFIRM, label: '確認接單' }] },
+      { type: 1, components: [{ type: 2, style: 3, custom_id: `${NOTIFY_PREFIX}confirm:${order.orderNumber}`, label: '確認接單' }] },
     ]);
   }
 
@@ -94,8 +94,22 @@ export class DispatchNotificationService {
       footer: { text: '服務進行中' },
     };
     const results = await Promise.all([
+      // Extra notification: also DM the assigning admin (assignedByUserId) as a courtesy (P3-4)
       this.sendDMEmbed(String(order.assignedByUserId), embed),
       this.sendDMEmbed(String(order.customerUserId), embed),
+      // R4: DM the escort with a "送出完成" button so they can mark the order complete (P0-7)
+      this.sendDMEmbed(String(order.escortUserId), {
+        title: `✅ 已確認接單 #${order.orderNumber}`,
+        description: '您已確認接單，請在服務完成後點擊下方按鈕。',
+        color: COLOR_INFO,
+        fields: [
+          { name: '訂單編號', value: order.orderNumber, inline: true },
+          { name: '客戶', value: `<@${order.customerUserId}>`, inline: true },
+        ],
+        footer: { text: '服務進行中' },
+      }, [
+        { type: 1, components: [{ type: 2, style: 3, custom_id: `${NOTIFY_PREFIX}complete:${order.orderNumber}`, label: '送出完成' }] },
+      ]),
     ]);
     return results.every(Boolean);
   }
@@ -115,8 +129,8 @@ export class DispatchNotificationService {
       {
         type: 1,
         components: [
-          { type: 2, style: 3, custom_id: NOTIFY_CONFIRM_COMPLETION, label: '確認完成' },
-          { type: 2, style: 4, custom_id: NOTIFY_AFTER_SALES, label: '申請售後' },
+          { type: 2, style: 3, custom_id: `${NOTIFY_PREFIX}confirm_completion:${order.orderNumber}`, label: '確認完成' },
+          { type: 2, style: 4, custom_id: `${NOTIFY_PREFIX}after_sales:${order.orderNumber}`, label: '申請售後' },
         ],
       },
     ]);
@@ -171,7 +185,7 @@ export class DispatchNotificationService {
 
       await Promise.all(targetIds.map((staffId) =>
         this.sendDMEmbed(String(staffId), embed, [
-          { type: 1, components: [{ type: 2, style: 3, custom_id: NOTIFY_CLAIM, label: '承接售後' }] },
+          { type: 1, components: [{ type: 2, style: 3, custom_id: `${NOTIFY_PREFIX}claim:${order.orderNumber}`, label: '承接售後' }] },
         ]),
       ));
       return true;
@@ -180,9 +194,9 @@ export class DispatchNotificationService {
     }
   }
 
-  /** DM 給客戶：售後案件已被接手（embed 格式）。 */
+  /** DM 給客戶與售後人員：售後案件已被接手（embed 格式）。 */
   async notifyAfterSalesClaimed(order: EscortDispatchOrder): Promise<boolean> {
-    return this.sendDMEmbed(String(order.customerUserId), {
+    const customerResult = await this.sendDMEmbed(String(order.customerUserId), {
       title: `🛠️ 售後已接手 #${order.orderNumber}`,
       description: `您的售後案件已被售後人員接手處理。`,
       color: COLOR_INFO,
@@ -192,6 +206,25 @@ export class DispatchNotificationService {
       ],
       footer: { text: '售後處理中' },
     });
+
+    // R8: DM the after-sales staff with a "結案" button (P0-8)
+    let staffResult = true;
+    if (order.afterSalesAssigneeUserId != null) {
+      staffResult = await this.sendDMEmbed(String(order.afterSalesAssigneeUserId), {
+        title: `🛠️ 售後案件已接手 #${order.orderNumber}`,
+        description: '您已接手此售後案件，處理完成後請點擊結案。',
+        color: COLOR_INFO,
+        fields: [
+          { name: '訂單編號', value: order.orderNumber, inline: true },
+          { name: '客戶', value: `<@${order.customerUserId}>`, inline: true },
+        ],
+        footer: { text: '售後處理中' },
+      }, [
+        { type: 1, components: [{ type: 2, style: 4, custom_id: `${NOTIFY_PREFIX}close:${order.orderNumber}`, label: '結案' }] },
+      ]);
+    }
+
+    return customerResult && staffResult;
   }
 
   /** DM 給客戶：售後案件已結案（embed 格式）。 */
@@ -263,10 +296,19 @@ export class DispatchNotificationService {
     try {
       const guild = this.gateway.findGuild(guildId) as {
         members: {
+          cache: Map<string, { presence?: { status: string } | null }>;
           fetch(id: string): Promise<{ presence?: { status: string } | null }>;
         };
       } | null;
       if (!guild) return false;
+
+      // Prefer cache (populated by GuildPresences intent) to avoid API call
+      const cachedMember = guild.members.cache.get(userId);
+      if (cachedMember?.presence) {
+        return cachedMember.presence.status === 'online';
+      }
+
+      // Fall back to API fetch only if presence not in cache
       const member = await guild.members.fetch(userId);
       return member.presence?.status === 'online';
     } catch {

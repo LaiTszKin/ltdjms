@@ -6,6 +6,8 @@ export interface DatabaseConfig {
   readonly max: number;
   readonly connectionTimeoutMillis: number;
   readonly idleTimeoutMillis: number;
+  readonly minIdle?: number;
+  readonly maxLifetime?: number;
 }
 
 /**
@@ -16,6 +18,8 @@ export async function createDatabasePool(config: DatabaseConfig): Promise<Pool> 
   const pool = new Pool({
     connectionString: config.url,
     max: config.max ?? 5,
+    min: config.minIdle ?? 0,
+    maxLifetimeSeconds: config.maxLifetime ? Math.floor(config.maxLifetime / 1000) : undefined,
     connectionTimeoutMillis: config.connectionTimeoutMillis ?? 5000,
     idleTimeoutMillis: config.idleTimeoutMillis ?? 30000,
   });

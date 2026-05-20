@@ -121,6 +121,9 @@ export class AdminPanelModalFactory {
   /**
    * Builds a dice game 2 settings modal with all multipliers.
    */
+  // TODO(P1-34): Spec R4.3 requires six individual dice face multipliers.
+  // DiceGame2Config currently has only four: straightMultiplier, baseMultiplier,
+  // tripleLowBonus, tripleHighBonus. Extend when the config type gains per-face fields.
   buildDiceGame2SettingsModal(currentConfig: DiceGame2Config): {
     title: string;
     fields: { label: string; value: string; minLength: number; maxLength: number; required: boolean }[];
@@ -175,40 +178,6 @@ export class AdminPanelModalFactory {
   }
 
   /**
-   * Builds a product creation modal.
-   */
-  buildProductCreateModal(): {
-    title: string;
-    fields: { label: string; placeholder: string; minLength: number; maxLength: number; required: boolean }[];
-  } {
-    return {
-      title: ZhTwStrings.productCreateModalTitle,
-      fields: [
-        { label: ZhTwStrings.productModalName, placeholder: ZhTwStrings.productModalNamePlaceholder, minLength: 1, maxLength: 100, required: true },
-        { label: ZhTwStrings.productModalDesc, placeholder: ZhTwStrings.productModalDescPlaceholder, minLength: 0, maxLength: 1000, required: false },
-        { label: ZhTwStrings.productModalPrice, placeholder: ZhTwStrings.productModalPricePlaceholder, minLength: 0, maxLength: 20, required: false },
-        { label: ZhTwStrings.productModalFiatPrice, placeholder: ZhTwStrings.productModalFiatPricePlaceholder, minLength: 0, maxLength: 20, required: false },
-      ],
-    };
-  }
-
-  /**
-   * Builds a generate codes modal.
-   */
-  buildGenerateCodesModal(): {
-    title: string;
-    fields: { label: string; placeholder: string; minLength: number; maxLength: number; required: boolean }[];
-  } {
-    return {
-      title: ZhTwStrings.generateCodesModalTitle,
-      fields: [
-        { label: ZhTwStrings.generateCodesCountLabel, placeholder: ZhTwStrings.generateCodesCountPlaceholder, minLength: 1, maxLength: 3, required: true },
-        { label: ZhTwStrings.generateCodesNoteLabel, placeholder: ZhTwStrings.generateCodesNotePlaceholder, minLength: 0, maxLength: 100, required: false },
-      ],
-    };
-  }
-
-  /**
    * Builds an escort pricing edit modal.
    */
   buildEscortPricingEditModal(
@@ -258,9 +227,9 @@ export class AdminPanelModalFactory {
           label: ZhTwStrings.escortCatalogModalDesc,
           value: currentEntry?.mapScope ?? '',
           placeholder: ZhTwStrings.escortCatalogModalDescPlaceholder,
-          minLength: 0,
+          minLength: 1,
           maxLength: 500,
-          required: false,
+          required: true,
         },
         {
           label: ZhTwStrings.escortCatalogModalPrice,

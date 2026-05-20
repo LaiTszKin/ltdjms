@@ -21,4 +21,7 @@ export interface EscortOptionPriceRepo {
 
   /** Deletes a guild-level price override. */
   delete(guildId: number, optionCode: string): Promise<boolean>;
+
+  /** Counts how many guilds have price overrides for the given option code. */
+  countByOptionCode(optionCode: string): Promise<number>;
 }

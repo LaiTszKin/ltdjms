@@ -23,22 +23,25 @@ export class AgentConfigCacheInvalidationListener {
 
   private register(): void {
     this.eventPublisher.register((event) => {
-      // Duck-type check: does the event carry agent-config fields?
+      // Exact event-type check: only respond to AIAgentChannelConfigChangedEvent
       const candidate = event as unknown as Record<string, unknown>;
       if (
-        typeof candidate.guildId !== 'undefined' &&
-        typeof candidate.channelId !== 'undefined' &&
-        typeof candidate.agentEnabled === 'boolean'
+        candidate.eventType !== 'ai_agent_channel_config_changed' ||
+        typeof candidate.guildId === 'undefined' ||
+        typeof candidate.channelId === 'undefined' ||
+        typeof candidate.agentEnabled !== 'boolean'
       ) {
-        const guildId = String(candidate.guildId);
-        const channelId = String(candidate.channelId);
-        const cacheKey = `${CACHE_KEY_PREFIX}${guildId}:${channelId}`;
-
-        this.cacheService.invalidate(cacheKey).catch(() => {
-          // Cache invalidation failure is non-fatal
-          this.logger.warn({ cacheKey }, 'Failed to invalidate agent config cache');
-        });
+        return;
       }
+
+      const guildId = String(candidate.guildId);
+      const channelId = String(candidate.channelId);
+      const cacheKey = `${CACHE_KEY_PREFIX}${guildId}:${channelId}`;
+
+      this.cacheService.invalidate(cacheKey).catch(() => {
+        // Cache invalidation failure is non-fatal
+        this.logger.warn({ cacheKey }, 'Failed to invalidate agent config cache');
+      });
     });
   }
 }

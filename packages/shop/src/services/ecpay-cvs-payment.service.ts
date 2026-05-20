@@ -2,6 +2,7 @@ import { encryptAES, decryptAES } from '../crypto/ecpay-aes.js';
 import type { EnvironmentConfig } from '@ltdjms/shared';
 import { Result, ok, err, DomainError } from '@ltdjms/shared';
 import https from 'node:https';
+import crypto from 'node:crypto';
 import pino from 'pino';
 
 const STAGE_ENDPOINT = 'https://ecpayment-stage.ecpay.com.tw/1.0.0/Cashier/GenPaymentCode';
@@ -9,11 +10,8 @@ const PROD_ENDPOINT = 'https://ecpayment.ecpay.com.tw/1.0.0/Cashier/GenPaymentCo
 const OFFICIAL_STAGE_MERCHANT_ID = '3002607';
 const OFFICIAL_STAGE_HASH_KEY = 'pwFHCqoQZGmho4w6';
 const OFFICIAL_STAGE_HASH_IV = 'EkRm7iFT261dpevs';
-// Reserved for future validation of MerchantTradeNo time component format (P2-18)
-// Format: YYMMDDHHmmSSsss (year, month, day, hour, minute, second, millisecond)
-// const MERCHANT_TRADE_NO_TIME_FORMAT = /^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{3})$/;
 
-const keepAliveAgent = new https.Agent({ keepAlive: true });
+const keepAliveAgent = new https.Agent({ keepAlive: true, keepAliveMsecs: 30000, timeout: 15000, maxSockets: 10, maxFreeSockets: 5 });
 
 function pad2(n: number): string {
   return n.toString().padStart(2, '0');
@@ -33,8 +31,6 @@ export interface CvsPaymentCode {
 
 export class EcpayCvsPaymentService {
   private readonly log: pino.Logger;
-  private lastTradeNoMillis = -1;
-  private tradeNoSequence = 0;
 
   constructor(
     private readonly config: EnvironmentConfig,
@@ -209,39 +205,8 @@ export class EcpayCvsPaymentService {
     return JSON.stringify(data);
   }
 
-  // NOTE: single-threaded event loop assumption - not safe under cluster mode
   private generateMerchantTradeNo(): string {
-    const now = new Date();
-    let currentMillis = now.getTime();
-
-    if (currentMillis < this.lastTradeNoMillis) {
-      currentMillis = this.lastTradeNoMillis;
-    }
-
-    if (currentMillis === this.lastTradeNoMillis) {
-      this.tradeNoSequence++;
-      if (this.tradeNoSequence > 999) {
-        currentMillis = this.lastTradeNoMillis + 1;
-        this.tradeNoSequence = 0;
-      }
-    } else {
-      this.tradeNoSequence = 0;
-    }
-
-    this.lastTradeNoMillis = currentMillis;
-
-    const d = new Date(currentMillis);
-    const yy = d.getFullYear().toString().slice(-2);
-    const MM = pad2(d.getMonth() + 1);
-    const dd = pad2(d.getDate());
-    const HH = pad2(d.getHours());
-    const mm = pad2(d.getMinutes());
-    const ss = pad2(d.getSeconds());
-    const SSS = pad3(d.getMilliseconds());
-    const timePart = `${yy}${MM}${dd}${HH}${mm}${ss}${SSS}`;
-    const sequencePart = pad3(this.tradeNoSequence);
-
-    return `FD${timePart}${sequencePart}`;
+    return `FD${crypto.randomUUID().replace(/-/g, '').substring(0, 18)}`;
   }
 
   private clampCvsExpireMinutes(input: number): number {

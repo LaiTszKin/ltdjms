@@ -6,3 +6,5 @@ export { DrizzleEscortOptionPriceRepo } from './drizzle-escort-option-price.repo
 
 export type { DispatchAfterSalesStaffRepo } from './dispatch-after-sales-staff.repo.js';
 export { DrizzleDispatchAfterSalesStaffRepo } from './drizzle-dispatch-after-sales-staff.repo.js';
+
+export { DrizzleEscortOptionCatalogRepo } from './drizzle-escort-option-catalog.repo.js';

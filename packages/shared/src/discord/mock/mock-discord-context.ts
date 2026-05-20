@@ -65,6 +65,11 @@ export class MockDiscordContext implements DiscordContext {
     return null;
   }
 
+  getOptionAsUser(name: string): unknown | null {
+    const value = this.options.get(name);
+    return value ?? null;
+  }
+
   // ---- Test helpers ----
 
   setOption(name: string, value: unknown): void {

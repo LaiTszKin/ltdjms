@@ -160,7 +160,7 @@ export class BalanceManagementHandler extends BaseAdminHandler {
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.balanceTitle)
         .setDescription('無法取得該成員的餘額資訊')
-        .setColor(Colors.SUCCESS);
+        .setColor(Colors.DANGER);
       await raw.editReply({ embeds: [embed], components: [] });
     }
   }
@@ -212,7 +212,7 @@ export class BalanceManagementHandler extends BaseAdminHandler {
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.balanceTitle)
         .setDescription('請先選擇成員')
-        .setColor(Colors.SUCCESS);
+        .setColor(Colors.WARNING);
       await interaction.editEmbed(embed);
       return;
     }
@@ -231,7 +231,7 @@ export class BalanceManagementHandler extends BaseAdminHandler {
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.balanceTitle)
         .setDescription('請輸入有效的正整數金額')
-        .setColor(Colors.SUCCESS);
+        .setColor(Colors.WARNING);
       await interaction.editEmbed(embed);
       return;
     }
@@ -258,7 +258,7 @@ export class BalanceManagementHandler extends BaseAdminHandler {
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.balanceTitle)
         .setDescription('調整失敗：' + result.getError().message)
-        .setColor(Colors.SUCCESS);
+        .setColor(Colors.DANGER);
       await interaction.editEmbed(embed);
     }
   }

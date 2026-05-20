@@ -40,7 +40,6 @@ export class FiatPaymentCallbackService {
   async handleCallback(
     requestBody: string | null,
     contentType: string | null,
-    rawBody: string | null,
   ): Promise<CallbackResult> {
     if (!requestBody || requestBody.trim().length === 0) {
       return CallbackResult.fail(400);
@@ -48,7 +47,7 @@ export class FiatPaymentCallbackService {
 
     try {
       const { node: callbackNode, rawDecrypted } = this.parseCallbackNode(requestBody, contentType);
-      const callbackPayload = this.truncateTo(rawBody || requestBody, 4000);
+      const callbackPayload = this.truncateTo(requestBody, 4000);
       const orderNumber = this.extractOrderNumber(callbackNode);
       if (!orderNumber || orderNumber.trim().length === 0) {
         this.log.warn({ payload: callbackPayload }, 'ECPay callback missing order number');
@@ -131,8 +130,17 @@ export class FiatPaymentCallbackService {
         paymentMessage,
         callbackPayload,
       );
-      if (this.isExpiredStatus(order)) {
+      // Re-query the order to get the authoritative current status,
+      // because the original `order` variable may be stale due to race conditions
+      // between the initial load and the markPaidIfPending UPDATE.
+      const refreshedOrder = await this.fiatOrderRepository.findByOrderNumber(orderNumber);
+      if (!refreshedOrder || refreshedOrder.status === 'EXPIRED') {
         this.log.info({ orderNumber }, 'ECPay callback arrived after fiat order expiry');
+      } else if (refreshedOrder.status === 'PENDING_PAYMENT') {
+        this.log.warn(
+          { orderNumber },
+          'markPaidIfPending returned null despite PENDING_PAYMENT status (concurrent update conflict or race condition)',
+        );
       } else {
         this.log.info({ orderNumber }, 'ECPay callback duplicated paid notification');
       }
@@ -301,7 +309,7 @@ export class FiatPaymentCallbackService {
     const text = this.textOrNull(value !== null && value !== undefined ? String(value) : null);
     if (!text) return null;
     try {
-      const parsed = parseInt(text, 10);
+      const parsed = Number.parseInt(text, 10);
       return parsed > 0 ? parsed : null;
     } catch {
       return null;

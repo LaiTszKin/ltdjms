@@ -1,3 +1,4 @@
+import { ChatOpenAI } from '@langchain/openai';
 import { container, TOKENS } from '@ltdjms/shared';
 import type { EnvironmentConfig, CacheService, DomainEventPublisher, DiscordRuntimeGateway } from '@ltdjms/shared';
 
@@ -74,6 +75,7 @@ import { AIChatMentionListener } from '../commands/ai-chat-mention-listener.js';
  */
 export const AI_TOKENS = {
   AIServiceConfig: Symbol('AIServiceConfig'),
+  ChatOpenAI: Symbol('ChatOpenAI'),
   PromptLoader: Symbol('PromptLoader'),
   AIChannelRestrictionRepository: Symbol('AIChannelRestrictionRepository'),
   AIChannelRestrictionService: Symbol('AIChannelRestrictionService'),
@@ -163,6 +165,7 @@ export function initializeAIModule(): void {
   const agentConfigService = new DefaultAIAgentChannelConfigService(
     agentConfigRepo,
     cacheService,
+    runtimeGateway,
     eventPublisher,
   );
   container.registerInstance<AIAgentChannelConfigService>(
@@ -274,9 +277,9 @@ export function initializeAIModule(): void {
     container.resolve(AI_TOKENS.MoveChannelTool),
     container.resolve(AI_TOKENS.DeleteDiscordResourceTool),
   ];
-  const toolMap = new Map<string, { name: string; execute: (params: Record<string, unknown>, guild: import('discord.js').Guild) => Promise<string> }>();
+  const toolMap = new Map<string, { name: string; description: string; schema: import('zod').ZodType<any>; execute: (params: Record<string, unknown>, guild: import('discord.js').Guild) => Promise<string> }>();
   for (const tool of allTools) {
-    const registeredTool = tool as { name: string; execute: (params: Record<string, unknown>, guild: import('discord.js').Guild) => Promise<string> };
+    const registeredTool = tool as { name: string; description: string; schema: import('zod').ZodType<any>; execute: (params: Record<string, unknown>, guild: import('discord.js').Guild) => Promise<string> };
     toolMap.set(registeredTool.name, registeredTool);
   }
 
@@ -300,7 +303,13 @@ export function initializeAIModule(): void {
   // Wrap with Markdown validation decorator if enabled
   let aiChatService: AIChatService;
   if (aiConfig.enableMarkdownValidation) {
-    aiChatService = new MarkdownValidatingAIChatService(langChainService);
+    aiChatService = new MarkdownValidatingAIChatService(
+      langChainService,
+      container.resolve(AI_TOKENS.DiscordMarkdownSanitizer),
+      container.resolve(AI_TOKENS.RegexBasedAutoFixer),
+      container.resolve(AI_TOKENS.CommonMarkValidator),
+      container.resolve(AI_TOKENS.DiscordMarkdownPaginator),
+    );
   } else {
     aiChatService = langChainService;
   }
@@ -323,6 +332,20 @@ export function initializeAIModule(): void {
   );
   container.registerInstance(AI_TOKENS.SimplifiedChatMemoryProvider, memoryProvider);
 
+  // ===== Shared ChatOpenAI Singleton =====
+  // Single shared instance to avoid multiple HTTP agents/connection pools (P1-30)
+  const sharedChatModel = new ChatOpenAI({
+    configuration: {
+      baseURL: aiConfig.baseUrl,
+      apiKey: aiConfig.apiKey,
+    },
+    modelName: aiConfig.model,
+    temperature: aiConfig.temperature,
+    timeout: aiConfig.timeoutSeconds * 1000,
+    streaming: true,
+  });
+  container.registerInstance(AI_TOKENS.ChatOpenAI, sharedChatModel);
+
   // ===== Agent Service Factory =====
   const agentServiceFactory = new AgentServiceFactory(
     aiConfig,
@@ -330,6 +353,7 @@ export function initializeAIModule(): void {
     memoryProvider,
     toolCallHistory,
     authGuard,
+    sharedChatModel,
   );
   container.registerInstance(AI_TOKENS.AgentServiceFactory, agentServiceFactory);
 

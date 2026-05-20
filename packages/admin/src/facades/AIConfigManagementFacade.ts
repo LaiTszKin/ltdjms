@@ -10,12 +10,6 @@ import type {
  * Facade for AI channel and agent configuration management.
  * Wraps AIChannelRestrictionService and AIAgentChannelConfigService.
  * Matches Java AIConfigManagementFacade.
- *
- * DEPRECATED METHODS: The following methods are deprecated and retained only
- * for backward compatibility. New code should use their replacements:
- *   - listAllowedChannels  → getAllowedChannels
- *   - listAllowedCategories → getAllowedCategories
- *   - listAgentChannels    → getAgentConfigs
  */
 export class AIConfigManagementFacade {
   constructor(
@@ -32,14 +26,6 @@ export class AIConfigManagementFacade {
    */
   async getAllowedChannels(guildId: string): Promise<Result<AllowedChannel[], DomainError>> {
     return this.channelRestrictionService.getAllowedChannels(guildId);
-  }
-
-  /**
-   * Lists all allowed AI channels for a guild.
-   * @deprecated Use {@link getAllowedChannels} instead.
-   */
-  async listAllowedChannels(guildId: string): Promise<Result<AllowedChannel[], DomainError>> {
-    return this.getAllowedChannels(guildId);
   }
 
   /**
@@ -83,14 +69,6 @@ export class AIConfigManagementFacade {
   }
 
   /**
-   * Lists all allowed AI categories for a guild.
-   * @deprecated Use {@link getAllowedCategories} instead.
-   */
-  async listAllowedCategories(guildId: string): Promise<Result<AllowedCategory[], DomainError>> {
-    return this.getAllowedCategories(guildId);
-  }
-
-  /**
    * Adds a category to the AI allowlist.
    */
   async addAllowedCategory(
@@ -126,14 +104,6 @@ export class AIConfigManagementFacade {
   }
 
   /**
-   * Lists all channels with agent configuration for a guild.
-   * @deprecated Use {@link getAgentConfigs} instead.
-   */
-  async listAgentChannels(guildId: string): Promise<Result<string[], DomainError>> {
-    return this.getAgentConfigs(guildId);
-  }
-
-  /**
    * Enables agent mode for a channel with the specified mode.
    *
    * NOTE: The `_mode` parameter is accepted for API consistency but is currently
@@ -143,6 +113,9 @@ export class AIConfigManagementFacade {
    *
    * TODO(P1-36): Pass `mode` through to the service layer when setAgentEnabled
    * signature is extended to accept a mode parameter.
+   * TODO(P2-8): Once AIAgentChannelConfigService.setAgentEnabled supports a mode
+   * parameter (chat/agent/hybrid), update the handler to collect the mode choice
+   * from the admin and pass it here instead of the hardcoded 'default'.
    */
   async enableAgent(
     guildId: string,

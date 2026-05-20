@@ -10,17 +10,13 @@ import { isValid, type ValidationResult } from '../types.js';
  */
 export class DiscordMarkdownStreamProcessor {
   private buffer = '';
-  private readonly sanitizer: DiscordMarkdownSanitizer;
-  private readonly autoFixer: RegexBasedAutoFixer;
-  private readonly validator: CommonMarkValidator;
-  private readonly paginator: DiscordMarkdownPaginator;
 
-  constructor() {
-    this.sanitizer = new DiscordMarkdownSanitizer();
-    this.autoFixer = new RegexBasedAutoFixer();
-    this.validator = new CommonMarkValidator();
-    this.paginator = new DiscordMarkdownPaginator();
-  }
+  constructor(
+    private readonly sanitizer: DiscordMarkdownSanitizer,
+    private readonly autoFixer: RegexBasedAutoFixer,
+    private readonly validator: CommonMarkValidator,
+    private readonly paginator: DiscordMarkdownPaginator,
+  ) {}
 
   /**
    * Processes a chunk and returns pages if ready.

@@ -24,3 +24,12 @@ export type {
   DispatchAfterSalesStaffSelect,
   DispatchAfterSalesStaffInsert,
 } from './dispatch-after-sales-staff.sql.js';
+
+export {
+  escortOptionCatalog,
+} from './escort-option-catalog.sql.js';
+
+export type {
+  EscortOptionCatalogSelect,
+  EscortOptionCatalogInsert,
+} from './escort-option-catalog.sql.js';

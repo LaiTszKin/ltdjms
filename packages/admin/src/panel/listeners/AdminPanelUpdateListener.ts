@@ -11,9 +11,19 @@ import {
   type AgentFailedEvent,
   type DiscordRuntimeGateway,
 } from '@ltdjms/shared';
-import { type Client, type TextChannel, type Message } from 'discord.js';
+import {
+  type Client,
+  type TextChannel,
+  type Message,
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+} from 'discord.js';
 import { AdminPanelSessionManager } from '../../session/AdminPanelSessionManager.js';
 import { AdminPanelViewState } from '../../session/types.js';
+import { CurrencyManagementFacade } from '../../facades/CurrencyManagementFacade.js';
+import { AdminPanelViewFactory } from '../admin/views/AdminPanelViewFactory.js';
 
 /**
  * Event type string constants for discrimination.
@@ -40,6 +50,8 @@ export class AdminPanelUpdateListener {
   constructor(
     private readonly sessionManager: AdminPanelSessionManager,
     private readonly discordGateway: DiscordRuntimeGateway,
+    private readonly currencyFacade: CurrencyManagementFacade,
+    private readonly viewFactory: AdminPanelViewFactory,
   ) {}
 
   /**
@@ -79,13 +91,29 @@ export class AdminPanelUpdateListener {
             const channel = await client.channels.fetch(channelId);
             if (channel?.isTextBased()) {
               const message = await (channel as TextChannel).messages.fetch(messageId);
-              // Update the embed with a refresh prompt (full rebuild requires
-              // re-querying all data, which is done by the respective handlers
-              // on next user interaction).
-              const existingEmbeds = message.embeds;
-              if (existingEmbeds.length > 0) {
-                const updatedEmbed = existingEmbeds[0].data;
-                await message.edit({ embeds: [updatedEmbed] });
+              // Rebuild embed with fresh data from facades.
+              // For MAIN view events (currency config, dice game config), rebuild
+              // the full main panel embed. For other view states, re-edit to trigger
+              // a visual refresh (fields will be populated when the user navigates).
+              const isMainViewRelevant =
+                (event.eventType === EVENT_TYPES.CURRENCY_CONFIG_CHANGED ||
+                 event.eventType === EVENT_TYPES.DICE_GAME_CONFIG_CHANGED) &&
+                session.viewState === AdminPanelViewState.MAIN;
+
+              if (isMainViewRelevant) {
+                const panelContent = await this.buildMainPanelEmbed(guildId);
+                if (panelContent) {
+                  await message.edit({
+                    embeds: [panelContent.embed],
+                    components: panelContent.rows,
+                  });
+                }
+              } else {
+                const existingEmbeds = message.embeds;
+                if (existingEmbeds.length > 0) {
+                  const updatedEmbed = existingEmbeds[0].data;
+                  await message.edit({ embeds: [updatedEmbed] });
+                }
               }
             }
           } catch (fetchErr) {
@@ -119,6 +147,75 @@ export class AdminPanelUpdateListener {
       console.log(
         `[AdminPanelUpdateListener] Event ${eventType}: updated ${updatedCount}/${sessions.length} active sessions in guildId=${guildId}`,
       );
+    }
+  }
+
+  private async getGuildName(guildId: string): Promise<string> {
+    try {
+      const client = this.discordGateway.requireReadyClient() as Client;
+      const guild = await client.guilds.fetch(guildId);
+      return guild?.name ?? `Guild ${guildId}`;
+    } catch {
+      return `Guild ${guildId}`;
+    }
+  }
+
+  /**
+   * Rebuilds the main admin panel embed with fresh data from facades.
+   * Called by onEvent for MAIN view events (CurrencyConfigChangedEvent,
+   * DiceGameConfigChangedEvent) to replace the no-op re-edit.
+   */
+  private async buildMainPanelEmbed(guildId: string): Promise<{
+    embed: EmbedBuilder;
+    rows: ActionRowBuilder<ButtonBuilder>[];
+  } | null> {
+    try {
+      const configResult = await this.currencyFacade.getConfig(guildId);
+      const currencyConfig = configResult.isOk() ? configResult.getValue() : null;
+
+      const guildName = await this.getGuildName(guildId);
+      const dispatchCount = 0; // TODO(P1-37): Query from dispatch service
+
+      const mainPanel = this.viewFactory.buildMainPanelEmbed(
+        guildName,
+        currencyConfig,
+        dispatchCount,
+      );
+
+      const embed = new EmbedBuilder()
+        .setTitle(mainPanel.title)
+        .setDescription(mainPanel.description)
+        .setColor(mainPanel.color)
+        .setFooter({ text: mainPanel.footer });
+
+      for (const field of mainPanel.fields) {
+        embed.addFields({ name: field.name, value: field.value, inline: field.inline });
+      }
+
+      const rows: ActionRowBuilder<ButtonBuilder>[] = [];
+      const buttons = mainPanel.buttons.map((b) =>
+        new ButtonBuilder()
+          .setCustomId(b.id)
+          .setLabel(b.label)
+          .setStyle(b.style as ButtonStyle)
+          .setDisabled(b.disabled),
+      );
+
+      for (let i = 0; i < buttons.length; i += 3) {
+        rows.push(
+          new ActionRowBuilder<ButtonBuilder>().addComponents(
+            buttons.slice(i, i + 5),
+          ),
+        );
+      }
+
+      return { embed, rows };
+    } catch (err) {
+      console.error(
+        `[AdminPanelUpdateListener] Error building main panel embed for guildId=${guildId}:`,
+        err,
+      );
+      return null;
     }
   }
 

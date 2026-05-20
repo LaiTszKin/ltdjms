@@ -84,6 +84,12 @@ export class PanelSessionManager {
 
     // Fallback to cache service when available
     if (this.cacheService) {
+      // Attempt cache retrieval without blocking
+      // TODO(P3-2): This cache-aside pattern is incomplete — the cache is
+      // populated via fire-and-forget .then() without await, so subsequent
+      // in-memory lookups may miss. Consider either (a) awaiting the cache
+      // result before returning null, or (b) removing cache fallback in favor
+      // of a TTL-backed in-memory store.
       this.cacheService.get<PanelSessionData>(key).then((cached) => {
         if (cached) {
           this.sessions.set(key, cached);

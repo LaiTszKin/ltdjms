@@ -30,7 +30,7 @@ import {
   BUTTON_SEARCH_PREV,
   BUTTON_SEARCH_NEXT,
   MODAL_SEARCH,
-  getPageSize,
+  SELECT_SEARCH_BUY,
 } from '../services/shop-view.js';
 
 /**
@@ -47,8 +47,8 @@ export class ShopCommandHandler {
 
   constructor(
     private readonly shopService: ShopService,
-    private readonly fiatOrderService?: FiatOrderService,
-    private readonly currencyPurchaseService?: CurrencyPurchaseService,
+    private readonly fiatOrderService: FiatOrderService,
+    private readonly currencyPurchaseService: CurrencyPurchaseService,
   ) {}
 
   /**
@@ -110,9 +110,26 @@ export class ShopCommandHandler {
       return;
     }
 
-    // Buy select menu: user picked a product
+    // Buy select menu: user picked a product (from main shop view)
     if (customId === SELECT_BUY_PRODUCT) {
-      const raw = interaction.getHook() as { values?: string[] };
+      const raw = this.getRaw(interaction);
+      const productIdStr = raw.values?.[0];
+      if (!productIdStr) {
+        await interaction.reply('無法取得商品資訊');
+        return;
+      }
+      const productId = parseInt(productIdStr, 10);
+      if (isNaN(productId)) {
+        await interaction.reply('商品編號無效');
+        return;
+      }
+      await this.showPaymentChoice(interaction, guildId, productId);
+      return;
+    }
+
+    // Search buy select menu: user picked a product from search results
+    if (customId === SELECT_SEARCH_BUY) {
+      const raw = this.getRaw(interaction);
       const productIdStr = raw.values?.[0];
       if (!productIdStr) {
         await interaction.reply('無法取得商品資訊');
@@ -170,7 +187,7 @@ export class ShopCommandHandler {
 
     // Search: opening the search modal (P2-13)
     if (customId === BUTTON_SEARCH) {
-      const raw = interaction.getHook() as { showModal(modal: unknown): Promise<unknown> };
+      const raw = this.getRaw(interaction);
       const modal = new ModalBuilder()
         .setCustomId(MODAL_SEARCH)
         .setTitle('搜尋商品')
@@ -191,7 +208,7 @@ export class ShopCommandHandler {
 
     // Search modal submit (P1-13)
     if (customId === MODAL_SEARCH) {
-      const raw = interaction.getHook() as { fields: { getTextInputValue(customId: string): string } };
+      const raw = this.getRaw(interaction);
       const keyword: string = raw.fields?.getTextInputValue('shop_search_input') ?? '';
       if (!keyword || keyword.trim().length === 0) {
         await interaction.reply('請輸入搜尋關鍵字');
@@ -204,7 +221,7 @@ export class ShopCommandHandler {
       }
       const trimmedKeyword = keyword.trim();
       const embed = buildSearchResultEmbed(page.products, page.currentPage, page.totalPages, trimmedKeyword);
-      const components = buildSearchComponents(page.currentPage, page.totalPages, trimmedKeyword);
+      const components = buildSearchComponents(page.currentPage, page.totalPages, trimmedKeyword, page.products);
       await this.editWithComponents(interaction, embed, components);
       return;
     }
@@ -219,7 +236,7 @@ export class ShopCommandHandler {
         return;
       }
       const embed = buildSearchResultEmbed(page.products, page.currentPage, page.totalPages, parsed.keyword);
-      const components = buildSearchComponents(page.currentPage, page.totalPages, parsed.keyword);
+      const components = buildSearchComponents(page.currentPage, page.totalPages, parsed.keyword, page.products);
       await this.editWithComponents(interaction, embed, components);
       return;
     }
@@ -234,7 +251,7 @@ export class ShopCommandHandler {
         return;
       }
       const embed = buildSearchResultEmbed(page.products, page.currentPage, page.totalPages, parsed.keyword);
-      const components = buildSearchComponents(page.currentPage, page.totalPages, parsed.keyword);
+      const components = buildSearchComponents(page.currentPage, page.totalPages, parsed.keyword, page.products);
       await this.editWithComponents(interaction, embed, components);
       return;
     }
@@ -296,7 +313,7 @@ export class ShopCommandHandler {
 
     const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
 
-    const hook = interaction.getHook() as { editReply(opts: { content: string; components: unknown[] }): Promise<void> };
+    const hook = this.getRaw(interaction);
     if (hook) {
       await hook.editReply({ content: '請選擇一個商品：', components: [row] });
     } else {
@@ -366,6 +383,18 @@ export class ShopCommandHandler {
   }
 
   /**
+   * Temporary helper to bypass DiscordInteraction interface limitations.
+   * The shared DiscordInteraction interface does not expose all Discord.js raw API methods.
+   * This provides access to the underlying interaction hook for features like
+   * modals, select menu values, and editReply with components.
+   * Once the shared layer extends DiscordInteraction, this can be removed.
+   */
+  private getRaw(interaction: DiscordInteraction): any {
+    // @ts-ignore - temporary until shared DiscordInteraction is extended
+    return interaction.getHook();
+  }
+
+  /**
    * Edits the interaction reply with an embed and action row components.
    * Uses the raw hook because the abstract DiscordInteraction.editEmbed only accepts an embed.
    */
@@ -374,7 +403,7 @@ export class ShopCommandHandler {
     embed: unknown,
     components: unknown[],
   ): Promise<void> {
-    const hook = interaction.getHook() as { editReply(opts: { embeds: unknown[]; components: unknown[] }): Promise<void> };
+    const hook = this.getRaw(interaction);
     if (!hook) {
       await interaction.editEmbed(embed);
       return;

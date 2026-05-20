@@ -46,6 +46,9 @@ export interface ProductRepository {
   findByGuildIdPaginated(guildId: number, page: number, size: number): Promise<Product[]>;
   countByGuildIdAndNameContaining(guildId: number, keyword: string): Promise<number>;
   findByGuildIdAndNameContaining(guildId: number, keyword: string, page: number, size: number): Promise<Product[]>;
+  create(data: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Promise<Product>;
+  update(id: number, data: Partial<Omit<Product, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Product | null>;
+  delete(id: number): Promise<boolean>;
 }
 
 /** Product reward service interface as used by shop services. */
@@ -104,6 +107,7 @@ export interface ShopModuleOptions {
 export const SHOP_TOKENS = {
   FiatOrderRepository: Symbol('FiatOrderRepository'),
   RedemptionCodeRepository: Symbol('RedemptionCodeRepository'),
+  ProductRepository: Symbol('ProductRepository'),
   EcpayCvsPaymentService: Symbol('EcpayCvsPaymentService'),
   EcpayTradeQueryService: Symbol('EcpayTradeQueryService'),
   FiatPaymentCallbackService: Symbol('FiatPaymentCallbackService'),
@@ -137,6 +141,10 @@ export function configureContainer(options: ShopModuleOptions): void {
   container.registerInstance<RedemptionCodeRepository>(
     SHOP_TOKENS.RedemptionCodeRepository,
     redemptionCodeRepo,
+  );
+  container.registerInstance<typeof options.productRepository>(
+    SHOP_TOKENS.ProductRepository,
+    options.productRepository,
   );
 
   // ---- Notification Services ----

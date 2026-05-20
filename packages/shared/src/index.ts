@@ -24,11 +24,14 @@ export {
   type ProductRedemptionCompletedEvent,
   type AIMessageEvent,
   type AIAgentChannelConfigChangedEvent,
+  type DispatchAfterSalesConfigChangedEvent,
+  type EscortPricingChangedEvent,
+  type EscortCatalogChangedEvent,
   type ConversationMessage,
   type AgentCompletedEvent,
   type AgentFailedEvent,
-  type LangChain4jToolExecutionStartedEvent,
-  type LangChain4jToolExecutedEvent,
+  type ToolExecutionStartedEvent,
+  type ToolExecutedEvent,
   type AnyDomainEvent,
 } from './types/index.js';
 

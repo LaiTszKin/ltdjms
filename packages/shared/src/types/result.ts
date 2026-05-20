@@ -42,7 +42,7 @@ export class Ok<T, E> {
   }
 
   mapError<F>(_fn: (error: E) => F): Result<T, F> {
-    return new Ok<T, F>(this.value);
+    return this as unknown as Result<T, F>;
   }
 }
 
@@ -75,11 +75,11 @@ export class Err<T, E> {
   }
 
   map<U>(_fn: (value: T) => U): Result<U, E> {
-    return new Err<U, E>(this.error);
+    return this as unknown as Result<U, E>;
   }
 
   flatMap<U>(_fn: (value: T) => Result<U, E>): Result<U, E> {
-    return new Err<U, E>(this.error);
+    return this as unknown as Result<U, E>;
   }
 
   mapError<F>(fn: (error: E) => F): Result<T, F> {

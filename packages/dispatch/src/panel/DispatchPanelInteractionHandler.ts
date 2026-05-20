@@ -29,7 +29,7 @@ import {
   buildAssignModeEmbed,
   buildNoPendingOrdersEmbed,
   buildQueryFailedEmbed,
-  formatPanelText,
+  splitSelectMenuOptions,
   COLOR_INFO,
   COLOR_WARNING,
   COLOR_ERROR,
@@ -49,6 +49,7 @@ import {
   SELECT_ESCORT_OPTION_EXTRA,
   SELECT_PENDING_ORDER,
 } from './DispatchPanelView.js';
+import type { SelectOptionView } from './DispatchPanelView.js';
 import {
   buildOrderCreatedEmbed,
   buildOrderConfirmedEmbed,
@@ -62,69 +63,7 @@ import {
   buildAfterSalesClaimedEmbed,
   buildAfterSalesClosedEmbed,
 } from './DispatchPanelMessageFactory.js';
-
-// ============================================================
-// Session State
-// ============================================================
-
-export interface DispatchSessionState {
-  mode: 'create' | 'assign' | 'view' | null;
-  selectedCustomerId?: number;
-  selectedEscortUserId?: number;
-  selectedOptionCode?: string;
-  selectedOrderNumber?: string;
-  statusMessage?: string;
-  /** Timestamp when this session was last accessed (ms since epoch). */
-  lastAccessedAt: number;
-}
-
-/** Session expiry TTL: 30 minutes (in ms). */
-const SESSION_TTL_MS = 30 * 60 * 1000;
-
-/** Session cleanup interval: every 5 minutes. */
-const SESSION_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
-
-const sessions = new Map<string, DispatchSessionState>();
-
-let cleanupTimer: ReturnType<typeof setInterval> | null = null;
-
-function startCleanupTimer(): void {
-  if (cleanupTimer != null) return;
-  cleanupTimer = setInterval(() => {
-    const now = Date.now();
-    for (const [key, session] of sessions.entries()) {
-      if (now - session.lastAccessedAt > SESSION_TTL_MS) {
-        sessions.delete(key);
-      }
-    }
-  }, SESSION_CLEANUP_INTERVAL_MS);
-  // Allow the process to exit even if the timer is still running
-  if (typeof cleanupTimer === 'object' && 'unref' in cleanupTimer) {
-    (cleanupTimer as NodeJS.Timeout).unref();
-  }
-}
-
-function getSessionKey(guildId: string, userId: string): string {
-  return `${guildId}:${userId}`;
-}
-
-function getOrCreateSession(guildId: string, userId: string): DispatchSessionState {
-  startCleanupTimer();
-  const key = getSessionKey(guildId, userId);
-  let session = sessions.get(key);
-  if (session == null) {
-    session = { mode: null, lastAccessedAt: Date.now() };
-    sessions.set(key, session);
-  } else {
-    session.lastAccessedAt = Date.now();
-  }
-  return session;
-}
-
-function clearSession(guildId: string, userId: string): void {
-  const key = getSessionKey(guildId, userId);
-  sessions.delete(key);
-}
+import { DispatchPanelSessionManager, type DispatchSessionState } from './DispatchPanelSessionManager.js';
 
 // ============================================================
 // Interaction Handler
@@ -142,6 +81,7 @@ export class DispatchPanelInteractionHandler {
     private readonly pricingService: EscortOptionPricingService,
     private readonly afterSalesStaffService: DispatchAfterSalesStaffService,
     private readonly notificationService: DispatchNotificationService,
+    private readonly sessionManager: DispatchPanelSessionManager,
   ) {}
 
   async execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void> {
@@ -149,16 +89,21 @@ export class DispatchPanelInteractionHandler {
     const userId = interaction.getUserId();
     const customId = this.extractCustomId(interaction);
 
-    // Admin permission check (spec R14.1)
-    if (!(await this.checkAdminPermission(interaction, context, guildId, userId))) {
-      await interaction.reply('你沒有權限使用派單面板。');
-      return;
-    }
-
-    // All panel interactions require an active session
-    const session = getOrCreateSession(guildId, userId);
-
     try {
+      // P0-3: Notification button interactions (DM-only) — no admin check or guild session needed
+      if (customId.startsWith('dispatch_notify_')) {
+        await this.handleNotifyInteraction(customId, interaction, userId);
+        return;
+      }
+
+      // Admin permission check (spec R14.1) — only for guild panel interactions
+      if (!(await this.checkAdminPermission(interaction, context, guildId, userId))) {
+        await interaction.reply('你沒有權限使用派單面板。');
+        return;
+      }
+
+      // All panel interactions require an active session
+      const session = this.sessionManager.getOrCreate(guildId, userId);
       await this.routeInteraction(customId, interaction, guildId, userId, session);
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
@@ -180,17 +125,17 @@ export class DispatchPanelInteractionHandler {
         await this.showMainPanel(interaction);
         break;
       case BUTTON_CREATE_MODE:
-        clearSession(guildId, userId);
+        this.sessionManager.clear(guildId, userId);
         session.mode = 'create';
-        await this.showCreateMode(interaction);
+        await this.showCreateMode(interaction, guildId);
         break;
       case BUTTON_ASSIGN_MODE:
-        clearSession(guildId, userId);
+        this.sessionManager.clear(guildId, userId);
         session.mode = 'assign';
         await this.showAssignMode(interaction, guildId);
         break;
       case BUTTON_VIEW_ORDERS:
-        clearSession(guildId, userId);
+        this.sessionManager.clear(guildId, userId);
         session.mode = 'view';
         await this.showRecentOrders(interaction, guildId);
         break;
@@ -198,7 +143,7 @@ export class DispatchPanelInteractionHandler {
         await this.showHistory(interaction, guildId);
         break;
       case BUTTON_BACK_TO_MODE:
-        clearSession(guildId, userId);
+        this.sessionManager.clear(guildId, userId);
         await this.showMainPanel(interaction);
         break;
 
@@ -246,22 +191,51 @@ export class DispatchPanelInteractionHandler {
     await this.replyWithPayload(interaction, view, buttons);
   }
 
-  private async showCreateMode(interaction: DiscordInteraction): Promise<void> {
+  private async showCreateMode(interaction: DiscordInteraction, guildId: string): Promise<void> {
     const view = buildCreateModeEmbed();
-    const suggestions = [
-      '請使用以下格式輸入派單資訊：',
-      '`護航者ID 客戶ID 選項代碼`',
-      '',
-      '範例：`123456 789012 BASIC`',
-      '',
-      '或輸入 `cancel` 取消操作。',
-    ].join('\n');
+    const guildIdNum = Number(guildId);
 
-    const response = `**${view.title}**\n${view.description}\n\n${suggestions}`;
+    if (Number.isNaN(guildIdNum)) {
+      const errorView = buildQueryFailedEmbed();
+      await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
+      return;
+    }
+
+    const result = await this.pricingService.listOptionPrices(guildIdNum);
+
+    if (result.isErr()) {
+      const errorView = buildQueryFailedEmbed();
+      await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
+      return;
+    }
+
+    const prices = result.getValue();
+    const selectOptions: SelectOptionView[] = prices.map((p) => ({
+      value: p.optionCode,
+      label: `${p.option.type} - ${p.option.level} - ${p.option.target}`,
+      description: `NT$${p.effectivePriceTwd.toLocaleString()}`,
+    }));
+
+    const { primary, extra } = splitSelectMenuOptions(
+      selectOptions,
+      SELECT_ESCORT_OPTION,
+      SELECT_ESCORT_OPTION_EXTRA,
+      '請選擇護航品類',
+    );
+
+    const components: unknown[] = [
+      { type: 1, components: [{ ...primary, type: 3 }] },
+    ];
+    if (extra != null) {
+      components.push({ type: 1, components: [{ ...extra, type: 3 }] });
+    }
+
+    const embedPayload = embedViewToApiEmbed(view);
+    const hook = interaction.getHook() as any;
     if (interaction.isAcknowledged()) {
-      await interaction.editEmbed({ description: response } as never);
+      await hook.editReply({ embeds: [embedPayload], components });
     } else {
-      await interaction.reply(response);
+      await hook.reply({ embeds: [embedPayload], components, ephemeral: true });
     }
   }
 
@@ -290,8 +264,36 @@ export class DispatchPanelInteractionHandler {
       return;
     }
 
-    const orderListView = buildOrderListEmbed('待派發訂單', orders, '無待派發訂單');
-    await interaction.replyEmbed(embedViewToApiEmbed(orderListView) as never);
+    // P0-4: Render a select menu with pending orders for the admin to choose
+    const selectOptions: SelectOptionView[] = orders.map((o) => ({
+      value: o.orderNumber,
+      label: `#${o.orderNumber} - 客戶 ${o.customerUserId}`,
+      description: o.sourceEscortOptionCode
+        ? `品類: ${o.sourceEscortOptionCode}`
+        : '一般',
+    }));
+
+    const { primary, extra } = splitSelectMenuOptions(
+      selectOptions,
+      SELECT_PENDING_ORDER,
+      SELECT_PENDING_ORDER,
+      '請選擇待派發訂單',
+    );
+
+    const components: unknown[] = [
+      { type: 1, components: [{ ...primary, type: 3 }] },
+    ];
+    if (extra != null) {
+      components.push({ type: 1, components: [{ ...extra, type: 3 }] });
+    }
+
+    const embedPayload = embedViewToApiEmbed(view);
+    const hook = interaction.getHook() as any;
+    if (interaction.isAcknowledged()) {
+      await hook.editReply({ embeds: [embedPayload], components });
+    } else {
+      await hook.reply({ embeds: [embedPayload], components, ephemeral: true });
+    }
   }
 
   private async showRecentOrders(interaction: DiscordInteraction, guildId: string): Promise<void> {
@@ -347,7 +349,7 @@ export class DispatchPanelInteractionHandler {
     userId: string,
     session: DispatchSessionState,
   ): Promise<void> {
-    if ((interaction as unknown as { inGuild?: boolean }).inGuild) {
+    if (this.getInGuild(interaction)) {
       await interaction.reply('請在機器人私訊中操作');
       return;
     }
@@ -379,7 +381,7 @@ export class DispatchPanelInteractionHandler {
     userId: string,
     session: DispatchSessionState,
   ): Promise<void> {
-    if ((interaction as unknown as { inGuild?: boolean }).inGuild) {
+    if (this.getInGuild(interaction)) {
       await interaction.reply('請在機器人私訊中操作');
       return;
     }
@@ -411,7 +413,7 @@ export class DispatchPanelInteractionHandler {
     userId: string,
     session: DispatchSessionState,
   ): Promise<void> {
-    if ((interaction as unknown as { inGuild?: boolean }).inGuild) {
+    if (this.getInGuild(interaction)) {
       await interaction.reply('請在機器人私訊中操作');
       return;
     }
@@ -443,7 +445,7 @@ export class DispatchPanelInteractionHandler {
     userId: string,
     session: DispatchSessionState,
   ): Promise<void> {
-    if ((interaction as unknown as { inGuild?: boolean }).inGuild) {
+    if (this.getInGuild(interaction)) {
       await interaction.reply('請在機器人私訊中操作');
       return;
     }
@@ -489,7 +491,7 @@ export class DispatchPanelInteractionHandler {
     userId: string,
     session: DispatchSessionState,
   ): Promise<void> {
-    if ((interaction as unknown as { inGuild?: boolean }).inGuild) {
+    if (this.getInGuild(interaction)) {
       await interaction.reply('請在機器人私訊中操作');
       return;
     }
@@ -521,7 +523,7 @@ export class DispatchPanelInteractionHandler {
     userId: string,
     session: DispatchSessionState,
   ): Promise<void> {
-    if ((interaction as unknown as { inGuild?: boolean }).inGuild) {
+    if (this.getInGuild(interaction)) {
       await interaction.reply('請在機器人私訊中操作');
       return;
     }
@@ -559,9 +561,7 @@ export class DispatchPanelInteractionHandler {
     session: DispatchSessionState,
   ): Promise<void> {
     // Extract selected value from the interaction
-    const selectedValue = 'values' in interaction
-      ? (interaction as { values?: string[] }).values?.[0]
-      : undefined;
+    const selectedValue = this.getValues(interaction)?.[0];
     if (!selectedValue) {
       await interaction.reply('請選擇一個選項。');
       return;
@@ -607,6 +607,174 @@ export class DispatchPanelInteractionHandler {
   }
 
   // ============================================================
+  // Notification Button Handlers (P0-3: DM Notification Routing)
+  // ============================================================
+
+  /**
+   * Routes DM notification button clicks to the appropriate order action.
+   * CustomId format: dispatch_notify_{action}:{orderNumber}
+   */
+  private async handleNotifyInteraction(
+    customId: string,
+    interaction: DiscordInteraction,
+    userId: string,
+  ): Promise<void> {
+    // DM-only: reject if interaction originates from a guild channel
+    if (this.getInGuild(interaction)) {
+      await interaction.reply('請在機器人私訊中操作');
+      return;
+    }
+
+    // Parse: "dispatch_notify_{action}:{orderNumber}"
+    const rest = customId.substring('dispatch_notify_'.length);
+    const colonIdx = rest.indexOf(':');
+    if (colonIdx === -1) {
+      await interaction.reply('通知格式無效');
+      return;
+    }
+
+    const action = rest.substring(0, colonIdx);
+    const orderNumber = rest.substring(colonIdx + 1);
+
+    switch (action) {
+      case 'confirm':
+        await this.handleNotifyConfirm(interaction, orderNumber, userId);
+        break;
+      case 'complete':
+        await this.handleNotifyComplete(interaction, orderNumber, userId);
+        break;
+      case 'confirm_completion':
+        await this.handleNotifyConfirmCompletion(interaction, orderNumber, userId);
+        break;
+      case 'after_sales':
+        await this.handleNotifyAfterSales(interaction, orderNumber, userId);
+        break;
+      case 'claim':
+        await this.handleNotifyClaim(interaction, orderNumber, userId);
+        break;
+      case 'close':
+        await this.handleNotifyClose(interaction, orderNumber, userId);
+        break;
+      default:
+        await interaction.reply('未知的通知操作');
+    }
+  }
+
+  /** Notification handler: escort confirms assignment. */
+  private async handleNotifyConfirm(
+    interaction: DiscordInteraction,
+    orderNumber: string,
+    userId: string,
+  ): Promise<void> {
+    const result = await this.dispatchOrderService.confirmOrder(orderNumber, Number(userId));
+    if (result.isErr()) {
+      const errorView = buildErrorEmbed(result.getError().message);
+      await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
+      return;
+    }
+
+    const order = result.getValue();
+    const confirmedView = buildOrderConfirmedEmbed(order);
+    await interaction.replyEmbed(embedViewToApiEmbed(confirmedView) as never);
+    await this.notificationService.notifyEscortConfirmed(order);
+  }
+
+  /** Notification handler: escort requests completion. */
+  private async handleNotifyComplete(
+    interaction: DiscordInteraction,
+    orderNumber: string,
+    userId: string,
+  ): Promise<void> {
+    const result = await this.dispatchOrderService.requestCompletion(orderNumber, Number(userId));
+    if (result.isErr()) {
+      const errorView = buildErrorEmbed(result.getError().message);
+      await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
+      return;
+    }
+
+    const order = result.getValue();
+    const pendingView = buildPendingCustomerConfirmationEmbed(order);
+    await interaction.replyEmbed(embedViewToApiEmbed(pendingView) as never);
+    await this.notificationService.notifyCompletionRequested(order);
+  }
+
+  /** Notification handler: customer confirms completion. */
+  private async handleNotifyConfirmCompletion(
+    interaction: DiscordInteraction,
+    orderNumber: string,
+    userId: string,
+  ): Promise<void> {
+    const result = await this.dispatchOrderService.customerConfirmCompletion(orderNumber, Number(userId));
+    if (result.isErr()) {
+      const errorView = buildErrorEmbed(result.getError().message);
+      await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
+      return;
+    }
+
+    const order = result.getValue();
+    const completedView = buildOrderCompletedEmbed(order);
+    await interaction.replyEmbed(embedViewToApiEmbed(completedView) as never);
+    await this.notificationService.notifyCustomerConfirmed(order);
+  }
+
+  /** Notification handler: customer requests after-sales. */
+  private async handleNotifyAfterSales(
+    interaction: DiscordInteraction,
+    orderNumber: string,
+    userId: string,
+  ): Promise<void> {
+    const result = await this.dispatchOrderService.requestAfterSales(orderNumber, Number(userId));
+    if (result.isErr()) {
+      const errorView = buildErrorEmbed(result.getError().message);
+      await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
+      return;
+    }
+
+    const order = result.getValue();
+    const afterSalesView = buildAfterSalesRequestedEmbed(order);
+    await interaction.replyEmbed(embedViewToApiEmbed(afterSalesView) as never);
+    await this.notificationService.notifyAfterSalesRequested(order);
+  }
+
+  /** Notification handler: after-sales staff claims case. */
+  private async handleNotifyClaim(
+    interaction: DiscordInteraction,
+    orderNumber: string,
+    userId: string,
+  ): Promise<void> {
+    const result = await this.dispatchOrderService.claimAfterSales(orderNumber, Number(userId));
+    if (result.isErr()) {
+      const errorView = buildErrorEmbed(result.getError().message);
+      await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
+      return;
+    }
+
+    const order = result.getValue();
+    const claimedView = buildAfterSalesClaimedEmbed(order);
+    await interaction.replyEmbed(embedViewToApiEmbed(claimedView) as never);
+    await this.notificationService.notifyAfterSalesClaimed(order);
+  }
+
+  /** Notification handler: after-sales staff closes case. */
+  private async handleNotifyClose(
+    interaction: DiscordInteraction,
+    orderNumber: string,
+    userId: string,
+  ): Promise<void> {
+    const result = await this.dispatchOrderService.closeAfterSales(orderNumber, Number(userId));
+    if (result.isErr()) {
+      const errorView = buildErrorEmbed(result.getError().message);
+      await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
+      return;
+    }
+
+    const order = result.getValue();
+    const closedView = buildAfterSalesClosedEmbed(order);
+    await interaction.replyEmbed(embedViewToApiEmbed(closedView) as never);
+    await this.notificationService.notifyAfterSalesClosed(order);
+  }
+
+  // ============================================================
   // Permission Check
   // ============================================================
 
@@ -617,12 +785,23 @@ export class DispatchPanelInteractionHandler {
     _userId: string,
   ): Promise<boolean> {
     try {
-      // Check if the member has ADMINISTRATOR permission or is the guild owner.
-      const memberPermissions = (interaction as unknown as { memberPermissions?: string }).memberPermissions;
+      // Check if the member has ADMINISTRATOR permission (0x8) or is the guild owner.
+      const memberPermissions = this.getMemberPermissions(interaction);
       if (memberPermissions && (BigInt(memberPermissions) & 0x8n) !== 0n) {
         return true;
       }
-      // No ADMINISTRATOR bit — deny permission.
+      // Check if the user is the guild owner, consistent with DispatchPanelCommandHandler.
+      const casted = interaction as unknown as {
+        guild?: { ownerId?: string };
+        user?: { id?: string };
+      };
+      if (
+        casted.guild?.ownerId != null &&
+        casted.user?.id != null &&
+        casted.guild.ownerId === casted.user.id
+      ) {
+        return true;
+      }
       return false;
     } catch {
       return false; // Default to deny on unexpected errors
@@ -634,13 +813,25 @@ export class DispatchPanelInteractionHandler {
   // ============================================================
 
   private extractCustomId(interaction: DiscordInteraction): string {
-    try {
-      // Discord.js exposes customId directly on message component interactions.
-      // getHook() is for reply hooks, not for reading the incoming custom ID.
-      return (interaction as unknown as { customId?: string }).customId ?? '';
-    } catch {
-      return '';
+    return interaction.getCustomId();
+  }
+
+  /** Checks if the interaction originates from a guild channel. */
+  private getInGuild(interaction: DiscordInteraction): boolean {
+    return (interaction as unknown as { inGuild?: boolean }).inGuild ?? false;
+  }
+
+  /** Extracts member permissions bitfield string from the interaction. */
+  private getMemberPermissions(interaction: DiscordInteraction): string | undefined {
+    return (interaction as unknown as { memberPermissions?: string }).memberPermissions;
+  }
+
+  /** Extracts selected values from a select menu interaction. */
+  private getValues(interaction: DiscordInteraction): string[] | undefined {
+    if ('values' in interaction) {
+      return (interaction as { values?: string[] }).values;
     }
+    return undefined;
   }
 
   /**
@@ -661,10 +852,4 @@ export class DispatchPanelInteractionHandler {
     }
   }
 
-  private formatPanelText(
-    view: ReturnType<typeof buildModeSelectEmbed>,
-    buttons: ReturnType<typeof buildModeSelectActionRow>,
-  ): string {
-    return formatPanelText(view, buttons);
-  }
 }

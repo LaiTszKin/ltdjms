@@ -1,10 +1,11 @@
-import { container, TOKENS, type DiscordRuntimeGateway } from '@ltdjms/shared';
+import { container, TOKENS, type DiscordRuntimeGateway, type TokenMap } from '@ltdjms/shared';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 
 // Repositories
 import { DrizzleEscortDispatchOrderRepo } from '../repo/drizzle-escort-dispatch-order.repo.js';
 import { DrizzleEscortOptionPriceRepo } from '../repo/drizzle-escort-option-price.repo.js';
 import { DrizzleDispatchAfterSalesStaffRepo } from '../repo/drizzle-dispatch-after-sales-staff.repo.js';
+import { DrizzleEscortOptionCatalogRepo } from '../repo/drizzle-escort-option-catalog.repo.js';
 
 // Domain
 import { EscortDispatchOrderNumberGenerator } from '../domain/order-number-generator.js';
@@ -24,6 +25,7 @@ import { DispatchNotificationService } from '../notification/DispatchNotificatio
 // Panel
 import { DispatchPanelCommandHandler } from '../panel/DispatchPanelCommandHandler.js';
 import { DispatchPanelInteractionHandler } from '../panel/DispatchPanelInteractionHandler.js';
+import { DispatchPanelSessionManager } from '../panel/DispatchPanelSessionManager.js';
 
 /**
  * Dispatch module token map for DI registration.
@@ -41,6 +43,7 @@ export const DISPATCH_TOKENS = {
   DispatchNotificationService: Symbol('DispatchNotificationService'),
   DispatchPanelCommandHandler: Symbol('DispatchPanelCommandHandler'),
   DispatchPanelInteractionHandler: Symbol('DispatchPanelInteractionHandler'),
+  DispatchPanelSessionManager: Symbol('DispatchPanelSessionManager'),
 } as const;
 
 /**
@@ -73,20 +76,23 @@ export function configureDispatchContainer(): void {
   container.registerInstance(DISPATCH_TOKENS.EscortDispatchOrderNumberGenerator, orderNumberGenerator);
 
   // ============================================================
-  // Stub catalog repo until a production implementation is ported.
-  // Must be defined before services that depend on it.
+  // Real catalog repo backed by escort_option_catalog table (V028)
   // ============================================================
 
-  // Temporary stub - returns permissive defaults during development
-  const stubCatalogRepo: EscortOptionCatalogRepository = {
-    async findAll() { return []; },
-    async findByCode() { return null; },
-    async existsByCode() { return true; },
-  };
+  const catalogRepo = new DrizzleEscortOptionCatalogRepo(db);
   container.registerInstance<EscortOptionCatalogRepository>(
     DISPATCH_TOKENS.EscortOptionCatalogRepository,
-    stubCatalogRepo,
+    catalogRepo,
   );
+
+  // ============================================================
+  // Shared services (resolved from container)
+  // ============================================================
+
+  const discordRuntimeGateway = container.resolve<DiscordRuntimeGateway>(
+    TOKENS.DiscordRuntimeGateway,
+  );
+  const logger = container.resolve<TokenMap['Logger']>(TOKENS.Logger);
 
   // ============================================================
   // Services (singleton instances)
@@ -102,24 +108,21 @@ export function configureDispatchContainer(): void {
     dispatchOrderRepo,
     orderNumberGenerator,
     undefined, // clock — use default Date.now
-    stubCatalogRepo,
+    catalogRepo,
     afterSalesStaffService,
+    logger,
   );
   container.registerInstance(DISPATCH_TOKENS.EscortDispatchOrderService, dispatchOrderService);
 
   const handoffService = new EscortDispatchHandoffService(dispatchOrderRepo);
   container.registerInstance(DISPATCH_TOKENS.EscortDispatchHandoffService, handoffService);
 
-  const optionPricingService = new EscortOptionPricingService(optionPriceRepo, stubCatalogRepo);
+  const optionPricingService = new EscortOptionPricingService(optionPriceRepo, catalogRepo);
   container.registerInstance(DISPATCH_TOKENS.EscortOptionPricingService, optionPricingService);
 
   // ============================================================
   // Notification (singleton instance, depends on DiscordRuntimeGateway)
   // ============================================================
-
-  const discordRuntimeGateway = container.resolve<DiscordRuntimeGateway>(
-    TOKENS.DiscordRuntimeGateway,
-  );
 
   const notificationService = new DispatchNotificationService(
     discordRuntimeGateway,
@@ -140,11 +143,18 @@ export function configureDispatchContainer(): void {
     panelCommandHandler,
   );
 
+  const sessionManager = new DispatchPanelSessionManager();
+  container.registerInstance(
+    DISPATCH_TOKENS.DispatchPanelSessionManager,
+    sessionManager,
+  );
+
   const panelInteractionHandler = new DispatchPanelInteractionHandler(
     dispatchOrderService,
     optionPricingService,
     afterSalesStaffService,
     notificationService,
+    sessionManager,
   );
   container.registerInstance(
     DISPATCH_TOKENS.DispatchPanelInteractionHandler,

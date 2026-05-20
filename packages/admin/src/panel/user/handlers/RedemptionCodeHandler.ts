@@ -51,13 +51,13 @@ export class RedemptionCodeHandler implements InteractionHandler {
 
     if (fullCustomId === 'user_redeem_submit') {
       // Process the redemption
-      await interaction.deferReply();
+      await this.ensureDeferred(interaction);
       await this.processRedemption(interaction, guildId, userId);
       return;
     }
 
     // Default: show redemption history as a preview
-    await interaction.deferReply();
+    await this.ensureDeferred(interaction);
 
     const result = await this.memberInfoFacade.getProductRedemptionTransactionPage(
       guildId,
@@ -90,6 +90,15 @@ export class RedemptionCodeHandler implements InteractionHandler {
       .setDescription(description)
       .setColor(0xE67E22);
     await interaction.editEmbed(embed);
+  }
+
+  /**
+   * Ensures the interaction has been deferred before replying.
+   */
+  private async ensureDeferred(interaction: DiscordInteraction): Promise<void> {
+    if (!interaction.isAcknowledged()) {
+      await interaction.deferReply();
+    }
   }
 
   private async showRedeemModal(

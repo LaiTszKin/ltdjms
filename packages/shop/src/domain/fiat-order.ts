@@ -268,13 +268,17 @@ export function shouldAutoCreateEscortOrder(order: FiatOrder): boolean {
   );
 }
 
+function isRewardType(value: unknown): value is RewardType {
+  return value === 'CURRENCY' || value === 'TOKEN';
+}
+
 export function toFulfillmentProduct(order: FiatOrder): Product {
   return {
     id: order.productId,
     guildId: order.guildId,
     name: order.productName,
     description: null,
-    rewardType: order.fulfillmentRewardType as any,
+    rewardType: isRewardType(order.fulfillmentRewardType) ? order.fulfillmentRewardType : null,
     rewardAmount: order.fulfillmentRewardAmount,
     currencyPrice: null,
     fiatPriceTwd: order.amountTwd,

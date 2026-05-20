@@ -1,6 +1,9 @@
 import {
   type DiscordInteraction,
   type DiscordContext,
+  type DomainEventPublisher,
+  type EscortCatalogChangedEvent,
+  OperationType,
 } from '@ltdjms/shared';
 import {
   EmbedBuilder,
@@ -8,23 +11,24 @@ import {
   TextInputBuilder,
   TextInputStyle,
   ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
 } from 'discord.js';
 import { AdminPanelSessionManager } from '../../../session/AdminPanelSessionManager.js';
 import { AdminPanelViewState } from '../../../session/types.js';
 import { BotErrorHandler } from '../../../commands/infra/BotErrorHandler.js';
 import { ZhTwStrings } from '../../../i18n/zh-TW.js';
 import { BaseAdminHandler } from '../BaseAdminHandler.js';
-import { type EscortOptionCatalogRepository } from '@ltdjms/dispatch';
+import {
+  type EscortOptionCatalogRepository,
+  type EscortOptionPriceRepo,
+} from '@ltdjms/dispatch';
 import { AdminPanelModalFactory } from '../views/AdminPanelModalFactory.js';
 import { Colors } from '../../../constants/colors.js';
 
 /**
  * Handler for escort catalog interactions (admin_escortcatalog_*).
  * Supports CRUD operations on the global escort option catalog.
- *
- * NOTE: The underlying EscortOptionCatalogRepository is currently a stub
- * that returns empty arrays. Full CRUD persistence requires extending the
- * repository interface with create/update/delete methods.
  */
 export class EscortCatalogHandler extends BaseAdminHandler {
   readonly customIdPrefix = 'admin_escortcatalog';
@@ -33,6 +37,8 @@ export class EscortCatalogHandler extends BaseAdminHandler {
     sessionManager: AdminPanelSessionManager,
     private readonly catalogRepository: EscortOptionCatalogRepository,
     private readonly modalFactory: AdminPanelModalFactory,
+    private readonly optionPriceRepo: EscortOptionPriceRepo,
+    private readonly eventPublisher: DomainEventPublisher,
     errorHandler: BotErrorHandler,
   ) {
     super(sessionManager, errorHandler);
@@ -45,7 +51,6 @@ export class EscortCatalogHandler extends BaseAdminHandler {
     const guildId = interaction.getGuildId();
     const userId = interaction.getUserId();
 
-    // Permission check
     if (!this.checkAdminPermission(interaction)) {
       await interaction.reply(ZhTwStrings.permissionAdminRequired);
       return;
@@ -63,7 +68,6 @@ export class EscortCatalogHandler extends BaseAdminHandler {
 
     const fullCustomId = interaction.getCustomId();
 
-    // Handle modal submits
     if (fullCustomId === 'admin_escortcatalog_create_save') {
       await this.handleCreateSave(interaction);
       return;
@@ -75,27 +79,28 @@ export class EscortCatalogHandler extends BaseAdminHandler {
       }
       return;
     }
+
     if (fullCustomId.startsWith('admin_escortcatalog_delete_')) {
       const entryCode = fullCustomId.replace('admin_escortcatalog_delete_', '');
       if (entryCode) {
-        // NOTE: The catalog repository does not support delete yet.
-        // Show a message indicating the limitation.
-        const embed = new EmbedBuilder()
-          .setTitle(ZhTwStrings.escortCatalogTitle)
-          .setDescription('目錄項目的刪除操作需要擴充 EscortOptionCatalogRepository 介面後方可使用')
-          .setColor(Colors.WARNING);
-        await interaction.editEmbed(embed);
+        await this.showDeleteConfirmation(interaction, entryCode);
       }
       return;
     }
 
-    // Show create modal
+    if (fullCustomId.startsWith('admin_escortcatalog_confirm_delete_')) {
+      const entryCode = fullCustomId.replace('admin_escortcatalog_confirm_delete_', '');
+      if (entryCode) {
+        await this.handleDelete(interaction, guildId, entryCode);
+      }
+      return;
+    }
+
     if (fullCustomId === 'admin_escortcatalog_create') {
       await this.showCreateModal(interaction);
       return;
     }
 
-    // Show edit modal
     if (fullCustomId.startsWith('admin_escortcatalog_edit_')) {
       const entryCode = fullCustomId.replace('admin_escortcatalog_edit_', '');
       if (entryCode) {
@@ -104,7 +109,6 @@ export class EscortCatalogHandler extends BaseAdminHandler {
       return;
     }
 
-    // Default: show catalog list
     await this.showCatalog(interaction);
   }
 
@@ -174,25 +178,215 @@ export class EscortCatalogHandler extends BaseAdminHandler {
   }
 
   private async handleCreateSave(interaction: DiscordInteraction): Promise<void> {
-    // NOTE: EscortOptionCatalogRepository does not have a save/create method yet.
-    // Display a message indicating this limitation.
-    const embed = new EmbedBuilder()
-      .setTitle(ZhTwStrings.escortCatalogTitle)
-      .setDescription('目錄項目的建立操作需要擴充 EscortOptionCatalogRepository 介面後方可使用')
-      .setColor(Colors.WARNING);
-    await interaction.editEmbed(embed);
+    const raw = interaction.getHook() as {
+      fields: { getTextInputValue: (id: string) => string };
+    };
+
+    const code = raw.fields.getTextInputValue(ZhTwStrings.escortCatalogModalName).trim();
+    const mapScope = raw.fields.getTextInputValue(ZhTwStrings.escortCatalogModalDesc).trim();
+    const priceStr = raw.fields.getTextInputValue(ZhTwStrings.escortCatalogModalPrice).trim();
+    const type = raw.fields.getTextInputValue(ZhTwStrings.escortCatalogModalCategory).trim();
+
+    if (!code || !type || !priceStr) {
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.escortCatalogTitle)
+        .setDescription('名稱、類別與基礎價格為必填欄位')
+        .setColor(Colors.WARNING);
+      await interaction.editEmbed(embed);
+      return;
+    }
+
+    const priceTwd = parseInt(priceStr, 10);
+    if (isNaN(priceTwd) || priceTwd <= 0) {
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.escortCatalogTitle)
+        .setDescription('請輸入有效的正整數價格')
+        .setColor(Colors.WARNING);
+      await interaction.editEmbed(embed);
+      return;
+    }
+
+    const exists = await this.catalogRepository.existsByCode(code);
+    if (exists) {
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.escortCatalogTitle)
+        .setDescription(`代碼「${code}」已存在`)
+        .setColor(Colors.WARNING);
+      await interaction.editEmbed(embed);
+      return;
+    }
+
+    try {
+      const guildId = interaction.getGuildId();
+      const entry = await this.catalogRepository.create({
+        code,
+        type,
+        level: type,
+        mapScope: mapScope || code,
+        target: code,
+        priceTwd,
+      });
+
+      this.eventPublisher.publish({
+        eventType: 'escort_catalog_changed',
+        guildId,
+        entryCode: code,
+        operationType: OperationType.CREATED,
+      } as EscortCatalogChangedEvent);
+
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.escortCatalogTitle)
+        .setDescription(ZhTwStrings.escortCatalogCreated.replace('{name}', `${entry.type} - ${entry.target}`))
+        .setColor(Colors.SUCCESS);
+      await interaction.editEmbed(embed);
+    } catch (err) {
+      await this.errorHandler.handle(err, interaction);
+    }
   }
 
   private async handleEditSave(
     interaction: DiscordInteraction,
-    _entryCode: string,
+    entryCode: string,
   ): Promise<void> {
-    // NOTE: EscortOptionCatalogRepository does not have an update method yet.
+    const raw = interaction.getHook() as {
+      fields: { getTextInputValue: (id: string) => string };
+    };
+
+    const mapScope = raw.fields.getTextInputValue(ZhTwStrings.escortCatalogModalDesc).trim();
+    const priceStr = raw.fields.getTextInputValue(ZhTwStrings.escortCatalogModalPrice).trim();
+    const type = raw.fields.getTextInputValue(ZhTwStrings.escortCatalogModalCategory).trim();
+
+    if (!type || !priceStr) {
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.escortCatalogTitle)
+        .setDescription('類別與基礎價格為必填欄位')
+        .setColor(Colors.WARNING);
+      await interaction.editEmbed(embed);
+      return;
+    }
+
+    const priceTwd = parseInt(priceStr, 10);
+    if (isNaN(priceTwd) || priceTwd <= 0) {
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.escortCatalogTitle)
+        .setDescription('請輸入有效的正整數價格')
+        .setColor(Colors.WARNING);
+      await interaction.editEmbed(embed);
+      return;
+    }
+
+    try {
+      const guildId = interaction.getGuildId();
+      const updated = await this.catalogRepository.update(entryCode, {
+        mapScope: mapScope || undefined,
+        priceTwd,
+        type,
+      });
+
+      if (!updated) {
+        const embed = new EmbedBuilder()
+          .setTitle(ZhTwStrings.escortCatalogTitle)
+          .setDescription('找不到該目錄項目')
+          .setColor(Colors.WARNING);
+        await interaction.editEmbed(embed);
+        return;
+      }
+
+      this.eventPublisher.publish({
+        eventType: 'escort_catalog_changed',
+        guildId,
+        entryCode,
+        operationType: OperationType.UPDATED,
+      } as EscortCatalogChangedEvent);
+
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.escortCatalogTitle)
+        .setDescription(ZhTwStrings.escortCatalogUpdated.replace('{name}', `${updated.type} - ${updated.target}`))
+        .setColor(Colors.SUCCESS);
+      await interaction.editEmbed(embed);
+    } catch (err) {
+      await this.errorHandler.handle(err, interaction);
+    }
+  }
+
+  private async showDeleteConfirmation(
+    interaction: DiscordInteraction,
+    entryCode: string,
+  ): Promise<void> {
+    const entry = await this.catalogRepository.findByCode(entryCode);
+    const name = entry ? `${entry.type} - ${entry.target}` : entryCode;
+
+    const refCount = await this.optionPriceRepo.countByOptionCode(entryCode);
+    if (refCount > 0) {
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.escortCatalogTitle)
+        .setDescription(
+          ZhTwStrings.escortCatalogDeleteBlocked
+            .replace('{name}', name)
+            .replace('{guilds}', `${refCount} 個 guild`),
+        )
+        .setColor(Colors.WARNING);
+      await interaction.editEmbed(embed);
+      return;
+    }
+
     const embed = new EmbedBuilder()
       .setTitle(ZhTwStrings.escortCatalogTitle)
-      .setDescription('目錄項目的編輯操作需要擴充 EscortOptionCatalogRepository 介面後方可使用')
+      .setDescription(
+        ZhTwStrings.escortCatalogConfirmDelete.replace('{name}', name),
+      )
       .setColor(Colors.WARNING);
-    await interaction.editEmbed(embed);
+
+    const confirmBtn = new ButtonBuilder()
+      .setCustomId('admin_escortcatalog_confirm_delete_' + entryCode)
+      .setLabel('確認刪除')
+      .setStyle(ButtonStyle.Danger);
+
+    const cancelBtn = new ButtonBuilder()
+      .setCustomId('admin_escortcatalog_back')
+      .setLabel('取消')
+      .setStyle(ButtonStyle.Secondary);
+
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(confirmBtn, cancelBtn);
+
+    const raw = interaction.getHook() as {
+      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }) => Promise<void>;
+    };
+    await raw.editReply({ embeds: [embed], components: [row] });
+  }
+
+  private async handleDelete(
+    interaction: DiscordInteraction,
+    guildId: string,
+    entryCode: string,
+  ): Promise<void> {
+    try {
+      const deleted = await this.catalogRepository.delete(entryCode);
+
+      if (!deleted) {
+        const embed = new EmbedBuilder()
+          .setTitle(ZhTwStrings.escortCatalogTitle)
+          .setDescription('找不到該目錄項目')
+          .setColor(Colors.WARNING);
+        await interaction.editEmbed(embed);
+        return;
+      }
+
+      this.eventPublisher.publish({
+        eventType: 'escort_catalog_changed',
+        guildId,
+        entryCode,
+        operationType: OperationType.DELETED,
+      } as EscortCatalogChangedEvent);
+
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.escortCatalogTitle)
+        .setDescription(ZhTwStrings.escortCatalogDeleted.replace('{name}', entryCode))
+        .setColor(Colors.SUCCESS);
+      await interaction.editEmbed(embed);
+    } catch (err) {
+      await this.errorHandler.handle(err, interaction);
+    }
   }
 
   private async showCatalog(interaction: DiscordInteraction): Promise<void> {

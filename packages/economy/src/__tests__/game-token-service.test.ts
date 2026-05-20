@@ -26,6 +26,14 @@ describe('GameTokenService', () => {
     NAMESPACE: 'cache',
   };
 
+  /** Creates a mock GameTokenTransactionService for DI (P1-10). */
+  function createMockTxService() {
+    return {
+      recordTransaction: vi.fn().mockResolvedValue({}),
+      getTransactionPage: vi.fn(),
+    };
+  }
+
   describe('getBalance', () => {
     it('should return cached balance when available', async () => {
       const mockCacheService: CacheService = {
@@ -45,6 +53,7 @@ describe('GameTokenService', () => {
         createMockEventPublisher(),
         mockCacheService,
         mockCacheKeyGenerator,
+        createMockTxService() as any,
       );
 
       const balance = await service.getBalance(1, 1);
@@ -63,7 +72,7 @@ describe('GameTokenService', () => {
       };
 
       const mockAccountRepo = {
-        findOrCreate: vi.fn().mockResolvedValue({
+        findByGuildIdAndUserId: vi.fn().mockResolvedValue({
           guildId: 1,
           userId: 1,
           tokens: 50,
@@ -77,12 +86,13 @@ describe('GameTokenService', () => {
         createMockEventPublisher(),
         mockCacheService,
         mockCacheKeyGenerator,
+        createMockTxService() as any,
       );
 
       const balance = await service.getBalance(1, 1);
 
       expect(balance).toBe(50);
-      expect(mockAccountRepo.findOrCreate).toHaveBeenCalledWith(1, 1);
+      expect(mockAccountRepo.findByGuildIdAndUserId).toHaveBeenCalledWith(1, 1);
       expect(mockCacheService.put).toHaveBeenCalledWith(
         'cache:gametoken:1:1',
         50,
@@ -90,7 +100,7 @@ describe('GameTokenService', () => {
       );
     });
 
-    it('should return 0 when account does not exist (auto-creates via findOrCreate)', async () => {
+    it('should return 0 when account does not exist (no auto-create)', async () => {
       const mockCacheService: CacheService = {
         get: vi.fn().mockResolvedValue(null),
         put: vi.fn(),
@@ -99,13 +109,7 @@ describe('GameTokenService', () => {
       };
 
       const mockAccountRepo = {
-        findOrCreate: vi.fn().mockResolvedValue({
-          guildId: 1,
-          userId: 1,
-          tokens: 0,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        }),
+        findByGuildIdAndUserId: vi.fn().mockResolvedValue(null),
       };
 
       const service = new GameTokenService(
@@ -113,12 +117,13 @@ describe('GameTokenService', () => {
         createMockEventPublisher(),
         mockCacheService,
         mockCacheKeyGenerator,
+        createMockTxService() as any,
       );
 
       const balance = await service.getBalance(1, 1);
 
       expect(balance).toBe(0);
-      expect(mockAccountRepo.findOrCreate).toHaveBeenCalledWith(1, 1);
+      expect(mockAccountRepo.findByGuildIdAndUserId).toHaveBeenCalledWith(1, 1);
     });
   });
 
@@ -134,6 +139,11 @@ describe('GameTokenService', () => {
       const eventPublisher = createMockEventPublisher();
 
       const mockAccountRepo = {
+        findOrCreate: vi.fn().mockResolvedValue({
+          guildId: 1,
+          userId: 1,
+          tokens: 10,
+        }),
         tryAdjustTokens: vi.fn().mockResolvedValue({
           isOk: () => true,
           isErr: () => false,
@@ -147,21 +157,25 @@ describe('GameTokenService', () => {
         }),
       };
 
+      const mockTxService = createMockTxService();
+
       const service = new GameTokenService(
         mockAccountRepo as any,
         eventPublisher,
         mockCacheService,
         mockCacheKeyGenerator,
+        mockTxService as any,
       );
 
       const result = await service.tryDeductTokens(1, 1, 3);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
-        expect(result.getValue().tokens).toBe(7);
+        expect(result.getValue().newTokens).toBe(7);
       }
       expect(mockAccountRepo.tryAdjustTokens).toHaveBeenCalledWith(1, 1, -3);
       expect(eventPublisher.publish).toHaveBeenCalledTimes(1);
+      expect(mockTxService.recordTransaction).toHaveBeenCalledTimes(1);
     });
 
     it('should reject zero token deduction', async () => {
@@ -170,6 +184,7 @@ describe('GameTokenService', () => {
         createMockEventPublisher(),
         {} as CacheService,
         mockCacheKeyGenerator,
+        createMockTxService() as any,
       );
 
       const result = await service.tryDeductTokens(1, 1, 0);
@@ -182,6 +197,7 @@ describe('GameTokenService', () => {
         createMockEventPublisher(),
         {} as CacheService,
         mockCacheKeyGenerator,
+        createMockTxService() as any,
       );
 
       const result = await service.tryDeductTokens(1, 1, -5);
@@ -190,6 +206,11 @@ describe('GameTokenService', () => {
 
     it('should propagate insufficient tokens error', async () => {
       const mockAccountRepo = {
+        findOrCreate: vi.fn().mockResolvedValue({
+          guildId: 1,
+          userId: 1,
+          tokens: 10,
+        }),
         tryAdjustTokens: vi.fn().mockResolvedValue({
           isOk: () => false,
           isErr: () => true,
@@ -205,6 +226,7 @@ describe('GameTokenService', () => {
         createMockEventPublisher(),
         {} as CacheService,
         mockCacheKeyGenerator,
+        createMockTxService() as any,
       );
 
       const result = await service.tryDeductTokens(1, 1, 999);
@@ -226,6 +248,7 @@ describe('GameTokenService', () => {
         createMockEventPublisher(),
         mockCacheService,
         mockCacheKeyGenerator,
+        createMockTxService() as any,
       );
 
       const hasEnough = await service.hasEnoughTokens(1, 1, 50);
@@ -245,6 +268,7 @@ describe('GameTokenService', () => {
         createMockEventPublisher(),
         mockCacheService,
         mockCacheKeyGenerator,
+        createMockTxService() as any,
       );
 
       const hasEnough = await service.hasEnoughTokens(1, 1, 50);

@@ -19,6 +19,10 @@ const PAGE_SIZE = 10;
 /**
  * In-memory page tracker for transaction history per user and type.
  * Key format: `${guildId}:${userId}:${type}`
+ *
+ * NOTE: This Map grows unboundedly — entries are never cleaned up even when
+ * sessions expire. For a production setting, consider periodic cleanup or
+ * a TTL-backed cache.
  */
 const pageTracker = new Map<string, number>();
 
@@ -60,7 +64,7 @@ export class TransactionHistoryHandler implements InteractionHandler {
       return;
     }
 
-    await interaction.deferReply();
+    await this.ensureDeferred(interaction);
 
     const fullCustomId = interaction.getCustomId();
 
@@ -91,6 +95,15 @@ export class TransactionHistoryHandler implements InteractionHandler {
       return { page: isNaN(p) ? 1 : p };
     }
     return { page: 1 };
+  }
+
+  /**
+   * Ensures the interaction has been deferred before replying.
+   */
+  private async ensureDeferred(interaction: DiscordInteraction): Promise<void> {
+    if (!interaction.isAcknowledged()) {
+      await interaction.deferReply();
+    }
   }
 
   private buildNavRow(

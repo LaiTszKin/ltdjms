@@ -7,7 +7,6 @@ import {
 } from '@ltdjms/shared';
 import {
   CurrencyManagementFacade,
-  BalanceAdjustMode,
 } from '../CurrencyManagementFacade.js';
 import type {
   BalanceService,

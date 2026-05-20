@@ -27,7 +27,6 @@ export {
   CUSTOMER_CONFIRM_TIMEOUT_MS,
   createPending,
   createManualOpenOrder,
-  createPendingFull,
   createAutoHandoff,
   fromDbRow,
   isPendingEscortConfirmation,
@@ -102,6 +101,7 @@ export { DispatchNotificationService } from './notification/index.js';
 export {
   DispatchPanelCommandHandler,
   DispatchPanelInteractionHandler,
+  DispatchPanelSessionManager,
   type DispatchSessionState,
   // View constants
   MODE_SELECT,

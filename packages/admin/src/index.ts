@@ -9,7 +9,6 @@ export type { ZhTwStringsType } from './i18n/index.js';
 // ============================================================
 export {
   CurrencyManagementFacade,
-  BalanceAdjustMode,
   GameTokenManagementFacade,
   GameConfigManagementFacade,
   type DiceGame1ConfigUpdate,

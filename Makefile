@@ -8,7 +8,7 @@ test:
 	pnpm vitest run
 
 format:
-	pnpm prettier --write "packages/*/src/**/*.ts"
+	pnpm prettier --write "packages/*/src/**/*.ts" "*.ts" "*.mjs" "tsconfig.json" ".prettierrc"
 
 format-check:
 	pnpm prettier --check "packages/*/src/**/*.ts"
@@ -53,7 +53,7 @@ ts-test:
 	pnpm vitest run
 
 ts-format:
-	pnpm prettier --write "packages/*/src/**/*.ts"
+	pnpm prettier --write "packages/*/src/**/*.ts" "*.ts" "*.mjs" "tsconfig.json" ".prettierrc"
 
 ts-format-check:
 	pnpm prettier --check "packages/*/src/**/*.ts"

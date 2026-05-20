@@ -29,45 +29,28 @@ export class DomainEventPublisher {
   }
 
   /**
-   * Publishes an event to all registered listeners.
-   * Sync listeners are invoked in order; async listeners are awaited via Promise.allSettled().
+   * Publishes an event to all registered listeners synchronously.
+   * Listeners are invoked in registration order.
    * Exceptions from individual listeners are caught and logged but do not propagate.
    * @param event - the domain event to publish
    */
-  async publish(event: DomainEvent): Promise<void> {
+  publish(event: DomainEvent): void {
     this._lastEvent = event;
     const listeners = this.emitter.listeners(EVENT_CHANNEL) as Array<
-      ((event: DomainEvent) => void) | ((event: DomainEvent) => Promise<void>)
+      (event: DomainEvent) => void
     >;
 
     this.logger.debug({ event }, 'Publishing event');
 
-    const asyncTasks: Promise<void>[] = [];
-
     for (const listener of listeners) {
       try {
-        const result = listener(event);
-        if (result && typeof (result as Promise<void>).then === 'function') {
-          asyncTasks.push(result as Promise<void>);
-        }
+        listener(event);
       } catch (err) {
         // Log but don't propagate — this mirrors Java behavior
         this.logger.error(
           { eventName: event.constructor?.name ?? typeof event, err },
           '[DomainEventPublisher] Error handling event',
         );
-      }
-    }
-
-    if (asyncTasks.length > 0) {
-      const results = await Promise.allSettled(asyncTasks);
-      for (const r of results) {
-        if (r.status === 'rejected') {
-          this.logger.error(
-            { eventName: event.constructor?.name ?? typeof event, err: r.reason },
-            '[DomainEventPublisher] Async event handler rejected',
-          );
-        }
       }
     }
   }
