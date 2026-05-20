@@ -95,6 +95,13 @@ export class EscortPricingHandler extends BaseAdminHandler {
       return;
     }
 
+    // Handle back to pricing list
+    if (fullCustomId === 'admin_escortprice_back') {
+      this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.ESCORT_PRICING);
+      await this.showPricingList(interaction, guildId);
+      return;
+    }
+
     // Default: show pricing list
     await this.showPricingList(interaction, guildId);
   }

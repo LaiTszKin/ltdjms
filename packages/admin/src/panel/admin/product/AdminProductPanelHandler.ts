@@ -25,6 +25,8 @@ import {
   type RedemptionCodeRepository,
   type RedemptionCodeGenerator,
   type ProductRepository,
+  createRedemptionCode,
+  type RedemptionCode,
 } from '@ltdjms/shop';
 import { AdminProductPanelViewFactory } from './AdminProductPanelViewFactory.js';
 import { AdminProductPanelModalFactory } from './AdminProductPanelModalFactory.js';
@@ -117,6 +119,22 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
       return;
     }
 
+    if (fullCustomId.startsWith('admin_product_fiat_')) {
+      const productId = parseInt(fullCustomId.replace('admin_product_fiat_', ''), 10);
+      if (!isNaN(productId)) {
+        await this.showSetFiatPriceModal(interaction, productId);
+      }
+      return;
+    }
+
+    if (fullCustomId.startsWith('admin_product_fiat_save_')) {
+      const productId = parseInt(fullCustomId.replace('admin_product_fiat_save_', ''), 10);
+      if (!isNaN(productId)) {
+        await this.handleSetFiatPrice(interaction, guildId, productId);
+      }
+      return;
+    }
+
     if (fullCustomId.startsWith('admin_product_edit_')) {
       const productId = parseInt(fullCustomId.replace('admin_product_edit_', ''), 10);
       if (!isNaN(productId)) {
@@ -157,7 +175,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     }
 
     if (fullCustomId === 'admin_product_back') {
-      this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.MAIN);
+      this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.PRODUCT_LIST);
       return;
     }
 
@@ -246,6 +264,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     const description = raw.fields.getTextInputValue(ZhTwStrings.productModalDesc).trim() || null;
     const currencyPriceStr = raw.fields.getTextInputValue(ZhTwStrings.productModalPrice).trim();
     const fiatPriceStr = raw.fields.getTextInputValue(ZhTwStrings.productModalFiatPrice).trim();
+    const imageUrl = raw.fields.getTextInputValue(ZhTwStrings.productModalImageUrl).trim() || null;
 
     if (!name) {
       const embed = new EmbedBuilder()
@@ -290,6 +309,10 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
         escortOptionCode: null,
       });
 
+      if (imageUrl) {
+        this.sessionManager.setContext(guildId, String(product.id!), 'productImageUrl', imageUrl);
+      }
+
       this.eventPublisher.publish({
         eventType: 'product_changed',
         guildId,
@@ -320,6 +343,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     const description = raw.fields.getTextInputValue(ZhTwStrings.productModalDesc).trim() || null;
     const currencyPriceStr = raw.fields.getTextInputValue(ZhTwStrings.productModalPrice).trim();
     const fiatPriceStr = raw.fields.getTextInputValue(ZhTwStrings.productModalFiatPrice).trim();
+    const imageUrl = raw.fields.getTextInputValue(ZhTwStrings.productModalImageUrl).trim() || null;
 
     if (!name) {
       const embed = new EmbedBuilder()
@@ -348,6 +372,10 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
           .setColor(Colors.WARNING);
         await interaction.editEmbed(embed);
         return;
+      }
+
+      if (imageUrl) {
+        this.sessionManager.setContext(guildId, String(productId), 'productImageUrl', imageUrl);
       }
 
       this.eventPublisher.publish({
@@ -488,13 +516,28 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
       return;
     }
 
-    try {
-      const codes: Array<{ code: string; redeemed: boolean }> = [];
+    const note = raw.fields.getTextInputValue(ZhTwStrings.generateCodesNoteLabel).trim();
+    const daysStr = raw.fields.getTextInputValue(ZhTwStrings.generateCodesDaysLabel).trim();
 
-      for (let i = 0; i < count; i++) {
-        const code = this.codeGenerator.generate();
-        codes.push({ code, redeemed: false });
+    let expiresAt: Date | null = null;
+    if (daysStr) {
+      const days = parseInt(daysStr, 10);
+      if (!isNaN(days) && days > 0) {
+        expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + days);
       }
+    }
+
+    try {
+      const codeStrings: string[] = [];
+      for (let i = 0; i < count; i++) {
+        codeStrings.push(this.codeGenerator.generate());
+      }
+
+      const redemptionCodes: RedemptionCode[] = codeStrings.map((codeStr) =>
+        createRedemptionCode(codeStr, productId, Number(guildId), expiresAt),
+      );
+      const savedCodes = await this.redemptionCodeRepo.saveAll(redemptionCodes);
 
       this.eventPublisher.publish({
         eventType: 'redemption_codes_generated',
@@ -503,14 +546,89 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
         count,
       } as RedemptionCodesGeneratedEvent);
 
+      this.sessionManager.setViewState(guildId, interaction.getUserId(), AdminPanelViewState.PRODUCT_CODE_LIST);
+
       const product = await this.productRepository.findById(productId);
       const productName = product?.name ?? String(productId);
 
-      const embedData = this.viewFactory.buildProductCodeListEmbed(codes, productName, 1);
+      const displayCodes = savedCodes.map((c: RedemptionCode) => ({ code: c.code, redeemed: c.redeemedBy !== null }));
+      const embedData = this.viewFactory.buildProductCodeListEmbed(displayCodes, productName, 1);
       const embed = new EmbedBuilder()
         .setTitle(embedData.title)
         .setDescription(embedData.description)
         .setColor(embedData.color);
+      await interaction.editEmbed(embed);
+    } catch (err) {
+      await this.errorHandler.handle(err, interaction);
+    }
+  }
+
+  private async showSetFiatPriceModal(
+    interaction: DiscordInteraction,
+    productId: number,
+  ): Promise<void> {
+    const modal = new ModalBuilder()
+      .setCustomId('admin_product_fiat_save_' + productId)
+      .setTitle(ZhTwStrings.productFiatPriceBtn);
+
+    const input = new TextInputBuilder()
+      .setCustomId(ZhTwStrings.productModalFiatPrice)
+      .setLabel(ZhTwStrings.productModalFiatPrice)
+      .setStyle(TextInputStyle.Short)
+      .setMinLength(1)
+      .setMaxLength(20)
+      .setRequired(true)
+      .setPlaceholder(ZhTwStrings.productModalFiatPricePlaceholder);
+
+    modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
+
+    const raw = interaction.getHook() as { showModal: (m: ModalBuilder) => Promise<void> };
+    await raw.showModal(modal);
+  }
+
+  private async handleSetFiatPrice(
+    interaction: DiscordInteraction,
+    guildId: string,
+    productId: number,
+  ): Promise<void> {
+    const raw = interaction.getHook() as {
+      fields: { getTextInputValue: (id: string) => string };
+    };
+
+    const fiatPriceStr = raw.fields.getTextInputValue(ZhTwStrings.productModalFiatPrice).trim();
+    const fiatPriceTwd = fiatPriceStr ? parseInt(fiatPriceStr, 10) : null;
+
+    if (fiatPriceTwd === null || isNaN(fiatPriceTwd) || fiatPriceTwd < 0) {
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.productListTitle)
+        .setDescription('請輸入有效的法幣價格')
+        .setColor(Colors.WARNING);
+      await interaction.editEmbed(embed);
+      return;
+    }
+
+    try {
+      const product = await this.productRepository.update(productId, { fiatPriceTwd });
+      if (!product) {
+        const embed = new EmbedBuilder()
+          .setTitle(ZhTwStrings.productListTitle)
+          .setDescription('找不到該產品')
+          .setColor(Colors.WARNING);
+        await interaction.editEmbed(embed);
+        return;
+      }
+
+      this.eventPublisher.publish({
+        eventType: 'product_changed',
+        guildId,
+        productId,
+        operationType: OperationType.UPDATED,
+      } as ProductChangedEvent);
+
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.productListTitle)
+        .setDescription(ZhTwStrings.productFiatPriceSet.replace('{price}', String(fiatPriceTwd)))
+        .setColor(Colors.SUCCESS);
       await interaction.editEmbed(embed);
     } catch (err) {
       await this.errorHandler.handle(err, interaction);
@@ -523,6 +641,8 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     productId: number,
   ): Promise<void> {
     try {
+      this.sessionManager.setViewState(guildId, interaction.getUserId(), AdminPanelViewState.PRODUCT_DETAIL);
+
       const product = await this.productRepository.findById(productId);
 
       if (!product) {
@@ -556,6 +676,11 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
         .setLabel(ZhTwStrings.productEditBtn)
         .setStyle(ButtonStyle.Primary);
 
+      const fiatPriceBtn = new ButtonBuilder()
+        .setCustomId('admin_product_fiat_' + productId)
+        .setLabel(ZhTwStrings.productFiatPriceBtn)
+        .setStyle(ButtonStyle.Primary);
+
       const deleteBtn = new ButtonBuilder()
         .setCustomId('admin_product_delete_' + productId)
         .setLabel(ZhTwStrings.productDeleteBtn)
@@ -566,7 +691,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
         .setLabel(ZhTwStrings.productBackBtn)
         .setStyle(ButtonStyle.Secondary);
 
-      const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(generateCodesBtn, editBtn);
+      const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(generateCodesBtn, editBtn, fiatPriceBtn);
       const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(deleteBtn, backBtn);
 
       const raw = interaction.getHook() as {

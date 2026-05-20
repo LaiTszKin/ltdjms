@@ -1,5 +1,5 @@
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq, and, ne, isNull, sql } from 'drizzle-orm';
+import { eq, and, ne, isNull, notInArray, sql } from 'drizzle-orm';
 import { escortDispatchOrder } from '../schema/escort-dispatch-order.sql.js';
 import {
   type EscortDispatchOrder,
@@ -263,6 +263,22 @@ export class DrizzleEscortDispatchOrderRepo implements EscortDispatchOrderRepo {
       .limit(1);
 
     return rows.length > 0;
+  }
+
+  async countActiveByGuildId(guildId: number): Promise<number> {
+    const [row] = await this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(escortDispatchOrder)
+      .where(
+        and(
+          eq(escortDispatchOrder.guildId, guildId),
+          notInArray(escortDispatchOrder.status, [
+            EscortDispatchOrderStatus.COMPLETED,
+            EscortDispatchOrderStatus.AFTER_SALES_CLOSED,
+          ]),
+        ),
+      );
+    return row ? Number(row.count) : 0;
   }
 }
 

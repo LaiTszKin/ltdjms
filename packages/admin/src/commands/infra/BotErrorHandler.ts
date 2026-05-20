@@ -3,7 +3,7 @@ import {
   DomainError,
   DomainErrorCategory,
 } from '@ltdjms/shared';
-import { DiscordAPIError } from 'discord.js';
+import { DiscordAPIError, EmbedBuilder } from 'discord.js';
 import { ZhTwStrings } from '../../i18n/zh-TW.js';
 
 /**
@@ -43,11 +43,11 @@ export class BotErrorHandler {
 
     try {
       if (interaction.isAcknowledged()) {
-        await interaction.editEmbed({
-          description: message,
-          color: 0xED4245,
-          title: '錯誤',
-        } as never);
+        const errorEmbed = new EmbedBuilder()
+          .setTitle('錯誤')
+          .setDescription(message)
+          .setColor(0xED4245);
+        await interaction.editEmbed(errorEmbed);
       } else {
         await interaction.reply(message);
       }

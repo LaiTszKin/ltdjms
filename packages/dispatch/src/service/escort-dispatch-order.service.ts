@@ -453,6 +453,17 @@ export class EscortDispatchOrderService {
     }
   }
 
+  /** Counts non-terminal orders for a guild. */
+  async countActiveOrders(guildId: number): Promise<Result<number, DomainError>> {
+    try {
+      const count = await this.repository.countActiveByGuildId(guildId);
+      return new Ok(count);
+    } catch (e) {
+      const err = e instanceof Error ? e : new Error(String(e));
+      return new Err(DomainError.persistenceFailure('Failed to count active orders', err));
+    }
+  }
+
   // ---- Private Helpers ----
 
   private async findOrder(

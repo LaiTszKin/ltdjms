@@ -68,4 +68,7 @@ export interface EscortDispatchOrderRepo {
 
   /** 檢查訂單編號是否已存在。 */
   existsByOrderNumber(orderNumber: string): Promise<boolean>;
+
+  /** Counts active orders for a guild (orders not in terminal states). */
+  countActiveByGuildId(guildId: number): Promise<number>;
 }

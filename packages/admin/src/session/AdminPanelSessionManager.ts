@@ -31,6 +31,7 @@ const DEFAULT_TTL_MS = DEFAULT_TTL_S * 1000;
 export class AdminPanelSessionManager {
   /** In-memory session store (fallback when cache is unavailable). guildId:userId → session data. */
   private readonly sessions = new Map<string, AdminPanelSessionData>();
+  private cleanupIntervalId: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private readonly cacheService?: CacheService,
@@ -215,12 +216,22 @@ export class AdminPanelSessionManager {
    * Starts an interval-based cleanup of expired sessions.
    * Should be called during DI setup (e.g., in configureAdminContainer).
    * @param intervalMs - cleanup interval in milliseconds (default 60 seconds)
-   * @returns the interval ID for manual cancellation
    */
-  startCleanupInterval(intervalMs: number = 60_000): ReturnType<typeof setInterval> {
-    return setInterval(() => {
+  startCleanupInterval(intervalMs: number = 60_000): void {
+    if (this.cleanupIntervalId !== null) return;
+    this.cleanupIntervalId = setInterval(() => {
       this.cleanupExpired();
     }, intervalMs);
+  }
+
+  /**
+   * Stops the cleanup interval. Should be called during application shutdown.
+   */
+  stopCleanupInterval(): void {
+    if (this.cleanupIntervalId !== null) {
+      clearInterval(this.cleanupIntervalId);
+      this.cleanupIntervalId = null;
+    }
   }
 
   /**
