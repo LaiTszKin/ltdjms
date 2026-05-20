@@ -3,6 +3,15 @@ import type { DomainEventPublisher } from '@ltdjms/shared';
 import type { BalanceService, BalanceAdjustmentService, CurrencyConfigService } from '@ltdjms/economy';
 import type { CurrencyTransactionService, GameTokenService, GameTokenTransactionService } from '@ltdjms/economy';
 import type { DiceConfigRepository } from '@ltdjms/economy';
+import type {
+  BalanceHandler,
+  CurrencyConfigHandler,
+  DiceGame1Handler,
+  DiceGame2Handler,
+  DiceGame1ConfigHandler,
+  DiceGame2ConfigHandler,
+  GameTokenAdjustHandler,
+} from '@ltdjms/economy';
 import { ECONOMY_TOKENS } from '@ltdjms/economy';
 import type { RedemptionService, ShopService } from '@ltdjms/shop';
 import { SHOP_TOKENS } from '@ltdjms/shop';
@@ -13,7 +22,9 @@ import type {
   EscortOptionPricingService,
   EscortOptionCatalogRepository,
 } from '@ltdjms/dispatch';
+import type { DispatchPanelCommandHandler } from '@ltdjms/dispatch';
 import { DISPATCH_TOKENS } from '@ltdjms/dispatch';
+import type { ShopCommandHandler } from '@ltdjms/shop';
 
 // Facades
 import { CurrencyManagementFacade } from '../facades/CurrencyManagementFacade.js';
@@ -94,7 +105,6 @@ export const ADMIN_TOKENS = {
   DispatchAfterSalesHandler: Symbol('DispatchAfterSalesHandler'),
   EscortPricingHandler: Symbol('EscortPricingHandler'),
   EscortCatalogHandler: Symbol('EscortCatalogHandler'),
-  EscortOptionCatalogRepository: Symbol('EscortOptionCatalogRepository'),
   AdminProductPanelHandler: Symbol('AdminProductPanelHandler'),
 
   // User commands
@@ -295,6 +305,23 @@ export function configureAdminContainer(): void {
   );
 
   // ============================================================
+  // Economy Command Handlers (register with SlashCommandListener)
+  // ============================================================
+  // These handlers are resolved from the economy container (where
+  // configureEconomyContainer() already instantiated them) and then
+  // registered with the centralized SlashCommandListener for runtime dispatch.
+
+  slashCommandListener.registerCommands([
+    container.resolve<BalanceHandler>(ECONOMY_TOKENS.BalanceHandler),
+    container.resolve<CurrencyConfigHandler>(ECONOMY_TOKENS.CurrencyConfigHandler),
+    container.resolve<DiceGame1Handler>(ECONOMY_TOKENS.DiceGame1Handler),
+    container.resolve<DiceGame2Handler>(ECONOMY_TOKENS.DiceGame2Handler),
+    container.resolve<DiceGame1ConfigHandler>(ECONOMY_TOKENS.DiceGame1ConfigHandler),
+    container.resolve<DiceGame2ConfigHandler>(ECONOMY_TOKENS.DiceGame2ConfigHandler),
+    container.resolve<GameTokenAdjustHandler>(ECONOMY_TOKENS.GameTokenAdjustHandler),
+  ]);
+
+  // ============================================================
   // Admin Panel Commands
   // ============================================================
 
@@ -412,6 +439,13 @@ export function configureAdminContainer(): void {
   );
   slashCommandListener.registerInteractionHandler(escortCatalogHandler);
 
+  // DispatchPanelCommandHandler (slash command)
+  const dispatchPanelCommandHandler =
+    container.resolve<DispatchPanelCommandHandler>(
+      DISPATCH_TOKENS.DispatchPanelCommandHandler,
+    );
+  slashCommandListener.registerCommand(dispatchPanelCommandHandler);
+
   const shopService = container.resolve<ShopService>(
     SHOP_TOKENS.ShopService,
   );
@@ -425,6 +459,12 @@ export function configureAdminContainer(): void {
     adminProductPanelHandler,
   );
   slashCommandListener.registerInteractionHandler(adminProductPanelHandler);
+
+  // ShopCommandHandler (slash command)
+  const shopCommandHandler = container.resolve<ShopCommandHandler>(
+    SHOP_TOKENS.ShopCommandHandler,
+  );
+  slashCommandListener.registerCommand(shopCommandHandler);
 
   // ============================================================
   // User Panel Commands

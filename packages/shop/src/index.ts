@@ -123,6 +123,8 @@ export { FiatOrderBuyerNotificationService } from './services/fiat-order-buyer-n
 export { EscortOrderBuyerNotificationService } from './services/escort-order-buyer-notification.service.js';
 export { ShopAdminNotificationService } from './services/shop-admin-notification.service.js';
 
+export { ShopCommandHandler } from './commands/index.js';
+
 // Web
 export { EcpayCallbackHttpServer } from './web/ecpay-callback-server.js';
 

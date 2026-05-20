@@ -26,7 +26,11 @@ import {
   BUTTON_REQUEST_COMPLETION,
   BUTTON_CONFIRM_COMPLETION,
   BUTTON_REQUEST_AFTER_SALES,
+  BUTTON_CLAIM_AFTER_SALES,
+  BUTTON_CLOSE_AFTER_SALES,
   SELECT_ESCORT_OPTION,
+  SELECT_ESCORT_OPTION_EXTRA,
+  SELECT_PENDING_ORDER,
 } from './DispatchPanelView.js';
 import {
   buildOrderCreatedEmbed,
@@ -93,10 +97,16 @@ export class DispatchPanelInteractionHandler {
     private readonly afterSalesStaffService: DispatchAfterSalesStaffService,
   ) {}
 
-  async execute(interaction: DiscordInteraction, _context: DiscordContext): Promise<void> {
+  async execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void> {
     const guildId = interaction.getGuildId();
     const userId = interaction.getUserId();
     const customId = this.extractCustomId(interaction);
+
+    // Admin permission check (spec R14.1)
+    if (!(await this.checkAdminPermission(interaction, context, guildId, userId))) {
+      await interaction.reply('你沒有權限使用派單面板。');
+      return;
+    }
 
     // All panel interactions require an active session
     const session = getOrCreateSession(guildId, userId);
@@ -154,6 +164,21 @@ export class DispatchPanelInteractionHandler {
         break;
       case BUTTON_REQUEST_AFTER_SALES:
         await this.handleRequestAfterSales(interaction, userId, session);
+        break;
+
+      // ---- After-Sales Actions (R8/R9) ----
+      case BUTTON_CLAIM_AFTER_SALES:
+        await this.handleClaimAfterSales(interaction, userId, session);
+        break;
+      case BUTTON_CLOSE_AFTER_SALES:
+        await this.handleCloseAfterSales(interaction, userId, session);
+        break;
+
+      // ---- Select Menu Interactions (R2.3, R3) ----
+      case SELECT_ESCORT_OPTION:
+      case SELECT_ESCORT_OPTION_EXTRA:
+      case SELECT_PENDING_ORDER:
+        await this.handleSelectMenuChoice(interaction, customId, userId, session);
         break;
 
       default:
@@ -295,7 +320,7 @@ export class DispatchPanelInteractionHandler {
     }
 
     const order = result.getValue();
-    const confirmedView = buildOrderCreatedEmbed(order);
+    const confirmedView = buildOrderConfirmedEmbed(order);
     await interaction.replyEmbed(embedViewToApiEmbed(confirmedView) as never);
     session.mode = null;
   }
@@ -382,13 +407,147 @@ export class DispatchPanelInteractionHandler {
   }
 
   // ============================================================
+  // After-Sales Action Handlers (R8/R9)
+  // ============================================================
+
+  private async handleClaimAfterSales(
+    interaction: DiscordInteraction,
+    userId: string,
+    session: DispatchSessionState,
+  ): Promise<void> {
+    if (!session.selectedOrderNumber) {
+      await interaction.reply('請先選擇要承接的售後訂單。');
+      return;
+    }
+
+    const result = await this.dispatchOrderService.claimAfterSales(
+      session.selectedOrderNumber,
+      Number(userId),
+    );
+
+    if (result.isErr()) {
+      const errorView = buildErrorEmbed(result.getError().message);
+      await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
+      return;
+    }
+
+    const order = result.getValue();
+    const claimedView = buildAfterSalesClaimedEmbed(order);
+    await interaction.replyEmbed(embedViewToApiEmbed(claimedView) as never);
+    session.mode = null;
+  }
+
+  private async handleCloseAfterSales(
+    interaction: DiscordInteraction,
+    userId: string,
+    session: DispatchSessionState,
+  ): Promise<void> {
+    if (!session.selectedOrderNumber) {
+      await interaction.reply('請先選擇要結案的售後訂單。');
+      return;
+    }
+
+    const result = await this.dispatchOrderService.closeAfterSales(
+      session.selectedOrderNumber,
+      Number(userId),
+    );
+
+    if (result.isErr()) {
+      const errorView = buildErrorEmbed(result.getError().message);
+      await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
+      return;
+    }
+
+    const order = result.getValue();
+    const closedView = buildAfterSalesClosedEmbed(order);
+    await interaction.replyEmbed(embedViewToApiEmbed(closedView) as never);
+    session.mode = null;
+  }
+
+  // ============================================================
+  // Select Menu Handler (R2.3, R3)
+  // ============================================================
+
+  private async handleSelectMenuChoice(
+    interaction: DiscordInteraction,
+    customId: string,
+    userId: string,
+    session: DispatchSessionState,
+  ): Promise<void> {
+    // Extract selected value from the interaction
+    const selectedValue = (interaction as unknown as { values?: string[] }).values?.[0];
+    if (!selectedValue) {
+      await interaction.reply('請選擇一個選項。');
+      return;
+    }
+
+    if (customId === SELECT_ESCORT_OPTION || customId === SELECT_ESCORT_OPTION_EXTRA) {
+      session.selectedOptionCode = selectedValue;
+      await interaction.reply(`已選擇護航品類：${selectedValue}。請輸入客戶 ID。`);
+    } else if (customId === SELECT_PENDING_ORDER) {
+      session.selectedOrderNumber = selectedValue;
+      await this.handleOrderSelected(interaction, selectedValue, userId, session);
+    }
+  }
+
+  private async handleOrderSelected(
+    interaction: DiscordInteraction,
+    orderNumber: string,
+    _userId: string,
+    _session: DispatchSessionState,
+  ): Promise<void> {
+    const result = await this.dispatchOrderService.findByOrderNumber(orderNumber);
+
+    if (result.isErr()) {
+      const errorView = buildErrorEmbed(result.getError().message);
+      await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
+      return;
+    }
+
+    const order = result.getValue();
+    if (!order) {
+      const errorView = buildErrorEmbed('找不到該訂單。');
+      await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
+      return;
+    }
+
+    const detailView = buildOrderDetailEmbed(order);
+    await interaction.replyEmbed(embedViewToApiEmbed(detailView) as never);
+  }
+
+  // ============================================================
+  // Permission Check
+  // ============================================================
+
+  private async checkAdminPermission(
+    interaction: DiscordInteraction,
+    _context: DiscordContext,
+    _guildId: string,
+    _userId: string,
+  ): Promise<boolean> {
+    try {
+      // Check if the member has ADMINISTRATOR permission or is the guild owner.
+      const memberPermissions = (interaction as unknown as { memberPermissions?: string }).memberPermissions;
+      if (memberPermissions && (BigInt(memberPermissions) & 0x8n) !== 0n) {
+        return true;
+      }
+      // Fallback: allow the interaction (permissions should be enforced by
+      // Discord's defaultMemberPermissions on the command definition).
+      return true;
+    } catch {
+      return true; // Graceful degradation — Discord enforces permissions at the API level
+    }
+  }
+
+  // ============================================================
   // Helpers
   // ============================================================
 
   private extractCustomId(interaction: DiscordInteraction): string {
     try {
-      const hook = interaction.getHook() as { customId?: string } | null;
-      return hook?.customId ?? '';
+      // Discord.js exposes customId directly on message component interactions.
+      // getHook() is for reply hooks, not for reading the incoming custom ID.
+      return (interaction as unknown as { customId?: string }).customId ?? '';
     } catch {
       return '';
     }

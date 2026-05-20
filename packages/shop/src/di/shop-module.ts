@@ -20,6 +20,7 @@ import { FiatPaymentReconciliationService } from '../services/fiat-payment-recon
 import { FiatOrderProcessingScheduler } from '../services/fiat-order-processing-scheduler.js';
 import { CurrencyPurchaseService } from '../services/currency-purchase.service.js';
 import { ShopService } from '../services/shop.service.js';
+import { ShopCommandHandler } from '../commands/shop-handler.js';
 import { RedemptionCodeGenerator } from '../services/redemption-code-generator.js';
 import { RedemptionService } from '../services/redemption.service.js';
 import { FiatOrderBuyerNotificationService } from '../services/fiat-order-buyer-notification.service.js';
@@ -105,6 +106,7 @@ export const SHOP_TOKENS = {
   FiatOrderProcessingScheduler: Symbol('FiatOrderProcessingScheduler'),
   CurrencyPurchaseService: Symbol('CurrencyPurchaseService'),
   ShopService: Symbol('ShopService'),
+  ShopCommandHandler: Symbol('ShopCommandHandler'),
   RedemptionCodeGenerator: Symbol('RedemptionCodeGenerator'),
   RedemptionService: Symbol('RedemptionService'),
   FiatOrderBuyerNotificationService: Symbol('FiatOrderBuyerNotificationService'),
@@ -198,6 +200,9 @@ export function configureContainer(options: ShopModuleOptions): void {
   // ---- Shop Service ----
   const shopService = new ShopService(options.productRepository, log);
   container.registerInstance(SHOP_TOKENS.ShopService, shopService);
+
+  const shopCommandHandler = new ShopCommandHandler(shopService);
+  container.registerInstance(SHOP_TOKENS.ShopCommandHandler, shopCommandHandler);
 
   // ---- Redemption ----
   const codeGenerator = new RedemptionCodeGenerator();

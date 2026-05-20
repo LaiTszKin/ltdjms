@@ -46,6 +46,30 @@ const GameTokenAdjustSlashCommand: SlashCommandDefinition = {
   descriptionLocalizations: { 'zh-TW': '調整指定成員的遊戲代幣數量（管理員專用）' },
 };
 
+/** /dice-game-1 — play Dice Game 1 (available to all members). */
+const DiceGame1SlashCommand: SlashCommandDefinition = {
+  name: 'dice-game-1',
+  description: '骰子遊戲 1',
+  defaultMemberPermissions: null,
+  nameLocalizations: { 'zh-TW': '骰子遊戲 1' },
+  descriptionLocalizations: { 'zh-TW': '使用遊戲代幣進行骰子遊戲 1' },
+  options: [
+    { name: 'tokens', description: '要使用的代幣數量', type: 4, required: true },
+  ],
+};
+
+/** /dice-game-2 — play Dice Game 2 (available to all members). */
+const DiceGame2SlashCommand: SlashCommandDefinition = {
+  name: 'dice-game-2',
+  description: '骰子遊戲 2',
+  defaultMemberPermissions: null,
+  nameLocalizations: { 'zh-TW': '骰子遊戲 2' },
+  descriptionLocalizations: { 'zh-TW': '使用遊戲代幣進行骰子遊戲 2' },
+  options: [
+    { name: 'tokens', description: '要使用的代幣數量', type: 4, required: true },
+  ],
+};
+
 /** /dice-game-1-config — configure Dice Game 1 parameters. */
 const DiceGame1ConfigSlashCommand: SlashCommandDefinition = {
   name: 'dice-game-1-config',
@@ -101,6 +125,8 @@ const ALL_COMMAND_DEFINITIONS: SlashCommandDefinition[] = [
   UserPanelSlashCommand,
   BalanceSlashCommand,
   AdjustBalanceSlashCommand,
+  DiceGame1SlashCommand,
+  DiceGame2SlashCommand,
   GameTokenAdjustSlashCommand,
   DiceGame1ConfigSlashCommand,
   DiceGame2ConfigSlashCommand,

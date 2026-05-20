@@ -113,7 +113,10 @@ export function configureDispatchContainer(): void {
     TOKENS.DiscordRuntimeGateway,
   );
 
-  const notificationService = new DispatchNotificationService(discordRuntimeGateway);
+  const notificationService = new DispatchNotificationService(
+    discordRuntimeGateway,
+    afterSalesStaffService,
+  );
   container.registerInstance(
     DISPATCH_TOKENS.DispatchNotificationService,
     notificationService,

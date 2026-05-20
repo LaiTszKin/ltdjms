@@ -14,7 +14,11 @@ export const BUTTON_CONFIRM_ORDER = 'dispatch_confirm_order';
 export const BUTTON_REQUEST_COMPLETION = 'dispatch_request_completion';
 export const BUTTON_CONFIRM_COMPLETION = 'dispatch_confirm_completion';
 export const BUTTON_REQUEST_AFTER_SALES = 'dispatch_request_after_sales';
+export const BUTTON_CLAIM_AFTER_SALES = 'dispatch_claim_after_sales';
+export const BUTTON_CLOSE_AFTER_SALES = 'dispatch_close_after_sales';
 export const SELECT_ESCORT_OPTION = 'dispatch_select_escort_option';
+export const SELECT_ESCORT_OPTION_EXTRA = 'dispatch_select_escort_option_extra';
+export const SELECT_PENDING_ORDER = 'dispatch_select_pending_order';
 
 // ============================================================
 // Embed Colors
@@ -123,6 +127,14 @@ export function buildRequestAfterSalesButton(disabled = false): ButtonView {
   return { id: BUTTON_REQUEST_AFTER_SALES, label: '申請售後', style: ButtonStyle.DANGER, disabled };
 }
 
+export function buildClaimAfterSalesButton(disabled = false): ButtonView {
+  return { id: BUTTON_CLAIM_AFTER_SALES, label: '承接售後', style: ButtonStyle.SUCCESS, disabled };
+}
+
+export function buildCloseAfterSalesButton(disabled = false): ButtonView {
+  return { id: BUTTON_CLOSE_AFTER_SALES, label: '結案', style: ButtonStyle.DANGER, disabled };
+}
+
 // ============================================================
 // Row Builders
 // ============================================================
@@ -144,8 +156,59 @@ export function buildOrderDetailActionRow(canConfirm: boolean, canComplete: bool
   if (canRequestAfterSales) {
     buttons.push(buildRequestAfterSalesButton());
   }
+  // After-sales action buttons
+  if (canRequestAfterSales) {
+    buttons.push(buildClaimAfterSalesButton());
+    buttons.push(buildCloseAfterSalesButton());
+  }
   buttons.push(buildBackToModeButton());
   return buttons;
+}
+
+// ============================================================
+// Select Menu Builders
+// ============================================================
+
+/** Builds a select menu for choosing an escort option. */
+export interface SelectOptionView {
+  value: string;
+  label: string;
+  description?: string;
+}
+
+export function buildEscortOptionSelectMenu(
+  options: SelectOptionView[],
+  customId: string,
+  placeholder = '請選擇護航品類',
+): { type: 'stringSelect'; custom_id: string; placeholder: string; options: SelectOptionView[] } {
+  return {
+    type: 'stringSelect',
+    custom_id: customId,
+    placeholder,
+    options,
+  };
+}
+
+/**
+ * Splits a select menu into two when options exceed the Discord limit (25).
+ * Returns [primaryMenu, extraMenu] where extraMenu is null if splitting isn't needed.
+ */
+export function splitSelectMenuOptions(
+  options: SelectOptionView[],
+  baseId: string,
+  extraId: string,
+  placeholder = '請選擇',
+): { primary: ReturnType<typeof buildEscortOptionSelectMenu>; extra: ReturnType<typeof buildEscortOptionSelectMenu> | null } {
+  if (options.length <= 25) {
+    return {
+      primary: buildEscortOptionSelectMenu(options, baseId, placeholder),
+      extra: null,
+    };
+  }
+  return {
+    primary: buildEscortOptionSelectMenu(options.slice(0, 25), baseId, placeholder),
+    extra: buildEscortOptionSelectMenu(options.slice(25), extraId, '更多選項…'),
+  };
 }
 
 // ============================================================

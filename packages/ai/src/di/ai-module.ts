@@ -56,6 +56,7 @@ import { DeleteDiscordResourceTool } from '../tools/DeleteDiscordResourceTool.js
 import { InMemoryToolCallHistory } from '../services/memory/tool-call-history.js';
 import { DiscordThreadHistoryProvider } from '../services/memory/chat-memory-provider.js';
 import { SimplifiedChatMemoryProvider } from '../services/memory/chat-memory-provider.js';
+import { TokenEstimator } from '../services/memory/TokenEstimator.js';
 
 // Markdown
 import { CommonMarkValidator } from '../markdown/validation/CommonMarkValidator.js';
@@ -84,6 +85,7 @@ export const AI_TOKENS = {
   InMemoryToolCallHistory: Symbol('InMemoryToolCallHistory'),
   DiscordThreadHistoryProvider: Symbol('DiscordThreadHistoryProvider'),
   SimplifiedChatMemoryProvider: Symbol('SimplifiedChatMemoryProvider'),
+  TokenEstimator: Symbol('TokenEstimator'),
   CommonMarkValidator: Symbol('CommonMarkValidator'),
   RegexBasedAutoFixer: Symbol('RegexBasedAutoFixer'),
   DiscordMarkdownSanitizer: Symbol('DiscordMarkdownSanitizer'),
@@ -277,10 +279,34 @@ export function initializeAIModule(): void {
   );
   container.registerInstance(AI_TOKENS.SimplifiedChatMemoryProvider, memoryProvider);
 
+  // ===== Token Estimator =====
+  const tokenEstimator = new TokenEstimator();
+  container.registerInstance(AI_TOKENS.TokenEstimator, tokenEstimator);
+
   // ===== Agent Service Factory =====
+  // Collect all registered tool instances from the container for the agent factory
+  const allTools = [
+    container.resolve(AI_TOKENS.CreateChannelTool),
+    container.resolve(AI_TOKENS.CreateCategoryTool),
+    container.resolve(AI_TOKENS.CreateRoleTool),
+    container.resolve(AI_TOKENS.ListChannelsTool),
+    container.resolve(AI_TOKENS.ListCategoriesTool),
+    container.resolve(AI_TOKENS.ListRolesTool),
+    container.resolve(AI_TOKENS.GetChannelPermissionsTool),
+    container.resolve(AI_TOKENS.GetCategoryPermissionsTool),
+    container.resolve(AI_TOKENS.GetRolePermissionsTool),
+    container.resolve(AI_TOKENS.ModifyChannelPermissionsTool),
+    container.resolve(AI_TOKENS.ModifyCategoryPermissionsTool),
+    container.resolve(AI_TOKENS.ModifyRolePermissionsTool),
+    container.resolve(AI_TOKENS.SendMessagesTool),
+    container.resolve(AI_TOKENS.SearchMessagesTool),
+    container.resolve(AI_TOKENS.ManageMessageTool),
+    container.resolve(AI_TOKENS.MoveChannelTool),
+    container.resolve(AI_TOKENS.DeleteDiscordResourceTool),
+  ];
   const agentServiceFactory = new AgentServiceFactory(
     aiConfig,
-    /* tools */ [],
+    allTools,
     memoryProvider,
     toolCallHistory,
     authGuard,

@@ -55,6 +55,10 @@ export class DiceGame1Handler {
         .replace('{reward}', rewardDisplay),
       '',
       `餘額變動：${String(gameResult.previousBalance)} → ${String(gameResult.newBalance)} 貨幣`,
+      '',
+      `_${DiceGameMessages.GAME_1_DESCRIPTION
+        .replace('{count}', String(tokenCount))
+        .replace('{reward}', String(gameResult.totalReward))}_`,
     ].join('\n');
 
     await interaction.reply(message);

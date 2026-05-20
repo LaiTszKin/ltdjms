@@ -11,6 +11,7 @@ export const DiceGameMessages = {
   GAME_1_DESCRIPTION: '擲 {count} 顆骰子，每點獎勵 {reward} 貨幣',
   GAME_1_RESULT:
     '**骰子結果：** {dice}\n**總和：** {sum}\n**獎勵：** {reward} 貨幣',
+  // TODO: Wire into dice game 1 service
   GAME_1_REWARD_DETAIL:
     '骰子：{dice} | 總和：{sum} | 獎勵：{reward} 貨幣',
 
@@ -21,6 +22,7 @@ export const DiceGameMessages = {
   GAME_2_DESCRIPTION: '每 1 代幣擲 3 顆骰子，分析順子、三條與一般骰子',
   GAME_2_RESULT:
     '**骰子結果：** {dice}\n\n**順子區段：** {straightSegments}\n**三條區段：** {tripleSegments}\n\n**順子獎勵：** {straightReward}\n**三條獎勵：** {tripleReward}\n**一般獎勵：** {baseReward}\n**總獎勵：** {totalReward} 貨幣\n\n**餘額變動：** {previousBalance} → {newBalance} 貨幣',
+  // TODO: Wire into dice game 2 service (compact display variant)
   GAME_2_RESULT_SIMPLE:
     '骰子：{dice} | 順子：{straightReward} | 三條：{tripleReward} | 一般：{baseReward} | 總計：{totalReward}',
 
@@ -46,6 +48,7 @@ export const DiceGameMessages = {
     '成功調整代幣\n調整前：{before} → 調整後：{after}\n調整量：{amount}',
   TOKEN_ADJUST_FAILED: '代幣調整失敗：{reason}',
   TOKEN_INSUFFICIENT: '代幣不足',
+  // TODO: Wire into balance display handlers
   TOKEN_CURRENT_BALANCE: '目前代幣：**{tokens}** 個',
 
   // ============================================================

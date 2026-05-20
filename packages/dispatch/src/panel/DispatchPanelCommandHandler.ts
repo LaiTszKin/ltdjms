@@ -19,7 +19,14 @@ export class DispatchPanelCommandHandler {
 
   async execute(interaction: DiscordInteraction, _context: DiscordContext): Promise<void> {
     try {
-      // Send text-based panel matching existing admin panel pattern
+      // Admin permission check (spec R14.1) — also enforced by
+      // defaultMemberPermissions on the command definition.
+      const memberPermissions = (interaction as unknown as { memberPermissions?: string }).memberPermissions;
+      if (memberPermissions && (BigInt(memberPermissions) & 0x8n) === 0n) {
+        await interaction.reply('你沒有權限使用派單面板。');
+        return;
+      }
+
       const view = buildModeSelectEmbed();
       const buttons = buildModeSelectActionRow();
       const panelText = this.formatPanelText(view, buttons);

@@ -1,12 +1,16 @@
 import { type DiscordRuntimeGateway } from '@ltdjms/shared';
 import { type EscortDispatchOrder } from '../domain/index.js';
+import { type DispatchAfterSalesStaffService } from '../service/dispatch-after-sales-staff.service.js';
 
 /**
  * Best-effort DM notification service for escort dispatch events.
  * All methods catch errors internally and never throw.
  */
 export class DispatchNotificationService {
-  constructor(private readonly gateway: DiscordRuntimeGateway) {}
+  constructor(
+    private readonly gateway: DiscordRuntimeGateway,
+    private readonly afterSalesStaffService?: DispatchAfterSalesStaffService,
+  ) {}
 
   /** DM 給護航者：有新的派單待確認。 */
   async notifyEscortOrderCreated(order: EscortDispatchOrder): Promise<void> {
@@ -50,12 +54,29 @@ export class DispatchNotificationService {
     ]);
   }
 
-  /** DM 給售後人員：有新的售後案件。 */
+  /** DM 給售後人員：有新的售後案件（spec R7.4）。 */
   async notifyAfterSalesRequested(order: EscortDispatchOrder): Promise<void> {
-    await this.sendDMToStaffGuild(
-      String(order.guildId),
-      `🔧 訂單 #${order.orderNumber} 已提出售後申請，請前往面板處理。`,
-    );
+    const message = `🔧 訂單 #${order.orderNumber} 已提出售後申請，請前往面板處理。`;
+
+    if (this.afterSalesStaffService) {
+      try {
+        const result = await this.afterSalesStaffService.getStaffUserIds(order.guildId);
+        if (result.isOk()) {
+          const staffIds = result.getValue();
+          if (staffIds.size > 0) {
+            await Promise.all(
+              [...staffIds].map((staffId) => this.sendDM(String(staffId), message)),
+            );
+            return;
+          }
+        }
+      } catch {
+        // Fall through to system channel fallback
+      }
+    }
+
+    // Fallback: send to guild system channel if no staff service or no staff configured
+    await this.sendDMToStaffGuild(String(order.guildId), message);
   }
 
   /** DM 給客戶：售後案件已被接手。 */

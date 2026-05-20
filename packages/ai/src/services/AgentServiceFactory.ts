@@ -8,10 +8,18 @@ import { createChatModel, AGENT_MAX_ITERATIONS } from './LangChainAIChatService.
  * Result of agent creation, providing the underlying model and its configuration.
  */
 export interface AgentInstance {
-  /** The configured chat model (with tools bound for agent mode). */
+  /** The scoped conversation identifier. */
   readonly conversationId: string;
+  /** The configured chat model (LangChain ChatOpenAI with tool bindings). */
+  readonly model: ReturnType<typeof createChatModel>['model'];
   /** Maximum tool-calling iterations allowed for this agent. */
   readonly maxIterations: number;
+  /** Tools available to the agent for this conversation. */
+  readonly tools: unknown[];
+  /** Memory provider for conversation history retrieval. */
+  readonly memoryProvider: SimplifiedChatMemoryProvider;
+  /** Tool call history tracker (read-only from the agent's perspective). */
+  readonly toolCallHistory: InMemoryToolCallHistory;
 }
 
 /**
@@ -25,7 +33,7 @@ export interface AgentInstance {
 export class AgentServiceFactory {
   constructor(
     private readonly config: AIServiceConfig,
-    private readonly tools: any[],
+    private readonly tools: unknown[],
     private readonly memoryProvider: SimplifiedChatMemoryProvider,
     private readonly toolCallHistory: InMemoryToolCallHistory,
     private readonly authGuard: ToolCallerAuthorizationGuard,
@@ -37,14 +45,18 @@ export class AgentServiceFactory {
    * configured with the factory's memory provider and authorization guard.
    *
    * @param conversationId - The scoped conversation identifier
-   * @returns An AgentInstance with the conversation context and iteration limit
+   * @returns An AgentInstance with the model, tools, and iteration limit
    */
   createAgent(conversationId: string): AgentInstance {
-    const { maxIterations } = createChatModel(this.config, true);
+    const { model } = createChatModel(this.config, true);
 
     return {
       conversationId,
-      maxIterations: maxIterations ?? AGENT_MAX_ITERATIONS,
+      model,
+      maxIterations: AGENT_MAX_ITERATIONS,
+      tools: this.tools,
+      memoryProvider: this.memoryProvider,
+      toolCallHistory: this.toolCallHistory,
     };
   }
 }

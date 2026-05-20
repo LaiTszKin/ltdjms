@@ -166,16 +166,24 @@ export function buildPurchaseConfirmEmbed(
   userBalance: number,
 ): { title: string; description: string; color: number } {
   const sb: string[] = [];
+  const currencyPrice = product.currencyPrice;
+
   sb.push(`**商品：** ${product.name}\n`);
+
+  if (currencyPrice == null) {
+    sb.push('\n⚠️ **此商品不支援貨幣購買。**');
+    return { title: '購買確認', description: sb.join('\n'), color: 0xED4245 };
+  }
+
   sb.push(`**價格：** ${formatCurrencyPrice(product)}\n`);
   sb.push(`**您的餘額：** ${userBalance.toLocaleString()} 貨幣\n`);
 
   const color =
-    userBalance < product.currencyPrice!
+    userBalance < currencyPrice
       ? 0xED4245
       : EMBED_COLOR;
 
-  if (userBalance < product.currencyPrice!) {
+  if (userBalance < currencyPrice) {
     sb.push('\n⚠️ **餘額不足！**');
   } else {
     const remaining = userBalance - product.currencyPrice!;

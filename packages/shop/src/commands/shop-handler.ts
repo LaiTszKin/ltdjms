@@ -28,13 +28,15 @@ import {
  *   Buy flow -> product selection -> payment method choice -> confirmation
  */
 export class ShopCommandHandler {
+  readonly commandName = 'shop';
+
   constructor(private readonly shopService: ShopService) {}
 
   /**
    * Handles the initial /shop slash command.
    * Fetches the first page of products and replies with an embed.
    */
-  async handleCommand(
+  async execute(
     interaction: DiscordInteraction,
     _context: DiscordContext,
   ): Promise<void> {
