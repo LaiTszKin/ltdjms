@@ -450,13 +450,17 @@ export class EscortDispatchOrderService {
   }
 
   private async ensureTimeoutCompletion(order: EscortDispatchOrder): Promise<EscortDispatchOrder> {
+    // Status guard: only auto-complete orders in PENDING_CUSTOMER_CONFIRMATION status
+    if (!isPendingCustomerConfirmation(order)) {
+      return order;
+    }
     if (!hasCustomerConfirmationTimedOut(order, new Date(this.clock!()))) {
       return order;
     }
 
     try {
       const completed = withCompleted(order, new Date(this.clock!()));
-      const updated = await this.repository.update(completed);
+      const updated = await this.repository.update(completed, EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION);
       return updated;
     } catch (e) {
       // If auto-complete persist fails, log warning and return original order (non-blocking)
@@ -482,7 +486,8 @@ export class EscortDispatchOrderService {
 
   private normalizeLimit(limit: number, maxLimit: number): number {
     if (limit <= 0) {
-      return DEFAULT_HISTORY_LIMIT;
+      const defaultForMax = maxLimit === MAX_HISTORY_LIMIT ? DEFAULT_HISTORY_LIMIT : DEFAULT_PENDING_ASSIGNMENT_LIMIT;
+      return defaultForMax;
     }
     return Math.min(limit, maxLimit);
   }

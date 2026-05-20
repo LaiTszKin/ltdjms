@@ -160,12 +160,30 @@ export class InMemoryAIChannelRestrictionRepository
 
 // ===== Service Interface =====
 
+/**
+ * Result of a channel allowlist check, indicating the matched source type.
+ */
+export type ChannelAllowResult = boolean | 'channel' | 'category';
+
 export interface AIChannelRestrictionService {
   isChannelAllowed(
     guildId: string,
     channelId: string,
     categoryId?: string,
   ): boolean | Promise<boolean>;
+
+  /**
+   * Same as isChannelAllowed but returns the matched source type:
+   * - 'channel' if the channel is directly allowlisted
+   * - 'category' if the channel's category is allowlisted
+   * - false if not allowed
+   */
+  isChannelAllowedWithSource(
+    guildId: string,
+    channelId: string,
+    categoryId?: string,
+  ): Promise<ChannelAllowResult>;
+
   getAllowedChannels(
     guildId: string,
   ): Promise<Result<AllowedChannel[], DomainError>>;
@@ -213,6 +231,15 @@ export class DefaultAIChannelRestrictionService
     channelId: string,
     categoryId?: string,
   ): Promise<boolean> {
+    const result = await this.isChannelAllowedWithSource(guildId, channelId, categoryId);
+    return result !== false;
+  }
+
+  async isChannelAllowedWithSource(
+    guildId: string,
+    channelId: string,
+    categoryId?: string,
+  ): Promise<ChannelAllowResult> {
     const cacheKey = `${guildId}:${channelId}`;
     const cached = this.cache.get(cacheKey);
     if (cached !== undefined) {
@@ -231,7 +258,7 @@ export class DefaultAIChannelRestrictionService
     const channelMatch = channels.some((c) => c.channelId === channelId);
     if (channelMatch) {
       this.cache.set(cacheKey, { value: true, expiresAt: now + ttl });
-      return true;
+      return 'channel';
     }
 
     // Check category-level allowlist if categoryId provided
@@ -241,7 +268,7 @@ export class DefaultAIChannelRestrictionService
         (c) => c.categoryId === categoryId,
       );
       this.cache.set(cacheKey, { value: categoryMatch, expiresAt: now + ttl });
-      return categoryMatch;
+      return categoryMatch ? 'category' : false;
     }
 
     // Empty allowlist = default deny

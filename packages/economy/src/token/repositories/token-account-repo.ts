@@ -13,6 +13,7 @@ export class TokenAccountRepository {
 
   /**
    * Finds or creates a token account for a member.
+   * Uses INSERT...ON CONFLICT DO NOTHING with RETURNING to minimise DB round-trips.
    */
   async findOrCreate(guildId: number, userId: number): Promise<GameTokenAccount> {
     const existing = await this.db
@@ -30,16 +31,23 @@ export class TokenAccountRepository {
       return mapToDomain(existing[0]);
     }
 
-    await this.db
+    // Create new account with zero tokens and return it in one round-trip
+    const [created] = await this.db
       .insert(gameTokenAccount)
       .values({
         guildId,
         userId,
         tokens: 0,
       })
-      .onConflictDoNothing();
+      .onConflictDoNothing()
+      .returning();
 
-    const created = await this.db
+    if (created) {
+      return mapToDomain(created);
+    }
+
+    // Race condition: another thread inserted between our SELECT and INSERT
+    const retry = await this.db
       .select()
       .from(gameTokenAccount)
       .where(
@@ -50,7 +58,7 @@ export class TokenAccountRepository {
       )
       .limit(1);
 
-    return mapToDomain(created[0]);
+    return mapToDomain(retry[0]);
   }
 
   /**

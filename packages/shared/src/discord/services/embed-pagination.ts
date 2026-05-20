@@ -1,4 +1,4 @@
-import { EmbedBuilder, type APIEmbed } from 'discord.js';
+import { type APIEmbed } from 'discord.js';
 import { type EmbedView } from '../domain/embed-view.js';
 
 /**
@@ -59,63 +59,61 @@ export function paginateEmbedView(
         start + limits.MAX_DESCRIPTION_LENGTH,
         description.length,
       );
-      const builder = new EmbedBuilder();
-      builder.setDescription(description.slice(start, end));
+      const page: APIEmbed = {};
+      page.description = description.slice(start, end);
       if (title) {
-        builder.setTitle(
-          totalPages > 1 ? `${title} (${i + 1}/${totalPages})` : title,
-        );
+        page.title = totalPages > 1 ? `${title} (${i + 1}/${totalPages})` : title;
       }
-      if (data.color) builder.setColor(data.color);
-      if (footer) builder.setFooter({ text: footer });
-      embeds.push(builder.toJSON());
+      if (data.color) page.color = data.color;
+      if (footer) page.footer = { text: footer };
+      embeds.push(page);
     }
     return embeds;
   }
 
   // No fields
   if (!data.fields || data.fields.length === 0) {
-    const builder = new EmbedBuilder();
-    if (title) builder.setTitle(title);
-    if (description) builder.setDescription(description);
-    if (data.color) builder.setColor(data.color);
-    if (footer) builder.setFooter({ text: footer });
-    embeds.push(builder.toJSON());
+    const page: APIEmbed = {};
+    if (title) page.title = title;
+    if (description) page.description = description;
+    if (data.color) page.color = data.color;
+    if (footer) page.footer = { text: footer };
+    embeds.push(page);
     return embeds;
   }
 
   // Fields may need pagination
   let totalAdded = 0;
   let pageIndex = 0;
-  let builder = new EmbedBuilder();
-  if (title) builder.setTitle(title);
-  if (description) builder.setDescription(description);
-  if (data.color) builder.setColor(data.color);
-  if (footer) builder.setFooter({ text: footer });
+  let page: APIEmbed = {};
+  if (title) page.title = title;
+  if (description) page.description = description;
+  if (data.color) page.color = data.color;
+  if (footer) page.footer = { text: footer };
 
   for (const field of data.fields) {
     if (totalAdded > 0 && totalAdded % limits.MAX_FIELDS === 0) {
-      embeds.push(builder.toJSON());
+      embeds.push(page);
       pageIndex++;
-      builder = new EmbedBuilder();
+      page = {};
       if (title) {
-        builder.setTitle(
+        page.title =
           data.fields.length > limits.MAX_FIELDS
             ? `${title} (${pageIndex + 1})`
-            : title,
-        );
+            : title;
       }
-      if (data.color) builder.setColor(data.color);
-      if (footer) builder.setFooter({ text: footer });
+      if (data.color) page.color = data.color;
+      if (footer) page.footer = { text: footer };
     }
-    builder.addFields({
+    if (!page.fields) page.fields = [];
+    page.fields.push({
       name: truncate(field.name, limits.MAX_FIELD_NAME_LENGTH),
       value: truncate(field.value, limits.MAX_FIELD_VALUE_LENGTH),
       inline: field.inline,
     });
     totalAdded++;
   }
-  embeds.push(builder.toJSON());
+  embeds.push(page);
 
   return embeds;
 }

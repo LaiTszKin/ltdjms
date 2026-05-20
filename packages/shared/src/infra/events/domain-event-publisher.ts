@@ -29,15 +29,6 @@ export class DomainEventPublisher {
   }
 
   /**
-   * Registers an async listener for all domain events.
-   * Async listeners are awaited via Promise.allSettled() during publish().
-   * @param listener - async function to call when any domain event is published
-   */
-  registerAsync(listener: (event: DomainEvent) => Promise<void>): void {
-    this.emitter.on(EVENT_CHANNEL, listener);
-  }
-
-  /**
    * Publishes an event to all registered listeners.
    * Sync listeners are invoked in order; async listeners are awaited via Promise.allSettled().
    * Exceptions from individual listeners are caught and logged but do not propagate.

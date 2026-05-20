@@ -1,16 +1,16 @@
 {
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "strict": true,
-    "declaration": true,
-    "sourceMap": true,
     "outDir": "./dist",
     "rootDir": "./src",
-    "skipLibCheck": true,
-    "esModuleInterop": true,
     "composite": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  "references": [
+    { "path": "../shared" },
+    { "path": "../economy" },
+    { "path": "../shop" },
+    { "path": "../dispatch" },
+    { "path": "../ai" }
+  ]
 }

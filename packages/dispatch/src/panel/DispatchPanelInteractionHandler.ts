@@ -74,20 +74,49 @@ export interface DispatchSessionState {
   selectedOptionCode?: string;
   selectedOrderNumber?: string;
   statusMessage?: string;
+  /** Timestamp when this session was last accessed (ms since epoch). */
+  lastAccessedAt: number;
 }
 
+/** Session expiry TTL: 30 minutes (in ms). */
+const SESSION_TTL_MS = 30 * 60 * 1000;
+
+/** Session cleanup interval: every 5 minutes. */
+const SESSION_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
+
 const sessions = new Map<string, DispatchSessionState>();
+
+let cleanupTimer: ReturnType<typeof setInterval> | null = null;
+
+function startCleanupTimer(): void {
+  if (cleanupTimer != null) return;
+  cleanupTimer = setInterval(() => {
+    const now = Date.now();
+    for (const [key, session] of sessions.entries()) {
+      if (now - session.lastAccessedAt > SESSION_TTL_MS) {
+        sessions.delete(key);
+      }
+    }
+  }, SESSION_CLEANUP_INTERVAL_MS);
+  // Allow the process to exit even if the timer is still running
+  if (typeof cleanupTimer === 'object' && 'unref' in cleanupTimer) {
+    (cleanupTimer as NodeJS.Timeout).unref();
+  }
+}
 
 function getSessionKey(guildId: string, userId: string): string {
   return `${guildId}:${userId}`;
 }
 
 function getOrCreateSession(guildId: string, userId: string): DispatchSessionState {
+  startCleanupTimer();
   const key = getSessionKey(guildId, userId);
   let session = sessions.get(key);
   if (session == null) {
-    session = { mode: null };
+    session = { mode: null, lastAccessedAt: Date.now() };
     sessions.set(key, session);
+  } else {
+    session.lastAccessedAt = Date.now();
   }
   return session;
 }

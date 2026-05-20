@@ -88,7 +88,7 @@ export class AIChatMentionRoutingDecision {
       if (enabled) {
         return {
           route: Route.AGENT_ROUTE,
-          source: Source.AGENT_ENABLED,
+          source: Source.AGENT_CONFIG,
           detail: `Agent enabled for channel ${restrictionChannelId}`,
         };
       }
@@ -97,22 +97,25 @@ export class AIChatMentionRoutingDecision {
       agentConfigUnavailable = true;
     }
 
-    // Priority 2: Check channel/category allowlist
-    const channelAllowed = await this.channelRestrictionService.isChannelAllowed(
+    // Priority 2: Check channel/category allowlist with matched source
+    const allowResult = await this.channelRestrictionService.isChannelAllowedWithSource(
       guildId,
       restrictionChannelId,
       categoryId ?? undefined,
     );
 
-    if (channelAllowed) {
+    if (allowResult === 'channel') {
       return {
         route: Route.AI_CHAT_ROUTE,
-        source: categoryId
-          ? Source.CATEGORY_ALLOWLIST
-          : Source.CHANNEL_ALLOWLIST,
-        detail: categoryId
-          ? `Category ${categoryId} is allowlisted`
-          : `Channel ${restrictionChannelId} is allowlisted`,
+        source: Source.CHANNEL_ALLOWLIST,
+        detail: `Channel ${restrictionChannelId} is allowlisted`,
+      };
+    }
+    if (allowResult === 'category') {
+      return {
+        route: Route.AI_CHAT_ROUTE,
+        source: Source.CATEGORY_ALLOWLIST,
+        detail: `Category ${categoryId} is allowlisted`,
       };
     }
 
@@ -126,7 +129,7 @@ export class AIChatMentionRoutingDecision {
     }
     return {
       route: Route.DENY,
-      source: Source.AI_ALLOWLIST_DENIED,
+      source: Source.NO_ALLOWLIST,
       detail: `Channel ${restrictionChannelId} is not allowlisted and agent is not enabled`,
     };
   }

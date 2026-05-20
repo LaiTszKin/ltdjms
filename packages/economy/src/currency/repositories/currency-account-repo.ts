@@ -13,7 +13,7 @@ export class CurrencyAccountRepository {
 
   /**
    * Finds or creates a currency account for a member.
-   * Uses INSERT...ON CONFLICT DO NOTHING then SELECT pattern.
+   * Uses INSERT...ON CONFLICT DO NOTHING with RETURNING to minimise DB round-trips.
    */
   async findOrCreate(guildId: number, userId: number): Promise<MemberCurrencyAccount> {
     const existing = await this.db
@@ -31,18 +31,23 @@ export class CurrencyAccountRepository {
       return mapToDomain(existing[0]);
     }
 
-    // Create new account with zero balance
-    await this.db
+    // Create new account with zero balance and return it in one round-trip
+    const [created] = await this.db
       .insert(memberCurrencyAccount)
       .values({
         guildId,
         userId,
         balance: 0,
       })
-      .onConflictDoNothing();
+      .onConflictDoNothing()
+      .returning();
 
-    // Fetch the account (whether newly created or existing)
-    const created = await this.db
+    if (created) {
+      return mapToDomain(created);
+    }
+
+    // Race condition: another thread inserted between our SELECT and INSERT
+    const retry = await this.db
       .select()
       .from(memberCurrencyAccount)
       .where(
@@ -53,7 +58,7 @@ export class CurrencyAccountRepository {
       )
       .limit(1);
 
-    return mapToDomain(created[0]);
+    return mapToDomain(retry[0]);
   }
 
   /**

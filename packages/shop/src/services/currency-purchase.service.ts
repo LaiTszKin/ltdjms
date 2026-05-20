@@ -66,7 +66,7 @@ export class CurrencyPurchaseService {
         description: string;
       }): Promise<
         Result<
-          { amount: number; currencyBalanceAfter: number | null; formatReward(product: Product): string },
+          { amount: number; currencyBalanceAfter: number | null },
           DomainError
         >
       >;
@@ -154,7 +154,7 @@ export class CurrencyPurchaseService {
       if (grantedReward.currencyBalanceAfter !== null) {
         finalBalance = grantedReward.currencyBalanceAfter;
       }
-      rewardMessage = `\n\n獲得獎勵: ${grantedReward.formatReward(product)}`;
+      rewardMessage = `\n\n獲得獎勵: ${formatReward(product)}`;
     }
 
     this.log.info({ guildId, userId, productId, price }, 'Product purchased');

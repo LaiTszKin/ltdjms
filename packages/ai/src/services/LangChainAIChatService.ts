@@ -202,9 +202,9 @@ export class LangChainAIChatService implements AIChatService {
       // Build messages array (agent prompts included when agent is enabled)
       const messages = await this.buildMessages(guildId, userMessage, history, agentEnabled);
 
-      // Use tool-bound model when agent is enabled
+      // Use tool-bound model when agent is enabled (reuse existing model)
       const { model: chatModel, maxIterations } = agentEnabled
-        ? createChatModel(this.config, true)
+        ? createChatModel(this.config, true, this.chatModel)
         : { model: this.chatModel, maxIterations: 1 };
 
       let totalContent = '';
@@ -589,16 +589,19 @@ export const AGENT_TOOL_DEFINITIONS: StructuredToolInterface[] = [
 
 /**
  * Creates a ChatOpenAI model with optional tool bindings for agent mode.
+ * Reuses the provided existing model instance to avoid redundant instantiation.
  *
  * @param config - The AI service configuration
  * @param agentEnabled - Whether to create an agent-capable model with tool bindings
+ * @param existingModel - An optional existing ChatOpenAI instance to reuse as base
  * @returns An object with the model and maxIterations setting
  */
 export function createChatModel(
   config: AIServiceConfig,
   agentEnabled: boolean,
+  existingModel?: ChatOpenAI,
 ): { model: ChatOpenAI | ReturnType<ChatOpenAI['bindTools']>; maxIterations: number } {
-  const model = new ChatOpenAI({
+  const model = existingModel ?? new ChatOpenAI({
     configuration: {
       baseURL: config.baseUrl,
       apiKey: config.apiKey,

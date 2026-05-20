@@ -23,4 +23,7 @@ export interface DiscordContext {
 
   /** Gets a command option as a number. */
   getOptionAsNumber(name: string): number | null;
+
+  /** Gets a command option resolved as a Discord user. */
+  getOptionAsUser(name: string): unknown | null;
 }

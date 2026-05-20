@@ -16,6 +16,28 @@ interface EmbedPayload {
   footer?: { text: string };
 }
 
+/** Shape for ActionRow component (buttons). */
+interface ButtonComponent {
+  type: 2;
+  style: number;
+  custom_id: string;
+  label: string;
+}
+
+interface ActionRowPayload {
+  type: 1;
+  components: ButtonComponent[];
+}
+
+/** The order-specific custom ID prefix for notification buttons. */
+const NOTIFY_PREFIX = 'dispatch_notify_';
+const NOTIFY_CONFIRM = `${NOTIFY_PREFIX}confirm`;
+const NOTIFY_COMPLETE = `${NOTIFY_PREFIX}complete`;
+const NOTIFY_CONFIRM_COMPLETION = `${NOTIFY_PREFIX}confirm_completion`;
+const NOTIFY_AFTER_SALES = `${NOTIFY_PREFIX}after_sales`;
+const NOTIFY_CLAIM = `${NOTIFY_PREFIX}claim`;
+const NOTIFY_CLOSE = `${NOTIFY_PREFIX}close`;
+
 /**
  * Best-effort DM notification service for escort dispatch events.
  * All methods catch errors internally and never throw.
@@ -37,8 +59,9 @@ export class DispatchNotificationService {
         { name: '客戶', value: `<@${order.customerUserId}>`, inline: true },
       ],
       footer: { text: '請前往面板確認接單' },
-    });
-    // TODO: Add button components for quick actions
+    }, [
+      { type: 1, components: [{ type: 2, style: 3, custom_id: NOTIFY_CONFIRM, label: '確認接單' }] },
+    ]);
   }
 
   /** DM 給護航者：已被指派新訂單（embed 格式）。 */
@@ -52,8 +75,9 @@ export class DispatchNotificationService {
         { name: '客戶', value: `<@${order.customerUserId}>`, inline: true },
       ],
       footer: { text: '請前往面板確認接單' },
-    });
-    // TODO: Add button components for quick actions
+    }, [
+      { type: 1, components: [{ type: 2, style: 3, custom_id: NOTIFY_CONFIRM, label: '確認接單' }] },
+    ]);
   }
 
   /** DM 給管理員與客戶：護航者已確認接單（embed 格式）。 */
@@ -74,7 +98,6 @@ export class DispatchNotificationService {
       this.sendDMEmbed(String(order.customerUserId), embed),
     ]);
     return results.every(Boolean);
-    // TODO: Add button components for quick actions
   }
 
   /** DM 給客戶：要求確認完成（embed 格式）。 */
@@ -88,8 +111,15 @@ export class DispatchNotificationService {
         { name: '護航者', value: `<@${order.escortUserId}>`, inline: true },
       ],
       footer: { text: '24 小時未確認將視為訂單完成' },
-    });
-    // TODO: Add button components for quick actions
+    }, [
+      {
+        type: 1,
+        components: [
+          { type: 2, style: 3, custom_id: NOTIFY_CONFIRM_COMPLETION, label: '確認完成' },
+          { type: 2, style: 4, custom_id: NOTIFY_AFTER_SALES, label: '申請售後' },
+        ],
+      },
+    ]);
   }
 
   /** DM 給護航者：客戶已確認完成（embed 格式）。spec R6.1：僅通知護航者，不通知管理員。 */
@@ -104,7 +134,6 @@ export class DispatchNotificationService {
       ],
       footer: { text: '訂單已完成' },
     });
-    // TODO: Add button components for quick actions
   }
 
   /** DM 給售後人員：有新的售後案件（spec R7.4）。 */
@@ -140,12 +169,15 @@ export class DispatchNotificationService {
       const onlineStaffIds = await this.filterOnlineStaff(order.guildId, [...staffIds]);
       const targetIds = onlineStaffIds.length > 0 ? onlineStaffIds : [...staffIds];
 
-      await Promise.all(targetIds.map((staffId) => this.sendDMEmbed(String(staffId), embed)));
+      await Promise.all(targetIds.map((staffId) =>
+        this.sendDMEmbed(String(staffId), embed, [
+          { type: 1, components: [{ type: 2, style: 3, custom_id: NOTIFY_CLAIM, label: '承接售後' }] },
+        ]),
+      ));
       return true;
     } catch {
       return false;
     }
-    // TODO: Add button components for quick actions
   }
 
   /** DM 給客戶：售後案件已被接手（embed 格式）。 */
@@ -160,7 +192,6 @@ export class DispatchNotificationService {
       ],
       footer: { text: '售後處理中' },
     });
-    // TODO: Add button components for quick actions
   }
 
   /** DM 給客戶：售後案件已結案（embed 格式）。 */
@@ -174,23 +205,30 @@ export class DispatchNotificationService {
       ],
       footer: { text: '售後已結案' },
     });
-    // TODO: Add button components for quick actions
   }
 
   // ---- Private Helpers ----
 
-  private async sendDMEmbed(userId: string, embed: EmbedPayload): Promise<boolean> {
+  private async sendDMEmbed(
+    userId: string,
+    embed: EmbedPayload,
+    components?: ActionRowPayload[],
+  ): Promise<boolean> {
     try {
       const client = this.gateway.requireReadyClient() as {
         users: {
           fetch(id: string): Promise<{
-            send(options: { embeds: EmbedPayload[] }): Promise<unknown>;
+            send(options: { embeds: EmbedPayload[]; components?: ActionRowPayload[] }): Promise<unknown>;
           } | null>;
         };
       };
       const user = await client.users.fetch(userId);
       if (user != null) {
-        await user.send({ embeds: [embed] });
+        const options: { embeds: EmbedPayload[]; components?: ActionRowPayload[] } = { embeds: [embed] };
+        if (components && components.length > 0) {
+          options.components = components;
+        }
+        await user.send(options);
         return true;
       }
       return false;
@@ -204,22 +242,21 @@ export class DispatchNotificationService {
   }
 
   /**
-   * Filters staff user IDs to those who are currently online in the guild.
+   * Filters staff user IDs to those who are currently online in the guild (parallel).
    * Uses the discord.js Guild member cache (requires GuildPresences intent).
    */
   private async filterOnlineStaff(guildId: number, staffIds: number[]): Promise<number[]> {
-    const onlineIds: number[] = [];
-    for (const staffId of staffIds) {
-      try {
-        const isOnline = await this.isMemberOnline(String(guildId), String(staffId));
-        if (isOnline) {
-          onlineIds.push(staffId);
+    const results = await Promise.all(
+      staffIds.map(async (staffId) => {
+        try {
+          const isOnline = await this.isMemberOnline(String(guildId), String(staffId));
+          return { id: staffId, online: isOnline };
+        } catch {
+          return { id: staffId, online: false };
         }
-      } catch {
-        // If we can't check presence, exclude from online list
-      }
-    }
-    return onlineIds;
+      }),
+    );
+    return results.filter((r) => r.online).map((r) => r.id);
   }
 
   private async isMemberOnline(guildId: string, userId: string): Promise<boolean> {
