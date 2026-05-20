@@ -421,6 +421,22 @@ export function withAfterSalesInProgress(
   });
 }
 
+/** 指派護航者後回傳新狀態物件（escortUserId 從 0 更新為指定值，狀態維持 PENDING_CONFIRMATION）。 */
+export function withAssignedEscort(
+  order: EscortDispatchOrder,
+  assignedBy: number,
+  escortUserIdValue: number,
+  assignedAt: Date,
+): EscortDispatchOrder {
+  return createOrder({
+    ...order,
+    id: order.id,
+    assignedByUserId: assignedBy,
+    escortUserId: escortUserIdValue,
+    updatedAt: assignedAt,
+  });
+}
+
 /** 售後人員結案。 */
 export function withAfterSalesClosed(
   order: EscortDispatchOrder,

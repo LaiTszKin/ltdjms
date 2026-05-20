@@ -10,9 +10,11 @@ export class EscortDispatchOrderNumberGenerator {
   private static readonly ALPHANUMERIC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
   private readonly clock: () => number;
+  private readonly randomFn: (min: number, max: number) => number;
 
-  constructor(clock?: () => number) {
+  constructor(clock?: () => number, randomFn?: (min: number, max: number) => number) {
     this.clock = clock ?? (() => Date.now());
+    this.randomFn = randomFn ?? randomInt;
   }
 
   /** 產生一組訂單編號。 */
@@ -31,8 +33,8 @@ export class EscortDispatchOrderNumberGenerator {
     const chars: string[] = [];
     const len = EscortDispatchOrderNumberGenerator.ALPHANUMERIC.length;
     for (let i = 0; i < EscortDispatchOrderNumberGenerator.SUFFIX_LENGTH; i++) {
-      // randomInt(min, max): max is exclusive, so range is [0, len)
-      const idx = randomInt(0, len);
+      // randomFn(min, max): max is exclusive, so range is [0, len)
+      const idx = this.randomFn(0, len);
       chars.push(EscortDispatchOrderNumberGenerator.ALPHANUMERIC[idx]);
     }
     return chars.join('');

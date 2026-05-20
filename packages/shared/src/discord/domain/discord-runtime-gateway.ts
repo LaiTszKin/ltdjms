@@ -24,4 +24,10 @@ export interface DiscordRuntimeGateway {
 
   /** Finds a thread channel by guild and thread ID. */
   findThreadChannel(guildId: string, threadId: string): unknown | null;
+
+  /** Sends a direct message to a user. Returns true if the message was sent. */
+  sendDM(userId: string, message: Record<string, unknown>): Promise<boolean>;
+
+  /** Checks if a guild member is currently online. Returns false on any error. */
+  isMemberOnline(guildId: string, userId: string): Promise<boolean>;
 }
