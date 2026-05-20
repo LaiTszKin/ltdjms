@@ -1,7 +1,7 @@
 import { encryptAES, decryptAES } from '../crypto/ecpay-aes.js';
 import type { EnvironmentConfig } from '@ltdjms/shared';
 import { Result, ok, err, DomainError } from '@ltdjms/shared';
-import https from 'node:https';
+import { fetch, Agent as UndiciAgent } from 'undici';
 import crypto from 'node:crypto';
 import pino from 'pino';
 
@@ -11,7 +11,7 @@ const OFFICIAL_STAGE_MERCHANT_ID = '3002607';
 const OFFICIAL_STAGE_HASH_KEY = 'pwFHCqoQZGmho4w6';
 const OFFICIAL_STAGE_HASH_IV = 'EkRm7iFT261dpevs';
 
-const keepAliveAgent = new https.Agent({ keepAlive: true, keepAliveMsecs: 30000, timeout: 15000, maxSockets: 10, maxFreeSockets: 5 });
+const keepAliveDispatcher = new UndiciAgent({ keepAliveTimeout: 30000, connectTimeout: 15000, connections: 10 });
 
 function pad2(n: number): string {
   return n.toString().padStart(2, '0');
@@ -104,8 +104,8 @@ export class EcpayCvsPaymentService {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(root),
         signal: AbortSignal.timeout(15000),
-        agent: keepAliveAgent,
-      } as any);
+        dispatcher: keepAliveDispatcher,
+      });
 
       if (!response.ok) {
         const body = await response.text();
@@ -164,7 +164,7 @@ export class EcpayCvsPaymentService {
         paymentUrl,
       });
     } catch (e: any) {
-      if (e.name === 'AbortError') {
+      if (e.name === 'TimeoutError' || e.name === 'AbortError') {
         this.log.warn('ECPay request timeout');
         return err(DomainError.unexpectedFailure('綠界連線逾時，請稍後再試'));
       }

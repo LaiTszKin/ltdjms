@@ -9,6 +9,8 @@ export class EcpayCallbackHttpServer {
   private app: express.Express | null = null;
   private server: http.Server | null = null;
   private started = false;
+  /** Track active connections for graceful shutdown. */
+  private connections = new Set<any>();
 
   constructor(
     private readonly config: EnvironmentConfig,
@@ -46,17 +48,16 @@ export class EcpayCallbackHttpServer {
     this.app = express();
 
     // Body parsing middleware (global) for JSON and form-encoded payloads.
-    // The parsed body is serialized back to a string for the callback service,
-    // which handles both JSON and form-encoded payloads from ECPay.
     this.app.use(express.json({ limit: '64kb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '64kb' }));
 
     // Callback route - POST only
     this.app.post(callbackPath, async (req, res) => {
       try {
-        const bodyStr = typeof req.body === 'string' ? req.body : JSON.stringify(req.body ?? '');
-        const contentType = req.headers['content-type'] ?? null;
-        const result = await this.callbackService.handleCallback(bodyStr, contentType);
+        const result = await this.callbackService.handleCallback(
+          req.body,
+          req.headers['content-type'] ?? null,
+        );
         res.status(result.httpStatus).send(result.responseBody);
       } catch (e) {
         this.log.error({ error: e }, 'ECPay callback handler error');
@@ -97,17 +98,46 @@ export class EcpayCallbackHttpServer {
       );
     });
 
+    // Track active connections for graceful shutdown (P3-8)
+    this.server.on('connection', (socket) => {
+      this.connections.add(socket);
+      socket.on('close', () => this.connections.delete(socket));
+    });
+
+    // Handle server-level errors (P1-8)
+    this.server.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE') {
+        this.log.error(
+          { port: bindPort },
+          `Port ${bindPort} is already in use. Please free the port or configure a different port via ECPAY_CALLBACK_BIND_PORT.`,
+        );
+      } else {
+        this.log.error({ error: err }, 'ECPay callback server error');
+      }
+    });
+
     this.started = true;
   }
 
-  stop(): void {
+  async stop(): Promise<void> {
     if (this.server) {
-      this.server.close();
-      this.server = null;
+      return new Promise<void>((resolve) => {
+        this.server!.close(() => {
+          // Destroy any remaining idle connections (P3-8)
+          for (const socket of this.connections) {
+            socket.destroy();
+          }
+          this.connections.clear();
+          this.server = null;
+          this.app = null;
+          this.started = false;
+          this.log.info('ECPay callback server stopped');
+          resolve();
+        });
+      });
     }
     this.app = null;
     this.started = false;
-    this.log.info('ECPay callback server stopped');
   }
 
   private sanitizeBindHost(bindHost: string): string {

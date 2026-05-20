@@ -2,7 +2,7 @@ import { pgTable, serial, bigint, varchar, boolean, integer, timestamp, text, un
 
 /**
  * fiat_order table — matches Flyway V021-V026 exactly.
- * 36 columns total.
+ * 31 columns total.
  */
 export const fiatOrder = pgTable(
   'fiat_order',
