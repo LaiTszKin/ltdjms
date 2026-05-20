@@ -28,12 +28,8 @@ export class DiscordMarkdownSanitizer {
     result = result.replace(/<[^>]*>/g, '');
 
     // 3. Flatten nested blockquotes (e.g. ">> > text" → "> text")
-    result = result.replace(/^(?:\s*>\s*)+/gm, (match) => {
-      // Collapse multiple > levels into single level
-      const content = match.replace(/^(?:\s*>\s*)+/, '').trimStart();
-      if (!content) return '>';
-      return '> ' + content;
-    });
+    // Regex matches leading blockquote prefix only; the rest of the line is preserved.
+    result = result.replace(/^(?:\s*>\s*)+/gm, '> ');
 
     // 4. Convert tables to ```text code blocks
     result = this.convertTablesToCodeBlocks(result);

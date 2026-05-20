@@ -18,7 +18,6 @@ import {
 } from './ai-chat-service.js';
 import { type Result, DomainError, ok, err } from '@ltdjms/shared';
 import type { DiscordRuntimeGateway } from '@ltdjms/shared';
-import { MessageChunkAccumulator } from './MessageChunkAccumulator.js';
 import { LangChainExceptionMapper } from './LangChainExceptionMapper.js';
 import type { PromptLoader, SystemPrompt } from '../prompts/prompt-loader.js';
 import { ToolCallerAuthorizationGuard } from '../tools/ToolCallerAuthorizationGuard.js';
@@ -62,6 +61,7 @@ export class LangChainAIChatService implements AIChatService {
   constructor(
     config: AIServiceConfig,
     private readonly promptLoader: PromptLoader,
+    chatModel: ChatOpenAI,
     private readonly toolMap?: Map<string, RegisteredTool>,
     private readonly authGuard?: ToolCallerAuthorizationGuard,
     private readonly interceptor?: ToolExecutionInterceptor,
@@ -70,14 +70,14 @@ export class LangChainAIChatService implements AIChatService {
     private readonly exceptionMapper: LangChainExceptionMapper = new LangChainExceptionMapper(),
   ) {
     this.config = config;
-    this.chatModel = this.buildChatModel(config);
+    this.chatModel = chatModel;
   }
 
   /**
    * Builds a ChatOpenAI instance from config.
    */
   private buildChatModel(config: AIServiceConfig): ChatOpenAI {
-    const model = new ChatOpenAI({
+    return new ChatOpenAI({
       configuration: {
         baseURL: config.baseUrl,
         apiKey: config.apiKey,
@@ -87,8 +87,6 @@ export class LangChainAIChatService implements AIChatService {
       timeout: config.timeoutSeconds * 1000,
       streaming: true,
     });
-
-    return model;
   }
 
   /**
@@ -116,17 +114,6 @@ export class LangChainAIChatService implements AIChatService {
       userMessage,
       {
         onChunk: (chunk: string, _isComplete: boolean, error: DomainError | null) => {
-          if (error) {
-            errorRef.current = error;
-          }
-          chunks.push(chunk);
-        },
-        onChunkWithType: (
-          chunk: string,
-          _isComplete: boolean,
-          error: DomainError | null,
-          _type: StreamChunkType,
-        ) => {
           if (error) {
             errorRef.current = error;
           }
@@ -244,7 +231,7 @@ export class LangChainAIChatService implements AIChatService {
             // For non-agent mode, emit CONTENT in real-time
             // For agent mode, accumulate content and emit after tool loop completes
             if (!agentEnabled) {
-              handler.onChunkWithType(
+              handler.onChunk(
                 content,
                 false,
                 null,
@@ -258,7 +245,7 @@ export class LangChainAIChatService implements AIChatService {
           const reasoningContent = msg.reasoning_content as string | undefined;
           if (reasoningContent) {
             reasoningBuffer += reasoningContent;
-            handler.onChunkWithType(
+            handler.onChunk(
               reasoningContent,
               false,
               null,
@@ -272,7 +259,7 @@ export class LangChainAIChatService implements AIChatService {
         if (toolCalls.length > 0) {
           // Emit TOOL_INTENT for each tool call so the listener can display them
           for (const tc of toolCalls) {
-            handler.onChunkWithType(
+            handler.onChunk(
               `使用工具：${tc.name}`,
               false,
               null,
@@ -318,11 +305,13 @@ export class LangChainAIChatService implements AIChatService {
 
       // For agent mode: emit full accumulated content with completion signal
       if (agentEnabled && totalContent) {
-        handler.onChunkWithType(totalContent, true, null, StreamChunkType.CONTENT);
+        handler.onChunk(totalContent, true, null, StreamChunkType.CONTENT);
       }
 
-      // Final completion signal (used by both modes)
-      handler.onChunk(totalContent || '', true, null);
+      // Final completion signal (used by non-agent mode)
+      if (!agentEnabled) {
+        handler.onChunk(totalContent || '', true, null);
+      }
     } catch (error) {
       const domainError = this.exceptionMapper.map(error);
       handler.onChunk('', true, domainError);
@@ -379,18 +368,8 @@ export class LangChainAIChatService implements AIChatService {
         const correlationId = this.interceptor?.onToolExecutionStarted(tc.name, args);
 
         try {
-          // P0-7: Authorization via ToolCallerAuthorizationGuard
-          if (this.authGuard && guild) {
-            const authError = await this.authGuard.validateAdministrator(guild, tc.name);
-            if (authError) {
-              if (correlationId) {
-                this.interceptor?.onToolExecutionCompleted(correlationId, authError);
-              }
-              return authError;
-            }
-          }
-
           // Execute the tool's handler function
+          // Authorization is handled by each tool's own validateAdministrator() call (P2-10)
           if (!guild) {
             const noGuildMsg = `錯誤：無法取得伺服器資訊 (${guildId})`;
             if (correlationId) {
@@ -398,7 +377,13 @@ export class LangChainAIChatService implements AIChatService {
             }
             return noGuildMsg;
           }
-          const result = await tool.execute(args, guild);
+          // P1-13: Per-tool execution timeout (30 seconds)
+          const result = await Promise.race([
+            tool.execute(args, guild),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error(`工具「${tc.name}」執行逾時 (30 秒)`)), 30000),
+            ),
+          ]);
 
           // P0-8: Interceptor completion
           if (correlationId) {

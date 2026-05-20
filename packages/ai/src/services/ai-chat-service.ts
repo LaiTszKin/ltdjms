@@ -27,13 +27,7 @@ export interface StreamChunk {
  * Matches Java StreamingResponseHandler.
  */
 export interface StreamingResponseHandler {
-  onChunk(chunk: string, isComplete: boolean, error: DomainError | null): void;
-  onChunkWithType(
-    chunk: string,
-    isComplete: boolean,
-    error: DomainError | null,
-    type: StreamChunkType,
-  ): void;
+  onChunk(chunk: string, isComplete: boolean, error: DomainError | null, chunkType?: StreamChunkType): void;
 }
 
 /**

@@ -39,11 +39,15 @@ export class SearchMessagesTool {
       const keywords = params.keywords.toLowerCase();
       const maxResults = params.maxResultsPerChannel ?? 5;
       const maxScan = params.maxMessagesToScan ?? 100;
+      // P1-14: Limit channels to search to prevent excessive API calls
+      const maxChannelsToSearch = 10;
+      const hasChannelFilter = params.channelIds && params.channelIds.length > 0;
 
       let channels = guild.channels.cache;
-      if (params.channelIds && params.channelIds.length > 0) {
+      if (hasChannelFilter) {
         channels = channels.filter((c) => params.channelIds!.includes(c.id));
       }
+      let searchedChannelCount = 0;
 
       const results: Array<{
         channelId: string;
@@ -57,6 +61,8 @@ export class SearchMessagesTool {
       }> = [];
 
       for (const [, channel] of channels) {
+        if (!hasChannelFilter && searchedChannelCount >= maxChannelsToSearch) break;
+        searchedChannelCount++;
         if (!channel.isTextBased()) continue;
         if (!channel.isSendable()) continue;
 
