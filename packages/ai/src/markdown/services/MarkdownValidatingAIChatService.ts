@@ -158,12 +158,11 @@ export class MarkdownValidatingAIChatService implements AIChatService {
 
     /**
      * Flushes accumulated CONTENT chunks through the validation pipeline
-     * and forwards validated pages via the appropriate callback.
+     * and forwards validated pages via onChunk.
      */
     const flushContent = (
       isComplete: boolean,
       error: DomainError | null,
-      useType: boolean = false,
     ): void => {
       if (contentBuffer.length === 0) return;
 
@@ -173,59 +172,34 @@ export class MarkdownValidatingAIChatService implements AIChatService {
       if (!fullContent) return;
 
       if (this.config.streamingBypassValidation) {
-        if (useType) {
-          handler.onChunkWithType(fullContent, isComplete, null, StreamChunkType.CONTENT);
-        } else {
-          handler.onChunk(fullContent, isComplete, null);
-        }
+        handler.onChunk(fullContent, isComplete, null, StreamChunkType.CONTENT);
         return;
       }
 
       const validated = this.applyPipeline(fullContent);
       for (let i = 0; i < validated.length; i++) {
         const pageIsComplete = i === validated.length - 1;
-        if (useType) {
-          handler.onChunkWithType(validated[i], pageIsComplete, null, StreamChunkType.CONTENT);
-        } else {
-          handler.onChunk(validated[i], pageIsComplete, null);
-        }
+        handler.onChunk(validated[i], pageIsComplete, null, StreamChunkType.CONTENT);
       }
     };
 
     return {
-      onChunk: (chunk: string, isComplete: boolean, error: DomainError | null) => {
+      onChunk: (chunk: string, isComplete: boolean, error: DomainError | null, chunkType?: StreamChunkType) => {
         if (error) {
-          handler.onChunk(chunk, isComplete, error);
+          handler.onChunk(chunk, isComplete, error, chunkType);
           return;
         }
 
-        if (chunk) {
-          contentBuffer.push(chunk);
-        }
-
-        if (isComplete) {
-          flushContent(true, null, false);
-        }
-      },
-      onChunkWithType: (
-        chunk: string,
-        isComplete: boolean,
-        error: DomainError | null,
-        type: StreamChunkType,
-      ) => {
-        if (error) {
-          handler.onChunkWithType(chunk, isComplete, error, type);
-          return;
-        }
+        const type = chunkType ?? StreamChunkType.CONTENT;
 
         // REASONING and TOOL_INTENT pass through unmodified
         if (type !== StreamChunkType.CONTENT) {
-          handler.onChunkWithType(chunk, isComplete, null, type);
+          handler.onChunk(chunk, isComplete, null, type);
           return;
         }
 
         if (this.config.streamingBypassValidation) {
-          handler.onChunkWithType(chunk, isComplete, null, StreamChunkType.CONTENT);
+          handler.onChunk(chunk, isComplete, null, StreamChunkType.CONTENT);
           return;
         }
 
@@ -235,7 +209,7 @@ export class MarkdownValidatingAIChatService implements AIChatService {
         }
 
         if (isComplete) {
-          flushContent(true, null, true);
+          flushContent(true, null);
         }
       },
     };

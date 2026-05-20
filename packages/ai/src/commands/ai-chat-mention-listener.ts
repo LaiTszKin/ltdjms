@@ -180,44 +180,20 @@ export class AIChatMentionListener {
     const tracker = new ReasoningMessageTracker();
     const pendingContent: string[] = [];
     let completionProcessed = false;
-    // 互斥旗標：標記哪個 callback 已被使用，避免 onChunk 與 onChunkWithType 同時累積內容
-    let chunkTypeUsed: 'legacy' | 'typed' | null = null;
 
     // Send initial "thinking" message
     const thinkingMsg = await message.reply(':thought_balloon: AI 正在思考...');
     tracker.setInitialMessage(thinkingMsg);
 
     const handler: StreamingResponseHandler = {
-      onChunk: (chunk: string, _isComplete: boolean, error: DomainError | null) => {
-        if (error) {
-          const errorMsg = this.mapErrorToUserMessage(error);
-          thinkingMsg.edit(errorMsg).catch(() => {});
-          return;
-        }
-        // 若已使用 typed callback，忽略 legacy onChunk 以防止重複累積
-        if (chunkTypeUsed === 'typed') return;
-        chunkTypeUsed = 'legacy';
-        if (chunk) {
-          pendingContent.push(chunk);
-        }
-      },
-      onChunkWithType: (
-        chunk: string,
-        isComplete: boolean,
-        error: DomainError | null,
-        type: StreamChunkType,
-      ) => {
+      onChunk: (chunk: string, isComplete: boolean, error: DomainError | null, chunkType?: StreamChunkType) => {
         if (error) {
           const errorMsg = this.mapErrorToUserMessage(error);
           thinkingMsg.edit(errorMsg).catch(() => {});
           return;
         }
 
-        // 僅對 CONTENT 類型設定互斥旗標；REASONING 與 TOOL_INTENT 不影響
-        if (type === StreamChunkType.CONTENT) {
-          if (chunkTypeUsed === 'legacy') return;
-          chunkTypeUsed = 'typed';
-        }
+        const type = chunkType ?? StreamChunkType.CONTENT;
 
         switch (type) {
           case StreamChunkType.REASONING:
@@ -304,48 +280,34 @@ export class AIChatMentionListener {
     );
 
     const handler: StreamingResponseHandler = {
-      onChunk: (chunk: string, _isComplete: boolean, error: DomainError | null) => {
-        if (error) {
-          const errorMsg = this.mapErrorToUserMessage(error);
-          thinkingMsg.edit(errorMsg).catch(() => {});
-          return;
-        }
-        if (chunk) {
-          thinkingMsg.edit(chunk).catch(() => {});
-        }
-      },
-      onChunkWithType: (
-        chunk: string,
-        isComplete: boolean,
-        error: DomainError | null,
-        type: StreamChunkType,
-      ) => {
+      onChunk: (chunk: string, isComplete: boolean, error: DomainError | null, chunkType?: StreamChunkType) => {
         if (error) {
           const errorMsg = this.mapErrorToUserMessage(error);
           thinkingMsg.edit(errorMsg).catch(() => {});
           return;
         }
 
-        if (type === StreamChunkType.CONTENT && chunk) {
-          if (this.streamingBypassValidation) {
-            // Buffer mode: collect all chunks
-            if (isComplete) {
-              // Replace thinking message with final content (split if needed)
-              const pages = this.splitter.split(chunk);
-              // P2-41: Fallback for empty split result with non-empty content
-              if (pages.length === 0 && chunk) {
-                thinkingMsg.edit(chunk).catch(() => {});
-              } else if (pages.length > 0) {
-                thinkingMsg.edit(pages[0]).catch(() => {});
-                for (let i = 1; i < pages.length; i++) {
-                  this.sendToChannel(message, pages[i]);
-                }
+        const type = chunkType ?? StreamChunkType.CONTENT;
+        if (type !== StreamChunkType.CONTENT || !chunk) return;
+
+        if (this.streamingBypassValidation) {
+          // Buffer mode: collect all chunks
+          if (isComplete) {
+            // Replace thinking message with final content (split if needed)
+            const pages = this.splitter.split(chunk);
+            // P2-41: Fallback for empty split result with non-empty content
+            if (pages.length === 0 && chunk) {
+              thinkingMsg.edit(chunk).catch(() => {});
+            } else if (pages.length > 0) {
+              thinkingMsg.edit(pages[0]).catch(() => {});
+              for (let i = 1; i < pages.length; i++) {
+                this.sendToChannel(message, pages[i]);
               }
             }
-          } else {
-            // Real-time mode: edit thinking message with content
-            thinkingMsg.edit(chunk).catch(() => {});
           }
+        } else {
+          // Real-time mode: edit thinking message with content
+          thinkingMsg.edit(chunk).catch(() => {});
         }
       },
     };
