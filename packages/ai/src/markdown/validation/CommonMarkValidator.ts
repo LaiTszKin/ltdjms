@@ -52,24 +52,28 @@ export class CommonMarkValidator implements MarkdownValidator {
     // The CommonMark spec requires space after #/list markers, but we flag it proactively.
     this.regexFormatPass(lines, codeBlockLines, errors);
 
-    // Detect unclosed code blocks by checking if the last code token's raw
-    // content does not end with the closing fence.
+    // Detect unclosed fenced code blocks by checking if the last code token
+    // starts with a fence marker (``` or ~~~) but does not end with one.
+    // Indented code blocks (4-space indent) are always closed by definition.
     if (tokens.length > 0) {
       const lastToken = tokens[tokens.length - 1];
       if (lastToken.type === 'code') {
         const codeToken = lastToken as Tokens.Code;
-        const trimmed = codeToken.raw.trimEnd();
-        if (
-          !trimmed.endsWith('```') &&
-          !trimmed.endsWith('~~~')
-        ) {
-          errors.push({
-            errorType: ErrorType.UNCLOSED_CODE_BLOCK,
-            line: lines.length,
-            column: 1,
-            context: '程式碼區塊未閉合',
-            suggestion: '請在程式碼區塊結尾加上 ``` 或 ~~~',
-          });
+        const raw = codeToken.raw.trimStart();
+        if (raw.startsWith('```') || raw.startsWith('~~~')) {
+          const trimmedEnd = raw.trimEnd();
+          if (
+            !trimmedEnd.endsWith('```') &&
+            !trimmedEnd.endsWith('~~~')
+          ) {
+            errors.push({
+              errorType: ErrorType.UNCLOSED_CODE_BLOCK,
+              line: lines.length,
+              column: 1,
+              context: '程式碼區塊未閉合',
+              suggestion: '請在程式碼區塊結尾加上 ``` 或 ~~~',
+            });
+          }
         }
       }
     }
