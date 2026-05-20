@@ -1,9 +1,10 @@
-import { pgTable, bigint, varchar, timestamp, index, } from 'drizzle-orm/pg-core';
+import { pgTable, bigint, varchar, timestamp, serial, index, uniqueIndex, } from 'drizzle-orm/pg-core';
 /**
  * Guild-level escort option pricing overrides for dynamic order pricing.
  * Migration: V019
  */
 export const guildEscortOptionPrice = pgTable('guild_escort_option_price', {
+    id: serial('id').primaryKey(),
     guildId: bigint('guild_id', { mode: 'number' }).notNull(),
     optionCode: varchar('option_code', { length: 120 }).notNull(),
     priceTwd: bigint('price_twd', { mode: 'number' }).notNull(),
@@ -11,9 +12,7 @@ export const guildEscortOptionPrice = pgTable('guild_escort_option_price', {
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
-    pk: {
-        columns: [table.guildId, table.optionCode],
-    },
+    uqGuildOption: uniqueIndex('uq_guild_escort_option_price').on(table.guildId, table.optionCode),
     guildIdx: index('idx_guild_escort_option_price_guild').on(table.guildId),
 }));
 //# sourceMappingURL=guild-escort-option-price.sql.js.map

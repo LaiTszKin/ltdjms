@@ -58,6 +58,32 @@ export interface EscortDispatchOrder {
 export declare function createPending(orderNumber: string, guildId: number, assignedByUserId: number, escortUserId: number, customerUserId: number): EscortDispatchOrder;
 /** 手動開立尚未派發給護航者的護航訂單（escortUserId=0）。 */
 export declare function createManualOpenOrder(orderNumber: string, guildId: number, assignedByUserId: number, customerUserId: number, sourceEscortOptionCode: string): EscortDispatchOrder;
+/** Creates an EscortDispatchOrder from database row, preserving ALL columns exactly as stored. */
+export declare function fromDbRow(params: {
+    id: number | null;
+    orderNumber: string;
+    guildId: number;
+    assignedByUserId: number;
+    escortUserId: number;
+    customerUserId: number;
+    status: EscortDispatchOrderStatus;
+    createdAt: Date;
+    confirmedAt: Date | null;
+    completionRequestedAt: Date | null;
+    completedAt: Date | null;
+    afterSalesRequestedAt: Date | null;
+    afterSalesAssigneeUserId: number | null;
+    afterSalesAssignedAt: Date | null;
+    afterSalesClosedAt: Date | null;
+    updatedAt: Date;
+    sourceType: SourceType;
+    sourceReference: string | null;
+    sourceProductId: number | null;
+    sourceProductName: string | null;
+    sourceCurrencyPrice: number | null;
+    sourceFiatPriceTwd: number | null;
+    sourceEscortOptionCode: string | null;
+}): EscortDispatchOrder;
 /** 完整參數版本的 createPending（含自動交接快照欄位的有條件校驗）。 */
 export declare function createPendingFull(orderNumber: string, guildId: number, assignedByUserId: number, escortUserId: number, customerUserId: number, sourceType: SourceType, sourceReference: string | null, sourceProductId: number | null, sourceProductName: string | null, sourceCurrencyPrice: number | null, sourceFiatPriceTwd: number | null, sourceEscortOptionCode: string | null): EscortDispatchOrder;
 /** 從商店付款自動交接建立的訂單（escortUserId=0, assignedByUserId=0）。 */

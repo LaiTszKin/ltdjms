@@ -10,10 +10,10 @@ export declare class MockDiscordContext implements DiscordContext {
     private readonly _channelId;
     private readonly _userMention;
     private readonly options;
-    constructor(guildId: number, userId: number, channelId: number, userMention: string);
-    getGuildId(): number;
-    getUserId(): number;
-    getChannelId(): number;
+    constructor(guildId: string, userId: string, channelId: string, userMention: string);
+    getGuildId(): string;
+    getUserId(): string;
+    getChannelId(): string;
     getUserMention(): string;
     getOption(name: string): string | null;
     getOptionAsString(name: string): string | null;

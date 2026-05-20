@@ -207,7 +207,7 @@ Out of scope: 主面板 command 定義與路由（見 Task 7）、即時更新�
   - 注入 `AdminPanelSessionManager`、`BotErrorHandler`
   - Verify: 單元測試——權限不足、session 過期場景
 
-- T6.2 [ ] **`packages/admin/src/panel/admin/views/AdminPanelViewFactory.ts`** — 建構所有管理面板 embed/component：
+- T6.2 [ ] **`packages/admin/src/panel/admin/views/AdminPanelViewFactory.ts`** — 建構所有管理面板 embed/component：（14 個 embed builders 總計：AdminPanelViewFactory 11 個 + AdminProductPanelViewFactory 3 個）
   - `buildMainPanelEmbed(guildName, currencyConfig, dispatchCount)` → 主面板 embed + 9 個 ActionRow 按鈕
   - `buildBalanceView(balanceInfo)` → 餘額顯示 embed + 增加／扣除／設定按鈕
   - `buildTokenView(tokenInfo)` → 同上
@@ -434,7 +434,7 @@ Out of scope: 事件發布邏輯（由各 module 的 service 層負責）
   - Verify: 單元測試——有效 session 成功更新、過期 session 跳過、更新失敗清理 session、各種 event payload
 
 - T10.2 [ ] **`packages/admin/src/panel/listeners/AdminPanelUpdateListener.ts`** — 實作：
-  - 監聽 `CurrencyConfigChangedEvent`、`DiceGameConfigChangedEvent`、`ProductChangedEvent`、`RedemptionCodesGeneratedEvent`、`AIChannelConfigChangedEvent`、`AIAgentConfigChangedEvent`、`DispatchAfterSalesConfigChangedEvent`、`EscortPricingChangedEvent`、`EscortCatalogChangedEvent`
+  - 監聽 `CurrencyConfigChangedEvent`、`DiceGameConfigChangedEvent`、`ProductChangedEvent`、`RedemptionCodesGeneratedEvent`、`AIChannelConfigChangedEvent`、`AIAgentChannelConfigChangedEvent`、`DispatchAfterSalesConfigChangedEvent`、`EscortPricingChangedEvent`、`EscortCatalogChangedEvent`、`BalanceChangedEvent`、`GameTokenChangedEvent`、`ProductRedemptionCompletedEvent`、`AgentCompletedEvent`
   - 從 event payload 取得 guildId
   - 查詢 `AdminPanelSessionManager.getAllForGuild(guildId)` → 遍歷每個 session：
     - `CurrencyConfigChangedEvent`、`EscortPricingChangedEvent`、`EscortCatalogChangedEvent` → 在任何 view state 下都可觸發主面板重新整理
@@ -531,7 +531,7 @@ Out of scope: 跨 package E2E 測試（由 coordination.md CP6 定義）
   - Verify: `pnpm vitest run packages/admin/src/panel/` 全部通過
 
 - T13.4 [ ] **Listener 單元測試** — 覆蓋：
-  - 每個 event 類型（User: 3 種、Admin: 9 種）
+  - 每個 event 類型（User: 3 種、Admin: 13 種）
   - 有效 session → 成功更新
   - 過期 session → 跳過
   - 更新失敗 → 清理 session

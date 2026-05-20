@@ -397,14 +397,13 @@ export function configureAdminContainer(): void {
   );
   slashCommandListener.registerInteractionHandler(escortPriceHandler);
 
-  // EscortOptionCatalogRepository is not yet registered in any DI module.
-  // At runtime this resolution will throw until the dispatch module provides
-  // a concrete binding. The token ADMIN_TOKENS.EscortOptionCatalogRepository
-  // is defined locally as a placeholder for when the implementation arrives.
+  // EscortOptionCatalogRepository is now registered by the dispatch module
+  // via DISPATCH_TOKENS.EscortOptionCatalogRepository (a stub until a
+  // production implementation is ported).
   const escortCatalogHandler = new EscortCatalogHandler(
     adminSessionManager,
     container.resolve<EscortOptionCatalogRepository>(
-      ADMIN_TOKENS.EscortOptionCatalogRepository,
+      DISPATCH_TOKENS.EscortOptionCatalogRepository,
     ),
   );
   container.registerInstance(

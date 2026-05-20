@@ -48,10 +48,6 @@ export class DrizzleEscortOptionPriceRepo {
         });
     }
     async delete(guildId, optionCode) {
-        const result = await this.db
-            .delete(guildEscortOptionPrice)
-            .where(and(eq(guildEscortOptionPrice.guildId, guildId), eq(guildEscortOptionPrice.optionCode, optionCode)));
-        // drizzle delete returns void for non-returning deletes, so we use sql`` directly
         const rows = await this.db.execute(sql `DELETE FROM guild_escort_option_price WHERE guild_id = ${guildId} AND option_code = ${optionCode} RETURNING 1`);
         return rows.rowCount != null && rows.rowCount > 0;
     }

@@ -31,7 +31,7 @@ export class GameTokenService {
    * Uses cache (TTL 300s) - cache miss falls through to DB (no auto-create).
    */
   async getBalance(guildId: number, userId: number): Promise<number> {
-    const cacheKey = this.cacheKeyGenerator.gameTokenKey(guildId, userId);
+    const cacheKey = this.cacheKeyGenerator.gameTokenKey(String(guildId), String(userId));
     const cachedBalance = await this.cacheService.get<number>(cacheKey);
 
     if (cachedBalance !== null) {
@@ -75,7 +75,7 @@ export class GameTokenService {
       const updated = adjustResult.getValue();
 
       // Update cache
-      const cacheKey = this.cacheKeyGenerator.gameTokenKey(guildId, userId);
+      const cacheKey = this.cacheKeyGenerator.gameTokenKey(String(guildId), String(userId));
       await this.cacheService.put(
         cacheKey,
         updated.tokens,
@@ -143,7 +143,7 @@ export class GameTokenService {
       const account = result.getValue();
 
       // Update cache
-      const cacheKey = this.cacheKeyGenerator.gameTokenKey(guildId, userId);
+      const cacheKey = this.cacheKeyGenerator.gameTokenKey(String(guildId), String(userId));
       await this.cacheService.put(
         cacheKey,
         account.tokens,
@@ -180,7 +180,7 @@ export class GameTokenService {
       -tokens,
     );
 
-    const cacheKey = this.cacheKeyGenerator.gameTokenKey(guildId, userId);
+    const cacheKey = this.cacheKeyGenerator.gameTokenKey(String(guildId), String(userId));
     await this.cacheService.put(
       cacheKey,
       updated.tokens,
@@ -213,7 +213,7 @@ export class GameTokenService {
       amount,
     );
 
-    const cacheKey = this.cacheKeyGenerator.gameTokenKey(guildId, userId);
+    const cacheKey = this.cacheKeyGenerator.gameTokenKey(String(guildId), String(userId));
     await this.cacheService.put(
       cacheKey,
       updated.tokens,

@@ -7,9 +7,9 @@ import { type DiscordContext } from '../domain/discord-context.js';
 export declare class DiscordJsContext implements DiscordContext {
     private readonly interaction;
     constructor(interaction: CommandInteraction | ButtonInteraction | ModalSubmitInteraction);
-    getGuildId(): number;
-    getUserId(): number;
-    getChannelId(): number;
+    getGuildId(): string;
+    getUserId(): string;
+    getChannelId(): string;
     getUserMention(): string;
     getOption(name: string): string | null;
     getOptionAsString(name: string): string | null;

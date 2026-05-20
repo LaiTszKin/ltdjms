@@ -1,4 +1,5 @@
 import { type DomainEvent } from '../../types/events/domain-event.js';
+import pino from 'pino';
 /**
  * Publishes domain events to registered listeners.
  * Events are dispatched synchronously.
@@ -9,6 +10,8 @@ export declare class DomainEventPublisher {
     private readonly emitter;
     /** Captured for testing — tracks the last published event. */
     private _lastEvent;
+    private readonly logger;
+    constructor(logger?: pino.Logger);
     /**
      * Registers a listener for all domain events.
      * @param listener - function to call when any domain event is published

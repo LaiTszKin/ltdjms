@@ -8,8 +8,8 @@ export declare class DiscordJsInteraction implements DiscordInteraction {
     private readonly interaction;
     private acknowledged;
     constructor(interaction: CommandInteraction | ButtonInteraction | ModalSubmitInteraction);
-    getGuildId(): number;
-    getUserId(): number;
+    getGuildId(): string;
+    getUserId(): string;
     getChannelId(): string;
     isEphemeral(): boolean;
     reply(message: string): Promise<void>;

@@ -20,16 +20,27 @@ import { DiceGame1Service } from '../dice/services/dice-game-1-service.js';
 import { DiceGame2Service } from '../dice/services/dice-game-2-service.js';
 import { GameRewardService } from '../dice/services/game-reward-service.js';
 
+// Command Handlers
+import { BalanceHandler } from '../commands/balance-handler.js';
+import { CurrencyConfigHandler } from '../commands/currency-config-handler.js';
+import { DiceGame1Handler } from '../commands/dice-game-1-handler.js';
+import { DiceGame2Handler } from '../commands/dice-game-2-handler.js';
+import { DiceGame1ConfigHandler, DiceGame2ConfigHandler } from '../commands/dice-config-handlers.js';
+import { GameTokenAdjustHandler } from '../commands/game-token-adjust-handler.js';
+
 /**
  * Economy module tokens for DI registration.
  */
 export const ECONOMY_TOKENS = {
+  // Repositories
   CurrencyAccountRepository: Symbol('CurrencyAccountRepository'),
   CurrencyConfigRepository: Symbol('CurrencyConfigRepository'),
   CurrencyTransactionRepository: Symbol('CurrencyTransactionRepository'),
   TokenAccountRepository: Symbol('TokenAccountRepository'),
   TokenTransactionRepository: Symbol('TokenTransactionRepository'),
   DiceConfigRepository: Symbol('DiceConfigRepository'),
+
+  // Services
   BalanceService: Symbol('BalanceService'),
   BalanceAdjustmentService: Symbol('BalanceAdjustmentService'),
   CurrencyConfigService: Symbol('CurrencyConfigService'),
@@ -39,6 +50,15 @@ export const ECONOMY_TOKENS = {
   DiceGame1Service: Symbol('DiceGame1Service'),
   DiceGame2Service: Symbol('DiceGame2Service'),
   GameRewardService: Symbol('GameRewardService'),
+
+  // Command Handlers
+  BalanceHandler: Symbol('BalanceHandler'),
+  CurrencyConfigHandler: Symbol('CurrencyConfigHandler'),
+  DiceGame1Handler: Symbol('DiceGame1Handler'),
+  DiceGame2Handler: Symbol('DiceGame2Handler'),
+  DiceGame1ConfigHandler: Symbol('DiceGame1ConfigHandler'),
+  DiceGame2ConfigHandler: Symbol('DiceGame2ConfigHandler'),
+  GameTokenAdjustHandler: Symbol('GameTokenAdjustHandler'),
 };
 
 /**
@@ -135,4 +155,33 @@ export function configureEconomyContainer(): void {
     gameRewardService,
   );
   container.registerInstance(ECONOMY_TOKENS.DiceGame2Service, diceGame2Service);
+
+  // ============================================================
+  // Command Handlers (singleton instances)
+  // ============================================================
+  // These handlers are registered in the DI container for resolution
+  // by the admin module's SlashCommandListener. The handlers are not
+  // registered with SlashCommandListener here; that is done by the
+  // admin module during its own DI configuration.
+
+  const balanceHandler = new BalanceHandler(balanceService);
+  container.registerInstance(ECONOMY_TOKENS.BalanceHandler, balanceHandler);
+
+  const currencyConfigHandler = new CurrencyConfigHandler(currencyConfigService);
+  container.registerInstance(ECONOMY_TOKENS.CurrencyConfigHandler, currencyConfigHandler);
+
+  const diceGame1Handler = new DiceGame1Handler(diceGame1Service);
+  container.registerInstance(ECONOMY_TOKENS.DiceGame1Handler, diceGame1Handler);
+
+  const diceGame2Handler = new DiceGame2Handler(diceGame2Service);
+  container.registerInstance(ECONOMY_TOKENS.DiceGame2Handler, diceGame2Handler);
+
+  const diceGame1ConfigHandler = new DiceGame1ConfigHandler(diceConfigRepo);
+  container.registerInstance(ECONOMY_TOKENS.DiceGame1ConfigHandler, diceGame1ConfigHandler);
+
+  const diceGame2ConfigHandler = new DiceGame2ConfigHandler(diceConfigRepo);
+  container.registerInstance(ECONOMY_TOKENS.DiceGame2ConfigHandler, diceGame2ConfigHandler);
+
+  const gameTokenAdjustHandler = new GameTokenAdjustHandler(gameTokenService);
+  container.registerInstance(ECONOMY_TOKENS.GameTokenAdjustHandler, gameTokenAdjustHandler);
 }

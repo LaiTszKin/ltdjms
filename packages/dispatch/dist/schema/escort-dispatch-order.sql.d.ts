@@ -299,7 +299,7 @@ export declare const escortDispatchOrder: import("drizzle-orm/pg-core").PgTableW
             identity: undefined;
             generated: undefined;
         }, {}, {
-            length: 32;
+            length: 20;
         }>;
         sourceReference: import("drizzle-orm/pg-core").PgColumn<{
             name: "source_reference";
@@ -318,7 +318,7 @@ export declare const escortDispatchOrder: import("drizzle-orm/pg-core").PgTableW
             identity: undefined;
             generated: undefined;
         }, {}, {
-            length: 128;
+            length: 255;
         }>;
         sourceProductId: import("drizzle-orm/pg-core").PgColumn<{
             name: "source_product_id";
@@ -354,7 +354,7 @@ export declare const escortDispatchOrder: import("drizzle-orm/pg-core").PgTableW
             identity: undefined;
             generated: undefined;
         }, {}, {
-            length: 100;
+            length: 255;
         }>;
         sourceCurrencyPrice: import("drizzle-orm/pg-core").PgColumn<{
             name: "source_currency_price";

@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { SchemaMigrationException } from './schema-migration-exception.js';
@@ -8,6 +9,18 @@ import { SchemaMigrationException } from './schema-migration-exception.js';
 export async function runMigrations(pool, migrationsDir) {
     try {
         const db = drizzle(pool);
+        // Check if the __drizzle_migrations tracking table exists
+        const result = await db.execute(sql `SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = '__drizzle_migrations') as "exists"`);
+        const tableExists = result.rows?.[0]?.exists ?? false;
+        if (!tableExists) {
+            // Check if any other tables exist (meaning schema was created externally)
+            const tableResult = await db.execute(sql `SELECT COUNT(*)::int as "count" FROM information_schema.tables WHERE table_schema = 'public'`);
+            const tableCount = tableResult.rows?.[0]?.count ?? 0;
+            if (tableCount > 0) {
+                console.log(`[migration-runner] __drizzle_migrations table not found but ${tableCount} tables exist — skipping migrate()`);
+                return;
+            }
+        }
         await migrate(db, { migrationsFolder: migrationsDir });
     }
     catch (err) {

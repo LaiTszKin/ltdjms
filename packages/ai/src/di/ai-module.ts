@@ -28,6 +28,9 @@ import { type AIChatService } from '../services/ai-chat-service.js';
 import { LangChainAIChatService } from '../services/LangChainAIChatService.js';
 import { MarkdownValidatingAIChatService } from '../markdown/services/MarkdownValidatingAIChatService.js';
 
+// Agent Service Factory
+import { AgentServiceFactory } from '../services/AgentServiceFactory.js';
+
 // Tools
 import { ToolCallerAuthorizationGuard } from '../tools/ToolCallerAuthorizationGuard.js';
 import { PermissionParser } from '../tools/PermissionParser.js';
@@ -77,6 +80,7 @@ export const AI_TOKENS = {
   LangChainAIChatService: Symbol('LangChainAIChatService'),
   AIChatMentionRoutingDecision: Symbol('AIChatMentionRoutingDecision'),
   AIChatMentionListener: Symbol('AIChatMentionListener'),
+  AgentServiceFactory: Symbol('AgentServiceFactory'),
   InMemoryToolCallHistory: Symbol('InMemoryToolCallHistory'),
   DiscordThreadHistoryProvider: Symbol('DiscordThreadHistoryProvider'),
   SimplifiedChatMemoryProvider: Symbol('SimplifiedChatMemoryProvider'),
@@ -272,6 +276,16 @@ export function initializeAIModule(): void {
     runtimeGateway,
   );
   container.registerInstance(AI_TOKENS.SimplifiedChatMemoryProvider, memoryProvider);
+
+  // ===== Agent Service Factory =====
+  const agentServiceFactory = new AgentServiceFactory(
+    aiConfig,
+    /* tools */ [],
+    memoryProvider,
+    toolCallHistory,
+    authGuard,
+  );
+  container.registerInstance(AI_TOKENS.AgentServiceFactory, agentServiceFactory);
 
   // ===== Markdown Pipeline =====
   container.registerInstance(AI_TOKENS.CommonMarkValidator, new CommonMarkValidator());

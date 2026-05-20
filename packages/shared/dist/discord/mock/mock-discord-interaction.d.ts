@@ -14,9 +14,9 @@ export declare class MockDiscordInteraction implements DiscordInteraction {
     private readonly _replyEmbeds;
     private readonly _editedEmbeds;
     private _deferReplyCount;
-    constructor(guildId: number, userId: number, channelId?: string, ephemeral?: boolean);
-    getGuildId(): number;
-    getUserId(): number;
+    constructor(guildId: string, userId: string, channelId?: string, ephemeral?: boolean);
+    getGuildId(): string;
+    getUserId(): string;
     getChannelId(): string;
     isEphemeral(): boolean;
     reply(message: string): Promise<void>;

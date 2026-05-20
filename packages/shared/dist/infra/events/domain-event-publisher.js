@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events';
+import pino from 'pino';
 const EVENT_CHANNEL = 'domain-event';
 /**
  * Publishes domain events to registered listeners.
@@ -10,6 +11,10 @@ export class DomainEventPublisher {
     emitter = new EventEmitter();
     /** Captured for testing — tracks the last published event. */
     _lastEvent = null;
+    logger;
+    constructor(logger) {
+        this.logger = logger ?? pino({ level: 'warn' });
+    }
     /**
      * Registers a listener for all domain events.
      * @param listener - function to call when any domain event is published
@@ -31,7 +36,7 @@ export class DomainEventPublisher {
             }
             catch (err) {
                 // Log but don't propagate — this mirrors Java behavior
-                console.error(`[DomainEventPublisher] Error handling event ${event.constructor?.name ?? typeof event}:`, err);
+                this.logger.error({ eventName: event.constructor?.name ?? typeof event, err }, '[DomainEventPublisher] Error handling event');
             }
         }
     }

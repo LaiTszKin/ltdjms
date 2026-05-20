@@ -10,10 +10,10 @@ export class DiscordJsInteraction {
         this.acknowledged = interaction.replied || interaction.deferred;
     }
     getGuildId() {
-        return this.interaction.guildId ? Number(this.interaction.guildId) : 0;
+        return this.interaction.guildId ?? '0';
     }
     getUserId() {
-        return Number(this.interaction.user.id);
+        return this.interaction.user.id;
     }
     getChannelId() {
         return this.interaction.channelId ?? '0';

@@ -3,7 +3,7 @@ import pino from 'pino';
  * Creates the root pino logger instance.
  * @param level - minimum log level (default 'info')
  */
-export function createRootLogger(level = 'info') {
+export function createRootLogger(level = process.env.NODE_ENV === 'production' ? 'info' : 'debug') {
     return pino({
         level,
         transport: process.env.NODE_ENV !== 'production'

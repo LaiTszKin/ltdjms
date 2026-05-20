@@ -4,11 +4,11 @@
  */
 export interface DiscordContext {
     /** Gets the guild ID. */
-    getGuildId(): number;
+    getGuildId(): string;
     /** Gets the user ID. */
-    getUserId(): number;
+    getUserId(): string;
     /** Gets the channel ID. */
-    getChannelId(): number;
+    getChannelId(): string;
     /** Gets the user mention string (e.g., "<@123456789>"). */
     getUserMention(): string;
     /** Gets a command option's raw string value. */

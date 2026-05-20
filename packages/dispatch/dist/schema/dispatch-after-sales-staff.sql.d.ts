@@ -6,6 +6,23 @@ export declare const dispatchAfterSalesStaff: import("drizzle-orm/pg-core").PgTa
     name: "dispatch_after_sales_staff";
     schema: undefined;
     columns: {
+        id: import("drizzle-orm/pg-core").PgColumn<{
+            name: "id";
+            tableName: "dispatch_after_sales_staff";
+            dataType: "number";
+            columnType: "PgSerial";
+            data: number;
+            driverParam: number;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: true;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         guildId: import("drizzle-orm/pg-core").PgColumn<{
             name: "guild_id";
             tableName: "dispatch_after_sales_staff";

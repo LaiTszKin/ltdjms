@@ -10,12 +10,12 @@ export class MockDiscordContext {
     _userMention;
     options = new Map();
     constructor(guildId, userId, channelId, userMention) {
-        if (guildId <= 0)
-            throw new Error('guildId must be positive');
-        if (userId <= 0)
-            throw new Error('userId must be positive');
-        if (channelId <= 0)
-            throw new Error('channelId must be positive');
+        if (!guildId || guildId === '0')
+            throw new Error('guildId must be a valid non-zero id');
+        if (!userId || userId === '0')
+            throw new Error('userId must be a valid non-zero id');
+        if (!channelId || channelId === '0')
+            throw new Error('channelId must be a valid non-zero id');
         if (!userMention)
             throw new Error('userMention must not be empty');
         this._guildId = guildId;

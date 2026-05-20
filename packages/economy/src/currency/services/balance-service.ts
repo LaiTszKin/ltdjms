@@ -35,7 +35,7 @@ export class BalanceService {
    * Auto-creates account if none exists.
    */
   async getBalance(guildId: number, userId: number): Promise<BalanceView> {
-    const cacheKey = this.cacheKeyGenerator.balanceKey(guildId, userId);
+    const cacheKey = this.cacheKeyGenerator.balanceKey(String(guildId), String(userId));
     const cachedBalance = await this.cacheService.get<number>(cacheKey);
 
     let balance: number;

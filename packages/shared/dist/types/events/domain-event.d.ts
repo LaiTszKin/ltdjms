@@ -111,4 +111,25 @@ export interface LangChain4jToolExecutedEvent extends DomainEvent {
     readonly success: boolean;
     readonly timestamp: Date;
 }
-export type AnyDomainEvent = BalanceChangedEvent | GameTokenChangedEvent | CurrencyConfigChangedEvent | DiceGameConfigChangedEvent | ProductChangedEvent | RedemptionCodesGeneratedEvent | ProductRedemptionCompletedEvent | AIMessageEvent | AIAgentChannelConfigChangedEvent | AgentCompletedEvent | AgentFailedEvent | LangChain4jToolExecutionStartedEvent | LangChain4jToolExecutedEvent;
+export interface AIChannelConfigChangedEvent extends DomainEvent {
+    readonly guildId: number;
+    readonly channelId: string;
+    readonly allowed: boolean;
+    readonly changedAt: Date;
+}
+export interface DispatchAfterSalesConfigChangedEvent extends DomainEvent {
+    readonly guildId: number;
+    readonly staffUserId: number;
+    readonly operationType: 'ADDED' | 'REMOVED';
+}
+export interface EscortPricingChangedEvent extends DomainEvent {
+    readonly guildId: number;
+    readonly optionCode: string;
+    readonly priceTwd: number;
+    readonly updatedByUserId: number;
+}
+export interface EscortCatalogChangedEvent extends DomainEvent {
+    readonly optionCode: string;
+    readonly operationType: 'CREATED' | 'UPDATED' | 'DELETED';
+}
+export type AnyDomainEvent = BalanceChangedEvent | GameTokenChangedEvent | CurrencyConfigChangedEvent | DiceGameConfigChangedEvent | ProductChangedEvent | RedemptionCodesGeneratedEvent | ProductRedemptionCompletedEvent | AIMessageEvent | AIAgentChannelConfigChangedEvent | AIChannelConfigChangedEvent | DispatchAfterSalesConfigChangedEvent | EscortPricingChangedEvent | EscortCatalogChangedEvent | AgentCompletedEvent | AgentFailedEvent | LangChain4jToolExecutionStartedEvent | LangChain4jToolExecutedEvent;

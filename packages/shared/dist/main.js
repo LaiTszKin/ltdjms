@@ -5,7 +5,8 @@ import { runMigrations } from './infra/database/migration-runner.js';
 import { RedisCacheService } from './infra/cache/redis-cache-service.js';
 import { DomainEventPublisher } from './infra/events/domain-event-publisher.js';
 import { DiscordJsRuntimeGateway } from './discord/services/discord-js-runtime-gateway.js';
-import { Client, GatewayIntentBits } from 'discord.js';
+import { initializeContainer, container } from './infra/di/index.js';
+import { Client, GatewayIntentBits, Events } from 'discord.js';
 /**
  * Main entry point for the application.
  * Startup sequence mirroring Java DiscordCurrencyBot:
@@ -51,8 +52,17 @@ export async function main() {
     // 4. Create DomainEventPublisher
     const eventPublisher = new DomainEventPublisher();
     logger.info('Domain event publisher initialized');
-    // 5. Create discord.js Client
+    // 5. Initialize shared DI container
     const runtimeGateway = new DiscordJsRuntimeGateway();
+    initializeContainer({
+        config,
+        cacheService,
+        eventPublisher,
+        runtimeGateway,
+        logger,
+        databasePool: pool,
+    });
+    // 6. Create discord.js Client
     const client = new Client({
         intents: [
             GatewayIntentBits.Guilds,
@@ -61,18 +71,26 @@ export async function main() {
             GatewayIntentBits.GuildMembers,
         ],
     });
-    client.once('ready', () => {
+    client.once('ready', async () => {
         runtimeGateway.publishReady(client);
         logger.info({ user: client.user?.tag }, 'Discord bot logged in successfully');
+        // Initialize all module containers and wire Discord event handlers
+        try {
+            await initializeAllModules(pool, eventPublisher, client, config, logger);
+            logger.info('All module containers initialized');
+        }
+        catch (err) {
+            logger.error({ err }, 'Failed to initialize module containers');
+        }
     });
     client.on('error', (err) => {
         logger.error({ err }, 'Discord client error');
     });
-    // 6. Login to Discord
+    // 7. Login to Discord
     const token = config.getDiscordBotToken();
     await client.login(token);
     logger.info('Discord bot login initiated');
-    // 7. Register shutdown hook
+    // 8. Register shutdown hook
     const shutdown = async () => {
         logger.info('Shutting down...');
         try {
@@ -89,6 +107,95 @@ export async function main() {
     process.on('SIGTERM', shutdown);
     process.on('SIGINT', shutdown);
     logger.info('Application startup complete');
+}
+/**
+ * Dynamically imports and initializes all module DI containers.
+ * Uses dynamic imports to avoid compile-time circular dependencies
+ * between shared and other workspace packages.
+ *
+ * Initialization order respects dependency graph:
+ * economy -> dispatch -> shop -> ai -> admin
+ */
+async function initializeAllModules(pool, eventPublisher, client, config, logger) {
+    // ---- 1. Economy ----
+    const { configureEconomyContainer, ECONOMY_TOKENS: econTokens } = await import('@ltdjms/economy');
+    configureEconomyContainer();
+    logger.info('Economy module initialized');
+    // ---- 2. Dispatch ----
+    const { configureDispatchContainer, DISPATCH_TOKENS: dispTokens } = await import('@ltdjms/dispatch');
+    configureDispatchContainer();
+    logger.info('Dispatch module initialized');
+    // Resolve services needed by shop from economy and dispatch containers
+    const balanceService = container.resolve(econTokens.BalanceService);
+    const balanceAdjustmentService = container.resolve(econTokens.BalanceAdjustmentService);
+    const currencyTransactionService = container.resolve(econTokens.CurrencyTransactionService);
+    const productRewardService = container.resolve(econTokens.GameRewardService);
+    const escortHandoffService = container.resolve(dispTokens.EscortDispatchHandoffService);
+    // ---- 3. Shop ----
+    const { configureContainer: configureShopContainer, DrizzleProductRepository, DrizzleRedemptionTransactionService, } = await import('@ltdjms/shop');
+    const productRepo = new DrizzleProductRepository(pool);
+    const redemptionTxService = new DrizzleRedemptionTransactionService(pool);
+    configureShopContainer({
+        db: pool,
+        productRepository: productRepo,
+        productRewardService: productRewardService,
+        escortDispatchHandoffService: escortHandoffService,
+        balanceService: balanceService,
+        balanceAdjustmentService: balanceAdjustmentService,
+        currencyTransactionService: currencyTransactionService,
+        redemptionTransactionService: redemptionTxService,
+        logger,
+    });
+    logger.info('Shop module initialized');
+    // ---- 4. AI ----
+    const { initializeAIModule, AI_TOKENS } = await import('@ltdjms/ai');
+    initializeAIModule();
+    logger.info('AI module initialized');
+    // ---- 5. Admin ----
+    const { configureAdminContainer, ADMIN_TOKENS, SlashCommandListener, SlashCommandRegistrar } = await import('@ltdjms/admin');
+    configureAdminContainer();
+    const slashCommandListener = container.resolve(ADMIN_TOKENS.SlashCommandListener);
+    // Wire Discord interactionCreate event to the slash command listener
+    client.on(Events.InteractionCreate, async (interaction) => {
+        if (!interaction.guildId)
+            return;
+        let type;
+        let commandNameOrCustomId;
+        if (interaction.isChatInputCommand()) {
+            type = 'chatInput';
+            commandNameOrCustomId = interaction.commandName;
+        }
+        else if (interaction.isButton()) {
+            type = 'button';
+            commandNameOrCustomId = interaction.customId;
+        }
+        else if (interaction.isStringSelectMenu()) {
+            type = 'stringSelect';
+            commandNameOrCustomId = interaction.customId;
+        }
+        else if (interaction.isModalSubmit()) {
+            type = 'modalSubmit';
+            commandNameOrCustomId = interaction.customId;
+        }
+        else {
+            return;
+        }
+        await slashCommandListener.onInteraction(interaction, { guildId: interaction.guildId, userId: interaction.user.id }, type, commandNameOrCustomId);
+    });
+    // Wire Discord messageCreate event to the AI chat listener
+    const aiChatListener = container.resolve(AI_TOKENS.AIChatMentionListener);
+    client.on(Events.MessageCreate, async (message) => {
+        await aiChatListener.onMessageCreate(message);
+    });
+    // Register slash commands with Discord REST API
+    if (client.user) {
+        const result = await SlashCommandRegistrar.registerAll(client.user.id, async (route, body) => {
+            const rest = client.rest;
+            return rest.put(route, { body });
+        });
+        logger.info({ result }, 'Slash commands registered');
+    }
+    logger.info('Admin module initialized');
 }
 // Allow direct execution
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1])) {

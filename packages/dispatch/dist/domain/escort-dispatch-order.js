@@ -163,6 +163,34 @@ export function createManualOpenOrder(orderNumber, guildId, assignedByUserId, cu
         status: EscortDispatchOrderStatus.PENDING_CONFIRMATION,
     });
 }
+/** Creates an EscortDispatchOrder from database row, preserving ALL columns exactly as stored. */
+export function fromDbRow(params) {
+    return createOrder({
+        id: params.id,
+        orderNumber: params.orderNumber,
+        guildId: params.guildId,
+        assignedByUserId: params.assignedByUserId,
+        escortUserId: params.escortUserId,
+        customerUserId: params.customerUserId,
+        status: params.status,
+        createdAt: params.createdAt,
+        confirmedAt: params.confirmedAt,
+        completionRequestedAt: params.completionRequestedAt,
+        completedAt: params.completedAt,
+        afterSalesRequestedAt: params.afterSalesRequestedAt,
+        afterSalesAssigneeUserId: params.afterSalesAssigneeUserId,
+        afterSalesAssignedAt: params.afterSalesAssignedAt,
+        afterSalesClosedAt: params.afterSalesClosedAt,
+        updatedAt: params.updatedAt,
+        sourceType: params.sourceType,
+        sourceReference: params.sourceReference,
+        sourceProductId: params.sourceProductId,
+        sourceProductName: params.sourceProductName,
+        sourceCurrencyPrice: params.sourceCurrencyPrice,
+        sourceFiatPriceTwd: params.sourceFiatPriceTwd,
+        sourceEscortOptionCode: params.sourceEscortOptionCode,
+    });
+}
 /** 完整參數版本的 createPending（含自動交接快照欄位的有條件校驗）。 */
 export function createPendingFull(orderNumber, guildId, assignedByUserId, escortUserId, customerUserId, sourceType, sourceReference, sourceProductId, sourceProductName, sourceCurrencyPrice, sourceFiatPriceTwd, sourceEscortOptionCode) {
     return createOrder({

@@ -89,7 +89,7 @@ export class BalanceAdjustmentService {
       const updated = adjustResult.getValue();
 
       // Update cache
-      const cacheKey = this.cacheKeyGenerator.balanceKey(guildId, userId);
+      const cacheKey = this.cacheKeyGenerator.balanceKey(String(guildId), String(userId));
       await this.cacheService.put(cacheKey, updated.balance, BalanceAdjustmentService.BALANCE_TTL_SECONDS);
 
       // Publish event
@@ -173,7 +173,7 @@ export class BalanceAdjustmentService {
       const updated = adjustResult.getValue();
 
       // Update cache
-      const cacheKey = this.cacheKeyGenerator.balanceKey(guildId, userId);
+      const cacheKey = this.cacheKeyGenerator.balanceKey(String(guildId), String(userId));
       await this.cacheService.put(cacheKey, updated.balance, BalanceAdjustmentService.BALANCE_TTL_SECONDS);
 
       // Publish event

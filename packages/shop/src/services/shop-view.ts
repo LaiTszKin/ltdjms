@@ -105,6 +105,62 @@ export function buildPaymentMethodChoiceEmbed(product: Product): {
   };
 }
 
+/**
+ * Builds the action row components (buttons) for the shop embed.
+ * Includes pagination (prev/next), buy, and search buttons.
+ */
+export function buildShopComponents(
+  currentPage: number,
+  totalPages: number,
+): Array<{
+  type: string;
+  components: Array<{ type: string; customId: string; label: string; style: number; disabled?: boolean }>;
+}> {
+  const hasPrev = currentPage > 1;
+  const hasNext = currentPage < totalPages;
+
+  const buttons: Array<{ type: string; customId: string; label: string; style: number; disabled?: boolean }> = [];
+
+  if (hasPrev) {
+    buttons.push({
+      type: 'button',
+      customId: `${BUTTON_PREV_PAGE}${currentPage - 1}`,
+      label: '◀ 上一頁',
+      style: 1,
+    });
+  }
+
+  buttons.push({
+    type: 'button',
+    customId: `${BUTTON_BUY}`,
+    label: '🛒 購買',
+    style: 3,
+  });
+
+  buttons.push({
+    type: 'button',
+    customId: `${BUTTON_SEARCH}`,
+    label: '🔍 搜尋',
+    style: 2,
+  });
+
+  if (hasNext) {
+    buttons.push({
+      type: 'button',
+      customId: `${BUTTON_NEXT_PAGE}${currentPage + 1}`,
+      label: '下一頁 ▶',
+      style: 1,
+    });
+  }
+
+  return [
+    {
+      type: 'actionRow',
+      components: buttons,
+    },
+  ];
+}
+
 export function buildPurchaseConfirmEmbed(
   product: Product,
   userBalance: number,

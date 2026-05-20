@@ -147,6 +147,7 @@ Out of scope: Discord 互動處理（屬於 panel 層）、DM 發送（屬於 no
     - `findRecentOrders(guildId, limit?)` — default 10, max 20, normalize each order via ensureTimeoutCompletion
     - `findPendingAssignmentOrders(guildId, limit?)` — default 5, max 25
   - Private helpers: `findOrder`, `ensureTimeoutCompletion`, `generateUniqueOrderNumber` (max 20 retries), `normalizeLimit`, `normalizeEscortOption`
+  - Method count: 11 個 public methods（含 createOrder、createManualOpenOrder、assignPendingOrder、confirmOrder、requestCompletion、customerConfirmCompletion、requestAfterSales、claimAfterSales、closeAfterSales、findRecentOrders、findPendingAssignmentOrders）+ 4 個 private helpers
   - Verify: 單元測試覆蓋所有方法（mock repo），對應 Java `EscortDispatchOrderServiceTest`
 
 - T4.2 [ ] **`packages/dispatch/src/service/escort-dispatch-handoff.service.ts`** — 實作 `EscortDispatchHandoffService`

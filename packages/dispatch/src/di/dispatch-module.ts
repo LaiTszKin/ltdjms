@@ -1,4 +1,4 @@
-import { container, TOKENS } from '@ltdjms/shared';
+import { container, TOKENS, type DiscordRuntimeGateway } from '@ltdjms/shared';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 
 // Repositories
@@ -18,6 +18,13 @@ import {
   type EscortOptionCatalogRepository,
 } from '../service/escort-option-pricing.service.js';
 
+// Notification
+import { DispatchNotificationService } from '../notification/DispatchNotificationService.js';
+
+// Panel
+import { DispatchPanelCommandHandler } from '../panel/DispatchPanelCommandHandler.js';
+import { DispatchPanelInteractionHandler } from '../panel/DispatchPanelInteractionHandler.js';
+
 /**
  * Dispatch module token map for DI registration.
  */
@@ -30,10 +37,10 @@ export const DISPATCH_TOKENS = {
   DispatchAfterSalesStaffService: Symbol('DispatchAfterSalesStaffService'),
   EscortOptionPricingService: Symbol('EscortOptionPricingService'),
   EscortDispatchOrderNumberGenerator: Symbol('EscortDispatchOrderNumberGenerator'),
-  // TODO: add tokens for notification handlers once implemented
-  // EscortDispatchNotificationHandler: Symbol('EscortDispatchNotificationHandler'),
-  // TODO: add tokens for panel handlers once implemented
-  // EscortDispatchPanelHandler: Symbol('EscortDispatchPanelHandler'),
+  EscortOptionCatalogRepository: Symbol('EscortOptionCatalogRepository'),
+  DispatchNotificationService: Symbol('DispatchNotificationService'),
+  DispatchPanelCommandHandler: Symbol('DispatchPanelCommandHandler'),
+  DispatchPanelInteractionHandler: Symbol('DispatchPanelInteractionHandler'),
 } as const;
 
 /**
@@ -41,7 +48,7 @@ export const DISPATCH_TOKENS = {
  * registered as singletons.
  *
  * Call this after shared's initializeContainer().
- * Expected preregistered tokens: TOKENS.DatabasePool.
+ * Expected preregistered tokens: TOKENS.DatabasePool, TOKENS.DiscordRuntimeGateway.
  */
 export function configureDispatchContainer(): void {
   const db = container.resolve<NodePgDatabase>(TOKENS.DatabasePool);
@@ -90,10 +97,45 @@ export function configureDispatchContainer(): void {
     async findByCode() { return null; },
     async existsByCode() { return false; },
   };
+  container.registerInstance<EscortOptionCatalogRepository>(
+    DISPATCH_TOKENS.EscortOptionCatalogRepository,
+    stubCatalogRepo,
+  );
 
   const optionPricingService = new EscortOptionPricingService(optionPriceRepo, stubCatalogRepo);
   container.registerInstance(DISPATCH_TOKENS.EscortOptionPricingService, optionPricingService);
 
-  // TODO: register notification handlers once implemented
-  // TODO: register panel handlers once implemented
+  // ============================================================
+  // Notification (singleton instance, depends on DiscordRuntimeGateway)
+  // ============================================================
+
+  const discordRuntimeGateway = container.resolve<DiscordRuntimeGateway>(
+    TOKENS.DiscordRuntimeGateway,
+  );
+
+  const notificationService = new DispatchNotificationService(discordRuntimeGateway);
+  container.registerInstance(
+    DISPATCH_TOKENS.DispatchNotificationService,
+    notificationService,
+  );
+
+  // ============================================================
+  // Panel handlers (singleton instances)
+  // ============================================================
+
+  const panelCommandHandler = new DispatchPanelCommandHandler(dispatchOrderService);
+  container.registerInstance(
+    DISPATCH_TOKENS.DispatchPanelCommandHandler,
+    panelCommandHandler,
+  );
+
+  const panelInteractionHandler = new DispatchPanelInteractionHandler(
+    dispatchOrderService,
+    optionPricingService,
+    afterSalesStaffService,
+  );
+  container.registerInstance(
+    DISPATCH_TOKENS.DispatchPanelInteractionHandler,
+    panelInteractionHandler,
+  );
 }

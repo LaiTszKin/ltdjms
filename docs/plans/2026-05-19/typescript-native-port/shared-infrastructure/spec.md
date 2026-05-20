@@ -21,7 +21,7 @@
 - Discord.js 抽象層（DiscordInteraction、DiscordContext、DiscordEmbedBuilder、DiscordRuntimeGateway 介面及實作）
 - DI 容器設定（tsyringe，對應 Dagger 的 `AppComponent` 與各 Module）
 - 所有 DomainEvent 具體型別定義（12+ event records）
-- 所有 DomainError 分類定義（27 categories）
+- 所有 DomainError 分類定義（28 categories）
 
 ### Out of Scope
 
@@ -51,12 +51,12 @@
 **GIVEN** 業務邏輯中發生錯誤
 **WHEN** 建立 `DomainError` 實例
 **THEN** 必須包含 `category`（enum）、`message`（string）、`cause`（optional Error）
-**AND** 提供 27 個分類的靜態工廠方法
+**AND** 提供 28 個分類的靜態工廠方法
 
 **Requirements**:
-- [ ] R2.1 DomainError 包含 Category enum（27 個值，與 Java 版本完全一致）
+- [ ] R2.1 DomainError 包含 Category enum（28 個值，與 Java 版本完全一致）
 - [ ] R2.2 提供 `DomainError.invalidInput(msg)`、`DomainError.persistenceFailure(msg, cause)` 等工廠方法
-- [ ] R2.3 Category 涵蓋: INVALID_INPUT、INSUFFICIENT_BALANCE、INSUFFICIENT_TOKENS、PERSISTENCE_FAILURE、UNEXPECTED_FAILURE、DISCORD_*（7 項）、AI_SERVICE_*（6 項）、PROMPT_*（5 項）、CHANNEL_NOT_ALLOWED、DUPLICATE_CHANNEL、INSUFFICIENT_PERMISSIONS、CHANNEL_NOT_FOUND、DUPLICATE_CATEGORY、CATEGORY_NOT_FOUND
+- [ ] R2.3 Category 涵蓋: INVALID_INPUT、INSUFFICIENT_BALANCE、INSUFFICIENT_TOKENS、PERSISTENCE_FAILURE、UNEXPECTED_FAILURE、DISCORD_*（6 項）、AI_SERVICE_*（6 項）、PROMPT_*（5 項）、CHANNEL_NOT_ALLOWED、DUPLICATE_CHANNEL、INSUFFICIENT_PERMISSIONS、CHANNEL_NOT_FOUND、DUPLICATE_CATEGORY、CATEGORY_NOT_FOUND
 
 ### Requirement 3: Config 管理
 **GIVEN** 應用程式啟動
@@ -153,6 +153,8 @@
 - [ ] R9.2 所有服務以 `@singleton()` 註冊
 - [ ] R9.3 支援 `@inject()` 裝飾器指定依賴
 - [ ] R9.4 支援 multi-registration（`@injectAll()` 用於 event listeners）
+
+> **實作注意事項：** 此專案各模組實際使用程式化 `container.register()` 和 `container.registerInstance()` 註冊服務，而非 `@singleton()` 裝飾器。選擇程式化註冊的原因是：1) 避免跨模組循環依賴——各模組透過明確的 `configure*Container()` 函數按順序初始化；2) 模組隔離——每個模組的容器設定集中在一個 DI module 檔案中，不依賴裝飾器的隱式掃描；3) TypeScript 裝飾器需要 `experimentalDecorators` 編譯選項，而專案選擇不啟用以保持與未來標準的相容性。所有服務仍以 singleton 生命週期註冊（透過 `registerInstance` 或 `registerSingleton`），行為與 `@singleton()` 裝飾器等價。
 
 ## Error and Edge Cases
 

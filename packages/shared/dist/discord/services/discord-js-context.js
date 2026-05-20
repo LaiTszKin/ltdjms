@@ -8,15 +8,13 @@ export class DiscordJsContext {
         this.interaction = interaction;
     }
     getGuildId() {
-        return this.interaction.guildId ? Number(this.interaction.guildId) : 0;
+        return this.interaction.guildId ?? '0';
     }
     getUserId() {
-        return Number(this.interaction.user.id);
+        return this.interaction.user.id;
     }
     getChannelId() {
-        return this.interaction.channelId
-            ? Number(this.interaction.channelId)
-            : 0;
+        return this.interaction.channelId ?? '0';
     }
     getUserMention() {
         return `<@${this.interaction.user.id}>`;

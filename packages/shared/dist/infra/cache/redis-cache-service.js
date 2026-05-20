@@ -10,7 +10,6 @@ export class RedisCacheService {
         this.redis = new Redis(redisUri, {
             maxRetriesPerRequest: null,
             enableReadyCheck: false,
-            lazyConnect: true,
         });
         // Handle errors without crashing
         this.redis.on('error', () => {

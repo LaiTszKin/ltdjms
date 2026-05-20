@@ -1,6 +1,6 @@
 import { eq, and, ne, isNull, sql } from 'drizzle-orm';
 import { escortDispatchOrder } from '../schema/escort-dispatch-order.sql.js';
-import { EscortDispatchOrderStatus, createPendingFull, } from '../domain/index.js';
+import { EscortDispatchOrderStatus, fromDbRow, } from '../domain/index.js';
 /** Drizzle ORM implementation of EscortDispatchOrderRepo. */
 export class DrizzleEscortDispatchOrderRepo {
     db;
@@ -146,8 +146,32 @@ export class DrizzleEscortDispatchOrderRepo {
         return rows.length > 0;
     }
 }
-/** Maps a DB row to domain EscortDispatchOrder. */
+/** Maps a DB row to domain EscortDispatchOrder, preserving ALL stored columns. */
 function mapRowToDomain(row) {
-    return createPendingFull(row.orderNumber, row.guildId, row.assignedByUserId, row.escortUserId, row.customerUserId, row.sourceType, row.sourceReference ?? null, row.sourceProductId ?? null, row.sourceProductName ?? null, row.sourceCurrencyPrice ?? null, row.sourceFiatPriceTwd ?? null, row.sourceEscortOptionCode ?? null);
+    return fromDbRow({
+        id: row.id ?? null,
+        orderNumber: row.orderNumber,
+        guildId: row.guildId,
+        assignedByUserId: row.assignedByUserId,
+        escortUserId: row.escortUserId,
+        customerUserId: row.customerUserId,
+        status: row.status,
+        createdAt: row.createdAt,
+        confirmedAt: row.confirmedAt ?? null,
+        completionRequestedAt: row.completionRequestedAt ?? null,
+        completedAt: row.completedAt ?? null,
+        afterSalesRequestedAt: row.afterSalesRequestedAt ?? null,
+        afterSalesAssigneeUserId: row.afterSalesAssigneeUserId ?? null,
+        afterSalesAssignedAt: row.afterSalesAssignedAt ?? null,
+        afterSalesClosedAt: row.afterSalesClosedAt ?? null,
+        updatedAt: row.updatedAt,
+        sourceType: row.sourceType,
+        sourceReference: row.sourceReference ?? null,
+        sourceProductId: row.sourceProductId ?? null,
+        sourceProductName: row.sourceProductName ?? null,
+        sourceCurrencyPrice: row.sourceCurrencyPrice ?? null,
+        sourceFiatPriceTwd: row.sourceFiatPriceTwd ?? null,
+        sourceEscortOptionCode: row.sourceEscortOptionCode ?? null,
+    });
 }
 //# sourceMappingURL=drizzle-escort-dispatch-order.repo.js.map

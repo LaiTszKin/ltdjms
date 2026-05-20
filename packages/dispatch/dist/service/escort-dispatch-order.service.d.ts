@@ -2,6 +2,7 @@ import type { Result } from '@ltdjms/shared';
 import { DomainError } from '@ltdjms/shared';
 import type { EscortDispatchOrderRepo } from '../repo/escort-dispatch-order.repo.js';
 import { EscortDispatchOrderNumberGenerator } from '../domain/order-number-generator.js';
+import type { EscortOptionCatalogRepository } from './escort-option-pricing.service.js';
 import { type EscortDispatchOrder } from '../domain/index.js';
 /**
  * 派單護航訂單核心服務。
@@ -11,7 +12,8 @@ export declare class EscortDispatchOrderService {
     private readonly repository;
     private readonly orderNumberGenerator?;
     private readonly clock?;
-    constructor(repository: EscortDispatchOrderRepo, orderNumberGenerator?: EscortDispatchOrderNumberGenerator | undefined, clock?: (() => number) | undefined);
+    private readonly catalogRepository?;
+    constructor(repository: EscortDispatchOrderRepo, orderNumberGenerator?: EscortDispatchOrderNumberGenerator | undefined, clock?: (() => number) | undefined, catalogRepository?: EscortOptionCatalogRepository | undefined);
     /** 建立待確認的新派單訂單。 */
     createOrder(guildId: number, assignedByUserId: number, escortUserId: number, customerUserId: number): Promise<Result<EscortDispatchOrder, DomainError>>;
     /** 手動建立尚未派發給護航者的護航訂單。 */

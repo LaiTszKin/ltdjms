@@ -6,9 +6,9 @@
 export interface CacheKeyGenerator {
     readonly NAMESPACE: string;
     /** Generates a cache key for balance lookups. */
-    balanceKey(guildId: number, userId: number): string;
+    balanceKey(guildId: string, userId: string): string;
     /** Generates a cache key for game token lookups. */
-    gameTokenKey(guildId: number, userId: number): string;
+    gameTokenKey(guildId: string, userId: string): string;
 }
 /**
  * Default cache key generator implementation.
@@ -20,6 +20,6 @@ export declare class DefaultCacheKeyGenerator implements CacheKeyGenerator {
     readonly NAMESPACE = "cache";
     private static readonly ENTITY_BALANCE;
     private static readonly ENTITY_GAME_TOKEN;
-    balanceKey(guildId: number, userId: number): string;
-    gameTokenKey(guildId: number, userId: number): string;
+    balanceKey(guildId: string, userId: string): string;
+    gameTokenKey(guildId: string, userId: string): string;
 }

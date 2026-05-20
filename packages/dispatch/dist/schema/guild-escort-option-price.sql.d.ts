@@ -6,6 +6,23 @@ export declare const guildEscortOptionPrice: import("drizzle-orm/pg-core").PgTab
     name: "guild_escort_option_price";
     schema: undefined;
     columns: {
+        id: import("drizzle-orm/pg-core").PgColumn<{
+            name: "id";
+            tableName: "guild_escort_option_price";
+            dataType: "number";
+            columnType: "PgSerial";
+            data: number;
+            driverParam: number;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: true;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         guildId: import("drizzle-orm/pg-core").PgColumn<{
             name: "guild_id";
             tableName: "guild_escort_option_price";

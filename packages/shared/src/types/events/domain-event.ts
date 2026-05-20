@@ -61,6 +61,7 @@ export interface RedemptionCodesGeneratedEvent extends DomainEvent {
 }
 
 /** Transaction type placeholder — will be replaced by the actual domain type. */
+// TODO: fill fields once the corresponding module is ported
 export interface ProductRedemptionTransaction {
   readonly id: string;
   readonly userId: number;
@@ -96,6 +97,7 @@ export interface AIAgentChannelConfigChangedEvent extends DomainEvent {
 }
 
 /** Conversation message placeholder — will be replaced by the actual domain type. */
+// TODO: fill fields once the corresponding module is ported
 export interface ConversationMessage {
   readonly role: string;
   readonly content: string;
