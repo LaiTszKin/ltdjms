@@ -1,6 +1,7 @@
 import { ZhTwStrings } from '../../i18n/zh-TW.js';
 import type { MemberPanelView } from '../../facades/MemberInfoFacade.js';
 import type { CurrencyTransaction, GameTokenTransaction } from '@ltdjms/economy';
+import { Colors } from '../../constants/colors.js';
 
 /**
  * User panel embed builder.
@@ -25,7 +26,7 @@ export class UserPanelEmbedBuilder {
         ZhTwStrings.userPanelTokens.replace('{tokens}', String(memberSummary.tokens)),
       ].join('\n'),
       fields: [],
-      color: 0x5865F2,
+      color: Colors.USER_PANEL,
     };
   }
 
@@ -52,7 +53,7 @@ export class UserPanelEmbedBuilder {
       title: ZhTwStrings.historyTitleCurrency,
       description: `${ZhTwStrings.historyPageIndicator.replace('{current}', String(page)).replace('{total}', String(totalPages))}`,
       fields,
-      color: 0x2ECC71,
+      color: Colors.HISTORY_CURRENCY,
     };
   }
 
@@ -79,7 +80,7 @@ export class UserPanelEmbedBuilder {
       title: ZhTwStrings.historyTitleToken,
       description: `${ZhTwStrings.historyPageIndicator.replace('{current}', String(page)).replace('{total}', String(totalPages))}`,
       fields,
-      color: 0x9B59B6,
+      color: Colors.HISTORY_TOKEN,
     };
   }
 
@@ -111,7 +112,7 @@ export class UserPanelEmbedBuilder {
       title: ZhTwStrings.historyTitleRedemption,
       description: `${ZhTwStrings.historyPageIndicator.replace('{current}', String(page)).replace('{total}', String(totalPages))}`,
       fields,
-      color: 0xE67E22,
+      color: Colors.HISTORY_REDEMPTION,
     };
   }
 }

@@ -44,6 +44,10 @@ export interface DiceGameConfigChangedEvent extends DomainEvent {
   readonly eventType: 'dice_game_config_changed';
   readonly guildId: string;
   readonly gameType: GameType;
+  /** Previous configuration values before the change. */
+  readonly oldConfig?: Record<string, unknown>;
+  /** New configuration values after the change. */
+  readonly newConfig?: Record<string, unknown>;
 }
 
 // ---- Product / Redemption Events ----

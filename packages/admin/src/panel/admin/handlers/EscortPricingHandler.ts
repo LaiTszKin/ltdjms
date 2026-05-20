@@ -2,13 +2,21 @@ import {
   type DiscordInteraction,
   type DiscordContext,
 } from '@ltdjms/shared';
-import { EmbedBuilder } from 'discord.js';
+import {
+  EmbedBuilder,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  ActionRowBuilder,
+} from 'discord.js';
 import { AdminPanelSessionManager } from '../../../session/AdminPanelSessionManager.js';
 import { AdminPanelViewState } from '../../../session/types.js';
 import { BotErrorHandler } from '../../../commands/infra/BotErrorHandler.js';
 import { ZhTwStrings } from '../../../i18n/zh-TW.js';
 import { BaseAdminHandler } from '../BaseAdminHandler.js';
 import { type EscortOptionPricingService } from '@ltdjms/dispatch';
+import { AdminPanelModalFactory } from '../views/AdminPanelModalFactory.js';
+import { Colors } from '../../../constants/colors.js';
 
 /**
  * Handler for escort pricing interactions (admin_escortprice_*).
@@ -20,6 +28,7 @@ export class EscortPricingHandler extends BaseAdminHandler {
   constructor(
     sessionManager: AdminPanelSessionManager,
     private readonly pricingService: EscortOptionPricingService,
+    private readonly modalFactory: AdminPanelModalFactory,
     errorHandler: BotErrorHandler,
   ) {
     super(sessionManager, errorHandler);
@@ -50,20 +59,149 @@ export class EscortPricingHandler extends BaseAdminHandler {
 
     const fullCustomId = interaction.getCustomId();
 
-    // Branch on sub-action
-    if (fullCustomId.startsWith('admin_escortprice_edit')) {
-      // TODO: show modal for editing price
-      await this.showPricingList(interaction, guildId);
+    // Handle modal submit for editing price
+    if (fullCustomId.startsWith('admin_escortprice_save_')) {
+      const optionCode = fullCustomId.replace('admin_escortprice_save_', '');
+      await this.handleEditPriceSave(interaction, guildId, userId, optionCode);
       return;
     }
-    if (fullCustomId.startsWith('admin_escortprice_reset')) {
-      // TODO: reset price to default
-      await this.showPricingList(interaction, guildId);
+
+    // Handle reset confirmation
+    if (fullCustomId.startsWith('admin_escortprice_reset_')) {
+      const optionCode = fullCustomId.replace('admin_escortprice_reset_', '');
+      if (optionCode) {
+        await this.handleResetPrice(interaction, guildId, userId, optionCode);
+      }
+      return;
+    }
+
+    // Show edit modal
+    if (fullCustomId.startsWith('admin_escortprice_edit_')) {
+      const optionCode = fullCustomId.replace('admin_escortprice_edit_', '');
+      if (optionCode) {
+        await this.showEditModal(interaction, guildId, optionCode);
+      }
       return;
     }
 
     // Default: show pricing list
     await this.showPricingList(interaction, guildId);
+  }
+
+  private async showEditModal(
+    interaction: DiscordInteraction,
+    guildId: string,
+    optionCode: string,
+  ): Promise<void> {
+    // Get current pricing to pre-fill the modal
+    const pricesResult = await this.pricingService.listOptionPrices(Number(guildId));
+    let currentOverride: number | null = null;
+    let optionName = optionCode;
+
+    if (pricesResult.isOk()) {
+      const prices = pricesResult.getValue();
+      const found = prices.find((p) => p.optionCode === optionCode);
+      if (found) {
+        optionName = `${found.option.type} - ${found.option.target}`;
+        currentOverride = found.overridden ? found.effectivePriceTwd : null;
+      }
+    }
+
+    const modalData = this.modalFactory.buildEscortPricingEditModal(
+      optionName,
+      0,
+      currentOverride,
+    );
+
+    const modal = new ModalBuilder()
+      .setCustomId('admin_escortprice_save_' + optionCode)
+      .setTitle(modalData.title);
+
+    for (const field of modalData.fields) {
+      const input = new TextInputBuilder()
+        .setCustomId(field.label)
+        .setLabel(field.label)
+        .setStyle(TextInputStyle.Short)
+        .setValue(field.value)
+        .setMinLength(field.minLength)
+        .setMaxLength(field.maxLength)
+        .setRequired(field.required);
+      if ('placeholder' in field && field.placeholder) {
+        input.setPlaceholder(field.placeholder);
+      }
+      modal.addComponents(
+        new ActionRowBuilder<TextInputBuilder>().addComponents(input),
+      );
+    }
+
+    const raw = interaction.getHook() as { showModal: (m: ModalBuilder) => Promise<void> };
+    await raw.showModal(modal);
+  }
+
+  private async handleEditPriceSave(
+    interaction: DiscordInteraction,
+    guildId: string,
+    actorId: string,
+    optionCode: string,
+  ): Promise<void> {
+    const raw = interaction.getHook() as {
+      fields: { getTextInputValue: (id: string) => string };
+    };
+
+    const priceStr = raw.fields.getTextInputValue(ZhTwStrings.escortPricingEditLabel);
+    const price = parseInt(priceStr, 10);
+
+    if (isNaN(price) || price <= 0) {
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.escortPricingTitle)
+        .setDescription('請輸入有效的正整數價格')
+        .setColor(Colors.WARNING);
+      await interaction.editEmbed(embed);
+      return;
+    }
+
+    const result = await this.pricingService.updateOptionPrice(
+      Number(guildId),
+      Number(actorId),
+      optionCode,
+      price,
+    );
+
+    if (result.isOk()) {
+      const updated = result.getValue();
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.escortPricingTitle)
+        .setDescription(
+          ZhTwStrings.escortPricingUpdated
+            .replace('{name}', `${updated.option.type} - ${updated.option.target}`)
+            .replace('{price}', String(price)),
+        )
+        .setColor(Colors.SUCCESS);
+      await interaction.editEmbed(embed);
+    } else {
+      await this.errorHandler.handle(result.getError(), interaction);
+    }
+  }
+
+  private async handleResetPrice(
+    interaction: DiscordInteraction,
+    guildId: string,
+    actorId: string,
+    optionCode: string,
+  ): Promise<void> {
+    const result = await this.pricingService.resetOptionPrice(Number(guildId), optionCode);
+
+    if (result.isOk()) {
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.escortPricingTitle)
+        .setDescription(
+          ZhTwStrings.escortPricingResetDone.replace('{name}', optionCode).replace('{price}', '0'),
+        )
+        .setColor(Colors.SUCCESS);
+      await interaction.editEmbed(embed);
+    } else {
+      await this.errorHandler.handle(result.getError(), interaction);
+    }
   }
 
   private async showPricingList(
@@ -96,7 +234,7 @@ export class EscortPricingHandler extends BaseAdminHandler {
     const embed = new EmbedBuilder()
       .setTitle(ZhTwStrings.escortPricingTitle)
       .setDescription(description)
-      .setColor(0xFEE75C);
+      .setColor(Colors.WARNING);
     await interaction.editEmbed(embed);
   }
 }

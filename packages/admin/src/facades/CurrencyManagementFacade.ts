@@ -1,4 +1,4 @@
-import { type Result, Ok, Err, DomainError } from '@ltdjms/shared';
+import { type Result, Ok, Err, DomainError, type DomainEventPublisher, type BalanceChangedEvent } from '@ltdjms/shared';
 import {
   BalanceService,
   BalanceAdjustmentService,
@@ -33,6 +33,7 @@ export class CurrencyManagementFacade {
     private readonly balanceService: BalanceService,
     private readonly balanceAdjustmentService: BalanceAdjustmentService,
     private readonly currencyConfigService: CurrencyConfigService,
+    private readonly eventPublisher?: DomainEventPublisher,
   ) {}
 
   /**
@@ -62,13 +63,19 @@ export class CurrencyManagementFacade {
     const validation = this.validateAdjustmentAmount(amount, '增加');
     if (validation) return validation;
 
-    return this.balanceAdjustmentService.tryAdjustBalance(
+    const result = await this.balanceAdjustmentService.tryAdjustBalance(
       Number(guildId),
       Number(userId),
       amount,
       CurrencyTransactionSource.ADMIN_ADJUSTMENT,
       `管理員 ${actorId}：${reason}`,
     );
+
+    if (result.isOk()) {
+      this.publishBalanceChangedEvent(guildId, userId, result.getValue().newBalance);
+    }
+
+    return result;
   }
 
   /**
@@ -88,13 +95,19 @@ export class CurrencyManagementFacade {
     const validation = this.validateAdjustmentAmount(amount, '扣除');
     if (validation) return validation;
 
-    return this.balanceAdjustmentService.tryAdjustBalance(
+    const result = await this.balanceAdjustmentService.tryAdjustBalance(
       Number(guildId),
       Number(userId),
       -amount,
       CurrencyTransactionSource.ADMIN_ADJUSTMENT,
       `管理員 ${actorId}：${reason}`,
     );
+
+    if (result.isOk()) {
+      this.publishBalanceChangedEvent(guildId, userId, result.getValue().newBalance);
+    }
+
+    return result;
   }
 
   /**
@@ -111,13 +124,34 @@ export class CurrencyManagementFacade {
       return new Err(DomainError.invalidInput('設定金額必須為非負整數'));
     }
 
-    return this.balanceAdjustmentService.tryAdjustBalanceTo(
+    const result = await this.balanceAdjustmentService.tryAdjustBalanceTo(
       Number(guildId),
       Number(userId),
       amount,
       CurrencyTransactionSource.ADMIN_ADJUSTMENT,
       `管理員 ${actorId}：${reason}`,
     );
+
+    if (result.isOk()) {
+      this.publishBalanceChangedEvent(guildId, userId, result.getValue().newBalance);
+    }
+
+    return result;
+  }
+
+  private publishBalanceChangedEvent(
+    guildId: string,
+    userId: string,
+    newBalance: number,
+  ): void {
+    if (!this.eventPublisher) return;
+    const event: BalanceChangedEvent = {
+      guildId,
+      eventType: 'balance_changed',
+      userId: Number(userId),
+      newBalance,
+    };
+    this.eventPublisher.publish(event);
   }
 
   private validateAdjustmentAmount(

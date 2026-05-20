@@ -2,13 +2,18 @@ import {
   type DiscordInteraction,
   type DiscordContext,
 } from '@ltdjms/shared';
-import { EmbedBuilder } from 'discord.js';
+import {
+  EmbedBuilder,
+  ActionRowBuilder,
+  ChannelType,
+} from 'discord.js';
 import { AdminPanelSessionManager } from '../../../session/AdminPanelSessionManager.js';
 import { AdminPanelViewState } from '../../../session/types.js';
 import { BotErrorHandler } from '../../../commands/infra/BotErrorHandler.js';
 import { AIConfigManagementFacade } from '../../../facades/AIConfigManagementFacade.js';
 import { ZhTwStrings } from '../../../i18n/zh-TW.js';
 import { BaseAdminHandler } from '../BaseAdminHandler.js';
+import { Colors } from '../../../constants/colors.js';
 
 /**
  * Handler for AI agent config interactions (admin_aiagent_*).
@@ -50,25 +55,145 @@ export class AIAgentConfigHandler extends BaseAdminHandler {
 
     const fullCustomId = interaction.getCustomId();
 
-    // Branch on sub-action
+    // Handle channel select menu results
+    if (fullCustomId === 'admin_aiagent_enable_select') {
+      await this.handleEnableAgent(interaction, guildId);
+      return;
+    }
+    if (fullCustomId === 'admin_aiagent_disable_select') {
+      await this.handleDisableAgent(interaction, guildId);
+      return;
+    }
+    if (fullCustomId === 'admin_aiagent_remove_select') {
+      await this.handleRemoveAgent(interaction, guildId);
+      return;
+    }
+
+    // Branch on sub-action — show channel select
     if (fullCustomId === 'admin_aiagent_enable') {
-      // TODO: show channel select for enabling agent
-      await this.showAgentConfig(interaction, guildId);
+      await this.showChannelSelect(interaction, 'enable');
       return;
     }
     if (fullCustomId === 'admin_aiagent_disable') {
-      // TODO: show channel select for disabling agent
-      await this.showAgentConfig(interaction, guildId);
+      await this.showChannelSelect(interaction, 'disable');
       return;
     }
     if (fullCustomId === 'admin_aiagent_remove') {
-      // TODO: show channel select for removing agent config
-      await this.showAgentConfig(interaction, guildId);
+      await this.showChannelSelect(interaction, 'remove');
       return;
     }
 
     // Default: show agent config overview
     await this.showAgentConfig(interaction, guildId);
+  }
+
+  private async showChannelSelect(
+    interaction: DiscordInteraction,
+    action: 'enable' | 'disable' | 'remove',
+  ): Promise<void> {
+    const raw = interaction.getHook() as {
+      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<any>[] }) => Promise<void>;
+    };
+
+    const customIdMap: Record<string, string> = {
+      enable: 'admin_aiagent_enable_select',
+      disable: 'admin_aiagent_disable_select',
+      remove: 'admin_aiagent_remove_select',
+    };
+    const descMap: Record<string, string> = {
+      enable: ZhTwStrings.aiAgentSelectChannel,
+      disable: ZhTwStrings.aiAgentSelectDisableChannel,
+      remove: ZhTwStrings.aiAgentSelectRemoveChannel,
+    };
+
+    const embed = new EmbedBuilder()
+      .setTitle(ZhTwStrings.aiAgentTitle)
+      .setDescription(descMap[action])
+      .setColor(Colors.PRIMARY);
+
+    const { ChannelSelectMenuBuilder } = await import('discord.js');
+    const select = new ChannelSelectMenuBuilder()
+      .setCustomId(customIdMap[action])
+      .setPlaceholder('請選擇頻道')
+      .setChannelTypes(ChannelType.GuildText);
+
+    const row = new ActionRowBuilder<any>().addComponents(select);
+    await raw.editReply({ embeds: [embed], components: [row] });
+  }
+
+  private async handleEnableAgent(
+    interaction: DiscordInteraction,
+    guildId: string,
+  ): Promise<void> {
+    const raw = interaction.getHook() as { values?: string[] };
+    const selectedIds = raw.values;
+    if (!selectedIds || selectedIds.length === 0) {
+      await this.showAgentConfig(interaction, guildId);
+      return;
+    }
+
+    const channelId = selectedIds[0];
+    const result = await this.facade.enableAgent(guildId, channelId, 'default');
+
+    if (result.isOk()) {
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.aiAgentTitle)
+        .setDescription(ZhTwStrings.aiAgentEnabled.replace('{channel}', `<#${channelId}>`))
+        .setColor(Colors.SUCCESS);
+      await interaction.editEmbed(embed);
+    } else {
+      await this.errorHandler.handle(result.getError(), interaction);
+    }
+  }
+
+  private async handleDisableAgent(
+    interaction: DiscordInteraction,
+    guildId: string,
+  ): Promise<void> {
+    const raw = interaction.getHook() as { values?: string[] };
+    const selectedIds = raw.values;
+    if (!selectedIds || selectedIds.length === 0) {
+      await this.showAgentConfig(interaction, guildId);
+      return;
+    }
+
+    const channelId = selectedIds[0];
+    const result = await this.facade.disableAgent(guildId, channelId);
+
+    if (result.isOk()) {
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.aiAgentTitle)
+        .setDescription(ZhTwStrings.aiAgentDisabled.replace('{channel}', `<#${channelId}>`))
+        .setColor(Colors.SUCCESS);
+      await interaction.editEmbed(embed);
+    } else {
+      await this.errorHandler.handle(result.getError(), interaction);
+    }
+  }
+
+  private async handleRemoveAgent(
+    interaction: DiscordInteraction,
+    guildId: string,
+  ): Promise<void> {
+    const raw = interaction.getHook() as { values?: string[] };
+    const selectedIds = raw.values;
+    if (!selectedIds || selectedIds.length === 0) {
+      await this.showAgentConfig(interaction, guildId);
+      return;
+    }
+
+    const channelId = selectedIds[0];
+    const result = await this.facade.removeAgentConfig(guildId, channelId);
+
+    if (result.isOk()) {
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.aiAgentTitle)
+        .setDescription(ZhTwStrings.aiAgentRemoved.replace('{channel}', `<#${channelId}>`))
+        .setColor(Colors.SUCCESS);
+      await interaction.editEmbed(embed);
+    } else {
+      await this.errorHandler.handle(result.getError(), interaction);
+    }
   }
 
   private async showAgentConfig(
@@ -88,7 +213,7 @@ export class AIAgentConfigHandler extends BaseAdminHandler {
     const embed = new EmbedBuilder()
       .setTitle(ZhTwStrings.aiAgentTitle)
       .setDescription(description)
-      .setColor(0x5865F2);
+      .setColor(Colors.PRIMARY);
     await interaction.editEmbed(embed);
   }
 }

@@ -77,6 +77,14 @@ export interface CurrencyTransactionService {
 /** Redemption transaction service interface as used by shop services. */
 export interface RedemptionTransactionService {
   recordTransaction(guildId: number, userId: number, product: Product, code: { code: string }): Promise<unknown>;
+
+  /** Gets a paginated page of redemption transactions for a user. */
+  getUserRedemptionPage(guildId: number, userId: number, page: number, pageSize: number): Promise<{
+    items: Array<{ id: number; productName: string; code: string; rewardedAmount: number | null; createdAt: Date }>;
+    hasNext: boolean;
+    totalPages: number;
+    currentPage: number;
+  }>;
 }
 
 /** Configuration options for the shop module container. */
@@ -111,6 +119,7 @@ export const SHOP_TOKENS = {
   FiatOrderBuyerNotificationService: Symbol('FiatOrderBuyerNotificationService'),
   EscortOrderBuyerNotificationService: Symbol('EscortOrderBuyerNotificationService'),
   ShopAdminNotificationService: Symbol('ShopAdminNotificationService'),
+  RedemptionTransactionService: Symbol('RedemptionTransactionService'),
   EcpayCallbackHttpServer: Symbol('EcpayCallbackHttpServer'),
 };
 
@@ -205,17 +214,22 @@ export function configureContainer(options: ShopModuleOptions): void {
 
   // ---- Redemption ----
   const codeGenerator = new RedemptionCodeGenerator();
+  const redemptionTxService: RedemptionTransactionService = options.redemptionTransactionService;
   const redemptionService = new RedemptionService(
     redemptionCodeRepo,
     options.productRepository,
     codeGenerator,
     options.productRewardService,
-    options.redemptionTransactionService,
+    redemptionTxService,
     eventPublisher,
     log,
   );
   container.registerInstance(SHOP_TOKENS.RedemptionCodeGenerator, codeGenerator);
   container.registerInstance(SHOP_TOKENS.RedemptionService, redemptionService);
+  container.registerInstance<RedemptionTransactionService>(
+    SHOP_TOKENS.RedemptionTransactionService,
+    redemptionTxService,
+  );
 
   // ---- Callback HTTP Server ----
   const callbackServer = new EcpayCallbackHttpServer(config, paymentCallback, log);

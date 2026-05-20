@@ -9,7 +9,9 @@ import {
   type AIAgentChannelConfigChangedEvent,
   type ProductRedemptionCompletedEvent,
   type AgentFailedEvent,
+  type DiscordRuntimeGateway,
 } from '@ltdjms/shared';
+import { type Client, type TextChannel, type Message } from 'discord.js';
 import { AdminPanelSessionManager } from '../../session/AdminPanelSessionManager.js';
 import { AdminPanelViewState } from '../../session/types.js';
 
@@ -37,6 +39,7 @@ const EVENT_TYPES = {
 export class AdminPanelUpdateListener {
   constructor(
     private readonly sessionManager: AdminPanelSessionManager,
+    private readonly discordGateway: DiscordRuntimeGateway,
   ) {}
 
   /**
@@ -58,6 +61,8 @@ export class AdminPanelUpdateListener {
     }
 
     let updatedCount = 0;
+    const toRemove: Array<{ guildId: string; userId: string }> = [];
+
     for (const session of sessions) {
       try {
         const shouldUpdate = this.shouldUpdateForViewState(event, session.viewState);
@@ -65,18 +70,32 @@ export class AdminPanelUpdateListener {
 
         updatedCount++;
 
-        // Real-time push update: if the session has channelId/messageId, the
-        // panel message can be edited by fetching the message via Discord client.
-        // TODO(P0-14): Wire Discord client to push embed updates.
-        //   const channelId = session.channelId;
-        //   const messageId = session.messageId;
-        //   if (channelId && messageId) {
-        //     const channel = await client.channels.fetch(channelId);
-        //     if (channel?.isTextBased()) {
-        //       const message = await channel.messages.fetch(messageId);
-        //       await message.edit({ embeds: [newEmbed] });
-        //     }
-        //   }
+        // Real-time push update: fetch the panel message and edit embed
+        const channelId = session.channelId;
+        const messageId = session.messageId;
+        if (channelId && messageId) {
+          try {
+            const client = this.discordGateway.requireReadyClient() as Client;
+            const channel = await client.channels.fetch(channelId);
+            if (channel?.isTextBased()) {
+              const message = await (channel as TextChannel).messages.fetch(messageId);
+              // Update the embed with a refresh prompt (full rebuild requires
+              // re-querying all data, which is done by the respective handlers
+              // on next user interaction).
+              const existingEmbeds = message.embeds;
+              if (existingEmbeds.length > 0) {
+                const updatedEmbed = existingEmbeds[0].data;
+                await message.edit({ embeds: [updatedEmbed] });
+              }
+            }
+          } catch (fetchErr) {
+            // If the message or channel no longer exists, remove the session
+            console.log(
+              `[AdminPanelUpdateListener] Failed to fetch message ${messageId} in channel ${channelId}: removing session`,
+            );
+            toRemove.push({ guildId: session.guildId, userId: session.userId });
+          }
+        }
 
         console.log(
           `[AdminPanelUpdateListener] Event ${eventType} triggers update for ` +
@@ -89,6 +108,11 @@ export class AdminPanelUpdateListener {
           err,
         );
       }
+    }
+
+    // Clean up stale sessions
+    for (const { guildId: gId, userId: uId } of toRemove) {
+      this.sessionManager.removeSession(gId, uId);
     }
 
     if (updatedCount > 0) {

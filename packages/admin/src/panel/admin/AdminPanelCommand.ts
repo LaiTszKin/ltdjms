@@ -47,8 +47,12 @@ export class AdminPanelCommand implements CommandHandler {
     // (e.g., EscortOrderService) once it is available. Currently hardcoded to 0.
     const dispatchCount = 0;
 
+    // Attempt to get the actual guild name from the raw interaction
+    const rawHook = interaction.getHook() as { guild?: { name?: string } };
+    const guildName = rawHook.guild?.name ?? `Guild ${guildId}`;
+
     const mainPanel = this.viewFactory.buildMainPanelEmbed(
-      `Guild ${guildId}`,
+      guildName,
       currencyConfig,
       dispatchCount,
     );

@@ -12,11 +12,8 @@ import {
 import {
   RedemptionService,
   type RedemptionResult,
+  type RedemptionTransactionService,
 } from '@ltdjms/shop';
-/** Minimal pool interface matching pg.Pool.query. */
-interface DbPool {
-  query: (text: string, params?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>;
-}
 
 /**
  * Summary view combining balance and token info for the user panel.
@@ -63,7 +60,7 @@ export class MemberInfoFacade {
     private readonly currencyTxService: CurrencyTransactionService,
     private readonly tokenTxService: GameTokenTransactionService,
     private readonly redemptionService: RedemptionService,
-    private readonly dbPool?: DbPool,
+    private readonly redemptionTxService?: RedemptionTransactionService,
   ) {}
 
   /**
@@ -175,7 +172,7 @@ export class MemberInfoFacade {
 
   /**
    * Gets a paginated page of product redemption transactions for a member.
-   * Queries the product_redemption_transaction table directly via the DB pool.
+   * Delegates to the RedemptionTransactionService layer.
    */
   async getProductRedemptionTransactionPage(
     guildId: string,
@@ -187,49 +184,32 @@ export class MemberInfoFacade {
       if (page < 1) page = 1;
       if (pageSize < 1) pageSize = 10;
 
-      // Use injected pool or lazy-resolve as fallback.
-      let db: DbPool;
-      if (this.dbPool) {
-        db = this.dbPool;
-      } else {
-        // Lazy-resolve the DB pool from the DI container as fallback.
-        const { container, TOKENS } = await import('@ltdjms/shared');
-        db = container.resolve(TOKENS.DatabasePool);
+      if (!this.redemptionTxService) {
+        return new Err(
+          DomainError.unexpectedFailure('兌換記錄服務不可用'),
+        );
       }
 
-      // TODO(P1-14): Migrate these raw queries to a proper service/repository
-      // layer (e.g., RedemptionTransactionRepository) to avoid direct SQL in
-      // facades. Parameterized queries mitigate injection risk, but the ideal
-      // fix is a dedicated service method on RedemptionService or a new
-      // repository class that encapsulates this query logic.
-
-      // Query total count — use parameterized query to prevent SQL injection.
-      const countSql = 'SELECT COUNT(*) as cnt FROM product_redemption_transaction WHERE guild_id = $1 AND user_id = $2';
-      const countResult = await db.query(countSql, [Number(guildId), Number(userId)]);
-      const totalCount = Number((countResult.rows[0] as Record<string, unknown>)?.cnt ?? 0);
-      const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-      const offset = (page - 1) * pageSize;
-
-      // Query page data — parameterized query.
-      const dataSql = 'SELECT * FROM product_redemption_transaction WHERE guild_id = $1 AND user_id = $2 ORDER BY created_at DESC LIMIT $3 OFFSET $4';
-      const dataResult = await db.query(dataSql, [Number(guildId), Number(userId), pageSize, offset]);
-      const rows = dataResult.rows;
-
-      const items: RedemptionTransactionEntry[] = rows.map(
-        (row: Record<string, unknown>) => ({
-          id: Number(row.id),
-          productName: String(row.product_name ?? ''),
-          code: String(row.code ?? ''),
-          rewardedAmount: row.rewarded_amount != null ? Number(row.rewarded_amount) : null,
-          createdAt: new Date(String(row.created_at)),
-        }),
+      const txPage = await this.redemptionTxService.getUserRedemptionPage(
+        Number(guildId),
+        Number(userId),
+        page,
+        pageSize,
       );
+
+      const items: RedemptionTransactionEntry[] = txPage.items.map((item) => ({
+        id: item.id,
+        productName: item.productName,
+        code: item.code,
+        rewardedAmount: item.rewardedAmount,
+        createdAt: item.createdAt,
+      }));
 
       return new Ok({
         items,
-        hasNext: page < totalPages,
-        totalPages,
-        currentPage: page,
+        hasNext: txPage.hasNext,
+        totalPages: txPage.totalPages,
+        currentPage: txPage.currentPage,
       });
     } catch (err) {
       return new Err(

@@ -5,10 +5,11 @@ import {
 import {
   EmbedBuilder,
   ActionRowBuilder,
-  StringSelectMenuBuilder,
+  UserSelectMenuBuilder,
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
+  ButtonBuilder,
 } from 'discord.js';
 import { GameTokenManagementFacade } from '../../../facades/GameTokenManagementFacade.js';
 import { AdminPanelSessionManager } from '../../../session/AdminPanelSessionManager.js';
@@ -17,6 +18,7 @@ import { AdminPanelViewState } from '../../../session/types.js';
 import { ZhTwStrings } from '../../../i18n/zh-TW.js';
 import { AdminPanelModalFactory } from '../views/AdminPanelModalFactory.js';
 import { BaseAdminHandler } from '../BaseAdminHandler.js';
+import { Colors } from '../../../constants/colors.js';
 
 /**
  * Handler for token management interactions (admin_token_*).
@@ -72,7 +74,7 @@ export class TokenManagementHandler extends BaseAdminHandler {
       return;
     }
 
-    // Handle member selection from select menu
+    // Handle member selection from user select menu
     if (fullCustomId === 'admin_token_select_member') {
       const rawHook = interaction.getHook() as { values?: string[] };
       const selectedUserId = rawHook.values?.[0];
@@ -98,20 +100,20 @@ export class TokenManagementHandler extends BaseAdminHandler {
     interaction: DiscordInteraction,
   ): Promise<void> {
     const raw = interaction.getHook() as {
-      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<StringSelectMenuBuilder>[] }) => Promise<void>;
+      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<UserSelectMenuBuilder>[] }) => Promise<void>;
     };
 
     const embed = new EmbedBuilder()
       .setTitle(ZhTwStrings.tokenTitle)
       .setDescription(ZhTwStrings.tokenSelectMember)
-      .setColor(0x5865F2);
+      .setColor(Colors.PRIMARY);
 
-    const select = new StringSelectMenuBuilder()
+    // Use UserSelectMenu for real member selection
+    const select = new UserSelectMenuBuilder()
       .setCustomId('admin_token_select_member')
-      .setPlaceholder('請選擇成員')
-      .addOptions([{ label: '請使用下方選單', value: '_placeholder', default: true }]);
+      .setPlaceholder('請選擇成員');
 
-    const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
+    const row = new ActionRowBuilder<UserSelectMenuBuilder>().addComponents(select);
     await raw.editReply({ embeds: [embed], components: [row] });
   }
 
@@ -123,7 +125,7 @@ export class TokenManagementHandler extends BaseAdminHandler {
     const result = await this.facade.getTokens(guildId, targetUserId);
 
     const raw = interaction.getHook() as {
-      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<import('discord.js').ButtonBuilder>[] }) => Promise<void>;
+      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }) => Promise<void>;
     };
 
     if (result.isOk()) {
@@ -132,28 +134,28 @@ export class TokenManagementHandler extends BaseAdminHandler {
         .setDescription(
           ZhTwStrings.tokenDisplay.replace('{tokens}', String(result.getValue())),
         )
-        .setColor(0x5865F2);
+        .setColor(Colors.PRIMARY);
 
-      const addBtn = new (await import('discord.js')).ButtonBuilder()
+      const addBtn = new ButtonBuilder()
         .setCustomId('admin_token_modal_add')
         .setLabel(ZhTwStrings.balanceAdjustAdd)
         .setStyle(3 as any);
-      const deductBtn = new (await import('discord.js')).ButtonBuilder()
+      const deductBtn = new ButtonBuilder()
         .setCustomId('admin_token_modal_deduct')
         .setLabel(ZhTwStrings.balanceAdjustDeduct)
         .setStyle(4 as any);
-      const setBtn = new (await import('discord.js')).ButtonBuilder()
+      const setBtn = new ButtonBuilder()
         .setCustomId('admin_token_modal_set')
         .setLabel(ZhTwStrings.balanceAdjustSet)
         .setStyle(1 as any);
 
-      const row = new (await import('discord.js')).ActionRowBuilder<import('discord.js').ButtonBuilder>().addComponents(addBtn, deductBtn, setBtn);
+      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(addBtn, deductBtn, setBtn);
       await raw.editReply({ embeds: [embed], components: [row] });
     } else {
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.tokenTitle)
         .setDescription('無法取得該成員的代幣資訊')
-        .setColor(0x5865F2);
+        .setColor(Colors.PRIMARY);
       await raw.editReply({ embeds: [embed], components: [] });
     }
   }
@@ -203,7 +205,7 @@ export class TokenManagementHandler extends BaseAdminHandler {
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.tokenTitle)
         .setDescription('請先選擇成員')
-        .setColor(0x5865F2);
+        .setColor(Colors.PRIMARY);
       await interaction.editEmbed(embed);
       return;
     }
@@ -220,7 +222,7 @@ export class TokenManagementHandler extends BaseAdminHandler {
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.tokenTitle)
         .setDescription('請輸入有效的正整數數量')
-        .setColor(0x5865F2);
+        .setColor(Colors.PRIMARY);
       await interaction.editEmbed(embed);
       return;
     }
@@ -241,13 +243,13 @@ export class TokenManagementHandler extends BaseAdminHandler {
         .setDescription(
           `調整成功！\n調整前：${adjustResult.previousTokens}\n調整後：${adjustResult.newTokens}`,
         )
-        .setColor(0x5865F2);
+        .setColor(Colors.PRIMARY);
       await interaction.editEmbed(embed);
     } else {
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.tokenTitle)
         .setDescription('調整失敗：' + result.getError().message)
-        .setColor(0x5865F2);
+        .setColor(Colors.PRIMARY);
       await interaction.editEmbed(embed);
     }
   }

@@ -2,13 +2,18 @@ import {
   type DiscordInteraction,
   type DiscordContext,
 } from '@ltdjms/shared';
-import { EmbedBuilder } from 'discord.js';
+import {
+  EmbedBuilder,
+  ActionRowBuilder,
+  ChannelType,
+} from 'discord.js';
 import { AdminPanelSessionManager } from '../../../session/AdminPanelSessionManager.js';
 import { AdminPanelViewState } from '../../../session/types.js';
 import { BotErrorHandler } from '../../../commands/infra/BotErrorHandler.js';
 import { AIConfigManagementFacade } from '../../../facades/AIConfigManagementFacade.js';
 import { ZhTwStrings } from '../../../i18n/zh-TW.js';
 import { BaseAdminHandler } from '../BaseAdminHandler.js';
+import { Colors } from '../../../constants/colors.js';
 
 /**
  * Handler for AI channel config interactions (admin_aichannel_*).
@@ -50,30 +55,207 @@ export class AIChannelConfigHandler extends BaseAdminHandler {
 
     const fullCustomId = interaction.getCustomId();
 
-    // Branch on sub-action
+    // Handle channel select menu results
+    if (fullCustomId === 'admin_aichannel_add_channel_select') {
+      await this.handleAddChannel(interaction, guildId);
+      return;
+    }
+    if (fullCustomId === 'admin_aichannel_remove_channel_select') {
+      await this.handleRemoveChannel(interaction, guildId);
+      return;
+    }
+    if (fullCustomId === 'admin_aichannel_add_category_confirm') {
+      await this.handleAddCategoryFromRaw(interaction, guildId);
+      return;
+    }
+    if (fullCustomId === 'admin_aichannel_remove_category_confirm') {
+      await this.handleRemoveCategoryFromRaw(interaction, guildId);
+      return;
+    }
+
+    // Branch on sub-action — show appropriate select menu
     if (fullCustomId === 'admin_aichannel_add_channel') {
-      // TODO: show channel select menu
-      await this.showChannelConfig(interaction, guildId);
+      await this.showChannelSelect(interaction, guildId, 'add');
       return;
     }
     if (fullCustomId === 'admin_aichannel_remove_channel') {
-      // TODO: show channel remove select menu
-      await this.showChannelConfig(interaction, guildId);
+      await this.showChannelSelect(interaction, guildId, 'remove');
       return;
     }
     if (fullCustomId === 'admin_aichannel_add_category') {
-      // TODO: show category select menu
-      await this.showChannelConfig(interaction, guildId);
+      await this.showCategoryConfig(interaction, guildId);
       return;
     }
     if (fullCustomId === 'admin_aichannel_remove_category') {
-      // TODO: show category remove select menu
-      await this.showChannelConfig(interaction, guildId);
+      await this.showCategoryConfig(interaction, guildId);
       return;
     }
 
     // Default: show channel config overview
     await this.showChannelConfig(interaction, guildId);
+  }
+
+  private async showChannelSelect(
+    interaction: DiscordInteraction,
+    _guildId: string,
+    action: 'add' | 'remove',
+  ): Promise<void> {
+    const raw = interaction.getHook() as {
+      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<any>[] }) => Promise<void>;
+    };
+
+    const customId = action === 'add'
+      ? 'admin_aichannel_add_channel_select'
+      : 'admin_aichannel_remove_channel_select';
+
+    const title = action === 'add'
+      ? ZhTwStrings.aiChannelAddBtn
+      : ZhTwStrings.aiChannelRemoveBtn;
+
+    const embed = new EmbedBuilder()
+      .setTitle(ZhTwStrings.aiChannelTitle)
+      .setDescription(`請選擇要${action === 'add' ? '新增' : '移除'}的頻道`)
+      .setColor(Colors.PRIMARY);
+
+    const { ChannelSelectMenuBuilder } = await import('discord.js');
+    const select = new ChannelSelectMenuBuilder()
+      .setCustomId(customId)
+      .setPlaceholder('請選擇頻道')
+      .setChannelTypes(ChannelType.GuildText);
+
+    const row = new ActionRowBuilder<any>().addComponents(select);
+    await raw.editReply({ embeds: [embed], components: [row] });
+  }
+
+  private async handleAddChannel(
+    interaction: DiscordInteraction,
+    guildId: string,
+  ): Promise<void> {
+    const raw = interaction.getHook() as { values?: string[] };
+    const selectedIds = raw.values;
+    if (!selectedIds || selectedIds.length === 0) {
+      await this.showChannelConfig(interaction, guildId);
+      return;
+    }
+
+    const channelId = selectedIds[0];
+    const result = await this.facade.addAllowedChannel(guildId, channelId, channelId);
+
+    if (result.isOk()) {
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.aiChannelTitle)
+        .setDescription(ZhTwStrings.aiChannelAdded.replace('{channel}', `<#${channelId}>`))
+        .setColor(Colors.SUCCESS);
+      await interaction.editEmbed(embed);
+    } else {
+      await this.errorHandler.handle(result.getError(), interaction);
+    }
+  }
+
+  private async handleRemoveChannel(
+    interaction: DiscordInteraction,
+    guildId: string,
+  ): Promise<void> {
+    const raw = interaction.getHook() as { values?: string[] };
+    const selectedIds = raw.values;
+    if (!selectedIds || selectedIds.length === 0) {
+      await this.showChannelConfig(interaction, guildId);
+      return;
+    }
+
+    const channelId = selectedIds[0];
+    const result = await this.facade.removeAllowedChannel(guildId, channelId);
+
+    if (result.isOk()) {
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.aiChannelTitle)
+        .setDescription(ZhTwStrings.aiChannelRemoved.replace('{channel}', `<#${channelId}>`))
+        .setColor(Colors.SUCCESS);
+      await interaction.editEmbed(embed);
+    } else {
+      await this.errorHandler.handle(result.getError(), interaction);
+    }
+  }
+
+  private async handleAddCategoryFromRaw(
+    interaction: DiscordInteraction,
+    guildId: string,
+  ): Promise<void> {
+    const raw = interaction.getHook() as { values?: string[] };
+    const selectedCategory = String(raw.values?.[0] ?? '');
+    if (!selectedCategory) {
+      await this.showChannelConfig(interaction, guildId);
+      return;
+    }
+
+    const result = await this.facade.addAllowedCategory(guildId, selectedCategory, selectedCategory);
+
+    if (result.isOk()) {
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.aiChannelTitle)
+        .setDescription(ZhTwStrings.aiCategoryAdded.replace('{category}', selectedCategory))
+        .setColor(Colors.SUCCESS);
+      await interaction.editEmbed(embed);
+    } else {
+      await this.errorHandler.handle(result.getError(), interaction);
+    }
+  }
+
+  private async handleRemoveCategoryFromRaw(
+    interaction: DiscordInteraction,
+    guildId: string,
+  ): Promise<void> {
+    const raw = interaction.getHook() as { values?: string[] };
+    const selectedCategory = String(raw.values?.[0] ?? '');
+    if (!selectedCategory) {
+      await this.showChannelConfig(interaction, guildId);
+      return;
+    }
+
+    const result = await this.facade.removeAllowedCategory(guildId, selectedCategory);
+
+    if (result.isOk()) {
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.aiChannelTitle)
+        .setDescription(ZhTwStrings.aiCategoryRemoved.replace('{category}', selectedCategory))
+        .setColor(Colors.SUCCESS);
+      await interaction.editEmbed(embed);
+    } else {
+      await this.errorHandler.handle(result.getError(), interaction);
+    }
+  }
+
+  private async showCategoryConfig(
+    interaction: DiscordInteraction,
+    guildId: string,
+  ): Promise<void> {
+    // For categories, use the raw interaction to show a simple text-input approach
+    // since Discord does not provide a dedicated category select menu for interactions.
+    // We show the current channel config and prompt the admin to use the category ID.
+    const [channelsResult, categoriesResult] = await Promise.all([
+      this.facade.getAllowedChannels(guildId),
+      this.facade.getAllowedCategories(guildId),
+    ]);
+
+    const channelList = channelsResult.isOk() && channelsResult.getValue().length > 0
+      ? channelsResult.getValue().map((c) => `<#${c.channelId}>`).join('\n')
+      : '無';
+    const categoryList = categoriesResult.isOk() && categoriesResult.getValue().length > 0
+      ? categoriesResult.getValue().map((c) => c.categoryName).join('\n')
+      : '無';
+
+    const description = (channelsResult.isOk() && channelsResult.getValue().length === 0 &&
+      categoriesResult.isOk() && categoriesResult.getValue().length === 0)
+      ? ZhTwStrings.aiChannelEmpty
+      : ZhTwStrings.aiChannelList
+          .replace('{channels}', channelList)
+          .replace('{categories}', categoryList);
+
+    const embed = new EmbedBuilder()
+      .setTitle(ZhTwStrings.aiChannelTitle)
+      .setDescription(description)
+      .setColor(Colors.PRIMARY);
+    await interaction.editEmbed(embed);
   }
 
   private async showChannelConfig(
@@ -102,7 +284,7 @@ export class AIChannelConfigHandler extends BaseAdminHandler {
     const embed = new EmbedBuilder()
       .setTitle(ZhTwStrings.aiChannelTitle)
       .setDescription(description)
-      .setColor(0x5865F2);
+      .setColor(Colors.PRIMARY);
     await interaction.editEmbed(embed);
   }
 }

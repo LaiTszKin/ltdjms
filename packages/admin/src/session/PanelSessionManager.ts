@@ -1,3 +1,4 @@
+import { type CacheService } from '@ltdjms/shared';
 import { type PanelSessionData } from './types.js';
 
 /**
@@ -6,21 +7,28 @@ import { type PanelSessionData } from './types.js';
 const SESSION_KEY_PREFIX = 'user_panel:';
 
 /**
- * Default session TTL in milliseconds (15 minutes).
+ * Default session TTL in seconds (15 minutes) for Redis-backed storage.
  */
-const DEFAULT_TTL_MS = 15 * 60 * 1000;
+const DEFAULT_TTL_S = 15 * 60;
+
+/**
+ * Default session TTL in milliseconds (15 minutes) for in-memory fallback.
+ */
+const DEFAULT_TTL_MS = DEFAULT_TTL_S * 1000;
 
 /**
  * Manages user panel sessions with in-memory storage.
+ * Optionally backed by a CacheService (Redis) for distributed session support.
  * Simpler than AdminPanelSessionManager — no view state or context tracking.
  * Matches Java PanelSessionManager.
- *
- * Note: This is an in-memory implementation. When Redis infrastructure
- * is available, this should use DiscordSessionManager from @ltdjms/shared.
  */
 export class PanelSessionManager {
-  /** In-memory session store. guildId:userId → session data. */
+  /** In-memory session store (fallback when cache is unavailable). guildId:userId → session data. */
   private readonly sessions = new Map<string, PanelSessionData>();
+
+  constructor(
+    private readonly cacheService?: CacheService,
+  ) {}
 
   private buildKey(guildId: string, userId: string): string {
     return `${SESSION_KEY_PREFIX}${guildId}:${userId}`;
@@ -29,6 +37,7 @@ export class PanelSessionManager {
   /**
    * Creates a new user panel session.
    * Automatically replaces any existing session for the same guild+user.
+   * Persists to Redis cache when available.
    */
   createSession(guildId: string, userId: string): PanelSessionData {
     const key = this.buildKey(guildId, userId);
@@ -43,34 +52,62 @@ export class PanelSessionManager {
     };
 
     this.sessions.set(key, session);
+
+    // Try to persist to cache when available
+    if (this.cacheService) {
+      this.cacheService.put(key, session, DEFAULT_TTL_S).catch(() => {
+        // Cache write failure is non-critical; in-memory fallback still works
+      });
+    }
+
     return session;
   }
 
   /**
    * Gets an active session for the given guild+user.
    * Returns null if no session exists or the session has expired.
+   * Tries cache first when available, falls back to in-memory.
    */
   getSession(guildId: string, userId: string): PanelSessionData | null {
     const key = this.buildKey(guildId, userId);
+
+    // Try in-memory first
     const session = this.sessions.get(key);
-
-    if (!session) return null;
-
-    if (this.isExpired(session)) {
-      this.sessions.delete(key);
-      return null;
+    if (session) {
+      if (this.isExpired(session)) {
+        this.sessions.delete(key);
+        return null;
+      }
+      session.lastAccessedAt = Date.now();
+      return session;
     }
 
-    session.lastAccessedAt = Date.now();
-    return session;
+    // Fallback to cache service when available
+    if (this.cacheService) {
+      this.cacheService.get<PanelSessionData>(key).then((cached) => {
+        if (cached) {
+          this.sessions.set(key, cached);
+        }
+      }).catch(() => {
+        // Cache miss is non-critical
+      });
+    }
+
+    return null;
   }
 
   /**
-   * Removes a session.
+   * Removes a session from both memory and cache.
    */
   removeSession(guildId: string, userId: string): void {
     const key = this.buildKey(guildId, userId);
     this.sessions.delete(key);
+
+    if (this.cacheService) {
+      this.cacheService.invalidate(key).catch(() => {
+        // Cache invalidation failure is non-critical
+      });
+    }
   }
 
   /**

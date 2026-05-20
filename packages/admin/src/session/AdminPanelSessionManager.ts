@@ -1,3 +1,4 @@
+import { type CacheService } from '@ltdjms/shared';
 import { AdminPanelViewState, type AdminPanelSessionData } from './types.js';
 
 /**
@@ -6,21 +7,28 @@ import { AdminPanelViewState, type AdminPanelSessionData } from './types.js';
 const SESSION_KEY_PREFIX = 'admin_panel:';
 
 /**
- * Default session TTL in milliseconds (15 minutes).
+ * Default session TTL in seconds (15 minutes).
  */
-const DEFAULT_TTL_MS = 15 * 60 * 1000;
+const DEFAULT_TTL_S = 15 * 60;
+
+/**
+ * Default session TTL in milliseconds (15 minutes) for in-memory fallback.
+ */
+const DEFAULT_TTL_MS = DEFAULT_TTL_S * 1000;
 
 /**
  * Manages admin panel sessions with in-memory storage.
+ * Optionally backed by a CacheService (Redis) for distributed session support.
  * Each guild+user can have at most one active session.
  * Matches Java AdminPanelSessionManager.
- *
- * Note: This is an in-memory implementation. When Redis infrastructure
- * is available, this should use DiscordSessionManager from @ltdjms/shared.
  */
 export class AdminPanelSessionManager {
-  /** In-memory session store. guildId:userId → session data. */
+  /** In-memory session store (fallback when cache is unavailable). guildId:userId → session data. */
   private readonly sessions = new Map<string, AdminPanelSessionData>();
+
+  constructor(
+    private readonly cacheService?: CacheService,
+  ) {}
 
   private buildKey(guildId: string, userId: string): string {
     return `${SESSION_KEY_PREFIX}${guildId}:${userId}`;
@@ -29,12 +37,12 @@ export class AdminPanelSessionManager {
   /**
    * Creates a new admin panel session.
    * Automatically replaces any existing session for the same guild+user.
+   * Persists to Redis cache when available.
    */
   createSession(
     guildId: string,
     userId: string,
   ): AdminPanelSessionData {
-    // Remove existing session for this guild+user
     const key = this.buildKey(guildId, userId);
     this.sessions.delete(key);
 
@@ -49,30 +57,52 @@ export class AdminPanelSessionManager {
     };
 
     this.sessions.set(key, session);
+
+    // Try to persist to cache when available
+    if (this.cacheService) {
+      this.cacheService.put(key, session, DEFAULT_TTL_S).catch(() => {
+        // Cache write failure is non-critical; in-memory fallback still works
+      });
+    }
+
     return session;
   }
 
   /**
    * Gets an active session for the given guild+user.
    * Returns null if no session exists or the session has expired.
+   * Tries cache first when available, falls back to in-memory.
    */
   getSession(
     guildId: string,
     userId: string,
   ): AdminPanelSessionData | null {
     const key = this.buildKey(guildId, userId);
+
+    // Try in-memory first
     const session = this.sessions.get(key);
-
-    if (!session) return null;
-
-    if (this.isExpired(session)) {
-      this.sessions.delete(key);
-      return null;
+    if (session) {
+      if (this.isExpired(session)) {
+        this.sessions.delete(key);
+        return null;
+      }
+      session.lastAccessedAt = Date.now();
+      return session;
     }
 
-    // Update last accessed time
-    session.lastAccessedAt = Date.now();
-    return session;
+    // Fallback to cache service when available
+    if (this.cacheService) {
+      // Attempt cache retrieval without blocking
+      this.cacheService.get<AdminPanelSessionData>(key).then((cached) => {
+        if (cached) {
+          this.sessions.set(key, cached);
+        }
+      }).catch(() => {
+        // Cache miss is non-critical
+      });
+    }
+
+    return null;
   }
 
   /**
@@ -130,11 +160,17 @@ export class AdminPanelSessionManager {
   }
 
   /**
-   * Removes a session.
+   * Removes a session from both memory and cache.
    */
   removeSession(guildId: string, userId: string): void {
     const key = this.buildKey(guildId, userId);
     this.sessions.delete(key);
+
+    if (this.cacheService) {
+      this.cacheService.invalidate(key).catch(() => {
+        // Cache invalidation failure is non-critical
+      });
+    }
   }
 
   /**

@@ -1,5 +1,5 @@
 import { container, TOKENS } from '@ltdjms/shared';
-import type { DomainEventPublisher } from '@ltdjms/shared';
+import type { DomainEventPublisher, DiscordRuntimeGateway } from '@ltdjms/shared';
 import type { BalanceService, BalanceAdjustmentService, CurrencyConfigService } from '@ltdjms/economy';
 import type { CurrencyTransactionService, GameTokenService, GameTokenTransactionService } from '@ltdjms/economy';
 import type { DiceConfigRepository } from '@ltdjms/economy';
@@ -13,7 +13,7 @@ import type {
   GameTokenAdjustHandler,
 } from '@ltdjms/economy';
 import { ECONOMY_TOKENS } from '@ltdjms/economy';
-import type { RedemptionService, ShopService } from '@ltdjms/shop';
+import type { RedemptionService, ShopService, RedemptionCodeRepository, RedemptionCodeGenerator, RedemptionTransactionService } from '@ltdjms/shop';
 import { SHOP_TOKENS } from '@ltdjms/shop';
 import type { AIChannelRestrictionService, AIAgentChannelConfigService } from '@ltdjms/ai';
 import { AI_TOKENS } from '@ltdjms/ai';
@@ -162,13 +162,20 @@ export function configureAdminContainer(): void {
   // Session
   // ============================================================
 
-  const adminSessionManager = new AdminPanelSessionManager();
+  let cacheService: import('@ltdjms/shared').CacheService | undefined;
+  try {
+    cacheService = container.resolve<import('@ltdjms/shared').CacheService>(TOKENS.CacheService);
+  } catch {
+    // CacheService not registered; session managers will use in-memory storage only
+  }
+
+  const adminSessionManager = new AdminPanelSessionManager(cacheService);
   container.registerInstance(
     ADMIN_TOKENS.AdminPanelSessionManager,
     adminSessionManager,
   );
 
-  const panelSessionManager = new PanelSessionManager();
+  const panelSessionManager = new PanelSessionManager(cacheService);
   container.registerInstance(
     ADMIN_TOKENS.PanelSessionManager,
     panelSessionManager,
@@ -227,6 +234,7 @@ export function configureAdminContainer(): void {
     balanceService,
     balanceAdjustmentService,
     currencyConfigService,
+    eventPublisher,
   );
   container.registerInstance(
     ADMIN_TOKENS.CurrencyManagementFacade,
@@ -293,13 +301,22 @@ export function configureAdminContainer(): void {
     SHOP_TOKENS.RedemptionService,
   );
 
+  let redemptionTxService: RedemptionTransactionService | undefined;
+  try {
+    redemptionTxService = container.resolve<RedemptionTransactionService>(
+      SHOP_TOKENS.RedemptionTransactionService,
+    );
+  } catch {
+    // RedemptionTransactionService not available; member redemption page will be unavailable
+  }
+
   const memberInfoFacade = new MemberInfoFacade(
     balanceService,
     gameTokenService,
     currencyTxService,
     gameTokenTxService,
     redemptionService,
-    container.resolve<any>(TOKENS.DatabasePool),
+    redemptionTxService,
   );
   container.registerInstance(
     ADMIN_TOKENS.MemberInfoFacade,
@@ -428,6 +445,7 @@ export function configureAdminContainer(): void {
   const escortPriceHandler = new EscortPricingHandler(
     adminSessionManager,
     escortPricingService,
+    adminPanelModalFactory,
     errorHandler,
   );
   container.registerInstance(
@@ -444,6 +462,7 @@ export function configureAdminContainer(): void {
     container.resolve<EscortOptionCatalogRepository>(
       DISPATCH_TOKENS.EscortOptionCatalogRepository,
     ),
+    adminPanelModalFactory,
     errorHandler,
   );
   container.registerInstance(
@@ -462,10 +481,20 @@ export function configureAdminContainer(): void {
   const shopService = container.resolve<ShopService>(
     SHOP_TOKENS.ShopService,
   );
+  const redemptionCodeRepo = container.resolve<RedemptionCodeRepository>(
+    SHOP_TOKENS.RedemptionCodeRepository,
+  );
+  const redemptionCodeGenerator = container.resolve<RedemptionCodeGenerator>(
+    SHOP_TOKENS.RedemptionCodeGenerator,
+  );
 
   const adminProductPanelHandler = new AdminProductPanelHandler(
     adminSessionManager,
     shopService,
+    redemptionCodeRepo,
+    redemptionCodeGenerator,
+    adminProductPanelViewFactory,
+    adminProductPanelModalFactory,
     errorHandler,
   );
   container.registerInstance(
@@ -516,8 +545,16 @@ export function configureAdminContainer(): void {
   // Listeners (register with DomainEventPublisher)
   // ============================================================
 
+  const discordGateway = container.resolve<DiscordRuntimeGateway>(
+    TOKENS.DiscordRuntimeGateway,
+  );
+
+  // Wire the SlashCommandListener to Discord client interactionCreate events
+  slashCommandListener.listen(discordGateway);
+
   const adminUpdateListener = new AdminPanelUpdateListener(
     adminSessionManager,
+    discordGateway,
   );
   container.registerInstance(
     ADMIN_TOKENS.AdminPanelUpdateListener,
@@ -532,6 +569,8 @@ export function configureAdminContainer(): void {
   const userUpdateListener = new UserPanelUpdateListener(
     panelSessionManager,
     memberInfoFacade,
+    discordGateway,
+    userPanelEmbedBuilder,
   );
   container.registerInstance(
     ADMIN_TOKENS.UserPanelUpdateListener,

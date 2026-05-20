@@ -104,11 +104,21 @@ export class GameConfigManagementFacade {
 
       const saved = await this.diceConfigRepo.upsertDice1Config(updated);
 
-      // Publish event
+      // Publish event with old and new config
       const event: DiceGameConfigChangedEvent = {
         guildId,
         eventType: 'dice_game_config_changed',
         gameType: GameType.DICE_GAME_1,
+        oldConfig: currentConfig ? {
+          minTokensPerPlay: currentConfig.minTokensPerPlay,
+          maxTokensPerPlay: currentConfig.maxTokensPerPlay,
+          rewardPerDiceValue: currentConfig.rewardPerDiceValue,
+        } : undefined,
+        newConfig: {
+          minTokensPerPlay: config.minTokensPerPlay,
+          maxTokensPerPlay: config.maxTokensPerPlay,
+          rewardPerDiceValue: config.rewardPerDiceValue,
+        },
       };
       this.eventPublisher.publish(event);
 
@@ -187,11 +197,27 @@ export class GameConfigManagementFacade {
 
       const saved = await this.diceConfigRepo.upsertDice2Config(updated);
 
-      // Publish event
+      // Publish event with old and new config
       const event: DiceGameConfigChangedEvent = {
         guildId,
         eventType: 'dice_game_config_changed',
         gameType: GameType.DICE_GAME_2,
+        oldConfig: currentConfig ? {
+          minTokensPerPlay: currentConfig.minTokensPerPlay,
+          maxTokensPerPlay: currentConfig.maxTokensPerPlay,
+          straightMultiplier: currentConfig.straightMultiplier,
+          baseMultiplier: currentConfig.baseMultiplier,
+          tripleLowBonus: currentConfig.tripleLowBonus,
+          tripleHighBonus: currentConfig.tripleHighBonus,
+        } : undefined,
+        newConfig: {
+          minTokensPerPlay: config.minTokensPerPlay,
+          maxTokensPerPlay: config.maxTokensPerPlay,
+          straightMultiplier: config.straightMultiplier,
+          baseMultiplier: config.baseMultiplier,
+          tripleLowBonus: config.tripleLowBonus,
+          tripleHighBonus: config.tripleHighBonus,
+        },
       };
       this.eventPublisher.publish(event);
 

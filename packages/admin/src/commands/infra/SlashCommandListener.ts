@@ -1,7 +1,16 @@
 import {
   type DiscordInteraction,
   type DiscordContext,
+  type DiscordRuntimeGateway,
+  DiscordJsInteraction,
+  DiscordJsContext,
 } from '@ltdjms/shared';
+import {
+  type CommandInteraction,
+  type ButtonInteraction,
+  type ModalSubmitInteraction,
+  type Client,
+} from 'discord.js';
 import { type CommandHandler, type InteractionHandler } from './CommandHandler.js';
 import { SlashCommandMetrics } from './SlashCommandMetrics.js';
 import { BotErrorHandler } from './BotErrorHandler.js';
@@ -64,11 +73,77 @@ export class SlashCommandListener {
     }
   }
 
+  // ---- Client wiring ----
+
+  /**
+   * Wires this listener to the Discord client's interactionCreate event.
+   * Should be called once during DI setup after all handlers are registered.
+   */
+  listen(gateway: DiscordRuntimeGateway): void {
+    const client = gateway.requireReadyClient() as Client;
+    client.on('interactionCreate', async (rawInteraction) => {
+      try {
+        await this.handleRawInteraction(rawInteraction);
+      } catch (err) {
+        console.error('[SlashCommandListener] Unhandled error in interactionCreate:', err);
+      }
+    });
+  }
+
+  private async handleRawInteraction(
+    rawInteraction: unknown,
+  ): Promise<void> {
+    // Determine interaction type and extract name/customId
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const interaction = rawInteraction as any;
+
+    let type: InteractionType;
+    let commandNameOrCustomId: string;
+
+    if (typeof interaction.isChatInputCommand === 'function' && interaction.isChatInputCommand()) {
+      type = 'chatInput';
+      commandNameOrCustomId = String(interaction.commandName ?? '');
+    } else if (typeof interaction.isButton === 'function' && interaction.isButton()) {
+      type = 'button';
+      commandNameOrCustomId = String(interaction.customId ?? '');
+    } else if (
+      (typeof interaction.isStringSelectMenu === 'function' && interaction.isStringSelectMenu()) ||
+      (typeof interaction.isAnySelectMenu === 'function' && interaction.isAnySelectMenu())
+    ) {
+      type = 'stringSelect';
+      commandNameOrCustomId = String(interaction.customId ?? '');
+    } else if (typeof interaction.isModalSubmit === 'function' && interaction.isModalSubmit()) {
+      type = 'modalSubmit';
+      commandNameOrCustomId = String(interaction.customId ?? '');
+    } else {
+      // Unknown interaction type — ignore
+      return;
+    }
+
+    const discordInteraction = this.createInteraction(rawInteraction);
+    const discordContext = this.createContext(rawInteraction);
+
+    await this.onInteraction(discordInteraction, discordContext, type, commandNameOrCustomId);
+  }
+
+  private createInteraction(raw: unknown): DiscordInteraction {
+    return new DiscordJsInteraction(
+      raw as CommandInteraction | ButtonInteraction | ModalSubmitInteraction,
+    );
+  }
+
+  private createContext(raw: unknown): DiscordContext {
+    return new DiscordJsContext(
+      raw as CommandInteraction | ButtonInteraction | ModalSubmitInteraction,
+    );
+  }
+
   // ---- Dispatch ----
 
   /**
    * Routes an interaction to the appropriate handler.
    * Determines the interaction type and dispatches accordingly.
+   * NOTE: Handlers manage their own reply lifecycle (defer, modal, etc.).
    */
   async onInteraction(
     interaction: DiscordInteraction,
@@ -79,11 +154,6 @@ export class SlashCommandListener {
     const startTime = this.metrics.recordStart(commandNameOrCustomId);
 
     try {
-      // Defer reply if not yet acknowledged
-      if (!interaction.isAcknowledged()) {
-        await interaction.deferReply();
-      }
-
       let success = false;
 
       switch (type) {

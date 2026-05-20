@@ -5,10 +5,11 @@ import {
 import {
   EmbedBuilder,
   ActionRowBuilder,
-  StringSelectMenuBuilder,
+  UserSelectMenuBuilder,
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
+  ButtonBuilder,
 } from 'discord.js';
 import { CurrencyManagementFacade } from '../../../facades/CurrencyManagementFacade.js';
 import { AdminPanelSessionManager } from '../../../session/AdminPanelSessionManager.js';
@@ -17,6 +18,7 @@ import { AdminPanelViewState } from '../../../session/types.js';
 import { ZhTwStrings } from '../../../i18n/zh-TW.js';
 import { AdminPanelModalFactory } from '../views/AdminPanelModalFactory.js';
 import { BaseAdminHandler } from '../BaseAdminHandler.js';
+import { Colors } from '../../../constants/colors.js';
 
 /**
  * Handler for balance management interactions (admin_balance_*).
@@ -72,7 +74,7 @@ export class BalanceManagementHandler extends BaseAdminHandler {
       return;
     }
 
-    // Handle member selection from select menu
+    // Handle member selection from user select menu
     if (fullCustomId === 'admin_balance_select_member') {
       const rawHook = interaction.getHook() as { values?: string[] };
       const selectedUserId = rawHook.values?.[0];
@@ -98,21 +100,20 @@ export class BalanceManagementHandler extends BaseAdminHandler {
     interaction: DiscordInteraction,
   ): Promise<void> {
     const raw = interaction.getHook() as {
-      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<StringSelectMenuBuilder>[] }) => Promise<void>;
+      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<UserSelectMenuBuilder>[] }) => Promise<void>;
     };
 
     const embed = new EmbedBuilder()
       .setTitle(ZhTwStrings.balanceTitle)
       .setDescription(ZhTwStrings.balanceSelectMember)
-      .setColor(0x57F287);
+      .setColor(Colors.SUCCESS);
 
-    // Build member select placeholders
-    const select = new StringSelectMenuBuilder()
+    // Use UserSelectMenu for real member selection
+    const select = new UserSelectMenuBuilder()
       .setCustomId('admin_balance_select_member')
-      .setPlaceholder('請選擇成員')
-      .addOptions([{ label: '請使用下方選單', value: '_placeholder', default: true }]);
+      .setPlaceholder('請選擇成員');
 
-    const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
+    const row = new ActionRowBuilder<UserSelectMenuBuilder>().addComponents(select);
 
     await raw.editReply({ embeds: [embed], components: [row] });
   }
@@ -125,7 +126,7 @@ export class BalanceManagementHandler extends BaseAdminHandler {
     const result = await this.facade.getBalance(guildId, targetUserId);
 
     const raw = interaction.getHook() as {
-      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<import('discord.js').ButtonBuilder>[] }) => Promise<void>;
+      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }) => Promise<void>;
     };
 
     if (result.isOk()) {
@@ -137,29 +138,29 @@ export class BalanceManagementHandler extends BaseAdminHandler {
             .replace('{balance}', String(balanceView.balance))
             .replace('{currencyIcon}', balanceView.currencyIcon),
         )
-        .setColor(0x57F287);
+        .setColor(Colors.SUCCESS);
 
-      const addBtn = new (await import('discord.js')).ButtonBuilder()
+      const addBtn = new ButtonBuilder()
         .setCustomId('admin_balance_modal_add')
         .setLabel(ZhTwStrings.balanceAdjustAdd)
         .setStyle(3 as any);
-      const deductBtn = new (await import('discord.js')).ButtonBuilder()
+      const deductBtn = new ButtonBuilder()
         .setCustomId('admin_balance_modal_deduct')
         .setLabel(ZhTwStrings.balanceAdjustDeduct)
         .setStyle(4 as any);
-      const setBtn = new (await import('discord.js')).ButtonBuilder()
+      const setBtn = new ButtonBuilder()
         .setCustomId('admin_balance_modal_set')
         .setLabel(ZhTwStrings.balanceAdjustSet)
         .setStyle(1 as any);
 
-      const row = new (await import('discord.js')).ActionRowBuilder<import('discord.js').ButtonBuilder>().addComponents(addBtn, deductBtn, setBtn);
+      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(addBtn, deductBtn, setBtn);
 
       await raw.editReply({ embeds: [embed], components: [row] });
     } else {
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.balanceTitle)
         .setDescription('無法取得該成員的餘額資訊')
-        .setColor(0x57F287);
+        .setColor(Colors.SUCCESS);
       await raw.editReply({ embeds: [embed], components: [] });
     }
   }
@@ -211,7 +212,7 @@ export class BalanceManagementHandler extends BaseAdminHandler {
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.balanceTitle)
         .setDescription('請先選擇成員')
-        .setColor(0x57F287);
+        .setColor(Colors.SUCCESS);
       await interaction.editEmbed(embed);
       return;
     }
@@ -230,7 +231,7 @@ export class BalanceManagementHandler extends BaseAdminHandler {
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.balanceTitle)
         .setDescription('請輸入有效的正整數金額')
-        .setColor(0x57F287);
+        .setColor(Colors.SUCCESS);
       await interaction.editEmbed(embed);
       return;
     }
@@ -251,13 +252,13 @@ export class BalanceManagementHandler extends BaseAdminHandler {
         .setDescription(
           `調整成功！\n調整前：${adjustResult.previousBalance}\n調整後：${adjustResult.newBalance}`,
         )
-        .setColor(0x57F287);
+        .setColor(Colors.SUCCESS);
       await interaction.editEmbed(embed);
     } else {
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.balanceTitle)
         .setDescription('調整失敗：' + result.getError().message)
-        .setColor(0x57F287);
+        .setColor(Colors.SUCCESS);
       await interaction.editEmbed(embed);
     }
   }

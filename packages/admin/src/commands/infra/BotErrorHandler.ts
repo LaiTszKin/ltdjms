@@ -3,6 +3,7 @@ import {
   DomainError,
   DomainErrorCategory,
 } from '@ltdjms/shared';
+import { DiscordAPIError } from 'discord.js';
 import { ZhTwStrings } from '../../i18n/zh-TW.js';
 
 /**
@@ -64,7 +65,16 @@ export class BotErrorHandler {
       return this.handleDomainError(error);
     }
 
-    // Check for DiscordAPIError-like objects
+    // Check for DiscordAPIError (discord.js native error type)
+    if (error instanceof DiscordAPIError) {
+      const code = typeof error.code === 'number' ? error.code : Number(error.code);
+      const discordMsg = getDiscordErrorMessage(code);
+      if (discordMsg) {
+        return discordMsg;
+      }
+    }
+
+    // Fallback: check for DiscordAPIError-like objects
     if (isDiscordApiError(error)) {
       const discordMsg = getDiscordErrorMessage(error.code);
       if (discordMsg) {

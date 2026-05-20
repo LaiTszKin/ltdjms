@@ -104,7 +104,7 @@ export class RedemptionCodeHandler implements InteractionHandler {
       .setLabel(ZhTwStrings.redeemCodeLabel)
       .setPlaceholder(ZhTwStrings.redeemCodePlaceholder)
       .setStyle(TextInputStyle.Short)
-      .setMinLength(1)
+      .setMinLength(16)
       .setMaxLength(32)
       .setRequired(true);
 

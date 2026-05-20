@@ -1,5 +1,6 @@
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { productRedemptionTransaction as txTable } from './schema.js';
+import { count, desc, and, eq } from 'drizzle-orm';
 import type { RedemptionTransactionService } from '../di/shop-module.js';
 import type { Product } from '../domain/product-types.js';
 
@@ -24,5 +25,52 @@ export class DrizzleRedemptionTransactionService implements RedemptionTransactio
       redemptionCodeId: 0,
       code: code.code,
     });
+  }
+
+  async getUserRedemptionPage(
+    guildId: number,
+    userId: number,
+    page: number,
+    pageSize: number,
+  ): Promise<{
+    items: Array<{ id: number; productName: string; code: string; rewardedAmount: number | null; createdAt: Date }>;
+    hasNext: boolean;
+    totalPages: number;
+    currentPage: number;
+  }> {
+    const safePage = Math.max(1, page);
+    const safePageSize = Math.max(1, pageSize);
+
+    const countResult = await this.db
+      .select({ total: count() })
+      .from(txTable)
+      .where(and(eq(txTable.guildId, guildId), eq(txTable.userId, userId)));
+
+    const totalCount = Number(countResult[0]?.total ?? 0);
+    const totalPages = Math.max(1, Math.ceil(totalCount / safePageSize));
+    const offset = (safePage - 1) * safePageSize;
+
+    const rows = await this.db
+      .select()
+      .from(txTable)
+      .where(and(eq(txTable.guildId, guildId), eq(txTable.userId, userId)))
+      .orderBy(desc(txTable.createdAt))
+      .limit(safePageSize)
+      .offset(offset);
+
+    const items = rows.map((row) => ({
+      id: Number(row.id),
+      productName: String(row.productName ?? ''),
+      code: String(row.code ?? ''),
+      rewardedAmount: row.rewardedAmount != null ? Number(row.rewardedAmount) : null,
+      createdAt: new Date(String(row.createdAt)),
+    }));
+
+    return {
+      items,
+      hasNext: safePage < totalPages,
+      totalPages,
+      currentPage: safePage,
+    };
   }
 }

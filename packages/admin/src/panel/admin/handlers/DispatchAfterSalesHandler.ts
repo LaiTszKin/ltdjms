@@ -2,13 +2,18 @@ import {
   type DiscordInteraction,
   type DiscordContext,
 } from '@ltdjms/shared';
-import { EmbedBuilder } from 'discord.js';
+import {
+  EmbedBuilder,
+  ActionRowBuilder,
+  UserSelectMenuBuilder,
+} from 'discord.js';
 import { AdminPanelSessionManager } from '../../../session/AdminPanelSessionManager.js';
 import { AdminPanelViewState } from '../../../session/types.js';
 import { BotErrorHandler } from '../../../commands/infra/BotErrorHandler.js';
 import { ZhTwStrings } from '../../../i18n/zh-TW.js';
 import { BaseAdminHandler } from '../BaseAdminHandler.js';
 import { type DispatchAfterSalesStaffService } from '@ltdjms/dispatch';
+import { Colors } from '../../../constants/colors.js';
 
 /**
  * Handler for dispatch after-sales config interactions (admin_dispatch_*).
@@ -50,20 +55,103 @@ export class DispatchAfterSalesHandler extends BaseAdminHandler {
 
     const fullCustomId = interaction.getCustomId();
 
+    // Handle member select menu results
+    if (fullCustomId === 'admin_dispatch_add_select') {
+      await this.handleAddStaff(interaction, guildId);
+      return;
+    }
+    if (fullCustomId === 'admin_dispatch_remove_select') {
+      await this.handleRemoveStaff(interaction, guildId);
+      return;
+    }
+
     // Branch on sub-action
     if (fullCustomId === 'admin_dispatch_add') {
-      // TODO: show member select for adding staff
-      await this.showStaffList(interaction, guildId);
+      await this.showMemberSelect(interaction, 'add');
       return;
     }
     if (fullCustomId === 'admin_dispatch_remove') {
-      // TODO: show member select for removing staff
-      await this.showStaffList(interaction, guildId);
+      await this.showMemberSelect(interaction, 'remove');
       return;
     }
 
     // Default: show staff list overview
     await this.showStaffList(interaction, guildId);
+  }
+
+  private async showMemberSelect(
+    interaction: DiscordInteraction,
+    action: 'add' | 'remove',
+  ): Promise<void> {
+    const raw = interaction.getHook() as {
+      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<UserSelectMenuBuilder>[] }) => Promise<void>;
+    };
+
+    const customId = action === 'add' ? 'admin_dispatch_add_select' : 'admin_dispatch_remove_select';
+    const desc = action === 'add' ? ZhTwStrings.dispatchSelectMember : ZhTwStrings.dispatchSelectRemove;
+    const title = action === 'add' ? ZhTwStrings.dispatchAddBtn : ZhTwStrings.dispatchRemoveBtn;
+
+    const embed = new EmbedBuilder()
+      .setTitle(ZhTwStrings.dispatchTitle)
+      .setDescription(desc)
+      .setColor(Colors.PRIMARY);
+
+    const select = new UserSelectMenuBuilder()
+      .setCustomId(customId)
+      .setPlaceholder(title);
+
+    const row = new ActionRowBuilder<UserSelectMenuBuilder>().addComponents(select);
+    await raw.editReply({ embeds: [embed], components: [row] });
+  }
+
+  private async handleAddStaff(
+    interaction: DiscordInteraction,
+    guildId: string,
+  ): Promise<void> {
+    const raw = interaction.getHook() as { values?: string[] };
+    const selectedIds = raw.values;
+    if (!selectedIds || selectedIds.length === 0) {
+      await this.showStaffList(interaction, guildId);
+      return;
+    }
+
+    const staffId = selectedIds[0];
+    const result = await this.afterSalesStaffService.addStaff(Number(guildId), Number(staffId));
+
+    if (result.isOk()) {
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.dispatchTitle)
+        .setDescription(ZhTwStrings.dispatchStaffAdded.replace('{member}', `<@${staffId}>`))
+        .setColor(Colors.SUCCESS);
+      await interaction.editEmbed(embed);
+    } else {
+      await this.errorHandler.handle(result.getError(), interaction);
+    }
+  }
+
+  private async handleRemoveStaff(
+    interaction: DiscordInteraction,
+    guildId: string,
+  ): Promise<void> {
+    const raw = interaction.getHook() as { values?: string[] };
+    const selectedIds = raw.values;
+    if (!selectedIds || selectedIds.length === 0) {
+      await this.showStaffList(interaction, guildId);
+      return;
+    }
+
+    const staffId = selectedIds[0];
+    const result = await this.afterSalesStaffService.removeStaff(Number(guildId), Number(staffId));
+
+    if (result.isOk()) {
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.dispatchTitle)
+        .setDescription(ZhTwStrings.dispatchStaffRemoved.replace('{member}', `<@${staffId}>`))
+        .setColor(Colors.SUCCESS);
+      await interaction.editEmbed(embed);
+    } else {
+      await this.errorHandler.handle(result.getError(), interaction);
+    }
   }
 
   private async showStaffList(
@@ -88,7 +176,7 @@ export class DispatchAfterSalesHandler extends BaseAdminHandler {
     const embed = new EmbedBuilder()
       .setTitle(ZhTwStrings.dispatchTitle)
       .setDescription(description)
-      .setColor(0x5865F2);
+      .setColor(Colors.PRIMARY);
     await interaction.editEmbed(embed);
   }
 }

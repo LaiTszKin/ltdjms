@@ -3,9 +3,13 @@ import {
   type BalanceChangedEvent,
   type GameTokenChangedEvent,
   type CurrencyConfigChangedEvent,
+  type DiscordRuntimeGateway,
 } from '@ltdjms/shared';
+import { type Client, type TextChannel } from 'discord.js';
 import { PanelSessionManager } from '../../session/PanelSessionManager.js';
 import { MemberInfoFacade } from '../../facades/MemberInfoFacade.js';
+import { UserPanelEmbedBuilder } from '../user/UserPanelEmbedBuilder.js';
+import { EmbedBuilder } from 'discord.js';
 
 /**
  * Event type string constants for discrimination.
@@ -26,6 +30,8 @@ export class UserPanelUpdateListener {
   constructor(
     private readonly sessionManager: PanelSessionManager,
     private readonly memberInfoFacade: MemberInfoFacade,
+    private readonly discordGateway: DiscordRuntimeGateway,
+    private readonly embedBuilder?: UserPanelEmbedBuilder,
   ) {}
 
   /**
@@ -62,6 +68,8 @@ export class UserPanelUpdateListener {
 
     // Update each affected session
     let updatedCount = 0;
+    const toRemove: Array<{ guildId: string; userId: string }> = [];
+
     for (const session of sessions) {
       if (!affectedUserIds.includes(session.userId)) continue;
 
@@ -83,19 +91,34 @@ export class UserPanelUpdateListener {
         const view = result.getValue();
         updatedCount++;
 
-        // Real-time push update: if the session has channelId/messageId, the
-        // panel message can be edited by fetching the message via Discord client.
-        // TODO(P0-14): Wire Discord client to push embed updates.
-        //   const channelId = session.channelId;
-        //   const messageId = session.messageId;
-        //   if (channelId && messageId) {
-        //     const channel = await client.channels.fetch(channelId);
-        //     if (channel?.isTextBased()) {
-        //       const message = await channel.messages.fetch(messageId);
-        //       // Rebuild embed using UserPanelEmbedBuilder and edit message
-        //       await message.edit({ embeds: [newEmbed] });
-        //     }
-        //   }
+        // Real-time push update: fetch the panel message and rebuild embed
+        const channelId = session.channelId;
+        const messageId = session.messageId;
+        if (channelId && messageId) {
+          try {
+            const client = this.discordGateway.requireReadyClient() as Client;
+            const channel = await client.channels.fetch(channelId);
+            if (channel?.isTextBased()) {
+              const message = await (channel as TextChannel).messages.fetch(messageId);
+
+              // Rebuild embed using UserPanelEmbedBuilder
+              const embedBuilder = this.embedBuilder ?? new UserPanelEmbedBuilder();
+              const embedData = embedBuilder.buildUserPanelEmbed(view);
+              const embed = new EmbedBuilder()
+                .setTitle(embedData.title)
+                .setDescription(embedData.description)
+                .setColor(embedData.color);
+
+              await message.edit({ embeds: [embed] });
+            }
+          } catch (fetchErr) {
+            // If the message or channel no longer exists, remove the session
+            console.log(
+              `[UserPanelUpdateListener] Failed to fetch message ${messageId} in channel ${channelId}: removing session`,
+            );
+            toRemove.push({ guildId: session.guildId, userId: session.userId });
+          }
+        }
 
         console.log(
           `[UserPanelUpdateListener] Would update panel for ` +
@@ -109,6 +132,11 @@ export class UserPanelUpdateListener {
           err,
         );
       }
+    }
+
+    // Clean up stale sessions
+    for (const { guildId: gId, userId: uId } of toRemove) {
+      this.sessionManager.removeSession(gId, uId);
     }
 
     console.log(
