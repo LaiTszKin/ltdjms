@@ -51,4 +51,6 @@ export interface PanelSessionData {
   channelId?: string;
   /** The message ID of the last panel embed. Used by listeners for push updates. */
   messageId?: string;
+  /** Arbitrary context key-value pairs for tracking session-specific state (e.g. pagination). */
+  context?: Record<string, string>;
 }

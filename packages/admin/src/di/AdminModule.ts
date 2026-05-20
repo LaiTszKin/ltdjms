@@ -33,6 +33,7 @@ import { GameTokenManagementFacade } from '../facades/GameTokenManagementFacade.
 import { GameConfigManagementFacade } from '../facades/GameConfigManagementFacade.js';
 import { AIConfigManagementFacade } from '../facades/AIConfigManagementFacade.js';
 import { MemberInfoFacade } from '../facades/MemberInfoFacade.js';
+import { DispatchManagementFacade } from '../facades/DispatchManagementFacade.js';
 
 // Session
 import { AdminPanelSessionManager } from '../session/AdminPanelSessionManager.js';
@@ -82,6 +83,7 @@ export const ADMIN_TOKENS = {
   GameConfigManagementFacade: Symbol('GameConfigManagementFacade'),
   AIConfigManagementFacade: Symbol('AIConfigManagementFacade'),
   MemberInfoFacade: Symbol('MemberInfoFacade'),
+  DispatchManagementFacade: Symbol('DispatchManagementFacade'),
 
   // Session
   AdminPanelSessionManager: Symbol('AdminPanelSessionManager'),
@@ -254,6 +256,15 @@ export function configureAdminContainer(): void {
   );
   container.registerInstance(ADMIN_TOKENS.MemberInfoFacade, memberInfoFacade);
 
+  const dispatchManagementFacade = new DispatchManagementFacade(
+    container.resolve<DispatchAfterSalesStaffService>(DISPATCH_TOKENS.DispatchAfterSalesStaffService),
+    container.resolve<EscortOptionPricingService>(DISPATCH_TOKENS.EscortOptionPricingService),
+    container.resolve<EscortOptionCatalogRepository>(DISPATCH_TOKENS.EscortOptionCatalogRepository),
+    container.resolve<EscortOptionPriceRepo>(DISPATCH_TOKENS.EscortOptionPriceRepo),
+    eventPublisher,
+  );
+  container.registerInstance(ADMIN_TOKENS.DispatchManagementFacade, dispatchManagementFacade);
+
   // ============================================================
   // Economy Command Handlers
   // ============================================================
@@ -330,17 +341,9 @@ export function configureAdminContainer(): void {
   container.registerInstance(ADMIN_TOKENS.AIAgentConfigHandler, aiAgentHandler);
   slashCommandListener.registerInteractionHandler(aiAgentHandler);
 
-  const afterSalesStaffService = container.resolve<DispatchAfterSalesStaffService>(
-    DISPATCH_TOKENS.DispatchAfterSalesStaffService,
-  );
-  const escortPricingService = container.resolve<EscortOptionPricingService>(
-    DISPATCH_TOKENS.EscortOptionPricingService,
-  );
-
   const dispatchHandler = new DispatchAfterSalesHandler(
     adminSessionManager,
-    afterSalesStaffService,
-    eventPublisher,
+    dispatchManagementFacade,
     errorHandler,
   );
   container.registerInstance(ADMIN_TOKENS.DispatchAfterSalesHandler, dispatchHandler);
@@ -348,9 +351,8 @@ export function configureAdminContainer(): void {
 
   const escortPriceHandler = new EscortPricingHandler(
     adminSessionManager,
-    escortPricingService,
+    dispatchManagementFacade,
     adminPanelModalFactory,
-    eventPublisher,
     errorHandler,
   );
   container.registerInstance(ADMIN_TOKENS.EscortPricingHandler, escortPriceHandler);
@@ -358,10 +360,8 @@ export function configureAdminContainer(): void {
 
   const escortCatalogHandler = new EscortCatalogHandler(
     adminSessionManager,
-    container.resolve<EscortOptionCatalogRepository>(DISPATCH_TOKENS.EscortOptionCatalogRepository),
+    dispatchManagementFacade,
     adminPanelModalFactory,
-    container.resolve<EscortOptionPriceRepo>(DISPATCH_TOKENS.EscortOptionPriceRepo),
-    eventPublisher,
     errorHandler,
   );
   container.registerInstance(ADMIN_TOKENS.EscortCatalogHandler, escortCatalogHandler);

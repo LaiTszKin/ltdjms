@@ -2,7 +2,6 @@ import {
   type DiscordInteraction,
   type DiscordContext,
 } from '@ltdjms/shared';
-import { PermissionFlagsBits } from 'discord.js';
 import { type InteractionHandler } from '../../commands/infra/CommandHandler.js';
 import { AdminPanelSessionManager } from '../../session/AdminPanelSessionManager.js';
 import { type AdminPanelSessionData } from '../../session/types.js';
@@ -30,27 +29,10 @@ export abstract class BaseAdminHandler implements InteractionHandler {
 
   /**
    * Checks whether the user has ADMINISTRATOR permission or is the guild owner.
-   * Uses the raw Discord interaction from getHook().
+   * Delegates to the unified DiscordInteraction interface.
    */
   protected checkAdminPermission(interaction: DiscordInteraction): boolean {
-    try {
-      const raw = interaction.getHook() as {
-        memberPermissions?: { has(permission: bigint): boolean };
-        guild?: { ownerId: string };
-      };
-      const userId = String(interaction.getUserId());
-
-      if (raw.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
-        return true;
-      }
-
-      if (raw.guild?.ownerId === userId) {
-        return true;
-      }
-    } catch {
-      // Fall through to denial
-    }
-    return false;
+    return interaction.isAdministrator();
   }
 
   /**

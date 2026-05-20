@@ -207,6 +207,7 @@ export class EscortDispatchOrderService {
     try {
       const updated = await this.repository.update(
         withCompletionRequested(order, new Date(this.clock!())),
+        EscortDispatchOrderStatus.CONFIRMED,
       );
       return new Ok(updated);
     } catch (e) {
@@ -244,6 +245,7 @@ export class EscortDispatchOrderService {
 
       const updated = await this.repository.update(
         withCompleted(normalized, new Date(this.clock!())),
+        EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION,
       );
       return new Ok(updated);
     } catch (e) {
@@ -285,8 +287,13 @@ export class EscortDispatchOrderService {
         return new Err(DomainError.invalidInput('此訂單目前不可申請售後'));
       }
 
+      const expectedStatus =
+        normalized.status === EscortDispatchOrderStatus.COMPLETED
+          ? EscortDispatchOrderStatus.COMPLETED
+          : EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION;
       const updated = await this.repository.update(
         withAfterSalesRequested(normalized, new Date(this.clock!())),
+        expectedStatus,
       );
       return new Ok(updated);
     } catch (e) {

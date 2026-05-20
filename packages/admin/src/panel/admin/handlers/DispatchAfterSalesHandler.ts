@@ -1,8 +1,6 @@
 import {
   type DiscordInteraction,
   type DiscordContext,
-  type DomainEventPublisher,
-  type DispatchAfterSalesConfigChangedEvent,
 } from '@ltdjms/shared';
 import {
   EmbedBuilder,
@@ -14,7 +12,7 @@ import { AdminPanelViewState } from '../../../session/types.js';
 import { BotErrorHandler } from '../../../commands/infra/BotErrorHandler.js';
 import { ZhTwStrings } from '../../../i18n/zh-TW.js';
 import { BaseAdminHandler } from '../BaseAdminHandler.js';
-import { type DispatchAfterSalesStaffService } from '@ltdjms/dispatch';
+import { DispatchManagementFacade } from '../../../facades/DispatchManagementFacade.js';
 import { Colors } from '../../../constants/colors.js';
 
 /**
@@ -26,8 +24,7 @@ export class DispatchAfterSalesHandler extends BaseAdminHandler {
 
   constructor(
     sessionManager: AdminPanelSessionManager,
-    private readonly afterSalesStaffService: DispatchAfterSalesStaffService,
-    private readonly eventPublisher: DomainEventPublisher,
+    private readonly facade: DispatchManagementFacade,
     errorHandler: BotErrorHandler,
   ) {
     super(sessionManager, errorHandler);
@@ -119,14 +116,9 @@ export class DispatchAfterSalesHandler extends BaseAdminHandler {
     }
 
     const staffId = selectedIds[0];
-    const result = await this.afterSalesStaffService.addStaff(Number(guildId), Number(staffId));
+    const result = await this.facade.addStaff(guildId, staffId);
 
     if (result.isOk()) {
-      this.eventPublisher.publish({
-        eventType: 'dispatch_after_sales_config_changed',
-        guildId,
-      } as DispatchAfterSalesConfigChangedEvent);
-
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.dispatchTitle)
         .setDescription(ZhTwStrings.dispatchStaffAdded.replace('{member}', `<@${staffId}>`))
@@ -149,14 +141,9 @@ export class DispatchAfterSalesHandler extends BaseAdminHandler {
     }
 
     const staffId = selectedIds[0];
-    const result = await this.afterSalesStaffService.removeStaff(Number(guildId), Number(staffId));
+    const result = await this.facade.removeStaff(guildId, staffId);
 
     if (result.isOk()) {
-      this.eventPublisher.publish({
-        eventType: 'dispatch_after_sales_config_changed',
-        guildId,
-      } as DispatchAfterSalesConfigChangedEvent);
-
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.dispatchTitle)
         .setDescription(ZhTwStrings.dispatchStaffRemoved.replace('{member}', `<@${staffId}>`))
@@ -171,7 +158,7 @@ export class DispatchAfterSalesHandler extends BaseAdminHandler {
     interaction: DiscordInteraction,
     guildId: string,
   ): Promise<void> {
-    const result = await this.afterSalesStaffService.getStaffUserIds(Number(guildId));
+    const result = await this.facade.listStaff(guildId);
 
     let description: string;
     if (result.isOk()) {

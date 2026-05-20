@@ -71,7 +71,11 @@ export class AdminPanelSessionManager {
   /**
    * Gets an active session for the given guild+user.
    * Returns null if no session exists or the session has expired.
-   * Tries cache first when available, falls back to in-memory.
+   *
+   * NOTE: Cache-aside was removed to fix P1-3 (see QA-REPORT). The fire-and-forget
+   * pattern could not properly await Redis, so session state is exclusively in-memory.
+   * For horizontal scaling, a shared Redis-backed session store should be added
+   * by converting this method to async and awaiting the cache get.
    */
   getSession(
     guildId: string,
@@ -79,35 +83,16 @@ export class AdminPanelSessionManager {
   ): AdminPanelSessionData | null {
     const key = this.buildKey(guildId, userId);
 
-    // Try in-memory first
     const session = this.sessions.get(key);
-    if (session) {
-      if (this.isExpired(session)) {
-        this.sessions.delete(key);
-        return null;
-      }
-      session.lastAccessedAt = Date.now();
-      return session;
+    if (!session) return null;
+
+    if (this.isExpired(session)) {
+      this.sessions.delete(key);
+      return null;
     }
 
-    // Fallback to cache service when available
-    if (this.cacheService) {
-      // Attempt cache retrieval without blocking
-      // TODO(P3-2): This cache-aside pattern is incomplete — the cache is
-      // populated via fire-and-forget .then() without await, so subsequent
-      // in-memory lookups may miss. Consider either (a) awaiting the cache
-      // result before returning null, or (b) removing cache fallback in favor
-      // of a TTL-backed in-memory store.
-      this.cacheService.get<AdminPanelSessionData>(key).then((cached) => {
-        if (cached) {
-          this.sessions.set(key, cached);
-        }
-      }).catch(() => {
-        // Cache miss is non-critical
-      });
-    }
-
-    return null;
+    session.lastAccessedAt = Date.now();
+    return session;
   }
 
   /**

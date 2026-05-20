@@ -32,4 +32,10 @@ export interface DiscordInteraction {
 
   /** Checks if the interaction has been acknowledged. */
   isAcknowledged(): boolean;
+
+  /** Checks if the user has ADMINISTRATOR permission or is guild owner. */
+  isAdministrator(): boolean;
+
+  /** Checks if the user has a specific permission. */
+  hasPermission(permission: bigint): boolean;
 }

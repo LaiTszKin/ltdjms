@@ -2,7 +2,6 @@ import {
   type Result,
   Ok,
   Err,
-  okVoid,
   DomainError,
   GameType,
   type DiceGameConfigChangedEvent,

@@ -1,5 +1,5 @@
 import { PermissionFlagsBits, type OverwriteResolvable } from 'discord.js';
-import type { PermissionSetting, ModifyPermissionSetting } from '../services/ai-chat-service.js';
+import type { PermissionSetting } from '../services/ai-chat-service.js';
 
 /**
  * Parses PermissionSetting[] into discord.js OverwriteResolvable[].

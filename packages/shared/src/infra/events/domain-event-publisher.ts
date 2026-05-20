@@ -15,17 +15,51 @@ export class DomainEventPublisher {
   /** Captured for testing — tracks the last published event. */
   private _lastEvent: DomainEvent | null = null;
   private readonly logger: pino.Logger;
+  /** Maps original listener → wrapped function for unregister support. */
+  private readonly wrapperMap = new WeakMap<(event: DomainEvent) => void | Promise<void>, (event: DomainEvent) => void>();
 
   constructor(logger?: pino.Logger) {
     this.logger = logger ?? pino({ level: 'warn' });
   }
 
   /**
-   * Registers a synchronous listener for all domain events.
-   * @param listener - function to call when any domain event is published
+   * Registers a listener for all domain events.
+   * Accepts both sync and async listeners.
+   * Async listeners: rejections are caught and logged, never propagated.
    */
-  register(listener: (event: DomainEvent) => void): void {
-    this.emitter.on(EVENT_CHANNEL, listener);
+  register(listener: (event: DomainEvent) => void | Promise<void>): void {
+    const wrapped = (event: DomainEvent): void => {
+      try {
+        const result = listener(event);
+        if (result instanceof Promise) {
+          result.catch((err) => {
+            this.logger.error(
+              { eventName: typeof event, err },
+              '[DomainEventPublisher] Async listener rejected',
+            );
+          });
+        }
+      } catch (err) {
+        this.logger.error(
+          { eventName: typeof event, err },
+          '[DomainEventPublisher] Error handling event',
+        );
+      }
+    };
+    this.wrapperMap.set(listener, wrapped);
+    this.emitter.on(EVENT_CHANNEL, wrapped);
+  }
+
+  /**
+   * Unregisters a previously registered listener.
+   * Safe to call even if the listener was never registered.
+   */
+  unregister(listener: (event: DomainEvent) => void | Promise<void>): void {
+    const wrapped = this.wrapperMap.get(listener);
+    if (wrapped) {
+      this.emitter.off(EVENT_CHANNEL, wrapped);
+      this.wrapperMap.delete(listener);
+    }
   }
 
   /**
@@ -46,9 +80,9 @@ export class DomainEventPublisher {
       try {
         listener(event);
       } catch (err) {
-        // Log but don't propagate — this mirrors Java behavior
+        // Log but don't propagate — sync error from wrapped listener
         this.logger.error(
-          { eventName: event.constructor?.name ?? typeof event, err },
+          { eventName: typeof event, err },
           '[DomainEventPublisher] Error handling event',
         );
       }

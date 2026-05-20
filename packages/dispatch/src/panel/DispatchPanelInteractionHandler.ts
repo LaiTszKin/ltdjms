@@ -784,28 +784,7 @@ export class DispatchPanelInteractionHandler {
     _guildId: string,
     _userId: string,
   ): Promise<boolean> {
-    try {
-      // Check if the member has ADMINISTRATOR permission (0x8) or is the guild owner.
-      const memberPermissions = this.getMemberPermissions(interaction);
-      if (memberPermissions && (BigInt(memberPermissions) & 0x8n) !== 0n) {
-        return true;
-      }
-      // Check if the user is the guild owner, consistent with DispatchPanelCommandHandler.
-      const casted = interaction as unknown as {
-        guild?: { ownerId?: string };
-        user?: { id?: string };
-      };
-      if (
-        casted.guild?.ownerId != null &&
-        casted.user?.id != null &&
-        casted.guild.ownerId === casted.user.id
-      ) {
-        return true;
-      }
-      return false;
-    } catch {
-      return false; // Default to deny on unexpected errors
-    }
+    return interaction.isAdministrator();
   }
 
   // ============================================================
@@ -819,11 +798,6 @@ export class DispatchPanelInteractionHandler {
   /** Checks if the interaction originates from a guild channel. */
   private getInGuild(interaction: DiscordInteraction): boolean {
     return (interaction as unknown as { inGuild?: boolean }).inGuild ?? false;
-  }
-
-  /** Extracts member permissions bitfield string from the interaction. */
-  private getMemberPermissions(interaction: DiscordInteraction): string | undefined {
-    return (interaction as unknown as { memberPermissions?: string }).memberPermissions;
   }
 
   /** Extracts selected values from a select menu interaction. */

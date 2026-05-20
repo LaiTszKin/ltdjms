@@ -45,17 +45,17 @@ export class EcpayCallbackHttpServer {
 
     this.app = express();
 
+    // Body parsing middleware (global) for JSON and form-encoded payloads.
+    // The parsed body is serialized back to a string for the callback service,
+    // which handles both JSON and form-encoded payloads from ECPay.
+    this.app.use(express.json({ limit: '64kb' }));
+    this.app.use(express.urlencoded({ extended: true, limit: '64kb' }));
+
     // Callback route - POST only
-    // express.raw is installed ONLY on the callback route via route-specific middleware.
-    // Global express.json() / express.urlencoded() are intentionally omitted to prevent
-    // premature body consumption that would make express.raw() receive an empty body.
-    this.app.post(callbackPath, express.raw({ type: '*/*', limit: '64kb' }), async (req, res) => {
+    this.app.post(callbackPath, async (req, res) => {
       try {
-        const contentType = req.headers['content-type'] ?? null;
-        const rawBody = req.body instanceof Buffer
-          ? req.body.toString('utf-8')
-          : JSON.stringify(req.body);
-        const result = await this.callbackService.handleCallback(rawBody, contentType);
+        const bodyStr = typeof req.body === 'string' ? req.body : JSON.stringify(req.body ?? '');
+        const result = await this.callbackService.handleCallback(bodyStr, null);
         res.status(result.httpStatus).send(result.responseBody);
       } catch (e) {
         this.log.error({ error: e }, 'ECPay callback handler error');
