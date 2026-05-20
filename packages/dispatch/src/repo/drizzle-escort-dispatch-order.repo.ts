@@ -1,8 +1,7 @@
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { eq, and, ne, isNull, sql } from 'drizzle-orm';
 import { escortDispatchOrder } from '../schema/escort-dispatch-order.sql.js';
-import {
-  type EscortDispatchOrder,
+import { type EscortDispatchOrder,
   EscortDispatchOrderStatus,
   SourceType,
   fromDbRow,
@@ -45,9 +44,13 @@ export class DrizzleEscortDispatchOrderRepo implements EscortDispatchOrderRepo {
     return mapRowToDomain(rows[0]);
   }
 
-  async update(order: EscortDispatchOrder): Promise<EscortDispatchOrder> {
+  async update(order: EscortDispatchOrder, expectedStatus?: EscortDispatchOrderStatus): Promise<EscortDispatchOrder> {
     if (order.id == null) {
       throw new Error('Cannot update order without ID');
+    }
+    const conditions = [eq(escortDispatchOrder.id, order.id)];
+    if (expectedStatus != null) {
+      conditions.push(eq(escortDispatchOrder.status, expectedStatus));
     }
     const rows = await this.db
       .update(escortDispatchOrder)
@@ -64,7 +67,7 @@ export class DrizzleEscortDispatchOrderRepo implements EscortDispatchOrderRepo {
         escortUserId: order.escortUserId,
         assignedByUserId: order.assignedByUserId,
       })
-      .where(eq(escortDispatchOrder.id, order.id))
+      .where(and(...conditions))
       .returning();
 
     if (rows.length === 0) {

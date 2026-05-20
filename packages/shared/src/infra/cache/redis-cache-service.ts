@@ -1,4 +1,6 @@
 import { Redis } from 'ioredis';
+import pino from 'pino';
+import { type Logger } from 'pino';
 import { type CacheService } from './cache-service.js';
 
 /**
@@ -8,16 +10,18 @@ import { type CacheService } from './cache-service.js';
  */
 export class RedisCacheService implements CacheService {
   private readonly redis: Redis;
+  private readonly logger: Logger;
 
-  constructor(redisUri: string) {
+  constructor(redisUri: string, logger?: Logger) {
+    this.logger = logger ?? (pino({ level: 'silent' }) as Logger);
     this.redis = new Redis(redisUri, {
       maxRetriesPerRequest: null,
       enableReadyCheck: false,
     });
 
     // Handle errors without crashing
-    this.redis.on('error', () => {
-      // Error is silently caught — methods degrade gracefully
+    this.redis.on('error', (err) => {
+      this.logger.warn({ err }, 'Redis cache operation failed: error');
     });
   }
 
@@ -28,7 +32,8 @@ export class RedisCacheService implements CacheService {
         return null;
       }
       return JSON.parse(value) as T;
-    } catch {
+    } catch (err) {
+      this.logger.warn({ err }, 'Redis cache operation failed: get');
       return null;
     }
   }
@@ -41,16 +46,25 @@ export class RedisCacheService implements CacheService {
       } else {
         await this.redis.set(key, serialized);
       }
-    } catch {
-      // Graceful degradation
+    } catch (err) {
+      this.logger.warn({ err }, 'Redis cache operation failed: put');
     }
   }
 
   async invalidate(key: string): Promise<void> {
     try {
       await this.redis.del(key);
-    } catch {
-      // Graceful degradation
+    } catch (err) {
+      this.logger.warn({ err }, 'Redis cache operation failed: invalidate');
+    }
+  }
+
+  async exists(key: string): Promise<boolean> {
+    try {
+      return (await this.redis.exists(key)) > 0;
+    } catch (err) {
+      this.logger.warn({ err }, 'Redis cache operation failed: exists');
+      return false;
     }
   }
 
@@ -63,8 +77,8 @@ export class RedisCacheService implements CacheService {
   async shutdown(): Promise<void> {
     try {
       await this.redis.quit();
-    } catch {
-      // Ignore shutdown errors
+    } catch (err) {
+      this.logger.warn({ err }, 'Redis cache operation failed: shutdown');
     }
   }
 }

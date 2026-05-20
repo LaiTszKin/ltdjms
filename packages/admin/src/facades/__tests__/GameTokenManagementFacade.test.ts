@@ -4,6 +4,7 @@ import {
   Err,
   DomainError,
   DomainErrorCategory,
+  DomainEventPublisher,
 } from '@ltdjms/shared';
 import { GameTokenManagementFacade } from '../GameTokenManagementFacade.js';
 import type {
@@ -31,9 +32,16 @@ describe('GameTokenManagementFacade', () => {
       getTransactionPage: vi.fn(),
     };
 
+    const mockEventPublisher = {
+      publish: vi.fn(),
+      register: vi.fn(),
+      registerAsync: vi.fn(),
+    } as unknown as DomainEventPublisher;
+
     facade = new GameTokenManagementFacade(
       mockTokenService as GameTokenService,
       mockTxService as GameTokenTransactionService,
+      mockEventPublisher,
     );
   });
 

@@ -7,6 +7,8 @@ import { type EmbedView } from '../domain/embed-view.js';
 export interface EmbedLimits {
     readonly MAX_TITLE_LENGTH: number;
     readonly MAX_DESCRIPTION_LENGTH: number;
+    readonly MAX_FIELD_NAME_LENGTH: number;
+    readonly MAX_FIELD_VALUE_LENGTH: number;
     readonly MAX_FIELDS: number;
     readonly MAX_FOOTER_LENGTH: number;
     readonly ELLIPSIS: string;

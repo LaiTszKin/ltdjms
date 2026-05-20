@@ -12,7 +12,7 @@ describe('MockDiscordContext', () => {
 
   it('validates non-empty guild id', () => {
     expect(() => new MockDiscordContext('', '456', '789', '<@456>')).toThrow(
-      'guildId must be a valid non-zero id',
+      'guildId must be a valid non-empty id',
     );
   });
 

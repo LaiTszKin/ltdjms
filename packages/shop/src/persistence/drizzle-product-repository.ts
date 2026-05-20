@@ -2,12 +2,13 @@ import { eq, and, ilike, count, asc } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { type Product } from '../domain/product-types.js';
 import { product as productTable } from './schema.js';
+import type { ProductRepository } from '../di/shop-module.js';
 
 /**
  * Drizzle-based product repository used by shop services.
  * Provides the ProductRepository interface expected by ShopService, RedemptionService, etc.
  */
-export class DrizzleProductRepository {
+export class DrizzleProductRepository implements ProductRepository {
   constructor(private readonly db: NodePgDatabase) {}
 
   async findById(id: number): Promise<Product | null> {

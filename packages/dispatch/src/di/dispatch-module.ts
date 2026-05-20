@@ -77,10 +77,11 @@ export function configureDispatchContainer(): void {
   // Must be defined before services that depend on it.
   // ============================================================
 
+  // Temporary stub - returns permissive defaults during development
   const stubCatalogRepo: EscortOptionCatalogRepository = {
     async findAll() { return []; },
     async findByCode() { return null; },
-    async existsByCode() { return false; },
+    async existsByCode() { return true; },
   };
   container.registerInstance<EscortOptionCatalogRepository>(
     DISPATCH_TOKENS.EscortOptionCatalogRepository,

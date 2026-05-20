@@ -74,7 +74,6 @@ export { EcpayTradeQueryService } from './services/ecpay-trade-query.service.js'
 export type { QueryTradeResult } from './services/ecpay-trade-query.service.js';
 
 export { FiatPaymentCallbackService, CallbackResult } from './services/fiat-payment-callback.service.js';
-export type { CallbackResult as CallbackResultType } from './services/fiat-payment-callback.service.js';
 
 export { FiatOrderService, formatFiatOrderDMMessage } from './services/fiat-order.service.js';
 export type { FiatOrderResult } from './services/fiat-order.service.js';

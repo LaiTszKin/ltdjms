@@ -2,6 +2,7 @@ import {
   type DiscordInteraction,
   type DiscordContext,
 } from '@ltdjms/shared';
+import { PermissionFlagsBits } from 'discord.js';
 import { type InteractionHandler } from '../../commands/infra/CommandHandler.js';
 import { AdminPanelSessionManager } from '../../session/AdminPanelSessionManager.js';
 import { type AdminPanelSessionData } from '../../session/types.js';
@@ -39,8 +40,7 @@ export abstract class BaseAdminHandler implements InteractionHandler {
       };
       const userId = String(interaction.getUserId());
 
-      // Discord PermissionFlagsBits.Administrator is 8n
-      if (raw.memberPermissions?.has(8n)) {
+      if (raw.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
         return true;
       }
 

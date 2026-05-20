@@ -1,6 +1,7 @@
 import { encryptAES, decryptAES } from '../crypto/ecpay-aes.js';
 import type { EnvironmentConfig } from '@ltdjms/shared';
 import { Result, ok, err, DomainError } from '@ltdjms/shared';
+import https from 'node:https';
 import pino from 'pino';
 
 const STAGE_ENDPOINT = 'https://ecpayment-stage.ecpay.com.tw/1.0.0/Cashier/GenPaymentCode';
@@ -11,6 +12,8 @@ const OFFICIAL_STAGE_HASH_IV = 'EkRm7iFT261dpevs';
 // Reserved for future validation of MerchantTradeNo time component format (P2-18)
 // Format: YYMMDDHHmmSSsss (year, month, day, hour, minute, second, millisecond)
 // const MERCHANT_TRADE_NO_TIME_FORMAT = /^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{3})$/;
+
+const keepAliveAgent = new https.Agent({ keepAlive: true });
 
 function pad2(n: number): string {
   return n.toString().padStart(2, '0');
@@ -105,7 +108,8 @@ export class EcpayCvsPaymentService {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(root),
         signal: AbortSignal.timeout(15000),
-      });
+        agent: keepAliveAgent,
+      } as any);
 
       if (!response.ok) {
         const body = await response.text();
@@ -205,6 +209,7 @@ export class EcpayCvsPaymentService {
     return JSON.stringify(data);
   }
 
+  // NOTE: single-threaded event loop assumption - not safe under cluster mode
   private generateMerchantTradeNo(): string {
     const now = new Date();
     let currentMillis = now.getTime();

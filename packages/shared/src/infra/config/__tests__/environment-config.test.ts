@@ -1,9 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { EnvironmentConfig } from '../environment-config.js';
 
+/** Non-existent directory to prevent .env file interference in tests */
+const NO_DOT_ENV = '/dev/null';
+
 describe('EnvironmentConfig', () => {
   it('parses config from process.env with DISCORD_BOT_TOKEN', () => {
-    const config = new EnvironmentConfig(undefined, {
+    const config = new EnvironmentConfig(NO_DOT_ENV, {
       DISCORD_BOT_TOKEN: 'test-token',
     });
     const parsed = config.parse();
@@ -11,12 +14,12 @@ describe('EnvironmentConfig', () => {
   });
 
   it('throws if DISCORD_BOT_TOKEN is missing', () => {
-    const config = new EnvironmentConfig(undefined, {});
+    const config = new EnvironmentConfig(NO_DOT_ENV, {});
     expect(() => config.parse()).toThrow('Configuration validation failed');
   });
 
   it('provides typed getters', () => {
-    const config = new EnvironmentConfig(undefined, {
+    const config = new EnvironmentConfig(NO_DOT_ENV, {
       DISCORD_BOT_TOKEN: 'token',
       REDIS_URI: 'redis://myredis:6379',
       DATABASE_HOST: 'db.example.com',
@@ -33,7 +36,7 @@ describe('EnvironmentConfig', () => {
   });
 
   it('generates database URL from components', () => {
-    const config = new EnvironmentConfig(undefined, {
+    const config = new EnvironmentConfig(NO_DOT_ENV, {
       DISCORD_BOT_TOKEN: 'token',
       DATABASE_HOST: 'myhost',
       DATABASE_PORT: '7777',
@@ -48,7 +51,7 @@ describe('EnvironmentConfig', () => {
   });
 
   it('uses DB_URL when provided', () => {
-    const config = new EnvironmentConfig(undefined, {
+    const config = new EnvironmentConfig(NO_DOT_ENV, {
       DISCORD_BOT_TOKEN: 'token',
       DB_URL: 'postgresql://custom:url@host/db',
     });
@@ -57,7 +60,7 @@ describe('EnvironmentConfig', () => {
   });
 
   it('returns empty strings for unset ECPay values', () => {
-    const config = new EnvironmentConfig(undefined, {
+    const config = new EnvironmentConfig(NO_DOT_ENV, {
       DISCORD_BOT_TOKEN: 'token',
     });
     config.parse();
@@ -66,7 +69,7 @@ describe('EnvironmentConfig', () => {
   });
 
   it('process.env overrides .env values', () => {
-    const config = new EnvironmentConfig(undefined, {
+    const config = new EnvironmentConfig(NO_DOT_ENV, {
       DISCORD_BOT_TOKEN: 'env-token',
       REDIS_URI: 'redis://env:6379',
     });
@@ -76,7 +79,7 @@ describe('EnvironmentConfig', () => {
   });
 
   it('getAppPublicBaseUrl normalizes with https:// prefix', () => {
-    const config = new EnvironmentConfig(undefined, {
+    const config = new EnvironmentConfig(NO_DOT_ENV, {
       DISCORD_BOT_TOKEN: 'token',
       APP_PUBLIC_BASE_URL: 'example.com',
     });
@@ -85,7 +88,7 @@ describe('EnvironmentConfig', () => {
   });
 
   it('returns defaults for port numbers', () => {
-    const config = new EnvironmentConfig(undefined, {
+    const config = new EnvironmentConfig(NO_DOT_ENV, {
       DISCORD_BOT_TOKEN: 'token',
     });
     config.parse();

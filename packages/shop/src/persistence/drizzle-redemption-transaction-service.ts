@@ -1,25 +1,27 @@
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { productRedemptionTransaction as txTable } from './schema.js';
+import type { RedemptionTransactionService } from '../di/shop-module.js';
+import type { Product } from '../domain/product-types.js';
 
 /**
  * Records product redemption transactions in the database.
  * Implements the RedemptionTransactionService interface expected by RedemptionService.
  */
-export class DrizzleRedemptionTransactionService {
+export class DrizzleRedemptionTransactionService implements RedemptionTransactionService {
   constructor(private readonly db: NodePgDatabase) {}
 
   async recordTransaction(
     guildId: number,
     userId: number,
-    product: { id: number | null; name: string },
-    code: { id?: number | null; code: string },
+    product: Product,
+    code: { code: string },
   ): Promise<unknown> {
     return await this.db.insert(txTable).values({
       guildId: guildId,
       userId: userId,
       productId: product.id as number,
       productName: product.name,
-      redemptionCodeId: (code.id as number) ?? 0,
+      redemptionCodeId: 0,
       code: code.code,
     });
   }

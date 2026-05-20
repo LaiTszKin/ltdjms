@@ -2,7 +2,13 @@ import {
   type DiscordInteraction,
   type DiscordContext,
 } from '@ltdjms/shared';
-import { EmbedBuilder } from 'discord.js';
+import {
+  EmbedBuilder,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  ActionRowBuilder,
+} from 'discord.js';
 import { type InteractionHandler } from '../../../commands/infra/CommandHandler.js';
 import { MemberInfoFacade } from '../../../facades/MemberInfoFacade.js';
 import { PanelSessionManager } from '../../../session/PanelSessionManager.js';
@@ -11,6 +17,8 @@ import { ZhTwStrings } from '../../../i18n/zh-TW.js';
 /**
  * Handler for redemption code interactions (user_redeem_*).
  * Supports inputting a code via modal and executing the redemption.
+ * - user_redeem_code → shows a modal for code input
+ * - user_redeem_submit → processes the redemption
  */
 export class RedemptionCodeHandler implements InteractionHandler {
   readonly customIdPrefix = 'user_redeem';
@@ -33,9 +41,24 @@ export class RedemptionCodeHandler implements InteractionHandler {
       return;
     }
 
+    const fullCustomId = interaction.getCustomId();
+
+    if (fullCustomId === 'user_redeem_code') {
+      // Show the redeem modal (not deferred — modal must be shown before first reply)
+      await this.showRedeemModal(interaction);
+      return;
+    }
+
+    if (fullCustomId === 'user_redeem_submit') {
+      // Process the redemption
+      await interaction.deferReply();
+      await this.processRedemption(interaction, guildId, userId);
+      return;
+    }
+
+    // Default: show redemption history as a preview
     await interaction.deferReply();
 
-    // Show redemption history as a preview
     const result = await this.memberInfoFacade.getProductRedemptionTransactionPage(
       guildId,
       userId,
@@ -67,5 +90,86 @@ export class RedemptionCodeHandler implements InteractionHandler {
       .setDescription(description)
       .setColor(0xE67E22);
     await interaction.editEmbed(embed);
+  }
+
+  private async showRedeemModal(
+    interaction: DiscordInteraction,
+  ): Promise<void> {
+    const modal = new ModalBuilder()
+      .setCustomId('user_redeem_submit')
+      .setTitle(ZhTwStrings.redeemCodeModalTitle);
+
+    const codeInput = new TextInputBuilder()
+      .setCustomId('redeem_code')
+      .setLabel(ZhTwStrings.redeemCodeLabel)
+      .setPlaceholder(ZhTwStrings.redeemCodePlaceholder)
+      .setStyle(TextInputStyle.Short)
+      .setMinLength(1)
+      .setMaxLength(32)
+      .setRequired(true);
+
+    modal.addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(codeInput),
+    );
+
+    const raw = interaction.getHook() as {
+      showModal: (modal: ModalBuilder) => Promise<void>;
+    };
+    await raw.showModal(modal);
+  }
+
+  private async processRedemption(
+    interaction: DiscordInteraction,
+    guildId: string,
+    userId: string,
+  ): Promise<void> {
+    const raw = interaction.getHook() as {
+      fields: { getTextInputValue: (customId: string) => string };
+    };
+
+    const codeStr = raw.fields.getTextInputValue('redeem_code');
+    if (!codeStr || codeStr.trim().length === 0) {
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.redeemCodeModalTitle)
+        .setDescription('請輸入有效的兌換碼')
+        .setColor(0xE67E22);
+      await interaction.editEmbed(embed);
+      return;
+    }
+
+    const result = await this.memberInfoFacade.redeemCode(
+      guildId,
+      userId,
+      codeStr.trim(),
+    );
+
+    if (result.isOk()) {
+      const redemption = result.getValue();
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.redeemCodeModalTitle)
+        .setDescription(
+          ZhTwStrings.redeemSuccess.replace('{product}', redemption.product.name),
+        )
+        .setColor(0x57F287);
+      await interaction.editEmbed(embed);
+    } else {
+      const errorMsg = result.getError().message;
+      let friendlyMsg: string;
+      if (errorMsg.includes('used') || errorMsg.includes('已使用')) {
+        friendlyMsg = ZhTwStrings.redeemAlreadyUsed;
+      } else if (errorMsg.includes('expired') || errorMsg.includes('已過期')) {
+        friendlyMsg = ZhTwStrings.redeemExpired;
+      } else if (errorMsg.includes('invalid') || errorMsg.includes('無效')) {
+        friendlyMsg = ZhTwStrings.redeemInvalid;
+      } else {
+        friendlyMsg = '兌換失敗：' + errorMsg;
+      }
+
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.redeemCodeModalTitle)
+        .setDescription(friendlyMsg)
+        .setColor(0xED4245);
+      await interaction.editEmbed(embed);
+    }
   }
 }

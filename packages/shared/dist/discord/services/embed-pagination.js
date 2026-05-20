@@ -85,8 +85,8 @@ export function paginateEmbedView(data, limits, truncate) {
                 builder.setFooter({ text: footer });
         }
         builder.addFields({
-            name: field.name,
-            value: field.value,
+            name: truncate(field.name, limits.MAX_FIELD_NAME_LENGTH),
+            value: truncate(field.value, limits.MAX_FIELD_VALUE_LENGTH),
             inline: field.inline,
         });
         totalAdded++;

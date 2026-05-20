@@ -1,4 +1,6 @@
 import { join } from 'node:path';
+import pino from 'pino';
+import { type Logger } from 'pino';
 import { loadDotEnv } from './env-loader.js';
 import { ConfigSchema, type ConfigValues } from './schema.js';
 
@@ -19,6 +21,7 @@ export class EnvironmentConfig {
       string,
       string | undefined
     >,
+    private readonly logger: Logger = pino({ level: 'silent' }) as Logger,
   ) {}
 
   /**
@@ -48,6 +51,18 @@ export class EnvironmentConfig {
       } else if (dotEnvValues[key] !== undefined) {
         merged[key] = dotEnvValues[key];
       }
+    }
+
+    // Log process.env keys that are not in the schema
+    const schemaKeys = new Set(Object.keys(ConfigSchema.shape));
+    const processEnvWithoutSchemaKeys = Object.keys(this.envSource).filter(
+      (k) => !schemaKeys.has(k),
+    );
+    if (processEnvWithoutSchemaKeys.length > 0) {
+      this.logger.debug(
+        { extraKeys: processEnvWithoutSchemaKeys },
+        'Ignored process.env keys not in schema',
+      );
     }
 
     const result = ConfigSchema.safeParse(merged);

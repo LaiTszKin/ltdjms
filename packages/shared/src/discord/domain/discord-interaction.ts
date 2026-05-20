@@ -27,6 +27,9 @@ export interface DiscordInteraction {
   /** Returns the underlying interaction hook. */
   getHook(): unknown;
 
+  /** Gets the full customId of the interaction. */
+  getCustomId(): string;
+
   /** Checks if the interaction has been acknowledged. */
   isAcknowledged(): boolean;
 }

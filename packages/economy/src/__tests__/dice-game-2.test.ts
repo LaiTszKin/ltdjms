@@ -1,6 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { DiceGame2Service } from '../dice/services/dice-game-2-service.js';
 import type { DiceGame2Config } from '../domain/types.js';
+import type { DiceConfigRepository } from '../dice/repositories/dice-config-repo.js';
+import type { GameTokenService } from '../token/services/game-token-service.js';
+import type { GameTokenTransactionService } from '../token/services/game-token-tx-service.js';
+import type { GameRewardService } from '../dice/services/game-reward-service.js';
 
 const defaultConfig: DiceGame2Config = {
   guildId: 1,
@@ -17,11 +21,38 @@ const defaultConfig: DiceGame2Config = {
 describe('DiceGame2Service - analyzeRolls', () => {
   const noopRandom = { nextInt: () => 0 };
 
+  const mockDiceConfigRepo = {
+    findDice1Config: vi.fn(),
+    upsertDice1Config: vi.fn(),
+    deleteDice1Config: vi.fn(),
+    findDice2Config: vi.fn(),
+    upsertDice2Config: vi.fn(),
+    deleteDice2Config: vi.fn(),
+  } as unknown as DiceConfigRepository;
+
+  const mockGameTokenService = {
+    getBalance: vi.fn(),
+    tryAdjustTokens: vi.fn(),
+    hasEnoughTokens: vi.fn(),
+    tryDeductTokens: vi.fn(),
+    deductTokens: vi.fn(),
+    adjustTokens: vi.fn(),
+  } as unknown as GameTokenService;
+
+  const mockGameTokenTxService = {
+    getTransactionPage: vi.fn(),
+    recordTransaction: vi.fn(),
+  } as unknown as GameTokenTransactionService;
+
+  const mockGameRewardService = {
+    creditReward: vi.fn(),
+  } as unknown as GameRewardService;
+
   const service = new DiceGame2Service(
-    {} as any,
-    {} as any,
-    {} as any,
-    {} as any,
+    mockDiceConfigRepo,
+    mockGameTokenService,
+    mockGameTokenTxService,
+    mockGameRewardService,
     noopRandom,
   );
 
@@ -51,7 +82,7 @@ describe('DiceGame2Service - analyzeRolls', () => {
     });
 
     it('should detect multiple straight segments', () => {
-      // [1, 2, 3, 0, 4, 5, 6]
+      // [1, 2, 3, 2, 4, 5, 6]
       const rolls = [1, 2, 3, 2, 4, 5, 6];
       const analysis = service.analyzeRolls(rolls, defaultConfig);
 
@@ -97,9 +128,8 @@ describe('DiceGame2Service - analyzeRolls', () => {
   });
 
   describe('straight and triple interaction', () => {
-    it('should prioritize straights over overlapping triples', () => {
-      // [1, 2, 3] is both a straight and could be considered a triple of different values
-      // But triples need same values, so no overlap here
+    it('should detect a full straight of length 6', () => {
+      // [1, 2, 3, 4, 5, 6] is a pure straight with no triples
       const rolls = [1, 2, 3, 4, 5, 6];
       const analysis = service.analyzeRolls(rolls, defaultConfig);
 

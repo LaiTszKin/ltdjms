@@ -116,6 +116,18 @@ export class PanelSessionManager {
   }
 
   /**
+   * Starts an interval-based cleanup of expired sessions.
+   * Should be called during DI setup (e.g., in configureAdminContainer).
+   * @param intervalMs - cleanup interval in milliseconds (default 60 seconds)
+   * @returns the interval ID for manual cancellation
+   */
+  startCleanupInterval(intervalMs: number = 60_000): ReturnType<typeof setInterval> {
+    return setInterval(() => {
+      this.cleanupExpired();
+    }, intervalMs);
+  }
+
+  /**
    * Returns the total number of active sessions.
    */
   getActiveSessionCount(): number {

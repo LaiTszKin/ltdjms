@@ -50,6 +50,7 @@ export {
   type DatabaseConfig,
   runMigrations,
   SchemaMigrationException,
+  DatabaseConnectionException,
 } from './infra/database/index.js';
 
 // Cache

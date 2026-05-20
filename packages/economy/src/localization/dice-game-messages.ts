@@ -48,7 +48,6 @@ export const DiceGameMessages = {
     '成功調整代幣\n調整前：{before} → 調整後：{after}\n調整量：{amount}',
   TOKEN_ADJUST_FAILED: '代幣調整失敗：{reason}',
   TOKEN_INSUFFICIENT: '代幣不足',
-  // TODO: Wire into balance display handlers (packages/economy/src/currency/handlers/) for token balance embed
   TOKEN_CURRENT_BALANCE: '目前代幣：**{tokens}** 個',
 
   // ============================================================

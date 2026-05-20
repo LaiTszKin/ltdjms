@@ -82,9 +82,6 @@ describe('DrizzleFiatOrderRepository', () => {
       fulfilledAt: null,
       adminNotifiedAt: null,
       lastCallbackPayload: null,
-      fulfillmentProcessingAt: null,
-      adminNotificationProcessingAt: null,
-      reconciliationProcessingAt: null,
       reconciliationNextAttemptAt: null,
     };
 

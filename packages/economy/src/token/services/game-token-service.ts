@@ -28,7 +28,7 @@ export class GameTokenService {
 
   /**
    * Gets the current token balance for a member.
-   * Uses cache (TTL 300s) - cache miss falls through to DB (no auto-create).
+   * Uses cache (TTL 300s) - cache miss falls through to DB (auto-create via findOrCreate).
    */
   async getBalance(guildId: number, userId: number): Promise<number> {
     const cacheKey = this.cacheKeyGenerator.gameTokenKey(String(guildId), String(userId));
@@ -38,13 +38,11 @@ export class GameTokenService {
       return cachedBalance;
     }
 
-    const account = await this.accountRepository.findByGuildIdAndUserId(guildId, userId);
-    if (account === null) {
-      await this.cacheService.put(cacheKey, 0, GameTokenService.TOKEN_TTL_SECONDS);
-      return 0;
-    }
-    await this.cacheService.put(cacheKey, account.tokens, GameTokenService.TOKEN_TTL_SECONDS);
-    return account.tokens;
+    // Cache miss or no cache - query DB with auto-create
+    const account = await this.accountRepository.findOrCreate(guildId, userId);
+    const balance = account.tokens;
+    await this.cacheService.put(cacheKey, balance, GameTokenService.TOKEN_TTL_SECONDS);
+    return balance;
   }
 
   /**
@@ -55,7 +53,7 @@ export class GameTokenService {
     userId: number,
     amount: number,
   ): Promise<Result<TokenAdjustmentResult, DomainError>> {
-    if (!Number.isFinite(amount) || amount === 0) {
+    if (!Number.isFinite(amount)) {
       return new Err(
         DomainError.invalidInput(`Invalid adjustment amount: ${amount}`),
       );
@@ -87,8 +85,9 @@ export class GameTokenService {
 
       // Publish event
       this.eventPublisher.publish({
-        guildId,
+        guildId: String(guildId),
         userId,
+        eventType: 'game_token_changed',
         newTokens: updated.tokens,
       } as GameTokenChangedEvent);
 
@@ -155,8 +154,9 @@ export class GameTokenService {
 
       // Publish event
       this.eventPublisher.publish({
-        guildId,
+        guildId: String(guildId),
         userId,
+        eventType: 'game_token_changed',
         newTokens: account.tokens,
       } as GameTokenChangedEvent);
     }
@@ -191,8 +191,9 @@ export class GameTokenService {
     );
 
     this.eventPublisher.publish({
-      guildId,
+      guildId: String(guildId),
       userId,
+      eventType: 'game_token_changed',
       newTokens: updated.tokens,
     } as GameTokenChangedEvent);
 
@@ -224,8 +225,9 @@ export class GameTokenService {
     );
 
     this.eventPublisher.publish({
-      guildId,
+      guildId: String(guildId),
       userId,
+      eventType: 'game_token_changed',
       newTokens: updated.tokens,
     } as GameTokenChangedEvent);
 

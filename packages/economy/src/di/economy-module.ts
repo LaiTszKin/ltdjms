@@ -182,6 +182,6 @@ export function configureEconomyContainer(): void {
   const diceGame2ConfigHandler = new DiceGame2ConfigHandler(diceConfigRepo);
   container.registerInstance(ECONOMY_TOKENS.DiceGame2ConfigHandler, diceGame2ConfigHandler);
 
-  const gameTokenAdjustHandler = new GameTokenAdjustHandler(gameTokenService);
+  const gameTokenAdjustHandler = new GameTokenAdjustHandler(gameTokenService, gameTokenTxService);
   container.registerInstance(ECONOMY_TOKENS.GameTokenAdjustHandler, gameTokenAdjustHandler);
 }

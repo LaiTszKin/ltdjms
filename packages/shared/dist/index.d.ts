@@ -1,7 +1,7 @@
 export { type Result, Ok, Err, Unit, ok, okVoid, err, isOk, isErr, DomainErrorCategory, DomainError, type DomainEvent, type BalanceChangedEvent, type GameTokenChangedEvent, type CurrencyConfigChangedEvent, GameType, type DiceGameConfigChangedEvent, OperationType, type ProductChangedEvent, type RedemptionCodesGeneratedEvent, type ProductRedemptionTransaction, type ProductRedemptionCompletedEvent, type AIMessageEvent, type AIAgentChannelConfigChangedEvent, type ConversationMessage, type AgentCompletedEvent, type AgentFailedEvent, type LangChain4jToolExecutionStartedEvent, type LangChain4jToolExecutedEvent, type AnyDomainEvent, } from './types/index.js';
 export { loadDotEnv, parseDotEnv, ConfigSchema, type ConfigValues, EnvironmentConfig, } from './infra/config/index.js';
 export { createRootLogger, createChildLogger } from './infra/logger/index.js';
-export { createDatabasePool, type DatabaseConfig, runMigrations, SchemaMigrationException, } from './infra/database/index.js';
+export { createDatabasePool, type DatabaseConfig, runMigrations, SchemaMigrationException, DatabaseConnectionException, } from './infra/database/index.js';
 export { type CacheService, RedisCacheService, NoOpCacheService, type CacheKeyGenerator, DefaultCacheKeyGenerator, } from './infra/cache/index.js';
 export { DomainEventPublisher } from './infra/events/index.js';
 export { initializeContainer, container, TOKENS, type TokenMap, } from './infra/di/index.js';

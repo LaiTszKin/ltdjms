@@ -4,8 +4,8 @@
   "scripts": {
     "build": "tsc -b",
     "test": "vitest run",
-    "format": "prettier --write \"packages/*/src/**/*.ts\"",
-    "format:check": "prettier --check \"packages/*/src/**/*.ts\"",
+    "format": "prettier --write \"packages/*/src/**/*.ts\" \"*.{ts,mjs,js,json}\"",
+    "format:check": "prettier --check \"packages/*/src/**/*.ts\" \"*.{ts,mjs,js,json}\"",
     "lint": "eslint packages/*/src/",
     "dev": "tsx watch packages/shared/src/main.ts"
   },
@@ -14,8 +14,7 @@
     "vitest": "^3.0.0",
     "prettier": "^3.0.0",
     "eslint": "^9.0.0",
-    "@typescript-eslint/parser": "^8.0.0",
-    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "typescript-eslint": "^8.0.0",
     "tsx": "^4.0.0"
   }
 }

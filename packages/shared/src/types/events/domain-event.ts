@@ -5,25 +5,30 @@
  */
 
 export interface DomainEvent {
-  readonly guildId: number;
+  readonly guildId: string;
+  /** Discriminant for event type identification. */
+  readonly eventType: string;
 }
 
 // ---- Currency Events ----
 
 export interface BalanceChangedEvent extends DomainEvent {
-  readonly guildId: number;
+  readonly eventType: 'balance_changed';
+  readonly guildId: string;
   readonly userId: number;
   readonly newBalance: number;
 }
 
 export interface GameTokenChangedEvent extends DomainEvent {
-  readonly guildId: number;
+  readonly eventType: 'game_token_changed';
+  readonly guildId: string;
   readonly userId: number;
   readonly newTokens: number;
 }
 
 export interface CurrencyConfigChangedEvent extends DomainEvent {
-  readonly guildId: number;
+  readonly eventType: 'currency_config_changed';
+  readonly guildId: string;
   readonly currencyName: string;
   readonly currencyIcon: string;
 }
@@ -36,7 +41,8 @@ export enum GameType {
 }
 
 export interface DiceGameConfigChangedEvent extends DomainEvent {
-  readonly guildId: number;
+  readonly eventType: 'dice_game_config_changed';
+  readonly guildId: string;
   readonly gameType: GameType;
 }
 
@@ -49,13 +55,15 @@ export enum OperationType {
 }
 
 export interface ProductChangedEvent extends DomainEvent {
-  readonly guildId: number;
+  readonly eventType: 'product_changed';
+  readonly guildId: string;
   readonly productId: number;
   readonly operationType: OperationType;
 }
 
 export interface RedemptionCodesGeneratedEvent extends DomainEvent {
-  readonly guildId: number;
+  readonly eventType: 'redemption_codes_generated';
+  readonly guildId: string;
   readonly productId: number;
   readonly count: number;
 }
@@ -70,7 +78,8 @@ export interface ProductRedemptionTransaction {
 }
 
 export interface ProductRedemptionCompletedEvent extends DomainEvent {
-  readonly guildId: number;
+  readonly eventType: 'product_redemption_completed';
+  readonly guildId: string;
   readonly userId: number;
   readonly transaction: ProductRedemptionTransaction;
   readonly timestamp: Date;
@@ -79,7 +88,8 @@ export interface ProductRedemptionCompletedEvent extends DomainEvent {
 // ---- AI / Agent Events ----
 
 export interface AIMessageEvent extends DomainEvent {
-  readonly guildId: number;
+  readonly eventType: 'ai_message';
+  readonly guildId: string;
   readonly channelId: string;
   readonly threadId: number | null;
   readonly userId: string;
@@ -90,7 +100,8 @@ export interface AIMessageEvent extends DomainEvent {
 }
 
 export interface AIAgentChannelConfigChangedEvent extends DomainEvent {
-  readonly guildId: number;
+  readonly eventType: 'ai_agent_channel_config_changed';
+  readonly guildId: string;
   readonly channelId: number;
   readonly agentEnabled: boolean;
   readonly changedAt: Date;
@@ -104,7 +115,8 @@ export interface ConversationMessage {
 }
 
 export interface AgentCompletedEvent extends DomainEvent {
-  readonly guildId: number;
+  readonly eventType: 'agent_completed';
+  readonly guildId: string;
   readonly channelId: string;
   readonly userId: string;
   readonly conversationId: string;
@@ -114,7 +126,8 @@ export interface AgentCompletedEvent extends DomainEvent {
 }
 
 export interface AgentFailedEvent extends DomainEvent {
-  readonly guildId: number;
+  readonly eventType: 'agent_failed';
+  readonly guildId: string;
   readonly channelId: string;
   readonly userId: string;
   readonly conversationId: string;
@@ -123,7 +136,8 @@ export interface AgentFailedEvent extends DomainEvent {
 }
 
 export interface LangChain4jToolExecutionStartedEvent extends DomainEvent {
-  readonly guildId: number;
+  readonly eventType: 'langchain4j_tool_execution_started';
+  readonly guildId: string;
   readonly channelId: number;
   readonly userId: number;
   readonly toolName: string;
@@ -131,7 +145,8 @@ export interface LangChain4jToolExecutionStartedEvent extends DomainEvent {
 }
 
 export interface LangChain4jToolExecutedEvent extends DomainEvent {
-  readonly guildId: number;
+  readonly eventType: 'langchain4j_tool_executed';
+  readonly guildId: string;
   readonly channelId: number;
   readonly userId: number;
   readonly toolName: string;

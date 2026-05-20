@@ -88,7 +88,7 @@ export class AIChatMentionRoutingDecision {
       if (enabled) {
         return {
           route: Route.AGENT_ROUTE,
-          source: Source.AGENT_CONFIG,
+          source: Source.AGENT_ENABLED,
           detail: `Agent enabled for channel ${restrictionChannelId}`,
         };
       }
@@ -126,7 +126,7 @@ export class AIChatMentionRoutingDecision {
     }
     return {
       route: Route.DENY,
-      source: Source.NO_ALLOWLIST,
+      source: Source.AI_ALLOWLIST_DENIED,
       detail: `Channel ${restrictionChannelId} is not allowlisted and agent is not enabled`,
     };
   }

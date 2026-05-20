@@ -8,12 +8,13 @@ export declare class MockDiscordInteraction implements DiscordInteraction {
     private readonly _guildId;
     private readonly _userId;
     private readonly _ephemeral;
+    private readonly _customId;
     private _acknowledged;
     private readonly _replyMessages;
     private readonly _replyEmbeds;
     private readonly _editedEmbeds;
     private _deferReplyCount;
-    constructor(guildId: string, userId: string, _channelId?: string, ephemeral?: boolean);
+    constructor(guildId: string, userId: string, _channelId?: string, ephemeral?: boolean, customId?: string);
     getGuildId(): string;
     getUserId(): string;
     isEphemeral(): boolean;
@@ -22,6 +23,7 @@ export declare class MockDiscordInteraction implements DiscordInteraction {
     editEmbed(embed: unknown): Promise<void>;
     deferReply(): Promise<void>;
     getHook(): unknown;
+    getCustomId(): string;
     isAcknowledged(): boolean;
     getReplyMessages(): string[];
     getReplyEmbeds(): unknown[];

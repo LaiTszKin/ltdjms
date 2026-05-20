@@ -11,4 +11,5 @@ export declare class NoOpCacheService implements CacheService {
     get<T>(_key: string): Promise<T | null>;
     put(_key: string, _value: unknown, _ttlSeconds: number): Promise<void>;
     invalidate(_key: string): Promise<void>;
+    exists(_key: string): Promise<boolean>;
 }

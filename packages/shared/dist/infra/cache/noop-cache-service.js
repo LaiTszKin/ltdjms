@@ -18,5 +18,8 @@ export class NoOpCacheService {
     async invalidate(_key) {
         // No-op
     }
+    async exists(_key) {
+        return false;
+    }
 }
 //# sourceMappingURL=noop-cache-service.js.map

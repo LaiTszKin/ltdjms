@@ -58,6 +58,7 @@ import { InMemoryToolCallHistory } from '../services/memory/tool-call-history.js
 import { DiscordThreadHistoryProvider } from '../services/memory/chat-memory-provider.js';
 import { SimplifiedChatMemoryProvider } from '../services/memory/chat-memory-provider.js';
 import { TokenEstimator } from '../services/memory/TokenEstimator.js';
+import { ToolExecutionInterceptor } from '../services/ToolExecutionInterceptor.js';
 
 // Markdown
 import { CommonMarkValidator } from '../markdown/validation/CommonMarkValidator.js';
@@ -176,19 +177,6 @@ export function initializeAIModule(): void {
   );
   container.registerInstance(AI_TOKENS.AIChatMentionRoutingDecision, routingDecision);
 
-  // ===== AI Chat Service =====
-  const langChainService = new LangChainAIChatService(aiConfig, promptLoader);
-  container.registerInstance(AI_TOKENS.LangChainAIChatService, langChainService);
-
-  // Wrap with Markdown validation decorator if enabled
-  let aiChatService: AIChatService;
-  if (aiConfig.enableMarkdownValidation) {
-    aiChatService = new MarkdownValidatingAIChatService(langChainService);
-  } else {
-    aiChatService = langChainService;
-  }
-  container.registerInstance<AIChatService>(AI_TOKENS.AIChatService, aiChatService);
-
   // ===== Tools =====
   const authGuard = new ToolCallerAuthorizationGuard();
   container.registerInstance(AI_TOKENS.ToolCallerAuthorizationGuard, authGuard);
@@ -266,30 +254,7 @@ export function initializeAIModule(): void {
     new DeleteDiscordResourceTool(authGuard),
   );
 
-  // ===== Memory =====
-  const toolCallHistory = new InMemoryToolCallHistory();
-  container.registerInstance(AI_TOKENS.InMemoryToolCallHistory, toolCallHistory);
-
-  const threadHistoryProvider = new DiscordThreadHistoryProvider(runtimeGateway);
-  container.registerInstance(AI_TOKENS.DiscordThreadHistoryProvider, threadHistoryProvider);
-
-  const memoryProvider = new SimplifiedChatMemoryProvider(
-    threadHistoryProvider,
-    toolCallHistory,
-    runtimeGateway,
-  );
-  container.registerInstance(AI_TOKENS.SimplifiedChatMemoryProvider, memoryProvider);
-
-  // ===== Token Estimator =====
-  // TODO (P2-38, P3-20): TokenEstimator is registered but not currently wired into
-  // the memory provider. Once context-window management is implemented,
-  // inject TokenEstimator into SimplifiedChatMemoryProvider to enforce
-  // token-budget limits when building conversation history.
-  const tokenEstimator = new TokenEstimator();
-  container.registerInstance(AI_TOKENS.TokenEstimator, tokenEstimator);
-
-  // ===== Agent Service Factory =====
-  // Collect all registered tool instances from the container for the agent factory
+  // Build tool map for agent tool execution (P0-7)
   const allTools = [
     container.resolve(AI_TOKENS.CreateChannelTool),
     container.resolve(AI_TOKENS.CreateCategoryTool),
@@ -309,6 +274,56 @@ export function initializeAIModule(): void {
     container.resolve(AI_TOKENS.MoveChannelTool),
     container.resolve(AI_TOKENS.DeleteDiscordResourceTool),
   ];
+  const toolMap = new Map<string, { name: string; execute: (params: Record<string, unknown>, guild: import('discord.js').Guild) => Promise<string> }>();
+  for (const tool of allTools) {
+    const registeredTool = tool as { name: string; execute: (params: Record<string, unknown>, guild: import('discord.js').Guild) => Promise<string> };
+    toolMap.set(registeredTool.name, registeredTool);
+  }
+
+  // ===== AI Chat Service =====
+  // ToolExecutionInterceptor for observability (P0-8)
+  const toolExecutionInterceptor = new ToolExecutionInterceptor();
+  const toolCallHistory = new InMemoryToolCallHistory();
+  container.registerInstance(AI_TOKENS.InMemoryToolCallHistory, toolCallHistory);
+
+  const langChainService = new LangChainAIChatService(
+    aiConfig,
+    promptLoader,
+    toolMap,
+    authGuard,
+    toolExecutionInterceptor,
+    toolCallHistory,
+    runtimeGateway,
+  );
+  container.registerInstance(AI_TOKENS.LangChainAIChatService, langChainService);
+
+  // Wrap with Markdown validation decorator if enabled
+  let aiChatService: AIChatService;
+  if (aiConfig.enableMarkdownValidation) {
+    aiChatService = new MarkdownValidatingAIChatService(langChainService);
+  } else {
+    aiChatService = langChainService;
+  }
+  container.registerInstance<AIChatService>(AI_TOKENS.AIChatService, aiChatService);
+
+  // ===== Memory =====
+
+  const threadHistoryProvider = new DiscordThreadHistoryProvider(runtimeGateway);
+  container.registerInstance(AI_TOKENS.DiscordThreadHistoryProvider, threadHistoryProvider);
+
+  // TokenEstimator for context-window management (P2-26)
+  const tokenEstimator = new TokenEstimator();
+  container.registerInstance(AI_TOKENS.TokenEstimator, tokenEstimator);
+
+  const memoryProvider = new SimplifiedChatMemoryProvider(
+    threadHistoryProvider,
+    toolCallHistory,
+    runtimeGateway,
+    tokenEstimator,
+  );
+  container.registerInstance(AI_TOKENS.SimplifiedChatMemoryProvider, memoryProvider);
+
+  // ===== Agent Service Factory =====
   const agentServiceFactory = new AgentServiceFactory(
     aiConfig,
     allTools,

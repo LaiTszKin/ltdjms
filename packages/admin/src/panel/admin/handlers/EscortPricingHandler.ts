@@ -3,22 +3,27 @@ import {
   type DiscordContext,
 } from '@ltdjms/shared';
 import { EmbedBuilder } from 'discord.js';
-import { type InteractionHandler } from '../../../commands/infra/CommandHandler.js';
 import { AdminPanelSessionManager } from '../../../session/AdminPanelSessionManager.js';
+import { AdminPanelViewState } from '../../../session/types.js';
+import { BotErrorHandler } from '../../../commands/infra/BotErrorHandler.js';
 import { ZhTwStrings } from '../../../i18n/zh-TW.js';
+import { BaseAdminHandler } from '../BaseAdminHandler.js';
 import { type EscortOptionPricingService } from '@ltdjms/dispatch';
 
 /**
  * Handler for escort pricing interactions (admin_escortprice_*).
  * Supports view pricing list, edit guild override, reset to default.
  */
-export class EscortPricingHandler implements InteractionHandler {
+export class EscortPricingHandler extends BaseAdminHandler {
   readonly customIdPrefix = 'admin_escortprice';
 
   constructor(
-    private readonly sessionManager: AdminPanelSessionManager,
+    sessionManager: AdminPanelSessionManager,
     private readonly pricingService: EscortOptionPricingService,
-  ) {}
+    errorHandler: BotErrorHandler,
+  ) {
+    super(sessionManager, errorHandler);
+  }
 
   async execute(
     interaction: DiscordInteraction,
@@ -27,15 +32,44 @@ export class EscortPricingHandler implements InteractionHandler {
     const guildId = interaction.getGuildId();
     const userId = interaction.getUserId();
 
-    const session = this.sessionManager.getSession(guildId, userId);
+    // Permission check
+    if (!this.checkAdminPermission(interaction)) {
+      await interaction.reply(ZhTwStrings.permissionAdminRequired);
+      return;
+    }
+
+    const session = this.getSession(interaction);
     if (!session) {
       await interaction.reply(ZhTwStrings.sessionExpired);
       return;
     }
 
-    await interaction.deferReply();
+    await this.ensureDeferred(interaction);
 
-    // Try to get pricing list
+    this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.ESCORT_PRICING);
+
+    const fullCustomId = interaction.getCustomId();
+
+    // Branch on sub-action
+    if (fullCustomId.startsWith('admin_escortprice_edit')) {
+      // TODO: show modal for editing price
+      await this.showPricingList(interaction, guildId);
+      return;
+    }
+    if (fullCustomId.startsWith('admin_escortprice_reset')) {
+      // TODO: reset price to default
+      await this.showPricingList(interaction, guildId);
+      return;
+    }
+
+    // Default: show pricing list
+    await this.showPricingList(interaction, guildId);
+  }
+
+  private async showPricingList(
+    interaction: DiscordInteraction,
+    guildId: string,
+  ): Promise<void> {
     const result = await this.pricingService.listOptionPrices(Number(guildId));
 
     let description: string;

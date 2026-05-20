@@ -73,6 +73,13 @@ export class DiscordJsInteraction implements DiscordInteraction {
     return this.interaction;
   }
 
+  getCustomId(): string {
+    if ('customId' in this.interaction) {
+      return (this.interaction as { customId: string }).customId;
+    }
+    return '';
+  }
+
   isAcknowledged(): boolean {
     return this.acknowledged;
   }

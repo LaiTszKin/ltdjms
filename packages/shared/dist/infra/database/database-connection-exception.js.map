@@ -1,0 +1,1 @@
+{"version":3,"file":"database-connection-exception.js","sourceRoot":"","sources":["../../../src/infra/database/database-connection-exception.ts"],"names":[],"mappings":"AAAA,MAAM,OAAO,2BAA4B,SAAQ,KAAK;IACP;IAA7C,YAAY,OAAe,EAAkB,KAAe;QAC1D,KAAK,CAAC,OAAO,CAAC,CAAC;QAD4B,UAAK,GAAL,KAAK,CAAU;QAE1D,IAAI,CAAC,IAAI,GAAG,6BAA6B,CAAC;IAC5C,CAAC;CACF"}

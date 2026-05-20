@@ -215,3 +215,22 @@ jobs:
 
       - name: "Run property-based tests"
         run: mvn -B -Pproperty-based-tests test
+
+  typescript-ci:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r exec tsc --noEmit
+      - run: pnpm eslint --ignore-pattern 'dist/' 'packages/*/src/'
+      - run: pnpm vitest run

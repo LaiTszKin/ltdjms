@@ -7,6 +7,14 @@ export enum AdminPanelViewState {
   PRODUCT_LIST = 'PRODUCT_LIST',
   PRODUCT_DETAIL = 'PRODUCT_DETAIL',
   PRODUCT_CODE_LIST = 'PRODUCT_CODE_LIST',
+  BALANCE = 'BALANCE',
+  TOKEN = 'TOKEN',
+  GAME_CONFIG = 'GAME_CONFIG',
+  AI_CHANNEL = 'AI_CHANNEL',
+  AI_AGENT = 'AI_AGENT',
+  DISPATCH_STAFF = 'DISPATCH_STAFF',
+  ESCORT_PRICING = 'ESCORT_PRICING',
+  ESCORT_CATALOG = 'ESCORT_CATALOG',
 }
 
 /**
@@ -19,6 +27,10 @@ export interface AdminPanelSessionData {
   context: Record<string, string>;
   createdAt: number;
   lastAccessedAt: number;
+  /** The channel ID where the admin panel was last rendered. Used by listeners for push updates. */
+  channelId?: string;
+  /** The message ID of the last panel embed. Used by listeners for push updates. */
+  messageId?: string;
 }
 
 /**
@@ -29,4 +41,8 @@ export interface PanelSessionData {
   userId: string;
   createdAt: number;
   lastAccessedAt: number;
+  /** The channel ID where the user panel was last rendered. Used by listeners for push updates. */
+  channelId?: string;
+  /** The message ID of the last panel embed. Used by listeners for push updates. */
+  messageId?: string;
 }

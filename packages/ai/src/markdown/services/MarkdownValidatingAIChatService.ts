@@ -151,11 +151,38 @@ export class MarkdownValidatingAIChatService implements AIChatService {
   }
 
   /**
-   * Creates a validating handler that processes CONTENT chunks through the pipeline.
+   * Creates a validating handler that accumulates CONTENT chunks and applies
+   * the markdown pipeline to the full content on completion (P1-13).
+   * This prevents validation errors from processing incomplete markdown chunks.
    */
   private createValidatingHandler(
     handler: StreamingResponseHandler,
   ): StreamingResponseHandler {
+    // Buffer for accumulating CONTENT chunks
+    let contentBuffer: string[] = [];
+
+    /**
+     * Flushes accumulated content through the validation pipeline.
+     */
+    const flushContent = (isComplete: boolean, error: DomainError | null): void => {
+      if (contentBuffer.length === 0) return;
+
+      const fullContent = contentBuffer.join('');
+      contentBuffer = [];
+
+      if (!fullContent) return;
+
+      if (this.config.streamingBypassValidation) {
+        handler.onChunk(fullContent, isComplete, null);
+        return;
+      }
+
+      const validated = this.applyPipeline(fullContent);
+      for (const page of validated) {
+        handler.onChunk(page, isComplete, null);
+      }
+    };
+
     return {
       onChunk: (chunk: string, isComplete: boolean, error: DomainError | null) => {
         if (error) {
@@ -163,14 +190,12 @@ export class MarkdownValidatingAIChatService implements AIChatService {
           return;
         }
 
-        if (this.config.streamingBypassValidation) {
-          handler.onChunk(chunk, isComplete, null);
-          return;
+        if (chunk) {
+          contentBuffer.push(chunk);
         }
 
-        const validated = this.applyPipeline(chunk);
-        for (const page of validated) {
-          handler.onChunk(page, isComplete, null);
+        if (isComplete) {
+          flushContent(true, null);
         }
       },
       onChunkWithType: (
@@ -185,17 +210,31 @@ export class MarkdownValidatingAIChatService implements AIChatService {
         }
 
         // REASONING and TOOL_INTENT pass through unmodified
-        if (
-          type !== StreamChunkType.CONTENT ||
-          this.config.streamingBypassValidation
-        ) {
+        if (type !== StreamChunkType.CONTENT) {
           handler.onChunkWithType(chunk, isComplete, null, type);
           return;
         }
 
-        const validated = this.applyPipeline(chunk);
-        for (const page of validated) {
-          handler.onChunkWithType(page, isComplete, null, StreamChunkType.CONTENT);
+        if (this.config.streamingBypassValidation) {
+          handler.onChunkWithType(chunk, isComplete, null, StreamChunkType.CONTENT);
+          return;
+        }
+
+        // Accumulate CONTENT chunks; validate full content on completion
+        if (chunk) {
+          contentBuffer.push(chunk);
+        }
+
+        if (isComplete) {
+          const fullContent = contentBuffer.join('');
+          contentBuffer = [];
+
+          if (fullContent) {
+            const validated = this.applyPipeline(fullContent);
+            for (const page of validated) {
+              handler.onChunkWithType(page, true, null, StreamChunkType.CONTENT);
+            }
+          }
         }
       },
     };

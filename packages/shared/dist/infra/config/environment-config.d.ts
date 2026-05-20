@@ -1,3 +1,4 @@
+import { type Logger } from 'pino';
 import { type ConfigValues } from './schema.js';
 /**
  * Loads configuration from environment variables with fallback to .env file and Zod defaults.
@@ -10,8 +11,9 @@ import { type ConfigValues } from './schema.js';
 export declare class EnvironmentConfig {
     private readonly dotEnvDirectory?;
     private readonly envSource;
+    private readonly logger;
     private config;
-    constructor(dotEnvDirectory?: string | undefined, envSource?: Record<string, string | undefined>);
+    constructor(dotEnvDirectory?: string | undefined, envSource?: Record<string, string | undefined>, logger?: Logger);
     /**
      * Parses and validates configuration from all sources.
      * @returns the validated config values

@@ -54,6 +54,12 @@ export class DiscordJsInteraction {
     getHook() {
         return this.interaction;
     }
+    getCustomId() {
+        if ('customId' in this.interaction) {
+            return this.interaction.customId;
+        }
+        return '';
+    }
     isAcknowledged() {
         return this.acknowledged;
     }

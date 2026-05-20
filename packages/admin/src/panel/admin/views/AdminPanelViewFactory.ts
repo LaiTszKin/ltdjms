@@ -1,4 +1,5 @@
 import { ZhTwStrings } from '../../../i18n/zh-TW.js';
+import { Colors } from '../../../constants/colors.js';
 import type { GuildCurrencyConfig, DiceGame1Config, DiceGame2Config, BalanceView } from '@ltdjms/economy';
 import type { Product } from '@ltdjms/shop';
 import type { AllowedChannel, AllowedCategory } from '@ltdjms/ai';
@@ -44,7 +45,7 @@ export class AdminPanelViewFactory {
         { name: '活躍護航訂單', value: `${dispatchCount}`, inline: true },
       ],
       footer: ZhTwStrings.adminPanelFooter,
-      color: 0x5865F2,
+      color: Colors.PRIMARY,
       buttons: [
         { id: 'admin_balance', label: ZhTwStrings.adminPanelBtnBalance, style: 1, disabled: false },
         { id: 'admin_token', label: ZhTwStrings.adminPanelBtnToken, style: 1, disabled: false },
@@ -75,7 +76,7 @@ export class AdminPanelViewFactory {
         .replace('{balance}', String(balanceInfo.balance))
         .replace('{currencyIcon}', balanceInfo.currencyIcon),
       fields: [],
-      color: 0x57F287,
+      color: Colors.SUCCESS,
       buttons: [
         { id: 'admin_balance_add', label: ZhTwStrings.balanceAdjustAdd, style: 3, disabled: false },
         { id: 'admin_balance_deduct', label: ZhTwStrings.balanceAdjustDeduct, style: 4, disabled: false },
@@ -98,7 +99,7 @@ export class AdminPanelViewFactory {
       title: ZhTwStrings.tokenTitle,
       description: ZhTwStrings.tokenDisplay.replace('{tokens}', String(tokenInfo.tokens)),
       fields: [],
-      color: 0x5865F2,
+      color: Colors.PRIMARY,
       buttons: [
         // NOTE(P2-50): These button labels reuse currency management strings
         // (balanceAdjustAdd/Deduct/Set) because dedicated token-specific labels
@@ -131,7 +132,7 @@ export class AdminPanelViewFactory {
         .replace('{max}', String(config.maxTokensPerPlay))
         .replace('{reward}', String(config.rewardPerDiceValue)),
       fields: [],
-      color: 0xFEE75C,
+      color: Colors.WARNING,
       buttons: [
         { id: 'admin_game_edit_1', label: ZhTwStrings.gameEditBtn, style: 1, disabled: false },
       ],
@@ -160,7 +161,7 @@ export class AdminPanelViewFactory {
         .replace('{lowTriple}', String(config.tripleLowBonus))
         .replace('{highTriple}', String(config.tripleHighBonus)),
       fields: [],
-      color: 0xFEE75C,
+      color: Colors.WARNING,
       buttons: [
         { id: 'admin_game_edit_2', label: ZhTwStrings.gameEditBtn, style: 1, disabled: false },
       ],
@@ -185,7 +186,7 @@ export class AdminPanelViewFactory {
       ? []
       : products.map((p) => ({
           name: p.name,
-          value: `價格：${p.currencyPrice ?? 'N/A'} | 庫存：${p.description ?? '無描述'}`,
+          value: `價格：${p.currencyPrice ?? 'N/A'} | 描述：${p.description ?? '無描述'}`,
           inline: false,
         }));
 
@@ -198,7 +199,7 @@ export class AdminPanelViewFactory {
             .replace('{total}', String(totalPages))
             .replace('{count}', String(products.length)),
       fields,
-      color: 0x5865F2,
+      color: Colors.PRIMARY,
       buttons: [
         { id: 'admin_product_prev', label: ZhTwStrings.historyPrevBtn, style: 2, disabled: page <= 1 },
         { id: 'admin_product_next', label: ZhTwStrings.historyNextBtn, style: 2, disabled: page >= totalPages },
@@ -236,7 +237,7 @@ export class AdminPanelViewFactory {
             .replace('{channels}', channelList)
             .replace('{categories}', categoryList),
       fields: [],
-      color: 0x5865F2,
+      color: Colors.PRIMARY,
       buttons: [
         { id: 'admin_aichannel_add_channel', label: ZhTwStrings.aiChannelAddBtn, style: 3, disabled: false },
         { id: 'admin_aichannel_remove_channel', label: ZhTwStrings.aiChannelRemoveBtn, style: 4, disabled: false },
@@ -266,7 +267,7 @@ export class AdminPanelViewFactory {
       title: ZhTwStrings.aiAgentTitle,
       description: list,
       fields: [],
-      color: 0x5865F2,
+      color: Colors.PRIMARY,
       buttons: [
         { id: 'admin_aiagent_enable', label: ZhTwStrings.aiAgentEnableBtn, style: 3, disabled: false },
         { id: 'admin_aiagent_disable', label: ZhTwStrings.aiAgentDisableBtn, style: 4, disabled: false },
@@ -295,7 +296,7 @@ export class AdminPanelViewFactory {
       title: ZhTwStrings.dispatchTitle,
       description: list,
       fields: [],
-      color: 0x5865F2,
+      color: Colors.PRIMARY,
       buttons: [
         { id: 'admin_dispatch_add', label: ZhTwStrings.dispatchAddBtn, style: 3, disabled: false },
         { id: 'admin_dispatch_remove', label: ZhTwStrings.dispatchRemoveBtn, style: 4, disabled: false },
@@ -332,7 +333,7 @@ export class AdminPanelViewFactory {
       title: ZhTwStrings.escortPricingTitle,
       description: items.join('\n\n'),
       fields: [],
-      color: 0xFEE75C,
+      color: Colors.WARNING,
       buttons: [],
     };
   }
@@ -362,7 +363,7 @@ export class AdminPanelViewFactory {
         title: ZhTwStrings.escortCatalogTitle,
         description: ZhTwStrings.escortCatalogEmpty,
         fields: [],
-        color: 0x5865F2,
+        color: Colors.PRIMARY,
         buttons: [
           { id: 'admin_escortcatalog_create', label: ZhTwStrings.escortCatalogCreateBtn, style: 3, disabled: false },
         ],
@@ -381,7 +382,7 @@ export class AdminPanelViewFactory {
       title: ZhTwStrings.escortCatalogTitle,
       description: items.join('\n\n'),
       fields: [],
-      color: 0x5865F2,
+      color: Colors.PRIMARY,
       buttons: [
         { id: 'admin_escortcatalog_create', label: ZhTwStrings.escortCatalogCreateBtn, style: 3, disabled: false },
       ],

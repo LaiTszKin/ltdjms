@@ -7,15 +7,17 @@ export class MockDiscordInteraction {
     _guildId;
     _userId;
     _ephemeral;
+    _customId;
     _acknowledged = false;
     _replyMessages = [];
     _replyEmbeds = [];
     _editedEmbeds = [];
     _deferReplyCount = 0;
-    constructor(guildId, userId, _channelId, ephemeral = false) {
+    constructor(guildId, userId, _channelId, ephemeral = false, customId = '') {
         this._guildId = guildId;
         this._userId = userId;
         this._ephemeral = ephemeral;
+        this._customId = customId;
     }
     getGuildId() {
         return this._guildId;
@@ -43,6 +45,9 @@ export class MockDiscordInteraction {
     }
     getHook() {
         return null;
+    }
+    getCustomId() {
+        return this._customId;
     }
     isAcknowledged() {
         return this._acknowledged;

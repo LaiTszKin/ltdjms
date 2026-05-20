@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { javaUrlEncode } from './url-encoder.js';
 
 /**
  * Builds the ECPay CheckMacValue (SHA-256) for a set of parameters.
@@ -6,7 +7,7 @@ import crypto from 'node:crypto';
  * Steps:
  * 1. Sort parameters alphabetically by key, exclude empty/null values
  * 2. Build string: HashKey={key}&{sortedParams}&HashIV={iv}
- * 3. URL-encode the whole string, lowercase
+ * 3. Java URL-encode the whole string, lowercase
  * 4. Apply ECPay-specific substitutions
  * 5. SHA-256 hash, uppercase hex
  *
@@ -29,8 +30,8 @@ export function buildCheckMacValue(
   }
   checkStr += `&HashIV=${hashIv}`;
 
-  // 3. URL encode and lowercase (Java style)
-  let encoded = encodeURIComponent(checkStr).toLowerCase();
+  // 3. Java URL encode and lowercase (matches Java URLEncoder.encode)
+  let encoded = javaUrlEncode(checkStr).toLowerCase();
 
   // 4. ECPay-specific URL encoding substitutions
   const substitutions: [RegExp, string][] = [

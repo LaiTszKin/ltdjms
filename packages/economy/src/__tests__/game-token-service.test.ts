@@ -32,6 +32,7 @@ describe('GameTokenService', () => {
         get: vi.fn().mockResolvedValue(100),
         put: vi.fn(),
         invalidate: vi.fn(),
+        exists: vi.fn(),
       };
 
       const mockAccountRepo = {
@@ -58,6 +59,7 @@ describe('GameTokenService', () => {
         get: vi.fn().mockResolvedValue(null),
         put: vi.fn(),
         invalidate: vi.fn(),
+        exists: vi.fn(),
       };
 
       const mockAccountRepo = {
@@ -93,6 +95,7 @@ describe('GameTokenService', () => {
         get: vi.fn().mockResolvedValue(null),
         put: vi.fn(),
         invalidate: vi.fn(),
+        exists: vi.fn(),
       };
 
       const mockAccountRepo = {
@@ -125,6 +128,7 @@ describe('GameTokenService', () => {
         get: vi.fn(),
         put: vi.fn(),
         invalidate: vi.fn(),
+        exists: vi.fn(),
       };
 
       const eventPublisher = createMockEventPublisher();
@@ -214,6 +218,7 @@ describe('GameTokenService', () => {
         get: vi.fn().mockResolvedValue(100),
         put: vi.fn(),
         invalidate: vi.fn(),
+        exists: vi.fn(),
       };
 
       const service = new GameTokenService(
@@ -232,6 +237,7 @@ describe('GameTokenService', () => {
         get: vi.fn().mockResolvedValue(10),
         put: vi.fn(),
         invalidate: vi.fn(),
+        exists: vi.fn(),
       };
 
       const service = new GameTokenService(

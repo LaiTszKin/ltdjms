@@ -15,6 +15,7 @@ describe('BalanceService', () => {
       get: vi.fn().mockResolvedValue(500),
       put: vi.fn(),
       invalidate: vi.fn(),
+      exists: vi.fn(),
     };
 
     const mockAccountRepo = {
@@ -50,6 +51,7 @@ describe('BalanceService', () => {
       get: vi.fn().mockResolvedValue(null), // Cache miss
       put: vi.fn(),
       invalidate: vi.fn(),
+      exists: vi.fn(),
     };
 
     const mockAccountRepo = {
@@ -91,6 +93,7 @@ describe('BalanceService', () => {
       get: vi.fn().mockResolvedValue(null),
       put: vi.fn(),
       invalidate: vi.fn(),
+      exists: vi.fn(),
     };
 
     const mockAccountRepo = {
@@ -125,6 +128,7 @@ describe('BalanceService', () => {
       get: vi.fn().mockResolvedValue(null),
       put: vi.fn(),
       invalidate: vi.fn(),
+      exists: vi.fn(),
     };
 
     const mockAccountRepo = {

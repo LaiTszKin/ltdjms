@@ -2,6 +2,7 @@ import type { Client, Guild, TextChannel, ThreadChannel } from 'discord.js';
 import { ConversationIdBuilder } from './tool-call-history.js';
 import { InMemoryToolCallHistory } from './tool-call-history.js';
 import { ConversationIdStrategy } from '../ai-chat-service.js';
+import { TokenEstimator } from './TokenEstimator.js';
 import type { DiscordRuntimeGateway } from '@ltdjms/shared';
 
 /**
@@ -69,6 +70,7 @@ export class SimplifiedChatMemoryProvider {
     private readonly threadHistoryProvider: DiscordThreadHistoryProvider,
     private readonly toolCallHistory: InMemoryToolCallHistory,
     private readonly runtimeGateway: DiscordRuntimeGateway,
+    private readonly tokenEstimator: TokenEstimator,
     maxMessages: number = 100,
   ) {
     this.maxMessages = maxMessages;

@@ -1,31 +1,47 @@
-.PHONY: build test clean docker-build docker-up docker-down docker-logs db-up db-down docker-dev format format-check setup-env update-env db-create db-create-test
+.PHONY: build test clean docker-build docker-up docker-down docker-logs db-up db-down docker-dev format format-check lint setup-env update-env db-create db-create-test mvn-build mvn-test mvn-format mvn-format-check mvn-lint mvn-clean mvn-coverage mvn-verify mvn-coverage-check mvn-test-integration
 
-# Maven commands
+# TypeScript commands (default)
 build:
-	mvn clean package -DskipTests
-
-format:
-	mvn spotless:apply
-
-format-check:
-	mvn spotless:check
+	pnpm -r exec tsc
 
 test:
+	pnpm vitest run
+
+format:
+	pnpm prettier --write "packages/*/src/**/*.ts"
+
+format-check:
+	pnpm prettier --check "packages/*/src/**/*.ts"
+
+lint:
+	pnpm eslint --ignore-pattern 'dist/' 'packages/*/src/'
+
+# Maven commands
+mvn-build:
+	mvn clean package -DskipTests
+
+mvn-format:
+	mvn spotless:apply
+
+mvn-format-check:
+	mvn spotless:check
+
+mvn-test:
 	mvn test
 
-test-integration:
+mvn-test-integration:
 	mvn verify
 
-verify:
+mvn-verify:
 	mvn clean verify
 
-coverage-check:
+mvn-coverage-check:
 	mvn clean verify -DskipTests=false
 
-clean:
+mvn-clean:
 	mvn clean
 
-coverage:
+mvn-coverage:
 	mvn clean test jacoco:report
 	open target/site/jacoco/index.html
 

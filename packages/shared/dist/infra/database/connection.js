@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { SchemaMigrationException } from './schema-migration-exception.js';
+import { DatabaseConnectionException } from './database-connection-exception.js';
 /**
  * Creates a PostgreSQL connection pool with retry logic.
  * Retries up to 3 times on connection failure with 2s delay.
@@ -28,6 +28,6 @@ export async function createDatabasePool(config) {
     }
     // Close pool on failure
     await pool.end().catch(() => { });
-    throw new SchemaMigrationException(`Failed to connect to database after 3 attempts: ${lastError?.message}`, lastError);
+    throw new DatabaseConnectionException(`Failed to connect to database after 3 attempts: ${lastError?.message}`, lastError);
 }
 //# sourceMappingURL=connection.js.map

@@ -13,6 +13,10 @@ import {
   RedemptionService,
   type RedemptionResult,
 } from '@ltdjms/shop';
+/** Minimal pool interface matching pg.Pool.query. */
+interface DbPool {
+  query: (text: string, params?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>;
+}
 
 /**
  * Summary view combining balance and token info for the user panel.
@@ -59,6 +63,7 @@ export class MemberInfoFacade {
     private readonly currencyTxService: CurrencyTransactionService,
     private readonly tokenTxService: GameTokenTransactionService,
     private readonly redemptionService: RedemptionService,
+    private readonly dbPool?: DbPool,
   ) {}
 
   /**
@@ -182,31 +187,33 @@ export class MemberInfoFacade {
       if (page < 1) page = 1;
       if (pageSize < 1) pageSize = 10;
 
-      // Lazy-resolve the DB pool from the DI container. This avoids coupling
-      // this facade to a specific ORM at import time. The pool is expected
-      // to be registered at TOKENS.DatabasePool by the shared module.
-      const { container, TOKENS } = await import('@ltdjms/shared');
+      // Use injected pool or lazy-resolve as fallback.
+      let db: DbPool;
+      if (this.dbPool) {
+        db = this.dbPool;
+      } else {
+        // Lazy-resolve the DB pool from the DI container as fallback.
+        const { container, TOKENS } = await import('@ltdjms/shared');
+        db = container.resolve(TOKENS.DatabasePool);
+      }
 
-      const db: {
-        execute: (query: string, params?: unknown[]) => Promise<Array<Record<string, unknown>>>;
-      } = container.resolve(TOKENS.DatabasePool);
-
-      // Query total count — use parameterized query to prevent SQL injection.
-      const countSql = 'SELECT COUNT(*) as cnt FROM product_redemption_transaction WHERE guild_id = ? AND user_id = ?';
-      const countResult = await db.execute(countSql, [guildId, userId]);
-      const totalCount = Number((countResult[0] as Record<string, unknown>)?.cnt ?? 0);
-      const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-      const offset = (page - 1) * pageSize;
-
-      // Query page data — parameterized query.
-      const dataSql = 'SELECT * FROM product_redemption_transaction WHERE guild_id = ? AND user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?';
-      const rows = await db.execute(dataSql, [guildId, userId, pageSize, offset]);
-
-      // TODO(P1-38): Migrate these raw queries to a proper service/repository
+      // TODO(P1-14): Migrate these raw queries to a proper service/repository
       // layer (e.g., RedemptionTransactionRepository) to avoid direct SQL in
       // facades. Parameterized queries mitigate injection risk, but the ideal
       // fix is a dedicated service method on RedemptionService or a new
       // repository class that encapsulates this query logic.
+
+      // Query total count — use parameterized query to prevent SQL injection.
+      const countSql = 'SELECT COUNT(*) as cnt FROM product_redemption_transaction WHERE guild_id = $1 AND user_id = $2';
+      const countResult = await db.query(countSql, [Number(guildId), Number(userId)]);
+      const totalCount = Number((countResult.rows[0] as Record<string, unknown>)?.cnt ?? 0);
+      const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+      const offset = (page - 1) * pageSize;
+
+      // Query page data — parameterized query.
+      const dataSql = 'SELECT * FROM product_redemption_transaction WHERE guild_id = $1 AND user_id = $2 ORDER BY created_at DESC LIMIT $3 OFFSET $4';
+      const dataResult = await db.query(dataSql, [Number(guildId), Number(userId), pageSize, offset]);
+      const rows = dataResult.rows;
 
       const items: RedemptionTransactionEntry[] = rows.map(
         (row: Record<string, unknown>) => ({

@@ -36,23 +36,15 @@ export interface EscortDispatchHandoffService {
   ): Promise<{ isOk: () => boolean; getError: () => { message: string }; getValue: () => DispatchOrderSnapshot }>;
 }
 
-/**
- * Service interface for notifying buyers of escort order creation.
- * The parameter is `any` because the notification services accept domain objects
- * whose declared types use incompatible parameter counts across packages.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type EscortOrderBuyerNotifier = {
-  notifyEscortOrderCreated(dispatchOrder: any): void;
+  notifyEscortOrderCreated(dispatchOrder: DispatchOrderSnapshot): void;
 };
 
 /**
  * Service interface for notifying admins of new orders.
- * See EscortOrderBuyerNotifier for why dispatchOrder is `any`.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type AdminOrderNotifier = {
-  notifyAdminsOrderCreated(guildId: number, buyerUserId: number, dispatchOrder: any): void;
+  notifyAdminsOrderCreated(guildId: number, buyerUserId: number, dispatchOrder: DispatchOrderSnapshot): void;
 };
 
 /** Reward grant request shape. */
@@ -167,12 +159,8 @@ export class FiatOrderPostPaymentWorker {
         );
       }
 
-      // Step 4: Mark fulfilled
-      const marked = await this.fiatOrderRepository.markFulfilledIfNeeded(order.orderNumber, new Date());
-      if (!marked) {
-        await this.fiatOrderRepository.releaseFulfillmentProcessing(order.orderNumber);
-        return;
-      }
+      // Step 4: Mark fulfilled (Java: no release on null return)
+      await this.fiatOrderRepository.markFulfilledIfNeeded(order.orderNumber, new Date());
     } catch (e) {
       await this.fiatOrderRepository.releaseFulfillmentProcessing(order.orderNumber);
       this.log.warn({ orderNumber: order.orderNumber, error: e }, 'Failed to process paid fiat order');

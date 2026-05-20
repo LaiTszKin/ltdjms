@@ -17,10 +17,10 @@ import {
 } from '../../domain/types.js';
 
 /**
- * Pattern to detect Discord custom emoji format.
- * Matches `<:name:id>` or `<a:name:id>`.
+ * Canonical pattern to detect Discord custom emoji format.
+ * Matches `<:name:id>` or `<a:name:id>` where id is numeric.
  */
-const CUSTOM_EMOJI_PATTERN = /^<a?:[^:]+:[^>]+>$/;
+const CUSTOM_EMOJI_PATTERN = /^<a?:[^:]+:\d+>$/;
 
 /**
  * Service for managing guild currency configuration.
@@ -90,7 +90,8 @@ export class CurrencyConfigService {
 
     // Publish event
     const event: CurrencyConfigChangedEvent = {
-      guildId,
+      guildId: String(guildId),
+      eventType: 'currency_config_changed',
       currencyName: saved.currencyName,
       currencyIcon: saved.currencyIcon,
     };
@@ -195,5 +196,5 @@ function tryValidateIcon(icon: string): Result<import('@ltdjms/shared').Unit, Do
 }
 
 function looksLikeCustomEmoji(icon: string): boolean {
-  return /^<a?:.+:.+>$/.test(icon);
+  return CUSTOM_EMOJI_PATTERN.test(icon);
 }

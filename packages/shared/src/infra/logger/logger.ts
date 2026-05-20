@@ -4,13 +4,8 @@ import pino from 'pino';
  * Creates the root pino logger instance.
  * @param level - minimum log level (default 'info')
  *
- * NOTE: In dev environments, pino's default JSON output is hard to read by humans.
- * The Java equivalent uses Logback's human-readable pattern layout.
- * To improve dev ergonomics, add pino-pretty as a devDependency and use it here:
- *
- *   transport: { target: 'pino-pretty', options: { colorize: true } }
- *
- * Currently uses pino/file to avoid adding a dependency that may not be available.
+ * Uses pino/file in non-production for readability.
+ * TODO: replace with pino-pretty transport for improved dev ergonomics.
  */
 export function createRootLogger(level: string = process.env.NODE_ENV === 'production' ? 'info' : 'debug'): pino.Logger {
   return pino({

@@ -12,4 +12,7 @@ export interface CacheService {
 
   /** Invalidates (removes) a cached value by key. */
   invalidate(key: string): Promise<void>;
+
+  /** Checks if a key exists in the cache. */
+  exists(key: string): Promise<boolean>;
 }

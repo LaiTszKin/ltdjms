@@ -1,10 +1,14 @@
 import { buildCheckMacValue } from '../crypto/ecpay-checkmac.js';
+import { javaUrlEncode } from '../crypto/url-encoder.js';
 import type { EnvironmentConfig } from '@ltdjms/shared';
 import { Result, ok, err, DomainError } from '@ltdjms/shared';
+import https from 'node:https';
 import pino from 'pino';
 
 const STAGE_ENDPOINT = 'https://payment-stage.ecpay.com.tw/Cashier/QueryTradeInfo/V5';
 const PROD_ENDPOINT = 'https://payment.ecpay.com.tw/Cashier/QueryTradeInfo/V5';
+
+const keepAliveAgent = new https.Agent({ keepAlive: true });
 
 export interface QueryTradeResult {
   orderNumber: string;
@@ -60,7 +64,8 @@ export class EcpayTradeQueryService {
         },
         body: formBody,
         signal: AbortSignal.timeout(15000),
-      });
+        agent: keepAliveAgent,
+      } as any);
 
       if (!response.ok) {
         return err(
@@ -101,7 +106,7 @@ export class EcpayTradeQueryService {
   private buildFormBody(params: Record<string, string>): string {
     const parts: string[] = [];
     for (const [key, value] of Object.entries(params)) {
-      parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
+      parts.push(`${javaUrlEncode(key)}=${javaUrlEncode(value)}`);
     }
     return parts.join('&');
   }

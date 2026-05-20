@@ -73,7 +73,7 @@ describe('GameConfigManagementFacade', () => {
       expect(result.isOk()).toBe(true);
       expect(eventPublisher.publish).toHaveBeenCalledWith(
         expect.objectContaining({
-          guildId: Number(guildId),
+          guildId: guildId,
           gameType: GameType.DICE_GAME_1,
         }),
       );

@@ -8,6 +8,8 @@ import { type EmbedView } from '../domain/embed-view.js';
 export interface EmbedLimits {
   readonly MAX_TITLE_LENGTH: number;
   readonly MAX_DESCRIPTION_LENGTH: number;
+  readonly MAX_FIELD_NAME_LENGTH: number;
+  readonly MAX_FIELD_VALUE_LENGTH: number;
   readonly MAX_FIELDS: number;
   readonly MAX_FOOTER_LENGTH: number;
   readonly ELLIPSIS: string;
@@ -107,8 +109,8 @@ export function paginateEmbedView(
       if (footer) builder.setFooter({ text: footer });
     }
     builder.addFields({
-      name: field.name,
-      value: field.value,
+      name: truncate(field.name, limits.MAX_FIELD_NAME_LENGTH),
+      value: truncate(field.value, limits.MAX_FIELD_VALUE_LENGTH),
       inline: field.inline,
     });
     totalAdded++;

@@ -3,10 +3,11 @@ import {
   type DiscordContext,
 } from '@ltdjms/shared';
 import { EmbedBuilder } from 'discord.js';
-import { type InteractionHandler } from '../../../commands/infra/CommandHandler.js';
 import { AdminPanelSessionManager } from '../../../session/AdminPanelSessionManager.js';
 import { AdminPanelViewState } from '../../../session/types.js';
+import { BotErrorHandler } from '../../../commands/infra/BotErrorHandler.js';
 import { ZhTwStrings } from '../../../i18n/zh-TW.js';
+import { BaseAdminHandler } from '../BaseAdminHandler.js';
 import { type ShopService } from '@ltdjms/shop';
 
 /**
@@ -14,13 +15,16 @@ import { type ShopService } from '@ltdjms/shop';
  * Manages the full product CRUD lifecycle with session state tracking.
  * Matches Java AdminProductPanelHandler.
  */
-export class AdminProductPanelHandler implements InteractionHandler {
+export class AdminProductPanelHandler extends BaseAdminHandler {
   readonly customIdPrefix = 'admin_product';
 
   constructor(
-    private readonly sessionManager: AdminPanelSessionManager,
+    sessionManager: AdminPanelSessionManager,
     private readonly shopService: ShopService,
-  ) {}
+    errorHandler: BotErrorHandler,
+  ) {
+    super(sessionManager, errorHandler);
+  }
 
   async execute(
     interaction: DiscordInteraction,
@@ -29,17 +33,49 @@ export class AdminProductPanelHandler implements InteractionHandler {
     const guildId = interaction.getGuildId();
     const userId = interaction.getUserId();
 
-    const session = this.sessionManager.getSession(guildId, userId);
+    // Permission check
+    if (!this.checkAdminPermission(interaction)) {
+      await interaction.reply(ZhTwStrings.permissionAdminRequired);
+      return;
+    }
+
+    const session = this.getSession(interaction);
     if (!session) {
       await interaction.reply(ZhTwStrings.sessionExpired);
       return;
     }
 
-    await interaction.deferReply();
+    await this.ensureDeferred(interaction);
 
     this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.PRODUCT_LIST);
 
-    // Try to get product list
+    const fullCustomId = interaction.getCustomId();
+
+    // Branch on sub-action
+    if (fullCustomId === 'admin_product_create') {
+      // TODO: show create modal
+      await this.showProductList(interaction, guildId);
+      return;
+    }
+    if (fullCustomId === 'admin_product_prev' || fullCustomId === 'admin_product_next') {
+      // TODO: implement pagination
+      await this.showProductList(interaction, guildId);
+      return;
+    }
+    if (fullCustomId === 'admin_product_back') {
+      // Back to main state
+      this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.MAIN);
+      return;
+    }
+
+    // Default: show product list
+    await this.showProductList(interaction, guildId);
+  }
+
+  private async showProductList(
+    interaction: DiscordInteraction,
+    guildId: string,
+  ): Promise<void> {
     try {
       const shopPage = await this.shopService.getShopPage(Number(guildId), 1);
 
@@ -62,7 +98,7 @@ export class AdminProductPanelHandler implements InteractionHandler {
         for (const product of shopPage.products) {
           embed.addFields({
             name: product.name,
-            value: `價格：${product.currencyPrice ?? 'N/A'} | 庫存：${product.description ?? '無描述'}`,
+            value: `價格：${product.currencyPrice ?? 'N/A'} | 描述：${product.description ?? '無描述'}`,
             inline: false,
           });
         }

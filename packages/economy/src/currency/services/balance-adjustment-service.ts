@@ -42,7 +42,7 @@ export class BalanceAdjustmentService {
     source: CurrencyTransactionSource = CurrencyTransactionSource.ADMIN_ADJUSTMENT,
     description: string | null = null,
   ): Promise<Result<BalanceAdjustmentResult, DomainError>> {
-    if (amount === 0 || !Number.isFinite(amount)) {
+    if (!Number.isFinite(amount)) {
       return new Err(
         DomainError.invalidInput(`Invalid adjustment amount: ${amount}`),
       );
@@ -89,8 +89,9 @@ export class BalanceAdjustmentService {
 
       // Publish event
       this.eventPublisher.publish({
-        guildId,
+        guildId: String(guildId),
         userId,
+        eventType: 'balance_changed',
         newBalance: updated.balance,
       } as BalanceChangedEvent);
 
@@ -173,8 +174,9 @@ export class BalanceAdjustmentService {
 
       // Publish event
       this.eventPublisher.publish({
-        guildId,
+        guildId: String(guildId),
         userId,
+        eventType: 'balance_changed',
         newBalance: updated.balance,
       } as BalanceChangedEvent);
 

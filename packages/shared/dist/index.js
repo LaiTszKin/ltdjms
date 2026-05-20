@@ -5,7 +5,7 @@ export { loadDotEnv, parseDotEnv, ConfigSchema, EnvironmentConfig, } from './inf
 // Logger
 export { createRootLogger, createChildLogger } from './infra/logger/index.js';
 // Database
-export { createDatabasePool, runMigrations, SchemaMigrationException, } from './infra/database/index.js';
+export { createDatabasePool, runMigrations, SchemaMigrationException, DatabaseConnectionException, } from './infra/database/index.js';
 // Cache
 export { RedisCacheService, NoOpCacheService, DefaultCacheKeyGenerator, } from './infra/cache/index.js';
 // Events

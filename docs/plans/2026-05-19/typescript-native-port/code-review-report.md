@@ -1,15 +1,15 @@
 # Code Review Report: TypeScript Native Port
 
 - **審查日期**: 2026-05-20
-- **Spec 基準**: `docs/plans/2026-05-19/typescript-native-port/` (6 modules, 6 個 spec)
-- **審查範圍**: `packages/shared/`, `packages/economy/`, `packages/shop/`, `packages/dispatch/`, `packages/ai/`, `packages/admin/`
+- **Spec 基準**: `docs/plans/2026-05-19/typescript-native-port/` (7 spec sets: preparation + 6 feature modules)
+- **審查範圍**: Root infrastructure + `packages/shared/`, `packages/economy/`, `packages/shop/`, `packages/dispatch/`, `packages/ai/`, `packages/admin/`
 - **審查方法**: 對每個模組的每個 TypeScript 原始碼檔案對照 spec requirements，從 6 個維度進行完整審查：
-  1. **幻覺代碼** — 實作了 spec/Java 原版中不存在的功能
-  2. **冗餘代碼** — 重複程式碼、死碼、未使用的 import
-  3. **Spec 偏移** — 實作行為與 spec 要求不一致
+  1. **幻覺代碼** — 實作了 spec/Java 原版中不存在的功能，或引用不存在的 API
+  2. **冗餘代碼** — 重複程式碼、死碼、未使用的 import / 常數
+  3. **Spec 偏移** — 實作行為與 spec 要求或 Java 原版不一致
   4. **Spec 遺漏** — spec 中定義的需求完全沒有對應實作
-  5. **架構瑕疵** — 錯誤的依賴方向、循環依賴、DI 設定錯誤
-  6. **性能隱患** — 缺少連線池、快取、阻塞操作
+  5. **架構瑕疵** — 錯誤的依賴方向、循環依賴、DI 設定錯誤、抽象層洩漏
+  6. **性能隱患** — 缺少連線池、快取未命中、記憶體洩漏、阻塞操作
 
 ---
 
@@ -17,525 +17,521 @@
 
 | 模組 | P0 | P1 | P2 | P3 | 合計 |
 |------|----|----|----|----|------|
-| shared-infrastructure | 3 | 6 | 7 | 5 | 21 |
-| guild-economy | 2 | 2 | 5 | 2 | 11 |
-| shop-payment | 4 | 5 | 11 | 6 | 26 |
-| escort-dispatch | 8 | 9 | 8 | 4 | 29 |
-| ai-chat-agent | 4 | 10 | 10 | 7 | 31 |
-| administration | 5 | 7 | 11 | 5 | 28 |
-| **合計** | **26** | **39** | **52** | **29** | **146** |
+| preparation（根基礎設施） | 2 | 2 | 4 | 1 | 9 |
+| shared-infrastructure | 0 | 4 | 5 | 2 | 11 |
+| guild-economy | 0 | 1 | 4 | 6 | 11 |
+| shop-payment | 4 | 4 | 6 | 4 | 18 |
+| escort-dispatch | 2 | 4 | 5 | 3 | 14 |
+| ai-chat-agent | 3 | 3 | 6 | 4 | 16 |
+| administration | 6 | 5 | 6 | 3 | 20 |
+| **合計** | **17** | **23** | **36** | **23** | **99** |
+
+---
+
+## 整體評估
+
+### 業務滿足度判定
+
+| 業務需求 | 狀態 | 說明 |
+|----------|------|------|
+| 貨幣/代幣/骰子遊戲功能與 Java 100% 一致 | **通過** | DiceGame1/2 核心演算法逐 byte 匹配，所有 Source enum 完整 |
+| 商店瀏覽、貨幣購買、兌換碼功能 | **部分通過** | 核心功能存在，ECPay 加密編碼與 Java 不一致（P0） |
+| ECPay 付款流程與 Java 一致 | **未通過** | `encodeURIComponent` vs `URLEncoder.encode` 產生不同 ciphertext |
+| 護航派單 7 狀態機完整 | **通過** | 所有合法轉換正確實作，所有非法轉換正確拒絕 |
+| AI 聊天路由與 Agent 工具 | **未通過** | Agent 工具執行循環完全缺失（P0） |
+| 管理面板互動功能 | **未通過** | 子互動分派缺失，9 個 handler 中 8 個無權限檢查 |
+| Discord 用戶可見輸出一致 | **部分通過** | 管理面板即時更新未實作，embed 欄位截斷在分頁路徑缺失 |
+
+### 關鍵阻斷點
+
+1. **shop-payment**: ECPay 加密使用 `encodeURIComponent` 而非 Java 的 `URLEncoder.encode`，對包含空白或特殊字元的交易參數會產出 ECPay 無法解密的 ciphertext
+2. **ai-chat-agent**: Agent 工具執行循環完全未實作 — 17 個工具雖已定義並 DI 註冊，但 streaming loop 中無 tool call handling
+3. **administration**: 管理面板的 9 個功能按鈕中，子互動（add/deduct/set modal、member select、product CRUD 等）完全無法觸發
+4. **preparation**: CI pipeline 完全沒有 TypeScript job，所有 TS 程式碼在 CI 上未經驗證
+5. **shop-payment**: 缺少跨語言 ECPay crypto 相容性測試 — 現有測試僅驗證 TS 內部 round-trip
 
 ---
 
 ## P0 — 阻斷性問題 (必須在整合前修正)
 
+### P0-1: CI workflow 完全缺少 TypeScript pipeline
+- **模組**: preparation
+- **維度**: spec 遺漏
+- **檔案**: `.github/workflows/ci.yml` (全檔 1-218 行)
+- **Spec 參考**: P2.4 — "pnpm install → lint → typecheck → test (matrix Node.js 20/22)"
+- **描述**: 現有 CI workflow 全部是 Java Maven pipeline（detect-changes, workflow-lint, pre-checks, unit-tests, integration-tests, ecpay-e2e-tests, performance-tests, property-based-tests）。完全沒有任何 TypeScript job：沒有 pnpm install、沒有 eslint、沒有 tsc --noEmit typecheck、沒有 Node 20/22 matrix 的 vitest run。整個 TypeScript monorepo 在 CI 上完全未被驗證。
+- **修正**: 新增獨立的 `typescript-ci` job，包含 matrix `node-version: [20, 22]`，步驟為 checkout → pnpm/action-setup → `pnpm install --frozen-lockfile` → `pnpm eslint` → `pnpm -r exec tsc --noEmit` → `pnpm vitest run`
+
+### P0-2: 根 vitest.config.ts 完全缺失
+- **模組**: preparation
+- **維度**: spec 遺漏
+- **檔案**: `/vitest.config.ts` (不存在)
+- **Spec 參考**: P2.2 — 根 vitest.config.ts 設定 Vitest workspace config，指向各 package
+- **描述**: 根目錄無 vitest workspace config，`pnpm vitest run` 無法發現各 package 的測試。
+- **修正**: 建立根 `vitest.config.ts`，使用 Vitest workspace 模式指向 `packages/*`
+
+### P0-3: ECPay AES 加密使用 `encodeURIComponent` 而非 `URLEncoder.encode`
+- **模組**: shop-payment
+- **維度**: spec 偏移
+- **檔案**: `packages/shop/src/crypto/ecpay-aes.ts:12,17`
+- **Spec 參考**: R5 (ECPay 付款); coordination.md — "ECPay 加密/解密/CheckMacValue 演算法輸出逐 byte 一致"
+- **描述**: TS 使用 `encodeURIComponent()` 對 plain JSON 做 URL 編碼後再 AES 加密，Java 使用 `URLEncoder.encode()`。兩者對多個字元類別產出不同結果：
+  | 字元 | Java `URLEncoder.encode` | TS `encodeURIComponent` |
+  |------|--------------------------|--------------------------|
+  | 空白 | `+` | `%20` |
+  | `*` | `%2A` | `*` (不變) |
+  | `!` | `%21` | `!` (不變) |
+  | `'` | `%27` | `'` (不變) |
+  | `(` `)` `~` | 編碼 | 不編碼 |
+  當 ItemName 或 TradeDesc 包含空白或特殊字元時，ECPay 將無法正確解密 ciphertext。
+- **修正**: 替換為 Java-compatible URL encoder（`application/x-www-form-urlencoded` 規範），或使用 `new URLSearchParams({ key: value }).toString().split('=')[1]` 技巧
+
+### P0-4: ECPay CheckMacValue 建構使用 `encodeURIComponent`
+- **模組**: shop-payment
+- **維度**: spec 偏移
+- **檔案**: `packages/shop/src/crypto/ecpay-checkmac.ts:33`
+- **Spec 參考**: R5, R8 (對帳)
+- **描述**: `buildCheckMacValue` 使用 `encodeURIComponent(checkStr).toLowerCase()`，Java 使用 `URLEncoder.encode(builder.toString()).toLowerCase()`。對純英數參數結果相同，但若參數值包含 URL 保留字元則 hash 不同。影響對帳查單的正確性。
+- **修正**: 同 P0-3，使用 Java-compatible URL encoder
+
+### P0-5: ECPay AES 解密 URL 解碼與 Java 不完全匹配
+- **模組**: shop-payment
+- **維度**: spec 偏移
+- **檔案**: `packages/shop/src/crypto/ecpay-aes.ts:42-43`
+- **Spec 參考**: R5
+- **描述**: 解密函數正確處理了 `+` → 空白轉換後再 `decodeURIComponent`，但若 ECPay 回應中包含 Java `URLEncoder` 會編碼但 `encodeURIComponent` 不編碼的字元，round-trip 會中斷。
+- **修正**: 實作完整的 Java-compatible URL decoder
+
+### P0-6: 缺少跨語言 ECPay Crypto 相容性測試
+- **模組**: shop-payment
+- **維度**: spec 遺漏
+- **檔案**: `packages/shop/src/__tests__/ecpay-crypto.test.ts`
+- **Spec 參考**: coordination.md — "ECPay 加密/解密/CheckMacValue 輸出逐 byte 一致"
+- **描述**: 現有測試僅驗證 TS 內部 encrypt→decrypt round-trip，沒有比對 TS 輸出與 Java golden value。P0-3~P0-5 的編碼差異從未被測試捕捉。
+- **修正**: 加入以 Java 產出的已知 plaintext/ciphertext pair 做 cross-check 的測試案例
+
+### P0-7: AI Agent 工具執行循環完全未實作
+- **模組**: ai-chat-agent
+- **維度**: spec 遺漏
+- **檔案**: `packages/ai/src/services/LangChainAIChatService.ts:174-203`
+- **Spec 參考**: R6 (17 個 Discord 管理工具), R7 (工具授權), R8 (工具呼叫歷史)
+- **描述**: `doStream()` 的 streaming loop 只處理 `chunk.content` 和 `reasoning_content`。當 AI model 呼叫 tool 時，LangChain.js 發出 `chunk.tool_call_chunks`，但 loop 中完全沒有 handler。這表示：模型決定呼叫工具 → LangChain.js 發出 tool call chunks → loop 忽略 → 工具從未被查詢、授權、執行 → 無 tool call history 記錄 → 模型停止生成。17 個已定義並 DI 註冊的工具從未被實際呼叫。
+- **修正**: 在 `doStream()` 中實作完整的 LangChain.js tool-calling agent loop：
+  1. 處理 `chunk.tool_call_chunks` 累積工具呼叫參數
+  2. 依名稱查詢 DI 註冊的工具實例
+  3. 執行 `ToolCallerAuthorizationGuard.validateAdministrator()` 授權檢查
+  4. 執行工具並取得結果
+  5. 呼叫 `ToolExecutionInterceptor` 生命週期方法
+  6. 呼叫 `InMemoryToolCallHistory.addToolCall()` 記錄
+  7. 以 ToolMessage 將結果送回模型繼續生成
+  8. 限制最大迭代次數（AGENT_MAX_ITERATIONS = 5）
+
+### P0-8: ToolExecutionInterceptor 定義但從未被 wired
+- **模組**: ai-chat-agent
+- **維度**: spec 遺漏
+- **檔案**: `packages/ai/src/services/ToolExecutionInterceptor.ts:14-15`
+- **Spec 參考**: R8 (工具執行審計)
+- **描述**: `ToolExecutionInterceptor` 類別完整實作了 `onToolExecutionStarted/Completed/Failed`，但類別本身有 TODO 註解 "Wire this interceptor into the agent flow"。它從未被 DI 註冊、從未被注入、從未被呼叫。`ai_tool_execution_log` 表格將永遠保持空白。
+- **修正**: 在 DI 模組中實例化 interceptor，傳入 agent execution loop，在每個工具執行前後呼叫其生命週期方法
+
+### P0-9: InMemoryToolCallHistory.addToolCall() 從未被呼叫
+- **模組**: ai-chat-agent
+- **維度**: spec 遺漏
+- **檔案**: `packages/ai/src/services/memory/tool-call-history.ts`
+- **Spec 參考**: R8 (工具呼叫歷史 — "track tool calls per conversation")
+- **描述**: `addToolCall()` 方法已定義並有單元測試，但在整個 production codebase 中 zero call sites。`SimplifiedChatMemoryProvider.getToolCallMessages()` 永遠回傳空陣列。
+- **修正**: 在 agent execution loop 中每個工具執行後呼叫 `history.addToolCall()`
+
+### P0-10: 管理面板子互動分派完全缺失
+- **模組**: administration
+- **維度**: spec 偏移 / spec 遺漏
+- **檔案**: `packages/admin/src/panel/admin/handlers/BalanceManagementHandler.ts:32-67` 及所有其他 handler
+- **Spec 參考**: R2-R8（各種管理面板互動功能）
+- **描述**: 管理面板 view factory 定義了子按鈕如 `admin_balance_add`、`admin_balance_deduct`、`admin_balance_set`。`SlashCommandListener` 使用最長前綴匹配，所以點擊這些子按鈕都路由到 `BalanceManagementHandler`（前綴 `admin_balance`）。但 handler 的 `execute()` 永遠只顯示餘額 view，不讀取 `customId` 後綴來決定動作。無 modal 彈出、無實際操作執行。同樣問題存在於 token、game、product、AI channel、AI agent、dispatch、escort 等 8 個 handler。
+- **修正**: 每個 handler 必須檢查完整的 `customId` 並分支：基礎前綴 → 顯示 view；子動作後綴 → 顯示 modal；modal 提交 → 執行操作並更新面板
+
+### P0-11: 管理面板無成員選擇步驟（顯示 admin 自己的餘額）
+- **模組**: administration
+- **維度**: spec 偏移
+- **檔案**: `packages/admin/src/panel/admin/handlers/BalanceManagementHandler.ts:48-67`, `TokenManagementHandler.ts:38-55`
+- **Spec 參考**: R2（選擇用戶 → 顯示餘額 → 調整）, R3（選擇用戶 → 調整代幣）
+- **描述**: Balance 和 Token handler 直接查詢互動者自己的餘額並顯示。Spec 要求先提示 admin 選擇一個成員，再顯示該成員的餘額/代幣，然後提供調整選項。流程中完全沒有成員選擇選單或輸入欄位。
+- **修正**: 初次點擊時顯示成員選擇選單，選擇後查詢該成員餘額，將會員 ID 儲存在 session context 中
+
+### P0-12: TransactionHistoryHandler 前綴錯誤 — 所有歷史按鈕都顯示貨幣歷史
+- **模組**: administration
+- **維度**: spec 偏移 / spec 遺漏
+- **檔案**: `packages/admin/src/panel/user/handlers/TransactionHistoryHandler.ts:16`
+- **Spec 參考**: R9（用戶面板 — 交易歷史分頁）
+- **描述**: 用戶面板定義了 3 個不同按鈕：`user_currency_history`、`user_token_history`、`user_redemption_history`。Handler 前綴 `user_history` 匹配全部三個。`execute()` 只呼叫 `getCurrencyTransactionPage()`。代幣歷史和兌換歷史按鈕完全無效 — 它們顯示的是貨幣交易記錄。
+- **修正**: 拆分為 3 個獨立 handler，或一個 handler 檢查完整 customId 決定查詢類型
+
+### P0-13: RedemptionCodeHandler 不開啟兌換碼輸入 modal
+- **模組**: administration
+- **維度**: spec 偏移
+- **檔案**: `packages/admin/src/panel/user/handlers/RedemptionCodeHandler.ts:23-71`
+- **Spec 參考**: R9（兌換碼輸入）
+- **描述**: 點擊「輸入兌換碼」(`user_redeem_code`) 路由到 `RedemptionCodeHandler`，但 handler 只顯示兌換歷史預覽。從不開啟 modal 讓用戶輸入兌換碼。i18n 字串 `redeemCodeModalTitle`、`redeemCodeLabel`、`redeemCodePlaceholder` 存在但從未被使用。
+- **修正**: 在 `user_redeem_code` 點擊時顯示含文字輸入的 modal，提交時呼叫 `memberInfoFacade.redeemCode()` 並顯示結果
+
+### P0-14: 事件監聽器從不推送即時更新到面板
+- **模組**: administration
+- **維度**: spec 遺漏
+- **檔案**: `packages/admin/src/panel/listeners/AdminPanelUpdateListener.ts:51-70`, `UserPanelUpdateListener.ts:63-105`
+- **Spec 參考**: R11（即時更新 via event listeners）
+- **描述**: 兩個 listener 都確認事件並檢查哪些 session 應更新，但只做 `console.log()`。註解寫著 "this requires the session model to store interaction hooks / channel IDs." 管理面板在資料變更後永不刷新，用戶必須手動重開面板。
+- **修正**: 擴展 session 資料儲存 interaction token 或 channel+message ID。在 listener 中查詢新資料後呼叫 `interaction.editReply()` 或 `channel.messages.edit()` 推送更新
+
+### P0-15: 9 個 admin panel handler 中 8 個缺少權限檢查
+- **模組**: administration
+- **維度**: spec 遺漏
+- **檔案**: 8 個 handler（TokenManagementHandler, GameSettingsHandler, AIChannelConfigHandler, AIAgentConfigHandler, DispatchAfterSalesHandler, EscortPricingHandler, EscortCatalogHandler, AdminProductPanelHandler）
+- **Spec 參考**: R1（`/admin-panel` 是 ADMINISTRATOR-only；所有子互動必須繼承此限制）
+- **描述**: 只有 `BalanceManagementHandler` 繼承 `BaseAdminHandler`（包含 `checkAdminPermission()`）。其他所有 admin panel handler 直接實作 `InteractionHandler`，無任何權限檢查。任何取得 button customId 的一般成員都能與 admin 子功能互動。
+- **修正**: 所有 admin panel handler 必須繼承 `BaseAdminHandler` 並在 `execute()` 開頭呼叫 `checkAdminPermission(interaction)`
+
+### P0-16: 護航 Dispatch panel 按鈕啟用邏輯錯誤
+- **模組**: escort-dispatch
+- **維度**: spec 偏移 / spec 遺漏
+- **檔案**: `packages/dispatch/src/panel/DispatchPanelInteractionHandler.ts:545-566`
+- **Spec 參考**: 售後生命週期（Claim After-Sales Case, Close After-Sales Case）
+- **描述**: `handleOrderSelected` 接收 `userId` 但命名為 `_userId`（刻意不使用）。按鈕啟用邏輯使用單一 `canRequestAfterSales` 旗標控制全部三個售後按鈕，產生三個錯誤：
+  1. 「申請售後」按鈕出現在 `AFTER_SALES_REQUESTED`、`AFTER_SALES_IN_PROGRESS`、`AFTER_SALES_CLOSED` 狀態（service 會拒絕）
+  2. 「接手售後」按鈕出現在 `COMPLETED`、`AFTER_SALES_IN_PROGRESS`、`AFTER_SALES_CLOSED`（只有 `AFTER_SALES_REQUESTED` 有效）
+  3. 「結案」按鈕對所有用戶顯示，不論是否為 assignee
+- **修正**: 替換為每個動作獨立的狀態檢查，恢復 `userId` 參數用於 `isAfterSalesAssignee` 檢查
+
+### P0-17: EscortOptionCatalogRepository stub 阻斷所有手動開單
+- **模組**: escort-dispatch
+- **維度**: spec 偏移
+- **檔案**: `packages/dispatch/src/di/dispatch-module.ts:80-88`; `packages/dispatch/src/service/escort-dispatch-order.service.ts:87-98`
+- **Spec 參考**: CL-03（catalog validation on order creation）
+- **描述**: DI container 註冊的 stub `EscortOptionCatalogRepository` 對所有查詢回傳 empty/false。`createManualOpenOrder` 在 catalog repository 存在時檢查 `existsByCode`，stub 回傳 `false` 導致 `!exists` 為 `true`，每次都回傳「護航品類無效」錯誤。所有手動開單操作完全被阻斷。
+- **修正**: 要麼讓 stub 在開發期間對所有 code 回傳 `true`，要麼在 catalog 實作完成前移除 catalog 檢查，要麼完全不注入 stub catalog 到 order service
+
+---
+
+## P1 — 嚴重問題 (整合前應修正)
+
+### P1-1: ESLint flat config 引用未安裝的 `typescript-eslint` 套件
+- **模組**: preparation
+- **維度**: 幻覺代碼
+- **檔案**: `eslint.config.mjs:1`; `package.json:16-18`
+- **Spec 參考**: P2.1
+- **描述**: `eslint.config.mjs` import `typescript-eslint`（flat config 一體化套件），但 `package.json` devDependencies 中只有舊版拆分的 `@typescript-eslint/parser` 和 `@typescript-eslint/eslint-plugin`。執行 eslint 會因模組找不到而失敗。
+- **修正**: 新增 `"typescript-eslint": "^8.0.0"` 到 devDependencies
+
+### P1-2: `.env.example` 資料庫名稱與 `application.properties` 不一致
+- **模組**: preparation
+- **維度**: spec 偏移
+- **檔案**: `.env.example:22,27`; `src/main/resources/application.properties:10,18`
+- **Spec 參考**: P1.6
+- **描述**: `.env.example` 使用 `DATABASE_NAME=ltdjms`，但 `application.properties` 的 canonical default 是 `currency_bot`。開發者按 `.env.example` 建立資料庫會產生名稱不匹配。
+- **修正**: 將 `.env.example` 中的資料庫名稱改為 `currency_bot`
+
+### P1-3: DiscordEmbedBuilder 分頁路徑中 field value 未被截斷
+- **模組**: shared-infrastructure
+- **維度**: spec 偏移
+- **檔案**: `packages/shared/src/discord/services/embed-pagination.ts:109-113`
+- **Spec 參考**: R8.3 — field value ≤ 1024 chars
+- **描述**: `paginateEmbedView()` 直接從 `EmbedView` 複製 field 資料到 `builder.addFields()`，完全繞過 `DiscordJsEmbedBuilder.addField()` 中的截斷邏輯。超過 1024 字元的 field value 會在 runtime 觸發 Discord API 400 錯誤。
+- **修正**: 在 `paginateEmbedView()` 中呼叫已注入的 `truncate` callback 處理 field value
+
+### P1-4: SchemaMigrationException 被用於連線失敗（語義錯誤）
+- **模組**: shared-infrastructure
+- **維度**: spec 偏移
+- **檔案**: `packages/shared/src/infra/database/connection.ts:43`
+- **Spec 參考**: R4.3, R4.4
+- **描述**: `createDatabasePool()` 在資料庫連線失敗（非 migration 失敗）時拋出 `SchemaMigrationException`。語義錯誤導致呼叫者無法區分連線錯誤與 migration 錯誤。
+- **修正**: 拋出一般 `Error` 或新增 `DatabaseConnectionException`，保留 `SchemaMigrationException` 專用於 migration 失敗
+
+### P1-5: RedisCacheService 靜默吞下所有 Redis 錯誤
+- **模組**: shared-infrastructure
+- **維度**: spec 偏移
+- **檔案**: `packages/shared/src/infra/cache/redis-cache-service.ts:19-21,31,44,53,67`
+- **Spec 參考**: R5
+- **描述**: 所有 `catch` 區塊為空，Redis `error` 事件 handler 為空 callback。Redis 不可用時完全無觀測性 — 無日誌、無 metric、無告警。Spec 要求 "graceful degradation"（不拋例外），不是 "silent degradation"（不記錄）。
+- **修正**: 注入 logger，在每個 catch 區塊中以 warn/error 等級記錄
+
+### P1-6: DomainEvent.guildId 型別為 `number` 但 Discord.js 使用 `string`
+- **模組**: shared-infrastructure
+- **維度**: spec 偏移
+- **檔案**: `packages/shared/src/types/events/domain-event.ts:8`
+- **Spec 參考**: R6.3
+- **描述**: `DomainEvent` 基礎介面宣告 `guildId: number`，但 Discord.js 的所有 ID 都是 `string`。Discord Snowflake 可達 19 位數字，強制轉 `number` 會超過 `MAX_SAFE_INTEGER` 導致精度遺失。
+- **修正**: 將所有 `DomainEvent` 子型別的 `guildId` 從 `number` 改為 `string`
+
+### P1-7: GameTokenService.getBalance 測試呼叫錯誤的 repository 方法
+- **模組**: guild-economy
+- **維度**: 幻覺代碼
+- **檔案**: `packages/economy/src/__tests__/game-token-service.test.ts:56-88,91-118`
+- **Spec 參考**: R4 (GameTokenService)
+- **描述**: 兩個測試 mock `findOrCreate`，但實際 `GameTokenService.getBalance()` 呼叫 `findByGuildIdAndUserId`。運行時 `this.accountRepository.findByGuildIdAndUserId` 為 `undefined` 導致 `TypeError`。測試產生 false positives。
+- **修正**: 更新 `GameTokenService.getBalance()` 呼叫 `findOrCreate`（對齊 spec 的 auto-create 要求），或更新測試使用正確方法名
+
+### P1-8: ECPay callback 儲存解密後資料而非原始 HTTP body
+- **模組**: shop-payment
+- **維度**: spec 偏移
+- **檔案**: `packages/shop/src/services/fiat-payment-callback.service.ts:49,84-85`
+- **Spec 參考**: R6 (Payment callback)
+- **描述**: Java 中 `callbackPayload` 是原始 HTTP request body（截斷至 4000 字元）。TS 中 `callbackPayload` 是解密後的 JSON 字串。`last_callback_payload` 資料庫欄位在 TS 和 Java 部署之間包含根本不同的內容，破壞審計追蹤一致性。
+- **修正**: 儲存原始 HTTP body（截斷至 4000 字元）作為 `callbackPayload`，與 Java 一致
+
+### P1-9: Callback server 使用 `req.body` 而非原始 body bytes
+- **模組**: shop-payment
+- **維度**: spec 偏移
+- **檔案**: `packages/shop/src/web/ecpay-callback-server.ts:61`
+- **Spec 參考**: R6
+- **描述**: `express.json()` middleware 解析 body 後，`req.body` 是 object 而非原始字串。`JSON.stringify(req.body)` 產生重新序列化的版本，非原始 HTTP body。ECPay 有時發送非標準結構的 form-urlencoded 資料，parse→re-stringify round trip 可能破壞資料。
+- **修正**: 使用 `express.raw({ type: '*/*' })` middleware 在 JSON/urlencoded parser 之前取得 raw Buffer
+
+### P1-10: FiatOrder domain model 暴露 repository 層實作細節
+- **模組**: shop-payment
+- **維度**: 架構瑕疵
+- **檔案**: `packages/shop/src/domain/fiat-order.ts:51-53`
+- **Spec 參考**: R4 (FiatOrder domain model)
+- **描述**: TS `FiatOrderSchema` 包含 `fulfillmentProcessingAt`、`adminNotificationProcessingAt`、`reconciliationProcessingAt` 作為 domain 欄位。Java 中這些欄位只存在於資料庫，由 `JdbcFiatOrderRepository` 獨佔管理，不是 `FiatOrder` domain record 的一部分。
+- **修正**: 從 TS domain type 移除這些欄位，僅在 repository 中管理（匹配 Java），或更新 Java domain record 也包含它們以保持一致
+
+### P1-11: 對帳 worker 將訂單過期與對帳耦合
+- **模組**: shop-payment
+- **維度**: spec 偏移
+- **檔案**: `packages/shop/src/services/fiat-payment-reconciliation.service.ts:36-44`
+- **Spec 參考**: R8 (Reconciliation worker)
+- **描述**: TS `reconcilePendingOrders` 在每次對帳 tick 呼叫 `expirePendingOrders`。若對帳被停用或延遲，過期也不會觸發。Java 中過期通常由獨立的排程 job 處理。
+- **修正**: 將過期邏輯分離為獨立排程任務，或確保過期檢查對時鐘偏移具有穩健性
+
+### P1-12: AI thread  category 解析使用錯誤的 parentId
+- **模組**: ai-chat-agent
+- **維度**: spec 偏移
+- **檔案**: `packages/ai/src/commands/ai-chat-mention-listener.ts:93-97`
+- **Spec 參考**: R2（thread 繼承父頻道設定）
+- **描述**: Listener 對 thread channel 使用 `message.channel.parentId` 作為 `categoryId`，但 thread 的 `parentId` 是父文字頻道 ID，不是分類 ID。已存在正確的 `resolveCategoryId()` 工具函數但從未被 import 或使用。導致分類層級 allowlist 匹配對 thread 頻道失效。
+- **修正**: Import 並使用 `resolveCategoryId()` from `routing-decision.ts`
+
+### P1-13: AI Agent CONTENT chunks 繞過 markdown validation
+- **模組**: ai-chat-agent
+- **維度**: spec 偏移
+- **檔案**: `packages/ai/src/commands/ai-chat-mention-listener.ts:217-221`
+- **Spec 參考**: R10 (markdown pipeline)
+- **描述**: 啟用 markdown validation 且 streamingBypass 關閉時，`MarkdownValidatingAIChatService` 對每個 streaming CONTENT chunk 個別套用 sanitize/validate/autofix/paginate pipeline。但每個獨立 chunk 是不完整的 markdown 片段，pipeline 無法對不完整內容產生正確結果。
+- **修正**: 先累積所有 CONTENT chunks，對完整內容套用 pipeline 後再分頁一次
+
+### P1-14: MemberInfoFacade 以 raw SQL 繞過 service layer
+- **模組**: administration
+- **維度**: 架構瑕疵
+- **檔案**: `packages/admin/src/facades/MemberInfoFacade.ts:175-235`
+- **Spec 參考**: R10（Facade 層 — 聚合，不實作持久化邏輯）
+- **描述**: `getProductRedemptionTransactionPage()` 在執行期 lazy import `@ltdjms/shared` container，解析 `TOKENS.DatabasePool`，直接執行 raw SQL。Facade 直接依賴 DI container 和資料庫連線，違反 thin aggregation layer 合約。
+- **修正**: 將查詢邏輯移至 shop package 的專用 repository，透過 service 方法暴露，以 constructor injection 注入 MemberInfoFacade
+
+### P1-15: Admin panel session TTL cleanup 從未被排程呼叫（記憶體洩漏）
+- **模組**: administration
+- **維度**: 性能隱患
+- **檔案**: `packages/admin/src/session/AdminPanelSessionManager.ts:171-180`, `PanelSessionManager.ts:107-116`
+- **Spec 參考**: R11（session TTL, cleanup runs）
+- **描述**: 兩個 session manager 都定義了 `cleanupExpired()` 但從未被定時呼叫。只在 `getActiveSessionCount()` 中呼叫。過期 session 在 Map 中無限累積。在高流量 guild 中一次性面板使用後，過期 session 永遠不會被清理。
+- **修正**: 在 `configureAdminContainer()` 中以 `setInterval(cleanup, 5 * 60 * 1000)` 啟動定時清理
+
+### P1-16: Token 調整不發布 GameTokenChangedEvent
+- **模組**: administration
+- **維度**: spec 遺漏
+- **檔案**: `packages/admin/src/facades/GameTokenManagementFacade.ts:50-101`
+- **Spec 參考**: R3（Token management — GameTokenChangedEvent）
+- **描述**: `adjustTokens()` 和 `setTokens()` 呼叫 `tokenService.tryAdjustTokens()` 但從不發布 `GameTokenChangedEvent`。對比 `GameConfigManagementFacade` 正確地在更新後發布 `DiceGameConfigChangedEvent`。
+- **修正**: 注入 `DomainEventPublisher`，在 token 調整成功後發布 `GameTokenChangedEvent`
+
+### P1-17: 事件型別判別使用脆弱的 duck typing
+- **模組**: administration
+- **維度**: 架構瑕疵
+- **檔案**: `packages/admin/src/panel/listeners/AdminPanelUpdateListener.ts:169-203`, `UserPanelUpdateListener.ts:123-133`
+- **Spec 參考**: R11（event listeners）
+- **描述**: 使用 property existence checks 如 `'newBalance' in event`、`'productId' in event && 'count' in event` 判別事件型別。兩個不同事件型別可能共享相同 property 名稱導致錯誤匹配。檢查順序敏感且不明顯。
+- **修正**: 在所有 domain event 加入 discriminant property（如 `eventType`），以 switch 替代 property sniffing
+
+### P1-18: 護航 `withCompleted` 清空 Java 保留的售後欄位
+- **模組**: escort-dispatch
+- **維度**: spec 偏移
+- **檔案**: `packages/dispatch/src/domain/escort-dispatch-order.ts:400-414`
+- **Spec 參考**: 狀態機 immutability contract
+- **描述**: TS `withCompleted` 明確將 `afterSalesAssigneeUserId`、`afterSalesAssignedAt`、`afterSalesClosedAt` 設為 null。Java `withCompleted` 保留所有欄位。當前在 `COMPLETED` 只從 `PENDING_CUSTOMER_CONFIRMATION` 可達（所有售後欄位已是 null）所以是 functional no-op，但若未來狀態機增加從售後狀態進入 COMPLETED 的路徑，TS 會靜默遺失資料。
+- **修正**: 匹配 Java 行為 — 移除明確的 null 賦值，讓 `...order` spread 保留原始值
+
+### P1-19: 護航 panel `isCompleted` 同時匹配 COMPLETED 和 AFTER_SALES_CLOSED
+- **模組**: escort-dispatch
+- **維度**: spec 偏移
+- **檔案**: `packages/dispatch/src/panel/DispatchPanelInteractionHandler.ts:564`
+- **Spec 參考**: 售後生命週期
+- **描述**: `isCompleted(order)` 對 `COMPLETED` 和 `AFTER_SALES_CLOSED` 都回傳 `true`。使 `canRequestAfterSales` 對已結案的售後案件為 true，顯示「申請售後」按鈕。Service 正確拒絕請求，但按鈕不該出現。
+- **修正**: 以 P0-16 的修正涵蓋（替換為明確狀態比較）
+
+### P1-20: 護航 barrel export 缺少售後按鈕/選單常數
+- **模組**: escort-dispatch
+- **維度**: spec 遺漏
+- **檔案**: `packages/dispatch/src/index.ts:102-163`
+- **Spec 參考**: Panel integration API
+- **描述**: 主 `index.ts` 缺少 `BUTTON_CLAIM_AFTER_SALES`、`BUTTON_CLOSE_AFTER_SALES`、`SELECT_ESCORT_OPTION_EXTRA`、`SELECT_PENDING_ORDER` 及相關 builder 函數的 re-export。外部 consumer import from `@ltdjms/dispatch` 無法存取這些符號。
+- **修正**: 在 `src/index.ts` 的 panel section 加入缺少的 exports
+
+### P1-21: 護航 `handleOrderSelected` 缺少從訂單列表選擇訂單的功能
+- **模組**: escort-dispatch
+- **維度**: spec 遺漏
+- **檔案**: `packages/dispatch/src/panel/DispatchPanelInteractionHandler.ts:160-167`
+- **Spec 參考**: Panel workflow
+- **描述**: `BUTTON_VIEW_ORDERS` 或 `BUTTON_VIEW_HISTORY` 點擊時顯示訂單列表 embed，但沒有 select menu 或按鈕讓用戶選擇特定訂單查看詳情。用戶可以看到列表但無法深入查看個別訂單。
+- **修正**: 在近期訂單/歷史 views 加入 select menu 或 per-order 按鈕
+
+### P1-22: ESLint flat config 中 `tseslint.configs.recommended` 的 spread 語法錯誤
+- **模組**: preparation
+- **維度**: 架構瑕疵
+- **檔案**: `eslint.config.mjs:7`
+- **描述**: `...tseslint.configs.recommended` — `configs.recommended` 可能已經是陣列或單一 config object，直接 spread 到頂層陣列可能產生巢狀結構而非平坦的 config array。
+- **修正**: 確認 `typescript-eslint` 版本對應的 flat config 正確用法，必要時使用 `tseslint.config(...)` helper
+
+---
+
+## P2 — 次要問題
+
+### preparation (根基礎設施)
+
+| # | 維度 | 檔案 | 描述 | 修正 |
+|---|------|------|------|------|
+| P2-1 | spec 偏移 | `Makefile:4,7,10,13` | Makefile 預設 target (`build`, `test`, `format`) 指向 Maven，非 spec 要求的 TypeScript 工具。TS 命令被放在 `ts-*` 前綴 target。 | 將預設 target 改為 TypeScript 命令，Maven 移至 `mvn-*` 前綴 |
+| P2-2 | spec 遺漏 | `packages/shared/db/` | P3.2 Schema 清單文件不存在（28 個 migration、約 18 張 table 的完整欄位清單） | 從 migration SQL 提取 CREATE TABLE 語句產出 `SCHEMA.md` |
+| P2-3 | spec 偏移 | `.env.example:73-74` | `APP_PUBLIC_DOMAIN`、`CADDY_ACME_EMAIL` 等 Caddy/Docker 變數不在 `application.properties` 中 | 保留但標註來源（Docker/Caddy 組態） |
+| P2-4 | spec 遺漏 | `package.json:7` | `format` script glob `packages/*/src/**/*.ts` 不覆蓋根目錄設定檔和 package 層級 config | 擴展 glob 或改為 `**/*.{ts,mjs,json}` |
+
 ### shared-infrastructure
 
-#### P0-1: 幻覺代碼 — 四個不存在於 Java 中的事件型別 (R6.3)
-- **檔案**: `packages/shared/src/types/events/domain-event.ts` L146-174
-- **描述**: 四個事件型別 (`AIChannelConfigChangedEvent`, `DispatchAfterSalesConfigChangedEvent`, `EscortPricingChangedEvent`, `EscortCatalogChangedEvent`) 在 Java `DomainEvent.java` sealed interface 中完全不存在。這些事件被匯出到 `AnyDomainEvent` union type，下游程式碼可能依賴根本不會被發布的事件型別。
-- **建議**: 移除此四個事件型別；或若是 future requirement，在 spec 中明確標註為 planned。
-
-#### P0-2: Spec 偏移 — DI 容器忽略傳入的已解析 Config instance (R9.2, R3.5)
-- **檔案**: `packages/shared/src/infra/di/container.ts` L29; `packages/shared/src/main.ts` L26-70
-- **描述**: `main.ts` 建立 `config = new EnvironmentConfig()` 並呼叫 `config.parse()` 後傳入 `initializeContainer({ config, ... })`，但 `container.ts` 完全忽略 `options?.config`，只執行 `registerSingleton(EnvironmentConfig)`。DI 容器解析時會建立一個全新的、未經 parse() 驗證的 instance。
-- **建議**: 若 `options?.config` 存在，使用 `container.registerInstance()`；否則才用 `registerSingleton`。
-
-#### P0-3: Spec 遺漏 — 缺少 DB_USERNAME / DB_PASSWORD 替代環境變數支援 (R3.2)
-- **檔案**: `packages/shared/src/infra/config/schema.ts` L21-72
-- **描述**: Java `EnvironmentConfig` 同時支援 `DB_USERNAME` 和 `DATABASE_USER`（以及 `DB_PASSWORD` / `DATABASE_PASSWORD`）。TypeScript Zod schema 僅定義了 `DATABASE_USER` 和 `DATABASE_PASSWORD`。使用 Java 相容 `.env` 的部署會失敗。
-- **建議**: 加入 `DB_USERNAME` / `DB_PASSWORD` 作為可選欄位，並實作 fallback 邏輯。
+| # | 維度 | 檔案 | 描述 | 修正 |
+|---|------|------|------|------|
+| P2-5 | 性能 | `migration-runner.ts:18-37` | Migration runner 無重試邏輯（連線池有重試但 migration 本身沒有） | 以 3 次重試 + backoff 包裝 `migrate()` 呼叫 |
+| P2-6 | 架構 | `discord-interaction.ts:18-22` | `replyEmbed(embed: unknown)`、`editEmbed(embed: unknown)` 使用 `unknown` 喪失型別安全 | 參數化介面或定義 minimal `EmbedData` interface |
+| P2-7 | spec 偏移 | `migration-runner.ts:33` | Migration runner 使用 `console.log()` 而非 pino structured logger | 注入 pino.Logger 並使用 `logger.info()` |
+| P2-8 | 冗餘 | `cache-service.ts:15` | `CacheService` 介面缺少 `exists(key)` 方法 — `get(key) !== null` 無法區分「key 不存在」與「值為 null」 | 加入 `exists(key: string): Promise<boolean>` |
+| P2-9 | spec 偏移 | `environment-config.ts:44-50` | process.env 中匹配命名空間但不在 schema 中的 key 被靜默忽略，無反饋 | 以 debug level 記錄被忽略的 env key |
 
 ### guild-economy
 
-#### P0-4: Spec 偏移 — insufficient balance 回傳錯誤的 error category (R2.2)
-- **檔案**: `packages/economy/src/currency/services/balance-adjustment-service.ts` L71-77
-- **描述**: `tryAdjustBalance` 在餘額不足時回傳 `DomainError.invalidInput(...)` 而非 `DomainError.insufficientBalance(...)`。下游按 `INSUFFICIENT_BALANCE` 過濾的程式碼永遠抓不到此錯誤。
-- **建議**: 將錯誤工廠呼叫改為 `DomainError.insufficientBalance(...)` 或移除 pre-check，讓 repository 層回傳正確型別。
-
-#### P0-5: Spec 偏移 — `GameTokenService.getBalance` 錯誤地自動建立帳戶 (R4.1)
-- **檔案**: `packages/economy/src/token/services/game-token-service.ts` L33-45
-- **描述**: Java `GameTokenService.getBalance` 是唯讀操作（找不到帳戶時回傳 0）。TypeScript 版本呼叫 `findOrCreate()`，對每個首次查詢餘額的使用者寫入一筆新列。
-- **建議**: 改用 `findByGuildIdAndUserId`，找不到時回傳 0。
+| # | 維度 | 檔案 | 描述 | 修正 |
+|---|------|------|------|------|
+| P2-10 | spec 偏移 | `game-token-service.ts:58`, `balance-adjustment-service.ts:45` | `amount === 0` 被拒絕（Java service layer 允許，只在 handler 層拒絕） | 移除 service 層的 `amount === 0` 檢查或文件記錄為刻意差異 |
+| P2-11 | spec 偏移 | `currency-config-service.ts:172-199` | Custom emoji 驗證僅做 regex 格式檢查，不做 Discord 存在性驗證（Java 透過 JDA 驗證） | 統一兩個 regex pattern，加入註解說明限制 |
+| P2-12 | spec 遺漏 | `game-token-adjust-handler.ts:40-44` | Admin token 調整後不記錄 `GameTokenTransaction`（Java 也有相同問題） | 注入 `GameTokenTransactionService` 並在調整後記錄 |
+| P2-13 | spec 偏移 | `game-token-service.ts:41-46` | `getBalance` 對不存在的帳戶 cache 0 而不 auto-create（spec 要求與 currency 對稱） | 改為呼叫 `findOrCreate`，匹配 `BalanceService.getBalance` 模式 |
 
 ### shop-payment
 
-#### P0-6: `FiatPaymentCallbackService.parseDecryptedData()` 拋出 plain Error 而非 `InvalidCallbackPayloadException` (R5.10)
-- **檔案**: `packages/shop/src/services/fiat-payment-callback.service.ts` L237
-- **描述**: 缺少 ECPAY config 時拋出 `new Error(...)`，但 catch block 只捕捉 `InvalidCallbackPayloadException`。plain Error 落入通用 catch 並錯誤地回傳 HTTP 500 而非 spec 要求的 HTTP 400。
-- **建議**: 改為 `throw new InvalidCallbackPayloadException(...)`。
-
-#### P0-7: `ShopCommandHandler` 在 `deferReply()` 後使用 `replyEmbed()` (Discord.js contract)
-- **檔案**: `packages/shop/src/commands/shop-handler.ts` L39 + L51
-- **描述**: `deferReply()` 後再呼叫 `replyEmbed()` 會觸發 runtime error（interaction already replied）。
-- **建議**: 改為 `editReply({ embeds: [...] })` 或移除 defer。
-
-#### P0-8: `handleCallback()` sync 方法為死碼，永遠回傳 500 (R5.1)
-- **檔案**: `packages/shop/src/services/fiat-payment-callback.service.ts` L40-77, L118-130
-- **描述**: `handleCallback()` 委派給 `processWithOrder()`，後者無條件回傳 `CallbackResult.fail(500)`。Express server 實際使用 `handleCallbackAsync()`，但若有 caller 呼叫 spec 定義的 `handleCallback()` 將永遠失敗。
-- **建議**: 移除 `handleCallback()` 和 `processWithOrder()`，將 `handleCallbackAsync` 改名為 `handleCallback`。
-
-#### P0-9: 貨幣購買乘積 overflow 檢測無效 (R11.8)
-- **檔案**: `packages/shop/src/services/redemption.service.ts` L316-329
-- **描述**: JavaScript 乘法永不拋出例外，只會產生 `Infinity`。try-catch 完全無效。
-- **建議**: 使用 `BigInt` 乘法或檢查 `product.rewardAmount! > Number.MAX_SAFE_INTEGER / code.quantity`。
+| # | 維度 | 檔案 | 描述 | 修正 |
+|---|------|------|------|------|
+| P2-14 | 架構 | `drizzle-product-repository.ts:10` | `DrizzleProductRepository` 未宣告 `implements ProductRepository`，無編譯期合約驗證 | 加入 `implements ProductRepository` |
+| P2-15 | 架構 | `drizzle-redemption-transaction-service.ts:8` | 同上 — 未實作對應介面，參數型別有輕微不匹配 | 加入 `implements RedemptionTransactionService` 並對齊參數型別 |
+| P2-16 | spec 偏移 | `fiat-order-post-payment-worker.ts:171-175` | `markFulfilledIfNeeded` 回傳 null 時釋放鎖定 — Java 不檢查回傳值也不釋放 | 對齊 Java 行為或文件記錄為刻意改進 |
+| P2-17 | spec 偏移 | `redemption-code.ts:21,32-38` | `quantity` 欄位用於獎勵倍乘而非多次兌換計數，可能與 Java 語義不同 | 與 Java `RedemptionCode` domain 驗證 quantity 的預期語義 |
+| P2-18 | 性能 | `ecpay-cvs-payment.service.ts:208-240` | `generateMerchantTradeNo` 使用 instance variables 無同步機制（Node.js single-thread safe but cluster-unsafe） | 加入註解說明 single-threaded 假設 |
+| P2-19 | spec 偏移 | `ecpay-trade-query.service.ts:104` | `buildFormBody` 使用 `encodeURIComponent`（對純英數參數結果相同，但未來可能不同） | 統一使用 consistent URL encoding approach |
 
 ### escort-dispatch
 
-#### P0-10: Panel `checkAdminPermission` 永遠回傳 `true` (R14.1)
-- **檔案**: `packages/dispatch/src/panel/DispatchPanelInteractionHandler.ts` L522-540
-- **描述**: 不管 `ADMINISTRATOR` 檢查結果如何都 `return true`，任何人可操作面板。
-- **建議**: 無 `ADMINISTRATOR` 權限時 `return false` 並回覆無權限訊息。
-
-#### P0-11: Panel handler 呼叫不存在的 `findByOrderNumber` 方法 (R15)
-- **檔案**: `packages/dispatch/src/panel/DispatchPanelInteractionHandler.ts` L499
-- **描述**: `dispatchOrderService.findByOrderNumber(orderNumber)` — service 沒有公開此方法，只有 private `findOrder`。執行時會拋出 `TypeError`。
-- **建議**: 將 `findOrder` 改為 public 或新增公開的 `findByOrderNumber`。
-
-#### P0-12: 面板訊息完全沒有附加 Discord 互動元件 (R14)
-- **檔案**: `packages/dispatch/src/panel/DispatchPanelInteractionHandler.ts` — 所有 handler 方法
-- **描述**: 所有回應都只用 `interaction.reply(text)` 或 `interaction.replyEmbed(embed)`，沒有附加任何按鈕 (ActionRow) 或 select menu。`buildPanelReplyPayload` 和 `buttonsToComponents` 存在但從未被呼叫。
-- **建議**: 回應時使用 `buildPanelReplyPayload` 組裝 embed + components。
-
-#### P0-13: Mode switch 不清除 session state (R14.3)
-- **檔案**: `packages/dispatch/src/panel/DispatchPanelInteractionHandler.ts` L135-141
-- **描述**: 切換模式時只設 `session.mode`，不清除 `selectedOptionCode`、`selectedOrderNumber`、`selectedUserId`。
-- **建議**: Mode switch 時完全清除 session。
-
-#### P0-14: Back 按鈕未完全清除 session state (R14.4)
-- **檔案**: `packages/dispatch/src/panel/DispatchPanelInteractionHandler.ts` L150-152
-- **描述**: `BUTTON_BACK_TO_MODE` 只設 `session.mode = null`，不清除其他殘留資料。
-- **建議**: 呼叫 `clearSession(guildId, userId)` 完全清除。
-
-#### P0-15: `createManualOpenOrder` 的護航品類驗證永遠不會執行 (R2.1)
-- **檔案**: `packages/dispatch/src/di/dispatch-module.ts` L79-82
-- **描述**: DI 建構 `EscortDispatchOrderService` 時未傳入 `catalogRepository`。`createManualOpenOrder` 在 `catalogRepository` 為 `undefined` 時跳過驗證。
-- **建議**: 將 catalog repo 傳入 service 的第四個建構參數。
-
-#### P0-16: 通知服務已註冊但從未被注入或呼叫 (R3-R9)
-- **檔案**: `packages/dispatch/src/di/dispatch-module.ts` L116-123
-- **描述**: `DispatchNotificationService` 被實例化但從未被注入到任何 handler/service。所有 8 個 notify 方法永遠不會被呼叫。
-- **建議**: 將 `notificationService` 注入到 `DispatchPanelInteractionHandler` 和 `EscortDispatchOrderService`。
-
-#### P0-17: 所有 DM-only 操作缺少 `!isFromGuild()` 檢查 (R4.3)
-- **檔案**: `packages/dispatch/src/panel/DispatchPanelInteractionHandler.ts` L155-175
-- **描述**: 6 個 DM 操作都沒有檢查 interaction 是否來自 guild 頻道，在公開頻道中也可執行。
-- **建議**: 每個 handler 開頭加入 guild 檢查，提示「請在機器人私訊中操作」。
+| # | 維度 | 檔案 | 描述 | 修正 |
+|---|------|------|------|------|
+| P2-20 | spec 偏移 | `escort-dispatch-order.ts:78-82` | `validateSourceSnapshot` 對 MANUAL source 不檢查 snapshot 欄位是否為 null（Java 明確拒絕非 null） | 加入 MANUAL source 的負向檢查 |
+| P2-21 | 冗餘 | `escort-dispatch-order.test.ts:21` | 測試 import `isAfterSalesInProgress` 但從未使用 | 移除 dead import |
+| P2-22 | spec 偏移 | `escort-dispatch-order.service.ts:452-477` | `ensureTimeoutCompletion` 有額外的 post-update re-query，但其他 transition 沒有（不一致） | 統一所有 transition 的 pattern |
+| P2-23 | 性能 | `escort-dispatch-order.service.ts:161-186` | `confirmOrder` 缺少 DB-level status guard，concurrent confirmation 可能 race | 加入 atomic `WHERE status = 'PENDING_CONFIRMATION'` guard |
+| P2-24 | spec 遺漏 | `escort-dispatch-order.test.ts:10` | 測試 import 不存在的 `withAssignedEscort`（從未被使用但 bundler 必須解析） | 移除 dead import |
 
 ### ai-chat-agent
 
-#### P0-18: Agent 模式完全無法運作 — 無工具綁定、無 agent loop、無 agent prompt (R4.1, R4.2, R4.4, R4.5, R5.1-R5.7, R15.1)
-- **檔案**: `packages/ai/src/services/LangChainAIChatService.ts` L149-205 (`doStream`), L211-244 (`buildMessages`)
-- **描述**: `doStream()` 只做純聊天串流，從不綁定工具、不載入 agent prompt、無 agent 執行迴圈。`AGENT_TOOL_DEFINITIONS` 陣列存在但從未被接線到串流流程。17 個工具類別從未被任何執行路徑呼叫。
-- **建議**: 加入 `agentEnabled` 參數；agent 模式下綁定工具；實作 `maxIterations=5` 的 agent loop；載入 agent system prompts。
-
-#### P0-19: `generateStreamingResponseWithId` 完全忽略 `messageId` 參數 (R3)
-- **檔案**: `packages/ai/src/services/LangChainAIChatService.ts` L119-128
-- **描述**: 方法接受 `messageId` 但從不使用，直接轉發給 `doStream(guildId, userMessage, [], handler)`。
-- **建議**: 傳遞 `messageId` 至 handler 或 `doStream()`。
-
-#### P0-20: AGENT_TOOL_DEFINITIONS 參數名稱與實際 tool schema 不符 (R5.1)
-- **檔案**: `packages/ai/src/services/LangChainAIChatService.ts` L346-361
-- **描述**: `delete_discord_resource` 使用 `type`/`id` 而非 spec 定義的 `resourceType`/`resourceId`；`manage_message` 使用 `content` 而非 `newContent`，缺少 `editMode`；`move_channel` 使用 `categoryId` 而非 `targetCategoryId`。
-- **建議**: 將 `AGENT_TOOL_DEFINITIONS` schemas 與實際 tool class schemas 對齊。
-
-#### P0-21: `get_channel_permissions` / `get_category_permissions` tool 缺少必要的參數 (R5.1)
-- **檔案**: `packages/ai/src/services/LangChainAIChatService.ts` L299-308
-- **描述**: 這兩個 tool definition 缺少 `channelId`/`categoryId` 參數，無法被 LLM 正確調用。
+| # | 維度 | 檔案 | 描述 | 修正 |
+|---|------|------|------|------|
+| P2-25 | spec 偏移 | `ai-chat-service.ts:126-132` | Source enum 值與 Java 不同（`AGENT_CONFIG` vs `AGENT_ENABLED`, `NO_ALLOWLIST` vs `AI_ALLOWLIST_DENIED`） | 重命名以匹配 Java |
+| P2-26 | spec 遺漏 | `ai-module.ts:284-289` | TokenEstimator 已 DI 註冊但從未 wired 到 memory provider — 無 context window enforcement | 注入 TokenEstimator 到 SimplifiedChatMemoryProvider |
+| P2-27 | 冗餘 | `ai-chat-mention-listener.ts:210-215` | Agent handler 的 `TOOL_INTENT` case 是 dead code — `doStream()` 從不發送 TOOL_INTENT chunks | 實作 TOOL_INTENT emission 或移除 dead code |
+| P2-28 | 架構 | `MarkdownValidatingAIChatService.ts:226` | Agent mode 中先 paginator split → re-join → MessageSplitter re-split（雙重分割浪費 CPU） | 當 paginator 已分頁時跳過 MessageSplitter |
+| P2-29 | spec 遺漏 | `ai-chat-mention-listener.ts:170-175,225-226` | Agent handler 的「AI 正在思考...」訊息被刪除而非編輯為最終內容（UX 不理想） | 編輯初始訊息為最終內容而非刪除 |
+| P2-30 | spec 遺漏 | `__tests__/unit/` | 缺少 AIChatMentionListener, AgentServiceFactory, LangChainAIChatService, ToolCallerAuthorizationGuard 的測試 | 加入對應測試檔案 |
 
 ### administration
 
-#### P0-22: 9 個管理面板 Handler 全部為 Stub — 未實現任何互動流程 (R2-R10)
-- **檔案**: `packages/admin/src/panel/admin/handlers/` (9 files)
-- **描述**: 所有 Handler 的 `execute()` 僅回覆佔位符字串（`'貨幣管理功能'`、`'AI 頻道設定功能'` 等），未實作 member select menu、Modal、CRUD 操作、事件發布。
-- **建議**: 逐一實作每個 Handler 的完整互動流程。
-
-#### P0-23: `/admin-panel` 以純文字取代 Embed + 按鈕 (R1.4)
-- **檔案**: `packages/admin/src/panel/admin/AdminPanelCommand.ts` L47-57
-- **描述**: `AdminPanelViewFactory.buildMainPanelEmbed()` 正確產生了含 9 個按鈕的結構化資料，但 `AdminPanelCommand.execute()` 將其展平為純文字輸出。Discord 不會渲染為可點擊按鈕。
-- **建議**: 使用 `ActionRowBuilder` + `ButtonBuilder` 將 buttons array 轉換為真正的 Discord 訊息組件。
-
-#### P0-24: Facade 層 guildId/userId 型別全部為 `number` (snowflake 精度遺失) (R13)
-- **檔案**: `packages/admin/src/facades/` (全部 5 個 facade)
-- **描述**: Discord snowflake ID 超出 `Number.MAX_SAFE_INTEGER` 範圍。使用 `number` 型別導致 ID 精度遺失，所有資料庫查詢找不到正確記錄。
-- **建議**: 全部改為 `string` 型別。
-
-#### P0-25: 用戶面板 Handler 全部為 Stub (R11.3-R11.8)
-- **檔案**: `packages/admin/src/panel/user/handlers/TransactionHistoryHandler.ts`, `RedemptionCodeHandler.ts`
-- **描述**: 交易記錄和兌換碼功能完全未實作。
-- **建議**: 實作分頁互動邏輯、Modal 建構、facade 呼叫。
-
-#### P0-26: 面板更新監聽器未實際更新 Embed (R12.1-R12.5)
-- **檔案**: `packages/admin/src/panel/listeners/AdminPanelUpdateListener.ts` L51-53
-- **描述**: `AdminPanelUpdateListener` 僅輸出 `console.log`，`UserPanelUpdateListener` 僅呼叫 `getUserPanelView` 而不實際更新 embed。事件發生後已開啟的面板不會收到即時更新。
-- **建議**: 在 session data 中儲存 interaction hook reference，事件觸發時呼叫 `editReply()` 更新。
+| # | 維度 | 檔案 | 描述 | 修正 |
+|---|------|------|------|------|
+| P2-31 | 冗餘 | `constants/colors.ts` | `Colors` 常數定義但完全未被任何檔案 import（所有 handler 直接 hardcode hex 值） | Import 並使用或刪除檔案 |
+| P2-32 | spec 偏移 | `AdminProductPanelModalFactory.ts:26-30` | Product modal 使用 hardcoded 中文字串而非 i18n keys | 替換為 `ZhTwStrings.productModal*` keys |
+| P2-33 | 幻覺 | `AdminPanelViewFactory.ts:187-189`, `AdminProductPanelHandler.ts:62-64` | Product `description` 欄位被顯示為「庫存」（語義錯誤） | 改為「描述」標籤 |
+| P2-34 | spec 偏移 | `AdminPanelUpdateListener.ts:125-128` | `DiceGameConfigChangedEvent` 只在 MAIN view state 觸發更新，但 game settings 沒有對應的 view state | 加入 `GAME_SETTINGS` view state 或無條件回傳 true |
+| P2-35 | spec 偏移 | `BaseAdminHandler.ts:43` vs `AdminPanelCommand.ts:101` | 權限檢查不一致 — 一個用 `PermissionFlagsBits.Administrator`，另一個用 hardcoded `8n` | 統一使用 `PermissionFlagsBits.Administrator` |
+| P2-36 | 冗餘 | `AdminPanelViewState` enum | 只定義 MAIN, PRODUCT_LIST, PRODUCT_DETAIL, PRODUCT_CODE_LIST — 缺少 BALANCE, TOKEN, GAME, AI_CHANNEL, AI_AGENT, DISPATCH, ESCORT 等狀態 | 加入所有功能對應的 view states |
 
 ---
 
-## P1 — 高優先級問題 (功能不完整或偏離 spec)
+## P3 —  cosmetic
+
+### preparation
+- **P3-1**: `pnpm-workspace.yaml` 包含非必要的 `allowBuilds: { esbuild: true }` 設定（超出 P1.2 spec 範圍）
 
 ### shared-infrastructure
-
-#### P1-1: Spec 偏移 — `isEphemeral()` 永遠回傳 false (R8.1)
-- **檔案**: `packages/shared/src/discord/services/discord-js-interaction.ts` L37-39
-- **描述**: 硬編碼回傳 `false`，任何依賴 ephemeral 狀態的業務邏輯都會判錯。
-- **建議**: 從 discord.js interaction 取得實際 ephemeral 狀態。
-
-#### P1-2: Spec 偏移 — Embed builder 截斷時未 logged warning
-- **檔案**: `packages/shared/src/discord/services/discord-js-embed-builder.ts` L166-169
-- **描述**: Spec error handling 要求截斷時「logged warning」，但 `truncate()` 和所有 setter 中截斷發生時無任何 logging。
-- **建議**: 截斷時發出 pino warning log。
-
-#### P1-3: Spec 偏移 — `DiscordInteraction` 多了 Java 未定義的 `getChannelId()` (R8.1)
-- **檔案**: `packages/shared/src/discord/domain/discord-interaction.ts` L13
-- **描述**: Java `DiscordInteraction.java` 沒有此方法（應屬於 `DiscordContext`）。
-- **建議**: 從 `DiscordInteraction` 移除或更新 spec。
-
-#### P1-4: Spec 偏移 — `ProductOperationType` 名稱與 Java 不一致 (R6.3)
-- **檔案**: `packages/shared/src/types/events/domain-event.ts` L45-48
-- **描述**: Java 使用 `OperationType` enum，TypeScript 命名為 `ProductOperationType`。
-- **建議**: 重命名為 `OperationType` 或記錄為有意調整。
-
-#### P1-5: 架構瑕疵 — `main.ts` 將跨模組事件接線置於 shared 套件 (R9)
-- **檔案**: `packages/shared/src/main.ts` L216-250
-- **描述**: `initializeAllModules()` 在 shared 中直接處理 Discord `interactionCreate` 和 `messageCreate` 事件接線，用了大量 `as any` 型別斷言。事件接線應由各模組自身處理。
-- **建議**: 將 Discord 事件接線移到各模組的初始化函數中。
-
-#### P1-6: Spec 偏移 — Config Schema 缺少 Java Typesafe Config 中介層 (R3.2)
-- **檔案**: `packages/shared/src/infra/config/schema.ts`
-- **描述**: Java 使用 `application.properties`（packaged defaults）作為 fallback 層之一。TypeScript 版本缺少此層。
-- **建議**: 若非必需，在 spec 中記錄此簡化。
+- **P3-2**: `logger.ts:7-13` — 7 行註解說明應安裝 `pino-pretty` 但未安裝（TODO-as-comment）
+- **P3-3**: `module-declarations.d.ts:1-8` — TEMPORARY stub ambient module declarations for `@ltdjms/*`（應移至各 package）
 
 ### guild-economy
-
-#### P1-7: Spec 偏移 — `getBalance` 不回傳 `Result<>` (R1.1)
-- **檔案**: `packages/economy/src/currency/services/balance-service.ts` L37
-- **描述**: Spec R1.1 要求回傳 `Result<BalanceView, DomainError>`，但 TS `getBalance` 回傳 `Promise<BalanceView>`。Java 同時有 `getBalance`（deprecated）和 `tryGetBalance`（Result），TS 的 `tryGetBalance` 匹配 Java 但方法名與 spec 不符。
-- **建議**: 確認 spec R1.1 應指向 `tryGetBalance` 或改名 TS 方法。
-
-#### P1-8: Spec 偏移 — 未使用 `isValidAdjustmentAmount` (R1.4)
-- **檔案**: `packages/economy/src/currency/services/balance-adjustment-service.ts` L45-56
-- **描述**: Java 使用 `MemberCurrencyAccount.isValidAdjustmentAmount(amount)` 檢查 `Math.abs(amount) <= MAX_ADJUSTMENT_AMOUNT`。TS 使用內聯檢查 `amount > Number.MAX_SAFE_INTEGER`，不使用已定義的 `MAX_ADJUSTMENT_AMOUNT` 常數。
-- **建議**: 替換為使用 `MAX_ADJUSTMENT_AMOUNT` 的 `isValidAdjustmentAmount` 函數。
+- **P3-4**: `dice-game-2.test.ts:54` — stale 註解 `// [1, 2, 3, 0, 4, 5, 6]`（dice value 0 不可能）
+- **P3-5**: `dice-game-2.test.ts:99-110` — 測試命名 misleading（"should prioritize straights over overlapping triples" 但 test data 無 overlap）
+- **P3-6**: 所有 6 個 repository 檔案 — 重複的 `mapToDomain` mapper 函數（可提取共用工具）
+- **P3-7**: `balance-service.ts:53` — Currency config 未被快取（每次 `getBalance` 都查 DB）
+- **P3-8**: `dice-game-messages.ts:50,52` — `TOKEN_INSUFFICIENT`、`TOKEN_CURRENT_BALANCE` localization strings 定義但從未被任何 handler 使用
+- **P3-9**: `dice-game-2.test.ts:18-26` — 測試對 `DiceGame2Service` 前 4 個依賴使用 `{} as any`（無 integration test for `play()`）
 
 ### shop-payment
-
-#### P1-9: `findOrdersPendingPostPayment` 排序缺少 `NULLS LAST` (R7.8)
-- **檔案**: `packages/shop/src/persistence/drizzle-fiat-order-repository.ts` L259
-- **描述**: Drizzle 的 `asc()` 生成 `ORDER BY paid_at ASC` 而無 `NULLS LAST`。PostgreSQL 預設 ASC 下 `NULLS FIRST`。
-- **建議**: 使用 `sql` template 加入 `NULLS LAST`。
-
-#### P1-10: 通知介面型別不匹配 (R12.3)
-- **檔案**: `packages/shop/src/di/shop-module.ts` L170-171
-- **描述**: `AdminOrderNotifier` 介面期望 3 個參數，但 `ShopAdminNotificationService` 有不同方法簽章。型別強制轉換 (`as unknown`) 繞過檢查，runtime 呼叫會傳入錯誤參數，產生亂碼訊息。
-- **建議**: 對齊方法簽章或建立正確的 adapter。
-
-#### P1-11: `sanitizePayload` 截斷原始 body 而非解密後的 payload (R5.9)
-- **檔案**: `packages/shop/src/services/fiat-payment-callback.service.ts` L87, L334-338
-- **描述**: Java 版本儲存解密後的 JSON string 並截斷到 4000 字元。TS 版本截斷原始加密 body，截斷點可能在加密字串中間，使 payload 完全無用。
-- **建議**: 將解密後的 JSON string 存入 `callbackPayload`，必要時截斷。
-
-#### P1-12: `FiatOrderService.createFiatOnlyOrder` 多了額外參數 (R4.1)
-- **檔案**: `packages/shop/src/services/fiat-order.service.ts` L59
-- **描述**: Spec 定義 3 個參數，實作有 4 個 (`tradeDesc?`)。
-- **建議**: 移除多餘參數或更新 spec。
-
-#### P1-13: Search result pagination 按鈕 handler 未接線 (R2.3)
-- **檔案**: `packages/shop/src/commands/shop-handler.ts`
-- **描述**: `encodeKeyword()` / `decodeKeyword()` 和 `BUTTON_SEARCH_PREV` / `BUTTON_SEARCH_NEXT` 常數已存在，但 `handleInteraction()` 沒有對應的 handler。搜尋結果分頁完全無法運作。
-- **建議**: 加入 prefix matching 的 handler，解碼關鍵字並呼叫 `shopService.searchProducts()`。
+- **P3-10**: `ecpay-cvs-payment.service.ts:103` — 每次 ECPay API 呼叫建立新 TCP 連線（Java 使用 HttpClient connection pooling）
+- **P3-11**: `ecpay-trade-query.service.ts:104` — 對帳查詢中 `encodeURIComponent` 與 `URLEncoder.encode` 差異（純英數參數目前相同）
+- **P3-12**: `index.ts:76-77` — `CallbackResult` 同時作為 value 和 type 匯出，命名混亂
+- **P3-13**: `fiat-order-post-payment-worker.ts:45-56` — `any` 型別用於 notification service 簽名，附 eslint-disable 註解
 
 ### escort-dispatch
-
-#### P1-14: `claimAfterSales` 缺少售後人員身分驗證 (R8.1)
-- **檔案**: `packages/dispatch/src/service/escort-dispatch-order.service.ts` L297-340
-- **描述**: 完全沒有呼叫 `afterSalesStaffService.isAfterSalesStaff()`。任何人可點擊「承接售後」。
-- **建議**: 加入 `isAfterSalesStaff` 檢查。
-
-#### P1-15: `claimAfterSales` re-query 未區分「已被自己接手」vs「已被他人接手」(R8.3)
-- **檔案**: `packages/dispatch/src/service/escort-dispatch-order.service.ts` L330-335
-- **描述**: atomic UPDATE 失敗後的 re-query 只檢查 `isAfterSalesInProgress(latest)`，未檢查 `isAfterSalesAssignee(latest, userId)`。自己已接手的情況會顯示錯誤的錯誤訊息。
-- **建議**: re-query 後加入 `isAfterSalesAssignee` 檢查。
-
-#### P1-16: 售後通知策略不符 spec — 無線上/離線分層 (R7.4)
-- **檔案**: `packages/dispatch/src/notification/DispatchNotificationService.ts` L58-80
-- **描述**: 直接取得所有 staff IDs 並全數發送 DM，無線上優先邏輯。無「目前尚未設定售後人員」提示。
-- **建議**: 加入 online status 查詢；分層通知策略。
-
-#### P1-17: DM 發送失敗時完全靜默 (R3.4, error handling)
-- **檔案**: `packages/dispatch/src/notification/DispatchNotificationService.ts` L100-131
-- **描述**: catch block 完全是空的，無 `console.warn`、無失敗指標回傳、無提示管理員。
-- **建議**: catch 中加入 warn log；回傳失敗指標讓呼叫方判斷是否需提示管理員。
-
-#### P1-18: `normalizeLimit` 用錯誤的最大值限制 (R3.1)
-- **檔案**: `packages/dispatch/src/service/escort-dispatch-order.service.ts` L451-456
-- **描述**: 對所有查詢使用 `MAX_HISTORY_LIMIT` (20)，但 pending assignment 查詢應使用 `MAX_PENDING_ASSIGNMENT_LIMIT` (25)。
-- **建議**: `normalizeLimit` 應接受 max limit 參數。
-
-#### P1-19: `ensureTimeoutCompletion` 無狀態條件檢查 (R10.2)
-- **檔案**: `packages/dispatch/src/service/escort-dispatch-order.service.ts` L432-448
-- **描述**: `update` 方法是純 ID-based update，不檢查當前狀態。race condition 下可能覆蓋其他狀態轉換。
-- **建議**: 使用條件式 UPDATE (`WHERE id=? AND status='PENDING_CUSTOMER_CONFIRMATION'`)。
-
-#### P1-20: 歷史記錄 embed 缺來源摘要 (R15)
-- **檔案**: `packages/dispatch/src/panel/DispatchPanelMessageFactory.ts` L198-223
-- **描述**: 只顯示訂單編號、狀態、護航者、客戶，沒有 `sourceType`、`sourceReference` 等來源資訊。
-- **建議**: 加入來源類型標籤（`[手動]`、`[貨幣購買]`、`[法幣付款]`）。
-
-#### P1-21: Session state 缺客戶/護航者獨立欄位 (R14.2)
-- **檔案**: `packages/dispatch/src/panel/DispatchPanelInteractionHandler.ts` L54-60
-- **描述**: 只有一個 `selectedUserId`，無法同時區分客戶和護航者（建立派單需要兩者）。
-- **建議**: 新增 `selectedCustomerId` 和 `selectedEscortUserId` 欄位。
-
-#### P1-22: `formatPanelText` 在兩個 class 中完全重複
-- **檔案**: `packages/dispatch/src/panel/DispatchPanelCommandHandler.ts` L41-57; `DispatchPanelInteractionHandler.ts` L556-572
-- **建議**: 提取到 shared utility。
+- **P3-14**: `DispatchPanelInteractionHandler.ts:530` — 不安全的 `as unknown as { values?: string[] }` 型別轉換
+- **P3-15**: `escort-dispatch-order.ts:3-5` — Header ASCII art diagram 缺少 `COMPLETED → AFTER_SALES_REQUESTED` 路徑
+- **P3-16**: `escort-dispatch-order.service.ts:471` — 使用 `console.warn` 而非 structured logger
 
 ### ai-chat-agent
-
-#### P1-23: `buildMessages()` 永遠只載入 base prompts (R15.1, R15.3)
-- **檔案**: `packages/ai/src/services/LangChainAIChatService.ts` L215
-- **描述**: `agentEnabled` 參數預設為 `false`，所有 caller 都傳 false。agent prompt 永不載入。
-- **建議**: 從 listener 傳播 `agentEnabled` → `generateStreamingResponse` → `doStream` → `buildMessages`。
-
-#### P1-24: `buildMessageLevelMemory()` 回傳空陣列而非 10 則訊息 (R8.3)
-- **檔案**: `packages/ai/src/services/memory/chat-memory-provider.ts` L143-147
-- **描述**: Spec 要求 MessageWindowChatMemory（最多 10 則），實作回傳 `[]`。
-- **建議**: 實作回傳最多 10 則近期訊息的 message window。
-
-#### P1-25: `create_role` 工具完全忽略 `permissions` 參數 (R5.1)
-- **檔案**: `packages/ai/src/tools/CreateRoleTool.ts` L36-56
-- **描述**: 只設定 `name` 和 `color`，`permissions` 欄位被完全忽略。
-- **建議**: 建立 role 後套用 `permissions`。
-
-#### P1-26: `modify_role_permissions` 每次 setPermissions 覆蓋前一項 (R5.1)
-- **檔案**: `packages/ai/src/tools/ModifyRolePermissionsTool.ts` L48-63
-- **描述**: 每個權限條目呼叫 `role.setPermissions()` 一次，每次覆蓋前一次的結果。只有最後一條生效。
-- **建議**: 累積所有 allow/deny bits 後一次呼叫 `setPermissions()`。
-
-#### P1-27: Blockquote flattening 對深層巢狀不正確 (R11.2)
-- **檔案**: `packages/ai/src/markdown/services/DiscordMarkdownSanitizer.ts` L31-35
-- **描述**: Regex 只移除一個 `>`，對於 `>>> text` 會變成 `>>> text`（不變）。
-- **建議**: 替換所有 `>` 為單一 `>`。
-
-#### P1-28: `CommonMarkValidator` 未跳過純強調語法 (R9.4)
-- **檔案**: `packages/ai/src/markdown/validation/CommonMarkValidator.ts` L165-216
-- **描述**: `*bold*` 被誤判為 MALFORMED_LIST。雖然 auto-fixer 正確跳過，但 validator 產生 false positive。
-- **建議**: 在 `checkListFormat` 中加入純強調語法的跳過檢查。
-
-#### P1-29: `ToolExecutionInterceptor` 存在但從未被接線 (R5.4)
-- **檔案**: `packages/ai/src/services/ToolExecutionInterceptor.ts` — 整個檔案
-- **描述**: Interceptor 完整實作但沒有任何 tool class 參照或注入它。工具審計日誌完全不存在。
-- **建議**: 注入到每個 tool class 或 agent loop。
-
-#### P1-30: 缺少 `AgentConfigCacheInvalidationListener` (R7.5)
-- **檔案**: 完全缺失
-- **描述**: Spec 要求跨實例的 Redis cache 失效監聽器。目前只有 inline `invalidateCache`，多實例部署時其他實例的 cache 會 stale。
-- **建議**: 建立監聽 `AgentConfigUpdatedEvent` 的 listener，清除對應 Redis key。
-
-#### P1-31: `isAgentEnabled()` 同步版拋錯 (R7.1)
-- **檔案**: `packages/ai/src/services/routing/agent-config-service.ts` L132-139
-- **描述**: 同步 `isAgentEnabled()` 拋出 `Error('Use isAgentEnabledAsync')`。任何呼叫同步版的程式碼會 crash。
-- **建議**: 實作同步版（使用 local in-memory cache）或移除同步介面。
-
-#### P1-32: 缺少 `deleteRemovedChannels()` 公開方法 (R2.5)
-- **檔案**: `packages/ai/src/services/routing/channel-restriction-service.ts` L163-191
-- **描述**: Repository 有此方法，但 service 介面和實作都沒有暴露。
-- **建議**: 加入 `deleteRemovedChannels()` 到介面和實作。
+- **P3-17**: `DiscordMarkdownSanitizer.ts` 和 `RegexBasedAutoFixer.ts` — 重複的 `protectCodeBlocks`/`restoreCodeBlocks` 邏輯
+- **P3-18**: `agent-config-cache-invalidation-listener.ts:25-42` — Duck-type event checking（應使用 discriminant property）
+- **P3-19**: `ai-chat-mention-listener.ts:174,231,271` — 使用 hardcoded Unicode emoji 而非 Discord emoji IDs
+- **P3-20**: 多個 tool 檔案 — 使用 `as unknown as { permissionOverwrites: ... }` 不安全型別轉換
 
 ### administration
-
-#### P1-33: `adjustBalance` 未驗證整數 (R2.2)
-- **檔案**: `packages/admin/src/facades/CurrencyManagementFacade.ts` L114-124
-- **描述**: `validateAdjustmentAmount` 只檢查 `!Number.isFinite(amount) || amount <= 0`，未檢查 `Number.isInteger(amount)`。
-- **建議**: 加入 `!Number.isInteger(amount)` 檢查。
-
-#### P1-34: `adjustTokens` 捨棄 `reason` 和 `actorId` 參數 (R3.1)
-- **檔案**: `packages/admin/src/facades/GameTokenManagementFacade.ts` L42-93
-- **描述**: 方法接受 `reason` 和 `actorId` 但不傳遞給 service 層。管理員操作記錄缺少稽核資訊。
-- **建議**: 傳遞至 service 層。
-
-#### P1-35: 護航目錄/定價 view 使用錯誤的欄位對映 (R10.2)
-- **檔案**: `packages/admin/src/panel/admin/views/AdminPanelViewFactory.ts` L352-356
-- **描述**: `entry.type` 對映至名稱、`entry.level` 對映至類別，與實際 `EscortOptionCatalogEntry` 結構不符。
-- **建議**: 確認實際欄位後修正所有對映。
-
-#### P1-36: `enableAgent` 忽略 `mode` 參數 (R7.2)
-- **檔案**: `packages/admin/src/facades/AIConfigManagementFacade.ts` L128-134
-- **描述**: `_mode: string` 以 `_` 前綴標記為未使用，無法指定 Agent 模式類型。
-- **建議**: 傳遞 `mode` 至 service 層。
-
-#### P1-37: `AdminPanelCommand` 硬編碼面板摘要資料 (R1.3)
-- **檔案**: `packages/admin/src/panel/admin/AdminPanelCommand.ts` L40-43
-- **描述**: 貨幣設定傳入 `null`、護航訂單數傳入 `0`（硬編碼），永遠不顯示實際數據。
-- **建議**: 從 facade 查詢實際資料。
-
-#### P1-38: `MemberInfoFacade` 繞過 Facade 直接執行原始 SQL (R13.5)
-- **檔案**: `packages/admin/src/facades/MemberInfoFacade.ts` L175-179
-- **描述**: 動態 import DI 容器後直接執行原始 SQL（含字串插值拼接，有 SQL injection 風險）。違反 Facade 層應透過 service 層操作的原則。
-- **建議**: 透過 `RedemptionService` 提供分頁查詢方法。
-
-#### P1-39: `SlashCommandRegistrar` 定義了不屬於 administration 模組的命令 (Scope)
-- **檔案**: `packages/admin/src/commands/registration/SlashCommandRegistrar.ts` L23-136
-- **描述**: 包含 `BalanceSlashCommand`、`DiceGame1SlashCommand`、`ShopSlashCommand` 等屬於 economy/shop/dispatch 模組的命令。
-- **建議**: 移至對應模組。
+- **P3-21**: `zh-TW.ts` — 多個 i18n keys 定義但從未被任何 handler 使用（`productModalStock`, `escortPricingList`, `aiAgentSelectChannel` 等）
+- **P3-22**: `GameSettingsHandler.ts:39-40` — 每次點擊同時查詢兩個 game configs（目前只有 2 games 可接受）
+- **P3-23**: `AdminPanelViewState` enum 缺少 8 個功能面板狀態
 
 ---
 
-## P2 — 中優先級問題
+## 維度分析摘要
 
-### shared-infrastructure (7 findings)
-
-- **P2-1**: `ButtonView` 缺少長度驗證 — `packages/shared/src/discord/domain/embed-view.ts` L28-33
-- **P2-2**: `TokenMap` 型別缺 3 個 token 條目 — `packages/shared/src/infra/di/tokens.ts` L19-25
-- **P2-3**: `SelectMenuUtil` API 形狀與 Java 不一致 (R8.6) — `packages/shared/src/discord/services/select-menu-util.ts`
-- **P2-4**: `DomainEventPublisher.publish()` 不支援 async listener (R6.1) — `packages/shared/src/infra/events/domain-event-publisher.ts`
-- **P2-5**: Pino transport 開發環境也輸出 JSON (R7.3) — `packages/shared/src/infra/logger/logger.ts`
-- **P2-6**: `MockDiscordEmbedBuilder.buildPaginated()` 與真實實作重複 (R8.4) — `packages/shared/src/discord/mock/mock-discord-embed-builder.ts`
-- **P2-7**: `dotenv` dependency 未使用 — `packages/shared/package.json`
-
-### guild-economy (5 findings)
-
-- **P2-8**: 未使用的 import: `MemberCurrencyAccount` — `packages/economy/src/currency/services/balance-adjustment-service.ts` L14
-- **P2-9**: 未使用的 import: `okVoid` — `packages/economy/src/currency/repositories/currency-account-repo.ts` L5
-- **P2-10**: 死碼在地化字串 — `packages/economy/src/localization/dice-game-messages.ts` L15, L26, L52
-- **P2-11**: Dice game 用 `creditReward(0)` 只為取得餘額（浪費 DB round-trip）
-- **P2-12**: 重複的 validation pair (`validateName` vs `tryValidateName`) — `packages/economy/src/currency/services/currency-config-service.ts`
-
-### shop-payment (11 findings)
-
-- **P2-13**: 搜尋按鈕回傳純文字而非 Modal (R2.5) — `packages/shop/src/commands/shop-handler.ts` L122-126
-- **P2-14**: 法幣付款按鈕顯示佔位文字 (R4.1) — `packages/shop/src/commands/shop-handler.ts` L102-108
-- **P2-15**: 貨幣購買確認僅為佔位符 (R3.1) — `packages/shop/src/commands/shop-handler.ts` L172-181
-- **P2-16**: `buildShopComponents()` 匯出但從未被呼叫 (R1.5) — `packages/shop/src/commands/shop-handler.ts` L51
-- **P2-17**: `CODE_LENGTH` 和 `CHARACTERS` 在兩個檔案重複定義 (R10.5)
-- **P2-18**: `MERCHANT_TRADE_NO_TIME_FORMAT` regex 未使用 (R4.2)
-- **P2-19**: `createPendingSimple()` 和 `ShopPageHelper` 為 invented helpers (不在 spec) — `packages/shop/src/domain/fiat-order.ts`
-- **P2-20**: `createProduct()` factory 在 shop 而非 admin (scope out of spec) — `packages/shop/src/domain/product-types.ts`
-- **P2-21**: `buildPaymentMethodChoiceEmbed()` / `buildPurchaseConfirmEmbed()` 不在 spec — `packages/shop/src/services/shop-view.ts`
-- **P2-22**: `DrizzleProductRepository.getProduct()` 為冗餘 alias — `packages/shop/src/persistence/drizzle-product-repository.ts`
-- **P2-23**: `formData.get('Data')` 未處理 URI decode 例外 — `packages/shop/src/services/fiat-payment-callback.service.ts`
-
-### escort-dispatch (8 findings)
-
-- **P2-24**: 重複的 `generateUniqueOrderNumber` 邏輯 — handoff service vs order service
-- **P2-25**: `withAssignedEscort` 定義但從未被使用 (死碼) — `packages/dispatch/src/domain/escort-dispatch-order.ts` L360-372
-- **P2-26**: `buildOrderTimedOutEmbed` 定義但從未被使用 (死碼) — `packages/dispatch/src/panel/DispatchPanelMessageFactory.ts` L114-126
-- **P2-27**: `createPending` 未驗證 `customerUserId > 0` (R2.2) — `packages/dispatch/src/domain/escort-dispatch-order.ts` L199-215
-- **P2-28**: Schema `escortDispatchOrder.id` 缺少 `primaryKey()` — `packages/dispatch/src/schema/escort-dispatch-order.sql.ts` L19
-- **P2-29**: `notifyCustomerConfirmed` 額外通知了 `assignedByUserId` (R6.1) — spec 只要求通知護航者
-- **P2-30**: `handleOrderSelected` 中的 dead null check — `packages/dispatch/src/panel/DispatchPanelInteractionHandler.ts` L508-512
-- **P2-31**: Handoff 對 `escortOptionCode` 有 spec 未定義的額外驗證 — `packages/dispatch/src/service/escort-dispatch-handoff.service.ts` L72-73
-
-### ai-chat-agent (10 findings)
-
-- **P2-32**: `sendToChannel()` 使用不安全的 `as unknown as` 型別轉換 — `packages/ai/src/commands/ai-chat-mention-listener.ts` L150-151
-- **P2-33**: `createRole` 的 permission schema 與其他 tools 不一致 — `packages/ai/src/tools/CreateRoleTool.ts` L8-18
-- **P2-34**: Drizzle schema table 名稱與 Java Flyway migration 不同 — `packages/ai/src/persistence/schema.ts` (`ai_channel_restriction` vs `ai_allowed_channels`)
-- **P2-35**: Code fence 計數 regex 邏輯不正確 — `packages/ai/src/markdown/services/DiscordMarkdownPaginator.ts` L146-149
-- **P2-36**: `ConversationIdBuilder` 使用 magic string `'none'` — `packages/ai/src/services/memory/tool-call-history.ts` L29
-- **P2-37**: `ModifyRolePermissionsTool` 有不相關的 `id`/`type` 欄位 — `packages/ai/src/tools/ModifyRolePermissionsTool.ts` L5-15
-- **P2-38**: `TokenEstimator` 註冊在 DI 但從未被呼叫 — `packages/ai/src/di/ai-module.ts` L283-284
-- **P2-39**: `DiscordMarkdownStreamProcessor` import 了但從未被實例化 (R13.4) — `packages/ai/src/markdown/services/MarkdownValidatingAIChatService.ts`
-- **P2-40**: `PromptLoader` base prompts dir 不存在時可能調用 `.getValue()` 於 Err — `packages/ai/src/prompts/prompt-loader.ts`
-- **P2-41**: `MessageSplitter.split()` 對空白內容回傳 `[]`，listener 可能發送空白
-
-### administration (11 findings)
-
-- **P2-42**: `BaseAdminHandler` 完全未被使用 (死碼) — `packages/admin/src/panel/admin/BaseAdminHandler.ts`
-- **P2-43**: `AdminPanelViewFactory` 和 `AdminProductPanelViewFactory` 功能重疊
-- **P2-44**: `AdminPanelModalFactory` 和 `AdminProductPanelModalFactory` 功能重疊
-- **P2-45**: `AIConfigManagementFacade` 包含冗餘的 deprecated 方法 (R13.4)
-- **P2-46**: `CurrencyManagementFacade.deductBalance` 不在 spec 定義中 (R13.1)
-- **P2-47**: `BalanceAdjustMode` enum 從未被產品程式碼使用
-- **P2-48**: `ProductManagementHandler.ts` 是冗餘的 re-export — `packages/admin/src/panel/admin/handlers/ProductManagementHandler.ts`
-- **P2-49**: `AdminPanelRouter` 為無效路由 — 僅回覆佔位符 (R1.5)
-- **P2-50**: Token view 按鈕標籤複用貨幣管理字串 (R3)
-- **P2-51**: `AdminProductPanelHandler.execute` 有重複的 `getGuildId()` 呼叫
-- **P2-52**: `AIConfigManagementFacade.addAllowedChannel` 接受不在 spec 中的額外參數 (R13.4)
+| 維度 | P0 | P1 | P2 | P3 | 主要發現 |
+|------|----|----|----|----|----------|
+| 幻覺代碼 | 0 | 2 | 1 | 0 | ESLint 套件缺失、測試 mock 錯誤方法名、product description 顯示為庫存 |
+| 冗餘代碼 | 0 | 0 | 3 | 12 | 未使用 constants/i18n、dead imports、重複邏輯、TODO 註解 |
+| Spec 偏移 | 7 | 13 | 16 | 0 | ECPay 編碼、thread category 解析、狀態機欄位處理、handler 行為偏離 |
+| Spec 遺漏 | 9 | 6 | 8 | 0 | CI pipeline、vitest config、Agent tool 循環、panel 子互動、事件推送 |
+| 架構瑕疵 | 0 | 5 | 5 | 4 | Facade raw SQL、duck typing、缺少介面實作宣告、不安全的型別轉換 |
+| 性能隱患 | 1 | 1 | 3 | 3 | Session 記憶體洩漏、Redis silent failure、缺少連線池、缺少 cache |
 
 ---
 
-## P3 — 低優先級問題
+## 修正優先級建議
 
-### shared-infrastructure (5 findings)
+### 第一優先 (阻斷整合) — P0 x17
+1. 修正 ECPay URL 編碼（P0-3, P0-4, P0-5, P0-6） → shop-payment
+2. 實作 Agent 工具執行循環（P0-7, P0-8, P0-9） → ai-chat-agent
+3. 修正管理面板子互動分派（P0-10, P0-11, P0-12, P0-13） → administration
+4. 加入管理面板權限檢查（P0-15） → administration
+5. 修正護航 Dispatch panel 按鈕邏輯（P0-16, P0-17） → escort-dispatch
+6. 建立 CI TypeScript pipeline（P0-1, P0-2） → preparation
+7. 實作面板即時更新推送（P0-14） → administration
 
-- **P3-1**: `module-declarations.d.ts` 假定了其他套件的 API 形狀
-- **P3-2**: `main.ts` 使用過多 `as any` 型別斷言
-- **P3-3**: `DomainEventPublisher` 缺少 Java 版本的 `debug` log (R6.1)
-- **P3-4**: `MockDiscordContext` constructor 驗證過嚴（拒絕 `guildId === '0'`）
-- **P3-5**: `rewardTypeSchema` 硬編碼 enum 值而非使用 `z.nativeEnum` — `packages/shop/src/domain/fiat-order.ts`
+### 第二優先 (整合前) — P1 x23
+主要集中在 shared-infrastructure（embed 截斷、Redis logging、guildId type）、shop-payment（callback payload）、ai-chat-agent（thread category）、administration（session cleanup、event 型別判別）
 
-### guild-economy (2 findings)
-
-- **P3-6**: TODO markers 顯示未完成的 feature wiring — `packages/economy/src/localization/dice-game-messages.ts`
-- **P3-7**: `InsufficientBalanceError` 與 `DomainError.insufficientBalance()` 語意重複 — `packages/economy/src/currency/repositories/currency-account-repo.ts`
-
-### shop-payment (6 findings)
-
-- **P3-8**: `FiatOrder` 包含 3 個 Java domain record 中處理鎖欄位 (spec intro 說 36 欄位，實際 Java 28、TS 31)
-- **P3-9**: `DrizzleRedemptionCodeRepository.findByCode()` 雙重 `toUpperCase()` — L141
-- **P3-10**: `ShopCommandHandler` 傳入 plain object 而非 `EmbedBuilder` — L51
-- **P3-11**: `FiatOrderService.createFiatOnlyOrder` 中的 `tradeDesc` 額外參數
-- **P3-12**: 部分 embed builder 使用不一致的 color 常數
-- **P3-13**: `formData` 解析未包裹 `decodeURIComponent` 的例外處理
-
-### escort-dispatch (4 findings)
-
-- **P3-14**: Footer 文字與 spec 措辭不同 (R5.3) — "等待客戶確認中（24 小時超時）" vs "24 小時未確認將視為訂單完成"
-- **P3-15**: `notifyAfterSalesRequested` fallback 使用 guild system channel（spec 未定義此行）
-- **P3-16**: 通知皆為純文字 DM 而非 embed + 按鈕 (R4, R6, R8, R9)
-- **P3-17**: `order-number-generator.ts` 中 `randomInt(0, len)` 的 exclusive max 可能造成混淆
-
-### ai-chat-agent (7 findings)
-
-- **P3-18**: `AgentConfigUpdatedEvent` 用 `as never` cast 發布 (R7.5) — `packages/ai/src/services/routing/agent-config-service.ts` L214
-- **P3-19**: `MessageChunkAccumulator.flush()` / `clear()` 從未在產品程式中被呼叫
-- **P3-20**: `TokenEstimator` 完整實作但從未被參照（死碼）
-- **P3-21**: `DiscordMarkdownStreamProcessor` 被 import 但從未被使用 (R13.4)
-- **P3-22**: `LangChainExceptionMapper` 在 `updateConfig()` 後不會更新 stored config reference
-- **P3-23**: `MessageSplitter` 對空白內容回傳 `[]` 可能導致 listener 發送空白訊息
-- **P3-24**: `ToolExecutionInterceptor.getAndClearDuration()` 的 for-of timing 邏輯有缺陷
-
-### administration (5 findings)
-
-- **P3-25**: `MemberInfoFacade` 方法名 `getUserPanelView` 與 spec `getMemberSummary` 不一致 (R13.5)
-- **P3-26**: `UserPanelCommand` 以純文字渲染按鈕 (類似 P0-23) — `packages/admin/src/panel/user/UserPanelCommand.ts` L51-54
-- **P3-27**: Embed color 值未標準化（`0x5865F2` vs `0x2c3e50` vs `0x5865f2`）
-- **P3-28**: `SlashCommandMetrics.recordStart` 忽略 `commandName` 參數 (R14.4) — `packages/admin/src/commands/infra/SlashCommandMetrics.ts` L24
-- **P3-29**: `AdminPanelViewFactory` color 值使用不一致的大小寫 hex
-
----
-
-## 六維度分析摘要
-
-| 維度 | P0 | P1 | P2 | P3 | 關鍵發現 |
-|------|----|----|----|----|---------|
-| 幻覺代碼 | 1 | 0 | 5 | 0 | 4 個不存在於 Java 的事件型別 (P0-1); invented helpers (P2-19, P2-20, P2-21) |
-| 冗餘代碼 | 1 | 1 | 11 | 3 | 大量死碼 (P0-8, P2-17, P2-24-26, P2-42); 未使用 import (P2-8-9) |
-| Spec 偏移 | 5 | 19 | 12 | 6 | 錯誤 error type (P0-4); Discord API 誤用 (P0-7); snowflake 型別 (P0-24); 完整行為差異 (P1-1~P1-39) |
-| Spec 遺漏 | 6 | 4 | 10 | 0 | Handler 全部 stub (P0-22, P0-25); notification 不觸發 (P0-16); update listener 空殼 (P0-26) |
-| 架構瑕疵 | 7 | 7 | 7 | 4 | DI 忽略 config (P0-2); 權限永不檢查 (P0-10); main.ts 跨模組接線 (P1-5); 原始 SQL injection (P1-38) |
-| 性能隱患 | 0 | 0 | 0 | 0 | 無 P0/P1 級別性能問題（creditReward(0) DB 浪費已在 P2） |
-
----
-
-## 跨模組依賴整合風險
-
-1. **DI 鍵結缺失**: `EscortOptionCatalogRepository` 未在任何 module 註冊，block administration 模組的護航目錄 CRUD。
-2. **事件型別未對齊**: shared 中定義了 4 個 Java 不存在的事件，AI 模組的事件用 `as never` cast 發布。
-3. **Discord.js API 誤用模式**: 多處 handler 在 `deferReply()` 後仍呼叫 `reply()` 而非 `editReply()`。
-4. **snowflake 型別不一致**: admin 模組使用 `number`，其他模組使用 `string`，跨模組呼叫時必然錯誤。
-
----
-
-## 優先級行動清單
-
-| 優先級 | 行動 | 負責模組 |
-|--------|------|---------| 
-| P0 | 修正所有 26 個 P0 問題（詳見上方 P0 清單） | 全部 |
-| P1 | 修正 Agent loop、通知策略、DM 檢查、Facade 型別等 39 個 P1 問題 | 全部 |
-| P2 | 清理死碼、修正 spec 偏移、接線未完成的 UI 互動等 52 個 P2 問題 | 全部 |
-| P3 | 修正命名不一致、補齊日誌、移除冗餘等 29 個 P3 問題 | 全部 |
-
-**總評**: 核心業務邏輯層（domain model、repository、service）完成度約 85%，但 Discord 互動層（command/panel handler）缺口極大，多個模組的 UI 入口完全未實作或僅有 stub。最關鍵的阻斷問題集中在 dispatch（面板完全無互動元件、權限檢查失效）、administration（9 個 handler 全為 stub、snowflake ID 精度遺失）、ai-chat-agent（Agent 模式完全未接線）和 shop-payment（ShopCommandHandler 只有佔位符）。
+### 第三優先 (可平行修正) — P2 x36 + P3 x23
+大部分為程式碼品質改進、測試覆蓋、重構、文件對齊

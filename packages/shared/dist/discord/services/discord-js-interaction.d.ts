@@ -17,5 +17,6 @@ export declare class DiscordJsInteraction implements DiscordInteraction {
     editEmbed(embed: unknown): Promise<void>;
     deferReply(): Promise<void>;
     getHook(): unknown;
+    getCustomId(): string;
     isAcknowledged(): boolean;
 }

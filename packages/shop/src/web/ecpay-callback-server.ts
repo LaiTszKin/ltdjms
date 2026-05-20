@@ -45,6 +45,9 @@ export class EcpayCallbackHttpServer {
 
     this.app = express();
 
+    // Raw body parser (runs before json/urlencoded to capture raw body bytes)
+    this.app.use(express.raw({ type: '*/*', limit: '64kb' }));
+
     // Body parsers with 64KB limit
     this.app.use(
       express.json({
@@ -58,8 +61,10 @@ export class EcpayCallbackHttpServer {
     this.app.post(callbackPath, async (req, res) => {
       try {
         const contentType = req.headers['content-type'] ?? null;
-        const requestBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
-        const result = await this.callbackService.handleCallback(requestBody, contentType);
+        const rawBody = req.body instanceof Buffer
+          ? req.body.toString('utf-8')
+          : JSON.stringify(req.body);
+        const result = await this.callbackService.handleCallback(rawBody, contentType, rawBody);
         res.status(result.httpStatus).send(result.responseBody);
       } catch (e) {
         this.log.error({ error: e }, 'ECPay callback handler error');

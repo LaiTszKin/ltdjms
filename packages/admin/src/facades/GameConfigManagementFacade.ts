@@ -106,7 +106,8 @@ export class GameConfigManagementFacade {
 
       // Publish event
       const event: DiceGameConfigChangedEvent = {
-        guildId: numericGuildId,
+        guildId,
+        eventType: 'dice_game_config_changed',
         gameType: GameType.DICE_GAME_1,
       };
       this.eventPublisher.publish(event);
@@ -188,7 +189,8 @@ export class GameConfigManagementFacade {
 
       // Publish event
       const event: DiceGameConfigChangedEvent = {
-        guildId: numericGuildId,
+        guildId,
+        eventType: 'dice_game_config_changed',
         gameType: GameType.DICE_GAME_2,
       };
       this.eventPublisher.publish(event);

@@ -177,7 +177,7 @@ export class EscortDispatchOrderService {
 
     try {
       const confirmed = withConfirmed(order, new Date(this.clock!()));
-      const updated = await this.repository.update(confirmed);
+      const updated = await this.repository.update(confirmed, EscortDispatchOrderStatus.PENDING_CONFIRMATION);
       return new Ok(updated);
     } catch (e) {
       const err = e instanceof Error ? e : new Error(String(e));
@@ -456,24 +456,28 @@ export class EscortDispatchOrderService {
 
     try {
       const completed = withCompleted(order, new Date(this.clock!()));
-      await this.repository.update(completed);
-
-      // Re-query to verify the update actually changed status (guards against race conditions
-      // where another transaction changed the order status between our read and update).
-      const verified = await this.repository.findByOrderNumber(order.orderNumber);
-      if (verified != null && isCompleted(verified)) {
-        return verified;
-      }
-      // Race condition: another operation changed the status before our update, return original
-      return order;
+      const updated = await this.repository.update(completed);
+      return updated;
     } catch (e) {
       // If auto-complete persist fails, log warning and return original order (non-blocking)
-      console.warn(
-        `Failed to persist timeout auto-completion for order ${order.orderNumber}:`,
-        e instanceof Error ? e.message : e,
-      );
+      const errMsg = e instanceof Error ? e.message : String(e);
+      this.logWarn('Failed to persist timeout auto-completion', {
+        orderNumber: order.orderNumber,
+        error: errMsg,
+      });
       return order;
     }
+  }
+
+  private logWarn(message: string, data?: Record<string, unknown>): void {
+    const entry = {
+      timestamp: new Date().toISOString(),
+      level: 'warn',
+      module: 'EscortDispatchOrderService',
+      message,
+      ...data,
+    };
+    console.warn(JSON.stringify(entry));
   }
 
   private normalizeLimit(limit: number, maxLimit: number): number {

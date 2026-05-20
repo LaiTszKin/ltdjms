@@ -145,7 +145,13 @@ export function buildModeSelectActionRow(): ButtonView[] {
 }
 
 /** 訂單詳情頁的操作列。 */
-export function buildOrderDetailActionRow(canConfirm: boolean, canComplete: boolean, canRequestAfterSales: boolean): ButtonView[] {
+export function buildOrderDetailActionRow(
+  canConfirm: boolean,
+  canComplete: boolean,
+  canRequestAfterSales: boolean,
+  canClaimAfterSales: boolean,
+  canCloseAfterSales: boolean,
+): ButtonView[] {
   const buttons: ButtonView[] = [];
   if (canConfirm) {
     buttons.push(buildConfirmOrderButton());
@@ -156,9 +162,10 @@ export function buildOrderDetailActionRow(canConfirm: boolean, canComplete: bool
   if (canRequestAfterSales) {
     buttons.push(buildRequestAfterSalesButton());
   }
-  // After-sales action buttons
-  if (canRequestAfterSales) {
+  if (canClaimAfterSales) {
     buttons.push(buildClaimAfterSalesButton());
+  }
+  if (canCloseAfterSales) {
     buttons.push(buildCloseAfterSalesButton());
   }
   buttons.push(buildBackToModeButton());

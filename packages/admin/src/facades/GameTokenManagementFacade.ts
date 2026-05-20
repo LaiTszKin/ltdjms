@@ -1,4 +1,4 @@
-import { type Result, Ok, Err, DomainError } from '@ltdjms/shared';
+import { type Result, Ok, Err, DomainError, type DomainEventPublisher, type GameTokenChangedEvent } from '@ltdjms/shared';
 import {
   GameTokenService,
   GameTokenTransactionService,
@@ -11,12 +11,14 @@ import {
 /**
  * Facade for game token management operations.
  * Wraps GameTokenService and GameTokenTransactionService.
+ * Publishes GameTokenChangedEvent on successful adjustments.
  * Matches Java GameTokenManagementFacade.
  */
 export class GameTokenManagementFacade {
   constructor(
     private readonly tokenService: GameTokenService,
     private readonly tokenTransactionService: GameTokenTransactionService,
+    private readonly eventPublisher: DomainEventPublisher,
   ) {}
 
   /**
@@ -57,7 +59,11 @@ export class GameTokenManagementFacade {
     const validation = this.validateTokenAmount(amount, false);
     if (validation) return validation;
 
-    return this.tokenService.tryAdjustTokens(Number(guildId), Number(userId), amount);
+    const result = await this.tokenService.tryAdjustTokens(Number(guildId), Number(userId), amount);
+    if (result.isOk()) {
+      this.publishTokenChangedEvent(guildId, userId, result.getValue().newTokens);
+    }
+    return result;
   }
 
   /**
@@ -89,7 +95,11 @@ export class GameTokenManagementFacade {
         });
       }
 
-      return this.tokenService.tryAdjustTokens(Number(guildId), Number(userId), delta);
+      const result = await this.tokenService.tryAdjustTokens(Number(guildId), Number(userId), delta);
+      if (result.isOk()) {
+        this.publishTokenChangedEvent(guildId, userId, result.getValue().newTokens);
+      }
+      return result;
     } catch (err) {
       return new Err(
         DomainError.persistenceFailure(
@@ -125,6 +135,16 @@ export class GameTokenManagementFacade {
         ),
       );
     }
+  }
+
+  private publishTokenChangedEvent(guildId: string, userId: string, newTokens: number): void {
+    const event: GameTokenChangedEvent = {
+      guildId: String(Number(guildId)),
+      eventType: 'game_token_changed',
+      userId: Number(userId),
+      newTokens,
+    };
+    this.eventPublisher.publish(event);
   }
 
   private validateTokenAmount(

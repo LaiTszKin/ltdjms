@@ -72,7 +72,7 @@ describe('AIChatMentionRoutingDecision', () => {
 
     const result = await decision.decide('guild-1', 'channel-3', 'channel-3', null);
     expect(result.route).toBe(Route.AGENT_ROUTE);
-    expect(result.source).toBe(Source.AGENT_CONFIG);
+    expect(result.source).toBe(Source.AGENT_ENABLED);
   });
 
   it('should route to AI_CHAT_ROUTE when channel is allowlisted (priority 2)', async () => {
@@ -97,13 +97,13 @@ describe('AIChatMentionRoutingDecision', () => {
 
     const result = await decision.decide('guild-1', 'channel-99', 'channel-99', null);
     expect(result.route).toBe(Route.DENY);
-    expect(result.source).toBe(Source.NO_ALLOWLIST);
+    expect(result.source).toBe(Source.AI_ALLOWLIST_DENIED);
   });
 
   it('should route to DENY when agent config is unavailable and no allowlist', async () => {
-    vi.spyOn(agentConfigService, 'isAgentEnabled').mockImplementation(() => {
-      throw new Error('Redis unavailable');
-    });
+    vi.spyOn(agentConfigService, 'isAgentEnabledAsync').mockRejectedValue(
+      new Error('Redis unavailable'),
+    );
 
     const result = await decision.decide('guild-1', 'channel-99', 'channel-99', null);
     expect(result.route).toBe(Route.DENY);

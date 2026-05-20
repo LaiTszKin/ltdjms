@@ -6,7 +6,7 @@ import {
   Route,
   type Decision,
 } from '../services/ai-chat-service.js';
-import { type AIChatMentionRoutingDecision } from '../services/routing/routing-decision.js';
+import { type AIChatMentionRoutingDecision, resolveCategoryId } from '../services/routing/routing-decision.js';
 import { DomainError } from '@ltdjms/shared';
 import { MessageSplitter } from '../services/MessageSplitter.js';
 
@@ -25,6 +25,19 @@ class ReasoningMessageTracker {
 
   addReasoningMessage(message: Message): void {
     this.reasoningMessages.push(message);
+  }
+
+  /**
+   * Deletes only reasoning messages, keeping the initial message intact.
+   */
+  async deleteReasoningMessages(): Promise<void> {
+    await Promise.allSettled(
+      this.reasoningMessages.map((msg) =>
+        msg.delete().catch(() => {
+          // Ignore deletion failures
+        }),
+      ),
+    );
   }
 
   /**
@@ -90,11 +103,8 @@ export class AIChatMentionListener {
       const channelId = message.channel.id;
       const restrictionChannelId = this.resolveRestrictionChannelId(message);
 
-      // Resolve category ID
-      let categoryId: string | null = null;
-      if ('parentId' in message.channel && message.channel.parentId) {
-        categoryId = message.channel.parentId;
-      }
+      // Resolve category ID (thread -> parent channel -> category)
+      const categoryId = resolveCategoryId(message.channel, message.guild);
 
       // Get routing decision
       const decision: Decision = await this.routingDecision.decide(
@@ -208,8 +218,10 @@ export class AIChatMentionListener {
             break;
 
           case StreamChunkType.TOOL_INTENT:
+            // TODO (P2-27): TOOL_INTENT is not currently emitted by the streaming service.
+            // It will be emitted once the agent tool execution loop is fully wired
+            // (see P0-7: LangChainAIChatService tool_call_chunks handling).
             if (chunk) {
-              // Send tool intent immediately
               this.sendToChannel(message, chunk);
             }
             break;
@@ -222,23 +234,23 @@ export class AIChatMentionListener {
         }
 
         if (isComplete) {
-          // Delete reasoning messages first
-          tracker.deleteAll().then(() => {
-            // Then send final content
+          // Delete reasoning messages first, then edit thinking message with final content
+          tracker.deleteReasoningMessages().then(() => {
             const fullContent = pendingContent.join('');
 
             if (!fullContent) {
-              this.sendToChannel(message, ':question: AI 沒有產生回應');
+              thinkingMsg.edit(':question: AI 沒有產生回應').catch(() => {});
               return;
             }
 
             const pages = this.splitter.split(fullContent);
             // P2-41: Fallback for empty split result with non-empty content
             if (pages.length === 0 && fullContent) {
-              this.sendToChannel(message, fullContent);
+              thinkingMsg.edit(fullContent).catch(() => {});
             } else {
-              for (const page of pages) {
-                this.sendToChannel(message, page);
+              thinkingMsg.edit(pages[0]).catch(() => {});
+              for (let i = 1; i < pages.length; i++) {
+                this.sendToChannel(message, pages[i]);
               }
             }
           });

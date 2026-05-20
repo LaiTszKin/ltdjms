@@ -40,6 +40,7 @@ export class FiatPaymentCallbackService {
   async handleCallback(
     requestBody: string | null,
     contentType: string | null,
+    rawBody: string | null,
   ): Promise<CallbackResult> {
     if (!requestBody || requestBody.trim().length === 0) {
       return CallbackResult.fail(400);
@@ -47,7 +48,7 @@ export class FiatPaymentCallbackService {
 
     try {
       const { node: callbackNode, rawDecrypted } = this.parseCallbackNode(requestBody, contentType);
-      const callbackPayload = this.truncateTo(rawDecrypted, 4000);
+      const callbackPayload = this.truncateTo(rawBody || requestBody, 4000);
       const orderNumber = this.extractOrderNumber(callbackNode);
       if (!orderNumber || orderNumber.trim().length === 0) {
         this.log.warn({ payload: callbackPayload }, 'ECPay callback missing order number');

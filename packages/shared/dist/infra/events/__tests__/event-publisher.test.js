@@ -2,14 +2,14 @@ import { describe, it, expect, vi } from 'vitest';
 import { DomainEventPublisher } from '../domain-event-publisher.js';
 /** Test helper: create a minimal DomainEvent. */
 function testEvent(guildId) {
-    return { guildId };
+    return { guildId, eventType: 'test' };
 }
 describe('DomainEventPublisher', () => {
     it('publishes event to registered listeners', () => {
         const publisher = new DomainEventPublisher();
         const listener = vi.fn();
         publisher.register(listener);
-        const event = testEvent(123);
+        const event = testEvent('123');
         publisher.publish(event);
         expect(listener).toHaveBeenCalledTimes(1);
         expect(listener).toHaveBeenCalledWith(event);
@@ -20,7 +20,7 @@ describe('DomainEventPublisher', () => {
         const listener2 = vi.fn();
         publisher.register(listener1);
         publisher.register(listener2);
-        publisher.publish(testEvent(456));
+        publisher.publish(testEvent('456'));
         expect(listener1).toHaveBeenCalledTimes(1);
         expect(listener2).toHaveBeenCalledTimes(1);
     });
@@ -32,17 +32,17 @@ describe('DomainEventPublisher', () => {
         const normalListener = vi.fn();
         publisher.register(throwingListener);
         publisher.register(normalListener);
-        expect(() => publisher.publish(testEvent(789))).not.toThrow();
+        expect(() => publisher.publish(testEvent('789'))).not.toThrow();
         expect(throwingListener).toHaveBeenCalledTimes(1);
         expect(normalListener).toHaveBeenCalledTimes(1);
     });
     it('handles no listeners gracefully', () => {
         const publisher = new DomainEventPublisher();
-        expect(() => publisher.publish(testEvent(1))).not.toThrow();
+        expect(() => publisher.publish(testEvent('1'))).not.toThrow();
     });
     it('tracks last published event', () => {
         const publisher = new DomainEventPublisher();
-        const event = testEvent(999);
+        const event = testEvent('999');
         publisher.publish(event);
         expect(publisher.getLastPublishedEvent()).toBe(event);
     });
@@ -59,7 +59,7 @@ describe('DomainEventPublisher', () => {
         const listener = vi.fn();
         publisher.register(listener);
         publisher.clearListeners();
-        publisher.publish(testEvent(1));
+        publisher.publish(testEvent('1'));
         expect(listener).not.toHaveBeenCalled();
     });
 });

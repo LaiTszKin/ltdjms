@@ -211,7 +211,8 @@ export class DefaultAIAgentChannelConfigService
       if (this.eventPublisher) {
         try {
           const event: AIAgentChannelConfigChangedEvent = {
-            guildId: Number(guildId),
+            guildId,
+            eventType: 'ai_agent_channel_config_changed',
             channelId: Number(channelId),
             agentEnabled: enabled,
             changedAt: new Date(),

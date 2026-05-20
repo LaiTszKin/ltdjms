@@ -11,9 +11,12 @@ import { type DispatchNotificationService } from '../notification/index.js';
 import {
   isPendingEscortConfirmation,
   isConfirmed,
+  isPendingCustomerConfirmation,
   isCompleted,
   isAfterSalesRequested,
   isAfterSalesInProgress,
+  isAfterSalesAssignee,
+  EscortDispatchOrderStatus,
 } from '../domain/index.js';
 import {
   embedViewToApiEmbed,
@@ -527,7 +530,9 @@ export class DispatchPanelInteractionHandler {
     session: DispatchSessionState,
   ): Promise<void> {
     // Extract selected value from the interaction
-    const selectedValue = (interaction as unknown as { values?: string[] }).values?.[0];
+    const selectedValue = 'values' in interaction
+      ? (interaction as { values?: string[] }).values?.[0]
+      : undefined;
     if (!selectedValue) {
       await interaction.reply('請選擇一個選項。');
       return;
@@ -545,8 +550,8 @@ export class DispatchPanelInteractionHandler {
   private async handleOrderSelected(
     interaction: DiscordInteraction,
     orderNumber: string,
-    _userId: string,
-    _session: DispatchSessionState,
+    userId: string,
+    session: DispatchSessionState,
   ): Promise<void> {
     const result = await this.dispatchOrderService.findByOrderNumber(orderNumber);
 
@@ -561,8 +566,14 @@ export class DispatchPanelInteractionHandler {
     const detailView = buildOrderDetailEmbed(order);
     const canConfirm = isPendingEscortConfirmation(order);
     const canComplete = isConfirmed(order);
-    const canRequestAfterSales = isCompleted(order) || isAfterSalesRequested(order) || isAfterSalesInProgress(order);
-    const buttons = buildOrderDetailActionRow(canConfirm, canComplete, canRequestAfterSales);
+    const canRequestAfterSales =
+      isPendingCustomerConfirmation(order) ||
+      order.status === EscortDispatchOrderStatus.COMPLETED;
+    const canClaimAfterSales = isAfterSalesRequested(order);
+    const canCloseAfterSales =
+      isAfterSalesInProgress(order) &&
+      isAfterSalesAssignee(order, Number(userId));
+    const buttons = buildOrderDetailActionRow(canConfirm, canComplete, canRequestAfterSales, canClaimAfterSales, canCloseAfterSales);
     await this.replyWithPayload(interaction, detailView, buttons);
   }
 

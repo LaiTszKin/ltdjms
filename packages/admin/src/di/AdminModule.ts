@@ -245,6 +245,7 @@ export function configureAdminContainer(): void {
   const tokenFacade = new GameTokenManagementFacade(
     gameTokenService,
     gameTokenTxService,
+    eventPublisher,
   );
   container.registerInstance(
     ADMIN_TOKENS.GameTokenManagementFacade,
@@ -298,6 +299,7 @@ export function configureAdminContainer(): void {
     currencyTxService,
     gameTokenTxService,
     redemptionService,
+    container.resolve<any>(TOKENS.DatabasePool),
   );
   container.registerInstance(
     ADMIN_TOKENS.MemberInfoFacade,
@@ -349,6 +351,7 @@ export function configureAdminContainer(): void {
 
   const balanceHandler = new BalanceManagementHandler(
     currencyFacade,
+    adminPanelModalFactory,
     adminSessionManager,
     errorHandler,
   );
@@ -360,7 +363,9 @@ export function configureAdminContainer(): void {
 
   const tokenHandler = new TokenManagementHandler(
     tokenFacade,
+    adminPanelModalFactory,
     adminSessionManager,
+    errorHandler,
   );
   container.registerInstance(
     ADMIN_TOKENS.TokenManagementHandler,
@@ -371,6 +376,7 @@ export function configureAdminContainer(): void {
   const gameHandler = new GameSettingsHandler(
     gameConfigFacade,
     adminSessionManager,
+    errorHandler,
   );
   container.registerInstance(
     ADMIN_TOKENS.GameSettingsHandler,
@@ -381,6 +387,7 @@ export function configureAdminContainer(): void {
   const aiChannelHandler = new AIChannelConfigHandler(
     aiConfigFacade,
     adminSessionManager,
+    errorHandler,
   );
   container.registerInstance(
     ADMIN_TOKENS.AIChannelConfigHandler,
@@ -391,6 +398,7 @@ export function configureAdminContainer(): void {
   const aiAgentHandler = new AIAgentConfigHandler(
     aiConfigFacade,
     adminSessionManager,
+    errorHandler,
   );
   container.registerInstance(
     ADMIN_TOKENS.AIAgentConfigHandler,
@@ -409,6 +417,7 @@ export function configureAdminContainer(): void {
   const dispatchHandler = new DispatchAfterSalesHandler(
     adminSessionManager,
     afterSalesStaffService,
+    errorHandler,
   );
   container.registerInstance(
     ADMIN_TOKENS.DispatchAfterSalesHandler,
@@ -419,6 +428,7 @@ export function configureAdminContainer(): void {
   const escortPriceHandler = new EscortPricingHandler(
     adminSessionManager,
     escortPricingService,
+    errorHandler,
   );
   container.registerInstance(
     ADMIN_TOKENS.EscortPricingHandler,
@@ -434,6 +444,7 @@ export function configureAdminContainer(): void {
     container.resolve<EscortOptionCatalogRepository>(
       DISPATCH_TOKENS.EscortOptionCatalogRepository,
     ),
+    errorHandler,
   );
   container.registerInstance(
     ADMIN_TOKENS.EscortCatalogHandler,
@@ -455,6 +466,7 @@ export function configureAdminContainer(): void {
   const adminProductPanelHandler = new AdminProductPanelHandler(
     adminSessionManager,
     shopService,
+    errorHandler,
   );
   container.registerInstance(
     ADMIN_TOKENS.AdminProductPanelHandler,

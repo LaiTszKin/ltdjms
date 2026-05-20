@@ -114,7 +114,11 @@ export {
   BUTTON_REQUEST_COMPLETION,
   BUTTON_CONFIRM_COMPLETION,
   BUTTON_REQUEST_AFTER_SALES,
+  BUTTON_CLAIM_AFTER_SALES,
+  BUTTON_CLOSE_AFTER_SALES,
   SELECT_ESCORT_OPTION,
+  SELECT_ESCORT_OPTION_EXTRA,
+  SELECT_PENDING_ORDER,
   // Colors
   COLOR_INFO,
   COLOR_WARNING,
@@ -135,6 +139,12 @@ export {
   buildRequestCompletionButton,
   buildConfirmCompletionButton,
   buildRequestAfterSalesButton,
+  buildClaimAfterSalesButton,
+  buildCloseAfterSalesButton,
+  // Select menu builders
+  buildEscortOptionSelectMenu,
+  splitSelectMenuOptions,
+  type SelectOptionView,
   // Row builders
   buildModeSelectActionRow,
   buildOrderDetailActionRow,

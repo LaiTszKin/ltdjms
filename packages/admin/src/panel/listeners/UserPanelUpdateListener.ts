@@ -8,16 +8,19 @@ import { PanelSessionManager } from '../../session/PanelSessionManager.js';
 import { MemberInfoFacade } from '../../facades/MemberInfoFacade.js';
 
 /**
+ * Event type string constants for discrimination.
+ */
+const EVENT_TYPES = {
+  BALANCE_CHANGED: 'balance_changed',
+  GAME_TOKEN_CHANGED: 'game_token_changed',
+  CURRENCY_CONFIG_CHANGED: 'currency_config_changed',
+} as const;
+
+/**
  * Listens to domain events and updates active user panel sessions.
+ * Uses eventType discriminant for type-safe event identification.
  * Events: BalanceChangedEvent, GameTokenChangedEvent, CurrencyConfigChangedEvent.
  * Matches Java UserPanelUpdateListener.
- *
- * NOTE: The current implementation fetches fresh data but does not push
- * updates to the user's panel message. To send actual embed updates,
- * the session data should be extended with a channel ID or interaction
- * token. This requires the session infrastructure to support storing
- * Discord interaction hooks, which will be addressed when migrating
- * to Redis-based session storage.
  */
 export class UserPanelUpdateListener {
   constructor(
@@ -39,9 +42,8 @@ export class UserPanelUpdateListener {
     const sessions = this.sessionManager.getAllForGuild(guildId);
 
     if (sessions.length === 0) {
-      const eventType = this.getEventTypeName(event);
       console.log(
-        `[UserPanelUpdateListener] Event ${eventType} for guildId=${guildId}: no active sessions to update`,
+        `[UserPanelUpdateListener] Event ${event.eventType} for guildId=${guildId}: no active sessions to update`,
       );
       return;
     }
@@ -49,11 +51,11 @@ export class UserPanelUpdateListener {
     // Determine affected user IDs based on event type
     let affectedUserIds: string[] = [];
 
-    if (this.isBalanceChanged(event)) {
-      affectedUserIds = [String(event.userId)];
-    } else if (this.isTokenChanged(event)) {
-      affectedUserIds = [String(event.userId)];
-    } else if (this.isConfigChanged(event)) {
+    if (event.eventType === EVENT_TYPES.BALANCE_CHANGED) {
+      affectedUserIds = [String((event as BalanceChangedEvent).userId)];
+    } else if (event.eventType === EVENT_TYPES.GAME_TOKEN_CHANGED) {
+      affectedUserIds = [String((event as GameTokenChangedEvent).userId)];
+    } else if (event.eventType === EVENT_TYPES.CURRENCY_CONFIG_CHANGED) {
       // Currency config change affects all users in guild
       affectedUserIds = sessions.map((s) => s.userId);
     }
@@ -81,15 +83,25 @@ export class UserPanelUpdateListener {
         const view = result.getValue();
         updatedCount++;
 
-        // In a full implementation, this would update the user's panel embed.
-        // The session data needs to store a channel ID or interaction hook
-        // so the listener can call editReply() on the original panel message.
-        //
-        // For now, log what would be sent so the wiring is visible in logs:
+        // Real-time push update: if the session has channelId/messageId, the
+        // panel message can be edited by fetching the message via Discord client.
+        // TODO(P0-14): Wire Discord client to push embed updates.
+        //   const channelId = session.channelId;
+        //   const messageId = session.messageId;
+        //   if (channelId && messageId) {
+        //     const channel = await client.channels.fetch(channelId);
+        //     if (channel?.isTextBased()) {
+        //       const message = await channel.messages.fetch(messageId);
+        //       // Rebuild embed using UserPanelEmbedBuilder and edit message
+        //       await message.edit({ embeds: [newEmbed] });
+        //     }
+        //   }
+
         console.log(
           `[UserPanelUpdateListener] Would update panel for ` +
           `guildId=${guildId}, userId=${session.userId}: ` +
-          `balance=${view.balance}${view.currencyIcon}, tokens=${view.tokens}`,
+          `balance=${view.balance}${view.currencyIcon}, tokens=${view.tokens}` +
+          (session.channelId ? `, channelId=${session.channelId}` : ''),
         );
       } catch (err) {
         console.error(
@@ -99,36 +111,16 @@ export class UserPanelUpdateListener {
       }
     }
 
-    const eventType = this.getEventTypeName(event);
     console.log(
-      `[UserPanelUpdateListener] Event ${eventType}: updated ${updatedCount}/${sessions.length} active sessions in guildId=${guildId}`,
+      `[UserPanelUpdateListener] Event ${event.eventType}: updated ${updatedCount}/${sessions.length} active sessions in guildId=${guildId}`,
     );
-  }
-
-  private getEventTypeName(event: DomainEvent): string {
-    if (this.isBalanceChanged(event)) return 'BalanceChanged';
-    if (this.isTokenChanged(event)) return 'GameTokenChanged';
-    if (this.isConfigChanged(event)) return 'CurrencyConfigChanged';
-    return 'Unknown';
   }
 
   private isRelevantEvent(event: DomainEvent): boolean {
     return (
-      this.isBalanceChanged(event) ||
-      this.isTokenChanged(event) ||
-      this.isConfigChanged(event)
+      event.eventType === EVENT_TYPES.BALANCE_CHANGED ||
+      event.eventType === EVENT_TYPES.GAME_TOKEN_CHANGED ||
+      event.eventType === EVENT_TYPES.CURRENCY_CONFIG_CHANGED
     );
-  }
-
-  private isBalanceChanged(event: DomainEvent): event is BalanceChangedEvent {
-    return 'newBalance' in event && 'userId' in event && !('currencyName' in event);
-  }
-
-  private isTokenChanged(event: DomainEvent): event is GameTokenChangedEvent {
-    return 'newTokens' in event;
-  }
-
-  private isConfigChanged(event: DomainEvent): event is CurrencyConfigChangedEvent {
-    return 'currencyName' in event && 'currencyIcon' in event;
   }
 }

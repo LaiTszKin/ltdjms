@@ -9,6 +9,7 @@ export class MockDiscordInteraction implements DiscordInteraction {
   private readonly _guildId: string;
   private readonly _userId: string;
   private readonly _ephemeral: boolean;
+  private readonly _customId: string;
   private _acknowledged = false;
 
   private readonly _replyMessages: string[] = [];
@@ -21,10 +22,12 @@ export class MockDiscordInteraction implements DiscordInteraction {
     userId: string,
     _channelId?: string,
     ephemeral = false,
+    customId = '',
   ) {
     this._guildId = guildId;
     this._userId = userId;
     this._ephemeral = ephemeral;
+    this._customId = customId;
   }
 
   getGuildId(): string {
@@ -60,6 +63,10 @@ export class MockDiscordInteraction implements DiscordInteraction {
 
   getHook(): unknown {
     return null;
+  }
+
+  getCustomId(): string {
+    return this._customId;
   }
 
   isAcknowledged(): boolean {

@@ -75,8 +75,9 @@ export class GameRewardService {
 
     // Publish event
     this.eventPublisher.publish({
-      guildId,
+      guildId: String(guildId),
       userId,
+      eventType: 'balance_changed',
       newBalance,
     } as BalanceChangedEvent);
 

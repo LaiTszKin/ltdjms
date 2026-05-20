@@ -2,7 +2,9 @@ import {
   type DiscordInteraction,
   type DiscordContext,
 } from '@ltdjms/shared';
-import { type GameTokenService } from '../token/services/game-token-service.js';
+import { GameTokenService } from '../token/services/game-token-service.js';
+import { GameTokenTransactionService } from '../token/services/game-token-tx-service.js';
+import { GameTokenTransactionSource } from '../domain/types.js';
 import { DiceGameMessages } from '../localization/dice-game-messages.js';
 
 /**
@@ -12,7 +14,10 @@ import { DiceGameMessages } from '../localization/dice-game-messages.js';
 export class GameTokenAdjustHandler {
   readonly commandName = 'game-token-adjust';
 
-  constructor(private readonly gameTokenService: GameTokenService) {}
+  constructor(
+    private readonly gameTokenService: GameTokenService,
+    private readonly gameTokenTransactionService: GameTokenTransactionService,
+  ) {}
 
   async execute(
     interaction: DiscordInteraction,
@@ -53,6 +58,16 @@ export class GameTokenAdjustHandler {
     }
 
     const adjustment = result.getValue();
+
+    // Record token transaction
+    await this.gameTokenTransactionService.recordTransaction(
+      guildId,
+      targetUserId,
+      amount,
+      adjustment.newTokens,
+      GameTokenTransactionSource.ADMIN_ADJUSTMENT,
+      `Admin adjusted by ${actorId}`,
+    );
 
     const message = [
       `**${DiceGameMessages.TOKEN_ADJUST_TITLE}**`,

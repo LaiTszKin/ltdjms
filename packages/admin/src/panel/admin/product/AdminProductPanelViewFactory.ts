@@ -1,4 +1,5 @@
 import { ZhTwStrings } from '../../../i18n/zh-TW.js';
+import { Colors } from '../../../constants/colors.js';
 import type { Product } from '@ltdjms/shop';
 
 /**
@@ -28,7 +29,7 @@ export class AdminProductPanelViewFactory {
   } {
     const fields = products.map((p) => ({
       name: p.name,
-      value: `價格：${p.currencyPrice ?? 'N/A'} | 庫存：${p.description ?? '無描述'}`,
+      value: `價格：${p.currencyPrice ?? 'N/A'} | 描述：${p.description ?? '無描述'}`,
       inline: false,
     }));
 
@@ -41,7 +42,7 @@ export class AdminProductPanelViewFactory {
             .replace('{total}', String(totalPages))
             .replace('{count}', String(products.length)),
       fields,
-      color: 0x2C3E50,
+      color: Colors.PRODUCT_DEFAULT,
     };
   }
 
@@ -70,7 +71,7 @@ export class AdminProductPanelViewFactory {
         codeInfo,
       ].join('\n'),
       fields: [],
-      color: 0x2C3E50,
+      color: Colors.PRODUCT_DEFAULT,
     };
   }
 
@@ -96,7 +97,7 @@ export class AdminProductPanelViewFactory {
       title: ZhTwStrings.productCodesTitle.replace('{name}', productName),
       description: codeLines.length > 0 ? codeLines.join('\n') : '暫無兌換碼',
       fields: [],
-      color: 0x8E44AD,
+      color: Colors.PRODUCT_CODES,
     };
   }
 }

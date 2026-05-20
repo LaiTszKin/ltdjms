@@ -1,8 +1,14 @@
 /**
  * 派單系統的護航訂單領域模型。
  * 7 狀態機：PENDING_CONFIRMATION -> CONFIRMED -> PENDING_CUSTOMER_CONFIRMATION -> COMPLETED
- *                                           └-> AFTER_SALES_REQUESTED -> AFTER_SALES_IN_PROGRESS
- *                                                                         -> AFTER_SALES_CLOSED
+ *                                                |                                  |
+ *                                                └-> AFTER_SALES_REQUESTED <────────┘
+ *                                                                  |
+ *                                                                  v
+ *                                                         AFTER_SALES_IN_PROGRESS
+ *                                                                  |
+ *                                                                  v
+ *                                                         AFTER_SALES_CLOSED
  */
 
 /** 客戶確認超時門檻：24 小時（毫秒）。 */
@@ -77,7 +83,11 @@ function validateOrder(order: EscortDispatchOrder): void {
 
 function validateSourceSnapshot(order: EscortDispatchOrder): void {
   if (order.sourceType === SourceType.MANUAL) {
-    // Manual orders must not carry source snapshot fields
+    if (order.sourceReference != null || order.sourceProductId != null ||
+        order.sourceProductName != null || order.sourceCurrencyPrice != null ||
+        order.sourceFiatPriceTwd != null) {
+      throw new Error('manual dispatch order must not carry source snapshot');
+    }
     return;
   }
   // Auto-sourced orders require source snapshot
@@ -405,10 +415,6 @@ export function withCompleted(
     ...order,
     id: order.id,
     completedAt,
-    afterSalesRequestedAt: order.afterSalesRequestedAt,
-    afterSalesAssigneeUserId: null,
-    afterSalesAssignedAt: null,
-    afterSalesClosedAt: null,
     status: EscortDispatchOrderStatus.COMPLETED,
   });
 }
