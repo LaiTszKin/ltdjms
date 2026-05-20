@@ -35,8 +35,8 @@ export class MockDiscordInteraction implements DiscordInteraction {
     this._isAdministrator = isAdmin;
   }
 
-  getChannelId(): string | undefined {
-    return this._channelId;
+  getChannelId(): string {
+    return this._channelId ?? '0';
   }
 
   getGuildId(): string {

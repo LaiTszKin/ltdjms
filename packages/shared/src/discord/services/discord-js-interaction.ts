@@ -85,6 +85,10 @@ export class DiscordJsInteraction implements DiscordInteraction {
     return this.acknowledged;
   }
 
+  getChannelId(): string {
+    return this.interaction.channelId ?? '0';
+  }
+
   isAdministrator(): boolean {
     if (this.interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
       return true;

@@ -36,6 +36,9 @@ export interface DiscordInteraction {
   /** Checks if the user has ADMINISTRATOR permission or is guild owner. */
   isAdministrator(): boolean;
 
+  /** Gets the channel ID. */
+  getChannelId(): string;
+
   /** Checks if the user has a specific permission. */
   hasPermission(permission: bigint): boolean;
 }

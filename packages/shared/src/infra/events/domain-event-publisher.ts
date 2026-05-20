@@ -65,6 +65,8 @@ export class DomainEventPublisher {
   /**
    * Publishes an event to all registered listeners synchronously.
    * Listeners are invoked in registration order.
+   * NOTE: Because dispatch is synchronous, a slow listener blocks all subsequent
+   * listeners in the same tick. Consider offloading heavy work to avoid delay.
    * Exceptions from individual listeners are caught and logged but do not propagate.
    * @param event - the domain event to publish
    */
