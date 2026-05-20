@@ -25,8 +25,4 @@ export class NoOpCacheService implements CacheService {
   async invalidate(_key: string): Promise<void> {
     // No-op
   }
-
-  async exists(_key: string): Promise<boolean> {
-    return false;
-  }
 }

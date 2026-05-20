@@ -231,6 +231,6 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm -r exec tsc --noEmit
+      - run: tsc -b --noEmit
       - run: pnpm eslint --ignore-pattern 'dist/' 'packages/*/src/'
       - run: pnpm vitest run

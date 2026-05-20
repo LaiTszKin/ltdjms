@@ -53,4 +53,11 @@ export class DiscordJsRuntimeGateway implements DiscordRuntimeGateway {
     const client = this.requireReadyClient() as Client;
     return client.user?.id ?? '';
   }
+
+  findThreadChannel(guildId: string, threadId: string): unknown | null {
+    const client = this.requireReadyClient() as Client;
+    const guild = client.guilds.cache.get(guildId);
+    if (!guild) return null;
+    return guild.channels.cache.get(threadId) ?? null;
+  }
 }

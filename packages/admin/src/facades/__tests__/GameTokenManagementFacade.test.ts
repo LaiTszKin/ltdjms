@@ -35,7 +35,6 @@ describe('GameTokenManagementFacade', () => {
     const mockEventPublisher = {
       publish: vi.fn(),
       register: vi.fn(),
-      registerAsync: vi.fn(),
     } as unknown as DomainEventPublisher;
 
     facade = new GameTokenManagementFacade(

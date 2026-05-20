@@ -59,15 +59,6 @@ export class RedisCacheService implements CacheService {
     }
   }
 
-  async exists(key: string): Promise<boolean> {
-    try {
-      return (await this.redis.exists(key)) > 0;
-    } catch (err) {
-      this.logger.warn({ err }, 'Redis cache operation failed: exists');
-      return false;
-    }
-  }
-
   /** Returns the underlying Redis client (for shutdown). */
   getClient(): Redis {
     return this.redis;

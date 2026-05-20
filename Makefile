@@ -2,7 +2,7 @@
 
 # TypeScript commands (default)
 build:
-	pnpm -r exec tsc
+	tsc -b
 
 test:
 	pnpm vitest run
@@ -47,7 +47,7 @@ mvn-coverage:
 
 # TypeScript commands (pnpm monorepo)
 ts-build:
-	pnpm -r exec tsc
+	tsc -b
 
 ts-test:
 	pnpm vitest run
