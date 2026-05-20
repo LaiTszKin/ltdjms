@@ -2,7 +2,7 @@ import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { eq, and, sql } from 'drizzle-orm';
 import { memberCurrencyAccount } from '../../domain/schema.js';
 import type { MemberCurrencyAccount } from '../../domain/types.js';
-import { DomainError, type Result, Ok, Err, okVoid } from '@ltdjms/shared';
+import { DomainError, type Result, Ok, Err } from '@ltdjms/shared';
 
 /**
  * Repository for member currency account operations using Drizzle ORM.
@@ -201,7 +201,13 @@ export class CurrencyAccountRepository {
   }
 }
 
-/** Error thrown when a balance adjustment would result in a negative balance. */
+/**
+ * Error thrown when a balance adjustment would result in a negative balance.
+ *
+ * This is the throwing-path variant (internal use by adjustBalance).
+ * For the Result-path equivalent (external use), see DomainError.insufficientBalance()
+ * which is returned by tryAdjustBalance.
+ */
 export class InsufficientBalanceError extends Error {
   constructor(message: string) {
     super(message);

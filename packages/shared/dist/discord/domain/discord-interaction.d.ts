@@ -7,8 +7,6 @@ export interface DiscordInteraction {
     getGuildId(): string;
     /** Gets the user ID. */
     getUserId(): string;
-    /** Gets the channel ID. */
-    getChannelId(): string;
     /** Checks if this interaction is ephemeral (user-only visible). */
     isEphemeral(): boolean;
     /** Replies with a plain text message. */

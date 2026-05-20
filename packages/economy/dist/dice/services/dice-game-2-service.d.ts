@@ -32,10 +32,6 @@ export declare class DiceGame2Service {
      */
     rollDice(count: number): number[];
     /**
-     * Reward analysis result.
-     */
-    private rewardAnalysis;
-    /**
      * Analyzes the dice rolls to identify straights, triples, and calculate rewards.
      * This logic must match Java DefaultDiceGame2Service.analyzeRolls() exactly.
      *

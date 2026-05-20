@@ -140,7 +140,12 @@ export class DiceGame1Service {
     const sum = diceRolls.reduce((acc, val) => acc + val, 0);
     const totalReward = sum * effectiveConfig.rewardPerDiceValue;
 
-    // Get previous balance (0 amount call)
+    // Get previous balance (0 amount call).
+    // creditReward(0) triggers a DB read even though no reward is applied.
+    // This is deliberate to match Java GameRewardService behavior exactly (fidelity to original).
+    // From the account fetched during token deduction above, we could extract previousBalance
+    // directly via updatedAccount.tokens (token balance) — however the currency account is a
+    // separate row, so the DB round-trip is acceptable for correctness.
     const previousBalance = await this.gameRewardService.creditReward(
       guildId,
       userId,

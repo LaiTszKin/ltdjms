@@ -12,7 +12,7 @@ describe('BotErrorHandler', () => {
 
   beforeEach(() => {
     handler = new BotErrorHandler();
-    mockInteraction = new MockDiscordInteraction(1, 100);
+    mockInteraction = new MockDiscordInteraction('1', '100');
   });
 
   describe('DomainError handling', () => {

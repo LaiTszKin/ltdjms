@@ -1,14 +1,12 @@
-import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
-import { type InteractionHandler } from '../../../commands/infra/CommandHandler.js';
-import { AdminPanelSessionManager } from '../../../session/AdminPanelSessionManager.js';
 /**
- * Handler for product management interactions (admin_product_*).
- * Supports product list, detail, create, edit, delete, and code generation.
- * Manages session state transitions: MAIN → PRODUCT_LIST → PRODUCT_DETAIL → PRODUCT_CODE_LIST.
+ * Re-export of AdminProductPanelHandler.
+ *
+ * AdminProductPanelHandler replaces ProductManagementHandler as the dedicated
+ * admin product management interaction handler. This module is kept for
+ * backward compatibility — it simply re-exports AdminProductPanelHandler.
+ *
+ * @deprecated Use AdminProductPanelHandler instead. The duplicate registration
+ * has been removed from AdminModule — only AdminProductPanelHandler is registered.
+ * See P0-13 for details.
  */
-export declare class ProductManagementHandler implements InteractionHandler {
-    private readonly sessionManager;
-    readonly customIdPrefix = "admin_product";
-    constructor(sessionManager: AdminPanelSessionManager);
-    execute(interaction: DiscordInteraction, _context: DiscordContext): Promise<void>;
-}
+export { AdminProductPanelHandler as ProductManagementHandler, } from '../product/AdminProductPanelHandler.js';

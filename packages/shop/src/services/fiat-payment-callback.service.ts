@@ -37,46 +37,7 @@ export class FiatPaymentCallbackService {
     this.log = logger ?? pino({ level: 'warn' });
   }
 
-  handleCallback(requestBody: string | null, contentType: string | null): CallbackResult {
-    if (!requestBody || requestBody.trim().length === 0) {
-      return CallbackResult.fail(400);
-    }
-
-    const callbackPayload = this.sanitizePayload(requestBody);
-    try {
-      const callbackNode = this.parseCallbackNode(requestBody, contentType);
-      const orderNumber = this.extractOrderNumber(callbackNode);
-      if (!orderNumber || orderNumber.trim().length === 0) {
-        this.log.warn({ payload: callbackPayload }, 'ECPay callback missing order number');
-        return CallbackResult.fail(400);
-      }
-
-      const tradeStatus = this.extractTradeStatus(callbackNode);
-      const paymentMessage = this.extractPaymentMessage(callbackNode);
-      const paid = this.isPaidStatus(tradeStatus);
-
-      // find order - synchronous since we're in an async context, so use Promise.resolve
-      // In Express, this will be awaited properly. For now, handle sync.
-      // We'll use the async version and handle it in the Express route.
-      return this.processWithOrder(
-        orderNumber,
-        tradeStatus,
-        paymentMessage,
-        paid,
-        callbackPayload,
-        callbackNode,
-      );
-    } catch (e) {
-      if (e instanceof InvalidCallbackPayloadException) {
-        this.log.warn({ reason: e.message }, 'Reject invalid ECPay callback payload');
-        return CallbackResult.fail(400);
-      }
-      this.log.error({ error: e }, 'Failed to process ECPay callback payload');
-      return CallbackResult.fail(500);
-    }
-  }
-
-  async handleCallbackAsync(
+  async handleCallback(
     requestBody: string | null,
     contentType: string | null,
   ): Promise<CallbackResult> {
@@ -84,9 +45,9 @@ export class FiatPaymentCallbackService {
       return CallbackResult.fail(400);
     }
 
-    const callbackPayload = this.sanitizePayload(requestBody);
     try {
-      const callbackNode = this.parseCallbackNode(requestBody, contentType);
+      const { node: callbackNode, rawDecrypted } = this.parseCallbackNode(requestBody, contentType);
+      const callbackPayload = this.truncateTo(rawDecrypted, 4000);
       const orderNumber = this.extractOrderNumber(callbackNode);
       if (!orderNumber || orderNumber.trim().length === 0) {
         this.log.warn({ payload: callbackPayload }, 'ECPay callback missing order number');
@@ -113,20 +74,6 @@ export class FiatPaymentCallbackService {
       this.log.error({ error: e }, 'Failed to process ECPay callback payload');
       return CallbackResult.fail(500);
     }
-  }
-
-  private processWithOrder(
-    orderNumber: string,
-    tradeStatus: string | null,
-    paymentMessage: string | null,
-    paid: boolean,
-    callbackPayload: string,
-    callbackNode: any,
-  ): CallbackResult {
-    // Synchronous path - fire and forget. This is a legacy compatibility path.
-    // The actual async path should be used in production.
-    this.log.warn('Sync callback processing may not work with async repository. Use handleCallbackAsync.');
-    return CallbackResult.fail(500);
   }
 
   private async processWithOrderAsync(
@@ -199,7 +146,7 @@ export class FiatPaymentCallbackService {
     return order.status === 'EXPIRED';
   }
 
-  private parseCallbackNode(requestBody: string, contentType: string | null): any {
+  private parseCallbackNode(requestBody: string, contentType: string | null): { node: any; rawDecrypted: string } {
     let parsedJson: any = null;
     let formData: Map<string, string> | null = null;
 
@@ -230,15 +177,15 @@ export class FiatPaymentCallbackService {
     return this.parseDecryptedData(encryptedData);
   }
 
-  private parseDecryptedData(encryptedData: string): any {
+  private parseDecryptedData(encryptedData: string): { node: any; rawDecrypted: string } {
     const hashKey = this.config.getEcpayHashKey();
     const hashIv = this.config.getEcpayHashIv();
     if (!hashKey || hashKey.trim().length === 0 || !hashIv || hashIv.trim().length === 0) {
-      throw new Error('ECPAY_HASH_KEY / ECPAY_HASH_IV are required for callback');
+      throw new InvalidCallbackPayloadException('ECPAY_HASH_KEY / ECPAY_HASH_IV are required for callback');
     }
     try {
       const decryptedJson = decryptAES(encryptedData, hashKey, hashIv);
-      return JSON.parse(decryptedJson);
+      return { node: JSON.parse(decryptedJson), rawDecrypted: decryptedJson };
     } catch (e) {
       throw new InvalidCallbackPayloadException('callback payload decryption failed', e as Error);
     }
@@ -251,8 +198,15 @@ export class FiatPaymentCallbackService {
       if (!part || part.trim().length === 0) continue;
       const eqIndex = part.indexOf('=');
       if (eqIndex <= 0) continue;
-      const key = decodeURIComponent(part.substring(0, eqIndex));
-      const value = decodeURIComponent(part.substring(eqIndex + 1));
+      let key: string;
+      let value: string;
+      try {
+        key = decodeURIComponent(part.substring(0, eqIndex));
+        value = decodeURIComponent(part.substring(eqIndex + 1));
+      } catch {
+        // Skip malformed URI-encoded segments in the form body
+        continue;
+      }
       data.set(key, value);
     }
     return data;
@@ -331,10 +285,10 @@ export class FiatPaymentCallbackService {
     return tradeStatus === '1';
   }
 
-  private sanitizePayload(payload: string | null): string {
-    if (!payload) return '';
-    if (payload.length <= 4000) return payload;
-    return payload.substring(0, 4000);
+  private truncateTo(value: string | null, maxLength: number): string {
+    if (!value) return '';
+    if (value.length <= maxLength) return value;
+    return value.substring(0, maxLength);
   }
 
   private textOrNull(value: string | null): string | null {

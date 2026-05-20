@@ -16,7 +16,7 @@ export class GameConfigManagementFacade {
      */
     async getDiceGame1Config(guildId) {
         try {
-            const config = await this.diceConfigRepo.findDice1Config(guildId);
+            const config = await this.diceConfigRepo.findDice1Config(Number(guildId));
             if (!config) {
                 return new Err(DomainError.invalidInput('尚未設定骰子遊戲 1 的設定'));
             }
@@ -42,9 +42,10 @@ export class GameConfigManagementFacade {
         }
         try {
             const now = new Date();
-            const currentConfig = await this.diceConfigRepo.findDice1Config(guildId);
+            const numericGuildId = Number(guildId);
+            const currentConfig = await this.diceConfigRepo.findDice1Config(numericGuildId);
             const updated = {
-                guildId,
+                guildId: numericGuildId,
                 minTokensPerPlay: config.minTokensPerPlay,
                 maxTokensPerPlay: config.maxTokensPerPlay,
                 rewardPerDiceValue: config.rewardPerDiceValue,
@@ -54,7 +55,7 @@ export class GameConfigManagementFacade {
             const saved = await this.diceConfigRepo.upsertDice1Config(updated);
             // Publish event
             const event = {
-                guildId,
+                guildId: numericGuildId,
                 gameType: GameType.DICE_GAME_1,
             };
             this.eventPublisher.publish(event);
@@ -69,7 +70,7 @@ export class GameConfigManagementFacade {
      */
     async getDiceGame2Config(guildId) {
         try {
-            const config = await this.diceConfigRepo.findDice2Config(guildId);
+            const config = await this.diceConfigRepo.findDice2Config(Number(guildId));
             if (!config) {
                 return new Err(DomainError.invalidInput('尚未設定骰子遊戲 2 的設定'));
             }
@@ -98,9 +99,10 @@ export class GameConfigManagementFacade {
         }
         try {
             const now = new Date();
-            const currentConfig = await this.diceConfigRepo.findDice2Config(guildId);
+            const numericGuildId = Number(guildId);
+            const currentConfig = await this.diceConfigRepo.findDice2Config(numericGuildId);
             const updated = {
-                guildId,
+                guildId: numericGuildId,
                 minTokensPerPlay: config.minTokensPerPlay,
                 maxTokensPerPlay: config.maxTokensPerPlay,
                 straightMultiplier: config.straightMultiplier,
@@ -113,7 +115,7 @@ export class GameConfigManagementFacade {
             const saved = await this.diceConfigRepo.upsertDice2Config(updated);
             // Publish event
             const event = {
-                guildId,
+                guildId: numericGuildId,
                 gameType: GameType.DICE_GAME_2,
             };
             this.eventPublisher.publish(event);

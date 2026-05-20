@@ -15,7 +15,7 @@ export declare const escortDispatchOrder: import("drizzle-orm/pg-core").PgTableW
             driverParam: number;
             notNull: true;
             hasDefault: true;
-            isPrimaryKey: false;
+            isPrimaryKey: true;
             isAutoincrement: false;
             hasRuntimeDefault: false;
             enumValues: undefined;

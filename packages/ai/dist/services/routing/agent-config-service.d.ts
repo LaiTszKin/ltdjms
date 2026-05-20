@@ -26,19 +26,24 @@ export declare class DefaultAIAgentChannelConfigService implements AIAgentChanne
     private readonly repository;
     private readonly cacheService;
     private readonly eventPublisher?;
+    /**
+     * Local in-memory cache for the sync isAgentEnabled() fallback.
+     */
+    private localSyncCache;
     constructor(repository: AIAgentChannelConfigRepository, cacheService: CacheService, eventPublisher?: DomainEventPublisher | undefined);
     private buildCacheKey;
     /**
-     * Checks if agent mode is enabled for a channel.
-     * Thread channels should resolve to their parent channel ID before calling this.
+     * Synchronous check using a local in-memory cache.
+     * Falls back to false if the value is not in the local cache.
      *
-     * Check order: Redis cache → DB query → write-back to cache
-     * Redis failure → fallback to DB
-     * DB failure → return false (pure chat mode)
+     * Prefer isAgentEnabledAsync() for production use, since this sync version
+     * may return stale values until the local cache is populated by a prior
+     * async lookup.
      */
     isAgentEnabled(guildId: string, channelId: string): boolean;
     /**
      * Async version of isAgentEnabled.
+     * Also populates the local sync cache for subsequent sync lookups.
      */
     isAgentEnabledAsync(guildId: string, channelId: string): Promise<boolean>;
     setAgentEnabled(guildId: string, channelId: string, enabled: boolean): Promise<Result<void, DomainError>>;

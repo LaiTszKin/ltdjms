@@ -1,3 +1,4 @@
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { ZhTwStrings } from '../../i18n/zh-TW.js';
 /**
  * /user-panel slash command handler.
@@ -6,10 +7,12 @@ import { ZhTwStrings } from '../../i18n/zh-TW.js';
 export class UserPanelCommand {
     memberInfoFacade;
     sessionManager;
+    embedBuilder;
     commandName = 'user-panel';
-    constructor(memberInfoFacade, sessionManager) {
+    constructor(memberInfoFacade, sessionManager, embedBuilder) {
         this.memberInfoFacade = memberInfoFacade;
         this.sessionManager = sessionManager;
+        this.embedBuilder = embedBuilder;
     }
     async execute(interaction, context) {
         const guildId = interaction.getGuildId();
@@ -23,21 +26,35 @@ export class UserPanelCommand {
             return;
         }
         const view = result.getValue();
-        const panelText = [
-            `**${ZhTwStrings.userPanelTitle}**`,
-            '',
-            ZhTwStrings.userPanelBalance
-                .replace('{balance}', String(view.balance))
-                .replace('{currencyIcon}', view.currencyIcon),
-            ZhTwStrings.userPanelTokens.replace('{tokens}', String(view.tokens)),
-            '',
-            '---',
-            `\`/currency-history\` ${ZhTwStrings.userPanelBtnCurrencyHistory}`,
-            `\`/token-history\` ${ZhTwStrings.userPanelBtnTokenHistory}`,
-            `\`/redemption-history\` ${ZhTwStrings.userPanelBtnRedemptionHistory}`,
-            `\`/redeem-code\` ${ZhTwStrings.userPanelBtnRedeemCode}`,
-        ].join('\n');
-        await interaction.reply(panelText);
+        // Build embed from structured data
+        const embedData = this.embedBuilder.buildUserPanelEmbed(view);
+        const embed = new EmbedBuilder()
+            .setTitle(embedData.title)
+            .setDescription(embedData.description)
+            .setColor(embedData.color);
+        // Build action buttons
+        const buttons = [
+            new ButtonBuilder()
+                .setCustomId('user_currency_history')
+                .setLabel(ZhTwStrings.userPanelBtnCurrencyHistory)
+                .setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder()
+                .setCustomId('user_token_history')
+                .setLabel(ZhTwStrings.userPanelBtnTokenHistory)
+                .setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder()
+                .setCustomId('user_redemption_history')
+                .setLabel(ZhTwStrings.userPanelBtnRedemptionHistory)
+                .setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder()
+                .setCustomId('user_redeem_code')
+                .setLabel(ZhTwStrings.userPanelBtnRedeemCode)
+                .setStyle(ButtonStyle.Primary),
+        ];
+        const row = new ActionRowBuilder().addComponents(buttons);
+        // Use the raw discord.js interaction to send embed with components
+        const raw = interaction.getHook();
+        await raw.reply({ embeds: [embed], components: [row] });
     }
 }
 //# sourceMappingURL=UserPanelCommand.js.map

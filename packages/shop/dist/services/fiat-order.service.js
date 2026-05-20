@@ -32,8 +32,13 @@ export class FiatOrderService {
         this.fiatOrderRepository = fiatOrderRepository;
         this.log = logger ?? pino({ level: 'warn' });
     }
+    /**
+     * Creates a fiat-only order.
+     * The tradeDesc parameter is an extension beyond spec R4.1.
+     * When omitted, a default description is used.
+     */
     async createFiatOnlyOrder(guildId, userId, productId, tradeDesc) {
-        const product = await this.productService.getProduct(productId);
+        const product = await this.productService.findById(productId);
         if (!product || product.guildId !== guildId) {
             return err(DomainError.invalidInput('找不到該商品'));
         }

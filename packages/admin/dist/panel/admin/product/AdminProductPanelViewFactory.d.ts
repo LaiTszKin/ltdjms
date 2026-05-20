@@ -2,6 +2,13 @@ import type { Product } from '@ltdjms/shop';
 /**
  * Product-specific embed view factory.
  * Matches Java AdminProductPanelViewFactory.
+ *
+ * RESPONSIBILITY: This factory handles product-specific views (product list,
+ * product detail, code list). Generic/shared admin panel views (main menu,
+ * balance, tokens, games, AI config, dispatch) are in AdminPanelViewFactory
+ * under panel/admin/views/.
+ *
+ * @see AdminPanelViewFactory — generic admin panel views
  */
 export declare class AdminProductPanelViewFactory {
     /**

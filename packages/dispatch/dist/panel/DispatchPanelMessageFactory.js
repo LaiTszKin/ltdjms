@@ -1,4 +1,4 @@
-import { EscortDispatchOrderStatus, isManualSource, } from '../domain/index.js';
+import { EscortDispatchOrderStatus, SourceType, isManualSource, } from '../domain/index.js';
 import { COLOR_INFO, COLOR_WARNING, COLOR_ERROR } from './DispatchPanelView.js';
 // ============================================================
 // Embed Builders — 12+ variants using INFO / WARNING / ERROR
@@ -74,7 +74,7 @@ export function buildPendingCustomerConfirmationEmbed(order) {
             { name: '護航者', value: `<@${order.escortUserId}>`, inline: true },
             { name: '送出時間', value: order.completionRequestedAt?.toLocaleString('zh-TW') ?? 'N/A', inline: false },
         ],
-        footer: '等待客戶確認中（24 小時超時）',
+        footer: '24 小時未確認將視為訂單完成',
     };
 }
 /** 客戶已確認完成通知。 */
@@ -91,7 +91,10 @@ export function buildOrderCompletedEmbed(order) {
         footer: '訂單已完成',
     };
 }
-/** 訂單超時自動完成通知。 */
+/**
+ * 訂單超時自動完成通知。
+ * 由 ensureTimeoutCompletion 觸發，可於面板顯示超時資訊。
+ */
 export function buildOrderTimedOutEmbed(order) {
     return {
         title: `⏰ 訂單已自動完成 #${order.orderNumber}`,
@@ -185,7 +188,8 @@ export function buildOrderListEmbed(title, orders, emptyMessage) {
         description: orders
             .map((o, i) => {
             const status = getStatusLabel(o.status);
-            return `**${i + 1}.** #${o.orderNumber} — ${status} | 護航者: ${o.escortUserId > 0 ? `<@${o.escortUserId}>` : '待指派'} | 客戶: <@${o.customerUserId}>`;
+            const sourceLabel = getSourceLabel(o.sourceType);
+            return `**${i + 1}.** ${sourceLabel} #${o.orderNumber} — ${status} | 護航者: ${o.escortUserId > 0 ? `<@${o.escortUserId}>` : '待指派'} | 客戶: <@${o.customerUserId}>`;
         })
             .join('\n'),
         color: COLOR_INFO,
@@ -222,6 +226,16 @@ export function buildWarningEmbed(message) {
 // ============================================================
 // Helpers
 // ============================================================
+function getSourceLabel(sourceType) {
+    switch (sourceType) {
+        case SourceType.MANUAL:
+            return '[手動]';
+        case SourceType.CURRENCY_PURCHASE:
+            return '[貨幣購買]';
+        case SourceType.FIAT_PAYMENT:
+            return '[法幣付款]';
+    }
+}
 function getStatusLabel(status) {
     switch (status) {
         case EscortDispatchOrderStatus.PENDING_CONFIRMATION:

@@ -3,6 +3,9 @@ import { type CacheService } from '../cache/cache-service.js';
 import { type CacheKeyGenerator } from '../cache/cache-key-generator.js';
 import { type DomainEventPublisher } from '../events/domain-event-publisher.js';
 import { type DiscordRuntimeGateway } from '../../discord/domain/discord-runtime-gateway.js';
+import { type DiscordEmbedBuilder } from '../../discord/domain/discord-embed-builder.js';
+import type pino from 'pino';
+import { type Pool } from 'pg';
 
 /** Injection tokens for all shared services. */
 export const TOKENS = {
@@ -22,4 +25,7 @@ export type TokenMap = {
   CacheKeyGenerator: CacheKeyGenerator;
   DomainEventPublisher: DomainEventPublisher;
   DiscordRuntimeGateway: DiscordRuntimeGateway;
+  DiscordEmbedBuilder: DiscordEmbedBuilder;
+  Logger: pino.Logger;
+  DatabasePool: Pool;
 };

@@ -56,7 +56,11 @@ export class DiceGame2Service {
         const diceRolls = this.rollDice(diceCount);
         // Analyze rolls
         const analysis = this.analyzeRolls(diceRolls, effectiveConfig);
-        // Get previous balance
+        // Get previous balance (0 amount call).
+        // creditReward(0) triggers a DB read even though no reward is applied.
+        // This is deliberate to match Java GameRewardService behavior exactly (fidelity to original).
+        // The currency account and game token account are separate rows, so the DB round-trip
+        // is acceptable for correctness.
         const previousBalance = await this.gameRewardService.creditReward(guildId, userId, 0, CurrencyTransactionSource.DICE_GAME_2_WIN);
         // Apply reward
         const newBalance = await this.gameRewardService.creditReward(guildId, userId, analysis.totalReward, CurrencyTransactionSource.DICE_GAME_2_WIN);
@@ -84,17 +88,6 @@ export class DiceGame2Service {
         }
         return rolls;
     }
-    /**
-     * Reward analysis result.
-     */
-    rewardAnalysis = (straightSegments, tripleSegments, straightReward, nonStraightReward, tripleReward, totalReward) => ({
-        straightSegments,
-        tripleSegments,
-        straightReward,
-        nonStraightReward,
-        tripleReward,
-        totalReward,
-    });
     /**
      * Analyzes the dice rolls to identify straights, triples, and calculate rewards.
      * This logic must match Java DefaultDiceGame2Service.analyzeRolls() exactly.

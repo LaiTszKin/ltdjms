@@ -57,6 +57,8 @@ export interface AIChatService {
 
   /**
    * Generates a streaming response.
+   *
+   * @param agentEnabled - When true, includes agent (tool-calling) prompts in context
    */
   generateStreamingResponse(
     guildId: string,
@@ -64,10 +66,13 @@ export interface AIChatService {
     userId: string,
     userMessage: string,
     handler: StreamingResponseHandler,
+    agentEnabled?: boolean,
   ): Promise<void>;
 
   /**
    * Generates a streaming response with a message ID for editing.
+   *
+   * @param agentEnabled - When true, includes agent (tool-calling) prompts in context
    */
   generateStreamingResponseWithId(
     guildId: string,
@@ -76,6 +81,7 @@ export interface AIChatService {
     userMessage: string,
     messageId: string,
     handler: StreamingResponseHandler,
+    agentEnabled?: boolean,
   ): Promise<void>;
 
   /**

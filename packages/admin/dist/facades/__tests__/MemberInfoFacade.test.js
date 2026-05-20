@@ -8,8 +8,8 @@ describe('MemberInfoFacade', () => {
     let mockCurrencyTxService;
     let mockTokenTxService;
     let mockRedemptionService;
-    const guildId = 1;
-    const userId = 100;
+    const guildId = '1';
+    const userId = '100';
     beforeEach(() => {
         mockBalanceService = {
             getBalance: vi.fn(),
@@ -31,8 +31,8 @@ describe('MemberInfoFacade', () => {
     describe('getUserPanelView', () => {
         it('should return combined balance and token info', async () => {
             const balanceView = {
-                guildId,
-                userId,
+                guildId: Number(guildId),
+                userId: Number(userId),
                 balance: 500,
                 currencyName: 'Coins',
                 currencyIcon: '🪙',
@@ -58,7 +58,7 @@ describe('MemberInfoFacade', () => {
             mockRedemptionService.redeemCode = vi.fn().mockResolvedValue(new Ok(successResult));
             const result = await facade.redeemCode(guildId, userId, 'TESTCODE12345678');
             expect(result.isOk()).toBe(true);
-            expect(mockRedemptionService.redeemCode).toHaveBeenCalledWith('TESTCODE12345678', guildId, userId);
+            expect(mockRedemptionService.redeemCode).toHaveBeenCalledWith('TESTCODE12345678', 1, 100);
         });
     });
 });

@@ -60,19 +60,17 @@ export class DrizzleFiatOrderRepository implements FiatOrderRepository {
     const [row] = await this.db
       .insert(fiatOrderTable)
       .values({
-        guildId: String(order.guildId),
-        buyerUserId: String(order.buyerUserId),
-        productId: String(order.productId),
+        guildId: order.guildId,
+        buyerUserId: order.buyerUserId,
+        productId: order.productId,
         productName: order.productName,
         fulfillmentRewardType: order.fulfillmentRewardType,
-        fulfillmentRewardAmount: order.fulfillmentRewardAmount
-          ? String(order.fulfillmentRewardAmount)
-          : null,
+        fulfillmentRewardAmount: order.fulfillmentRewardAmount ?? null,
         fulfillmentAutoCreateEscortOrder: order.fulfillmentAutoCreateEscortOrder,
         fulfillmentEscortOptionCode: order.fulfillmentEscortOptionCode,
         orderNumber: order.orderNumber,
         paymentNo: order.paymentNo,
-        amountTwd: String(order.amountTwd),
+        amountTwd: order.amountTwd,
         status: order.status,
         tradeStatus: order.tradeStatus,
         paymentMessage: order.paymentMessage,
@@ -256,7 +254,7 @@ export class DrizzleFiatOrderRepository implements FiatOrderRepository {
           isNull(fiatOrderTable.fulfillmentProcessingAt),
         ),
       )
-      .orderBy(asc(fiatOrderTable.paidAt), asc(fiatOrderTable.createdAt))
+      .orderBy(sql`${fiatOrderTable.paidAt} ASC NULLS LAST`, asc(fiatOrderTable.createdAt))
       .limit(limit);
     return rows.map(mapRow);
   }

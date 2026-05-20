@@ -16,7 +16,7 @@ import { sql } from 'drizzle-orm';
 export const escortDispatchOrder = pgTable(
   'escort_dispatch_order',
   {
-    id: bigserial('id', { mode: 'number' }),
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
     orderNumber: varchar('order_number', { length: 32 }).notNull(),
     guildId: bigint('guild_id', { mode: 'number' }).notNull(),
     assignedByUserId: bigint('assigned_by_user_id', { mode: 'number' }).notNull(),

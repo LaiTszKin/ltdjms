@@ -42,7 +42,7 @@ export interface DiceGameConfigChangedEvent extends DomainEvent {
 
 // ---- Product / Redemption Events ----
 
-export enum ProductOperationType {
+export enum OperationType {
   CREATED = 'CREATED',
   UPDATED = 'UPDATED',
   DELETED = 'DELETED',
@@ -51,7 +51,7 @@ export enum ProductOperationType {
 export interface ProductChangedEvent extends DomainEvent {
   readonly guildId: number;
   readonly productId: number;
-  readonly operationType: ProductOperationType;
+  readonly operationType: OperationType;
 }
 
 export interface RedemptionCodesGeneratedEvent extends DomainEvent {
@@ -140,39 +140,6 @@ export interface LangChain4jToolExecutedEvent extends DomainEvent {
   readonly timestamp: Date;
 }
 
-// ---- AI Channel Config Events ----
-
-export interface AIChannelConfigChangedEvent extends DomainEvent {
-  readonly guildId: number;
-  readonly channelId: string;
-  readonly allowed: boolean;
-  readonly changedAt: Date;
-}
-
-// ---- Dispatch After-Sales Events ----
-
-export interface DispatchAfterSalesConfigChangedEvent extends DomainEvent {
-  readonly guildId: number;
-  readonly staffUserId: number;
-  readonly operationType: 'ADDED' | 'REMOVED';
-}
-
-// ---- Escort Pricing Events ----
-
-export interface EscortPricingChangedEvent extends DomainEvent {
-  readonly guildId: number;
-  readonly optionCode: string;
-  readonly priceTwd: number;
-  readonly updatedByUserId: number;
-}
-
-// ---- Escort Catalog Events ----
-
-export interface EscortCatalogChangedEvent extends DomainEvent {
-  readonly optionCode: string;
-  readonly operationType: 'CREATED' | 'UPDATED' | 'DELETED';
-}
-
 // ---- Union type for any domain event ----
 
 export type AnyDomainEvent =
@@ -185,10 +152,6 @@ export type AnyDomainEvent =
   | ProductRedemptionCompletedEvent
   | AIMessageEvent
   | AIAgentChannelConfigChangedEvent
-  | AIChannelConfigChangedEvent
-  | DispatchAfterSalesConfigChangedEvent
-  | EscortPricingChangedEvent
-  | EscortCatalogChangedEvent
   | AgentCompletedEvent
   | AgentFailedEvent
   | LangChain4jToolExecutionStartedEvent

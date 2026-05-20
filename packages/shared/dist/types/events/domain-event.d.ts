@@ -29,7 +29,7 @@ export interface DiceGameConfigChangedEvent extends DomainEvent {
     readonly guildId: number;
     readonly gameType: GameType;
 }
-export declare enum ProductOperationType {
+export declare enum OperationType {
     CREATED = "CREATED",
     UPDATED = "UPDATED",
     DELETED = "DELETED"
@@ -37,7 +37,7 @@ export declare enum ProductOperationType {
 export interface ProductChangedEvent extends DomainEvent {
     readonly guildId: number;
     readonly productId: number;
-    readonly operationType: ProductOperationType;
+    readonly operationType: OperationType;
 }
 export interface RedemptionCodesGeneratedEvent extends DomainEvent {
     readonly guildId: number;
@@ -111,25 +111,4 @@ export interface LangChain4jToolExecutedEvent extends DomainEvent {
     readonly success: boolean;
     readonly timestamp: Date;
 }
-export interface AIChannelConfigChangedEvent extends DomainEvent {
-    readonly guildId: number;
-    readonly channelId: string;
-    readonly allowed: boolean;
-    readonly changedAt: Date;
-}
-export interface DispatchAfterSalesConfigChangedEvent extends DomainEvent {
-    readonly guildId: number;
-    readonly staffUserId: number;
-    readonly operationType: 'ADDED' | 'REMOVED';
-}
-export interface EscortPricingChangedEvent extends DomainEvent {
-    readonly guildId: number;
-    readonly optionCode: string;
-    readonly priceTwd: number;
-    readonly updatedByUserId: number;
-}
-export interface EscortCatalogChangedEvent extends DomainEvent {
-    readonly optionCode: string;
-    readonly operationType: 'CREATED' | 'UPDATED' | 'DELETED';
-}
-export type AnyDomainEvent = BalanceChangedEvent | GameTokenChangedEvent | CurrencyConfigChangedEvent | DiceGameConfigChangedEvent | ProductChangedEvent | RedemptionCodesGeneratedEvent | ProductRedemptionCompletedEvent | AIMessageEvent | AIAgentChannelConfigChangedEvent | AIChannelConfigChangedEvent | DispatchAfterSalesConfigChangedEvent | EscortPricingChangedEvent | EscortCatalogChangedEvent | AgentCompletedEvent | AgentFailedEvent | LangChain4jToolExecutionStartedEvent | LangChain4jToolExecutedEvent;
+export type AnyDomainEvent = BalanceChangedEvent | GameTokenChangedEvent | CurrencyConfigChangedEvent | DiceGameConfigChangedEvent | ProductChangedEvent | RedemptionCodesGeneratedEvent | ProductRedemptionCompletedEvent | AIMessageEvent | AIAgentChannelConfigChangedEvent | AgentCompletedEvent | AgentFailedEvent | LangChain4jToolExecutionStartedEvent | LangChain4jToolExecutedEvent;

@@ -19,6 +19,10 @@ export interface SlashCommandDefinition {
 // defaultMemberPermissions for Discord API registration.
 // ============================================================
 
+// ============================================================
+// Economy Module — member-facing commands
+// ============================================================
+
 /** /balance — view own balance (available to all members). */
 const BalanceSlashCommand: SlashCommandDefinition = {
   name: 'balance',
@@ -26,24 +30,6 @@ const BalanceSlashCommand: SlashCommandDefinition = {
   defaultMemberPermissions: null,
   nameLocalizations: { 'zh-TW': '餘額查詢' },
   descriptionLocalizations: { 'zh-TW': '查看自己的貨幣餘額' },
-};
-
-/** /adjust-balance — admin adjusts a member's balance. */
-const AdjustBalanceSlashCommand: SlashCommandDefinition = {
-  name: 'adjust-balance',
-  description: '調整成員餘額',
-  defaultMemberPermissions: '8',
-  nameLocalizations: { 'zh-TW': '調整餘額' },
-  descriptionLocalizations: { 'zh-TW': '調整指定成員的貨幣餘額（管理員專用）' },
-};
-
-/** /game-token-adjust — admin adjusts a member's game tokens. */
-const GameTokenAdjustSlashCommand: SlashCommandDefinition = {
-  name: 'game-token-adjust',
-  description: '調整成員遊戲代幣',
-  defaultMemberPermissions: '8',
-  nameLocalizations: { 'zh-TW': '調整代幣' },
-  descriptionLocalizations: { 'zh-TW': '調整指定成員的遊戲代幣數量（管理員專用）' },
 };
 
 /** /dice-game-1 — play Dice Game 1 (available to all members). */
@@ -70,6 +56,44 @@ const DiceGame2SlashCommand: SlashCommandDefinition = {
   ],
 };
 
+/** /shop — open the guild shop (available to all members). */
+const ShopSlashCommand: SlashCommandDefinition = {
+  name: 'shop',
+  description: '開啟商城',
+  defaultMemberPermissions: null,
+  nameLocalizations: { 'zh-TW': '商城' },
+  descriptionLocalizations: { 'zh-TW': '瀏覽與購買商品' },
+};
+
+/** /redeem-code — redeem a code (available to all members). */
+// TODO(P1-39): Add RedeemCodeSlashCommand definition once the redeem-code
+// slash command is implemented in the shop module.
+
+// ============================================================
+// Admin Module — admin-only commands
+// ============================================================
+
+/** /admin-panel — open the admin panel (admin only). */
+// AdminPanelSlashCommand is defined in AdminPanelSlashCommand.ts under panel/admin/definitions/.
+
+/** /adjust-balance — admin adjusts a member's balance. */
+const AdjustBalanceSlashCommand: SlashCommandDefinition = {
+  name: 'adjust-balance',
+  description: '調整成員餘額',
+  defaultMemberPermissions: '8',
+  nameLocalizations: { 'zh-TW': '調整餘額' },
+  descriptionLocalizations: { 'zh-TW': '調整指定成員的貨幣餘額（管理員專用）' },
+};
+
+/** /game-token-adjust — admin adjusts a member's game tokens. */
+const GameTokenAdjustSlashCommand: SlashCommandDefinition = {
+  name: 'game-token-adjust',
+  description: '調整成員遊戲代幣',
+  defaultMemberPermissions: '8',
+  nameLocalizations: { 'zh-TW': '調整代幣' },
+  descriptionLocalizations: { 'zh-TW': '調整指定成員的遊戲代幣數量（管理員專用）' },
+};
+
 /** /dice-game-1-config — configure Dice Game 1 parameters. */
 const DiceGame1ConfigSlashCommand: SlashCommandDefinition = {
   name: 'dice-game-1-config',
@@ -88,14 +112,18 @@ const DiceGame2ConfigSlashCommand: SlashCommandDefinition = {
   descriptionLocalizations: { 'zh-TW': '設定骰子遊戲 2 的參數（管理員專用）' },
 };
 
-/** /shop — open the guild shop (available to all members). */
-const ShopSlashCommand: SlashCommandDefinition = {
-  name: 'shop',
-  description: '開啟商城',
-  defaultMemberPermissions: null,
-  nameLocalizations: { 'zh-TW': '商城' },
-  descriptionLocalizations: { 'zh-TW': '瀏覽與購買商品' },
+/** /currency-config — configure guild currency settings (admin only). */
+const CurrencyConfigSlashCommand: SlashCommandDefinition = {
+  name: 'currency-config',
+  description: '設定貨幣參數',
+  defaultMemberPermissions: '8',
+  nameLocalizations: { 'zh-TW': '貨幣設定' },
+  descriptionLocalizations: { 'zh-TW': '設定伺服器貨幣名稱與圖示（管理員專用）' },
 };
+
+// ============================================================
+// Dispatch Module — admin-only commands
+// ============================================================
 
 /** /dispatch-panel — open the dispatch management panel (admin only). */
 const DispatchPanelSlashCommand: SlashCommandDefinition = {
@@ -104,15 +132,6 @@ const DispatchPanelSlashCommand: SlashCommandDefinition = {
   defaultMemberPermissions: '8',
   nameLocalizations: { 'zh-TW': '派單面板' },
   descriptionLocalizations: { 'zh-TW': '開啟護航派單管理面板（管理員專用）' },
-};
-
-/** /currency-config — configure guild currency settings (admin only). */
-const CurrencyConfigSlashCommand: SlashCommandDefinition = {
-  name: 'currency-config',
-  description: '設定貨幣參數',
-  defaultMemberPermissions: '8',
-  nameLocalizations: { 'zh-TW': '貨幣設定' },
-  descriptionLocalizations: { 'zh-TW': '設定伺服器貨幣名稱與圖示（管理員專用）' },
 };
 
 /**

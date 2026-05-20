@@ -155,6 +155,20 @@ async function initializeAllModules(pool, eventPublisher, client, config, logger
     const { configureAdminContainer, ADMIN_TOKENS, SlashCommandListener, SlashCommandRegistrar } = await import('@ltdjms/admin');
     configureAdminContainer();
     const slashCommandListener = container.resolve(ADMIN_TOKENS.SlashCommandListener);
+    // Wire Discord events via shared bootstrap
+    const aiChatListener = container.resolve(AI_TOKENS.AIChatMentionListener);
+    await bootstrapDiscordHandlers(client, slashCommandListener, aiChatListener, SlashCommandRegistrar, logger);
+    logger.info('Admin module initialized');
+}
+/**
+ * Shared bootstrap function for wiring Discord event handlers.
+ *
+ * TODO: Each module should register its own handlers via DI rather than
+ * relying on shared wiring in this bootstrap function. This approach is
+ * temporary until all modules have their own container configuration
+ * and can self-register their event listeners.
+ */
+async function bootstrapDiscordHandlers(client, slashCommandListener, aiChatListener, slashCommandRegistrar, logger) {
     // Wire Discord interactionCreate event to the slash command listener
     client.on(Events.InteractionCreate, async (interaction) => {
         if (!interaction.guildId)
@@ -183,19 +197,16 @@ async function initializeAllModules(pool, eventPublisher, client, config, logger
         await slashCommandListener.onInteraction(interaction, { guildId: interaction.guildId, userId: interaction.user.id }, type, commandNameOrCustomId);
     });
     // Wire Discord messageCreate event to the AI chat listener
-    const aiChatListener = container.resolve(AI_TOKENS.AIChatMentionListener);
     client.on(Events.MessageCreate, async (message) => {
         await aiChatListener.onMessageCreate(message);
     });
     // Register slash commands with Discord REST API
     if (client.user) {
-        const result = await SlashCommandRegistrar.registerAll(client.user.id, async (route, body) => {
-            const rest = client.rest;
-            return rest.put(route, { body });
+        const result = await slashCommandRegistrar.registerAll(client.user.id, async (route, body) => {
+            return client.rest.put(route, { body });
         });
         logger.info({ result }, 'Slash commands registered');
     }
-    logger.info('Admin module initialized');
 }
 // Allow direct execution
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1])) {

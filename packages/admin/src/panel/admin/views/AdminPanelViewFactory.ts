@@ -8,6 +8,13 @@ import type { EscortOptionCatalogEntry } from '@ltdjms/dispatch';
  * Generic embed view builder for admin panels.
  * Provides structured data that Discord embed builders consume.
  * Matches Java AdminPanelViewFactory.
+ *
+ * RESPONSIBILITY: This factory handles shared/generic admin panel views
+ * (main menu, balance, tokens, games, AI config, dispatch, escort pricing/catalog).
+ * Product-specific views (product list, detail, codes) are in AdminProductPanelViewFactory
+ * under panel/admin/product/.
+ *
+ * @see AdminProductPanelViewFactory — product-specific views
  */
 export class AdminPanelViewFactory {
   /**
@@ -93,6 +100,11 @@ export class AdminPanelViewFactory {
       fields: [],
       color: 0x5865F2,
       buttons: [
+        // NOTE(P2-50): These button labels reuse currency management strings
+        // (balanceAdjustAdd/Deduct/Set) because dedicated token-specific labels
+        // have not been added to the i18n file yet. When token-specific i18n
+        // strings (e.g., tokenAdjustAdd/Deduct/Set) are created, update these
+        // references.
         { id: 'admin_token_add', label: ZhTwStrings.balanceAdjustAdd, style: 3, disabled: false },
         { id: 'admin_token_deduct', label: ZhTwStrings.balanceAdjustDeduct, style: 4, disabled: false },
         { id: 'admin_token_set', label: ZhTwStrings.balanceAdjustSet, style: 1, disabled: false },
@@ -267,7 +279,7 @@ export class AdminPanelViewFactory {
    * Builds the dispatch after-sales staff embed.
    */
   buildDispatchAfterSalesView(
-    staffs: { userId: number }[],
+    staffs: { userId: string }[],
   ): {
     title: string;
     description: string;
@@ -327,6 +339,14 @@ export class AdminPanelViewFactory {
 
   /**
    * Builds the escort catalog embed.
+   *
+   * TODO(P1-35): Verify EscortOptionCatalogEntry field mappings against the
+   * finalized type once EscortOptionCatalogRepository is available from
+   * @ltdjms/dispatch. The current EscortOptionCatalogEntry (defined in the
+   * dispatch package) uses: code, type, level, mapScope, target, priceTwd.
+   * The template substitutes: {name}=type-target, {category}=level,
+   * {price}=priceTwd, {description}=mapScope. Confirm these match the
+   * production catalog schema.
    */
   buildEscortCatalogView(
     catalogEntries: EscortOptionCatalogEntry[],

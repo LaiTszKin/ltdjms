@@ -59,11 +59,14 @@ export interface AIChannelRestrictionService {
     addAllowedCategory(guildId: string, category: Omit<AllowedCategory, 'guildId'>): Promise<Result<AllowedCategory, DomainError>>;
     removeAllowedChannel(guildId: string, channelId: string): Promise<Result<void, DomainError>>;
     removeAllowedCategory(guildId: string, categoryId: string): Promise<Result<void, DomainError>>;
+    deleteRemovedChannels(guildId: string, validChannelIds: string[]): Promise<void>;
 }
 export declare class DefaultAIChannelRestrictionService implements AIChannelRestrictionService {
     private readonly repository;
+    private readonly cacheTtlMs;
+    private static readonly DEFAULT_TTL_MS;
     private cache;
-    constructor(repository: AIChannelRestrictionRepository);
+    constructor(repository: AIChannelRestrictionRepository, cacheTtlMs?: number);
     isChannelAllowed(guildId: string, channelId: string, categoryId?: string): Promise<boolean>;
     getAllowedChannels(guildId: string): Promise<Result<AllowedChannel[], DomainError>>;
     getAllowedCategories(guildId: string): Promise<Result<AllowedCategory[], DomainError>>;
@@ -72,4 +75,5 @@ export declare class DefaultAIChannelRestrictionService implements AIChannelRest
     removeAllowedChannel(guildId: string, channelId: string): Promise<Result<void, DomainError>>;
     removeAllowedCategory(guildId: string, categoryId: string): Promise<Result<void, DomainError>>;
     private invalidateGuildCache;
+    deleteRemovedChannels(guildId: string, validChannelIds: string[]): Promise<void>;
 }

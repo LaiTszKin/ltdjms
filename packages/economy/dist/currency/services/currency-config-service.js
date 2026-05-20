@@ -96,11 +96,9 @@ function createDefaultConfig(guildId) {
     };
 }
 function validateName(name) {
-    if (!name || name.trim().length === 0) {
-        throw new Error('Currency name cannot be blank');
-    }
-    if (name.length > MAX_CURRENCY_NAME_LENGTH) {
-        throw new Error(`Currency name cannot exceed ${MAX_CURRENCY_NAME_LENGTH} characters`);
+    const result = tryValidateName(name);
+    if (result.isErr()) {
+        throw new Error(result.getError().message);
     }
 }
 function tryValidateName(name) {
@@ -113,18 +111,9 @@ function tryValidateName(name) {
     return okVoid();
 }
 function validateIcon(icon) {
-    if (!icon || icon.trim().length === 0) {
-        throw new Error('Currency icon cannot be blank');
-    }
-    if (icon.length > MAX_CURRENCY_ICON_LENGTH) {
-        throw new Error(`Currency icon cannot exceed ${MAX_CURRENCY_ICON_LENGTH} characters`);
-    }
-    if (looksLikeCustomEmoji(icon)) {
-        // In Discord.js, we'd validate via Discord API
-        // For now, just validate the format
-        if (!CUSTOM_EMOJI_PATTERN.test(icon)) {
-            throw new Error(`Invalid Discord custom emoji: '${icon}'. Please ensure the emoji exists and is accessible.`);
-        }
+    const result = tryValidateIcon(icon);
+    if (result.isErr()) {
+        throw new Error(result.getError().message);
     }
 }
 function tryValidateIcon(icon) {

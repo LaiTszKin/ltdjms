@@ -9,6 +9,7 @@ export { RewardType, hasReward, formatReward, hasCurrencyPrice, formatCurrencyPr
 export { fiatOrder, redemptionCode, productRedemptionTransaction, product, } from './persistence/schema.js';
 export { DrizzleFiatOrderRepository } from './persistence/drizzle-fiat-order-repository.js';
 export { DrizzleRedemptionCodeRepository } from './persistence/drizzle-redemption-code-repository.js';
+export { DrizzleProductRepository } from './persistence/drizzle-product-repository.js';
 // Services
 export { EcpayCvsPaymentService } from './services/ecpay-cvs-payment.service.js';
 export { EcpayTradeQueryService } from './services/ecpay-trade-query.service.js';
@@ -19,14 +20,17 @@ export { FiatPaymentReconciliationService } from './services/fiat-payment-reconc
 export { FiatOrderProcessingScheduler } from './services/fiat-order-processing-scheduler.js';
 export { CurrencyPurchaseService, formatPurchaseSuccessMessage } from './services/currency-purchase.service.js';
 export { ShopService, ShopPageHelper, PAGE_SIZE } from './services/shop.service.js';
-export { buildShopEmbed, buildEmptyShopEmbed, buildPaymentMethodChoiceEmbed, buildPurchaseConfirmEmbed, encodeKeyword, decodeKeyword, getPageSize, BUTTON_PREV_PAGE, BUTTON_NEXT_PAGE, BUTTON_BUY, SELECT_BUY_PRODUCT, BUTTON_SEARCH, BUTTON_PAY_WITH_CURRENCY, BUTTON_PAY_WITH_FIAT, BUTTON_BACK_TO_SHOP, SELECT_SEARCH_BUY, BUTTON_SEARCH_PREV, BUTTON_SEARCH_NEXT, MODAL_SEARCH, } from './services/shop-view.js';
+export { buildShopEmbed, buildEmptyShopEmbed, buildPaymentMethodChoiceEmbed, buildShopComponents, buildSearchComponents, buildSearchResultEmbed, buildPurchaseConfirmEmbed, encodeKeyword, decodeKeyword, getPageSize, BUTTON_PREV_PAGE, BUTTON_NEXT_PAGE, BUTTON_BUY, SELECT_BUY_PRODUCT, BUTTON_SEARCH, BUTTON_PAY_WITH_CURRENCY, BUTTON_PAY_WITH_FIAT, BUTTON_BACK_TO_SHOP, SELECT_SEARCH_BUY, BUTTON_SEARCH_PREV, BUTTON_SEARCH_NEXT, MODAL_SEARCH, } from './services/shop-view.js';
 export { RedemptionCodeGenerator } from './services/redemption-code-generator.js';
 export { RedemptionService, formatRedemptionSuccessMessage } from './services/redemption.service.js';
 export { FiatOrderBuyerNotificationService } from './services/fiat-order-buyer-notification.service.js';
 export { EscortOrderBuyerNotificationService } from './services/escort-order-buyer-notification.service.js';
 export { ShopAdminNotificationService } from './services/shop-admin-notification.service.js';
+export { ShopCommandHandler } from './commands/index.js';
 // Web
 export { EcpayCallbackHttpServer } from './web/ecpay-callback-server.js';
 // DI
-export { configureContainer, SHOP_TOKENS } from './di/shop-module.js';
+export { configureContainer, SHOP_TOKENS, } from './di/shop-module.js';
+// Persistence (additional)
+export { DrizzleRedemptionTransactionService } from './persistence/drizzle-redemption-transaction-service.js';
 //# sourceMappingURL=index.js.map

@@ -137,6 +137,9 @@ function createOrder(params) {
 // ---- Factory Functions ----
 /** 建立待確認的新訂單（尚未持久化，id 為 null）。MANUAL 來源。 */
 export function createPending(orderNumber, guildId, assignedByUserId, escortUserId, customerUserId) {
+    if (customerUserId <= 0) {
+        throw new Error('customerUserId must be greater than 0');
+    }
     return createOrder({
         orderNumber,
         guildId,
@@ -228,15 +231,6 @@ export function createAutoHandoff(orderNumber, guildId, assignedByUserId, escort
     });
 }
 // ---- Immutable Transition Functions ----
-/** 指定待派發訂單的護航者後回傳新狀態物件。 */
-export function withAssignedEscort(order, assignedByUserId, escortUserId, assignedAt) {
-    return {
-        ...order,
-        assignedByUserId,
-        escortUserId,
-        updatedAt: assignedAt,
-    };
-}
 /** 由指定護航者確認後回傳新狀態物件。 */
 export function withConfirmed(order, confirmedAt) {
     return createOrder({

@@ -33,7 +33,7 @@ export class CurrencyPurchaseService {
   private readonly log: pino.Logger;
 
   constructor(
-    private readonly productService: { getProduct(productId: number): Promise<Product | null> },
+    private readonly productService: { findById(productId: number): Promise<Product | null> },
     private readonly balanceService: {
       tryGetBalance(
         guildId: number,
@@ -81,7 +81,7 @@ export class CurrencyPurchaseService {
     userId: number,
     productId: number,
   ): Promise<Result<PurchaseResult, DomainError>> {
-    const product = await this.productService.getProduct(productId);
+    const product = await this.productService.findById(productId);
     if (!product) {
       return err(DomainError.invalidInput('找不到該商品'));
     }

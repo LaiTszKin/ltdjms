@@ -21,15 +21,18 @@ export class GameTokenService {
      * Uses cache (TTL 300s) - cache miss falls through to DB (no auto-create).
      */
     async getBalance(guildId, userId) {
-        const cacheKey = this.cacheKeyGenerator.gameTokenKey(guildId, userId);
+        const cacheKey = this.cacheKeyGenerator.gameTokenKey(String(guildId), String(userId));
         const cachedBalance = await this.cacheService.get(cacheKey);
         if (cachedBalance !== null) {
             return cachedBalance;
         }
         const account = await this.accountRepository.findByGuildIdAndUserId(guildId, userId);
-        const balance = account?.tokens ?? 0;
-        await this.cacheService.put(cacheKey, balance, GameTokenService.TOKEN_TTL_SECONDS);
-        return balance;
+        if (account === null) {
+            await this.cacheService.put(cacheKey, 0, GameTokenService.TOKEN_TTL_SECONDS);
+            return 0;
+        }
+        await this.cacheService.put(cacheKey, account.tokens, GameTokenService.TOKEN_TTL_SECONDS);
+        return account.tokens;
     }
     /**
      * Adjusts tokens with Result-based error handling.
@@ -47,7 +50,7 @@ export class GameTokenService {
             }
             const updated = adjustResult.getValue();
             // Update cache
-            const cacheKey = this.cacheKeyGenerator.gameTokenKey(guildId, userId);
+            const cacheKey = this.cacheKeyGenerator.gameTokenKey(String(guildId), String(userId));
             await this.cacheService.put(cacheKey, updated.tokens, GameTokenService.TOKEN_TTL_SECONDS);
             // Publish event
             this.eventPublisher.publish({
@@ -86,7 +89,7 @@ export class GameTokenService {
         if (result.isOk()) {
             const account = result.getValue();
             // Update cache
-            const cacheKey = this.cacheKeyGenerator.gameTokenKey(guildId, userId);
+            const cacheKey = this.cacheKeyGenerator.gameTokenKey(String(guildId), String(userId));
             await this.cacheService.put(cacheKey, account.tokens, GameTokenService.TOKEN_TTL_SECONDS);
             // Publish event
             this.eventPublisher.publish({
@@ -106,7 +109,7 @@ export class GameTokenService {
             throw new Error(`Tokens to deduct must be positive: ${tokens}`);
         }
         const updated = await this.accountRepository.adjustTokens(guildId, userId, -tokens);
-        const cacheKey = this.cacheKeyGenerator.gameTokenKey(guildId, userId);
+        const cacheKey = this.cacheKeyGenerator.gameTokenKey(String(guildId), String(userId));
         await this.cacheService.put(cacheKey, updated.tokens, GameTokenService.TOKEN_TTL_SECONDS);
         this.eventPublisher.publish({
             guildId,
@@ -122,7 +125,7 @@ export class GameTokenService {
         const current = await this.accountRepository.findOrCreate(guildId, userId);
         const previousTokens = current.tokens;
         const updated = await this.accountRepository.adjustTokens(guildId, userId, amount);
-        const cacheKey = this.cacheKeyGenerator.gameTokenKey(guildId, userId);
+        const cacheKey = this.cacheKeyGenerator.gameTokenKey(String(guildId), String(userId));
         await this.cacheService.put(cacheKey, updated.tokens, GameTokenService.TOKEN_TTL_SECONDS);
         this.eventPublisher.publish({
             guildId,

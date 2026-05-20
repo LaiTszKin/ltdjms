@@ -5,8 +5,14 @@ import { DefaultPromptLoader } from '../prompts/prompt-loader.js';
 import { AIChatMentionRoutingDecision } from '../services/routing/routing-decision.js';
 import { DefaultAIChannelRestrictionService, InMemoryAIChannelRestrictionRepository, } from '../services/routing/channel-restriction-service.js';
 import { DefaultAIAgentChannelConfigService, InMemoryAIAgentChannelConfigRepository, } from '../services/routing/agent-config-service.js';
+// DB-backed persistence
+import { DrizzleAIChannelRestrictionRepository } from '../persistence/drizzle-channel-restriction-repository.js';
+import { DrizzleAIAgentChannelConfigRepository } from '../persistence/drizzle-agent-config-repository.js';
 import { LangChainAIChatService } from '../services/LangChainAIChatService.js';
 import { MarkdownValidatingAIChatService } from '../markdown/services/MarkdownValidatingAIChatService.js';
+import { AgentConfigCacheInvalidationListener } from '../services/routing/agent-config-cache-invalidation-listener.js';
+// Agent Service Factory
+import { AgentServiceFactory } from '../services/AgentServiceFactory.js';
 // Tools
 import { ToolCallerAuthorizationGuard } from '../tools/ToolCallerAuthorizationGuard.js';
 import { PermissionParser } from '../tools/PermissionParser.js';
@@ -31,6 +37,7 @@ import { DeleteDiscordResourceTool } from '../tools/DeleteDiscordResourceTool.js
 import { InMemoryToolCallHistory } from '../services/memory/tool-call-history.js';
 import { DiscordThreadHistoryProvider } from '../services/memory/chat-memory-provider.js';
 import { SimplifiedChatMemoryProvider } from '../services/memory/chat-memory-provider.js';
+import { TokenEstimator } from '../services/memory/TokenEstimator.js';
 // Markdown
 import { CommonMarkValidator } from '../markdown/validation/CommonMarkValidator.js';
 import { RegexBasedAutoFixer } from '../markdown/autofix/RegexBasedAutoFixer.js';
@@ -52,9 +59,11 @@ export const AI_TOKENS = {
     LangChainAIChatService: Symbol('LangChainAIChatService'),
     AIChatMentionRoutingDecision: Symbol('AIChatMentionRoutingDecision'),
     AIChatMentionListener: Symbol('AIChatMentionListener'),
+    AgentServiceFactory: Symbol('AgentServiceFactory'),
     InMemoryToolCallHistory: Symbol('InMemoryToolCallHistory'),
     DiscordThreadHistoryProvider: Symbol('DiscordThreadHistoryProvider'),
     SimplifiedChatMemoryProvider: Symbol('SimplifiedChatMemoryProvider'),
+    TokenEstimator: Symbol('TokenEstimator'),
     CommonMarkValidator: Symbol('CommonMarkValidator'),
     RegexBasedAutoFixer: Symbol('RegexBasedAutoFixer'),
     DiscordMarkdownSanitizer: Symbol('DiscordMarkdownSanitizer'),
@@ -95,12 +104,17 @@ export function initializeAIModule() {
     const promptLoader = new DefaultPromptLoader(envConfig.getPromptsDirPath(), envConfig.getPromptMaxSizeBytes());
     container.registerInstance(AI_TOKENS.PromptLoader, promptLoader);
     // ===== Channel Restriction =====
-    const restrictionRepo = new InMemoryAIChannelRestrictionRepository();
+    const db = container.resolve(TOKENS.DatabasePool);
+    const restrictionRepo = db
+        ? new DrizzleAIChannelRestrictionRepository(db)
+        : new InMemoryAIChannelRestrictionRepository();
     container.registerInstance(AI_TOKENS.AIChannelRestrictionRepository, restrictionRepo);
     const restrictionService = new DefaultAIChannelRestrictionService(restrictionRepo);
     container.registerInstance(AI_TOKENS.AIChannelRestrictionService, restrictionService);
     // ===== Agent Config =====
-    const agentConfigRepo = new InMemoryAIAgentChannelConfigRepository();
+    const agentConfigRepo = db
+        ? new DrizzleAIAgentChannelConfigRepository(db)
+        : new InMemoryAIAgentChannelConfigRepository();
     container.registerInstance(AI_TOKENS.AIAgentChannelConfigRepository, agentConfigRepo);
     const agentConfigService = new DefaultAIAgentChannelConfigService(agentConfigRepo, cacheService, eventPublisher);
     container.registerInstance(AI_TOKENS.AIAgentChannelConfigService, agentConfigService);
@@ -145,15 +159,48 @@ export function initializeAIModule() {
     // ===== Memory =====
     const toolCallHistory = new InMemoryToolCallHistory();
     container.registerInstance(AI_TOKENS.InMemoryToolCallHistory, toolCallHistory);
-    const threadHistoryProvider = new DiscordThreadHistoryProvider();
+    const threadHistoryProvider = new DiscordThreadHistoryProvider(runtimeGateway);
     container.registerInstance(AI_TOKENS.DiscordThreadHistoryProvider, threadHistoryProvider);
     const memoryProvider = new SimplifiedChatMemoryProvider(threadHistoryProvider, toolCallHistory, runtimeGateway);
     container.registerInstance(AI_TOKENS.SimplifiedChatMemoryProvider, memoryProvider);
+    // ===== Token Estimator =====
+    // TODO (P2-38, P3-20): TokenEstimator is registered but not currently wired into
+    // the memory provider. Once context-window management is implemented,
+    // inject TokenEstimator into SimplifiedChatMemoryProvider to enforce
+    // token-budget limits when building conversation history.
+    const tokenEstimator = new TokenEstimator();
+    container.registerInstance(AI_TOKENS.TokenEstimator, tokenEstimator);
+    // ===== Agent Service Factory =====
+    // Collect all registered tool instances from the container for the agent factory
+    const allTools = [
+        container.resolve(AI_TOKENS.CreateChannelTool),
+        container.resolve(AI_TOKENS.CreateCategoryTool),
+        container.resolve(AI_TOKENS.CreateRoleTool),
+        container.resolve(AI_TOKENS.ListChannelsTool),
+        container.resolve(AI_TOKENS.ListCategoriesTool),
+        container.resolve(AI_TOKENS.ListRolesTool),
+        container.resolve(AI_TOKENS.GetChannelPermissionsTool),
+        container.resolve(AI_TOKENS.GetCategoryPermissionsTool),
+        container.resolve(AI_TOKENS.GetRolePermissionsTool),
+        container.resolve(AI_TOKENS.ModifyChannelPermissionsTool),
+        container.resolve(AI_TOKENS.ModifyCategoryPermissionsTool),
+        container.resolve(AI_TOKENS.ModifyRolePermissionsTool),
+        container.resolve(AI_TOKENS.SendMessagesTool),
+        container.resolve(AI_TOKENS.SearchMessagesTool),
+        container.resolve(AI_TOKENS.ManageMessageTool),
+        container.resolve(AI_TOKENS.MoveChannelTool),
+        container.resolve(AI_TOKENS.DeleteDiscordResourceTool),
+    ];
+    const agentServiceFactory = new AgentServiceFactory(aiConfig, allTools, memoryProvider, toolCallHistory, authGuard);
+    container.registerInstance(AI_TOKENS.AgentServiceFactory, agentServiceFactory);
     // ===== Markdown Pipeline =====
     container.registerInstance(AI_TOKENS.CommonMarkValidator, new CommonMarkValidator());
     container.registerInstance(AI_TOKENS.RegexBasedAutoFixer, new RegexBasedAutoFixer());
     container.registerInstance(AI_TOKENS.DiscordMarkdownSanitizer, new DiscordMarkdownSanitizer());
     container.registerInstance(AI_TOKENS.DiscordMarkdownPaginator, new DiscordMarkdownPaginator());
+    // ===== Agent Config Cache Invalidation Listener =====
+    // Subscribes to AIAgentChannelConfigChangedEvent and invalidates cache entries
+    new AgentConfigCacheInvalidationListener(cacheService, eventPublisher);
     // ===== AIChatMentionListener =====
     const listener = new AIChatMentionListener(routingDecision, aiChatService, runtimeGateway.selfUserId(), aiConfig.showReasoning, aiConfig.streamingBypassValidation);
     container.registerInstance(AI_TOKENS.AIChatMentionListener, listener);

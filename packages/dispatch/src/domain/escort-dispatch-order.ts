@@ -203,6 +203,9 @@ export function createPending(
   escortUserId: number,
   customerUserId: number,
 ): EscortDispatchOrder {
+  if (customerUserId <= 0) {
+    throw new Error('customerUserId must be greater than 0');
+  }
   return createOrder({
     orderNumber,
     guildId,
@@ -355,21 +358,6 @@ export function createAutoHandoff(
 }
 
 // ---- Immutable Transition Functions ----
-
-/** 指定待派發訂單的護航者後回傳新狀態物件。 */
-export function withAssignedEscort(
-  order: EscortDispatchOrder,
-  assignedByUserId: number,
-  escortUserId: number,
-  assignedAt: Date,
-): EscortDispatchOrder {
-  return {
-    ...order,
-    assignedByUserId,
-    escortUserId,
-    updatedAt: assignedAt,
-  };
-}
 
 /** 由指定護航者確認後回傳新狀態物件。 */
 export function withConfirmed(

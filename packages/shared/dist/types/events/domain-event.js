@@ -10,10 +10,10 @@ export var GameType;
     GameType["DICE_GAME_2"] = "DICE_GAME_2";
 })(GameType || (GameType = {}));
 // ---- Product / Redemption Events ----
-export var ProductOperationType;
-(function (ProductOperationType) {
-    ProductOperationType["CREATED"] = "CREATED";
-    ProductOperationType["UPDATED"] = "UPDATED";
-    ProductOperationType["DELETED"] = "DELETED";
-})(ProductOperationType || (ProductOperationType = {}));
+export var OperationType;
+(function (OperationType) {
+    OperationType["CREATED"] = "CREATED";
+    OperationType["UPDATED"] = "UPDATED";
+    OperationType["DELETED"] = "DELETED";
+})(OperationType || (OperationType = {}));
 //# sourceMappingURL=domain-event.js.map

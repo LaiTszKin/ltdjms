@@ -26,7 +26,7 @@ describe('FiatPaymentCallbackService', () => {
     const repo = createMockRepo();
     const service = new FiatPaymentCallbackService(config, repo);
 
-    const result = await service.handleCallbackAsync(null, 'application/json');
+    const result = await service.handleCallback(null, 'application/json');
     expect(result.httpStatus).toBe(400);
     expect(result.responseBody).toBe('0|FAIL');
   });
@@ -36,7 +36,7 @@ describe('FiatPaymentCallbackService', () => {
     const repo = createMockRepo();
     const service = new FiatPaymentCallbackService(config, repo);
 
-    const result = await service.handleCallbackAsync('', 'application/json');
+    const result = await service.handleCallback('', 'application/json');
     expect(result.httpStatus).toBe(400);
   });
 
@@ -45,7 +45,7 @@ describe('FiatPaymentCallbackService', () => {
     const repo = createMockRepo();
     const service = new FiatPaymentCallbackService(config, repo);
 
-    const result = await service.handleCallbackAsync('{"key":"value"}', 'application/json');
+    const result = await service.handleCallback('{"key":"value"}', 'application/json');
     expect(result.httpStatus).toBe(400);
   });
 
@@ -57,7 +57,7 @@ describe('FiatPaymentCallbackService', () => {
 
     // This requires a valid encrypted payload, so we test the callback node parsing
     // with a mock that returns null after not finding the merchant trade no
-    const result = await service.handleCallbackAsync(
+    const result = await service.handleCallback(
       '{"Data":"dGVzdA=="}',
       'application/json',
     );

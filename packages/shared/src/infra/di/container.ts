@@ -26,7 +26,11 @@ export function initializeContainer(options?: {
   databasePool?: unknown;
 }): void {
   // Config
-  tsyringeContainer.registerSingleton(EnvironmentConfig);
+  if (options?.config) {
+    tsyringeContainer.registerInstance(TOKENS.EnvironmentConfig, options.config);
+  } else {
+    tsyringeContainer.registerSingleton(EnvironmentConfig);
+  }
 
   // Cache
   if (options?.cacheService) {

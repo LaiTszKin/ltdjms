@@ -36,7 +36,13 @@ export declare class CurrencyAccountRepository {
      */
     delete(guildId: number, userId: number): Promise<void>;
 }
-/** Error thrown when a balance adjustment would result in a negative balance. */
+/**
+ * Error thrown when a balance adjustment would result in a negative balance.
+ *
+ * This is the throwing-path variant (internal use by adjustBalance).
+ * For the Result-path equivalent (external use), see DomainError.insufficientBalance()
+ * which is returned by tryAdjustBalance.
+ */
 export declare class InsufficientBalanceError extends Error {
     constructor(message: string);
 }

@@ -44,7 +44,8 @@ export declare const ADMIN_TOKENS: {
  * - ECONOMY_TOKENS.BalanceService, BalanceAdjustmentService, CurrencyConfigService
  * - ECONOMY_TOKENS.CurrencyTransactionService, GameTokenService, GameTokenTransactionService
  * - ECONOMY_TOKENS.DiceConfigRepository
- * - SHOP_TOKENS.RedemptionService
+ * - SHOP_TOKENS.RedemptionService, SHOP_TOKENS.ShopService
  * - AI_TOKENS.AIChannelRestrictionService, AIAgentChannelConfigService
+ * - DISPATCH_TOKENS.DispatchAfterSalesStaffService, EscortOptionPricingService
  */
 export declare function configureAdminContainer(): void;

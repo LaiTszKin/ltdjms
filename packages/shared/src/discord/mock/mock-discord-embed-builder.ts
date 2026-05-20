@@ -1,6 +1,7 @@
 import { EmbedBuilder, type APIEmbed } from 'discord.js';
 import { type DiscordEmbedBuilder } from '../domain/discord-embed-builder.js';
 import { type EmbedView, type FieldView } from '../domain/embed-view.js';
+import { paginateEmbedView } from '../services/embed-pagination.js';
 
 /**
  * Mock implementation of DiscordEmbedBuilder for testing.
@@ -82,89 +83,7 @@ export class MockDiscordEmbedBuilder implements DiscordEmbedBuilder {
   }
 
   buildPaginated(data: EmbedView): APIEmbed[] {
-    const embeds: APIEmbed[] = [];
-
-    const title = data.title
-      ? data.title.length > this.MAX_TITLE_LENGTH
-        ? this.truncate(data.title, this.MAX_TITLE_LENGTH)
-        : data.title
-      : undefined;
-
-    const footer = data.footer
-      ? data.footer.length > this.MAX_FOOTER_LENGTH
-        ? this.truncate(data.footer, this.MAX_FOOTER_LENGTH)
-        : data.footer
-      : undefined;
-
-    const description = data.description;
-
-    if (description && description.length > this.MAX_DESCRIPTION_LENGTH) {
-      const totalPages = Math.ceil(
-        description.length / this.MAX_DESCRIPTION_LENGTH,
-      );
-      for (let i = 0; i < totalPages; i++) {
-        const start = i * this.MAX_DESCRIPTION_LENGTH;
-        const end = Math.min(
-          start + this.MAX_DESCRIPTION_LENGTH,
-          description.length,
-        );
-        const builder = new EmbedBuilder();
-        builder.setDescription(description.slice(start, end));
-        if (title) {
-          builder.setTitle(
-            totalPages > 1 ? `${title} (${i + 1}/${totalPages})` : title,
-          );
-        }
-        if (data.color) builder.setColor(data.color);
-        if (footer) builder.setFooter({ text: footer });
-        embeds.push(builder.toJSON());
-      }
-      return embeds;
-    }
-
-    if (!data.fields || data.fields.length === 0) {
-      const builder = new EmbedBuilder();
-      if (title) builder.setTitle(title);
-      if (description) builder.setDescription(description);
-      if (data.color) builder.setColor(data.color);
-      if (footer) builder.setFooter({ text: footer });
-      embeds.push(builder.toJSON());
-      return embeds;
-    }
-
-    let totalAdded = 0;
-    let pageIndex = 0;
-    let builder = new EmbedBuilder();
-    if (title) builder.setTitle(title);
-    if (description) builder.setDescription(description);
-    if (data.color) builder.setColor(data.color);
-    if (footer) builder.setFooter({ text: footer });
-
-    for (const field of data.fields) {
-      if (totalAdded > 0 && totalAdded % this.MAX_FIELDS === 0) {
-        embeds.push(builder.toJSON());
-        pageIndex++;
-        builder = new EmbedBuilder();
-        if (title) {
-          builder.setTitle(
-            data.fields.length > this.MAX_FIELDS
-              ? `${title} (${pageIndex + 1})`
-              : title,
-          );
-        }
-        if (data.color) builder.setColor(data.color);
-        if (footer) builder.setFooter({ text: footer });
-      }
-      builder.addFields({
-        name: field.name,
-        value: field.value,
-        inline: field.inline,
-      });
-      totalAdded++;
-    }
-    embeds.push(builder.toJSON());
-
-    return embeds;
+    return paginateEmbedView(data, this, (str, maxLen) => this.truncate(str, maxLen));
   }
 
   // ---- Test helper getters ----

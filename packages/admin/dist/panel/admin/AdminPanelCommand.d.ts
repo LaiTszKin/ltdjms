@@ -2,6 +2,7 @@ import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
 import { type CommandHandler } from '../../commands/infra/CommandHandler.js';
 import { AdminPanelSessionManager } from '../../session/AdminPanelSessionManager.js';
 import { AdminPanelViewFactory } from './views/AdminPanelViewFactory.js';
+import { CurrencyManagementFacade } from '../../facades/CurrencyManagementFacade.js';
 /**
  * /admin-panel slash command handler.
  * Opens the admin panel main menu with 9 feature buttons.
@@ -10,8 +11,9 @@ import { AdminPanelViewFactory } from './views/AdminPanelViewFactory.js';
 export declare class AdminPanelCommand implements CommandHandler {
     private readonly sessionManager;
     private readonly viewFactory;
+    private readonly currencyFacade;
     readonly commandName = "admin-panel";
-    constructor(sessionManager: AdminPanelSessionManager, viewFactory: AdminPanelViewFactory);
+    constructor(sessionManager: AdminPanelSessionManager, viewFactory: AdminPanelViewFactory, currencyFacade: CurrencyManagementFacade);
     execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void>;
     private hasAdminPermission;
 }

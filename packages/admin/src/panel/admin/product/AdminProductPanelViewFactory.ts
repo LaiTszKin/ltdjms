@@ -4,6 +4,13 @@ import type { Product } from '@ltdjms/shop';
 /**
  * Product-specific embed view factory.
  * Matches Java AdminProductPanelViewFactory.
+ *
+ * RESPONSIBILITY: This factory handles product-specific views (product list,
+ * product detail, code list). Generic/shared admin panel views (main menu,
+ * balance, tokens, games, AI config, dispatch) are in AdminPanelViewFactory
+ * under panel/admin/views/.
+ *
+ * @see AdminPanelViewFactory — generic admin panel views
  */
 export class AdminProductPanelViewFactory {
   /**
@@ -34,7 +41,7 @@ export class AdminProductPanelViewFactory {
             .replace('{total}', String(totalPages))
             .replace('{count}', String(products.length)),
       fields,
-      color: 0x2c3e50,
+      color: 0x2C3E50,
     };
   }
 
@@ -63,7 +70,7 @@ export class AdminProductPanelViewFactory {
         codeInfo,
       ].join('\n'),
       fields: [],
-      color: 0x2c3e50,
+      color: 0x2C3E50,
     };
   }
 
@@ -89,7 +96,7 @@ export class AdminProductPanelViewFactory {
       title: ZhTwStrings.productCodesTitle.replace('{name}', productName),
       description: codeLines.length > 0 ? codeLines.join('\n') : '暫無兌換碼',
       fields: [],
-      color: 0x8e44ad,
+      color: 0x8E44AD,
     };
   }
 }

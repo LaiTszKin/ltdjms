@@ -73,25 +73,10 @@ export function configureDispatchContainer(): void {
   container.registerInstance(DISPATCH_TOKENS.EscortDispatchOrderNumberGenerator, orderNumberGenerator);
 
   // ============================================================
-  // Services (singleton instances)
+  // Stub catalog repo until a production implementation is ported.
+  // Must be defined before services that depend on it.
   // ============================================================
 
-  const dispatchOrderService = new EscortDispatchOrderService(
-    dispatchOrderRepo,
-    orderNumberGenerator,
-  );
-  container.registerInstance(DISPATCH_TOKENS.EscortDispatchOrderService, dispatchOrderService);
-
-  const handoffService = new EscortDispatchHandoffService(dispatchOrderRepo);
-  container.registerInstance(DISPATCH_TOKENS.EscortDispatchHandoffService, handoffService);
-
-  const afterSalesStaffService = new DispatchAfterSalesStaffService(afterSalesStaffRepo);
-  container.registerInstance(
-    DISPATCH_TOKENS.DispatchAfterSalesStaffService,
-    afterSalesStaffService,
-  );
-
-  // Stub catalog repo until a production implementation is ported.
   const stubCatalogRepo: EscortOptionCatalogRepository = {
     async findAll() { return []; },
     async findByCode() { return null; },
@@ -101,6 +86,28 @@ export function configureDispatchContainer(): void {
     DISPATCH_TOKENS.EscortOptionCatalogRepository,
     stubCatalogRepo,
   );
+
+  // ============================================================
+  // Services (singleton instances)
+  // ============================================================
+
+  const afterSalesStaffService = new DispatchAfterSalesStaffService(afterSalesStaffRepo);
+  container.registerInstance(
+    DISPATCH_TOKENS.DispatchAfterSalesStaffService,
+    afterSalesStaffService,
+  );
+
+  const dispatchOrderService = new EscortDispatchOrderService(
+    dispatchOrderRepo,
+    orderNumberGenerator,
+    undefined, // clock — use default Date.now
+    stubCatalogRepo,
+    afterSalesStaffService,
+  );
+  container.registerInstance(DISPATCH_TOKENS.EscortDispatchOrderService, dispatchOrderService);
+
+  const handoffService = new EscortDispatchHandoffService(dispatchOrderRepo);
+  container.registerInstance(DISPATCH_TOKENS.EscortDispatchHandoffService, handoffService);
 
   const optionPricingService = new EscortOptionPricingService(optionPriceRepo, stubCatalogRepo);
   container.registerInstance(DISPATCH_TOKENS.EscortOptionPricingService, optionPricingService);
@@ -136,6 +143,7 @@ export function configureDispatchContainer(): void {
     dispatchOrderService,
     optionPricingService,
     afterSalesStaffService,
+    notificationService,
   );
   container.registerInstance(
     DISPATCH_TOKENS.DispatchPanelInteractionHandler,

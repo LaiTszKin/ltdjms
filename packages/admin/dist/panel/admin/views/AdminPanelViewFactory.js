@@ -3,6 +3,13 @@ import { ZhTwStrings } from '../../../i18n/zh-TW.js';
  * Generic embed view builder for admin panels.
  * Provides structured data that Discord embed builders consume.
  * Matches Java AdminPanelViewFactory.
+ *
+ * RESPONSIBILITY: This factory handles shared/generic admin panel views
+ * (main menu, balance, tokens, games, AI config, dispatch, escort pricing/catalog).
+ * Product-specific views (product list, detail, codes) are in AdminProductPanelViewFactory
+ * under panel/admin/product/.
+ *
+ * @see AdminProductPanelViewFactory — product-specific views
  */
 export class AdminPanelViewFactory {
     /**
@@ -20,7 +27,7 @@ export class AdminPanelViewFactory {
                 { name: '活躍護航訂單', value: `${dispatchCount}`, inline: true },
             ],
             footer: ZhTwStrings.adminPanelFooter,
-            color: 0x3498db,
+            color: 0x5865F2,
             buttons: [
                 { id: 'admin_balance', label: ZhTwStrings.adminPanelBtnBalance, style: 1, disabled: false },
                 { id: 'admin_token', label: ZhTwStrings.adminPanelBtnToken, style: 1, disabled: false },
@@ -44,7 +51,7 @@ export class AdminPanelViewFactory {
                 .replace('{balance}', String(balanceInfo.balance))
                 .replace('{currencyIcon}', balanceInfo.currencyIcon),
             fields: [],
-            color: 0x2ecc71,
+            color: 0x57F287,
             buttons: [
                 { id: 'admin_balance_add', label: ZhTwStrings.balanceAdjustAdd, style: 3, disabled: false },
                 { id: 'admin_balance_deduct', label: ZhTwStrings.balanceAdjustDeduct, style: 4, disabled: false },
@@ -60,8 +67,13 @@ export class AdminPanelViewFactory {
             title: ZhTwStrings.tokenTitle,
             description: ZhTwStrings.tokenDisplay.replace('{tokens}', String(tokenInfo.tokens)),
             fields: [],
-            color: 0x9b59b6,
+            color: 0x5865F2,
             buttons: [
+                // NOTE(P2-50): These button labels reuse currency management strings
+                // (balanceAdjustAdd/Deduct/Set) because dedicated token-specific labels
+                // have not been added to the i18n file yet. When token-specific i18n
+                // strings (e.g., tokenAdjustAdd/Deduct/Set) are created, update these
+                // references.
                 { id: 'admin_token_add', label: ZhTwStrings.balanceAdjustAdd, style: 3, disabled: false },
                 { id: 'admin_token_deduct', label: ZhTwStrings.balanceAdjustDeduct, style: 4, disabled: false },
                 { id: 'admin_token_set', label: ZhTwStrings.balanceAdjustSet, style: 1, disabled: false },
@@ -79,7 +91,7 @@ export class AdminPanelViewFactory {
                 .replace('{max}', String(config.maxTokensPerPlay))
                 .replace('{reward}', String(config.rewardPerDiceValue)),
             fields: [],
-            color: 0xe67e22,
+            color: 0xFEE75C,
             buttons: [
                 { id: 'admin_game_edit_1', label: ZhTwStrings.gameEditBtn, style: 1, disabled: false },
             ],
@@ -99,7 +111,7 @@ export class AdminPanelViewFactory {
                 .replace('{lowTriple}', String(config.tripleLowBonus))
                 .replace('{highTriple}', String(config.tripleHighBonus)),
             fields: [],
-            color: 0xe67e22,
+            color: 0xFEE75C,
             buttons: [
                 { id: 'admin_game_edit_2', label: ZhTwStrings.gameEditBtn, style: 1, disabled: false },
             ],
@@ -125,7 +137,7 @@ export class AdminPanelViewFactory {
                     .replace('{total}', String(totalPages))
                     .replace('{count}', String(products.length)),
             fields,
-            color: 0x2c3e50,
+            color: 0x5865F2,
             buttons: [
                 { id: 'admin_product_prev', label: ZhTwStrings.historyPrevBtn, style: 2, disabled: page <= 1 },
                 { id: 'admin_product_next', label: ZhTwStrings.historyNextBtn, style: 2, disabled: page >= totalPages },
@@ -152,7 +164,7 @@ export class AdminPanelViewFactory {
                     .replace('{channels}', channelList)
                     .replace('{categories}', categoryList),
             fields: [],
-            color: 0x1abc9c,
+            color: 0x5865F2,
             buttons: [
                 { id: 'admin_aichannel_add_channel', label: ZhTwStrings.aiChannelAddBtn, style: 3, disabled: false },
                 { id: 'admin_aichannel_remove_channel', label: ZhTwStrings.aiChannelRemoveBtn, style: 4, disabled: false },
@@ -172,7 +184,7 @@ export class AdminPanelViewFactory {
             title: ZhTwStrings.aiAgentTitle,
             description: list,
             fields: [],
-            color: 0x3498db,
+            color: 0x5865F2,
             buttons: [
                 { id: 'admin_aiagent_enable', label: ZhTwStrings.aiAgentEnableBtn, style: 3, disabled: false },
                 { id: 'admin_aiagent_disable', label: ZhTwStrings.aiAgentDisableBtn, style: 4, disabled: false },
@@ -191,7 +203,7 @@ export class AdminPanelViewFactory {
             title: ZhTwStrings.dispatchTitle,
             description: list,
             fields: [],
-            color: 0x95a5a6,
+            color: 0x5865F2,
             buttons: [
                 { id: 'admin_dispatch_add', label: ZhTwStrings.dispatchAddBtn, style: 3, disabled: false },
                 { id: 'admin_dispatch_remove', label: ZhTwStrings.dispatchRemoveBtn, style: 4, disabled: false },
@@ -216,12 +228,20 @@ export class AdminPanelViewFactory {
             title: ZhTwStrings.escortPricingTitle,
             description: items.join('\n\n'),
             fields: [],
-            color: 0xf39c12,
+            color: 0xFEE75C,
             buttons: [],
         };
     }
     /**
      * Builds the escort catalog embed.
+     *
+     * TODO(P1-35): Verify EscortOptionCatalogEntry field mappings against the
+     * finalized type once EscortOptionCatalogRepository is available from
+     * @ltdjms/dispatch. The current EscortOptionCatalogEntry (defined in the
+     * dispatch package) uses: code, type, level, mapScope, target, priceTwd.
+     * The template substitutes: {name}=type-target, {category}=level,
+     * {price}=priceTwd, {description}=mapScope. Confirm these match the
+     * production catalog schema.
      */
     buildEscortCatalogView(catalogEntries) {
         if (catalogEntries.length === 0) {
@@ -229,7 +249,7 @@ export class AdminPanelViewFactory {
                 title: ZhTwStrings.escortCatalogTitle,
                 description: ZhTwStrings.escortCatalogEmpty,
                 fields: [],
-                color: 0x95a5a6,
+                color: 0x5865F2,
                 buttons: [
                     { id: 'admin_escortcatalog_create', label: ZhTwStrings.escortCatalogCreateBtn, style: 3, disabled: false },
                 ],
@@ -244,7 +264,7 @@ export class AdminPanelViewFactory {
             title: ZhTwStrings.escortCatalogTitle,
             description: items.join('\n\n'),
             fields: [],
-            color: 0x9b59b6,
+            color: 0x5865F2,
             buttons: [
                 { id: 'admin_escortcatalog_create', label: ZhTwStrings.escortCatalogCreateBtn, style: 3, disabled: false },
             ],

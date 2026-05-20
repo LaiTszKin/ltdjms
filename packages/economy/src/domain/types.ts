@@ -220,6 +220,14 @@ export const DEFAULT_CURRENCY_ICON = '🪙';
 /** Maximum amount that can be adjusted in a single operation. Matches Java Long.MAX_VALUE. */
 export const MAX_ADJUSTMENT_AMOUNT = Number.MAX_SAFE_INTEGER;
 
+/**
+ * Validates that an adjustment amount does not exceed the maximum allowed value.
+ * Used by BalanceAdjustmentService for spec R1.4 compliance.
+ */
+export function isValidAdjustmentAmount(amount: number): boolean {
+  return Math.abs(amount) <= MAX_ADJUSTMENT_AMOUNT;
+}
+
 /** Cache TTL for balance (seconds). */
 export const BALANCE_CACHE_TTL = 300;
 

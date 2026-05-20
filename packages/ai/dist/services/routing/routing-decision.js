@@ -64,13 +64,7 @@ export class AIChatMentionRoutingDecision {
         let agentConfigUnavailable = false;
         // Priority 1: Check Agent config (uses restrictionChannelId for thread inheritance)
         try {
-            const agentEnabled = this.agentConfigService.isAgentEnabled
-                ? this.agentConfigService.isAgentEnabled(guildId, restrictionChannelId)
-                : await this.agentConfigService.isAgentEnabledAsync(guildId, restrictionChannelId);
-            // Handle both sync and async return values
-            const enabled = typeof agentEnabled === 'boolean'
-                ? agentEnabled
-                : await agentEnabled;
+            const enabled = await this.agentConfigService.isAgentEnabledAsync(guildId, restrictionChannelId);
             if (enabled) {
                 return {
                     route: Route.AGENT_ROUTE,

@@ -6,17 +6,15 @@
 export class MockDiscordInteraction {
     _guildId;
     _userId;
-    _channelId;
     _ephemeral;
     _acknowledged = false;
     _replyMessages = [];
     _replyEmbeds = [];
     _editedEmbeds = [];
     _deferReplyCount = 0;
-    constructor(guildId, userId, channelId = '0', ephemeral = false) {
+    constructor(guildId, userId, _channelId, ephemeral = false) {
         this._guildId = guildId;
         this._userId = userId;
-        this._channelId = channelId;
         this._ephemeral = ephemeral;
     }
     getGuildId() {
@@ -24,9 +22,6 @@ export class MockDiscordInteraction {
     }
     getUserId() {
         return this._userId;
-    }
-    getChannelId() {
-        return this._channelId;
     }
     isEphemeral() {
         return this._ephemeral;

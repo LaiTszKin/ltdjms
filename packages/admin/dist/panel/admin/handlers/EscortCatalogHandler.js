@@ -1,3 +1,4 @@
+import { EmbedBuilder } from 'discord.js';
 import { ZhTwStrings } from '../../../i18n/zh-TW.js';
 /**
  * Handler for escort catalog interactions (admin_escortcatalog_*).
@@ -5,11 +6,13 @@ import { ZhTwStrings } from '../../../i18n/zh-TW.js';
  */
 export class EscortCatalogHandler {
     sessionManager;
+    catalogRepository;
     customIdPrefix = 'admin_escortcatalog';
-    constructor(sessionManager) {
+    constructor(sessionManager, catalogRepository) {
         this.sessionManager = sessionManager;
+        this.catalogRepository = catalogRepository;
     }
-    async execute(interaction, _context) {
+    async execute(interaction, context) {
         const guildId = interaction.getGuildId();
         const userId = interaction.getUserId();
         const session = this.sessionManager.getSession(guildId, userId);
@@ -17,7 +20,35 @@ export class EscortCatalogHandler {
             await interaction.reply(ZhTwStrings.sessionExpired);
             return;
         }
-        await interaction.reply('護航目錄功能');
+        await interaction.deferReply();
+        // Try to get catalog entries
+        try {
+            const entries = await this.catalogRepository.findAll();
+            let description;
+            if (entries.length === 0) {
+                description = ZhTwStrings.escortCatalogEmpty;
+            }
+            else {
+                const items = entries.map((entry) => ZhTwStrings.escortCatalogItem
+                    .replace('{name}', `${entry.type} - ${entry.target}`)
+                    .replace('{category}', entry.level)
+                    .replace('{price}', String(entry.priceTwd))
+                    .replace('{description}', entry.mapScope));
+                description = items.join('\n\n');
+            }
+            const embed = new EmbedBuilder()
+                .setTitle(ZhTwStrings.escortCatalogTitle)
+                .setDescription(description)
+                .setColor(0x5865F2);
+            await interaction.editEmbed(embed);
+        }
+        catch (err) {
+            const embed = new EmbedBuilder()
+                .setTitle(ZhTwStrings.escortCatalogTitle)
+                .setDescription('護航目錄資料暫時無法取得')
+                .setColor(0x5865F2);
+            await interaction.editEmbed(embed);
+        }
     }
 }
 //# sourceMappingURL=EscortCatalogHandler.js.map

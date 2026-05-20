@@ -157,6 +157,11 @@ export declare const DEFAULT_CURRENCY_NAME = "Coins";
 export declare const DEFAULT_CURRENCY_ICON = "\uD83E\uDE99";
 /** Maximum amount that can be adjusted in a single operation. Matches Java Long.MAX_VALUE. */
 export declare const MAX_ADJUSTMENT_AMOUNT: number;
+/**
+ * Validates that an adjustment amount does not exceed the maximum allowed value.
+ * Used by BalanceAdjustmentService for spec R1.4 compliance.
+ */
+export declare function isValidAdjustmentAmount(amount: number): boolean;
 /** Cache TTL for balance (seconds). */
 export declare const BALANCE_CACHE_TTL = 300;
 /** Cache TTL for game tokens (seconds). */

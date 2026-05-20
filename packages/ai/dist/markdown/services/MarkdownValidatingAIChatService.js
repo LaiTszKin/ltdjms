@@ -4,6 +4,9 @@ import { DiscordMarkdownSanitizer } from './DiscordMarkdownSanitizer.js';
 import { RegexBasedAutoFixer } from '../autofix/RegexBasedAutoFixer.js';
 import { CommonMarkValidator } from '../validation/CommonMarkValidator.js';
 import { DiscordMarkdownPaginator } from './DiscordMarkdownPaginator.js';
+// TODO (P2-39, P3-21): DiscordMarkdownStreamProcessor is not yet wired into this service.
+// It can be used here when streaming markdown processing (per-chunk validate/fix)
+// is needed instead of the current post-processing pipeline.
 import { isValid } from '../types.js';
 import { MessageSplitter } from '../../services/MessageSplitter.js';
 /**
@@ -36,19 +39,19 @@ export class MarkdownValidatingAIChatService {
         const validated = responses.map((r) => this.applyPipeline(r));
         return ok(validated.flat());
     }
-    async generateStreamingResponse(guildId, channelId, userId, userMessage, handler) {
+    async generateStreamingResponse(guildId, channelId, userId, userMessage, handler, agentEnabled) {
         if (!this.config.enableMarkdownValidation) {
-            return this.delegate.generateStreamingResponse(guildId, channelId, userId, userMessage, handler);
+            return this.delegate.generateStreamingResponse(guildId, channelId, userId, userMessage, handler, agentEnabled);
         }
         const wrappedHandler = this.createValidatingHandler(handler);
-        return this.delegate.generateStreamingResponse(guildId, channelId, userId, userMessage, wrappedHandler);
+        return this.delegate.generateStreamingResponse(guildId, channelId, userId, userMessage, wrappedHandler, agentEnabled);
     }
-    async generateStreamingResponseWithId(guildId, channelId, userId, userMessage, messageId, handler) {
+    async generateStreamingResponseWithId(guildId, channelId, userId, userMessage, messageId, handler, agentEnabled) {
         if (!this.config.enableMarkdownValidation) {
-            return this.delegate.generateStreamingResponseWithId(guildId, channelId, userId, userMessage, messageId, handler);
+            return this.delegate.generateStreamingResponseWithId(guildId, channelId, userId, userMessage, messageId, handler, agentEnabled);
         }
         const wrappedHandler = this.createValidatingHandler(handler);
-        return this.delegate.generateStreamingResponseWithId(guildId, channelId, userId, userMessage, messageId, wrappedHandler);
+        return this.delegate.generateStreamingResponseWithId(guildId, channelId, userId, userMessage, messageId, wrappedHandler, agentEnabled);
     }
     async generateWithHistory(guildId, channelId, userId, history, handler) {
         if (!this.config.enableMarkdownValidation) {

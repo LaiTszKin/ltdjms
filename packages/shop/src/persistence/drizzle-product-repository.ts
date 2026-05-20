@@ -20,10 +20,6 @@ export class DrizzleProductRepository {
     return this.mapRow(rows[0]);
   }
 
-  async getProduct(productId: number): Promise<Product | null> {
-    return this.findById(productId);
-  }
-
   async countByGuildId(guildId: number): Promise<number> {
     const result = await this.db
       .select({ count: count() })

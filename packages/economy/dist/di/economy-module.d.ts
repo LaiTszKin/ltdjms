@@ -17,6 +17,13 @@ export declare const ECONOMY_TOKENS: {
     DiceGame1Service: symbol;
     DiceGame2Service: symbol;
     GameRewardService: symbol;
+    BalanceHandler: symbol;
+    CurrencyConfigHandler: symbol;
+    DiceGame1Handler: symbol;
+    DiceGame2Handler: symbol;
+    DiceGame1ConfigHandler: symbol;
+    DiceGame2ConfigHandler: symbol;
+    GameTokenAdjustHandler: symbol;
 };
 /**
  * Initializes the DI container with all economy services and repositories

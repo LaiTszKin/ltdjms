@@ -29,7 +29,7 @@ export class CurrencyPurchaseService {
         this.log = logger ?? pino({ level: 'warn' });
     }
     async purchaseProduct(guildId, userId, productId) {
-        const product = await this.productService.getProduct(productId);
+        const product = await this.productService.findById(productId);
         if (!product) {
             return err(DomainError.invalidInput('找不到該商品'));
         }

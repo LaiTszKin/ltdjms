@@ -8,7 +8,9 @@ const PROD_ENDPOINT = 'https://ecpayment.ecpay.com.tw/1.0.0/Cashier/GenPaymentCo
 const OFFICIAL_STAGE_MERCHANT_ID = '3002607';
 const OFFICIAL_STAGE_HASH_KEY = 'pwFHCqoQZGmho4w6';
 const OFFICIAL_STAGE_HASH_IV = 'EkRm7iFT261dpevs';
-const MERCHANT_TRADE_NO_TIME_FORMAT = /^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{3})$/;
+// Reserved for future validation of MerchantTradeNo time component format (P2-18)
+// Format: YYMMDDHHmmSSsss (year, month, day, hour, minute, second, millisecond)
+// const MERCHANT_TRADE_NO_TIME_FORMAT = /^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{3})$/;
 
 function pad2(n: number): string {
   return n.toString().padStart(2, '0');

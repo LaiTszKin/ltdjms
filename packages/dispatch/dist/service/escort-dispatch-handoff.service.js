@@ -1,5 +1,5 @@
 import { Ok, Err, DomainError } from '@ltdjms/shared';
-import { EscortDispatchOrderNumberGenerator } from '../domain/order-number-generator.js';
+import { EscortDispatchOrderNumberGenerator, generateUniqueOrderNumber } from '../domain/order-number-generator.js';
 import { SourceType, createAutoHandoff } from '../domain/index.js';
 const MAX_ORDER_NUMBER_RETRIES = 20;
 /**
@@ -33,6 +33,8 @@ export class EscortDispatchHandoffService {
             if (!sourceReference || sourceReference.trim().length === 0) {
                 return new Err(DomainError.invalidInput('來源參考無效'));
             }
+            // Defensive check: product.escortOptionCode should be validated by the caller,
+            // but we verify here to prevent creating an order without a valid option code.
             if (!product.escortOptionCode || product.escortOptionCode.trim().length === 0) {
                 return new Err(DomainError.invalidInput('護航選項代碼無效'));
             }
@@ -64,15 +66,7 @@ export class EscortDispatchHandoffService {
         }
     }
     async generateUniqueOrderNumber() {
-        const gen = this.orderNumberGenerator;
-        for (let attempt = 1; attempt <= MAX_ORDER_NUMBER_RETRIES; attempt++) {
-            const orderNumber = gen.generate();
-            const exists = await this.repository.existsByOrderNumber(orderNumber);
-            if (!exists) {
-                return orderNumber;
-            }
-        }
-        throw new Error('無法產生唯一的護航訂單編號');
+        return generateUniqueOrderNumber(this.orderNumberGenerator, (orderNumber) => this.repository.existsByOrderNumber(orderNumber), MAX_ORDER_NUMBER_RETRIES);
     }
 }
 //# sourceMappingURL=escort-dispatch-handoff.service.js.map

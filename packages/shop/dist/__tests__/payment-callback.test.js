@@ -20,7 +20,7 @@ describe('FiatPaymentCallbackService', () => {
         const config = createMockConfig();
         const repo = createMockRepo();
         const service = new FiatPaymentCallbackService(config, repo);
-        const result = await service.handleCallbackAsync(null, 'application/json');
+        const result = await service.handleCallback(null, 'application/json');
         expect(result.httpStatus).toBe(400);
         expect(result.responseBody).toBe('0|FAIL');
     });
@@ -28,14 +28,14 @@ describe('FiatPaymentCallbackService', () => {
         const config = createMockConfig();
         const repo = createMockRepo();
         const service = new FiatPaymentCallbackService(config, repo);
-        const result = await service.handleCallbackAsync('', 'application/json');
+        const result = await service.handleCallback('', 'application/json');
         expect(result.httpStatus).toBe(400);
     });
     it('should handle callback with missing Data field', async () => {
         const config = createMockConfig();
         const repo = createMockRepo();
         const service = new FiatPaymentCallbackService(config, repo);
-        const result = await service.handleCallbackAsync('{"key":"value"}', 'application/json');
+        const result = await service.handleCallback('{"key":"value"}', 'application/json');
         expect(result.httpStatus).toBe(400);
     });
     it('should return 200 for order not found', async () => {
@@ -45,7 +45,7 @@ describe('FiatPaymentCallbackService', () => {
         const service = new FiatPaymentCallbackService(config, repo);
         // This requires a valid encrypted payload, so we test the callback node parsing
         // with a mock that returns null after not finding the merchant trade no
-        const result = await service.handleCallbackAsync('{"Data":"dGVzdA=="}', 'application/json');
+        const result = await service.handleCallback('{"Data":"dGVzdA=="}', 'application/json');
         // Without valid encrypted data, it will return 400 due to decryption failure
         // This is expected since we're not providing real encrypted data
         expect([400, 500]).toContain(result.httpStatus);

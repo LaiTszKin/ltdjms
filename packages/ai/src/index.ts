@@ -53,9 +53,6 @@ export type {
   AIChannelRestrictionRepository,
 } from './services/routing/channel-restriction-service.js';
 
-// Events (re-exported from shared for convenience)
-export type { AIChannelConfigChangedEvent } from '@ltdjms/shared';
-
 export type {
   AIAgentChannelConfigService,
   AIAgentChannelConfigRepository,

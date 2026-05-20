@@ -1,5 +1,5 @@
 import { Ok, Err, DomainError, } from '@ltdjms/shared';
-import { CurrencyTransactionSource, DEFAULT_CURRENCY_NAME, DEFAULT_CURRENCY_ICON, BALANCE_CACHE_TTL } from '../../domain/types.js';
+import { CurrencyTransactionSource, DEFAULT_CURRENCY_NAME, DEFAULT_CURRENCY_ICON, BALANCE_CACHE_TTL, isValidAdjustmentAmount } from '../../domain/types.js';
 /**
  * Service for adjusting member currency balances with validation.
  * Matches Java BalanceAdjustmentService behavior.
@@ -29,20 +29,27 @@ export class BalanceAdjustmentService {
         if (amount === 0 || !Number.isFinite(amount)) {
             return new Err(DomainError.invalidInput(`Invalid adjustment amount: ${amount}`));
         }
-        // Overflow check using safe integer boundaries
-        if (amount > Number.MAX_SAFE_INTEGER || amount < -Number.MAX_SAFE_INTEGER) {
+        // Overflow check using safe integer boundaries (spec R1.4)
+        if (!isValidAdjustmentAmount(amount)) {
             return new Err(DomainError.invalidInput(`Amount exceeds maximum: |${amount}| > ${Number.MAX_SAFE_INTEGER}`));
         }
         try {
             const current = await this.accountRepository.findOrCreate(guildId, userId);
             const previousBalance = current.balance;
+            // Check for overflow: previousBalance + amount must not exceed MAX_SAFE_INTEGER
+            if (amount > 0 && previousBalance > Number.MAX_SAFE_INTEGER - amount) {
+                return new Err(DomainError.invalidInput(`Balance overflow: ${previousBalance} + ${amount} exceeds maximum safe integer`));
+            }
+            // Underflow (insufficient balance) is enforced by the repository's
+            // conditional UPDATE SQL; tryAdjustBalance returns the correct
+            // DomainError.insufficientBalance when the constraint is violated.
             const adjustResult = await this.accountRepository.tryAdjustBalance(guildId, userId, amount);
             if (adjustResult.isErr()) {
                 return new Err(adjustResult.getError());
             }
             const updated = adjustResult.getValue();
             // Update cache
-            const cacheKey = this.cacheKeyGenerator.balanceKey(guildId, userId);
+            const cacheKey = this.cacheKeyGenerator.balanceKey(String(guildId), String(userId));
             await this.cacheService.put(cacheKey, updated.balance, BalanceAdjustmentService.BALANCE_TTL_SECONDS);
             // Publish event
             this.eventPublisher.publish({
@@ -87,7 +94,7 @@ export class BalanceAdjustmentService {
             }
             const updated = adjustResult.getValue();
             // Update cache
-            const cacheKey = this.cacheKeyGenerator.balanceKey(guildId, userId);
+            const cacheKey = this.cacheKeyGenerator.balanceKey(String(guildId), String(userId));
             await this.cacheService.put(cacheKey, updated.balance, BalanceAdjustmentService.BALANCE_TTL_SECONDS);
             // Publish event
             this.eventPublisher.publish({

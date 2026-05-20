@@ -2,6 +2,7 @@ import {
   type DiscordInteraction,
   type DiscordContext,
 } from '@ltdjms/shared';
+import { EmbedBuilder } from 'discord.js';
 import { type InteractionHandler } from '../../../commands/infra/CommandHandler.js';
 import { GameTokenManagementFacade } from '../../../facades/GameTokenManagementFacade.js';
 import { AdminPanelSessionManager } from '../../../session/AdminPanelSessionManager.js';
@@ -21,7 +22,7 @@ export class TokenManagementHandler implements InteractionHandler {
 
   async execute(
     interaction: DiscordInteraction,
-    _context: DiscordContext,
+    context: DiscordContext,
   ): Promise<void> {
     const guildId = interaction.getGuildId();
     const userId = interaction.getUserId();
@@ -32,6 +33,25 @@ export class TokenManagementHandler implements InteractionHandler {
       return;
     }
 
-    await interaction.reply('代幣管理功能');
+    await interaction.deferReply();
+
+    // Query the admin's own token balance as a preview
+    const result = await this.facade.getTokens(guildId, userId);
+
+    if (result.isOk()) {
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.tokenTitle)
+        .setDescription(
+          ZhTwStrings.tokenDisplay.replace('{tokens}', String(result.getValue())),
+        )
+        .setColor(0x5865F2);
+      await interaction.editEmbed(embed);
+    } else {
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.tokenTitle)
+        .setDescription('請選擇成員進行代幣管理')
+        .setColor(0x5865F2);
+      await interaction.editEmbed(embed);
+    }
   }
 }

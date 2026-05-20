@@ -11,5 +11,5 @@ export declare class AIChannelConfigHandler implements InteractionHandler {
     private readonly sessionManager;
     readonly customIdPrefix = "admin_aichannel";
     constructor(facade: AIConfigManagementFacade, sessionManager: AdminPanelSessionManager);
-    execute(interaction: DiscordInteraction, _context: DiscordContext): Promise<void>;
+    execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void>;
 }

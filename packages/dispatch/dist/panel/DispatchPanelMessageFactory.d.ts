@@ -12,7 +12,10 @@ export declare function buildOrderConfirmedEmbed(order: EscortDispatchOrder): Em
 export declare function buildPendingCustomerConfirmationEmbed(order: EscortDispatchOrder): EmbedView;
 /** 客戶已確認完成通知。 */
 export declare function buildOrderCompletedEmbed(order: EscortDispatchOrder): EmbedView;
-/** 訂單超時自動完成通知。 */
+/**
+ * 訂單超時自動完成通知。
+ * 由 ensureTimeoutCompletion 觸發，可於面板顯示超時資訊。
+ */
 export declare function buildOrderTimedOutEmbed(order: EscortDispatchOrder): EmbedView;
 /** 客戶已申請售後通知。 */
 export declare function buildAfterSalesRequestedEmbed(order: EscortDispatchOrder): EmbedView;

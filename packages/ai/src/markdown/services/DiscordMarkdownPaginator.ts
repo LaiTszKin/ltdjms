@@ -134,6 +134,10 @@ export class DiscordMarkdownPaginator {
   /**
    * Handles code fence boundaries when splitting pages.
    * Ensures code fences are properly closed/opened across page boundaries.
+   *
+   * Uses a state machine: scan the page line-by-line, tracking whether we are
+   * inside a code fence, so we know whether a fence started on a previous page
+   * is closed in this one, or a new fence was opened without a close.
    */
   private handleCodeFenceBoundary(
     pageContent: string,
@@ -142,26 +146,28 @@ export class DiscordMarkdownPaginator {
     let result = pageContent;
     let newFence: string | null = null;
 
-    // Count code fences in this page
-    const fenceOpens = (pageContent.match(/^```/gm) ?? []).length;
-    const fenceCloses = (pageContent.match(/```$/gm) ?? []).length;
+    // Scan line-by-line to determine whether an open fence is closed
+    // or a new unclosed fence was opened in this page
+    let insideFence = openFence !== null;
+    const lines = pageContent.split('\n');
 
-    const fenceOpensTilde = (pageContent.match(/^~~~/gm) ?? []).length;
-    const fenceClosesTilde = (pageContent.match(/~~~$/gm) ?? []).length;
-
-    const totalOpens = fenceOpens + fenceOpensTilde;
-    const totalCloses = fenceCloses + fenceClosesTilde;
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (/^(`{3,})/.test(trimmed) || /^(~{3,})/.test(trimmed)) {
+        insideFence = !insideFence;
+      }
+    }
 
     if (openFence) {
       // Entered this page with an open code fence from a previous page
-      if (totalCloses > totalOpens) {
+      if (!insideFence) {
         // The fence was closed in this page
         newFence = null;
       } else {
         // Fence is still open — carry it forward
         newFence = openFence;
       }
-    } else if (totalOpens > totalCloses) {
+    } else if (insideFence) {
       // A new code fence was opened but not closed — close it for this page
       result = result.trimEnd() + '\n```';
       newFence = '```';

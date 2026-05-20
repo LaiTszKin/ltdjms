@@ -23,11 +23,10 @@ export class DiscordMarkdownSanitizer {
         result = result.replace(/<!--[\s\S]*?-->/g, '');
         // 2. Remove HTML tags (but keep self-closing br and hr simple)
         result = result.replace(/<[^>]*>/g, '');
-        // 3. Flatten nested blockquotes
-        result = result.replace(/^(>\s*)+>/gm, (match) => {
-            // Collapse multiple > levels into single >
-            const content = match.replace(/^>\s*/, '');
-            return '>' + content;
+        // 3. Flatten nested blockquotes (e.g. ">> > text" → "> text")
+        result = result.replace(/^(?:\s*>\s*)+/gm, (match) => {
+            // Collapse multiple > levels into single level
+            return '> ' + match.replace(/^(?:\s*>\s*)+/, '').trimStart();
         });
         // 4. Convert tables to ```text code blocks
         result = this.convertTablesToCodeBlocks(result);

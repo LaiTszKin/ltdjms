@@ -257,6 +257,32 @@ export function buttonsToComponents(buttons: ButtonView[]): unknown[] {
 /**
  * Builds a full interaction reply payload with embed + action components.
  */
+// ============================================================
+// Format Utilities
+// ============================================================
+
+/**
+ * Formats an EmbedView with buttons into plain text representation.
+ * Used as fallback when embeds cannot be displayed.
+ */
+export function formatPanelText(
+  view: EmbedView,
+  buttons: ButtonView[],
+): string {
+  const lines: string[] = [];
+  if (view.title) lines.push(`**${view.title}**`);
+  if (view.description) lines.push(view.description);
+  lines.push('');
+  for (const field of view.fields ?? []) {
+    lines.push(`**${field.name}：** ${field.value}`);
+  }
+  lines.push('');
+  lines.push('---');
+  lines.push(buttons.map((b) => `\`/${b.label}\``).join(' | '));
+  if (view.footer) lines.push(`_${view.footer}_`);
+  return lines.join('\n');
+}
+
 export function buildPanelReplyPayload(
   embedView: EmbedView,
   buttons?: ButtonView[],

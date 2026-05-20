@@ -171,20 +171,20 @@ async function initializeAllModules(
     DrizzleRedemptionTransactionService,
   } = await import('@ltdjms/shop');
 
-  const productRepo = new DrizzleProductRepository(pool as any);
+  const productRepo = new DrizzleProductRepository(pool);
   const redemptionTxService = new DrizzleRedemptionTransactionService(
-    pool as any,
+    pool,
   );
 
   configureShopContainer({
-    db: pool as any,
+    db: pool,
     productRepository: productRepo,
-    productRewardService: productRewardService as any,
-    escortDispatchHandoffService: escortHandoffService as any,
-    balanceService: balanceService as any,
-    balanceAdjustmentService: balanceAdjustmentService as any,
-    currencyTransactionService: currencyTransactionService as any,
-    redemptionTransactionService: redemptionTxService as any,
+    productRewardService: productRewardService,
+    escortDispatchHandoffService: escortHandoffService,
+    balanceService: balanceService,
+    balanceAdjustmentService: balanceAdjustmentService,
+    currencyTransactionService: currencyTransactionService,
+    redemptionTransactionService: redemptionTxService,
     logger,
   });
   logger.info('Shop module initialized');
@@ -212,6 +212,51 @@ async function initializeAllModules(
     ) => Promise<void>;
   }>(ADMIN_TOKENS.SlashCommandListener);
 
+  // Wire Discord events via shared bootstrap
+  const aiChatListener = container.resolve<{ onMessageCreate: (message: unknown) => Promise<void> }>(AI_TOKENS.AIChatMentionListener);
+  await bootstrapDiscordHandlers(
+    client,
+    slashCommandListener,
+    aiChatListener,
+    SlashCommandRegistrar,
+    logger,
+  );
+
+  logger.info('Admin module initialized');
+}
+
+/**
+ * Shared bootstrap function for wiring Discord event handlers.
+ *
+ * TODO: Each module should register its own handlers via DI rather than
+ * relying on shared wiring in this bootstrap function. This approach is
+ * temporary until all modules have their own container configuration
+ * and can self-register their event listeners.
+ */
+async function bootstrapDiscordHandlers(
+  client: Client,
+  slashCommandListener: {
+    onInteraction: (
+      interaction: {
+        isAcknowledged: () => boolean;
+        deferReply: () => Promise<void>;
+        reply: (msg: string) => Promise<void>;
+      },
+      context: { guildId: string; userId: string },
+      type: string,
+      customId: string,
+    ) => Promise<void>;
+  },
+  aiChatListener: { onMessageCreate: (message: unknown) => Promise<void> },
+  slashCommandRegistrar: {
+    registerAll: (
+      applicationId: string,
+      restPut: (route: string, body: unknown) => Promise<unknown>,
+      guildId?: string,
+    ) => Promise<{ success: boolean; message: string }>;
+  },
+  logger: ReturnType<typeof createRootLogger>,
+): Promise<void> {
   // Wire Discord interactionCreate event to the slash command listener
   client.on(Events.InteractionCreate, async (interaction) => {
     if (!interaction.guildId) return;
@@ -237,31 +282,27 @@ async function initializeAllModules(
 
     await slashCommandListener.onInteraction(
       interaction as any,
-      { guildId: interaction.guildId, userId: interaction.user.id } as any,
+      { guildId: interaction.guildId, userId: interaction.user.id },
       type,
       commandNameOrCustomId,
     );
   });
 
   // Wire Discord messageCreate event to the AI chat listener
-  const aiChatListener = container.resolve(AI_TOKENS.AIChatMentionListener);
   client.on(Events.MessageCreate, async (message) => {
-    await (aiChatListener as any).onMessageCreate(message);
+    await aiChatListener.onMessageCreate(message);
   });
 
   // Register slash commands with Discord REST API
   if (client.user) {
-    const result = await SlashCommandRegistrar.registerAll(
+    const result = await slashCommandRegistrar.registerAll(
       client.user.id,
       async (route: string, body: unknown) => {
-        const rest = (client as any).rest;
-        return rest.put(route, { body });
+        return client.rest.put(route as `/${string}`, { body });
       },
     );
     logger.info({ result }, 'Slash commands registered');
   }
-
-  logger.info('Admin module initialized');
 }
 
 // Allow direct execution

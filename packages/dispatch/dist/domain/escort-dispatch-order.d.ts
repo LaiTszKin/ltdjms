@@ -88,8 +88,6 @@ export declare function fromDbRow(params: {
 export declare function createPendingFull(orderNumber: string, guildId: number, assignedByUserId: number, escortUserId: number, customerUserId: number, sourceType: SourceType, sourceReference: string | null, sourceProductId: number | null, sourceProductName: string | null, sourceCurrencyPrice: number | null, sourceFiatPriceTwd: number | null, sourceEscortOptionCode: string | null): EscortDispatchOrder;
 /** 從商店付款自動交接建立的訂單（escortUserId=0, assignedByUserId=0）。 */
 export declare function createAutoHandoff(orderNumber: string, guildId: number, assignedByUserId: number, escortUserId: number, customerUserId: number, sourceType: SourceType, sourceReference: string, sourceProductId: number, sourceProductName: string, sourceCurrencyPrice: number | null, sourceFiatPriceTwd: number | null, sourceEscortOptionCode: string): EscortDispatchOrder;
-/** 指定待派發訂單的護航者後回傳新狀態物件。 */
-export declare function withAssignedEscort(order: EscortDispatchOrder, assignedByUserId: number, escortUserId: number, assignedAt: Date): EscortDispatchOrder;
 /** 由指定護航者確認後回傳新狀態物件。 */
 export declare function withConfirmed(order: EscortDispatchOrder, confirmedAt: Date): EscortDispatchOrder;
 /** 護航者送出完單，等待客戶確認。 */

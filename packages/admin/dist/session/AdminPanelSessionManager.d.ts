@@ -15,37 +15,37 @@ export declare class AdminPanelSessionManager {
      * Creates a new admin panel session.
      * Automatically replaces any existing session for the same guild+user.
      */
-    createSession(guildId: number, userId: number): AdminPanelSessionData;
+    createSession(guildId: string, userId: string): AdminPanelSessionData;
     /**
      * Gets an active session for the given guild+user.
      * Returns null if no session exists or the session has expired.
      */
-    getSession(guildId: number, userId: number): AdminPanelSessionData | null;
+    getSession(guildId: string, userId: string): AdminPanelSessionData | null;
     /**
      * Updates the view state for a session.
      */
-    setViewState(guildId: number, userId: number, state: AdminPanelViewState): boolean;
+    setViewState(guildId: string, userId: string, state: AdminPanelViewState): boolean;
     /**
      * Gets the current view state for a session.
      */
-    getViewState(guildId: number, userId: number): AdminPanelViewState | null;
+    getViewState(guildId: string, userId: string): AdminPanelViewState | null;
     /**
      * Stores a context value in the session.
      */
-    setContext(guildId: number, userId: number, key: string, value: string): boolean;
+    setContext(guildId: string, userId: string, key: string, value: string): boolean;
     /**
      * Gets a context value from the session.
      */
-    getContext(guildId: number, userId: number, key: string): string | null;
+    getContext(guildId: string, userId: string, key: string): string | null;
     /**
      * Removes a session.
      */
-    removeSession(guildId: number, userId: number): void;
+    removeSession(guildId: string, userId: string): void;
     /**
      * Gets all active sessions for a guild.
      * Filters out expired sessions.
      */
-    getAllForGuild(guildId: number): AdminPanelSessionData[];
+    getAllForGuild(guildId: string): AdminPanelSessionData[];
     /**
      * Checks whether a session has expired.
      */

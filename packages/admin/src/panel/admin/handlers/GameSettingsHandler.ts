@@ -2,6 +2,7 @@ import {
   type DiscordInteraction,
   type DiscordContext,
 } from '@ltdjms/shared';
+import { EmbedBuilder } from 'discord.js';
 import { type InteractionHandler } from '../../../commands/infra/CommandHandler.js';
 import { GameConfigManagementFacade } from '../../../facades/GameConfigManagementFacade.js';
 import { AdminPanelSessionManager } from '../../../session/AdminPanelSessionManager.js';
@@ -21,7 +22,7 @@ export class GameSettingsHandler implements InteractionHandler {
 
   async execute(
     interaction: DiscordInteraction,
-    _context: DiscordContext,
+    context: DiscordContext,
   ): Promise<void> {
     const guildId = interaction.getGuildId();
     const userId = interaction.getUserId();
@@ -32,6 +33,49 @@ export class GameSettingsHandler implements InteractionHandler {
       return;
     }
 
-    await interaction.reply('遊戲設定功能');
+    await interaction.deferReply();
+
+    // Try to get Dice Game 1 config
+    const dice1Result = await this.facade.getDiceGame1Config(guildId);
+    const dice2Result = await this.facade.getDiceGame2Config(guildId);
+
+    const descriptionLines: string[] = [];
+    descriptionLines.push(`**${ZhTwStrings.gameDiceGame1}**`);
+
+    if (dice1Result.isOk()) {
+      const cfg = dice1Result.getValue();
+      descriptionLines.push(
+        ZhTwStrings.gameDice1Fields
+          .replace('{min}', String(cfg.minTokensPerPlay))
+          .replace('{max}', String(cfg.maxTokensPerPlay))
+          .replace('{reward}', String(cfg.rewardPerDiceValue)),
+      );
+    } else {
+      descriptionLines.push('尚未設定');
+    }
+
+    descriptionLines.push('');
+    descriptionLines.push(`**${ZhTwStrings.gameDiceGame2}**`);
+
+    if (dice2Result.isOk()) {
+      const cfg = dice2Result.getValue();
+      descriptionLines.push(
+        ZhTwStrings.gameDice2Fields
+          .replace('{min}', String(cfg.minTokensPerPlay))
+          .replace('{max}', String(cfg.maxTokensPerPlay))
+          .replace('{straight}', String(cfg.straightMultiplier))
+          .replace('{base}', String(cfg.baseMultiplier))
+          .replace('{lowTriple}', String(cfg.tripleLowBonus))
+          .replace('{highTriple}', String(cfg.tripleHighBonus)),
+      );
+    } else {
+      descriptionLines.push('尚未設定');
+    }
+
+    const embed = new EmbedBuilder()
+      .setTitle(ZhTwStrings.gameSelectTitle)
+      .setDescription(descriptionLines.join('\n'))
+      .setColor(0xFEE75C);
+    await interaction.editEmbed(embed);
   }
 }

@@ -9,7 +9,9 @@ import { DiscordMarkdownSanitizer } from './DiscordMarkdownSanitizer.js';
 import { RegexBasedAutoFixer } from '../autofix/RegexBasedAutoFixer.js';
 import { CommonMarkValidator } from '../validation/CommonMarkValidator.js';
 import { DiscordMarkdownPaginator } from './DiscordMarkdownPaginator.js';
-import { DiscordMarkdownStreamProcessor } from './DiscordMarkdownStreamProcessor.js';
+// TODO (P2-39, P3-21): DiscordMarkdownStreamProcessor is not yet wired into this service.
+// It can be used here when streaming markdown processing (per-chunk validate/fix)
+// is needed instead of the current post-processing pipeline.
 import { isValid } from '../types.js';
 import { MessageSplitter } from '../../services/MessageSplitter.js';
 
@@ -64,6 +66,7 @@ export class MarkdownValidatingAIChatService implements AIChatService {
     userId: string,
     userMessage: string,
     handler: StreamingResponseHandler,
+    agentEnabled?: boolean,
   ): Promise<void> {
     if (!this.config.enableMarkdownValidation) {
       return this.delegate.generateStreamingResponse(
@@ -72,6 +75,7 @@ export class MarkdownValidatingAIChatService implements AIChatService {
         userId,
         userMessage,
         handler,
+        agentEnabled,
       );
     }
 
@@ -82,6 +86,7 @@ export class MarkdownValidatingAIChatService implements AIChatService {
       userId,
       userMessage,
       wrappedHandler,
+      agentEnabled,
     );
   }
 
@@ -92,6 +97,7 @@ export class MarkdownValidatingAIChatService implements AIChatService {
     userMessage: string,
     messageId: string,
     handler: StreamingResponseHandler,
+    agentEnabled?: boolean,
   ): Promise<void> {
     if (!this.config.enableMarkdownValidation) {
       return this.delegate.generateStreamingResponseWithId(
@@ -101,6 +107,7 @@ export class MarkdownValidatingAIChatService implements AIChatService {
         userMessage,
         messageId,
         handler,
+        agentEnabled,
       );
     }
 
@@ -112,6 +119,7 @@ export class MarkdownValidatingAIChatService implements AIChatService {
       userMessage,
       messageId,
       wrappedHandler,
+      agentEnabled,
     );
   }
 

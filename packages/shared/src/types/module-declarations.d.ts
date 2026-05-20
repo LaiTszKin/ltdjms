@@ -2,6 +2,11 @@
  * Ambient module declarations for dynamic imports in main.ts entry point.
  * These declare the shape of workspace packages that are loaded at runtime
  * via dynamic import() to avoid compile-time circular dependencies.
+ *
+ * NOTE: These are TEMPORARY stubs that assume the API shape of workspace
+ * packages that may not yet exist or may change. Once all packages are
+ * implemented, these should be replaced with proper package-level type
+ * exports (e.g. via tsconfig paths or actual package builds).
  */
 
 declare module '@ltdjms/economy' {

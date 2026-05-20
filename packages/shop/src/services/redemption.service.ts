@@ -317,14 +317,15 @@ export class RedemptionService {
     product: Product,
     code: RedemptionCode,
   ): Result<number, DomainError> {
-    try {
-      const total = product.rewardAmount! * code.quantity;
-      if (total <= 0) {
-        return err(DomainError.invalidInput('商品獎勵金額無效'));
-      }
-      return ok(total);
-    } catch {
+    const rewardAmount = product.rewardAmount!;
+    const quantity = code.quantity;
+    if (rewardAmount > Number.MAX_SAFE_INTEGER / quantity) {
       return err(DomainError.invalidInput('商品獎勵計算超出範圍'));
     }
+    const total = rewardAmount * quantity;
+    if (total <= 0) {
+      return err(DomainError.invalidInput('商品獎勵金額無效'));
+    }
+    return ok(total);
   }
 }

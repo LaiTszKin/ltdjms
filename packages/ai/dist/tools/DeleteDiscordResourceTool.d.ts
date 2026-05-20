@@ -5,10 +5,10 @@ export declare const DeleteDiscordResourceParamsSchema: z.ZodObject<{
     resourceType: z.ZodEnum<["channel", "category", "role"]>;
     resourceId: z.ZodString;
 }, "strip", z.ZodTypeAny, {
-    resourceType: "role" | "channel" | "category";
+    resourceType: "channel" | "role" | "category";
     resourceId: string;
 }, {
-    resourceType: "role" | "channel" | "category";
+    resourceType: "channel" | "role" | "category";
     resourceId: string;
 }>;
 export type DeleteDiscordResourceParams = z.infer<typeof DeleteDiscordResourceParamsSchema>;
@@ -24,10 +24,10 @@ export declare class DeleteDiscordResourceTool {
         resourceType: z.ZodEnum<["channel", "category", "role"]>;
         resourceId: z.ZodString;
     }, "strip", z.ZodTypeAny, {
-        resourceType: "role" | "channel" | "category";
+        resourceType: "channel" | "role" | "category";
         resourceId: string;
     }, {
-        resourceType: "role" | "channel" | "category";
+        resourceType: "channel" | "role" | "category";
         resourceId: string;
     }>;
     constructor(authGuard: ToolCallerAuthorizationGuard);

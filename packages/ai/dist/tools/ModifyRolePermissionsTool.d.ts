@@ -4,35 +4,35 @@ import { ToolCallerAuthorizationGuard } from './ToolCallerAuthorizationGuard.js'
 export declare const ModifyRolePermissionsParamsSchema: z.ZodObject<{
     roleId: z.ZodString;
     permissions: z.ZodArray<z.ZodObject<{
-        id: z.ZodString;
-        type: z.ZodEnum<["role", "member"]>;
         allow: z.ZodOptional<z.ZodString>;
         deny: z.ZodOptional<z.ZodString>;
+        allowSet: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+        denySet: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     }, "strip", z.ZodTypeAny, {
-        type: "role" | "member";
-        id: string;
         allow?: string | undefined;
         deny?: string | undefined;
+        allowSet?: string[] | undefined;
+        denySet?: string[] | undefined;
     }, {
-        type: "role" | "member";
-        id: string;
         allow?: string | undefined;
         deny?: string | undefined;
+        allowSet?: string[] | undefined;
+        denySet?: string[] | undefined;
     }>, "many">;
 }, "strip", z.ZodTypeAny, {
     permissions: {
-        type: "role" | "member";
-        id: string;
         allow?: string | undefined;
         deny?: string | undefined;
+        allowSet?: string[] | undefined;
+        denySet?: string[] | undefined;
     }[];
     roleId: string;
 }, {
     permissions: {
-        type: "role" | "member";
-        id: string;
         allow?: string | undefined;
         deny?: string | undefined;
+        allowSet?: string[] | undefined;
+        denySet?: string[] | undefined;
     }[];
     roleId: string;
 }>;
@@ -48,35 +48,35 @@ export declare class ModifyRolePermissionsTool {
     readonly schema: z.ZodObject<{
         roleId: z.ZodString;
         permissions: z.ZodArray<z.ZodObject<{
-            id: z.ZodString;
-            type: z.ZodEnum<["role", "member"]>;
             allow: z.ZodOptional<z.ZodString>;
             deny: z.ZodOptional<z.ZodString>;
+            allowSet: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            denySet: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
         }, "strip", z.ZodTypeAny, {
-            type: "role" | "member";
-            id: string;
             allow?: string | undefined;
             deny?: string | undefined;
+            allowSet?: string[] | undefined;
+            denySet?: string[] | undefined;
         }, {
-            type: "role" | "member";
-            id: string;
             allow?: string | undefined;
             deny?: string | undefined;
+            allowSet?: string[] | undefined;
+            denySet?: string[] | undefined;
         }>, "many">;
     }, "strip", z.ZodTypeAny, {
         permissions: {
-            type: "role" | "member";
-            id: string;
             allow?: string | undefined;
             deny?: string | undefined;
+            allowSet?: string[] | undefined;
+            denySet?: string[] | undefined;
         }[];
         roleId: string;
     }, {
         permissions: {
-            type: "role" | "member";
-            id: string;
             allow?: string | undefined;
             deny?: string | undefined;
+            allowSet?: string[] | undefined;
+            denySet?: string[] | undefined;
         }[];
         roleId: string;
     }>;

@@ -2,8 +2,9 @@ import type { Result } from '@ltdjms/shared';
 import { Ok, Err, DomainError } from '@ltdjms/shared';
 
 import type { EscortDispatchOrderRepo } from '../repo/escort-dispatch-order.repo.js';
-import { EscortDispatchOrderNumberGenerator } from '../domain/order-number-generator.js';
+import { EscortDispatchOrderNumberGenerator, generateUniqueOrderNumber } from '../domain/order-number-generator.js';
 import type { EscortOptionCatalogRepository } from './escort-option-pricing.service.js';
+import { type DispatchAfterSalesStaffService } from './dispatch-after-sales-staff.service.js';
 import {
   type EscortDispatchOrder,
   EscortDispatchOrderStatus,
@@ -15,7 +16,6 @@ import {
   withAfterSalesRequested,
   withAfterSalesInProgress,
   withAfterSalesClosed,
-  withAssignedEscort,
   isPendingEscortConfirmation,
   isConfirmed,
   isPendingCustomerConfirmation,
@@ -45,6 +45,7 @@ export class EscortDispatchOrderService {
     private readonly orderNumberGenerator?: EscortDispatchOrderNumberGenerator,
     private readonly clock?: () => number,
     private readonly catalogRepository?: EscortOptionCatalogRepository,
+    private readonly afterSalesStaffService?: DispatchAfterSalesStaffService,
   ) {
     this.orderNumberGenerator = orderNumberGenerator ?? new EscortDispatchOrderNumberGenerator();
     this.clock = clock ?? (() => Date.now());
@@ -304,6 +305,15 @@ export class EscortDispatchOrderService {
     }
 
     const order = orderResult.getValue();
+
+    // R8.1: Verify user is an after-sales staff member
+    if (this.afterSalesStaffService) {
+      const isStaff = await this.afterSalesStaffService.isAfterSalesStaff(order.guildId, afterSalesUserId);
+      if (!isStaff) {
+        return new Err(DomainError.invalidInput('你不是售後人員，無法接手售後案件'));
+      }
+    }
+
     if (!isAfterSalesRequested(order)) {
       if (isAfterSalesInProgress(order)) {
         if (isAfterSalesAssignee(order, afterSalesUserId)) {
@@ -327,9 +337,12 @@ export class EscortDispatchOrderService {
         return new Ok(claimed);
       }
 
-      // Race condition: re-query to distinguish between "already claimed" and other errors
+      // R8.3: Re-query to distinguish between "already claimed by me" and "claimed by someone else"
       const latest = await this.repository.findByOrderNumber(order.orderNumber);
       if (latest != null && isAfterSalesInProgress(latest)) {
+        if (isAfterSalesAssignee(latest, afterSalesUserId)) {
+          return new Err(DomainError.invalidInput('你已接手此售後案件'));
+        }
         return new Err(DomainError.invalidInput('此售後案件已由其他售後人員接手'));
       }
       return new Err(DomainError.invalidInput('此售後案件目前不可接手'));
@@ -373,12 +386,12 @@ export class EscortDispatchOrderService {
     }
   }
 
-  /** 查詢最近訂單（預設 10 筆）。 */
+  /** 查詢最近訂單（預設 10 筆，最多 20 筆）。 */
   async findRecentOrders(
     guildId: number,
     limit?: number,
   ): Promise<Result<EscortDispatchOrder[], DomainError>> {
-    const safeLimit = this.normalizeLimit(limit ?? DEFAULT_HISTORY_LIMIT);
+    const safeLimit = this.normalizeLimit(limit ?? DEFAULT_HISTORY_LIMIT, MAX_HISTORY_LIMIT);
     try {
       const orders = await this.repository.findRecentByGuildId(guildId, safeLimit);
       const normalizedOrders = await Promise.all(
@@ -391,12 +404,19 @@ export class EscortDispatchOrderService {
     }
   }
 
-  /** 查詢尚未指定護航者的自動交接訂單（預設 5 筆）。 */
+  /** 公開查詢單筆訂單。委派給內部 findOrder。 */
+  async findByOrderNumber(
+    orderNumber: string,
+  ): Promise<Result<EscortDispatchOrder, DomainError>> {
+    return this.findOrder(orderNumber);
+  }
+
+  /** 查詢尚未指定護航者的自動交接訂單（預設 5 筆，最多 25 筆）。 */
   async findPendingAssignmentOrders(
     guildId: number,
     limit?: number,
   ): Promise<Result<EscortDispatchOrder[], DomainError>> {
-    const safeLimit = this.normalizeLimit(limit ?? DEFAULT_PENDING_ASSIGNMENT_LIMIT);
+    const safeLimit = this.normalizeLimit(limit ?? DEFAULT_PENDING_ASSIGNMENT_LIMIT, MAX_PENDING_ASSIGNMENT_LIMIT);
     try {
       const orders = await this.repository.findPendingAssignmentByGuildId(guildId, safeLimit);
       return new Ok(orders);
@@ -436,8 +456,16 @@ export class EscortDispatchOrderService {
 
     try {
       const completed = withCompleted(order, new Date(this.clock!()));
-      const persisted = await this.repository.update(completed);
-      return persisted;
+      await this.repository.update(completed);
+
+      // Re-query to verify the update actually changed status (guards against race conditions
+      // where another transaction changed the order status between our read and update).
+      const verified = await this.repository.findByOrderNumber(order.orderNumber);
+      if (verified != null && isCompleted(verified)) {
+        return verified;
+      }
+      // Race condition: another operation changed the status before our update, return original
+      return order;
     } catch (e) {
       // If auto-complete persist fails, log warning and return original order (non-blocking)
       console.warn(
@@ -448,22 +476,18 @@ export class EscortDispatchOrderService {
     }
   }
 
-  private normalizeLimit(limit: number): number {
+  private normalizeLimit(limit: number, maxLimit: number): number {
     if (limit <= 0) {
       return DEFAULT_HISTORY_LIMIT;
     }
-    return Math.min(limit, MAX_HISTORY_LIMIT);
+    return Math.min(limit, maxLimit);
   }
 
   private async generateUniqueOrderNumber(): Promise<string> {
-    const gen = this.orderNumberGenerator!;
-    for (let i = 0; i < MAX_ORDER_NUMBER_RETRIES; i++) {
-      const candidate = gen.generate();
-      const exists = await this.repository.existsByOrderNumber(candidate);
-      if (!exists) {
-        return candidate;
-      }
-    }
-    throw new Error('Unable to generate unique order number after retries');
+    return generateUniqueOrderNumber(
+      this.orderNumberGenerator!,
+      (orderNumber) => this.repository.existsByOrderNumber(orderNumber),
+      MAX_ORDER_NUMBER_RETRIES,
+    );
   }
 }

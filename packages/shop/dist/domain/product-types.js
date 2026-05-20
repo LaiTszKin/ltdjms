@@ -19,6 +19,8 @@ export function formatReward(product) {
             return `${product.rewardAmount.toLocaleString()} 货币`;
         case RewardType.TOKEN:
             return `${product.rewardAmount.toLocaleString()} 代币`;
+        default:
+            return null;
     }
 }
 export function hasCurrencyPrice(product) {
@@ -45,6 +47,11 @@ export function shouldAutoCreateEscortOrder(product) {
         && product.escortOptionCode !== null
         && product.escortOptionCode.trim().length > 0;
 }
+/**
+ * Creates a Product instance. Note that full Product CRUD belongs to the
+ * administration module and should be moved there when the admin package is
+ * established. This factory is provided here for internal shop domain use (P2-20).
+ */
 export function createProduct(guildId, name, description, rewardType, rewardAmount, currencyPrice, fiatPriceTwd, autoCreateEscortOrder = false, escortOptionCode = null) {
     const now = new Date();
     return {

@@ -12,8 +12,8 @@ export declare enum AdminPanelViewState {
  * Admin panel session data stored in the session.
  */
 export interface AdminPanelSessionData {
-    guildId: number;
-    userId: number;
+    guildId: string;
+    userId: string;
     viewState: AdminPanelViewState;
     context: Record<string, string>;
     createdAt: number;
@@ -23,8 +23,8 @@ export interface AdminPanelSessionData {
  * User panel session data stored in the session.
  */
 export interface PanelSessionData {
-    guildId: number;
-    userId: number;
+    guildId: string;
+    userId: string;
     createdAt: number;
     lastAccessedAt: number;
 }

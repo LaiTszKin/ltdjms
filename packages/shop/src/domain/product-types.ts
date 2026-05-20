@@ -35,6 +35,8 @@ export function formatReward(product: Product): string | null {
       return `${product.rewardAmount!.toLocaleString()} 货币`;
     case RewardType.TOKEN:
       return `${product.rewardAmount!.toLocaleString()} 代币`;
+    default:
+      return null;
   }
 }
 
@@ -66,6 +68,11 @@ export function shouldAutoCreateEscortOrder(product: Product): boolean {
     && product.escortOptionCode.trim().length > 0;
 }
 
+/**
+ * Creates a Product instance. Note that full Product CRUD belongs to the
+ * administration module and should be moved there when the admin package is
+ * established. This factory is provided here for internal shop domain use (P2-20).
+ */
 export function createProduct(
   guildId: number,
   name: string,

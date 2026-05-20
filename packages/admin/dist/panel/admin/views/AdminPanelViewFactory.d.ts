@@ -6,6 +6,13 @@ import type { EscortOptionCatalogEntry } from '@ltdjms/dispatch';
  * Generic embed view builder for admin panels.
  * Provides structured data that Discord embed builders consume.
  * Matches Java AdminPanelViewFactory.
+ *
+ * RESPONSIBILITY: This factory handles shared/generic admin panel views
+ * (main menu, balance, tokens, games, AI config, dispatch, escort pricing/catalog).
+ * Product-specific views (product list, detail, codes) are in AdminProductPanelViewFactory
+ * under panel/admin/product/.
+ *
+ * @see AdminProductPanelViewFactory — product-specific views
  */
 export declare class AdminPanelViewFactory {
     /**
@@ -169,7 +176,7 @@ export declare class AdminPanelViewFactory {
      * Builds the dispatch after-sales staff embed.
      */
     buildDispatchAfterSalesView(staffs: {
-        userId: number;
+        userId: string;
     }[]): {
         title: string;
         description: string;
@@ -207,6 +214,14 @@ export declare class AdminPanelViewFactory {
     };
     /**
      * Builds the escort catalog embed.
+     *
+     * TODO(P1-35): Verify EscortOptionCatalogEntry field mappings against the
+     * finalized type once EscortOptionCatalogRepository is available from
+     * @ltdjms/dispatch. The current EscortOptionCatalogEntry (defined in the
+     * dispatch package) uses: code, type, level, mapScope, target, priceTwd.
+     * The template substitutes: {name}=type-target, {category}=level,
+     * {price}=priceTwd, {description}=mapScope. Confirm these match the
+     * production catalog schema.
      */
     buildEscortCatalogView(catalogEntries: EscortOptionCatalogEntry[]): {
         title: string;

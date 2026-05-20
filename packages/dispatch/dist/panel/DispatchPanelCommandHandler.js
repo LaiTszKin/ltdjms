@@ -1,4 +1,4 @@
-import { buildModeSelectEmbed, buildModeSelectActionRow, embedViewToApiEmbed, } from './DispatchPanelView.js';
+import { buildModeSelectEmbed, buildModeSelectActionRow, embedViewToApiEmbed, formatPanelText, } from './DispatchPanelView.js';
 import { buildErrorEmbed } from './DispatchPanelMessageFactory.js';
 /**
  * `/dispatch-panel` slash command handler.
@@ -12,7 +12,13 @@ export class DispatchPanelCommandHandler {
     }
     async execute(interaction, _context) {
         try {
-            // Send text-based panel matching existing admin panel pattern
+            // Admin permission check (spec R14.1) — also enforced by
+            // defaultMemberPermissions on the command definition.
+            const memberPermissions = interaction.memberPermissions;
+            if (memberPermissions && (BigInt(memberPermissions) & 0x8n) === 0n) {
+                await interaction.reply('你沒有權限使用派單面板。');
+                return;
+            }
             const view = buildModeSelectEmbed();
             const buttons = buildModeSelectActionRow();
             const panelText = this.formatPanelText(view, buttons);
@@ -25,21 +31,7 @@ export class DispatchPanelCommandHandler {
         }
     }
     formatPanelText(view, buttons) {
-        const lines = [];
-        if (view.title)
-            lines.push(`**${view.title}**`);
-        if (view.description)
-            lines.push(view.description);
-        lines.push('');
-        for (const field of view.fields ?? []) {
-            lines.push(`**${field.name}：** ${field.value}`);
-        }
-        lines.push('');
-        lines.push('---');
-        lines.push(buttons.map((b) => `\`/${b.label}\``).join(' | '));
-        if (view.footer)
-            lines.push(`_${view.footer}_`);
-        return lines.join('\n');
+        return formatPanelText(view, buttons);
     }
 }
 //# sourceMappingURL=DispatchPanelCommandHandler.js.map

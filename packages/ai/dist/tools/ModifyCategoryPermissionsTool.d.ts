@@ -12,14 +12,14 @@ export declare const ModifyCategoryPermissionsParamsSchema: z.ZodObject<{
         allowSet: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
         denySet: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     }, "strip", z.ZodTypeAny, {
-        type: "role" | "member";
+        type: "member" | "role";
         id: string;
         allow?: string | undefined;
         deny?: string | undefined;
         allowSet?: string[] | undefined;
         denySet?: string[] | undefined;
     }, {
-        type: "role" | "member";
+        type: "member" | "role";
         id: string;
         allow?: string | undefined;
         deny?: string | undefined;
@@ -29,7 +29,7 @@ export declare const ModifyCategoryPermissionsParamsSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     categoryId: string;
     permissions: {
-        type: "role" | "member";
+        type: "member" | "role";
         id: string;
         allow?: string | undefined;
         deny?: string | undefined;
@@ -39,7 +39,7 @@ export declare const ModifyCategoryPermissionsParamsSchema: z.ZodObject<{
 }, {
     categoryId: string;
     permissions: {
-        type: "role" | "member";
+        type: "member" | "role";
         id: string;
         allow?: string | undefined;
         deny?: string | undefined;
@@ -67,14 +67,14 @@ export declare class ModifyCategoryPermissionsTool {
             allowSet: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
             denySet: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
         }, "strip", z.ZodTypeAny, {
-            type: "role" | "member";
+            type: "member" | "role";
             id: string;
             allow?: string | undefined;
             deny?: string | undefined;
             allowSet?: string[] | undefined;
             denySet?: string[] | undefined;
         }, {
-            type: "role" | "member";
+            type: "member" | "role";
             id: string;
             allow?: string | undefined;
             deny?: string | undefined;
@@ -84,7 +84,7 @@ export declare class ModifyCategoryPermissionsTool {
     }, "strip", z.ZodTypeAny, {
         categoryId: string;
         permissions: {
-            type: "role" | "member";
+            type: "member" | "role";
             id: string;
             allow?: string | undefined;
             deny?: string | undefined;
@@ -94,7 +94,7 @@ export declare class ModifyCategoryPermissionsTool {
     }, {
         categoryId: string;
         permissions: {
-            type: "role" | "member";
+            type: "member" | "role";
             id: string;
             allow?: string | undefined;
             deny?: string | undefined;

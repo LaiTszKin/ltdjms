@@ -31,19 +31,19 @@ export declare class GameConfigManagementFacade {
     /**
      * Gets the Dice Game 1 configuration for a guild.
      */
-    getDiceGame1Config(guildId: number): Promise<Result<DiceGame1Config, DomainError>>;
+    getDiceGame1Config(guildId: string): Promise<Result<DiceGame1Config, DomainError>>;
     /**
      * Updates the Dice Game 1 configuration for a guild.
      * Publishes DiceGameConfigChangedEvent on success.
      */
-    updateDiceGame1Config(guildId: number, config: DiceGame1ConfigUpdate): Promise<Result<DiceGame1Config, DomainError>>;
+    updateDiceGame1Config(guildId: string, config: DiceGame1ConfigUpdate): Promise<Result<DiceGame1Config, DomainError>>;
     /**
      * Gets the Dice Game 2 configuration for a guild.
      */
-    getDiceGame2Config(guildId: number): Promise<Result<DiceGame2Config, DomainError>>;
+    getDiceGame2Config(guildId: string): Promise<Result<DiceGame2Config, DomainError>>;
     /**
      * Updates the Dice Game 2 configuration for a guild.
      * Publishes DiceGameConfigChangedEvent on success.
      */
-    updateDiceGame2Config(guildId: number, config: DiceGame2ConfigUpdate): Promise<Result<DiceGame2Config, DomainError>>;
+    updateDiceGame2Config(guildId: string, config: DiceGame2ConfigUpdate): Promise<Result<DiceGame2Config, DomainError>>;
 }

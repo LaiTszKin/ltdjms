@@ -11,7 +11,12 @@ import { TOKENS } from './tokens.js';
  */
 export function initializeContainer(options) {
     // Config
-    tsyringeContainer.registerSingleton(EnvironmentConfig);
+    if (options?.config) {
+        tsyringeContainer.registerInstance(TOKENS.EnvironmentConfig, options.config);
+    }
+    else {
+        tsyringeContainer.registerSingleton(EnvironmentConfig);
+    }
     // Cache
     if (options?.cacheService) {
         tsyringeContainer.registerInstance(TOKENS.CacheService, options.cacheService);

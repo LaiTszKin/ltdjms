@@ -196,6 +196,10 @@ export function createPending(
   });
 }
 
+/**
+ * Convenience utility that creates a pending fiat order with no reward, no escort.
+ * Delegates to createPending with null/default values for reward and escort fields.
+ */
 export function createPendingSimple(
   guildId: number,
   buyerUserId: number,

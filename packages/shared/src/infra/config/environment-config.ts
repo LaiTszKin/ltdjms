@@ -83,15 +83,19 @@ export class EnvironmentConfig {
     if (cfg.DB_URL) {
       return cfg.DB_URL;
     }
-    return `postgresql://${cfg.DATABASE_USER}:${cfg.DATABASE_PASSWORD}@${cfg.DATABASE_HOST}:${cfg.DATABASE_PORT}/${cfg.DATABASE_NAME}`;
+    const user = cfg.DB_USERNAME ?? cfg.DATABASE_USER;
+    const pass = cfg.DB_PASSWORD ?? cfg.DATABASE_PASSWORD;
+    return `postgresql://${user}:${pass}@${cfg.DATABASE_HOST}:${cfg.DATABASE_PORT}/${cfg.DATABASE_NAME}`;
   }
 
   getDatabaseUsername(): string {
-    return this.get().DATABASE_USER;
+    const cfg = this.get();
+    return cfg.DB_USERNAME ?? cfg.DATABASE_USER;
   }
 
   getDatabasePassword(): string {
-    return this.get().DATABASE_PASSWORD;
+    const cfg = this.get();
+    return cfg.DB_PASSWORD ?? cfg.DATABASE_PASSWORD;
   }
 
   getPoolMaxSize(): number {

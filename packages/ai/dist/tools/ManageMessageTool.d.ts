@@ -8,17 +8,17 @@ export declare const ManageMessageParamsSchema: z.ZodObject<{
     newContent: z.ZodOptional<z.ZodString>;
     editMode: z.ZodOptional<z.ZodEnum<["replace", "append", "prepend"]>>;
 }, "strip", z.ZodTypeAny, {
+    action: "delete" | "edit" | "pin";
     messageId: string;
-    action: "delete" | "pin" | "edit";
     channelId?: string | undefined;
     newContent?: string | undefined;
-    editMode?: "replace" | "append" | "prepend" | undefined;
+    editMode?: "append" | "replace" | "prepend" | undefined;
 }, {
+    action: "delete" | "edit" | "pin";
     messageId: string;
-    action: "delete" | "pin" | "edit";
     channelId?: string | undefined;
     newContent?: string | undefined;
-    editMode?: "replace" | "append" | "prepend" | undefined;
+    editMode?: "append" | "replace" | "prepend" | undefined;
 }>;
 export type ManageMessageParams = z.infer<typeof ManageMessageParamsSchema>;
 /**
@@ -36,17 +36,17 @@ export declare class ManageMessageTool {
         newContent: z.ZodOptional<z.ZodString>;
         editMode: z.ZodOptional<z.ZodEnum<["replace", "append", "prepend"]>>;
     }, "strip", z.ZodTypeAny, {
+        action: "delete" | "edit" | "pin";
         messageId: string;
-        action: "delete" | "pin" | "edit";
         channelId?: string | undefined;
         newContent?: string | undefined;
-        editMode?: "replace" | "append" | "prepend" | undefined;
+        editMode?: "append" | "replace" | "prepend" | undefined;
     }, {
+        action: "delete" | "edit" | "pin";
         messageId: string;
-        action: "delete" | "pin" | "edit";
         channelId?: string | undefined;
         newContent?: string | undefined;
-        editMode?: "replace" | "append" | "prepend" | undefined;
+        editMode?: "append" | "replace" | "prepend" | undefined;
     }>;
     constructor(authGuard: ToolCallerAuthorizationGuard);
     execute(params: ManageMessageParams, guild: Guild): Promise<string>;

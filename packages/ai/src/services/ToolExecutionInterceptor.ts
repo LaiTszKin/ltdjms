@@ -1,12 +1,20 @@
+import { randomUUID } from 'node:crypto';
 import pino from 'pino';
 
 /**
  * Intercepts tool execution lifecycle events for observability.
  * Logs start, completion, and failure with timing information.
+ *
+ * TODO (P0-18): Wire this interceptor into the agent flow via AgentServiceFactory.
+ *   The interceptor should be registered with a correlation ID per tool invocation,
+ *   and onToolExecutionStarted/onToolExecutionCompleted/onToolExecutionFailed
+ *   should be called by the LangChain agent executor callback layer.
+ *   Once AgentServiceFactory.createAgent() configures the tool-execution pipeline,
+ *   pass this interceptor so each tool call is wrapped with start/completion/failure logging.
  */
 export class ToolExecutionInterceptor {
   private readonly logger: pino.Logger;
-  private startTimes = new Map<string, number>();
+  private durations = new Map<string, number>();
 
   constructor(logger?: pino.Logger) {
     this.logger = logger ?? pino({ name: 'tool-execution-interceptor' });
@@ -18,31 +26,37 @@ export class ToolExecutionInterceptor {
    *
    * @param toolName - The name of the tool being executed
    * @param params - The parameters passed to the tool
+   * @returns A correlation ID that should be passed to onToolExecutionCompleted/onToolExecutionFailed
    */
-  onToolExecutionStarted(toolName: string, params: Record<string, unknown>): void {
-    const startTime = Date.now();
-    this.startTimes.set(toolName, startTime);
+  onToolExecutionStarted(toolName: string, params: Record<string, unknown>): string {
+    const correlationId = randomUUID();
+    this.durations.set(correlationId, Date.now());
 
     this.logger.info({
       event: 'tool_execution_started',
       timestamp: new Date().toISOString(),
+      correlationId,
       toolName,
       params,
     }, `Tool execution started: ${toolName}`);
+
+    return correlationId;
   }
 
   /**
    * Called when a tool execution completes successfully.
-   * Logs the result and duration at INFO level.
+   * Uses correlation ID from onToolExecutionStarted for accurate timing.
    *
+   * @param correlationId - The correlation ID returned by onToolExecutionStarted
    * @param result - The result returned by the tool
    */
-  onToolExecutionCompleted(result: unknown): void {
-    const duration = this.getAndClearDuration();
+  onToolExecutionCompleted(correlationId: string, result: unknown): void {
+    const duration = this.getAndClearDuration(correlationId);
 
     this.logger.info({
       event: 'tool_execution_completed',
       timestamp: new Date().toISOString(),
+      correlationId,
       durationMs: duration,
       success: true,
       result,
@@ -51,17 +65,19 @@ export class ToolExecutionInterceptor {
 
   /**
    * Called when a tool execution fails.
-   * Logs the error and duration at INFO level.
+   * Uses correlation ID from onToolExecutionStarted for accurate timing.
    *
+   * @param correlationId - The correlation ID returned by onToolExecutionStarted
    * @param error - The error that occurred during tool execution
    */
-  onToolExecutionFailed(error: unknown): void {
-    const duration = this.getAndClearDuration();
+  onToolExecutionFailed(correlationId: string, error: unknown): void {
+    const duration = this.getAndClearDuration(correlationId);
     const message = error instanceof Error ? error.message : String(error);
 
     this.logger.info({
       event: 'tool_execution_failed',
       timestamp: new Date().toISOString(),
+      correlationId,
       durationMs: duration,
       success: false,
       error: message,
@@ -69,25 +85,13 @@ export class ToolExecutionInterceptor {
   }
 
   /**
-   * Gets and clears the stored start time duration.
-   * Returns 0 if no start time was recorded.
+   * Gets and clears the stored timing for a given correlation ID.
+   * Returns 0 if no timing was recorded.
    */
-  private getAndClearDuration(): number {
-    // The last started tool is the one that finished
-    // We use the last entry as a simple stack
-    let duration = 0;
-    let lastKey: string | undefined;
-
-    for (const key of this.startTimes.keys()) {
-      lastKey = key;
-    }
-
-    if (lastKey) {
-      const startTime = this.startTimes.get(lastKey)!;
-      duration = Date.now() - startTime;
-      this.startTimes.delete(lastKey);
-    }
-
-    return duration;
+  private getAndClearDuration(correlationId: string): number {
+    const startTime = this.durations.get(correlationId);
+    if (startTime === undefined) return 0;
+    this.durations.delete(correlationId);
+    return Date.now() - startTime;
   }
 }

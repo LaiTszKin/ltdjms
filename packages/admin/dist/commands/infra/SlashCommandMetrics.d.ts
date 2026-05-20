@@ -18,6 +18,12 @@ export declare class SlashCommandMetrics {
     /**
      * Records a command execution start.
      * Returns a start timestamp for use with recordEnd.
+     *
+     * TODO(P3-28): The `commandName` parameter is accepted for future per-command
+     * latency tracking. Currently the metrics store uses a flat ring buffer that
+     * does not distinguish between commands at the start phase. When per-command
+     * breakdown is needed, initialize per-command start times here instead of
+     * relying solely on the aggregate timestamp.
      */
     recordStart(_commandName: string): number;
     /**

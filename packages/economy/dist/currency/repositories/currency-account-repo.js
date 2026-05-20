@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { memberCurrencyAccount } from '../../domain/schema.js';
 import { DomainError, Ok, Err } from '@ltdjms/shared';
 /**
@@ -18,8 +18,7 @@ export class CurrencyAccountRepository {
         const existing = await this.db
             .select()
             .from(memberCurrencyAccount)
-            .where(eq(memberCurrencyAccount.guildId, guildId) &&
-            eq(memberCurrencyAccount.userId, userId))
+            .where(and(eq(memberCurrencyAccount.guildId, guildId), eq(memberCurrencyAccount.userId, userId)))
             .limit(1);
         if (existing.length > 0) {
             return mapToDomain(existing[0]);
@@ -37,8 +36,7 @@ export class CurrencyAccountRepository {
         const created = await this.db
             .select()
             .from(memberCurrencyAccount)
-            .where(eq(memberCurrencyAccount.guildId, guildId) &&
-            eq(memberCurrencyAccount.userId, userId))
+            .where(and(eq(memberCurrencyAccount.guildId, guildId), eq(memberCurrencyAccount.userId, userId)))
             .limit(1);
         return mapToDomain(created[0]);
     }
@@ -50,8 +48,7 @@ export class CurrencyAccountRepository {
         const rows = await this.db
             .select()
             .from(memberCurrencyAccount)
-            .where(eq(memberCurrencyAccount.guildId, guildId) &&
-            eq(memberCurrencyAccount.userId, userId))
+            .where(and(eq(memberCurrencyAccount.guildId, guildId), eq(memberCurrencyAccount.userId, userId)))
             .limit(1);
         return rows.length > 0 ? mapToDomain(rows[0]) : null;
     }
@@ -66,9 +63,7 @@ export class CurrencyAccountRepository {
             balance: sql `${memberCurrencyAccount.balance} + ${delta}`,
             updatedAt: sql `NOW()`,
         })
-            .where(eq(memberCurrencyAccount.guildId, guildId) &&
-            eq(memberCurrencyAccount.userId, userId) &&
-            sql `${memberCurrencyAccount.balance} + ${delta} >= 0`)
+            .where(and(eq(memberCurrencyAccount.guildId, guildId), eq(memberCurrencyAccount.userId, userId), sql `${memberCurrencyAccount.balance} + ${delta} >= 0`))
             .returning();
         if (result.length === 0) {
             throw new InsufficientBalanceError(`Cannot adjust balance by ${delta}: would result in negative balance or account not found`);
@@ -86,9 +81,7 @@ export class CurrencyAccountRepository {
                 balance: sql `${memberCurrencyAccount.balance} + ${delta}`,
                 updatedAt: sql `NOW()`,
             })
-                .where(eq(memberCurrencyAccount.guildId, guildId) &&
-                eq(memberCurrencyAccount.userId, userId) &&
-                sql `${memberCurrencyAccount.balance} + ${delta} >= 0`)
+                .where(and(eq(memberCurrencyAccount.guildId, guildId), eq(memberCurrencyAccount.userId, userId), sql `${memberCurrencyAccount.balance} + ${delta} >= 0`))
                 .returning();
             if (result.length === 0) {
                 return new Err(DomainError.insufficientBalance(`Cannot adjust balance by ${delta}: would result in negative balance`));
@@ -114,8 +107,7 @@ export class CurrencyAccountRepository {
             balance: newBalance,
             updatedAt: sql `NOW()`,
         })
-            .where(eq(memberCurrencyAccount.guildId, guildId) &&
-            eq(memberCurrencyAccount.userId, userId))
+            .where(and(eq(memberCurrencyAccount.guildId, guildId), eq(memberCurrencyAccount.userId, userId)))
             .returning();
         return mapToDomain(result[0]);
     }
@@ -125,11 +117,16 @@ export class CurrencyAccountRepository {
     async delete(guildId, userId) {
         await this.db
             .delete(memberCurrencyAccount)
-            .where(eq(memberCurrencyAccount.guildId, guildId) &&
-            eq(memberCurrencyAccount.userId, userId));
+            .where(and(eq(memberCurrencyAccount.guildId, guildId), eq(memberCurrencyAccount.userId, userId)));
     }
 }
-/** Error thrown when a balance adjustment would result in a negative balance. */
+/**
+ * Error thrown when a balance adjustment would result in a negative balance.
+ *
+ * This is the throwing-path variant (internal use by adjustBalance).
+ * For the Result-path equivalent (external use), see DomainError.insufficientBalance()
+ * which is returned by tryAdjustBalance.
+ */
 export class InsufficientBalanceError extends Error {
     constructor(message) {
         super(message);

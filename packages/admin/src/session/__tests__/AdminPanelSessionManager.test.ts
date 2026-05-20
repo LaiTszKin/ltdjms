@@ -5,8 +5,8 @@ import { AdminPanelViewState } from '../types.js';
 describe('AdminPanelSessionManager', () => {
   let manager: AdminPanelSessionManager;
 
-  const guildId = 1;
-  const userId = 100;
+  const guildId = '1';
+  const userId = '100';
 
   beforeEach(() => {
     manager = new AdminPanelSessionManager();
@@ -39,7 +39,7 @@ describe('AdminPanelSessionManager', () => {
     });
 
     it('should return null for non-existent session', () => {
-      const session = manager.getSession(guildId, 999);
+      const session = manager.getSession(guildId, '999');
       expect(session).toBeNull();
     });
   });
@@ -72,11 +72,11 @@ describe('AdminPanelSessionManager', () => {
 
   describe('getAllForGuild', () => {
     it('should return all sessions for a guild', () => {
-      manager.createSession(1, 100);
-      manager.createSession(1, 101);
-      manager.createSession(2, 200);
+      manager.createSession('1', '100');
+      manager.createSession('1', '101');
+      manager.createSession('2', '200');
 
-      const guild1Sessions = manager.getAllForGuild(1);
+      const guild1Sessions = manager.getAllForGuild('1');
       expect(guild1Sessions).toHaveLength(2);
     });
   });

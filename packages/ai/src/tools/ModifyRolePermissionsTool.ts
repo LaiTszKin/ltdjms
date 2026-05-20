@@ -1,4 +1,4 @@
-import { type Guild } from 'discord.js';
+import { type Guild, PermissionFlagsBits } from 'discord.js';
 import { z } from 'zod';
 import { ToolCallerAuthorizationGuard } from './ToolCallerAuthorizationGuard.js';
 
@@ -6,10 +6,10 @@ export const ModifyRolePermissionsParamsSchema = z.object({
   roleId: z.string(),
   permissions: z.array(
     z.object({
-      id: z.string(),
-      type: z.enum(['role', 'member']),
       allow: z.string().optional(),
       deny: z.string().optional(),
+      allowSet: z.array(z.string()).optional(),
+      denySet: z.array(z.string()).optional(),
     }),
   ),
 });
@@ -47,20 +47,42 @@ export class ModifyRolePermissionsTool {
         return `找不到身分組 ${params.roleId}`;
       }
 
-      // Process permission changes
+      // Accumulate all allow/deny bits first, then apply once (P1-26 fix)
+      let allowBits = BigInt(0);
+      let denyBits = BigInt(0);
+
       for (const perm of params.permissions) {
         if (perm.allow) {
-          const bits = BigInt(perm.allow);
-          await role.setPermissions(bits, `透過 AI Agent 修改身分組權限 - allow`);
+          allowBits |= BigInt(perm.allow);
         }
         if (perm.deny) {
-          // deny is handled through the permissions set
-          const currentPerms = role.permissions;
-          const denyBits = BigInt(perm.deny);
-          const newPerms = currentPerms.remove(denyBits);
-          await role.setPermissions(newPerms, `透過 AI Agent 修改身分組權限 - deny`);
+          denyBits |= BigInt(perm.deny);
+        }
+        if (perm.allowSet) {
+          for (const name of perm.allowSet) {
+            const key = name.toUpperCase() as keyof typeof PermissionFlagsBits;
+            const bit = PermissionFlagsBits[key];
+            if (bit !== undefined) allowBits |= bit;
+          }
+        }
+        if (perm.denySet) {
+          for (const name of perm.denySet) {
+            const key = name.toUpperCase() as keyof typeof PermissionFlagsBits;
+            const bit = PermissionFlagsBits[key];
+            if (bit !== undefined) denyBits |= bit;
+          }
         }
       }
+
+      // Apply accumulated permissions in a single call
+      let finalPerms = role.permissions;
+      if (allowBits > BigInt(0)) {
+        finalPerms = finalPerms.add(allowBits);
+      }
+      if (denyBits > BigInt(0)) {
+        finalPerms = finalPerms.remove(denyBits);
+      }
+      await role.setPermissions(finalPerms, '透過 AI Agent 修改身分組權限');
 
       return `已成功修改身分組 ${role.name} 的權限設定`;
     } catch (error) {

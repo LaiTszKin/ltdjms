@@ -96,6 +96,8 @@ export {
   buildEmptyShopEmbed,
   buildPaymentMethodChoiceEmbed,
   buildShopComponents,
+  buildSearchComponents,
+  buildSearchResultEmbed,
   buildPurchaseConfirmEmbed,
   encodeKeyword,
   decodeKeyword,

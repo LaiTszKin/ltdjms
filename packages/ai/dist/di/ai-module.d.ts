@@ -12,9 +12,11 @@ export declare const AI_TOKENS: {
     LangChainAIChatService: symbol;
     AIChatMentionRoutingDecision: symbol;
     AIChatMentionListener: symbol;
+    AgentServiceFactory: symbol;
     InMemoryToolCallHistory: symbol;
     DiscordThreadHistoryProvider: symbol;
     SimplifiedChatMemoryProvider: symbol;
+    TokenEstimator: symbol;
     CommonMarkValidator: symbol;
     RegexBasedAutoFixer: symbol;
     DiscordMarkdownSanitizer: symbol;

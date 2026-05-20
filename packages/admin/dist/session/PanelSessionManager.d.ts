@@ -15,21 +15,21 @@ export declare class PanelSessionManager {
      * Creates a new user panel session.
      * Automatically replaces any existing session for the same guild+user.
      */
-    createSession(guildId: number, userId: number): PanelSessionData;
+    createSession(guildId: string, userId: string): PanelSessionData;
     /**
      * Gets an active session for the given guild+user.
      * Returns null if no session exists or the session has expired.
      */
-    getSession(guildId: number, userId: number): PanelSessionData | null;
+    getSession(guildId: string, userId: string): PanelSessionData | null;
     /**
      * Removes a session.
      */
-    removeSession(guildId: number, userId: number): void;
+    removeSession(guildId: string, userId: string): void;
     /**
      * Gets all active sessions for a guild.
      * Filters out expired sessions.
      */
-    getAllForGuild(guildId: number): PanelSessionData[];
+    getAllForGuild(guildId: string): PanelSessionData[];
     /**
      * Checks whether a session has expired.
      */

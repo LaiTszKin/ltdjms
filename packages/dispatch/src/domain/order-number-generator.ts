@@ -33,9 +33,33 @@ export class EscortDispatchOrderNumberGenerator {
     const chars: string[] = [];
     const len = this.alphanumeric.length;
     for (let i = 0; i < EscortDispatchOrderNumberGenerator.SUFFIX_LENGTH; i++) {
+      // randomInt(min, max): max is exclusive, so range is [0, len)
       const idx = randomInt(0, len);
       chars.push(this.alphanumeric[idx]);
     }
     return chars.join('');
   }
+}
+
+/**
+ * 嘗試產生一個在資料庫中不重複的訂單編號。
+ * @param generator 訂單編號產生器
+ * @param existsFn 檢查編號是否已存在的回呼函數
+ * @param maxRetries 最大重試次數（預設 20 次）
+ * @returns 唯一的訂單編號
+ * @throws 若超過最大重試次數仍無法產生唯一編號
+ */
+export async function generateUniqueOrderNumber(
+  generator: EscortDispatchOrderNumberGenerator,
+  existsFn: (orderNumber: string) => Promise<boolean>,
+  maxRetries = 20,
+): Promise<string> {
+  for (let i = 0; i < maxRetries; i++) {
+    const candidate = generator.generate();
+    const exists = await existsFn(candidate);
+    if (!exists) {
+      return candidate;
+    }
+  }
+  throw new Error('Unable to generate unique order number after retries');
 }

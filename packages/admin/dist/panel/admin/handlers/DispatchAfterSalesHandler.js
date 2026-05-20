@@ -1,3 +1,4 @@
+import { EmbedBuilder } from 'discord.js';
 import { ZhTwStrings } from '../../../i18n/zh-TW.js';
 /**
  * Handler for dispatch after-sales config interactions (admin_dispatch_*).
@@ -5,11 +6,13 @@ import { ZhTwStrings } from '../../../i18n/zh-TW.js';
  */
 export class DispatchAfterSalesHandler {
     sessionManager;
+    afterSalesStaffService;
     customIdPrefix = 'admin_dispatch';
-    constructor(sessionManager) {
+    constructor(sessionManager, afterSalesStaffService) {
         this.sessionManager = sessionManager;
+        this.afterSalesStaffService = afterSalesStaffService;
     }
-    async execute(interaction, _context) {
+    async execute(interaction, context) {
         const guildId = interaction.getGuildId();
         const userId = interaction.getUserId();
         const session = this.sessionManager.getSession(guildId, userId);
@@ -17,7 +20,28 @@ export class DispatchAfterSalesHandler {
             await interaction.reply(ZhTwStrings.sessionExpired);
             return;
         }
-        await interaction.reply('派單售後設定功能');
+        await interaction.deferReply();
+        // Try to get after-sales staff list
+        const result = await this.afterSalesStaffService.getStaffUserIds(Number(guildId));
+        let description;
+        if (result.isOk()) {
+            const staffIds = result.getValue();
+            if (staffIds.size === 0) {
+                description = ZhTwStrings.dispatchStaffEmpty;
+            }
+            else {
+                const staffList = Array.from(staffIds).map((id) => `<@${id}>`).join('\n');
+                description = ZhTwStrings.dispatchStaffList.replace('{staffs}', staffList);
+            }
+        }
+        else {
+            description = '售後人員資料暫時無法取得';
+        }
+        const embed = new EmbedBuilder()
+            .setTitle(ZhTwStrings.dispatchTitle)
+            .setDescription(description)
+            .setColor(0x5865F2);
+        await interaction.editEmbed(embed);
     }
 }
 //# sourceMappingURL=DispatchAfterSalesHandler.js.map

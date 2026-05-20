@@ -23,6 +23,9 @@ export declare class SystemPrompt {
 }
 /**
  * PromptLoader interface.
+ *
+ * IMPORTANT: Callers MUST check `isOk()` / `isErr()` before calling `getValue()`
+ * or `getError()`. Calling `getValue()` on an Err result will throw.
  */
 export interface PromptLoader {
     loadPrompts(agentEnabled: boolean): Result<SystemPrompt, DomainError>;

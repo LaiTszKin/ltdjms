@@ -1,18 +1,32 @@
-import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
+import {
+  type DiscordInteraction, type DiscordContext,
+  type EmbedView, type ButtonView,
+} from '@ltdjms/shared';
 import {
   type EscortDispatchOrderService,
   type EscortOptionPricingService,
   type DispatchAfterSalesStaffService,
 } from '../service/index.js';
+import { type DispatchNotificationService } from '../notification/index.js';
+import {
+  isPendingEscortConfirmation,
+  isConfirmed,
+  isCompleted,
+  isAfterSalesRequested,
+  isAfterSalesInProgress,
+} from '../domain/index.js';
 import {
   embedViewToApiEmbed,
   buttonsToComponents,
+  buildPanelReplyPayload,
   buildModeSelectEmbed,
   buildModeSelectActionRow,
+  buildOrderDetailActionRow,
   buildCreateModeEmbed,
   buildAssignModeEmbed,
   buildNoPendingOrdersEmbed,
   buildQueryFailedEmbed,
+  formatPanelText,
   COLOR_INFO,
   COLOR_WARNING,
   COLOR_ERROR,
@@ -34,12 +48,11 @@ import {
 } from './DispatchPanelView.js';
 import {
   buildOrderCreatedEmbed,
+  buildOrderConfirmedEmbed,
   buildOrderAssignedEmbed,
   buildOrderDetailEmbed,
   buildOrderListEmbed,
   buildErrorEmbed,
-  buildSuccessEmbed,
-  buildWarningEmbed,
   buildPendingCustomerConfirmationEmbed,
   buildOrderCompletedEmbed,
   buildAfterSalesRequestedEmbed,
@@ -53,7 +66,8 @@ import {
 
 export interface DispatchSessionState {
   mode: 'create' | 'assign' | 'view' | null;
-  selectedUserId?: number;
+  selectedCustomerId?: number;
+  selectedEscortUserId?: number;
   selectedOptionCode?: string;
   selectedOrderNumber?: string;
   statusMessage?: string;
@@ -95,6 +109,7 @@ export class DispatchPanelInteractionHandler {
     private readonly dispatchOrderService: EscortDispatchOrderService,
     private readonly pricingService: EscortOptionPricingService,
     private readonly afterSalesStaffService: DispatchAfterSalesStaffService,
+    private readonly notificationService: DispatchNotificationService,
   ) {}
 
   async execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void> {
@@ -133,14 +148,17 @@ export class DispatchPanelInteractionHandler {
         await this.showMainPanel(interaction);
         break;
       case BUTTON_CREATE_MODE:
+        clearSession(guildId, userId);
         session.mode = 'create';
         await this.showCreateMode(interaction);
         break;
       case BUTTON_ASSIGN_MODE:
+        clearSession(guildId, userId);
         session.mode = 'assign';
         await this.showAssignMode(interaction, guildId);
         break;
       case BUTTON_VIEW_ORDERS:
+        clearSession(guildId, userId);
         session.mode = 'view';
         await this.showRecentOrders(interaction, guildId);
         break;
@@ -148,7 +166,7 @@ export class DispatchPanelInteractionHandler {
         await this.showHistory(interaction, guildId);
         break;
       case BUTTON_BACK_TO_MODE:
-        session.mode = null;
+        clearSession(guildId, userId);
         await this.showMainPanel(interaction);
         break;
 
@@ -193,13 +211,7 @@ export class DispatchPanelInteractionHandler {
   private async showMainPanel(interaction: DiscordInteraction): Promise<void> {
     const view = buildModeSelectEmbed();
     const buttons = buildModeSelectActionRow();
-    const text = this.formatPanelText(view, buttons);
-
-    if (interaction.isAcknowledged()) {
-      await interaction.editEmbed({ description: text } as never);
-    } else {
-      await interaction.reply(text);
-    }
+    await this.replyWithPayload(interaction, view, buttons);
   }
 
   private async showCreateMode(interaction: DiscordInteraction): Promise<void> {
@@ -303,6 +315,10 @@ export class DispatchPanelInteractionHandler {
     userId: string,
     session: DispatchSessionState,
   ): Promise<void> {
+    if ((interaction as unknown as { inGuild?: boolean }).inGuild) {
+      await interaction.reply('請在機器人私訊中操作');
+      return;
+    }
     if (!session.selectedOrderNumber) {
       await interaction.reply('請先選擇要確認的訂單。');
       return;
@@ -322,6 +338,7 @@ export class DispatchPanelInteractionHandler {
     const order = result.getValue();
     const confirmedView = buildOrderConfirmedEmbed(order);
     await interaction.replyEmbed(embedViewToApiEmbed(confirmedView) as never);
+    await this.notificationService.notifyEscortConfirmed(order);
     session.mode = null;
   }
 
@@ -330,6 +347,10 @@ export class DispatchPanelInteractionHandler {
     userId: string,
     session: DispatchSessionState,
   ): Promise<void> {
+    if ((interaction as unknown as { inGuild?: boolean }).inGuild) {
+      await interaction.reply('請在機器人私訊中操作');
+      return;
+    }
     if (!session.selectedOrderNumber) {
       await interaction.reply('請先選擇要送出完成的訂單。');
       return;
@@ -349,6 +370,7 @@ export class DispatchPanelInteractionHandler {
     const order = result.getValue();
     const pendingView = buildPendingCustomerConfirmationEmbed(order);
     await interaction.replyEmbed(embedViewToApiEmbed(pendingView) as never);
+    await this.notificationService.notifyCompletionRequested(order);
     session.mode = null;
   }
 
@@ -357,6 +379,10 @@ export class DispatchPanelInteractionHandler {
     userId: string,
     session: DispatchSessionState,
   ): Promise<void> {
+    if ((interaction as unknown as { inGuild?: boolean }).inGuild) {
+      await interaction.reply('請在機器人私訊中操作');
+      return;
+    }
     if (!session.selectedOrderNumber) {
       await interaction.reply('請先選擇要確認完成的訂單。');
       return;
@@ -376,6 +402,7 @@ export class DispatchPanelInteractionHandler {
     const order = result.getValue();
     const completedView = buildOrderCompletedEmbed(order);
     await interaction.replyEmbed(embedViewToApiEmbed(completedView) as never);
+    await this.notificationService.notifyCustomerConfirmed(order);
     session.mode = null;
   }
 
@@ -384,6 +411,10 @@ export class DispatchPanelInteractionHandler {
     userId: string,
     session: DispatchSessionState,
   ): Promise<void> {
+    if ((interaction as unknown as { inGuild?: boolean }).inGuild) {
+      await interaction.reply('請在機器人私訊中操作');
+      return;
+    }
     if (!session.selectedOrderNumber) {
       await interaction.reply('請先選擇要申請售後的訂單。');
       return;
@@ -403,6 +434,17 @@ export class DispatchPanelInteractionHandler {
     const order = result.getValue();
     const afterSalesView = buildAfterSalesRequestedEmbed(order);
     await interaction.replyEmbed(embedViewToApiEmbed(afterSalesView) as never);
+
+    // R7.4: Notify after-sales staff; if none available, warn via edited embed
+    const notified = await this.notificationService.notifyAfterSalesRequested(order);
+    if (!notified) {
+      const updatedView: EmbedView = {
+        ...afterSalesView,
+        description: `${afterSalesView.description ?? ''}\n\n⚠️ 目前尚未設定售後人員，請管理員盡快設定。`,
+      };
+      await interaction.editEmbed(embedViewToApiEmbed(updatedView) as never);
+    }
+
     session.mode = null;
   }
 
@@ -415,6 +457,10 @@ export class DispatchPanelInteractionHandler {
     userId: string,
     session: DispatchSessionState,
   ): Promise<void> {
+    if ((interaction as unknown as { inGuild?: boolean }).inGuild) {
+      await interaction.reply('請在機器人私訊中操作');
+      return;
+    }
     if (!session.selectedOrderNumber) {
       await interaction.reply('請先選擇要承接的售後訂單。');
       return;
@@ -434,6 +480,7 @@ export class DispatchPanelInteractionHandler {
     const order = result.getValue();
     const claimedView = buildAfterSalesClaimedEmbed(order);
     await interaction.replyEmbed(embedViewToApiEmbed(claimedView) as never);
+    await this.notificationService.notifyAfterSalesClaimed(order);
     session.mode = null;
   }
 
@@ -442,6 +489,10 @@ export class DispatchPanelInteractionHandler {
     userId: string,
     session: DispatchSessionState,
   ): Promise<void> {
+    if ((interaction as unknown as { inGuild?: boolean }).inGuild) {
+      await interaction.reply('請在機器人私訊中操作');
+      return;
+    }
     if (!session.selectedOrderNumber) {
       await interaction.reply('請先選擇要結案的售後訂單。');
       return;
@@ -461,6 +512,7 @@ export class DispatchPanelInteractionHandler {
     const order = result.getValue();
     const closedView = buildAfterSalesClosedEmbed(order);
     await interaction.replyEmbed(embedViewToApiEmbed(closedView) as never);
+    await this.notificationService.notifyAfterSalesClosed(order);
     session.mode = null;
   }
 
@@ -505,14 +557,13 @@ export class DispatchPanelInteractionHandler {
     }
 
     const order = result.getValue();
-    if (!order) {
-      const errorView = buildErrorEmbed('找不到該訂單。');
-      await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
-      return;
-    }
 
     const detailView = buildOrderDetailEmbed(order);
-    await interaction.replyEmbed(embedViewToApiEmbed(detailView) as never);
+    const canConfirm = isPendingEscortConfirmation(order);
+    const canComplete = isConfirmed(order);
+    const canRequestAfterSales = isCompleted(order) || isAfterSalesRequested(order) || isAfterSalesInProgress(order);
+    const buttons = buildOrderDetailActionRow(canConfirm, canComplete, canRequestAfterSales);
+    await this.replyWithPayload(interaction, detailView, buttons);
   }
 
   // ============================================================
@@ -531,11 +582,10 @@ export class DispatchPanelInteractionHandler {
       if (memberPermissions && (BigInt(memberPermissions) & 0x8n) !== 0n) {
         return true;
       }
-      // Fallback: allow the interaction (permissions should be enforced by
-      // Discord's defaultMemberPermissions on the command definition).
-      return true;
+      // No ADMINISTRATOR bit — deny permission.
+      return false;
     } catch {
-      return true; // Graceful degradation — Discord enforces permissions at the API level
+      return false; // Default to deny on unexpected errors
     }
   }
 
@@ -553,21 +603,28 @@ export class DispatchPanelInteractionHandler {
     }
   }
 
+  /**
+   * Sends a reply with an embed and optional action buttons via
+   * the underlying discord.js interaction hook.
+   */
+  private async replyWithPayload(
+    interaction: DiscordInteraction,
+    embedView: EmbedView,
+    buttons?: ButtonView[],
+  ): Promise<void> {
+    const payload = buildPanelReplyPayload(embedView, buttons);
+    const hook = interaction.getHook() as any;
+    if (interaction.isAcknowledged()) {
+      await hook.editReply({ embeds: [payload.embed], components: payload.components });
+    } else {
+      await hook.reply({ embeds: [payload.embed], components: payload.components, ephemeral: payload.ephemeral });
+    }
+  }
+
   private formatPanelText(
     view: ReturnType<typeof buildModeSelectEmbed>,
     buttons: ReturnType<typeof buildModeSelectActionRow>,
   ): string {
-    const lines: string[] = [];
-    if (view.title) lines.push(`**${view.title}**`);
-    if (view.description) lines.push(view.description);
-    lines.push('');
-    for (const field of view.fields ?? []) {
-      lines.push(`**${field.name}：** ${field.value}`);
-    }
-    lines.push('');
-    lines.push('---');
-    lines.push(buttons.map((b) => `\`/${b.label}\``).join(' | '));
-    if (view.footer) lines.push(`_${view.footer}_`);
-    return lines.join('\n');
+    return formatPanelText(view, buttons);
   }
 }

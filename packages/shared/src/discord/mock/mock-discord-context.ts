@@ -18,7 +18,7 @@ export class MockDiscordContext implements DiscordContext {
     channelId: string,
     userMention: string,
   ) {
-    if (!guildId || guildId === '0') throw new Error('guildId must be a valid non-zero id');
+    if (!guildId) throw new Error('guildId must be a valid non-empty id');
     if (!userId || userId === '0') throw new Error('userId must be a valid non-zero id');
     if (!channelId || channelId === '0') throw new Error('channelId must be a valid non-zero id');
     if (!userMention) throw new Error('userMention must not be empty');

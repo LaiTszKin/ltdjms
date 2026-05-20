@@ -12,6 +12,10 @@ export class MessageChunkAccumulator {
     }
     /**
      * Returns the current accumulated content and clears the buffer.
+     *
+     * TODO (P3-19): This method corresponds to Java's flush() but is not yet called
+     * by any consumer. It will be used when implementing chunked processing
+     * (e.g., per-sentence or per-paragraph streaming).
      */
     flush() {
         const content = this.getContent();

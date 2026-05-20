@@ -5,7 +5,7 @@ export { escortDispatchOrder, guildEscortOptionPrice, dispatchAfterSalesStaff, }
 // ============================================================
 // Domain
 // ============================================================
-export { EscortDispatchOrderStatus, SourceType, CUSTOMER_CONFIRM_TIMEOUT_MS, createPending, createManualOpenOrder, createPendingFull, createAutoHandoff, fromDbRow, isPendingEscortConfirmation, isConfirmed, isPendingCustomerConfirmation, isAfterSalesRequested, isAfterSalesInProgress, isCompleted, canBeConfirmedBy, canBeCompletedByEscort, canBeConfirmedByCustomer, isAfterSalesAssignee, isManualSource, isAutoSource, hasCustomerConfirmationTimedOut, withAssignedEscort, withConfirmed, withCompletionRequested, withCompleted, withAfterSalesRequested, withAfterSalesInProgress, withAfterSalesClosed, EscortDispatchOrderNumberGenerator, optionPriceToDisplayLine, } from './domain/index.js';
+export { EscortDispatchOrderStatus, SourceType, CUSTOMER_CONFIRM_TIMEOUT_MS, createPending, createManualOpenOrder, createPendingFull, createAutoHandoff, fromDbRow, isPendingEscortConfirmation, isConfirmed, isPendingCustomerConfirmation, isAfterSalesRequested, isAfterSalesInProgress, isCompleted, canBeConfirmedBy, canBeCompletedByEscort, canBeConfirmedByCustomer, isAfterSalesAssignee, isManualSource, isAutoSource, hasCustomerConfirmationTimedOut, withConfirmed, withCompletionRequested, withCompleted, withAfterSalesRequested, withAfterSalesInProgress, withAfterSalesClosed, EscortDispatchOrderNumberGenerator, optionPriceToDisplayLine, } from './domain/index.js';
 export { DrizzleEscortDispatchOrderRepo, DrizzleEscortOptionPriceRepo, DrizzleDispatchAfterSalesStaffRepo, } from './repo/index.js';
 // ============================================================
 // Services
@@ -31,10 +31,14 @@ buildCreateModeButton, buildAssignModeButton, buildViewOrdersButton, buildViewHi
 buildModeSelectActionRow, buildOrderDetailActionRow, 
 // Conversion utilities
 embedViewToApiEmbed, buttonsToComponents, buildPanelReplyPayload, 
+// Format utilities
+formatPanelText, 
 // Message factory
 buildOrderCreatedEmbed, buildManualOrderCreatedEmbed, buildOrderAssignedEmbed, buildOrderConfirmedEmbed, buildPendingCustomerConfirmationEmbed, buildOrderCompletedEmbed, buildOrderTimedOutEmbed, buildAfterSalesRequestedEmbed, buildAfterSalesClaimedEmbed, buildAfterSalesClosedEmbed, buildOrderDetailEmbed, buildOrderListEmbed, buildErrorEmbed, buildSuccessEmbed, buildWarningEmbed, } from './panel/index.js';
 // ============================================================
 // DI
 // ============================================================
 export { DISPATCH_TOKENS, configureDispatchContainer } from './di/index.js';
+// Events (re-exported from shared for convenience)
+// (reserved for future shared event types)
 //# sourceMappingURL=index.js.map

@@ -1,6 +1,8 @@
 import { EmbedBuilder, type APIEmbed } from 'discord.js';
 import { type DiscordEmbedBuilder } from '../domain/discord-embed-builder.js';
 import { type EmbedView } from '../domain/embed-view.js';
+import pino from 'pino';
+import { paginateEmbedView } from './embed-pagination.js';
 
 /**
  * Discord.js implementation of DiscordEmbedBuilder.
@@ -17,6 +19,11 @@ export class DiscordJsEmbedBuilder implements DiscordEmbedBuilder {
 
   private readonly embed: EmbedBuilder = new EmbedBuilder();
   private fieldCount = 0;
+  private readonly logger: pino.Logger;
+
+  constructor(logger?: pino.Logger) {
+    this.logger = logger ?? pino({ level: 'warn' });
+  }
 
   setTitle(title: string): DiscordEmbedBuilder {
     this.embed.setTitle(
@@ -75,96 +82,15 @@ export class DiscordJsEmbedBuilder implements DiscordEmbedBuilder {
   }
 
   buildPaginated(data: EmbedView): APIEmbed[] {
-    const embeds: APIEmbed[] = [];
-
-    const title = data.title
-      ? data.title.length > this.MAX_TITLE_LENGTH
-        ? this.truncate(data.title, this.MAX_TITLE_LENGTH)
-        : data.title
-      : undefined;
-
-    const footer = data.footer
-      ? data.footer.length > this.MAX_FOOTER_LENGTH
-        ? this.truncate(data.footer, this.MAX_FOOTER_LENGTH)
-        : data.footer
-      : undefined;
-
-    const description = data.description;
-
-    // Paginate by description
-    if (description && description.length > this.MAX_DESCRIPTION_LENGTH) {
-      const totalPages = Math.ceil(
-        description.length / this.MAX_DESCRIPTION_LENGTH,
-      );
-      for (let i = 0; i < totalPages; i++) {
-        const start = i * this.MAX_DESCRIPTION_LENGTH;
-        const end = Math.min(
-          start + this.MAX_DESCRIPTION_LENGTH,
-          description.length,
-        );
-        const builder = new EmbedBuilder();
-        builder.setDescription(description.slice(start, end));
-        if (title) {
-          builder.setTitle(
-            totalPages > 1 ? `${title} (${i + 1}/${totalPages})` : title,
-          );
-        }
-        if (data.color) builder.setColor(data.color);
-        if (footer) builder.setFooter({ text: footer });
-        embeds.push(builder.toJSON());
-      }
-      return embeds;
-    }
-
-    // No fields
-    if (!data.fields || data.fields.length === 0) {
-      const builder = new EmbedBuilder();
-      if (title) builder.setTitle(title);
-      if (description) builder.setDescription(description);
-      if (data.color) builder.setColor(data.color);
-      if (footer) builder.setFooter({ text: footer });
-      embeds.push(builder.toJSON());
-      return embeds;
-    }
-
-    // Fields may need pagination
-    let totalAdded = 0;
-    let pageIndex = 0;
-    let builder = new EmbedBuilder();
-    if (title) builder.setTitle(title);
-    if (description) builder.setDescription(description);
-    if (data.color) builder.setColor(data.color);
-    if (footer) builder.setFooter({ text: footer });
-
-    for (const field of data.fields) {
-      if (totalAdded > 0 && totalAdded % this.MAX_FIELDS === 0) {
-        embeds.push(builder.toJSON());
-        pageIndex++;
-        builder = new EmbedBuilder();
-        if (title) {
-          builder.setTitle(
-            data.fields.length > this.MAX_FIELDS
-              ? `${title} (${pageIndex + 1})`
-              : title,
-          );
-        }
-        if (data.color) builder.setColor(data.color);
-        if (footer) builder.setFooter({ text: footer });
-      }
-      builder.addFields({
-        name: field.name,
-        value: field.value,
-        inline: field.inline,
-      });
-      totalAdded++;
-    }
-    embeds.push(builder.toJSON());
-
-    return embeds;
+    return paginateEmbedView(data, this, (str, maxLen) => this.truncate(str, maxLen));
   }
 
   private truncate(str: string, maxLength: number): string {
     if (str.length <= maxLength) return str;
+    this.logger.warn(
+      { originalLength: str.length, maxLength, ellipsis: this.ELLIPSIS },
+      'Embed field truncated',
+    );
     return str.slice(0, maxLength - this.ELLIPSIS.length) + this.ELLIPSIS;
   }
 }

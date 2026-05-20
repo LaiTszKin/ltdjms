@@ -2,6 +2,7 @@ import {
   type DiscordInteraction,
   type DiscordContext,
 } from '@ltdjms/shared';
+import { EmbedBuilder } from 'discord.js';
 import { type InteractionHandler } from '../../../commands/infra/CommandHandler.js';
 import { AIConfigManagementFacade } from '../../../facades/AIConfigManagementFacade.js';
 import { AdminPanelSessionManager } from '../../../session/AdminPanelSessionManager.js';
@@ -21,7 +22,7 @@ export class AIAgentConfigHandler implements InteractionHandler {
 
   async execute(
     interaction: DiscordInteraction,
-    _context: DiscordContext,
+    context: DiscordContext,
   ): Promise<void> {
     const guildId = interaction.getGuildId();
     const userId = interaction.getUserId();
@@ -32,6 +33,23 @@ export class AIAgentConfigHandler implements InteractionHandler {
       return;
     }
 
-    await interaction.reply('AI Agent 設定功能');
+    await interaction.deferReply();
+
+    // Get current agent config
+    const result = await this.facade.getAgentConfigs(guildId);
+
+    let description: string;
+    if (result.isOk() && result.getValue().length > 0) {
+      const channelList = result.getValue().map((ch) => `<#${ch}>`).join('\n');
+      description = ZhTwStrings.aiAgentList.replace('{channels}', channelList);
+    } else {
+      description = ZhTwStrings.aiAgentEmpty;
+    }
+
+    const embed = new EmbedBuilder()
+      .setTitle(ZhTwStrings.aiAgentTitle)
+      .setDescription(description)
+      .setColor(0x5865F2);
+    await interaction.editEmbed(embed);
   }
 }

@@ -11,5 +11,5 @@ export declare class TokenManagementHandler implements InteractionHandler {
     private readonly sessionManager;
     readonly customIdPrefix = "admin_token";
     constructor(facade: GameTokenManagementFacade, sessionManager: AdminPanelSessionManager);
-    execute(interaction: DiscordInteraction, _context: DiscordContext): Promise<void>;
+    execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void>;
 }

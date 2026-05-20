@@ -89,7 +89,7 @@ export class SimplifiedChatMemoryProvider {
       return this.buildThreadLevelMemory(memoryId);
     }
 
-    return this.buildMessageLevelMemory();
+    return this.buildMessageLevelMemory(memoryId);
   }
 
   /**
@@ -138,11 +138,46 @@ export class SimplifiedChatMemoryProvider {
   }
 
   /**
-   * Builds message-level memory (limited, max 10 messages).
+   * Builds message-level memory: up to 10 recent channel messages for non-thread conversations.
+   * Format: guildId:channelId:userId:messageId
    */
-  private async buildMessageLevelMemory(): Promise<
-    Array<{ role: string; content: string }>
-  > {
-    return [];
+  private async buildMessageLevelMemory(
+    conversationId: string,
+  ): Promise<Array<{ role: string; content: string }>> {
+    const guildId = ConversationIdBuilder.extractGuildId(conversationId);
+    const parts = conversationId.split(':');
+    const channelId = parts.length >= 2 ? parts[1] : null;
+    const userId = ConversationIdBuilder.extractUserId(conversationId);
+
+    if (!guildId || !channelId || !userId) {
+      return [];
+    }
+
+    try {
+      const client = this.runtimeGateway.requireReadyClient() as import('discord.js').Client;
+      const channel = client.channels.cache.get(channelId) ?? await client.channels.fetch(channelId).catch(() => null);
+      if (!channel || !channel.isTextBased()) {
+        return [];
+      }
+
+      const botUserId = this.runtimeGateway.selfUserId();
+      const fetched = await channel.messages.fetch({ limit: 10 });
+      const messages: Array<{ role: string; content: string }> = [];
+
+      for (const [, msg] of fetched) {
+        // Privacy isolation: only include user's own messages and bot replies
+        if (msg.author.id === userId) {
+          messages.push({ role: 'user', content: msg.content });
+        } else if (msg.author.id === botUserId) {
+          messages.push({ role: 'assistant', content: msg.content });
+        }
+      }
+
+      // Return in chronological order (discord.js returns newest first)
+      return messages.reverse();
+    } catch {
+      // Fetch failure → return empty array (don't block conversation)
+      return [];
+    }
   }
 }

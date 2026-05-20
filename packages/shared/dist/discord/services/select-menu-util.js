@@ -24,6 +24,34 @@ export function splitSelectMenus(options, customId, placeholder) {
     return menus;
 }
 /**
+ * Generic version of splitSelectMenus that accepts items of any type
+ * and a callback to configure each StringSelectMenuBuilder with the item.
+ * Useful when menu options are derived from domain objects rather than
+ * pre-built StringSelectMenuOptionBuilder instances.
+ *
+ * @param items - array of items to distribute across menus
+ * @param builderCallback - callback that adds the item to the menu builder
+ * @param customId - custom ID for all menus
+ * @param placeholder - optional placeholder text
+ * @returns array of StringSelectMenuBuilder instances
+ */
+export function splitSelectMenusGeneric(items, builderCallback, customId, placeholder) {
+    if (items.length === 0)
+        return [];
+    const menus = [];
+    for (let i = 0; i < items.length; i += MAX_OPTIONS_PER_MENU) {
+        const chunk = items.slice(i, i + MAX_OPTIONS_PER_MENU);
+        const menu = new StringSelectMenuBuilder()
+            .setCustomId(customId)
+            .setPlaceholder(placeholder || 'Select an option');
+        for (const item of chunk) {
+            builderCallback(menu, item);
+        }
+        menus.push(menu);
+    }
+    return menus;
+}
+/**
  * Splits options and wraps each menu in an ActionRow.
  */
 export function buildSelectRows(options, customId, placeholder) {

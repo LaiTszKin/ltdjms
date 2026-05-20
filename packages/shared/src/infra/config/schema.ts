@@ -17,6 +17,11 @@ function coerceBoolean() {
 /**
  * Zod schema for all configuration values.
  * Matches the Java EnvironmentConfig fields.
+ *
+ * NOTE: The Java implementation has an additional Typesafe Config fallback layer via
+ * application.properties. This is intentionally omitted here for simplicity —
+ * Zod's default() serves as the built-in default layer, and EnvironmentConfig
+ * merges process.env > .env file > Zod defaults.
  */
 export const ConfigSchema = z.object({
   // Discord
@@ -26,7 +31,9 @@ export const ConfigSchema = z.object({
   DATABASE_HOST: z.string().default('localhost'),
   DATABASE_PORT: z.coerce.number().int().positive().default(5432),
   DATABASE_NAME: z.string().default('currency_bot'),
+  DB_USERNAME: z.string().optional(),
   DATABASE_USER: z.string().default('postgres'),
+  DB_PASSWORD: z.string().optional(),
   DATABASE_PASSWORD: z.string().default('postgres'),
   DB_URL: z.string().optional(),
 

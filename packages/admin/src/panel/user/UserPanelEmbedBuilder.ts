@@ -25,7 +25,7 @@ export class UserPanelEmbedBuilder {
         ZhTwStrings.userPanelTokens.replace('{tokens}', String(memberSummary.tokens)),
       ].join('\n'),
       fields: [],
-      color: 0x5865f2,
+      color: 0x5865F2,
     };
   }
 
@@ -52,7 +52,7 @@ export class UserPanelEmbedBuilder {
       title: ZhTwStrings.historyTitleCurrency,
       description: `${ZhTwStrings.historyPageIndicator.replace('{current}', String(page)).replace('{total}', String(totalPages))}`,
       fields,
-      color: 0x2ecc71,
+      color: 0x2ECC71,
     };
   }
 
@@ -79,7 +79,7 @@ export class UserPanelEmbedBuilder {
       title: ZhTwStrings.historyTitleToken,
       description: `${ZhTwStrings.historyPageIndicator.replace('{current}', String(page)).replace('{total}', String(totalPages))}`,
       fields,
-      color: 0x9b59b6,
+      color: 0x9B59B6,
     };
   }
 
@@ -111,7 +111,7 @@ export class UserPanelEmbedBuilder {
       title: ZhTwStrings.historyTitleRedemption,
       description: `${ZhTwStrings.historyPageIndicator.replace('{current}', String(page)).replace('{total}', String(totalPages))}`,
       fields,
-      color: 0xe67e22,
+      color: 0xE67E22,
     };
   }
 }

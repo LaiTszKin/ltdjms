@@ -15,7 +15,7 @@ export class ConversationIdBuilder {
         if (threadId) {
             return `${guildId}:${threadId}:${userId}`;
         }
-        return `${guildId}:${channelId}:${userId}:${messageId ?? 'none'}`;
+        return `${guildId}:${channelId}:${userId}:${messageId ?? ''}`;
     }
     /**
      * Parses a conversation ID to determine its strategy.

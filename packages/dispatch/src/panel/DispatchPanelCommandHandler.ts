@@ -5,6 +5,7 @@ import {
   buildModeSelectActionRow,
   embedViewToApiEmbed,
   buttonsToComponents,
+  formatPanelText,
 } from './DispatchPanelView.js';
 import { buildErrorEmbed } from './DispatchPanelMessageFactory.js';
 
@@ -42,17 +43,6 @@ export class DispatchPanelCommandHandler {
     view: ReturnType<typeof buildModeSelectEmbed>,
     buttons: ReturnType<typeof buildModeSelectActionRow>,
   ): string {
-    const lines: string[] = [];
-    if (view.title) lines.push(`**${view.title}**`);
-    if (view.description) lines.push(view.description);
-    lines.push('');
-    for (const field of view.fields ?? []) {
-      lines.push(`**${field.name}：** ${field.value}`);
-    }
-    lines.push('');
-    lines.push('---');
-    lines.push(buttons.map((b) => `\`/${b.label}\``).join(' | '));
-    if (view.footer) lines.push(`_${view.footer}_`);
-    return lines.join('\n');
+    return formatPanelText(view, buttons);
   }
 }

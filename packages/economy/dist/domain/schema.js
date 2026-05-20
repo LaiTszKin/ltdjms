@@ -1,4 +1,5 @@
-import { pgTable, bigint, varchar, timestamp, bigserial, primaryKey, index, } from 'drizzle-orm/pg-core';
+import { pgTable, bigint, varchar, timestamp, bigserial, primaryKey, index, check, } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 /**
  * Guild currency configuration table.
  * Each guild can have exactly one currency configuration with custom name and icon.
@@ -23,6 +24,7 @@ export const memberCurrencyAccount = pgTable('member_currency_account', {
 }, (table) => ({
     pk: primaryKey({ columns: [table.guildId, table.userId] }),
     guildIdx: index('idx_member_currency_account_guild').on(table.guildId),
+    balanceCheck: check('balance_non_negative', sql `${table.balance} >= 0`),
 }));
 /**
  * Currency transaction history table.
@@ -55,6 +57,7 @@ export const gameTokenAccount = pgTable('game_token_account', {
 }, (table) => ({
     pk: primaryKey({ columns: [table.guildId, table.userId] }),
     guildIdx: index('idx_game_token_account_guild').on(table.guildId),
+    tokensCheck: check('tokens_non_negative', sql `${table.tokens} >= 0`),
 }));
 /**
  * Game token transaction history table.

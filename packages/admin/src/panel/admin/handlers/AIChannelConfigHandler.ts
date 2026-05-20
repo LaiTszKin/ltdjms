@@ -2,6 +2,7 @@ import {
   type DiscordInteraction,
   type DiscordContext,
 } from '@ltdjms/shared';
+import { EmbedBuilder } from 'discord.js';
 import { type InteractionHandler } from '../../../commands/infra/CommandHandler.js';
 import { AIConfigManagementFacade } from '../../../facades/AIConfigManagementFacade.js';
 import { AdminPanelSessionManager } from '../../../session/AdminPanelSessionManager.js';
@@ -21,7 +22,7 @@ export class AIChannelConfigHandler implements InteractionHandler {
 
   async execute(
     interaction: DiscordInteraction,
-    _context: DiscordContext,
+    context: DiscordContext,
   ): Promise<void> {
     const guildId = interaction.getGuildId();
     const userId = interaction.getUserId();
@@ -32,6 +33,32 @@ export class AIChannelConfigHandler implements InteractionHandler {
       return;
     }
 
-    await interaction.reply('AI 頻道設定功能');
+    await interaction.deferReply();
+
+    // Get current AI channel config
+    const [channelsResult, categoriesResult] = await Promise.all([
+      this.facade.getAllowedChannels(guildId),
+      this.facade.getAllowedCategories(guildId),
+    ]);
+
+    const channelList = channelsResult.isOk() && channelsResult.getValue().length > 0
+      ? channelsResult.getValue().map((c) => `<#${c.channelId}>`).join('\n')
+      : '無';
+    const categoryList = categoriesResult.isOk() && categoriesResult.getValue().length > 0
+      ? categoriesResult.getValue().map((c) => c.categoryName).join('\n')
+      : '無';
+
+    const description = (channelsResult.isOk() && channelsResult.getValue().length === 0 &&
+      categoriesResult.isOk() && categoriesResult.getValue().length === 0)
+      ? ZhTwStrings.aiChannelEmpty
+      : ZhTwStrings.aiChannelList
+          .replace('{channels}', channelList)
+          .replace('{categories}', categoryList);
+
+    const embed = new EmbedBuilder()
+      .setTitle(ZhTwStrings.aiChannelTitle)
+      .setDescription(description)
+      .setColor(0x5865F2);
+    await interaction.editEmbed(embed);
   }
 }

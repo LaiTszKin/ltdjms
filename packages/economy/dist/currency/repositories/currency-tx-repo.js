@@ -1,4 +1,4 @@
-import { eq, desc, count } from 'drizzle-orm';
+import { eq, and, desc, count } from 'drizzle-orm';
 import { currencyTransaction } from '../../domain/schema.js';
 /**
  * Repository for currency transaction records using Drizzle ORM.
@@ -34,8 +34,7 @@ export class CurrencyTransactionRepository {
         const rows = await this.db
             .select()
             .from(currencyTransaction)
-            .where(eq(currencyTransaction.guildId, guildId) &&
-            eq(currencyTransaction.userId, userId))
+            .where(and(eq(currencyTransaction.guildId, guildId), eq(currencyTransaction.userId, userId)))
             .orderBy(desc(currencyTransaction.createdAt))
             .limit(limit)
             .offset(offset);
@@ -48,8 +47,7 @@ export class CurrencyTransactionRepository {
         const result = await this.db
             .select({ count: count() })
             .from(currencyTransaction)
-            .where(eq(currencyTransaction.guildId, guildId) &&
-            eq(currencyTransaction.userId, userId));
+            .where(and(eq(currencyTransaction.guildId, guildId), eq(currencyTransaction.userId, userId)));
         return result[0]?.count ?? 0;
     }
     /**
@@ -58,8 +56,7 @@ export class CurrencyTransactionRepository {
     async delete(guildId, userId) {
         await this.db
             .delete(currencyTransaction)
-            .where(eq(currencyTransaction.guildId, guildId) &&
-            eq(currencyTransaction.userId, userId));
+            .where(and(eq(currencyTransaction.guildId, guildId), eq(currencyTransaction.userId, userId)));
     }
 }
 function mapToDomain(row) {

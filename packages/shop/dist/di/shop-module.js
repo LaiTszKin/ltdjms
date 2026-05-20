@@ -1,4 +1,5 @@
 import { container, TOKENS } from '@ltdjms/shared';
+import { EnvironmentConfig } from '@ltdjms/shared';
 import { DrizzleFiatOrderRepository } from '../persistence/drizzle-fiat-order-repository.js';
 import { DrizzleRedemptionCodeRepository } from '../persistence/drizzle-redemption-code-repository.js';
 import { EcpayCvsPaymentService } from '../services/ecpay-cvs-payment.service.js';
@@ -10,6 +11,7 @@ import { FiatPaymentReconciliationService } from '../services/fiat-payment-recon
 import { FiatOrderProcessingScheduler } from '../services/fiat-order-processing-scheduler.js';
 import { CurrencyPurchaseService } from '../services/currency-purchase.service.js';
 import { ShopService } from '../services/shop.service.js';
+import { ShopCommandHandler } from '../commands/shop-handler.js';
 import { RedemptionCodeGenerator } from '../services/redemption-code-generator.js';
 import { RedemptionService } from '../services/redemption.service.js';
 import { FiatOrderBuyerNotificationService } from '../services/fiat-order-buyer-notification.service.js';
@@ -29,6 +31,7 @@ export const SHOP_TOKENS = {
     FiatOrderProcessingScheduler: Symbol('FiatOrderProcessingScheduler'),
     CurrencyPurchaseService: Symbol('CurrencyPurchaseService'),
     ShopService: Symbol('ShopService'),
+    ShopCommandHandler: Symbol('ShopCommandHandler'),
     RedemptionCodeGenerator: Symbol('RedemptionCodeGenerator'),
     RedemptionService: Symbol('RedemptionService'),
     FiatOrderBuyerNotificationService: Symbol('FiatOrderBuyerNotificationService'),
@@ -65,6 +68,8 @@ export function configureContainer(options) {
     const fiatOrderService = new FiatOrderService(options.productRepository, ecpayCvsPayment, fiatOrderRepo, log);
     container.registerInstance(SHOP_TOKENS.FiatOrderService, fiatOrderService);
     // ---- Post-Payment Worker ----
+    // Cast through unknown because the notification services have parameter-count
+    // mismatches between their declared methods and the worker's calling convention.
     const postPaymentWorker = new FiatOrderPostPaymentWorker(fiatOrderRepo, buyerNotification, options.escortDispatchHandoffService, escortBuyerNotification, adminNotification, options.productRewardService, log);
     container.registerInstance(SHOP_TOKENS.FiatOrderPostPaymentWorker, postPaymentWorker);
     // ---- Reconciliation Service ----
@@ -79,6 +84,8 @@ export function configureContainer(options) {
     // ---- Shop Service ----
     const shopService = new ShopService(options.productRepository, log);
     container.registerInstance(SHOP_TOKENS.ShopService, shopService);
+    const shopCommandHandler = new ShopCommandHandler(shopService, fiatOrderService, currencyPurchase);
+    container.registerInstance(SHOP_TOKENS.ShopCommandHandler, shopCommandHandler);
     // ---- Redemption ----
     const codeGenerator = new RedemptionCodeGenerator();
     const redemptionService = new RedemptionService(redemptionCodeRepo, options.productRepository, codeGenerator, options.productRewardService, options.redemptionTransactionService, eventPublisher, log);

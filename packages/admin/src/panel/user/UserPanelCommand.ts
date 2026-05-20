@@ -2,9 +2,11 @@ import {
   type DiscordInteraction,
   type DiscordContext,
 } from '@ltdjms/shared';
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { type CommandHandler } from '../../commands/infra/CommandHandler.js';
 import { MemberInfoFacade } from '../../facades/MemberInfoFacade.js';
 import { PanelSessionManager } from '../../session/PanelSessionManager.js';
+import { UserPanelEmbedBuilder } from './UserPanelEmbedBuilder.js';
 import { ZhTwStrings } from '../../i18n/zh-TW.js';
 
 /**
@@ -17,6 +19,7 @@ export class UserPanelCommand implements CommandHandler {
   constructor(
     private readonly memberInfoFacade: MemberInfoFacade,
     private readonly sessionManager: PanelSessionManager,
+    private readonly embedBuilder: UserPanelEmbedBuilder,
   ) {}
 
   async execute(
@@ -39,21 +42,39 @@ export class UserPanelCommand implements CommandHandler {
 
     const view = result.getValue();
 
-    const panelText = [
-      `**${ZhTwStrings.userPanelTitle}**`,
-      '',
-      ZhTwStrings.userPanelBalance
-        .replace('{balance}', String(view.balance))
-        .replace('{currencyIcon}', view.currencyIcon),
-      ZhTwStrings.userPanelTokens.replace('{tokens}', String(view.tokens)),
-      '',
-      '---',
-      `\`/currency-history\` ${ZhTwStrings.userPanelBtnCurrencyHistory}`,
-      `\`/token-history\` ${ZhTwStrings.userPanelBtnTokenHistory}`,
-      `\`/redemption-history\` ${ZhTwStrings.userPanelBtnRedemptionHistory}`,
-      `\`/redeem-code\` ${ZhTwStrings.userPanelBtnRedeemCode}`,
-    ].join('\n');
+    // Build embed from structured data
+    const embedData = this.embedBuilder.buildUserPanelEmbed(view);
+    const embed = new EmbedBuilder()
+      .setTitle(embedData.title)
+      .setDescription(embedData.description)
+      .setColor(embedData.color);
 
-    await interaction.reply(panelText);
+    // Build action buttons
+    const buttons = [
+      new ButtonBuilder()
+        .setCustomId('user_currency_history')
+        .setLabel(ZhTwStrings.userPanelBtnCurrencyHistory)
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('user_token_history')
+        .setLabel(ZhTwStrings.userPanelBtnTokenHistory)
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('user_redemption_history')
+        .setLabel(ZhTwStrings.userPanelBtnRedemptionHistory)
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('user_redeem_code')
+        .setLabel(ZhTwStrings.userPanelBtnRedeemCode)
+        .setStyle(ButtonStyle.Primary),
+    ];
+
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(buttons);
+
+    // Use the raw discord.js interaction to send embed with components
+    const raw = interaction.getHook() as {
+      reply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }) => Promise<void>;
+    };
+    await raw.reply({ embeds: [embed], components: [row] });
   }
 }

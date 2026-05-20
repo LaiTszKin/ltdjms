@@ -1,6 +1,8 @@
 import { type Product, hasCurrencyPrice, hasFiatPriceTwd, hasReward, formatCurrencyPrice, formatFiatPriceTwd, formatReward } from '../domain/product-types.js';
 
-const EMBED_COLOR = 0x5865F2;
+// Theme color constants (P3-12)
+const EMBED_COLOR_PRIMARY = 0x5865F2;
+const EMBED_COLOR_DANGER = 0xED4245;
 const PAGE_SIZE = 5;
 const DIVIDER = '────────────────────────────────────';
 
@@ -70,7 +72,7 @@ export function buildShopEmbed(
   return {
     title: '🏪 商店',
     description: sb.join(''),
-    color: EMBED_COLOR,
+    color: EMBED_COLOR_PRIMARY,
     footer,
   };
 }
@@ -79,10 +81,15 @@ export function buildEmptyShopEmbed(): { title: string; description: string; col
   return {
     title: '🏪 商店',
     description: '目前沒有可購買的商品',
-    color: EMBED_COLOR,
+    color: EMBED_COLOR_PRIMARY,
   };
 }
 
+/**
+ * Builds an embed for choosing a payment method for a product.
+ * This is a logical addition beyond the spec to provide a user-friendly
+ * payment method selection UI before confirming the purchase (P2-21).
+ */
 export function buildPaymentMethodChoiceEmbed(product: Product): {
   title: string;
   description: string;
@@ -101,7 +108,7 @@ export function buildPaymentMethodChoiceEmbed(product: Product): {
   return {
     title: '🛒 選擇支付方式',
     description: sb.join(''),
-    color: EMBED_COLOR,
+    color: EMBED_COLOR_PRIMARY,
   };
 }
 
@@ -172,7 +179,7 @@ export function buildPurchaseConfirmEmbed(
 
   if (currencyPrice == null) {
     sb.push('\n⚠️ **此商品不支援貨幣購買。**');
-    return { title: '購買確認', description: sb.join('\n'), color: 0xED4245 };
+    return { title: '購買確認', description: sb.join('\n'), color: EMBED_COLOR_DANGER };
   }
 
   sb.push(`**價格：** ${formatCurrencyPrice(product)}\n`);
@@ -180,8 +187,8 @@ export function buildPurchaseConfirmEmbed(
 
   const color =
     userBalance < currencyPrice
-      ? 0xED4245
-      : EMBED_COLOR;
+      ? EMBED_COLOR_DANGER
+      : EMBED_COLOR_PRIMARY;
 
   if (userBalance < currencyPrice) {
     sb.push('\n⚠️ **餘額不足！**');
@@ -203,4 +210,70 @@ export function buildPurchaseConfirmEmbed(
     description: sb.join(''),
     color,
   };
+}
+
+/**
+ * Builds an embed for search results with a search context header.
+ */
+export function buildSearchResultEmbed(
+  products: Product[],
+  currentPage: number,
+  totalPages: number,
+  keyword: string,
+): { title: string; description: string; color: number; footer: string } {
+  const embed = buildShopEmbed(products, currentPage, totalPages);
+  return {
+    ...embed,
+    title: `🔍 搜尋 "${keyword}" 的結果`,
+  };
+}
+
+/**
+ * Builds search result pagination components with keyword encoded in custom IDs.
+ */
+export function buildSearchComponents(
+  currentPage: number,
+  totalPages: number,
+  keyword: string,
+): Array<{
+  type: string;
+  components: Array<{ type: string; customId: string; label: string; style: number; disabled?: boolean }>;
+}> {
+  const encodedKeyword = encodeKeyword(keyword);
+  const hasPrev = currentPage > 1;
+  const hasNext = currentPage < totalPages;
+
+  const buttons: Array<{ type: string; customId: string; label: string; style: number; disabled?: boolean }> = [];
+
+  if (hasPrev) {
+    buttons.push({
+      type: 'button',
+      customId: `${BUTTON_SEARCH_PREV}${encodedKeyword}_${currentPage - 1}`,
+      label: '◀ 上一頁',
+      style: 1,
+    });
+  }
+
+  buttons.push({
+    type: 'button',
+    customId: `${BUTTON_BACK_TO_SHOP}`,
+    label: '🏪 回商店',
+    style: 2,
+  });
+
+  if (hasNext) {
+    buttons.push({
+      type: 'button',
+      customId: `${BUTTON_SEARCH_NEXT}${encodedKeyword}_${currentPage + 1}`,
+      label: '下一頁 ▶',
+      style: 1,
+    });
+  }
+
+  return [
+    {
+      type: 'actionRow',
+      components: buttons,
+    },
+  ];
 }

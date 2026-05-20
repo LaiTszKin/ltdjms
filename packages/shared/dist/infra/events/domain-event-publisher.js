@@ -16,27 +16,49 @@ export class DomainEventPublisher {
         this.logger = logger ?? pino({ level: 'warn' });
     }
     /**
-     * Registers a listener for all domain events.
+     * Registers a synchronous listener for all domain events.
      * @param listener - function to call when any domain event is published
      */
     register(listener) {
         this.emitter.on(EVENT_CHANNEL, listener);
     }
     /**
+     * Registers an async listener for all domain events.
+     * Async listeners are awaited via Promise.allSettled() during publish().
+     * @param listener - async function to call when any domain event is published
+     */
+    registerAsync(listener) {
+        this.emitter.on(EVENT_CHANNEL, listener);
+    }
+    /**
      * Publishes an event to all registered listeners.
+     * Sync listeners are invoked in order; async listeners are awaited via Promise.allSettled().
      * Exceptions from individual listeners are caught and logged but do not propagate.
      * @param event - the domain event to publish
      */
-    publish(event) {
+    async publish(event) {
         this._lastEvent = event;
         const listeners = this.emitter.listeners(EVENT_CHANNEL);
+        this.logger.debug({ event }, 'Publishing event');
+        const asyncTasks = [];
         for (const listener of listeners) {
             try {
-                listener(event);
+                const result = listener(event);
+                if (result && typeof result.then === 'function') {
+                    asyncTasks.push(result);
+                }
             }
             catch (err) {
                 // Log but don't propagate — this mirrors Java behavior
                 this.logger.error({ eventName: event.constructor?.name ?? typeof event, err }, '[DomainEventPublisher] Error handling event');
+            }
+        }
+        if (asyncTasks.length > 0) {
+            const results = await Promise.allSettled(asyncTasks);
+            for (const r of results) {
+                if (r.status === 'rejected') {
+                    this.logger.error({ eventName: event.constructor?.name ?? typeof event, err: r.reason }, '[DomainEventPublisher] Async event handler rejected');
+                }
             }
         }
     }

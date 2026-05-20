@@ -1,3 +1,4 @@
+import { CommandInteraction, } from 'discord.js';
 /**
  * Discord.js implementation of DiscordInteraction.
  * Wraps CommandInteraction / ButtonInteraction / ModalSubmitInteraction.
@@ -5,9 +6,12 @@
 export class DiscordJsInteraction {
     interaction;
     acknowledged;
-    constructor(interaction) {
+    _ephemeral;
+    constructor(interaction, ephemeral) {
         this.interaction = interaction;
         this.acknowledged = interaction.replied || interaction.deferred;
+        // CommandInteraction has an ephemeral property; others default to false
+        this._ephemeral = ephemeral ?? (interaction instanceof CommandInteraction ? (interaction.ephemeral ?? false) : false);
     }
     getGuildId() {
         return this.interaction.guildId ?? '0';
@@ -15,11 +19,8 @@ export class DiscordJsInteraction {
     getUserId() {
         return this.interaction.user.id;
     }
-    getChannelId() {
-        return this.interaction.channelId ?? '0';
-    }
     isEphemeral() {
-        return false;
+        return this._ephemeral;
     }
     async reply(message) {
         if (this.acknowledged) {

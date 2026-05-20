@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { gameTokenAccount } from '../../domain/schema.js';
 import { DomainError, Ok, Err } from '@ltdjms/shared';
 /**
@@ -17,8 +17,7 @@ export class TokenAccountRepository {
         const existing = await this.db
             .select()
             .from(gameTokenAccount)
-            .where(eq(gameTokenAccount.guildId, guildId) &&
-            eq(gameTokenAccount.userId, userId))
+            .where(and(eq(gameTokenAccount.guildId, guildId), eq(gameTokenAccount.userId, userId)))
             .limit(1);
         if (existing.length > 0) {
             return mapToDomain(existing[0]);
@@ -34,8 +33,7 @@ export class TokenAccountRepository {
         const created = await this.db
             .select()
             .from(gameTokenAccount)
-            .where(eq(gameTokenAccount.guildId, guildId) &&
-            eq(gameTokenAccount.userId, userId))
+            .where(and(eq(gameTokenAccount.guildId, guildId), eq(gameTokenAccount.userId, userId)))
             .limit(1);
         return mapToDomain(created[0]);
     }
@@ -46,8 +44,7 @@ export class TokenAccountRepository {
         const rows = await this.db
             .select()
             .from(gameTokenAccount)
-            .where(eq(gameTokenAccount.guildId, guildId) &&
-            eq(gameTokenAccount.userId, userId))
+            .where(and(eq(gameTokenAccount.guildId, guildId), eq(gameTokenAccount.userId, userId)))
             .limit(1);
         return rows.length > 0 ? mapToDomain(rows[0]) : null;
     }
@@ -62,9 +59,7 @@ export class TokenAccountRepository {
             tokens: sql `${gameTokenAccount.tokens} + ${delta}`,
             updatedAt: sql `NOW()`,
         })
-            .where(eq(gameTokenAccount.guildId, guildId) &&
-            eq(gameTokenAccount.userId, userId) &&
-            sql `${gameTokenAccount.tokens} + ${delta} >= 0`)
+            .where(and(eq(gameTokenAccount.guildId, guildId), eq(gameTokenAccount.userId, userId), sql `${gameTokenAccount.tokens} + ${delta} >= 0`))
             .returning();
         if (result.length === 0) {
             throw new InsufficientTokensError(`Cannot adjust tokens by ${delta}: would result in negative balance or account not found`);
@@ -82,9 +77,7 @@ export class TokenAccountRepository {
                 tokens: sql `${gameTokenAccount.tokens} + ${delta}`,
                 updatedAt: sql `NOW()`,
             })
-                .where(eq(gameTokenAccount.guildId, guildId) &&
-                eq(gameTokenAccount.userId, userId) &&
-                sql `${gameTokenAccount.tokens} + ${delta} >= 0`)
+                .where(and(eq(gameTokenAccount.guildId, guildId), eq(gameTokenAccount.userId, userId), sql `${gameTokenAccount.tokens} + ${delta} >= 0`))
                 .returning();
             if (result.length === 0) {
                 return new Err(DomainError.insufficientTokens(`Cannot adjust tokens by ${delta}: would result in negative balance`));
@@ -109,8 +102,7 @@ export class TokenAccountRepository {
             tokens: newTokens,
             updatedAt: sql `NOW()`,
         })
-            .where(eq(gameTokenAccount.guildId, guildId) &&
-            eq(gameTokenAccount.userId, userId))
+            .where(and(eq(gameTokenAccount.guildId, guildId), eq(gameTokenAccount.userId, userId)))
             .returning();
         return mapToDomain(result[0]);
     }
@@ -120,8 +112,7 @@ export class TokenAccountRepository {
     async delete(guildId, userId) {
         await this.db
             .delete(gameTokenAccount)
-            .where(eq(gameTokenAccount.guildId, guildId) &&
-            eq(gameTokenAccount.userId, userId));
+            .where(and(eq(gameTokenAccount.guildId, guildId), eq(gameTokenAccount.userId, userId)));
     }
 }
 /** Error thrown when a token adjustment would result in a negative balance. */

@@ -147,8 +147,8 @@ export class AIChatMentionListener {
     content: string,
   ): Promise<Message | null> {
     try {
-      if (message.channel && 'send' in message.channel && typeof message.channel.send === 'function') {
-        return await (message.channel as unknown as { send: (c: string) => Promise<Message> }).send(content) as Message;
+      if (message.channel.isTextBased()) {
+        return await (message.channel as { send: (c: string) => Promise<Message> }).send(content) as Message;
       }
     } catch {
       // Ignore send failures
@@ -233,8 +233,13 @@ export class AIChatMentionListener {
             }
 
             const pages = this.splitter.split(fullContent);
-            for (const page of pages) {
-              this.sendToChannel(message, page);
+            // P2-41: Fallback for empty split result with non-empty content
+            if (pages.length === 0 && fullContent) {
+              this.sendToChannel(message, fullContent);
+            } else {
+              for (const page of pages) {
+                this.sendToChannel(message, page);
+              }
             }
           });
         }
@@ -247,6 +252,7 @@ export class AIChatMentionListener {
       message.author.id,
       userMessage,
       handler,
+      true, // agentEnabled — loads agent prompts and enables tool-calling model
     );
   }
 
@@ -294,7 +300,10 @@ export class AIChatMentionListener {
             if (isComplete) {
               // Replace thinking message with final content (split if needed)
               const pages = this.splitter.split(chunk);
-              if (pages.length > 0) {
+              // P2-41: Fallback for empty split result with non-empty content
+              if (pages.length === 0 && chunk) {
+                thinkingMsg.edit(chunk).catch(() => {});
+              } else if (pages.length > 0) {
                 thinkingMsg.edit(pages[0]).catch(() => {});
                 for (let i = 1; i < pages.length; i++) {
                   this.sendToChannel(message, pages[i]);

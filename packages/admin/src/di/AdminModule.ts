@@ -328,6 +328,7 @@ export function configureAdminContainer(): void {
   const adminPanelCommand = new AdminPanelCommand(
     adminSessionManager,
     adminPanelViewFactory,
+    currencyFacade,
   );
   container.registerInstance(
     ADMIN_TOKENS.AdminPanelCommand,
@@ -349,6 +350,7 @@ export function configureAdminContainer(): void {
   const balanceHandler = new BalanceManagementHandler(
     currencyFacade,
     adminSessionManager,
+    errorHandler,
   );
   container.registerInstance(
     ADMIN_TOKENS.BalanceManagementHandler,
@@ -473,6 +475,7 @@ export function configureAdminContainer(): void {
   const userPanelCommand = new UserPanelCommand(
     memberInfoFacade,
     panelSessionManager,
+    userPanelEmbedBuilder,
   );
   container.registerInstance(ADMIN_TOKENS.UserPanelCommand, userPanelCommand);
   slashCommandListener.registerCommand(userPanelCommand);

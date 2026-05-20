@@ -1,7 +1,7 @@
 export { BalanceManagementHandler } from './BalanceManagementHandler.js';
 export { TokenManagementHandler } from './TokenManagementHandler.js';
 export { GameSettingsHandler } from './GameSettingsHandler.js';
-export { ProductManagementHandler } from './ProductManagementHandler.js';
+export { AdminProductPanelHandler as ProductManagementHandler } from '../product/AdminProductPanelHandler.js';
 export { AIChannelConfigHandler } from './AIChannelConfigHandler.js';
 export { AIAgentConfigHandler } from './AIAgentConfigHandler.js';
 export { DispatchAfterSalesHandler } from './DispatchAfterSalesHandler.js';

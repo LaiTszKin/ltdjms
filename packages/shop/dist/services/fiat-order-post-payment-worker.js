@@ -75,7 +75,11 @@ export class FiatOrderPostPaymentWorker {
                 await this.fiatOrderRepository.markRewardGrantedIfNeeded(order.orderNumber, new Date());
             }
             // Step 4: Mark fulfilled
-            await this.fiatOrderRepository.markFulfilledIfNeeded(order.orderNumber, new Date());
+            const marked = await this.fiatOrderRepository.markFulfilledIfNeeded(order.orderNumber, new Date());
+            if (!marked) {
+                await this.fiatOrderRepository.releaseFulfillmentProcessing(order.orderNumber);
+                return;
+            }
         }
         catch (e) {
             await this.fiatOrderRepository.releaseFulfillmentProcessing(order.orderNumber);

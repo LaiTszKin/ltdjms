@@ -27,6 +27,7 @@ import { DrizzleAIAgentChannelConfigRepository } from '../persistence/drizzle-ag
 import { type AIChatService } from '../services/ai-chat-service.js';
 import { LangChainAIChatService } from '../services/LangChainAIChatService.js';
 import { MarkdownValidatingAIChatService } from '../markdown/services/MarkdownValidatingAIChatService.js';
+import { AgentConfigCacheInvalidationListener } from '../services/routing/agent-config-cache-invalidation-listener.js';
 
 // Agent Service Factory
 import { AgentServiceFactory } from '../services/AgentServiceFactory.js';
@@ -280,6 +281,10 @@ export function initializeAIModule(): void {
   container.registerInstance(AI_TOKENS.SimplifiedChatMemoryProvider, memoryProvider);
 
   // ===== Token Estimator =====
+  // TODO (P2-38, P3-20): TokenEstimator is registered but not currently wired into
+  // the memory provider. Once context-window management is implemented,
+  // inject TokenEstimator into SimplifiedChatMemoryProvider to enforce
+  // token-budget limits when building conversation history.
   const tokenEstimator = new TokenEstimator();
   container.registerInstance(AI_TOKENS.TokenEstimator, tokenEstimator);
 
@@ -318,6 +323,13 @@ export function initializeAIModule(): void {
   container.registerInstance(AI_TOKENS.RegexBasedAutoFixer, new RegexBasedAutoFixer());
   container.registerInstance(AI_TOKENS.DiscordMarkdownSanitizer, new DiscordMarkdownSanitizer());
   container.registerInstance(AI_TOKENS.DiscordMarkdownPaginator, new DiscordMarkdownPaginator());
+
+  // ===== Agent Config Cache Invalidation Listener =====
+  // Subscribes to AIAgentChannelConfigChangedEvent and invalidates cache entries
+  new AgentConfigCacheInvalidationListener(
+    cacheService,
+    eventPublisher,
+  );
 
   // ===== AIChatMentionListener =====
   const listener = new AIChatMentionListener(

@@ -35,6 +35,10 @@ export class DefaultAIAgentChannelConfigService {
     repository;
     cacheService;
     eventPublisher;
+    /**
+     * Local in-memory cache for the sync isAgentEnabled() fallback.
+     */
+    localSyncCache = new Map();
     constructor(repository, cacheService, eventPublisher) {
         this.repository = repository;
         this.cacheService = cacheService;
@@ -44,22 +48,19 @@ export class DefaultAIAgentChannelConfigService {
         return `${CACHE_KEY_PREFIX}${guildId}:${channelId}`;
     }
     /**
-     * Checks if agent mode is enabled for a channel.
-     * Thread channels should resolve to their parent channel ID before calling this.
+     * Synchronous check using a local in-memory cache.
+     * Falls back to false if the value is not in the local cache.
      *
-     * Check order: Redis cache → DB query → write-back to cache
-     * Redis failure → fallback to DB
-     * DB failure → return false (pure chat mode)
+     * Prefer isAgentEnabledAsync() for production use, since this sync version
+     * may return stale values until the local cache is populated by a prior
+     * async lookup.
      */
     isAgentEnabled(guildId, channelId) {
-        // Use a synchronous-ish approach: try cache first, then DB
-        // In practice, this would be async. For sync compatibility with routing,
-        // we use an internal approach.
-        // This is a simplified sync version that checks a local cache.
-        throw new Error('Use isAgentEnabledAsync for proper async operation');
+        return this.localSyncCache.get(this.buildCacheKey(guildId, channelId)) ?? false;
     }
     /**
      * Async version of isAgentEnabled.
+     * Also populates the local sync cache for subsequent sync lookups.
      */
     async isAgentEnabledAsync(guildId, channelId) {
         const cacheKey = this.buildCacheKey(guildId, channelId);
@@ -67,7 +68,9 @@ export class DefaultAIAgentChannelConfigService {
             // Try Redis cache first
             const cached = await this.cacheService.get(cacheKey);
             if (cached !== null) {
-                return cached === 'true';
+                const enabled = cached === 'true';
+                this.localSyncCache.set(cacheKey, enabled);
+                return enabled;
             }
         }
         catch {
@@ -86,12 +89,14 @@ export class DefaultAIAgentChannelConfigService {
                 catch {
                     // Cache write failure is non-fatal
                 }
+                this.localSyncCache.set(cacheKey, enabled);
                 return enabled;
             }
         }
         catch {
             // DB failure — return false (pure chat mode)
         }
+        this.localSyncCache.set(cacheKey, false);
         return false;
     }
     async setAgentEnabled(guildId, channelId, enabled) {
@@ -104,14 +109,14 @@ export class DefaultAIAgentChannelConfigService {
             await this.invalidateCache(guildId, channelId);
             // Publish event for cache invalidation listeners
             if (this.eventPublisher) {
-                // Publish AgentConfigUpdatedEvent
                 try {
-                    this.eventPublisher.publish({
-                        guildId: BigInt(guildId),
-                        channelId: BigInt(channelId),
+                    const event = {
+                        guildId: Number(guildId),
+                        channelId: Number(channelId),
                         agentEnabled: enabled,
                         changedAt: new Date(),
-                    });
+                    };
+                    this.eventPublisher.publish(event);
                 }
                 catch {
                     // Event publication failure is non-fatal
@@ -143,8 +148,10 @@ export class DefaultAIAgentChannelConfigService {
         return result;
     }
     async invalidateCache(guildId, channelId) {
+        const cacheKey = this.buildCacheKey(guildId, channelId);
+        this.localSyncCache.delete(cacheKey);
         try {
-            await this.cacheService.invalidate(this.buildCacheKey(guildId, channelId));
+            await this.cacheService.invalidate(cacheKey);
         }
         catch {
             // Cache invalidation failure is non-fatal

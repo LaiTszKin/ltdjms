@@ -133,6 +133,9 @@ export class CommonMarkValidator {
         // Skip empty lines
         if (!trimmed)
             return;
+        // Skip emphasis syntax (*text* and **text**) — these are not list markers (P1-28 fix)
+        if (/^\*[^*]+\*$/.test(trimmed) || /^\*\*[^*]+\*\*$/.test(trimmed))
+            return;
         // Check unordered list: - or * or + without space after
         const unorderedMatch = trimmed.match(/^[-*+](\S)/);
         if (unorderedMatch) {

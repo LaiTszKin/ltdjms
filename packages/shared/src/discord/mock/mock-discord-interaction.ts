@@ -8,7 +8,6 @@ import { type DiscordInteraction } from '../domain/discord-interaction.js';
 export class MockDiscordInteraction implements DiscordInteraction {
   private readonly _guildId: string;
   private readonly _userId: string;
-  private readonly _channelId: string;
   private readonly _ephemeral: boolean;
   private _acknowledged = false;
 
@@ -20,12 +19,11 @@ export class MockDiscordInteraction implements DiscordInteraction {
   constructor(
     guildId: string,
     userId: string,
-    channelId: string = '0',
+    _channelId?: string,
     ephemeral = false,
   ) {
     this._guildId = guildId;
     this._userId = userId;
-    this._channelId = channelId;
     this._ephemeral = ephemeral;
   }
 
@@ -35,10 +33,6 @@ export class MockDiscordInteraction implements DiscordInteraction {
 
   getUserId(): string {
     return this._userId;
-  }
-
-  getChannelId(): string {
-    return this._channelId;
   }
 
   isEphemeral(): boolean {

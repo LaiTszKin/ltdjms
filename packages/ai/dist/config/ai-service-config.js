@@ -28,7 +28,6 @@ export class AIServiceConfig {
     showReasoning;
     enableMarkdownValidation;
     streamingBypassValidation;
-    enableThinking;
     constructor(values) {
         this.baseUrl = values.baseUrl;
         this.apiKey = values.apiKey;
@@ -38,8 +37,6 @@ export class AIServiceConfig {
         this.showReasoning = values.showReasoning;
         this.enableMarkdownValidation = values.enableMarkdownValidation;
         this.streamingBypassValidation = values.streamingBypassValidation;
-        // DeepSeek models automatically enable thinking
-        this.enableThinking = values.showReasoning || /deepseek/i.test(values.model);
     }
     /**
      * Creates an AIServiceConfig from the shared EnvironmentConfig.
@@ -90,10 +87,6 @@ export class AIServiceConfig {
             return err(DomainError.invalidInput(`AI config validation failed: ${firstIssue.path.join('.')} — ${firstIssue.message}`));
         }
         return okVoid();
-    }
-    /** DeepSeek model detection. */
-    isDeepSeekModel() {
-        return /deepseek/i.test(this.model);
     }
 }
 //# sourceMappingURL=ai-service-config.js.map

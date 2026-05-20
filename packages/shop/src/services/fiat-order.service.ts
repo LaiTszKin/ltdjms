@@ -44,7 +44,7 @@ export class FiatOrderService {
   private readonly log: pino.Logger;
 
   constructor(
-    private readonly productService: { getProduct(productId: number): Promise<Product | null> },
+    private readonly productService: { findById(productId: number): Promise<Product | null> },
     private readonly ecpayCvsPaymentService: EcpayCvsPaymentService,
     private readonly fiatOrderRepository: FiatOrderRepository,
     logger?: pino.Logger,
@@ -52,13 +52,18 @@ export class FiatOrderService {
     this.log = logger ?? pino({ level: 'warn' });
   }
 
+  /**
+   * Creates a fiat-only order.
+   * The tradeDesc parameter is an extension beyond spec R4.1.
+   * When omitted, a default description is used.
+   */
   async createFiatOnlyOrder(
     guildId: number,
     userId: number,
     productId: number,
     tradeDesc?: string,
   ): Promise<Result<FiatOrderResult, DomainError>> {
-    const product = await this.productService.getProduct(productId);
+    const product = await this.productService.findById(productId);
     if (!product || product.guildId !== guildId) {
       return err(DomainError.invalidInput('找不到該商品'));
     }

@@ -11,5 +11,5 @@ export declare class TransactionHistoryHandler implements InteractionHandler {
     private readonly sessionManager;
     readonly customIdPrefix = "user_history";
     constructor(memberInfoFacade: MemberInfoFacade, sessionManager: PanelSessionManager);
-    execute(interaction: DiscordInteraction, _context: DiscordContext): Promise<void>;
+    execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void>;
 }

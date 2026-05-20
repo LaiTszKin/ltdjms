@@ -6,9 +6,9 @@ describe('CurrencyManagementFacade', () => {
     let mockBalanceService;
     let mockAdjustService;
     let mockConfigService;
-    const guildId = 1;
-    const userId = 100;
-    const actorId = 200;
+    const guildId = '1';
+    const userId = '100';
+    const actorId = '200';
     beforeEach(() => {
         mockBalanceService = {
             tryGetBalance: vi.fn(),
@@ -25,7 +25,7 @@ describe('CurrencyManagementFacade', () => {
     describe('getConfig', () => {
         it('should return config on success', async () => {
             const config = {
-                guildId,
+                guildId: Number(guildId),
                 currencyName: 'Coins',
                 currencyIcon: '🪙',
                 createdAt: new Date(),
@@ -47,8 +47,8 @@ describe('CurrencyManagementFacade', () => {
     describe('getBalance', () => {
         it('should return balance on success', async () => {
             const balance = {
-                guildId,
-                userId,
+                guildId: Number(guildId),
+                userId: Number(userId),
                 balance: 500,
                 currencyName: 'Coins',
                 currencyIcon: '🪙',
@@ -62,8 +62,8 @@ describe('CurrencyManagementFacade', () => {
     describe('adjustBalance (add)', () => {
         it('should add balance successfully', async () => {
             const adjustResult = {
-                guildId,
-                userId,
+                guildId: Number(guildId),
+                userId: Number(userId),
                 previousBalance: 100,
                 newBalance: 200,
                 adjustment: 100,
@@ -89,8 +89,8 @@ describe('CurrencyManagementFacade', () => {
     describe('deductBalance', () => {
         it('should deduct balance successfully', async () => {
             const adjustResult = {
-                guildId,
-                userId,
+                guildId: Number(guildId),
+                userId: Number(userId),
                 previousBalance: 200,
                 newBalance: 100,
                 adjustment: -100,
@@ -110,8 +110,8 @@ describe('CurrencyManagementFacade', () => {
     describe('setBalance', () => {
         it('should set balance successfully', async () => {
             const adjustResult = {
-                guildId,
-                userId,
+                guildId: Number(guildId),
+                userId: Number(userId),
                 previousBalance: 100,
                 newBalance: 500,
                 adjustment: 400,

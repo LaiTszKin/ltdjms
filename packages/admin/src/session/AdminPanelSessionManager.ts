@@ -22,7 +22,7 @@ export class AdminPanelSessionManager {
   /** In-memory session store. guildId:userId → session data. */
   private readonly sessions = new Map<string, AdminPanelSessionData>();
 
-  private buildKey(guildId: number, userId: number): string {
+  private buildKey(guildId: string, userId: string): string {
     return `${SESSION_KEY_PREFIX}${guildId}:${userId}`;
   }
 
@@ -31,8 +31,8 @@ export class AdminPanelSessionManager {
    * Automatically replaces any existing session for the same guild+user.
    */
   createSession(
-    guildId: number,
-    userId: number,
+    guildId: string,
+    userId: string,
   ): AdminPanelSessionData {
     // Remove existing session for this guild+user
     const key = this.buildKey(guildId, userId);
@@ -57,8 +57,8 @@ export class AdminPanelSessionManager {
    * Returns null if no session exists or the session has expired.
    */
   getSession(
-    guildId: number,
-    userId: number,
+    guildId: string,
+    userId: string,
   ): AdminPanelSessionData | null {
     const key = this.buildKey(guildId, userId);
     const session = this.sessions.get(key);
@@ -79,8 +79,8 @@ export class AdminPanelSessionManager {
    * Updates the view state for a session.
    */
   setViewState(
-    guildId: number,
-    userId: number,
+    guildId: string,
+    userId: string,
     state: AdminPanelViewState,
   ): boolean {
     const session = this.getSession(guildId, userId);
@@ -94,8 +94,8 @@ export class AdminPanelSessionManager {
    * Gets the current view state for a session.
    */
   getViewState(
-    guildId: number,
-    userId: number,
+    guildId: string,
+    userId: string,
   ): AdminPanelViewState | null {
     const session = this.getSession(guildId, userId);
     return session?.viewState ?? null;
@@ -105,8 +105,8 @@ export class AdminPanelSessionManager {
    * Stores a context value in the session.
    */
   setContext(
-    guildId: number,
-    userId: number,
+    guildId: string,
+    userId: string,
     key: string,
     value: string,
   ): boolean {
@@ -121,8 +121,8 @@ export class AdminPanelSessionManager {
    * Gets a context value from the session.
    */
   getContext(
-    guildId: number,
-    userId: number,
+    guildId: string,
+    userId: string,
     key: string,
   ): string | null {
     const session = this.getSession(guildId, userId);
@@ -132,7 +132,7 @@ export class AdminPanelSessionManager {
   /**
    * Removes a session.
    */
-  removeSession(guildId: number, userId: number): void {
+  removeSession(guildId: string, userId: string): void {
     const key = this.buildKey(guildId, userId);
     this.sessions.delete(key);
   }
@@ -141,7 +141,7 @@ export class AdminPanelSessionManager {
    * Gets all active sessions for a guild.
    * Filters out expired sessions.
    */
-  getAllForGuild(guildId: number): AdminPanelSessionData[] {
+  getAllForGuild(guildId: string): AdminPanelSessionData[] {
     const results: AdminPanelSessionData[] = [];
     const prefix = `${SESSION_KEY_PREFIX}${guildId}:`;
 

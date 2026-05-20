@@ -4,6 +4,13 @@ import type { EscortOptionCatalogEntry } from '@ltdjms/dispatch';
  * Builder for admin panel modal configurations.
  * Provides structured data that Discord modal builders consume.
  * Matches Java AdminPanelModalFactory.
+ *
+ * RESPONSIBILITY: This factory handles shared/generic admin panel modals
+ * (balance, tokens, games, escort pricing/catalog).
+ * Product-specific modals (create/edit product, generate codes) are in
+ * AdminProductPanelModalFactory under panel/admin/product/.
+ *
+ * @see AdminProductPanelModalFactory — product-specific modals
  */
 export declare class AdminPanelModalFactory {
     /**

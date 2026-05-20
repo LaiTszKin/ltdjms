@@ -188,6 +188,10 @@ export interface AIChannelRestrictionService {
     guildId: string,
     categoryId: string,
   ): Promise<Result<void, DomainError>>;
+  deleteRemovedChannels(
+    guildId: string,
+    validChannelIds: string[],
+  ): Promise<void>;
 }
 
 // ===== Default Implementation =====
@@ -328,5 +332,13 @@ export class DefaultAIChannelRestrictionService
         this.cache.delete(key);
       }
     }
+  }
+
+  async deleteRemovedChannels(
+    guildId: string,
+    validChannelIds: string[],
+  ): Promise<void> {
+    await this.repository.deleteRemovedChannels(guildId, validChannelIds);
+    this.invalidateGuildCache(guildId);
   }
 }

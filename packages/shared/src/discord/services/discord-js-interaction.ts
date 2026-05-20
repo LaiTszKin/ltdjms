@@ -1,5 +1,5 @@
 import {
-  type CommandInteraction,
+  CommandInteraction,
   type ButtonInteraction,
   type ModalSubmitInteraction,
   type EmbedBuilder,
@@ -12,14 +12,18 @@ import { type DiscordInteraction } from '../domain/discord-interaction.js';
  */
 export class DiscordJsInteraction implements DiscordInteraction {
   private acknowledged: boolean;
+  private _ephemeral: boolean;
 
   constructor(
     private readonly interaction:
       | CommandInteraction
       | ButtonInteraction
       | ModalSubmitInteraction,
+    ephemeral?: boolean,
   ) {
     this.acknowledged = interaction.replied || interaction.deferred;
+    // CommandInteraction has an ephemeral property; others default to false
+    this._ephemeral = ephemeral ?? (interaction instanceof CommandInteraction ? (interaction.ephemeral ?? false) : false);
   }
 
   getGuildId(): string {
@@ -30,12 +34,8 @@ export class DiscordJsInteraction implements DiscordInteraction {
     return this.interaction.user.id;
   }
 
-  getChannelId(): string {
-    return this.interaction.channelId ?? '0';
-  }
-
   isEphemeral(): boolean {
-    return false;
+    return this._ephemeral;
   }
 
   async reply(message: string): Promise<void> {

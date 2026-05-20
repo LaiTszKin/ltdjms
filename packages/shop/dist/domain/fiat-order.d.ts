@@ -680,6 +680,10 @@ export declare const FiatOrderSchema: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.Z
 }>;
 export type FiatOrder = z.infer<typeof FiatOrderSchema>;
 export declare function createPending(guildId: number, buyerUserId: number, productId: number, productName: string, fulfillmentRewardType: RewardType | null, fulfillmentRewardAmount: number | null, fulfillmentAutoCreateEscortOrder: boolean, fulfillmentEscortOptionCode: string | null, orderNumber: string, paymentNo: string, amountTwd: number, expireAt: Date): FiatOrder;
+/**
+ * Convenience utility that creates a pending fiat order with no reward, no escort.
+ * Delegates to createPending with null/default values for reward and escort fields.
+ */
 export declare function createPendingSimple(guildId: number, buyerUserId: number, productId: number, productName: string, orderNumber: string, paymentNo: string, amountTwd: number, expireAt: Date): FiatOrder;
 export declare function isPaid(order: FiatOrder): boolean;
 export declare function isExpired(order: FiatOrder): boolean;

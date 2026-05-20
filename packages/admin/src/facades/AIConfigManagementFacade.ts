@@ -10,6 +10,12 @@ import type {
  * Facade for AI channel and agent configuration management.
  * Wraps AIChannelRestrictionService and AIAgentChannelConfigService.
  * Matches Java AIConfigManagementFacade.
+ *
+ * DEPRECATED METHODS: The following methods are deprecated and retained only
+ * for backward compatibility. New code should use their replacements:
+ *   - listAllowedChannels  → getAllowedChannels
+ *   - listAllowedCategories → getAllowedCategories
+ *   - listAgentChannels    → getAgentConfigs
  */
 export class AIConfigManagementFacade {
   constructor(
@@ -38,6 +44,11 @@ export class AIConfigManagementFacade {
 
   /**
    * Adds a channel to the AI allowlist.
+   *
+   * @param channelName - Display name of the channel. Passed through to
+   *   AIChannelRestrictionService.addAllowedChannel for logging/reference.
+   *   This parameter is accepted for API completeness (R13.4) but may not
+   *   be persisted by all implementations.
    */
   async addAllowedChannel(
     guildId: string,
@@ -124,6 +135,14 @@ export class AIConfigManagementFacade {
 
   /**
    * Enables agent mode for a channel with the specified mode.
+   *
+   * NOTE: The `_mode` parameter is accepted for API consistency but is currently
+   * ignored because AIAgentChannelConfigService.setAgentEnabled(guildId, channelId, enabled)
+   * only supports a boolean on/off toggle. Once the service supports mode selection
+   * (e.g., 'chat', 'agent', 'hybrid'), pass `_mode` through to the service.
+   *
+   * TODO(P1-36): Pass `mode` through to the service layer when setAgentEnabled
+   * signature is extended to accept a mode parameter.
    */
   async enableAgent(
     guildId: string,

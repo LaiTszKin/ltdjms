@@ -104,7 +104,11 @@ export class DiceGame2Service {
     // Analyze rolls
     const analysis = this.analyzeRolls(diceRolls, effectiveConfig);
 
-    // Get previous balance
+    // Get previous balance (0 amount call).
+    // creditReward(0) triggers a DB read even though no reward is applied.
+    // This is deliberate to match Java GameRewardService behavior exactly (fidelity to original).
+    // The currency account and game token account are separate rows, so the DB round-trip
+    // is acceptable for correctness.
     const previousBalance = await this.gameRewardService.creditReward(
       guildId,
       userId,

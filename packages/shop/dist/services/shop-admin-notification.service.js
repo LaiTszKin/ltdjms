@@ -6,7 +6,22 @@ export class ShopAdminNotificationService {
         this.discordRuntimeGateway = discordRuntimeGateway;
         this.log = logger ?? pino({ level: 'warn' });
     }
-    notifyAdminsOrderCreated(guildId, buyerUserId, product, orderType, orderReference) {
+    /**
+     * Adapter for the AdminOrderNotifier interface used by FiatOrderPostPaymentWorker (P1-10).
+     * Delegates to the existing escort notification builder.
+     */
+    notifyAdminsOrderCreated(guildId, buyerUserId, dispatchOrder) {
+        if (!dispatchOrder)
+            return;
+        const message = this.buildAdminEscortNotification(guildId, buyerUserId, dispatchOrder);
+        this.notifyGuildAdmins(guildId, message);
+    }
+    /**
+     * Notifies admins about a new product order with product details.
+     * This method is kept for direct use (e.g., manual dispatch).
+     * The FiatOrderPostPaymentWorker uses the 3-parameter overload above.
+     */
+    notifyAdminsProductOrderCreated(guildId, buyerUserId, product, orderType, orderReference) {
         if (!product)
             return;
         const message = this.buildAdminOrderNotification(guildId, buyerUserId, product, orderType, orderReference);

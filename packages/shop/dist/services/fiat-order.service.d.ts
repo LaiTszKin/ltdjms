@@ -18,7 +18,12 @@ export declare class FiatOrderService {
     private readonly fiatOrderRepository;
     private readonly log;
     constructor(productService: {
-        getProduct(productId: number): Promise<Product | null>;
+        findById(productId: number): Promise<Product | null>;
     }, ecpayCvsPaymentService: EcpayCvsPaymentService, fiatOrderRepository: FiatOrderRepository, logger?: pino.Logger);
+    /**
+     * Creates a fiat-only order.
+     * The tradeDesc parameter is an extension beyond spec R4.1.
+     * When omitted, a default description is used.
+     */
     createFiatOnlyOrder(guildId: number, userId: number, productId: number, tradeDesc?: string): Promise<Result<FiatOrderResult, DomainError>>;
 }

@@ -14,9 +14,7 @@ export declare class FiatPaymentCallbackService {
     private readonly fiatOrderRepository;
     private readonly log;
     constructor(config: EnvironmentConfig, fiatOrderRepository: FiatOrderRepository, logger?: pino.Logger);
-    handleCallback(requestBody: string | null, contentType: string | null): CallbackResult;
-    handleCallbackAsync(requestBody: string | null, contentType: string | null): Promise<CallbackResult>;
-    private processWithOrder;
+    handleCallback(requestBody: string | null, contentType: string | null): Promise<CallbackResult>;
     private processWithOrderAsync;
     private isExpiredStatus;
     private parseCallbackNode;
@@ -30,7 +28,7 @@ export declare class FiatPaymentCallbackService {
     private extractTradeAmount;
     private isValidPaidCallback;
     private isPaidStatus;
-    private sanitizePayload;
+    private truncateTo;
     private textOrNull;
     private parsePositiveLong;
 }

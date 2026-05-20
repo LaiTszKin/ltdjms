@@ -4,8 +4,8 @@ import { PanelSessionManager } from '../PanelSessionManager.js';
 describe('PanelSessionManager', () => {
   let manager: PanelSessionManager;
 
-  const guildId = 1;
-  const userId = 100;
+  const guildId = '1';
+  const userId = '100';
 
   beforeEach(() => {
     manager = new PanelSessionManager();
@@ -33,18 +33,18 @@ describe('PanelSessionManager', () => {
     });
 
     it('should return null for non-existent session', () => {
-      expect(manager.getSession(guildId, 999)).toBeNull();
+      expect(manager.getSession(guildId, '999')).toBeNull();
     });
   });
 
   describe('getAllForGuild', () => {
     it('should return all sessions for a guild', () => {
-      manager.createSession(1, 100);
-      manager.createSession(1, 101);
-      manager.createSession(2, 200);
+      manager.createSession('1', '100');
+      manager.createSession('1', '101');
+      manager.createSession('2', '200');
 
-      expect(manager.getAllForGuild(1)).toHaveLength(2);
-      expect(manager.getAllForGuild(2)).toHaveLength(1);
+      expect(manager.getAllForGuild('1')).toHaveLength(2);
+      expect(manager.getAllForGuild('2')).toHaveLength(1);
     });
   });
 

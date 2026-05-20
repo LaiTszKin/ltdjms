@@ -5,7 +5,7 @@ describe('GameConfigManagementFacade', () => {
     let facade;
     let mockRepo;
     let eventPublisher;
-    const guildId = 1;
+    const guildId = '1';
     beforeEach(() => {
         mockRepo = {
             findDice1Config: vi.fn(),
@@ -20,7 +20,7 @@ describe('GameConfigManagementFacade', () => {
     describe('Dice Game 1', () => {
         it('should get config', async () => {
             const config = {
-                guildId,
+                guildId: Number(guildId),
                 minTokensPerPlay: 10,
                 maxTokensPerPlay: 100,
                 rewardPerDiceValue: 5,
@@ -34,7 +34,7 @@ describe('GameConfigManagementFacade', () => {
         });
         it('should update config and publish event', async () => {
             const updated = {
-                guildId,
+                guildId: Number(guildId),
                 minTokensPerPlay: 20,
                 maxTokensPerPlay: 200,
                 rewardPerDiceValue: 10,
@@ -50,7 +50,7 @@ describe('GameConfigManagementFacade', () => {
             });
             expect(result.isOk()).toBe(true);
             expect(eventPublisher.publish).toHaveBeenCalledWith(expect.objectContaining({
-                guildId,
+                guildId: Number(guildId),
                 gameType: GameType.DICE_GAME_1,
             }));
         });
@@ -66,7 +66,7 @@ describe('GameConfigManagementFacade', () => {
     describe('Dice Game 2', () => {
         it('should get config', async () => {
             const config = {
-                guildId,
+                guildId: Number(guildId),
                 minTokensPerPlay: 10,
                 maxTokensPerPlay: 100,
                 straightMultiplier: 2.0,

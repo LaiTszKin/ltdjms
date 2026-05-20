@@ -5,6 +5,10 @@ import { ConversationIdStrategy } from '../ai-chat-service.js';
  * Matches Java DiscordThreadHistoryProvider.
  */
 export class DiscordThreadHistoryProvider {
+    runtimeGateway;
+    constructor(runtimeGateway) {
+        this.runtimeGateway = runtimeGateway;
+    }
     /**
      * Gets thread history for a specific user.
      * Only returns the user's messages + bot replies for privacy isolation.
@@ -17,10 +21,24 @@ export class DiscordThreadHistoryProvider {
      */
     async getThreadHistory(guildId, threadId, userId, botUserId) {
         try {
-            // We need the guild and thread channel from discord.js
-            // This is a simplified implementation that works through the runtime gateway
+            const client = this.runtimeGateway.requireReadyClient();
+            const channel = client.channels.cache.get(threadId) ?? await client.channels.fetch(threadId).catch(() => null);
+            if (!channel || !channel.isTextBased()) {
+                return [];
+            }
+            const fetched = await channel.messages.fetch({ limit: 100 });
             const messages = [];
-            return messages;
+            for (const [, msg] of fetched) {
+                // Privacy isolation: only include user's own messages and bot replies
+                if (msg.author.id === userId) {
+                    messages.push({ role: 'user', content: msg.content });
+                }
+                else if (msg.author.id === botUserId) {
+                    messages.push({ role: 'assistant', content: msg.content });
+                }
+            }
+            // Return in chronological order (discord.js returns newest first)
+            return messages.reverse();
         }
         catch {
             // Fetch failure → return empty array (don't block conversation)
@@ -55,7 +73,7 @@ export class SimplifiedChatMemoryProvider {
         if (strategy === ConversationIdStrategy.THREAD_LEVEL) {
             return this.buildThreadLevelMemory(memoryId);
         }
-        return this.buildMessageLevelMemory();
+        return this.buildMessageLevelMemory(memoryId);
     }
     /**
      * Builds thread-level memory: Discord thread history + tool call history.
@@ -88,10 +106,42 @@ export class SimplifiedChatMemoryProvider {
         return messages;
     }
     /**
-     * Builds message-level memory (limited, max 10 messages).
+     * Builds message-level memory: up to 10 recent channel messages for non-thread conversations.
+     * Format: guildId:channelId:userId:messageId
      */
-    async buildMessageLevelMemory() {
-        return [];
+    async buildMessageLevelMemory(conversationId) {
+        const guildId = ConversationIdBuilder.extractGuildId(conversationId);
+        const parts = conversationId.split(':');
+        const channelId = parts.length >= 2 ? parts[1] : null;
+        const userId = ConversationIdBuilder.extractUserId(conversationId);
+        if (!guildId || !channelId || !userId) {
+            return [];
+        }
+        try {
+            const client = this.runtimeGateway.requireReadyClient();
+            const channel = client.channels.cache.get(channelId) ?? await client.channels.fetch(channelId).catch(() => null);
+            if (!channel || !channel.isTextBased()) {
+                return [];
+            }
+            const botUserId = this.runtimeGateway.selfUserId();
+            const fetched = await channel.messages.fetch({ limit: 10 });
+            const messages = [];
+            for (const [, msg] of fetched) {
+                // Privacy isolation: only include user's own messages and bot replies
+                if (msg.author.id === userId) {
+                    messages.push({ role: 'user', content: msg.content });
+                }
+                else if (msg.author.id === botUserId) {
+                    messages.push({ role: 'assistant', content: msg.content });
+                }
+            }
+            // Return in chronological order (discord.js returns newest first)
+            return messages.reverse();
+        }
+        catch {
+            // Fetch failure → return empty array (don't block conversation)
+            return [];
+        }
     }
 }
 //# sourceMappingURL=chat-memory-provider.js.map

@@ -48,7 +48,6 @@ export declare class AIServiceConfig {
     readonly showReasoning: boolean;
     readonly enableMarkdownValidation: boolean;
     readonly streamingBypassValidation: boolean;
-    readonly enableThinking: boolean;
     private constructor();
     /**
      * Creates an AIServiceConfig from the shared EnvironmentConfig.
@@ -67,6 +66,4 @@ export declare class AIServiceConfig {
      * Returns okVoid or err(DomainError).
      */
     validate(): Result<void, DomainError>;
-    /** DeepSeek model detection. */
-    isDeepSeekModel(): boolean;
 }

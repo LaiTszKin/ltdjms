@@ -37,3 +37,9 @@ export declare enum ButtonStyle {
     DANGER = 4,
     LINK = 5
 }
+/**
+ * Creates a ButtonView with length validation on id and label.
+ * Discord limits: id max 100 chars, label max 80 chars.
+ * Throws if either exceeds the limit.
+ */
+export declare function createButtonView(id: string, label: string, style?: ButtonStyle, disabled?: boolean): ButtonView;

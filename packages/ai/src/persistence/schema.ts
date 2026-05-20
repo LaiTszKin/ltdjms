@@ -13,6 +13,12 @@ import {
 /**
  * ai_allowed_channels table (V010__ai_channel_restriction.sql).
  * Stores channels where AI chat is explicitly allowed.
+ *
+ * NOTE: The Drizzle table name 'ai_channel_restriction' differs from the logical
+ * entity name 'ai_allowed_channels'. The Flyway migration V010__ai_channel_restriction.sql
+ * creates a table called 'ai_channel_restriction', so the Drizzle schema must match
+ * that physical name. The TypeScript identifier 'aiAllowedChannel' reflects the
+ * logical entity name.
  */
 export const aiAllowedChannel = pgTable(
   'ai_channel_restriction',

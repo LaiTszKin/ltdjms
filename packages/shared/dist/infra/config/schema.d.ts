@@ -2,13 +2,20 @@ import { z } from 'zod';
 /**
  * Zod schema for all configuration values.
  * Matches the Java EnvironmentConfig fields.
+ *
+ * NOTE: The Java implementation has an additional Typesafe Config fallback layer via
+ * application.properties. This is intentionally omitted here for simplicity —
+ * Zod's default() serves as the built-in default layer, and EnvironmentConfig
+ * merges process.env > .env file > Zod defaults.
  */
 export declare const ConfigSchema: z.ZodObject<{
     DISCORD_BOT_TOKEN: z.ZodString;
     DATABASE_HOST: z.ZodDefault<z.ZodString>;
     DATABASE_PORT: z.ZodDefault<z.ZodNumber>;
     DATABASE_NAME: z.ZodDefault<z.ZodString>;
+    DB_USERNAME: z.ZodOptional<z.ZodString>;
     DATABASE_USER: z.ZodDefault<z.ZodString>;
+    DB_PASSWORD: z.ZodOptional<z.ZodString>;
     DATABASE_PASSWORD: z.ZodDefault<z.ZodString>;
     DB_URL: z.ZodOptional<z.ZodString>;
     DB_POOL_MAX_SIZE: z.ZodDefault<z.ZodNumber>;
@@ -70,13 +77,17 @@ export declare const ConfigSchema: z.ZodObject<{
     ECPAY_CALLBACK_BIND_HOST: string;
     ECPAY_CALLBACK_BIND_PORT: number;
     ECPAY_CALLBACK_PATH: string;
+    DB_USERNAME?: string | undefined;
+    DB_PASSWORD?: string | undefined;
     DB_URL?: string | undefined;
 }, {
     DISCORD_BOT_TOKEN: string;
     DATABASE_HOST?: string | undefined;
     DATABASE_PORT?: number | undefined;
     DATABASE_NAME?: string | undefined;
+    DB_USERNAME?: string | undefined;
     DATABASE_USER?: string | undefined;
+    DB_PASSWORD?: string | undefined;
     DATABASE_PASSWORD?: string | undefined;
     DB_URL?: string | undefined;
     DB_POOL_MAX_SIZE?: number | undefined;

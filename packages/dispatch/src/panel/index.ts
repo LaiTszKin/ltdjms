@@ -51,6 +51,8 @@ export {
   embedViewToApiEmbed,
   buttonsToComponents,
   buildPanelReplyPayload,
+  // Format utilities
+  formatPanelText,
 } from './DispatchPanelView.js';
 
 export {

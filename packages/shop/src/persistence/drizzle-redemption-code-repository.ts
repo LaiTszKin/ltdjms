@@ -1,4 +1,4 @@
-import { eq, and, isNull, or, sql, gt, lte } from 'drizzle-orm';
+import { eq, and, isNull, or, sql, gt, gte, lte } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { type RedemptionCodeRepository, type CodeStats, createCodeStatsZero } from '../domain/redemption-code-repository.js';
 import { type RedemptionCode } from '../domain/redemption-code.js';
@@ -35,10 +35,10 @@ export class DrizzleRedemptionCodeRepository implements RedemptionCodeRepository
       .insert(redemptionCodeTable)
       .values({
         code: code.code,
-        productId: code.productId ? String(code.productId) : null,
-        guildId: String(code.guildId),
+        productId: code.productId ?? null,
+        guildId: Number(code.guildId),
         expiresAt: code.expiresAt,
-        redeemedBy: code.redeemedBy ? String(code.redeemedBy) : null,
+        redeemedBy: code.redeemedBy ?? null,
         redeemedAt: code.redeemedAt,
         createdAt: code.createdAt,
         quantity: code.quantity,
@@ -57,10 +57,10 @@ export class DrizzleRedemptionCodeRepository implements RedemptionCodeRepository
       .values(
         codes.map((code) => ({
           code: code.code,
-          productId: code.productId ? String(code.productId) : null,
-          guildId: String(code.guildId),
+          productId: code.productId ?? null,
+          guildId: Number(code.guildId),
           expiresAt: code.expiresAt,
-          redeemedBy: code.redeemedBy ? String(code.redeemedBy) : null,
+          redeemedBy: code.redeemedBy ?? null,
           redeemedAt: code.redeemedAt,
           createdAt: code.createdAt,
           quantity: code.quantity,
@@ -77,7 +77,7 @@ export class DrizzleRedemptionCodeRepository implements RedemptionCodeRepository
     const [row] = await this.db
       .update(redemptionCodeTable)
       .set({
-        redeemedBy: code.redeemedBy ? String(code.redeemedBy) : null,
+        redeemedBy: code.redeemedBy ?? null,
         redeemedAt: code.redeemedAt,
       })
       .where(eq(redemptionCodeTable.id, code.id))
@@ -96,7 +96,7 @@ export class DrizzleRedemptionCodeRepository implements RedemptionCodeRepository
     const result = await this.db
       .update(redemptionCodeTable)
       .set({
-        redeemedBy: String(userId),
+        redeemedBy: userId,
         redeemedAt,
       })
       .where(
@@ -127,7 +127,7 @@ export class DrizzleRedemptionCodeRepository implements RedemptionCodeRepository
       .where(
         and(
           eq(redemptionCodeTable.id, codeId),
-          eq(redemptionCodeTable.redeemedBy, String(userId)),
+          eq(redemptionCodeTable.redeemedBy, userId),
           eq(redemptionCodeTable.redeemedAt, redeemedAt),
         ),
       );
@@ -138,7 +138,7 @@ export class DrizzleRedemptionCodeRepository implements RedemptionCodeRepository
     const [row] = await this.db
       .select()
       .from(redemptionCodeTable)
-      .where(eq(redemptionCodeTable.code, code.toUpperCase()))
+      .where(eq(redemptionCodeTable.code, code))
       .limit(1);
     return row ? mapRow(row) : null;
   }
@@ -156,7 +156,7 @@ export class DrizzleRedemptionCodeRepository implements RedemptionCodeRepository
     const [row] = await this.db
       .select({ id: redemptionCodeTable.id })
       .from(redemptionCodeTable)
-      .where(eq(redemptionCodeTable.code, code.toUpperCase()))
+      .where(eq(redemptionCodeTable.code, code))
       .limit(1);
     return row !== undefined;
   }
@@ -169,7 +169,7 @@ export class DrizzleRedemptionCodeRepository implements RedemptionCodeRepository
     const rows = await this.db
       .select()
       .from(redemptionCodeTable)
-      .where(eq(redemptionCodeTable.productId, String(productId)))
+      .where(eq(redemptionCodeTable.productId, productId))
       .orderBy(sql`created_at DESC`)
       .limit(limit)
       .offset(offset);
@@ -180,7 +180,7 @@ export class DrizzleRedemptionCodeRepository implements RedemptionCodeRepository
     const [row] = await this.db
       .select({ count: sql<number>`count(*)` })
       .from(redemptionCodeTable)
-      .where(eq(redemptionCodeTable.productId, String(productId)));
+      .where(eq(redemptionCodeTable.productId, productId));
     return row ? Number(row.count) : 0;
   }
 
@@ -190,7 +190,7 @@ export class DrizzleRedemptionCodeRepository implements RedemptionCodeRepository
       .from(redemptionCodeTable)
       .where(
         and(
-          eq(redemptionCodeTable.productId, String(productId)),
+          eq(redemptionCodeTable.productId, productId),
           sql`${redemptionCodeTable.redeemedBy} IS NOT NULL`,
         ),
       );
@@ -203,7 +203,7 @@ export class DrizzleRedemptionCodeRepository implements RedemptionCodeRepository
       .from(redemptionCodeTable)
       .where(
         and(
-          eq(redemptionCodeTable.productId, String(productId)),
+          eq(redemptionCodeTable.productId, productId),
           isNull(redemptionCodeTable.redeemedBy),
         ),
       );
@@ -215,7 +215,7 @@ export class DrizzleRedemptionCodeRepository implements RedemptionCodeRepository
       .delete(redemptionCodeTable)
       .where(
         and(
-          eq(redemptionCodeTable.productId, String(productId)),
+          eq(redemptionCodeTable.productId, productId),
           isNull(redemptionCodeTable.redeemedBy),
         ),
       );
@@ -223,7 +223,7 @@ export class DrizzleRedemptionCodeRepository implements RedemptionCodeRepository
   }
 
   async getStatsByProductId(productId: number): Promise<CodeStats> {
-    const [row] = await this.db.execute(
+    const result = await this.db.execute(
       sql`
         SELECT
           COUNT(*) as total,
@@ -231,11 +231,12 @@ export class DrizzleRedemptionCodeRepository implements RedemptionCodeRepository
           COUNT(CASE WHEN redeemed_by IS NULL THEN 1 END) as unused,
           COUNT(CASE WHEN redeemed_by IS NULL AND expires_at IS NOT NULL AND expires_at < NOW() THEN 1 END) as expired
         FROM redemption_code
-        WHERE product_id = ${String(productId)}
+        WHERE product_id = ${productId}
       `,
     );
-    if (!row || !row.length) return createCodeStatsZero();
-    const r = row[0] as any;
+    const rows = result.rows;
+    if (!rows || !rows.length) return createCodeStatsZero();
+    const r = rows[0] as any;
     return {
       totalCount: Number(r.total),
       redeemedCount: Number(r.redeemed),
@@ -250,7 +251,7 @@ export class DrizzleRedemptionCodeRepository implements RedemptionCodeRepository
       .set({ invalidatedAt: new Date() })
       .where(
         and(
-          eq(redemptionCodeTable.productId, String(productId)),
+          eq(redemptionCodeTable.productId, productId),
           isNull(redemptionCodeTable.invalidatedAt),
         ),
       );
@@ -263,7 +264,7 @@ export class DrizzleRedemptionCodeRepository implements RedemptionCodeRepository
       .from(redemptionCodeTable)
       .where(
         and(
-          eq(redemptionCodeTable.productId, String(productId)),
+          eq(redemptionCodeTable.productId, productId),
           sql`${redemptionCodeTable.invalidatedAt} IS NOT NULL`,
         ),
       )

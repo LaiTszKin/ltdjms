@@ -5,8 +5,8 @@ describe('GameTokenManagementFacade', () => {
     let facade;
     let mockTokenService;
     let mockTxService;
-    const guildId = 1;
-    const userId = 100;
+    const guildId = '1';
+    const userId = '100';
     beforeEach(() => {
         mockTokenService = {
             getBalance: vi.fn(),
@@ -33,19 +33,19 @@ describe('GameTokenManagementFacade', () => {
     describe('adjustTokens', () => {
         it('should adjust tokens successfully', async () => {
             const adjustResult = {
-                guildId,
-                userId,
+                guildId: Number(guildId),
+                userId: Number(userId),
                 previousTokens: 100,
                 newTokens: 200,
                 adjustment: 100,
             };
             mockTokenService.tryAdjustTokens = vi.fn().mockResolvedValue(new Ok(adjustResult));
-            const result = await facade.adjustTokens(guildId, userId, 100, 'test', 999);
+            const result = await facade.adjustTokens(guildId, userId, 100, 'test', '999');
             expect(result.isOk()).toBe(true);
             expect(result.getValue().newTokens).toBe(200);
         });
         it('should reject invalid amounts', async () => {
-            const result = await facade.adjustTokens(guildId, userId, NaN, 'test', 999);
+            const result = await facade.adjustTokens(guildId, userId, NaN, 'test', '999');
             expect(result.isErr()).toBe(true);
         });
     });

@@ -9,33 +9,43 @@ export declare const CreateRoleParamsSchema: z.ZodObject<{
         type: z.ZodEnum<["role", "member"]>;
         allow: z.ZodOptional<z.ZodString>;
         deny: z.ZodOptional<z.ZodString>;
+        allowSet: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+        denySet: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     }, "strip", z.ZodTypeAny, {
-        type: "role" | "member";
+        type: "member" | "role";
         id: string;
         allow?: string | undefined;
         deny?: string | undefined;
+        allowSet?: string[] | undefined;
+        denySet?: string[] | undefined;
     }, {
-        type: "role" | "member";
+        type: "member" | "role";
         id: string;
         allow?: string | undefined;
         deny?: string | undefined;
+        allowSet?: string[] | undefined;
+        denySet?: string[] | undefined;
     }>, "many">>;
 }, "strip", z.ZodTypeAny, {
     name: string;
     permissions?: {
-        type: "role" | "member";
+        type: "member" | "role";
         id: string;
         allow?: string | undefined;
         deny?: string | undefined;
+        allowSet?: string[] | undefined;
+        denySet?: string[] | undefined;
     }[] | undefined;
     color?: string | undefined;
 }, {
     name: string;
     permissions?: {
-        type: "role" | "member";
+        type: "member" | "role";
         id: string;
         allow?: string | undefined;
         deny?: string | undefined;
+        allowSet?: string[] | undefined;
+        denySet?: string[] | undefined;
     }[] | undefined;
     color?: string | undefined;
 }>;
@@ -56,33 +66,43 @@ export declare class CreateRoleTool {
             type: z.ZodEnum<["role", "member"]>;
             allow: z.ZodOptional<z.ZodString>;
             deny: z.ZodOptional<z.ZodString>;
+            allowSet: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+            denySet: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
         }, "strip", z.ZodTypeAny, {
-            type: "role" | "member";
+            type: "member" | "role";
             id: string;
             allow?: string | undefined;
             deny?: string | undefined;
+            allowSet?: string[] | undefined;
+            denySet?: string[] | undefined;
         }, {
-            type: "role" | "member";
+            type: "member" | "role";
             id: string;
             allow?: string | undefined;
             deny?: string | undefined;
+            allowSet?: string[] | undefined;
+            denySet?: string[] | undefined;
         }>, "many">>;
     }, "strip", z.ZodTypeAny, {
         name: string;
         permissions?: {
-            type: "role" | "member";
+            type: "member" | "role";
             id: string;
             allow?: string | undefined;
             deny?: string | undefined;
+            allowSet?: string[] | undefined;
+            denySet?: string[] | undefined;
         }[] | undefined;
         color?: string | undefined;
     }, {
         name: string;
         permissions?: {
-            type: "role" | "member";
+            type: "member" | "role";
             id: string;
             allow?: string | undefined;
             deny?: string | undefined;
+            allowSet?: string[] | undefined;
+            denySet?: string[] | undefined;
         }[] | undefined;
         color?: string | undefined;
     }>;

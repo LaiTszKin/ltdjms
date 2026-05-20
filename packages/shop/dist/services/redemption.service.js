@@ -54,7 +54,7 @@ export class RedemptionService {
         }
         const codes = [];
         for (let i = 0; i < count; i++) {
-            const codeStr = this.generateUniqueCode();
+            const codeStr = await this.generateUniqueCode();
             codes.push(createRedemptionCode(codeStr, product.id, product.guildId, expiresAt, quantity));
         }
         try {
@@ -178,11 +178,15 @@ export class RedemptionService {
     async getCodeStats(productId) {
         return this.codeRepository.getStatsByProductId(productId);
     }
-    generateUniqueCode() {
+    async generateUniqueCode() {
         const maxAttempts = 10;
         for (let i = 0; i < maxAttempts; i++) {
             const code = this.codeGenerator.generate();
-            return code; // In practice, the DB unique constraint handles duplicates
+            const existing = await this.codeRepository.findByCode(code);
+            if (!existing) {
+                return code;
+            }
+            this.log.debug({ code, attempt: i + 1 }, 'Duplicate code generated, retrying');
         }
         throw new Error(`Failed to generate unique code after ${maxAttempts} attempts`);
     }
@@ -195,16 +199,16 @@ export class RedemptionService {
         return DomainError.persistenceFailure('商品獎勵發放失敗，且兌換碼回復失敗');
     }
     calculateTotalRewardAmount(product, code) {
-        try {
-            const total = product.rewardAmount * code.quantity;
-            if (total <= 0) {
-                return err(DomainError.invalidInput('商品獎勵金額無效'));
-            }
-            return ok(total);
-        }
-        catch {
+        const rewardAmount = product.rewardAmount;
+        const quantity = code.quantity;
+        if (rewardAmount > Number.MAX_SAFE_INTEGER / quantity) {
             return err(DomainError.invalidInput('商品獎勵計算超出範圍'));
         }
+        const total = rewardAmount * quantity;
+        if (total <= 0) {
+            return err(DomainError.invalidInput('商品獎勵金額無效'));
+        }
+        return ok(total);
     }
 }
 //# sourceMappingURL=redemption.service.js.map

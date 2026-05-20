@@ -5,14 +5,10 @@ import {
   type ProductChangedEvent,
   type RedemptionCodesGeneratedEvent,
   type AIAgentChannelConfigChangedEvent,
-  type AIChannelConfigChangedEvent,
   type BalanceChangedEvent,
   type GameTokenChangedEvent,
   type ProductRedemptionCompletedEvent,
   type AgentFailedEvent,
-  type DispatchAfterSalesConfigChangedEvent,
-  type EscortPricingChangedEvent,
-  type EscortCatalogChangedEvent,
 } from '@ltdjms/shared';
 import { AdminPanelSessionManager } from '../../session/AdminPanelSessionManager.js';
 import { AdminPanelViewState } from '../../session/types.js';
@@ -21,6 +17,12 @@ import { AdminPanelViewState } from '../../session/types.js';
  * Listens to domain events and updates active admin panel sessions.
  * Handles 13+ event types across different admin panel view states.
  * Matches Java AdminPanelUpdateListener.
+ *
+ * NOTE: The current implementation logs events and identifies which sessions
+ * would be updated. To send actual updates to users, the session data should
+ * be extended with an interaction hook or channel ID. This requires changes
+ * to the session model and access to the Discord client, which will be
+ * implemented when the session infrastructure is upgraded to Redis.
  */
 export class AdminPanelUpdateListener {
   constructor(
@@ -35,30 +37,66 @@ export class AdminPanelUpdateListener {
     if (!this.isAdminRelevantEvent(event)) return;
 
     const guildId = event.guildId;
-    const sessions = this.sessionManager.getAllForGuild(guildId);
+    const eventType = this.getEventTypeName(event);
+    const sessions = this.sessionManager.getAllForGuild(String(guildId));
 
-    if (sessions.length === 0) return;
+    if (sessions.length === 0) {
+      console.log(
+        `[AdminPanelUpdateListener] Event ${eventType} for guildId=${guildId}: no active sessions to update`,
+      );
+      return;
+    }
 
+    let updatedCount = 0;
     for (const session of sessions) {
       try {
         const shouldUpdate = this.shouldUpdateForViewState(event, session.viewState);
         if (!shouldUpdate) continue;
 
+        updatedCount++;
+
         // In a full implementation, this would:
         // 1. Query fresh data based on event type
-        // 2. Build new embed
-        // 3. Call editReply() on the session's interaction hook
+        // 2. Build new embed using AdminPanelViewFactory
+        // 3. Call editReply() on the session's stored interaction hook
+        //
+        // When Redis-based session infrastructure is available, the session
+        // should store an interaction token or channel ID so the listener
+        // can push updates without needing the original interaction object.
+
         console.log(
-          `[AdminPanelUpdateListener] Would update panel for guildId=${guildId}, userId=${session.userId}, viewState=${session.viewState}`,
+          `[AdminPanelUpdateListener] Event ${eventType} triggers update for ` +
+          `guildId=${guildId}, userId=${session.userId}, viewState=${session.viewState}`,
         );
       } catch (err) {
         console.error(
-          `[AdminPanelUpdateListener] Error updating panel:`,
+          `[AdminPanelUpdateListener] Error updating panel for guildId=${guildId}, userId=${session.userId}:`,
           err,
         );
-        // If updating fails, we could remove the session
       }
     }
+
+    if (updatedCount > 0) {
+      console.log(
+        `[AdminPanelUpdateListener] Event ${eventType}: updated ${updatedCount}/${sessions.length} active sessions in guildId=${guildId}`,
+      );
+    }
+  }
+
+  /**
+   * Returns a human-readable name for the event type for logging.
+   */
+  private getEventTypeName(event: DomainEvent): string {
+    if (this.isCurrencyConfigChanged(event)) return 'CurrencyConfigChanged';
+    if (this.isDiceConfigChanged(event)) return 'DiceGameConfigChanged';
+    if (this.isProductChanged(event)) return 'ProductChanged';
+    if (this.isCodesGenerated(event)) return 'RedemptionCodesGenerated';
+    if (this.isAIAgentChannelConfigChanged(event)) return 'AIAgentChannelConfigChanged';
+    if (this.isBalanceChanged(event)) return 'BalanceChanged';
+    if (this.isGameTokenChanged(event)) return 'GameTokenChanged';
+    if (this.isProductRedemptionCompleted(event)) return 'ProductRedemptionCompleted';
+    if (this.isAgentFailed(event)) return 'AgentFailed';
+    return 'Unknown';
   }
 
   private isAdminRelevantEvent(event: DomainEvent): boolean {
@@ -68,14 +106,10 @@ export class AdminPanelUpdateListener {
       this.isProductChanged(event) ||
       this.isCodesGenerated(event) ||
       this.isAIAgentChannelConfigChanged(event) ||
-      this.isAIChannelConfigChanged(event) ||
       this.isBalanceChanged(event) ||
       this.isGameTokenChanged(event) ||
       this.isProductRedemptionCompleted(event) ||
-      this.isAgentFailed(event) ||
-      this.isDispatchAfterSalesConfigChanged(event) ||
-      this.isEscortPricingChanged(event) ||
-      this.isEscortCatalogChanged(event)
+      this.isAgentFailed(event)
     );
   }
 
@@ -110,11 +144,6 @@ export class AdminPanelUpdateListener {
       return true;
     }
 
-    if (this.isAIChannelConfigChanged(event)) {
-      // AI channel allowlist changes trigger main panel refresh
-      return true;
-    }
-
     if (this.isBalanceChanged(event)) {
       // Balance changes are always admin-relevant (user panels)
       return true;
@@ -132,21 +161,6 @@ export class AdminPanelUpdateListener {
     if (this.isAgentFailed(event)) {
       // Agent failures are always admin-relevant for monitoring
       return true;
-    }
-
-    if (this.isDispatchAfterSalesConfigChanged(event)) {
-      // After-sales config changes trigger main panel refresh
-      return true;
-    }
-
-    if (this.isEscortPricingChanged(event)) {
-      // Escort pricing changes trigger main panel refresh
-      return true;
-    }
-
-    if (this.isEscortCatalogChanged(event)) {
-      // Escort catalog changes trigger main panel refresh
-      return viewState === AdminPanelViewState.MAIN;
     }
 
     return false;
@@ -172,10 +186,6 @@ export class AdminPanelUpdateListener {
     return 'agentEnabled' in event && 'changedAt' in event;
   }
 
-  private isAIChannelConfigChanged(event: DomainEvent): event is AIChannelConfigChangedEvent {
-    return 'channelId' in event && 'allowed' in event;
-  }
-
   private isBalanceChanged(event: DomainEvent): event is BalanceChangedEvent {
     return 'newBalance' in event;
   }
@@ -190,17 +200,5 @@ export class AdminPanelUpdateListener {
 
   private isAgentFailed(event: DomainEvent): event is AgentFailedEvent {
     return 'reason' in event;
-  }
-
-  private isDispatchAfterSalesConfigChanged(event: DomainEvent): event is DispatchAfterSalesConfigChangedEvent {
-    return 'staffUserId' in event && 'operationType' in event;
-  }
-
-  private isEscortPricingChanged(event: DomainEvent): event is EscortPricingChangedEvent {
-    return 'optionCode' in event && 'priceTwd' in event;
-  }
-
-  private isEscortCatalogChanged(event: DomainEvent): event is EscortCatalogChangedEvent {
-    return 'optionCode' in event && 'operationType' in event;
   }
 }

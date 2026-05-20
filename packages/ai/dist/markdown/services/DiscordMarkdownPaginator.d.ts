@@ -27,6 +27,10 @@ export declare class DiscordMarkdownPaginator {
     /**
      * Handles code fence boundaries when splitting pages.
      * Ensures code fences are properly closed/opened across page boundaries.
+     *
+     * Uses a state machine: scan the page line-by-line, tracking whether we are
+     * inside a code fence, so we know whether a fence started on a previous page
+     * is closed in this one, or a new fence was opened without a close.
      */
     private handleCodeFenceBoundary;
 }

@@ -2,6 +2,7 @@ import {
   type DiscordInteraction,
   type DiscordContext,
 } from '@ltdjms/shared';
+import { EmbedBuilder } from 'discord.js';
 import { type InteractionHandler } from '../../../commands/infra/CommandHandler.js';
 import { MemberInfoFacade } from '../../../facades/MemberInfoFacade.js';
 import { PanelSessionManager } from '../../../session/PanelSessionManager.js';
@@ -21,7 +22,7 @@ export class TransactionHistoryHandler implements InteractionHandler {
 
   async execute(
     interaction: DiscordInteraction,
-    _context: DiscordContext,
+    context: DiscordContext,
   ): Promise<void> {
     const guildId = interaction.getGuildId();
     const userId = interaction.getUserId();
@@ -32,6 +33,43 @@ export class TransactionHistoryHandler implements InteractionHandler {
       return;
     }
 
-    await interaction.reply('交易記錄功能');
+    await interaction.deferReply();
+
+    // Try to get currency transaction history
+    const currencyResult = await this.memberInfoFacade.getCurrencyTransactionPage(
+      guildId,
+      userId,
+      1,
+      5,
+    );
+
+    let description: string;
+    if (currencyResult.isOk()) {
+      const txPage = currencyResult.getValue();
+      const txs = txPage.transactions as unknown as Array<{ createdAt: Date; amount: number; description?: string }>;
+      if (txs.length === 0) {
+        description = ZhTwStrings.historyEmpty;
+      } else {
+        const lines = txs.map((tx) => {
+          const time = new Date(tx.createdAt).toLocaleString('zh-TW');
+          return `${time}\n${tx.amount > 0 ? '+' : ''}${tx.amount} | ${tx.description ?? ''}`;
+        });
+        description = [
+          ZhTwStrings.historyPageIndicator
+            .replace('{current}', String(txPage.currentPage))
+            .replace('{total}', String(txPage.totalPages)),
+          '',
+          ...lines,
+        ].join('\n');
+      }
+    } else {
+      description = '交易記錄暫時無法取得';
+    }
+
+    const embed = new EmbedBuilder()
+      .setTitle(ZhTwStrings.historyTitleCurrency)
+      .setDescription(description)
+      .setColor(0x2ECC71);
+    await interaction.editEmbed(embed);
   }
 }

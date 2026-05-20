@@ -22,7 +22,7 @@ export class PanelSessionManager {
   /** In-memory session store. guildId:userId → session data. */
   private readonly sessions = new Map<string, PanelSessionData>();
 
-  private buildKey(guildId: number, userId: number): string {
+  private buildKey(guildId: string, userId: string): string {
     return `${SESSION_KEY_PREFIX}${guildId}:${userId}`;
   }
 
@@ -30,7 +30,7 @@ export class PanelSessionManager {
    * Creates a new user panel session.
    * Automatically replaces any existing session for the same guild+user.
    */
-  createSession(guildId: number, userId: number): PanelSessionData {
+  createSession(guildId: string, userId: string): PanelSessionData {
     const key = this.buildKey(guildId, userId);
     this.sessions.delete(key);
 
@@ -50,7 +50,7 @@ export class PanelSessionManager {
    * Gets an active session for the given guild+user.
    * Returns null if no session exists or the session has expired.
    */
-  getSession(guildId: number, userId: number): PanelSessionData | null {
+  getSession(guildId: string, userId: string): PanelSessionData | null {
     const key = this.buildKey(guildId, userId);
     const session = this.sessions.get(key);
 
@@ -68,7 +68,7 @@ export class PanelSessionManager {
   /**
    * Removes a session.
    */
-  removeSession(guildId: number, userId: number): void {
+  removeSession(guildId: string, userId: string): void {
     const key = this.buildKey(guildId, userId);
     this.sessions.delete(key);
   }
@@ -77,7 +77,7 @@ export class PanelSessionManager {
    * Gets all active sessions for a guild.
    * Filters out expired sessions.
    */
-  getAllForGuild(guildId: number): PanelSessionData[] {
+  getAllForGuild(guildId: string): PanelSessionData[] {
     const results: PanelSessionData[] = [];
     const prefix = `${SESSION_KEY_PREFIX}${guildId}:`;
 

@@ -38,10 +38,13 @@ export class GameTokenService {
       return cachedBalance;
     }
 
-    const account = await this.accountRepository.findOrCreate(guildId, userId);
-    const balance = account.tokens;
-    await this.cacheService.put(cacheKey, balance, GameTokenService.TOKEN_TTL_SECONDS);
-    return balance;
+    const account = await this.accountRepository.findByGuildIdAndUserId(guildId, userId);
+    if (account === null) {
+      await this.cacheService.put(cacheKey, 0, GameTokenService.TOKEN_TTL_SECONDS);
+      return 0;
+    }
+    await this.cacheService.put(cacheKey, account.tokens, GameTokenService.TOKEN_TTL_SECONDS);
+    return account.tokens;
   }
 
   /**

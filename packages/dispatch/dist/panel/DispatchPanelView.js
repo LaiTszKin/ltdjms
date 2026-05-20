@@ -12,7 +12,11 @@ export const BUTTON_CONFIRM_ORDER = 'dispatch_confirm_order';
 export const BUTTON_REQUEST_COMPLETION = 'dispatch_request_completion';
 export const BUTTON_CONFIRM_COMPLETION = 'dispatch_confirm_completion';
 export const BUTTON_REQUEST_AFTER_SALES = 'dispatch_request_after_sales';
+export const BUTTON_CLAIM_AFTER_SALES = 'dispatch_claim_after_sales';
+export const BUTTON_CLOSE_AFTER_SALES = 'dispatch_close_after_sales';
 export const SELECT_ESCORT_OPTION = 'dispatch_select_escort_option';
+export const SELECT_ESCORT_OPTION_EXTRA = 'dispatch_select_escort_option_extra';
+export const SELECT_PENDING_ORDER = 'dispatch_select_pending_order';
 // ============================================================
 // Embed Colors
 // ============================================================
@@ -102,6 +106,12 @@ export function buildConfirmCompletionButton(disabled = false) {
 export function buildRequestAfterSalesButton(disabled = false) {
     return { id: BUTTON_REQUEST_AFTER_SALES, label: '申請售後', style: ButtonStyle.DANGER, disabled };
 }
+export function buildClaimAfterSalesButton(disabled = false) {
+    return { id: BUTTON_CLAIM_AFTER_SALES, label: '承接售後', style: ButtonStyle.SUCCESS, disabled };
+}
+export function buildCloseAfterSalesButton(disabled = false) {
+    return { id: BUTTON_CLOSE_AFTER_SALES, label: '結案', style: ButtonStyle.DANGER, disabled };
+}
 // ============================================================
 // Row Builders
 // ============================================================
@@ -121,8 +131,37 @@ export function buildOrderDetailActionRow(canConfirm, canComplete, canRequestAft
     if (canRequestAfterSales) {
         buttons.push(buildRequestAfterSalesButton());
     }
+    // After-sales action buttons
+    if (canRequestAfterSales) {
+        buttons.push(buildClaimAfterSalesButton());
+        buttons.push(buildCloseAfterSalesButton());
+    }
     buttons.push(buildBackToModeButton());
     return buttons;
+}
+export function buildEscortOptionSelectMenu(options, customId, placeholder = '請選擇護航品類') {
+    return {
+        type: 'stringSelect',
+        custom_id: customId,
+        placeholder,
+        options,
+    };
+}
+/**
+ * Splits a select menu into two when options exceed the Discord limit (25).
+ * Returns [primaryMenu, extraMenu] where extraMenu is null if splitting isn't needed.
+ */
+export function splitSelectMenuOptions(options, baseId, extraId, placeholder = '請選擇') {
+    if (options.length <= 25) {
+        return {
+            primary: buildEscortOptionSelectMenu(options, baseId, placeholder),
+            extra: null,
+        };
+    }
+    return {
+        primary: buildEscortOptionSelectMenu(options.slice(0, 25), baseId, placeholder),
+        extra: buildEscortOptionSelectMenu(options.slice(25), extraId, '更多選項…'),
+    };
 }
 // ============================================================
 // Embed Conversion Utility
@@ -171,6 +210,30 @@ export function buttonsToComponents(buttons) {
 /**
  * Builds a full interaction reply payload with embed + action components.
  */
+// ============================================================
+// Format Utilities
+// ============================================================
+/**
+ * Formats an EmbedView with buttons into plain text representation.
+ * Used as fallback when embeds cannot be displayed.
+ */
+export function formatPanelText(view, buttons) {
+    const lines = [];
+    if (view.title)
+        lines.push(`**${view.title}**`);
+    if (view.description)
+        lines.push(view.description);
+    lines.push('');
+    for (const field of view.fields ?? []) {
+        lines.push(`**${field.name}：** ${field.value}`);
+    }
+    lines.push('');
+    lines.push('---');
+    lines.push(buttons.map((b) => `\`/${b.label}\``).join(' | '));
+    if (view.footer)
+        lines.push(`_${view.footer}_`);
+    return lines.join('\n');
+}
 export function buildPanelReplyPayload(embedView, buttons) {
     const payload = {
         embed: embedViewToApiEmbed(embedView),

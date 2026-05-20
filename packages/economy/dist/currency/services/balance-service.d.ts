@@ -17,10 +17,15 @@ export declare class BalanceService {
      * Gets the balance view for a member in a guild.
      * Uses cache (TTL 300s) - cache miss falls through to DB.
      * Auto-creates account if none exists.
+     *
+     * This is the non-Result variant, matching Java's getBalance().
+     * For the Result-based variant referenced in spec R1.1, see {@link tryGetBalance}.
      */
     getBalance(guildId: number, userId: number): Promise<BalanceView>;
     /**
      * Gets the balance view with Result-based error handling.
+     * This is the Result-based variant referenced in spec R1.1,
+     * matching Java's tryGetBalance().
      */
     tryGetBalance(guildId: number, userId: number): Promise<Result<BalanceView, DomainError>>;
 }

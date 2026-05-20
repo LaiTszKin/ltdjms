@@ -37,6 +37,9 @@ export class AdminPanelRouter implements InteractionHandler {
     // This router serves as the base handler for all admin_* interactions.
     // Specific sub-handlers (admin_balance_*, admin_token_*, etc.) will match
     // with longer prefixes and override this base handler.
-    await interaction.reply('處理中...');
+    //
+    // If this handler is reached, it means no sub-handler matched the customId,
+    // indicating an invalid/unregistered interaction route.
+    await interaction.reply('無效的操作，請重新開啟管理面板。若問題持續發生，請聯絡管理員。');
   }
 }

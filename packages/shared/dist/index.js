@@ -1,5 +1,5 @@
 // Types
-export { Ok, Err, Unit, ok, okVoid, err, isOk, isErr, DomainErrorCategory, DomainError, GameType, ProductOperationType, } from './types/index.js';
+export { Ok, Err, Unit, ok, okVoid, err, isOk, isErr, DomainErrorCategory, DomainError, GameType, OperationType, } from './types/index.js';
 // Config
 export { loadDotEnv, parseDotEnv, ConfigSchema, EnvironmentConfig, } from './infra/config/index.js';
 // Logger

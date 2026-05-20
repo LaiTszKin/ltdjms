@@ -73,31 +73,41 @@ export class InMemoryAIChannelRestrictionRepository {
 // ===== Default Implementation =====
 export class DefaultAIChannelRestrictionService {
     repository;
+    cacheTtlMs;
+    static DEFAULT_TTL_MS = 5 * 60 * 1000; // 5 minutes
     cache = new Map();
-    constructor(repository) {
+    constructor(repository, cacheTtlMs = DefaultAIChannelRestrictionService.DEFAULT_TTL_MS) {
         this.repository = repository;
+        this.cacheTtlMs = cacheTtlMs;
     }
     async isChannelAllowed(guildId, channelId, categoryId) {
         const cacheKey = `${guildId}:${channelId}`;
         const cached = this.cache.get(cacheKey);
-        if (cached !== undefined)
-            return cached;
+        if (cached !== undefined) {
+            if (Date.now() < cached.expiresAt) {
+                return cached.value;
+            }
+            // Expired — remove and re-fetch
+            this.cache.delete(cacheKey);
+        }
+        const now = Date.now();
+        const ttl = this.cacheTtlMs;
         // Check channel-level allowlist first
         const channels = await this.repository.findByGuildId(guildId);
         const channelMatch = channels.some((c) => c.channelId === channelId);
         if (channelMatch) {
-            this.cache.set(cacheKey, true);
+            this.cache.set(cacheKey, { value: true, expiresAt: now + ttl });
             return true;
         }
         // Check category-level allowlist if categoryId provided
         if (categoryId) {
             const categories = await this.repository.findAllowedCategories(guildId);
             const categoryMatch = categories.some((c) => c.categoryId === categoryId);
-            this.cache.set(cacheKey, categoryMatch);
+            this.cache.set(cacheKey, { value: categoryMatch, expiresAt: now + ttl });
             return categoryMatch;
         }
         // Empty allowlist = default deny
-        this.cache.set(cacheKey, false);
+        this.cache.set(cacheKey, { value: false, expiresAt: now + ttl });
         return false;
     }
     async getAllowedChannels(guildId) {
@@ -153,6 +163,10 @@ export class DefaultAIChannelRestrictionService {
                 this.cache.delete(key);
             }
         }
+    }
+    async deleteRemovedChannels(guildId, validChannelIds) {
+        await this.repository.deleteRemovedChannels(guildId, validChannelIds);
+        this.invalidateGuildCache(guildId);
     }
 }
 //# sourceMappingURL=channel-restriction-service.js.map

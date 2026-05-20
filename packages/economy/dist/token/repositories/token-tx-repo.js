@@ -1,4 +1,4 @@
-import { eq, desc, count } from 'drizzle-orm';
+import { eq, and, desc, count } from 'drizzle-orm';
 import { gameTokenTransaction } from '../../domain/schema.js';
 /**
  * Repository for game token transaction records using Drizzle ORM.
@@ -34,8 +34,7 @@ export class TokenTransactionRepository {
         const rows = await this.db
             .select()
             .from(gameTokenTransaction)
-            .where(eq(gameTokenTransaction.guildId, guildId) &&
-            eq(gameTokenTransaction.userId, userId))
+            .where(and(eq(gameTokenTransaction.guildId, guildId), eq(gameTokenTransaction.userId, userId)))
             .orderBy(desc(gameTokenTransaction.createdAt))
             .limit(limit)
             .offset(offset);
@@ -48,8 +47,7 @@ export class TokenTransactionRepository {
         const result = await this.db
             .select({ count: count() })
             .from(gameTokenTransaction)
-            .where(eq(gameTokenTransaction.guildId, guildId) &&
-            eq(gameTokenTransaction.userId, userId));
+            .where(and(eq(gameTokenTransaction.guildId, guildId), eq(gameTokenTransaction.userId, userId)));
         return result[0]?.count ?? 0;
     }
     /**
@@ -58,8 +56,7 @@ export class TokenTransactionRepository {
     async delete(guildId, userId) {
         await this.db
             .delete(gameTokenTransaction)
-            .where(eq(gameTokenTransaction.guildId, guildId) &&
-            eq(gameTokenTransaction.userId, userId));
+            .where(and(eq(gameTokenTransaction.guildId, guildId), eq(gameTokenTransaction.userId, userId)));
     }
 }
 function mapToDomain(row) {

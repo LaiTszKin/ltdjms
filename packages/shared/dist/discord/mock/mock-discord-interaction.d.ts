@@ -7,17 +7,15 @@ import { type DiscordInteraction } from '../domain/discord-interaction.js';
 export declare class MockDiscordInteraction implements DiscordInteraction {
     private readonly _guildId;
     private readonly _userId;
-    private readonly _channelId;
     private readonly _ephemeral;
     private _acknowledged;
     private readonly _replyMessages;
     private readonly _replyEmbeds;
     private readonly _editedEmbeds;
     private _deferReplyCount;
-    constructor(guildId: string, userId: string, channelId?: string, ephemeral?: boolean);
+    constructor(guildId: string, userId: string, _channelId?: string, ephemeral?: boolean);
     getGuildId(): string;
     getUserId(): string;
-    getChannelId(): string;
     isEphemeral(): boolean;
     reply(message: string): Promise<void>;
     replyEmbed(embed: unknown): Promise<void>;

@@ -17,7 +17,7 @@ export declare class CurrencyPurchaseService {
     private readonly productRewardService;
     private readonly log;
     constructor(productService: {
-        getProduct(productId: number): Promise<Product | null>;
+        findById(productId: number): Promise<Product | null>;
     }, balanceService: {
         tryGetBalance(guildId: number, userId: number): Promise<Result<{
             balance: number;

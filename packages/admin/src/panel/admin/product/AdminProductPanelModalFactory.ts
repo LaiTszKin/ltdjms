@@ -4,6 +4,13 @@ import type { Product } from '@ltdjms/shop';
 /**
  * Product-specific modal factory.
  * Matches Java AdminProductPanelModalFactory.
+ *
+ * RESPONSIBILITY: This factory handles product-specific modals (create/edit
+ * product, generate codes). Generic/shared admin panel modals (balance, tokens,
+ * games, escort pricing/catalog) are in AdminPanelModalFactory under
+ * panel/admin/views/.
+ *
+ * @see AdminPanelModalFactory — generic admin panel modals
  */
 export class AdminProductPanelModalFactory {
   /**

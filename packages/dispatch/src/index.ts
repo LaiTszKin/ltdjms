@@ -43,7 +43,6 @@ export {
   isManualSource,
   isAutoSource,
   hasCustomerConfirmationTimedOut,
-  withAssignedEscort,
   withConfirmed,
   withCompletionRequested,
   withCompleted,
@@ -143,6 +142,8 @@ export {
   embedViewToApiEmbed,
   buttonsToComponents,
   buildPanelReplyPayload,
+  // Format utilities
+  formatPanelText,
   // Message factory
   buildOrderCreatedEmbed,
   buildManualOrderCreatedEmbed,
@@ -167,8 +168,4 @@ export {
 
 export { DISPATCH_TOKENS, configureDispatchContainer } from './di/index.js';
 // Events (re-exported from shared for convenience)
-export type {
-  DispatchAfterSalesConfigChangedEvent,
-  EscortPricingChangedEvent,
-  EscortCatalogChangedEvent,
-} from "@ltdjms/shared";
+// (reserved for future shared event types)

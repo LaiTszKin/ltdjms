@@ -5,6 +5,8 @@ import type { DiscordRuntimeGateway } from '@ltdjms/shared';
  * Matches Java DiscordThreadHistoryProvider.
  */
 export declare class DiscordThreadHistoryProvider {
+    private readonly runtimeGateway;
+    constructor(runtimeGateway: DiscordRuntimeGateway);
     /**
      * Gets thread history for a specific user.
      * Only returns the user's messages + bot replies for privacy isolation.
@@ -46,7 +48,8 @@ export declare class SimplifiedChatMemoryProvider {
      */
     private buildThreadLevelMemory;
     /**
-     * Builds message-level memory (limited, max 10 messages).
+     * Builds message-level memory: up to 10 recent channel messages for non-thread conversations.
+     * Format: guildId:channelId:userId:messageId
      */
     private buildMessageLevelMemory;
 }

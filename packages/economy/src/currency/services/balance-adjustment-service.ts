@@ -11,8 +11,8 @@ import {
 import { CurrencyAccountRepository } from '../repositories/currency-account-repo.js';
 import { CurrencyConfigRepository } from '../repositories/currency-config-repo.js';
 import { CurrencyTransactionService } from './currency-tx-service.js';
-import type { BalanceAdjustmentResult, MemberCurrencyAccount } from '../../domain/types.js';
-import { CurrencyTransactionSource, DEFAULT_CURRENCY_NAME, DEFAULT_CURRENCY_ICON, BALANCE_CACHE_TTL } from '../../domain/types.js';
+import type { BalanceAdjustmentResult } from '../../domain/types.js';
+import { CurrencyTransactionSource, DEFAULT_CURRENCY_NAME, DEFAULT_CURRENCY_ICON, BALANCE_CACHE_TTL, isValidAdjustmentAmount } from '../../domain/types.js';
 
 /**
  * Service for adjusting member currency balances with validation.
@@ -48,8 +48,8 @@ export class BalanceAdjustmentService {
       );
     }
 
-    // Overflow check using safe integer boundaries
-    if (amount > Number.MAX_SAFE_INTEGER || amount < -Number.MAX_SAFE_INTEGER) {
+    // Overflow check using safe integer boundaries (spec R1.4)
+    if (!isValidAdjustmentAmount(amount)) {
       return new Err(
         DomainError.invalidInput(`Amount exceeds maximum: |${amount}| > ${Number.MAX_SAFE_INTEGER}`),
       );
@@ -67,14 +67,9 @@ export class BalanceAdjustmentService {
           ),
         );
       }
-      // Check for underflow: previousBalance + amount must not go below 0
-      if (amount < 0 && previousBalance < -amount) {
-        return new Err(
-          DomainError.invalidInput(
-            `Insufficient balance: ${previousBalance} cannot be reduced by ${Math.abs(amount)}`,
-          ),
-        );
-      }
+      // Underflow (insufficient balance) is enforced by the repository's
+      // conditional UPDATE SQL; tryAdjustBalance returns the correct
+      // DomainError.insufficientBalance when the constraint is violated.
 
       const adjustResult = await this.accountRepository.tryAdjustBalance(
         guildId,

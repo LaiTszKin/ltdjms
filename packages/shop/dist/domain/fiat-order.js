@@ -146,6 +146,10 @@ export function createPending(guildId, buyerUserId, productId, productName, fulf
         updatedAt: now,
     });
 }
+/**
+ * Convenience utility that creates a pending fiat order with no reward, no escort.
+ * Delegates to createPending with null/default values for reward and escort fields.
+ */
 export function createPendingSimple(guildId, buyerUserId, productId, productName, orderNumber, paymentNo, amountTwd, expireAt) {
     return createPending(guildId, buyerUserId, productId, productName, null, null, false, null, orderNumber, paymentNo, amountTwd, expireAt);
 }

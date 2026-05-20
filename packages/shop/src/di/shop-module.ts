@@ -42,7 +42,6 @@ import {
 /** Product repository interface as used by shop services. */
 export interface ProductRepository {
   findById(id: number): Promise<Product | null>;
-  getProduct(productId: number): Promise<Product | null>;
   countByGuildId(guildId: number): Promise<number>;
   findByGuildIdPaginated(guildId: number, page: number, size: number): Promise<Product[]>;
   countByGuildIdAndNameContaining(guildId: number, keyword: string): Promise<number>;
@@ -168,7 +167,7 @@ export function configureContainer(options: ShopModuleOptions): void {
     buyerNotification,
     options.escortDispatchHandoffService,
     escortBuyerNotification as unknown as EscortOrderBuyerNotifier,
-    adminNotification as unknown as AdminOrderNotifier,
+    adminNotification,
     options.productRewardService as unknown as ProductRewardGranter,
     log,
   );
@@ -201,7 +200,7 @@ export function configureContainer(options: ShopModuleOptions): void {
   const shopService = new ShopService(options.productRepository, log);
   container.registerInstance(SHOP_TOKENS.ShopService, shopService);
 
-  const shopCommandHandler = new ShopCommandHandler(shopService);
+  const shopCommandHandler = new ShopCommandHandler(shopService, fiatOrderService, currencyPurchase);
   container.registerInstance(SHOP_TOKENS.ShopCommandHandler, shopCommandHandler);
 
   // ---- Redemption ----

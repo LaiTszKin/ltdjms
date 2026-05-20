@@ -6,6 +6,7 @@ import {
   type Result,
   type CacheService,
   type DomainEventPublisher,
+  type AIAgentChannelConfigChangedEvent,
 } from '@ltdjms/shared';
 import type { AIAgentChannelConfig } from '../ai-chat-service.js';
 
@@ -111,6 +112,11 @@ const CACHE_KEY_PREFIX = 'agent:config:';
 export class DefaultAIAgentChannelConfigService
   implements AIAgentChannelConfigService
 {
+  /**
+   * Local in-memory cache for the sync isAgentEnabled() fallback.
+   */
+  private localSyncCache = new Map<string, boolean>();
+
   constructor(
     private readonly repository: AIAgentChannelConfigRepository,
     private readonly cacheService: CacheService,
@@ -122,25 +128,20 @@ export class DefaultAIAgentChannelConfigService
   }
 
   /**
-   * Checks if agent mode is enabled for a channel.
-   * Thread channels should resolve to their parent channel ID before calling this.
+   * Synchronous check using a local in-memory cache.
+   * Falls back to false if the value is not in the local cache.
    *
-   * Check order: Redis cache → DB query → write-back to cache
-   * Redis failure → fallback to DB
-   * DB failure → return false (pure chat mode)
+   * Prefer isAgentEnabledAsync() for production use, since this sync version
+   * may return stale values until the local cache is populated by a prior
+   * async lookup.
    */
   isAgentEnabled(guildId: string, channelId: string): boolean {
-    // Use a synchronous-ish approach: try cache first, then DB
-    // In practice, this would be async. For sync compatibility with routing,
-    // we use an internal approach.
-    // This is a simplified sync version that checks a local cache.
-    throw new Error(
-      'Use isAgentEnabledAsync for proper async operation',
-    );
+    return this.localSyncCache.get(this.buildCacheKey(guildId, channelId)) ?? false;
   }
 
   /**
    * Async version of isAgentEnabled.
+   * Also populates the local sync cache for subsequent sync lookups.
    */
   async isAgentEnabledAsync(
     guildId: string,
@@ -152,7 +153,9 @@ export class DefaultAIAgentChannelConfigService
       // Try Redis cache first
       const cached = await this.cacheService.get<string>(cacheKey);
       if (cached !== null) {
-        return cached === 'true';
+        const enabled = cached === 'true';
+        this.localSyncCache.set(cacheKey, enabled);
+        return enabled;
       }
     } catch {
       // Redis unavailable — fall through to DB
@@ -179,12 +182,14 @@ export class DefaultAIAgentChannelConfigService
           // Cache write failure is non-fatal
         }
 
+        this.localSyncCache.set(cacheKey, enabled);
         return enabled;
       }
     } catch {
       // DB failure — return false (pure chat mode)
     }
 
+    this.localSyncCache.set(cacheKey, false);
     return false;
   }
 
@@ -204,14 +209,14 @@ export class DefaultAIAgentChannelConfigService
 
       // Publish event for cache invalidation listeners
       if (this.eventPublisher) {
-        // Publish AgentConfigUpdatedEvent
         try {
-          this.eventPublisher.publish({
-            guildId: BigInt(guildId),
-            channelId: BigInt(channelId),
+          const event: AIAgentChannelConfigChangedEvent = {
+            guildId: Number(guildId),
+            channelId: Number(channelId),
             agentEnabled: enabled,
             changedAt: new Date(),
-          } as never);
+          };
+          this.eventPublisher.publish(event);
         } catch {
           // Event publication failure is non-fatal
         }
@@ -266,10 +271,10 @@ export class DefaultAIAgentChannelConfigService
     guildId: string,
     channelId: string,
   ): Promise<void> {
+    const cacheKey = this.buildCacheKey(guildId, channelId);
+    this.localSyncCache.delete(cacheKey);
     try {
-      await this.cacheService.invalidate(
-        this.buildCacheKey(guildId, channelId),
-      );
+      await this.cacheService.invalidate(cacheKey);
     } catch {
       // Cache invalidation failure is non-fatal
     }

@@ -21,8 +21,8 @@ describe('MemberInfoFacade', () => {
   let mockTokenTxService: Partial<GameTokenTransactionService>;
   let mockRedemptionService: Partial<RedemptionService>;
 
-  const guildId = 1;
-  const userId = 100;
+  const guildId = '1';
+  const userId = '100';
 
   beforeEach(() => {
     mockBalanceService = {
@@ -53,8 +53,8 @@ describe('MemberInfoFacade', () => {
   describe('getUserPanelView', () => {
     it('should return combined balance and token info', async () => {
       const balanceView: BalanceView = {
-        guildId,
-        userId,
+        guildId: Number(guildId),
+        userId: Number(userId),
         balance: 500,
         currencyName: 'Coins',
         currencyIcon: '🪙',
@@ -87,8 +87,8 @@ describe('MemberInfoFacade', () => {
       expect(result.isOk()).toBe(true);
       expect(mockRedemptionService.redeemCode).toHaveBeenCalledWith(
         'TESTCODE12345678',
-        guildId,
-        userId,
+        1,
+        100,
       );
     });
   });

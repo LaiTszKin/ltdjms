@@ -48,6 +48,14 @@ export { GameRewardService } from './dice/services/game-reward-service.js';
 export { DiceGame1Service, DefaultRandom, SeededRandom } from './dice/services/dice-game-1-service.js';
 export { DiceGame2Service } from './dice/services/dice-game-2-service.js';
 // ============================================================
+// Command Handlers
+// ============================================================
+export { BalanceHandler, CurrencyConfigHandler, DiceGame1Handler, DiceGame2Handler, DiceGame1ConfigHandler, DiceGame2ConfigHandler, GameTokenAdjustHandler, } from './commands/index.js';
+// ============================================================
+// Localization
+// ============================================================
+export { DiceGameMessages } from './localization/dice-game-messages.js';
+// ============================================================
 // DI
 // ============================================================
 export { ECONOMY_TOKENS, configureEconomyContainer } from './di/economy-module.js';

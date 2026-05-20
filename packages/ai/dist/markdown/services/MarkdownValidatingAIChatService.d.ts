@@ -18,8 +18,8 @@ export declare class MarkdownValidatingAIChatService implements AIChatService {
     private messageSplitter;
     constructor(delegate: AIChatService);
     generateResponse(guildId: string, channelId: string, userId: string, userMessage: string): Promise<Result<string[], DomainError>>;
-    generateStreamingResponse(guildId: string, channelId: string, userId: string, userMessage: string, handler: StreamingResponseHandler): Promise<void>;
-    generateStreamingResponseWithId(guildId: string, channelId: string, userId: string, userMessage: string, messageId: string, handler: StreamingResponseHandler): Promise<void>;
+    generateStreamingResponse(guildId: string, channelId: string, userId: string, userMessage: string, handler: StreamingResponseHandler, agentEnabled?: boolean): Promise<void>;
+    generateStreamingResponseWithId(guildId: string, channelId: string, userId: string, userMessage: string, messageId: string, handler: StreamingResponseHandler, agentEnabled?: boolean): Promise<void>;
     generateWithHistory(guildId: string, channelId: string, userId: string, history: Array<{
         role: string;
         content: string;

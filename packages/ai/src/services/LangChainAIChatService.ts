@@ -26,7 +26,7 @@ import type { PromptLoader, SystemPrompt } from '../prompts/prompt-loader.js';
  * Matches Java LangChain4jAIChatService.
  */
 export class LangChainAIChatService implements AIChatService {
-  readonly config: AIServiceConfig;
+  config: AIServiceConfig;
   private chatModel: ChatOpenAI;
   private exceptionMapper = new LangChainExceptionMapper();
 
@@ -58,9 +58,10 @@ export class LangChainAIChatService implements AIChatService {
 
   /**
    * Rebuilds the chat model (useful after config changes).
+   * Also updates the stored config reference (P3-22).
    */
   updateConfig(config: AIServiceConfig): void {
-    // Rebuild the model with new config
+    this.config = config;
     this.chatModel = this.buildChatModel(config);
   }
 
@@ -112,8 +113,9 @@ export class LangChainAIChatService implements AIChatService {
     _userId: string,
     userMessage: string,
     handler: StreamingResponseHandler,
+    agentEnabled: boolean = false,
   ): Promise<void> {
-    await this.doStream(guildId, userMessage, [], handler);
+    await this.doStream(guildId, userMessage, [], handler, agentEnabled);
   }
 
   async generateStreamingResponseWithId(
@@ -121,10 +123,11 @@ export class LangChainAIChatService implements AIChatService {
     _channelId: string,
     _userId: string,
     userMessage: string,
-    _messageId: string,
+    messageId: string,
     handler: StreamingResponseHandler,
+    agentEnabled: boolean = false,
   ): Promise<void> {
-    await this.doStream(guildId, userMessage, [], handler);
+    await this.doStream(guildId, userMessage, [], handler, agentEnabled, messageId);
   }
 
   async generateWithHistory(
@@ -151,6 +154,8 @@ export class LangChainAIChatService implements AIChatService {
     userMessage: string,
     history: Array<{ role: string; content: string }>,
     handler: StreamingResponseHandler,
+    agentEnabled: boolean = false,
+    messageId?: string,
   ): Promise<void> {
     if (!userMessage || userMessage.trim().length === 0) {
       handler.onChunk('', true, DomainError.aiResponseEmpty('No user message provided'));
@@ -158,10 +163,15 @@ export class LangChainAIChatService implements AIChatService {
     }
 
     try {
-      // Build messages array
-      const messages = await this.buildMessages(guildId, userMessage, history);
+      // Build messages array (agent prompts included when agent is enabled)
+      const messages = await this.buildMessages(guildId, userMessage, history, agentEnabled);
 
-      const stream = await this.chatModel.stream(messages);
+      // Use tool-bound model when agent is enabled
+      const chatModel = agentEnabled
+        ? createChatModel(this.config, true).model
+        : this.chatModel;
+
+      const stream = await chatModel.stream(messages);
       const accumulator = new MessageChunkAccumulator();
       let reasoningBuffer = '';
 
@@ -345,19 +355,19 @@ export const AGENT_TOOL_DEFINITIONS: StructuredToolInterface[] = [
   new DynamicStructuredTool({
     name: 'manage_message',
     description: '管理訊息（釘選/刪除/編輯）',
-    schema: z.object({ action: z.string(), channelId: z.string(), messageId: z.string(), content: z.string().optional() }),
+    schema: z.object({ action: z.string(), channelId: z.string(), messageId: z.string(), newContent: z.string().optional(), editMode: z.string().optional() }),
     func: async () => 'Tool execution handled by agent loop',
   }),
   new DynamicStructuredTool({
     name: 'move_channel',
     description: '移動頻道至指定分類',
-    schema: z.object({ channelId: z.string(), categoryId: z.string() }),
+    schema: z.object({ channelId: z.string(), targetCategoryId: z.string() }),
     func: async () => 'Tool execution handled by agent loop',
   }),
   new DynamicStructuredTool({
     name: 'delete_discord_resource',
     description: '刪除 Discord 資源（頻道/分類/身分組）',
-    schema: z.object({ type: z.string(), id: z.string() }),
+    schema: z.object({ resourceType: z.string(), resourceId: z.string() }),
     func: async () => 'Tool execution handled by agent loop',
   }),
 ];

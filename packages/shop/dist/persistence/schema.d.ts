@@ -110,7 +110,7 @@ export declare const fiatOrder: import("drizzle-orm/pg-core").PgTableWithColumns
             identity: undefined;
             generated: undefined;
         }, {}, {
-            length: 32;
+            length: 16;
         }>;
         fulfillmentRewardAmount: import("drizzle-orm/pg-core").PgColumn<{
             name: "fulfillment_reward_amount";
@@ -275,7 +275,7 @@ export declare const fiatOrder: import("drizzle-orm/pg-core").PgTableWithColumns
             identity: undefined;
             generated: undefined;
         }, {}, {
-            length: 255;
+            length: 512;
         }>;
         paidAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "paid_at";
@@ -345,7 +345,7 @@ export declare const fiatOrder: import("drizzle-orm/pg-core").PgTableWithColumns
             identity: undefined;
             generated: undefined;
         }, {}, {
-            length: 64;
+            length: 128;
         }>;
         buyerNotifiedAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "buyer_notified_at";
