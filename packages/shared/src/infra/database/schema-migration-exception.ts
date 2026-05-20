@@ -4,10 +4,7 @@
  */
 export class SchemaMigrationException extends Error {
   constructor(message: string, cause?: Error) {
-    super(message);
+    super(message, { cause });
     this.name = 'SchemaMigrationException';
-    if (cause) {
-      this.cause = cause;
-    }
   }
 }

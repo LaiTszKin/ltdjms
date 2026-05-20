@@ -1,6 +1,8 @@
 import {
   type DiscordInteraction,
   type DiscordContext,
+  type DomainEventPublisher,
+  type DispatchAfterSalesConfigChangedEvent,
 } from '@ltdjms/shared';
 import {
   EmbedBuilder,
@@ -25,6 +27,7 @@ export class DispatchAfterSalesHandler extends BaseAdminHandler {
   constructor(
     sessionManager: AdminPanelSessionManager,
     private readonly afterSalesStaffService: DispatchAfterSalesStaffService,
+    private readonly eventPublisher: DomainEventPublisher,
     errorHandler: BotErrorHandler,
   ) {
     super(sessionManager, errorHandler);
@@ -119,6 +122,11 @@ export class DispatchAfterSalesHandler extends BaseAdminHandler {
     const result = await this.afterSalesStaffService.addStaff(Number(guildId), Number(staffId));
 
     if (result.isOk()) {
+      this.eventPublisher.publish({
+        eventType: 'dispatch_after_sales_config_changed',
+        guildId,
+      } as DispatchAfterSalesConfigChangedEvent);
+
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.dispatchTitle)
         .setDescription(ZhTwStrings.dispatchStaffAdded.replace('{member}', `<@${staffId}>`))
@@ -144,6 +152,11 @@ export class DispatchAfterSalesHandler extends BaseAdminHandler {
     const result = await this.afterSalesStaffService.removeStaff(Number(guildId), Number(staffId));
 
     if (result.isOk()) {
+      this.eventPublisher.publish({
+        eventType: 'dispatch_after_sales_config_changed',
+        guildId,
+      } as DispatchAfterSalesConfigChangedEvent);
+
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.dispatchTitle)
         .setDescription(ZhTwStrings.dispatchStaffRemoved.replace('{member}', `<@${staffId}>`))

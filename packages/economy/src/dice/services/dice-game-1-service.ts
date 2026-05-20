@@ -131,13 +131,12 @@ export class DiceGame1Service {
       totalReward,
       previousBalance,
       newBalance,
-      currencyName: '',
-      currencyIcon: '',
     });
   }
 
   /**
    * Rolls dice deterministically (for testing with predetermined values).
+   * @internal Exposed for test use only; not part of the public API.
    */
   rollDice(count: number): number[] {
     const rolls: number[] = [];
@@ -149,6 +148,7 @@ export class DiceGame1Service {
 
   /**
    * Calculates the total reward from dice rolls.
+   * @internal Exposed for test use only; not part of the public API.
    */
   calculateTotalReward(
     diceRolls: readonly number[],

@@ -96,8 +96,7 @@ export class RegexBasedAutoFixer implements MarkdownAutoFixer {
       } else if (inCodeBlock) {
         // Check if line looks like a non-code sentence (heuristic)
         if (
-          /^[A-Z][a-z]+$/.test(line.trim()) ||
-          /^[A-Z][a-z]+ [a-z]/.test(line.trim())
+          /^[A-Z][a-z]+(?:\s+[a-z]+)+[.!?]?$/.test(line.trim())
         ) {
           // This looks like a plain sentence, close code block before it
           result.push(fenceChar);

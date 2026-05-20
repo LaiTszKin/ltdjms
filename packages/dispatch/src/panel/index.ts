@@ -1,5 +1,6 @@
 export { DispatchPanelCommandHandler } from './DispatchPanelCommandHandler.js';
-export { DispatchPanelInteractionHandler, type DispatchSessionState } from './DispatchPanelInteractionHandler.js';
+export { DispatchPanelInteractionHandler } from './DispatchPanelInteractionHandler.js';
+export { DispatchPanelSessionManager, type DispatchSessionState } from './DispatchPanelSessionManager.js';
 
 export {
   // View constants

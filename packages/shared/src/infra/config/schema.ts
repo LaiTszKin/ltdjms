@@ -31,8 +31,10 @@ export const ConfigSchema = z.object({
   DATABASE_HOST: z.string().default('localhost'),
   DATABASE_PORT: z.coerce.number().int().positive().default(5432),
   DATABASE_NAME: z.string().default('currency_bot'),
+  /** @deprecated Use DATABASE_USER instead. Kept for backward compatibility. */
   DB_USERNAME: z.string().optional(),
   DATABASE_USER: z.string().default('postgres'),
+  /** @deprecated Use DATABASE_PASSWORD instead. Kept for backward compatibility. */
   DB_PASSWORD: z.string().optional(),
   DATABASE_PASSWORD: z.string().default('postgres'),
   DB_URL: z.string().optional(),

@@ -6,14 +6,12 @@ import {
 import { type DiceGame2Service } from '../dice/services/dice-game-2-service.js';
 import { type DiceConfigRepository } from '../dice/repositories/dice-config-repo.js';
 import { type GameTokenService } from '../token/services/game-token-service.js';
-import { type GameTokenTransactionService } from '../token/services/game-token-tx-service.js';
 import { type CurrencyConfigRepository } from '../currency/repositories/currency-config-repo.js';
 import { DiceGameMessages } from '../localization/dice-game-messages.js';
 import {
   GameTokenTransactionSource,
-  DEFAULT_CURRENCY_NAME,
-  DEFAULT_CURRENCY_ICON,
 } from '../domain/types.js';
+import { resolveCurrencyDisplay } from './dice-utils.js';
 
 /**
  * /dice-game-2 slash command handler.
@@ -34,7 +32,6 @@ export class DiceGame2Handler {
     private readonly diceGame2Service: DiceGame2Service,
     private readonly diceConfigRepository: DiceConfigRepository,
     private readonly gameTokenService: GameTokenService,
-    private readonly gameTokenTransactionService: GameTokenTransactionService,
     private readonly currencyConfigRepository: CurrencyConfigRepository,
   ) {}
 
@@ -74,11 +71,12 @@ export class DiceGame2Handler {
       return;
     }
 
-    // Deduct tokens first (handled by handler, not service per P1-10)
+    // Deduct tokens and record transaction atomically (P1-10)
     const deductResult = await this.gameTokenService.tryDeductTokens(
       guildId,
       userId,
       tokenCount,
+      GameTokenTransactionSource.DICE_GAME_2_PLAY,
     );
 
     if (deductResult.isErr()) {
@@ -91,22 +89,8 @@ export class DiceGame2Handler {
       return;
     }
 
-    const updatedAccount = deductResult.getValue();
-
-    // Record token transaction
-    await this.gameTokenTransactionService.recordTransaction(
-      guildId,
-      userId,
-      -tokenCount,
-      updatedAccount.tokens,
-      GameTokenTransactionSource.DICE_GAME_2_PLAY,
-      null,
-    );
-
     // Get currency info for display (P2-3)
-    const currencyConfig = await this.currencyConfigRepository.findByGuildId(guildId);
-    const currencyName = currencyConfig?.currencyName ?? DEFAULT_CURRENCY_NAME;
-    const currencyIcon = currencyConfig?.currencyIcon ?? DEFAULT_CURRENCY_ICON;
+    const { currencyName, currencyIcon } = await resolveCurrencyDisplay(guildId, this.currencyConfigRepository);
 
     // Play the game
     const result = await this.diceGame2Service.play(guildId, userId, tokenCount, config);

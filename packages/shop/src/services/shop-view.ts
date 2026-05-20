@@ -1,9 +1,9 @@
 import { type Product, hasCurrencyPrice, hasFiatPriceTwd, hasReward, formatCurrencyPrice, formatFiatPriceTwd, formatReward } from '../domain/product-types.js';
+import { PAGE_SIZE } from './shop.service.js';
 
 // Theme color constants (P3-12)
 const EMBED_COLOR_PRIMARY = 0x5865F2;
 const EMBED_COLOR_DANGER = 0xED4245;
-const PAGE_SIZE = 5;
 const DIVIDER = '────────────────────────────────────';
 
 export const BUTTON_PREV_PAGE = 'shop_prev_';
@@ -27,9 +27,6 @@ export function decodeKeyword(encoded: string): string {
   return Buffer.from(encoded, 'base64').toString('utf-8');
 }
 
-export function getPageSize(): number {
-  return PAGE_SIZE;
-}
 
 export function buildShopEmbed(
   products: Product[],
@@ -235,9 +232,10 @@ export function buildSearchComponents(
   currentPage: number,
   totalPages: number,
   keyword: string,
+  products: Product[],
 ): Array<{
   type: string;
-  components: Array<{ type: string; customId: string; label: string; style: number; disabled?: boolean }>;
+  components: unknown[];
 }> {
   const encodedKeyword = encodeKeyword(keyword);
   const hasPrev = currentPage > 1;
@@ -274,6 +272,26 @@ export function buildSearchComponents(
     {
       type: 'actionRow',
       components: buttons,
+    },
+    {
+      type: 'actionRow',
+      components: [
+        {
+          type: 3,
+          customId: SELECT_SEARCH_BUY,
+          placeholder: '選擇要購買的商品',
+          maxValues: 1,
+          options: products.slice(0, 25).map((p) => ({
+            label: p.name.length > 100 ? p.name.substring(0, 97) + '...' : p.name,
+            value: String(p.id),
+            description: p.fiatPriceTwd
+              ? `NT$${p.fiatPriceTwd}`
+              : p.currencyPrice
+                ? `${p.currencyPrice} 貨幣`
+                : '可購買',
+          })),
+        },
+      ],
     },
   ];
 }

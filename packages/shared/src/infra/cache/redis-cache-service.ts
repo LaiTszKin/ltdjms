@@ -16,7 +16,7 @@ export class RedisCacheService implements CacheService {
     this.logger = logger ?? (pino({ level: 'silent' }) as Logger);
     this.redis = new Redis(redisUri, {
       maxRetriesPerRequest: null,
-      enableReadyCheck: false,
+      enableReadyCheck: true,
     });
 
     // Handle errors without crashing

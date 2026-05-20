@@ -121,7 +121,7 @@ export class UserPanelUpdateListener {
         }
 
         console.log(
-          `[UserPanelUpdateListener] Would update panel for ` +
+          `[UserPanelUpdateListener] Updated panel for ` +
           `guildId=${guildId}, userId=${session.userId}: ` +
           `balance=${view.balance}${view.currencyIcon}, tokens=${view.tokens}` +
           (session.channelId ? `, channelId=${session.channelId}` : ''),

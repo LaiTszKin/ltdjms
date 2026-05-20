@@ -139,6 +139,8 @@ export interface Decision {
 
 // ===== Message Splitter Types =====
 
+// This is the raw message splitter limit (before markdown pipeline).
+// DiscordMarkdownPaginator uses 1900 to leave room for pipeline processing (code fences, etc.).
 export const MAX_MESSAGE_LENGTH = 1980;
 
 // ===== Agent Config Types =====

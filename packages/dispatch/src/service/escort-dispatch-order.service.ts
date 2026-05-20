@@ -1,4 +1,4 @@
-import type { Result } from '@ltdjms/shared';
+import type { Result, TokenMap } from '@ltdjms/shared';
 import { Ok, Err, DomainError } from '@ltdjms/shared';
 
 import type { EscortDispatchOrderRepo } from '../repo/escort-dispatch-order.repo.js';
@@ -46,6 +46,7 @@ export class EscortDispatchOrderService {
     private readonly clock?: () => number,
     private readonly catalogRepository?: EscortOptionCatalogRepository,
     private readonly afterSalesStaffService?: DispatchAfterSalesStaffService,
+    private readonly logger?: TokenMap['Logger'],
   ) {
     this.orderNumberGenerator = orderNumberGenerator ?? new EscortDispatchOrderNumberGenerator();
     this.clock = clock ?? (() => Date.now());
@@ -395,7 +396,10 @@ export class EscortDispatchOrderService {
     try {
       const orders = await this.repository.findRecentByGuildId(guildId, safeLimit);
       const normalizedOrders = await Promise.all(
-        orders.map((o) => this.ensureTimeoutCompletion(o)),
+        orders.map(async (o) => {
+          if (!isPendingCustomerConfirmation(o)) return o;
+          return this.ensureTimeoutCompletion(o);
+        }),
       );
       return new Ok(normalizedOrders);
     } catch (e) {
@@ -474,14 +478,18 @@ export class EscortDispatchOrderService {
   }
 
   private logWarn(message: string, data?: Record<string, unknown>): void {
-    const entry = {
-      timestamp: new Date().toISOString(),
-      level: 'warn',
-      module: 'EscortDispatchOrderService',
-      message,
-      ...data,
-    };
-    console.warn(JSON.stringify(entry));
+    if (this.logger) {
+      this.logger.warn({ ...data, module: 'EscortDispatchOrderService' }, message);
+    } else {
+      const entry = {
+        timestamp: new Date().toISOString(),
+        level: 'warn',
+        module: 'EscortDispatchOrderService',
+        message,
+        ...data,
+      };
+      console.warn(JSON.stringify(entry));
+    }
   }
 
   private normalizeLimit(limit: number, maxLimit: number): number {

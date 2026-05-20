@@ -6,6 +6,7 @@ import {
   EmbedBuilder,
   ActionRowBuilder,
   ChannelType,
+  ChannelSelectMenuBuilder,
 } from 'discord.js';
 import { AdminPanelSessionManager } from '../../../session/AdminPanelSessionManager.js';
 import { AdminPanelViewState } from '../../../session/types.js';
@@ -111,7 +112,6 @@ export class AIAgentConfigHandler extends BaseAdminHandler {
       .setDescription(descMap[action])
       .setColor(Colors.PRIMARY);
 
-    const { ChannelSelectMenuBuilder } = await import('discord.js');
     const select = new ChannelSelectMenuBuilder()
       .setCustomId(customIdMap[action])
       .setPlaceholder('請選擇頻道')
@@ -133,6 +133,9 @@ export class AIAgentConfigHandler extends BaseAdminHandler {
     }
 
     const channelId = selectedIds[0];
+    // TODO(P2-8): Add mode selection UI before enabling agent. The current flow
+    // hardcodes 'default' mode. The admin should be able to choose between
+    // 'chat', 'agent', or 'hybrid' mode when enabling a channel.
     const result = await this.facade.enableAgent(guildId, channelId, 'default');
 
     if (result.isOk()) {

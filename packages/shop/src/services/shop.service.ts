@@ -25,7 +25,7 @@ export const ShopPageHelper = {
   },
 };
 
-export const PAGE_SIZE = 5;
+export const PAGE_SIZE = 10;
 
 export class ShopService {
   private readonly log: pino.Logger;

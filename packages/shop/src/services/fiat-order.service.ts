@@ -54,8 +54,12 @@ export class FiatOrderService {
 
   /**
    * Creates a fiat-only order.
-   * The tradeDesc parameter is an extension beyond spec R4.1.
-   * When omitted, a default description is used.
+   * The tradeDesc parameter is an extension beyond spec R4.1; when omitted, a default
+   * description ("Discord 商品下單 user:{userId}") is sent to ECPay as the TradeDesc.
+   * @param guildId - The guild ID
+   * @param userId - The buyer user ID
+   * @param productId - The product ID
+   * @param tradeDesc - Optional custom ECPay TradeDesc; defaults to a descriptive string
    */
   async createFiatOnlyOrder(
     guildId: number,

@@ -1,4 +1,4 @@
-export { CurrencyManagementFacade, BalanceAdjustMode } from './CurrencyManagementFacade.js';
+export { CurrencyManagementFacade } from './CurrencyManagementFacade.js';
 export { GameTokenManagementFacade } from './GameTokenManagementFacade.js';
 export {
   GameConfigManagementFacade,

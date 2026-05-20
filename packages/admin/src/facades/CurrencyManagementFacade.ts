@@ -10,20 +10,6 @@ import {
 } from '@ltdjms/economy';
 
 /**
- * Adjustment mode for balance operations.
- *
- * @deprecated Not used internally. The balance adjustment methods (adjustBalance,
- * deductBalance, setBalance) each have a dedicated API surface and do not use
- * this enum. Retained only for external consumers that may reference it.
- * Will be removed in a future version.
- */
-export enum BalanceAdjustMode {
-  ADD = 'ADD',
-  DEDUCT = 'DEDUCT',
-  SET = 'SET',
-}
-
-/**
  * Facade that aggregates currency management operations.
  * Wraps BalanceService, BalanceAdjustmentService, and CurrencyConfigService.
  * Matches Java CurrencyManagementFacade.

@@ -10,10 +10,17 @@ import type { CacheService } from '../cache/cache-service.js';
 import type { CacheKeyGenerator } from '../cache/cache-key-generator.js';
 import type { DiscordRuntimeGateway } from '../../discord/domain/discord-runtime-gateway.js';
 import type { DiscordEmbedBuilder } from '../../discord/domain/discord-embed-builder.js';
-import type pino from 'pino';
+import type { DomainEvent } from '../../types/events/domain-event.js';
+import pino from 'pino';
+import { type Pool } from 'pg';
 
 /**
  * Initializes the tsyringe DI container with all shared services registered as singletons.
+ * Optionally accepts event listener functions to register with the DomainEventPublisher.
+ *
+ * @param options - container initialization options
+ * @param options.cacheService - **In production, this must be provided.**
+ *   When omitted, NoOpCacheService is used, which is only appropriate for testing.
  */
 export function initializeContainer(options?: {
   config?: EnvironmentConfig;
@@ -24,6 +31,8 @@ export function initializeContainer(options?: {
   embedBuilder?: DiscordEmbedBuilder;
   logger?: pino.Logger;
   databasePool?: unknown;
+  /** Domain event listeners to register at startup. */
+  eventListeners?: Array<(event: DomainEvent) => void>;
 }): void {
   // Config
   if (options?.config) {
@@ -39,6 +48,16 @@ export function initializeContainer(options?: {
       options.cacheService,
     );
   } else {
+    if (process.env.NODE_ENV === 'production') {
+      const msg =
+        'No cacheService provided in production — using NoOpCacheService. ' +
+        'This will severely degrade performance. Pass a real CacheService in options.';
+      if (options?.logger) {
+        options.logger.warn(msg);
+      } else {
+        console.warn(`[container] ${msg}`);
+      }
+    }
     tsyringeContainer.registerInstance<CacheService>(
       TOKENS.CacheService,
       NoOpCacheService.getInstance(),
@@ -71,6 +90,16 @@ export function initializeContainer(options?: {
     );
   }
 
+  // Register event listeners with the publisher
+  if (options?.eventListeners && options.eventListeners.length > 0) {
+    const publisher = tsyringeContainer.resolve<DomainEventPublisher>(
+      TOKENS.DomainEventPublisher,
+    );
+    for (const listener of options.eventListeners) {
+      publisher.register(listener);
+    }
+  }
+
   // Discord
   if (options?.runtimeGateway) {
     tsyringeContainer.registerInstance<DiscordRuntimeGateway>(
@@ -78,9 +107,9 @@ export function initializeContainer(options?: {
       options.runtimeGateway,
     );
   } else {
-    tsyringeContainer.registerSingleton(
+    tsyringeContainer.registerInstance<DiscordRuntimeGateway>(
       TOKENS.DiscordRuntimeGateway,
-      DiscordJsRuntimeGateway,
+      new DiscordJsRuntimeGateway(),
     );
   }
 
@@ -90,20 +119,37 @@ export function initializeContainer(options?: {
       options.embedBuilder,
     );
   } else {
-    tsyringeContainer.registerSingleton(
+    tsyringeContainer.registerInstance<DiscordEmbedBuilder>(
       TOKENS.DiscordEmbedBuilder,
-      DiscordJsEmbedBuilder,
+      new DiscordJsEmbedBuilder(),
     );
   }
 
   // Logger
   if (options?.logger) {
     tsyringeContainer.registerInstance(TOKENS.Logger, options.logger);
+  } else {
+    // Fallback: silent logger for use in test / unconfigured environments
+    tsyringeContainer.registerInstance(TOKENS.Logger, pino({ level: 'silent' }));
   }
 
   // Database pool
   if (options?.databasePool) {
     tsyringeContainer.registerInstance(TOKENS.DatabasePool, options.databasePool);
+  } else {
+    // Fallback: proxy that throws a clear error if accessed without being configured.
+    // In production this must be explicitly provided.
+    tsyringeContainer.registerInstance(
+      TOKENS.DatabasePool,
+      new Proxy({} as Pool, {
+        get(_target, prop) {
+          throw new Error(
+            `DatabasePool.${String(prop)} accessed but no pool was provided. ` +
+            'Pass a Pool instance via initializeContainer({ databasePool }).',
+          );
+        },
+      }),
+    );
   }
 }
 

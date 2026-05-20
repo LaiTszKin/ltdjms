@@ -18,7 +18,8 @@ export class ShopAdminNotificationService {
    */
   notifyAdminsOrderCreated(guildId: number, buyerUserId: number, dispatchOrder: any): void {
     if (!dispatchOrder) return;
-    const message = this.buildAdminEscortNotification(guildId, buyerUserId, dispatchOrder);
+    const guildName = this.getGuildName(guildId);
+    const message = this.buildAdminEscortNotification(guildId, buyerUserId, dispatchOrder, guildName ?? undefined);
     this.notifyGuildAdmins(guildId, message);
   }
 
@@ -36,12 +37,14 @@ export class ShopAdminNotificationService {
   ): void {
     if (!product) return;
 
+    const guildName = this.getGuildName(guildId);
     const message = this.buildAdminOrderNotification(
       guildId,
       buyerUserId,
       product,
       orderType,
       orderReference,
+      guildName ?? undefined,
     );
     this.notifyGuildAdmins(guildId, message);
   }
@@ -49,7 +52,8 @@ export class ShopAdminNotificationService {
   notifyAdminsEscortOrderCreated(guildId: number, buyerUserId: number, dispatchOrder: any): void {
     if (!dispatchOrder) return;
 
-    const message = this.buildAdminEscortNotification(guildId, buyerUserId, dispatchOrder);
+    const guildName = this.getGuildName(guildId);
+    const message = this.buildAdminEscortNotification(guildId, buyerUserId, dispatchOrder, guildName ?? undefined);
     this.notifyGuildAdmins(guildId, message);
   }
 
@@ -123,16 +127,31 @@ export class ShopAdminNotificationService {
     }
   }
 
+  private getGuildName(guildId: number): string | null {
+    try {
+      const client: any = this.discordRuntimeGateway.requireReadyClient();
+      const guild = client.guilds.cache.get(guildId.toString());
+      return guild?.name ?? null;
+    } catch {
+      return null;
+    }
+  }
+
   private buildAdminOrderNotification(
     guildId: number,
     buyerUserId: number,
     product: Product,
     orderType: string,
     orderReference: string,
+    guildName?: string,
   ): string {
     const lines: string[] = [];
     lines.push('📩 有新訂單發起，請儘速派單\n');
-    lines.push(`**伺服器：** \`${guildId}\``);
+    if (guildName) {
+      lines.push(`**伺服器：** ${guildName}（\`${guildId}\`）`);
+    } else {
+      lines.push(`**伺服器：** \`${guildId}\``);
+    }
     lines.push(`**買家：** <@${buyerUserId}>`);
     lines.push(`**商品：** ${product.name}`);
     lines.push(`**訂單類型：** ${orderType}`);
@@ -147,10 +166,15 @@ export class ShopAdminNotificationService {
     guildId: number,
     buyerUserId: number,
     order: any,
+    guildName?: string,
   ): string {
     const lines: string[] = [];
     lines.push('📩 有新護航工作交接，請儘速處理\n');
-    lines.push(`**伺服器：** \`${guildId}\``);
+    if (guildName) {
+      lines.push(`**伺服器：** ${guildName}（\`${guildId}\`）`);
+    } else {
+      lines.push(`**伺服器：** \`${guildId}\``);
+    }
     lines.push(`**買家：** <@${buyerUserId}>`);
     lines.push(`**來源類型：** ${this.describeSourceType(order.sourceType)}`);
     if (order.sourceReference) {

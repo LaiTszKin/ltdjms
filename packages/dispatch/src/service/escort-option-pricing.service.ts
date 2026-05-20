@@ -8,23 +8,20 @@ import type { EscortOrderOption, OptionPriceView } from '../domain/option-price-
  * Minimal catalog entry for an escort option.
  * This will be replaced by the shared EscortOptionCatalogRepository once ported.
  */
-export interface EscortOptionCatalogEntry {
-  readonly code: string;
-  readonly type: string;
-  readonly level: string;
-  readonly mapScope: string;
-  readonly target: string;
+export interface EscortOptionCatalogEntry extends Omit<EscortOrderOption, 'defaultPriceTwd'> {
   readonly priceTwd: number;
 }
 
 /**
- * Minimal catalog repository interface.
- * This will be replaced by the shared EscortOptionCatalogRepository once ported.
+ * Catalog repository interface for escort option CRUD.
  */
 export interface EscortOptionCatalogRepository {
   findAll(): Promise<EscortOptionCatalogEntry[]>;
   findByCode(code: string): Promise<EscortOptionCatalogEntry | null>;
   existsByCode(code: string): Promise<boolean>;
+  create(entry: Omit<EscortOptionCatalogEntry, 'code'> & { code: string }): Promise<EscortOptionCatalogEntry>;
+  update(code: string, data: Partial<Omit<EscortOptionCatalogEntry, 'code'>>): Promise<EscortOptionCatalogEntry | null>;
+  delete(code: string): Promise<boolean>;
 }
 
 /**
@@ -37,10 +34,27 @@ export class EscortOptionPricingService {
     private readonly catalogRepository: EscortOptionCatalogRepository,
   ) {}
 
+  /**
+   * In-memory TTL cache for the full catalog used by listOptionPrices.
+   * Invalidated after CATALOG_CACHE_TTL_MS (5 minutes) to reduce DB round trips.
+   */
+  private catalogCache: { data: EscortOptionCatalogEntry[]; expiry: number } | null = null;
+  private static readonly CATALOG_CACHE_TTL_MS = 5 * 60 * 1000;
+
+  private async getCachedCatalogs(): Promise<EscortOptionCatalogEntry[]> {
+    const now = Date.now();
+    if (this.catalogCache != null && now < this.catalogCache.expiry) {
+      return this.catalogCache.data;
+    }
+    const data = await this.catalogRepository.findAll();
+    this.catalogCache = { data, expiry: now + EscortOptionPricingService.CATALOG_CACHE_TTL_MS };
+    return data;
+  }
+
   async listOptionPrices(guildId: number): Promise<Result<OptionPriceView[], DomainError>> {
     try {
       const overrides = await this.repository.findAllByGuildId(guildId);
-      const catalogs = await this.catalogRepository.findAll();
+      const catalogs = await this.getCachedCatalogs();
       const prices: OptionPriceView[] = [];
 
       for (const cat of catalogs) {

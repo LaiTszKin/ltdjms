@@ -44,7 +44,7 @@ export class DomainError {
     readonly message: string,
     readonly cause?: Error,
   ) {
-    if (!category) {
+    if (category === null || category === undefined) {
       throw new Error('category must not be null');
     }
     if (!message) {

@@ -6,6 +6,7 @@ import {
   EmbedBuilder,
   ActionRowBuilder,
   ChannelType,
+  ChannelSelectMenuBuilder,
 } from 'discord.js';
 import { AdminPanelSessionManager } from '../../../session/AdminPanelSessionManager.js';
 import { AdminPanelViewState } from '../../../session/types.js';
@@ -117,7 +118,6 @@ export class AIChannelConfigHandler extends BaseAdminHandler {
       .setDescription(`請選擇要${action === 'add' ? '新增' : '移除'}的頻道`)
       .setColor(Colors.PRIMARY);
 
-    const { ChannelSelectMenuBuilder } = await import('discord.js');
     const select = new ChannelSelectMenuBuilder()
       .setCustomId(customId)
       .setPlaceholder('請選擇頻道')

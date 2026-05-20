@@ -55,14 +55,14 @@ describe('GameRewardService', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
         }),
-        findByGuildIdAndUserId: vi.fn().mockResolvedValue({
+        findByGuildIdAndUserId: vi.fn(),
+        adjustBalance: vi.fn().mockResolvedValue({
           guildId: 1,
           userId: 1,
           balance: 3500,
           createdAt: new Date(),
           updatedAt: new Date(),
         }),
-        adjustBalance: vi.fn().mockResolvedValue({}),
       };
 
       const mockTxService = {
@@ -132,14 +132,14 @@ describe('GameRewardService', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
         }),
-        findByGuildIdAndUserId: vi.fn().mockResolvedValue({
+        findByGuildIdAndUserId: vi.fn(),
+        adjustBalance: vi.fn().mockResolvedValue({
           guildId: 1,
           userId: 1,
           balance: 500,
           createdAt: new Date(),
           updatedAt: new Date(),
         }),
-        adjustBalance: vi.fn().mockResolvedValue({}),
       };
 
       const mockTxService = {

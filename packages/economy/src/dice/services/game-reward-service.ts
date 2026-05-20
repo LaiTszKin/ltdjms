@@ -11,13 +11,15 @@ import { MAX_ADJUSTMENT_AMOUNT } from '../../domain/types.js';
  * Service for processing game rewards and adding them to member currency accounts.
  * Matches Java GameRewardService behavior exactly.
  *
- * If the reward amount exceeds MAX_ADJUSTMENT_AMOUNT, it splits into multiple adjustments.
+ * If the reward amount exceeds maxAdjustmentAmount, it splits into multiple adjustments.
+ * The threshold is injectable for testing with smaller values.
  */
 export class GameRewardService {
   constructor(
     private readonly accountRepository: CurrencyAccountRepository,
     private readonly transactionService: CurrencyTransactionService,
     private readonly eventPublisher: DomainEventPublisher,
+    private readonly maxAdjustmentAmount: number = MAX_ADJUSTMENT_AMOUNT,
   ) {}
 
   /**
@@ -47,21 +49,11 @@ export class GameRewardService {
       return account.balance;
     }
 
-    // Get previous balance
-    const previousAccount = await this.accountRepository.findOrCreate(guildId, userId);
-    const previousBalance = previousAccount.balance;
-
-    // Apply reward (may need multiple adjustments due to MAX_ADJUSTMENT_AMOUNT)
-    await this.applyRewardToAccount(guildId, userId, rewardAmount);
-
-    // Get new balance
-    const updatedAccount = await this.accountRepository.findByGuildIdAndUserId(
-      guildId,
-      userId,
-    );
-    const newBalance = updatedAccount
-      ? updatedAccount.balance
-      : previousBalance + rewardAmount;
+    // Apply reward (may need multiple adjustments due to MAX_ADJUSTMENT_AMOUNT).
+    // adjustBalance already returns the updated account via RETURNING (P1-13),
+    // so applyRewardToAccount returns the final balance, eliminating the
+    // duplicate findByGuildIdAndUserId query that previously followed.
+    const newBalance = await this.applyRewardToAccount(guildId, userId, rewardAmount);
 
     // Record transaction
     await this.transactionService.recordTransaction(
@@ -74,12 +66,13 @@ export class GameRewardService {
     );
 
     // Publish event
-    this.eventPublisher.publish({
+    const event: BalanceChangedEvent = {
       guildId: String(guildId),
       userId,
       eventType: 'balance_changed',
       newBalance,
-    } as BalanceChangedEvent);
+    };
+    this.eventPublisher.publish(event);
 
     return newBalance;
   }
@@ -87,19 +80,23 @@ export class GameRewardService {
   /**
    * Applies the reward to the member's currency account.
    * If the reward exceeds the max adjustment amount, splits into multiple adjustments.
+   * Returns the final balance after all adjustments are applied.
    */
   private async applyRewardToAccount(
     guildId: number,
     userId: number,
     totalReward: number,
-  ): Promise<void> {
+  ): Promise<number> {
     let remaining = totalReward;
-    const maxAdjustment = MAX_ADJUSTMENT_AMOUNT;
+    let newBalance = 0;
 
     while (remaining > 0) {
-      const adjustment = Math.min(remaining, maxAdjustment);
-      await this.accountRepository.adjustBalance(guildId, userId, adjustment);
+      const adjustment = Math.min(remaining, this.maxAdjustmentAmount);
+      const account = await this.accountRepository.adjustBalance(guildId, userId, adjustment);
+      newBalance = account.balance;
       remaining -= adjustment;
     }
+
+    return newBalance;
   }
 }

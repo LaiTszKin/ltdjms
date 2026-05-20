@@ -303,38 +303,6 @@ export function fromDbRow(params: {
   });
 }
 
-/** 完整參數版本的 createPending（含自動交接快照欄位的有條件校驗）。 */
-export function createPendingFull(
-  orderNumber: string,
-  guildId: number,
-  assignedByUserId: number,
-  escortUserId: number,
-  customerUserId: number,
-  sourceType: SourceType,
-  sourceReference: string | null,
-  sourceProductId: number | null,
-  sourceProductName: string | null,
-  sourceCurrencyPrice: number | null,
-  sourceFiatPriceTwd: number | null,
-  sourceEscortOptionCode: string | null,
-): EscortDispatchOrder {
-  return createOrder({
-    orderNumber,
-    guildId,
-    assignedByUserId,
-    escortUserId,
-    customerUserId,
-    sourceType,
-    sourceReference,
-    sourceProductId,
-    sourceProductName,
-    sourceCurrencyPrice,
-    sourceFiatPriceTwd,
-    sourceEscortOptionCode,
-    status: EscortDispatchOrderStatus.PENDING_CONFIRMATION,
-  });
-}
-
 /** 從商店付款自動交接建立的訂單（escortUserId=0, assignedByUserId=0）。 */
 export function createAutoHandoff(
   orderNumber: string,

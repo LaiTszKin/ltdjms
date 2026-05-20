@@ -1,5 +1,5 @@
 import { ChatOpenAI } from '@langchain/openai';
-import { DynamicStructuredTool, type StructuredToolInterface } from '@langchain/core/tools';
+import { DynamicStructuredTool } from '@langchain/core/tools';
 import {
   type BaseMessage,
   HumanMessage,
@@ -44,6 +44,8 @@ interface AccumulatedToolCall {
  */
 interface RegisteredTool {
   name: string;
+  description: string;
+  schema: z.ZodType<any>;
   execute: (params: Record<string, unknown>, guild: Guild) => Promise<string>;
 }
 
@@ -56,7 +58,6 @@ interface RegisteredTool {
 export class LangChainAIChatService implements AIChatService {
   config: AIServiceConfig;
   private chatModel: ChatOpenAI;
-  private exceptionMapper = new LangChainExceptionMapper();
 
   constructor(
     config: AIServiceConfig,
@@ -66,6 +67,7 @@ export class LangChainAIChatService implements AIChatService {
     private readonly interceptor?: ToolExecutionInterceptor,
     private readonly toolCallHistory?: InMemoryToolCallHistory,
     private readonly runtimeGateway?: DiscordRuntimeGateway,
+    private readonly exceptionMapper: LangChainExceptionMapper = new LangChainExceptionMapper(),
   ) {
     this.config = config;
     this.chatModel = this.buildChatModel(config);
@@ -203,8 +205,9 @@ export class LangChainAIChatService implements AIChatService {
       const messages = await this.buildMessages(guildId, userMessage, history, agentEnabled);
 
       // Use tool-bound model when agent is enabled (reuse existing model)
+      const toolDefs = agentEnabled ? this.buildToolDefinitions() : [];
       const { model: chatModel, maxIterations } = agentEnabled
-        ? createChatModel(this.config, true, this.chatModel)
+        ? createChatModel(this.config, true, this.chatModel, toolDefs)
         : { model: this.chatModel, maxIterations: 1 };
 
       let totalContent = '';
@@ -469,6 +472,15 @@ export class LangChainAIChatService implements AIChatService {
 
     return messages;
   }
+
+  /**
+   * Builds DynamicStructuredTool definitions from the toolMap for agent mode.
+   * Ensures the schema sent to the LLM always matches what's actually executed.
+   */
+  private buildToolDefinitions(): DynamicStructuredTool[] {
+    if (!this.toolMap) return [];
+    return buildToolDefinitionsFromTools(Array.from(this.toolMap.values()));
+  }
 }
 
 // ===== Agent Service Factory =====
@@ -480,127 +492,27 @@ export const AGENT_MAX_ITERATIONS = 5;
 export const CHAT_MAX_ITERATIONS = 1;
 
 /**
- * All 17 Discord permission management tools wrapped as LangChain DynamicTools.
- * These provide tool definitions to the model via bindTools().
- * Actual tool execution is handled by the agent loop with guild context.
+ * Builds DynamicStructuredTool definitions from tool instances for agent mode.
+ * Each tool must expose name, description, and schema properties.
+ * The func is a stub since actual execution goes through the agent loop.
  */
-/**
- * Reusable permission overwrite schema matching actual tool definitions
- * (CreateChannelTool, CreateCategoryTool, CreateRoleTool, Modify*Tool).
- */
-const permissionOverwriteSchema = z.object({
-  id: z.string(),
-  type: z.enum(['role', 'member']),
-  allow: z.string().optional(),
-  deny: z.string().optional(),
-  allowSet: z.array(z.string()).optional(),
-  denySet: z.array(z.string()).optional(),
-});
-
-export const AGENT_TOOL_DEFINITIONS: StructuredToolInterface[] = [
-  new DynamicStructuredTool({
-    name: 'create_channel',
-    description: '在伺服器中創建一個新的文字頻道',
-    schema: z.object({ name: z.string().min(1).max(100), permissions: z.array(permissionOverwriteSchema).optional() }),
-    func: async () => 'Tool execution handled by agent loop',
-  }),
-  new DynamicStructuredTool({
-    name: 'create_category',
-    description: '在伺服器中創建一個新的分類',
-    schema: z.object({ name: z.string().min(1).max(100), permissions: z.array(permissionOverwriteSchema).optional() }),
-    func: async () => 'Tool execution handled by agent loop',
-  }),
-  new DynamicStructuredTool({
-    name: 'create_role',
-    description: '在伺服器中創建一個新的身分組',
-    schema: z.object({ name: z.string().min(1).max(100), color: z.string().optional(), permissions: z.array(permissionOverwriteSchema).optional() }),
-    func: async () => 'Tool execution handled by agent loop',
-  }),
-  new DynamicStructuredTool({
-    name: 'list_channels',
-    description: '列出伺服器中的所有頻道，可按類型篩選',
-    schema: z.object({ type: z.enum(['text', 'voice', 'category', 'forum', 'media', 'stage']).optional() }),
-    func: async () => 'Tool execution handled by agent loop',
-  }),
-  new DynamicStructuredTool({
-    name: 'list_categories',
-    description: '列出伺服器中的所有分類',
-    schema: z.object({}),
-    func: async () => 'Tool execution handled by agent loop',
-  }),
-  new DynamicStructuredTool({
-    name: 'list_roles',
-    description: '列出伺服器中的所有身分組',
-    schema: z.object({}),
-    func: async () => 'Tool execution handled by agent loop',
-  }),
-  new DynamicStructuredTool({
-    name: 'get_channel_permissions',
-    description: '獲取指定頻道的權限設定',
-    schema: z.object({ channelId: z.string() }),
-    func: async () => 'Tool execution handled by agent loop',
-  }),
-  new DynamicStructuredTool({
-    name: 'get_category_permissions',
-    description: '獲取指定分類的權限設定',
-    schema: z.object({ categoryId: z.string() }),
-    func: async () => 'Tool execution handled by agent loop',
-  }),
-  new DynamicStructuredTool({
-    name: 'get_role_permissions',
-    description: '獲取指定身分組的權限設定',
-    schema: z.object({ roleId: z.string() }),
-    func: async () => 'Tool execution handled by agent loop',
-  }),
-  new DynamicStructuredTool({
-    name: 'modify_channel_permissions',
-    description: '修改指定頻道的權限設定',
-    schema: z.object({ channelId: z.string(), permissions: z.array(permissionOverwriteSchema) }),
-    func: async () => 'Tool execution handled by agent loop',
-  }),
-  new DynamicStructuredTool({
-    name: 'modify_category_permissions',
-    description: '修改指定分類的權限設定',
-    schema: z.object({ categoryId: z.string(), permissions: z.array(permissionOverwriteSchema) }),
-    func: async () => 'Tool execution handled by agent loop',
-  }),
-  new DynamicStructuredTool({
-    name: 'modify_role_permissions',
-    description: '修改指定身分組的權限設定',
-    schema: z.object({ roleId: z.string(), permissions: z.array(permissionOverwriteSchema) }),
-    func: async () => 'Tool execution handled by agent loop',
-  }),
-  new DynamicStructuredTool({
-    name: 'send_messages',
-    description: '發送訊息至指定的頻道',
-    schema: z.object({ channelIds: z.array(z.string()).optional(), message: z.string().optional(), messages: z.array(z.string()).optional() }),
-    func: async () => 'Tool execution handled by agent loop',
-  }),
-  new DynamicStructuredTool({
-    name: 'search_messages',
-    description: '搜尋歷史訊息，關鍵字搜尋',
-    schema: z.object({ keywords: z.string().min(1), channelIds: z.array(z.string()).optional(), maxResultsPerChannel: z.number().int().positive().optional().default(5), maxMessagesToScan: z.number().int().positive().optional().default(100) }),
-    func: async () => 'Tool execution handled by agent loop',
-  }),
-  new DynamicStructuredTool({
-    name: 'manage_message',
-    description: '管理訊息（釘選/刪除/編輯）',
-    schema: z.object({ messageId: z.string(), action: z.enum(['pin', 'delete', 'edit']), channelId: z.string().optional(), newContent: z.string().optional(), editMode: z.enum(['replace', 'append', 'prepend']).optional() }),
-    func: async () => 'Tool execution handled by agent loop',
-  }),
-  new DynamicStructuredTool({
-    name: 'move_channel',
-    description: '移動頻道至指定分類',
-    schema: z.object({ channelId: z.string(), targetCategoryId: z.string() }),
-    func: async () => 'Tool execution handled by agent loop',
-  }),
-  new DynamicStructuredTool({
-    name: 'delete_discord_resource',
-    description: '刪除 Discord 資源（頻道/分類/身分組）',
-    schema: z.object({ resourceType: z.enum(['channel', 'category', 'role']), resourceId: z.string() }),
-    func: async () => 'Tool execution handled by agent loop',
-  }),
-];
+export function buildToolDefinitionsFromTools(
+  tools: unknown[],
+): DynamicStructuredTool[] {
+  return tools.map((tool) => {
+    const t = tool as {
+      name: string;
+      description: string;
+      schema: z.ZodType<any>;
+    };
+    return new DynamicStructuredTool({
+      name: t.name,
+      description: t.description,
+      schema: t.schema,
+      func: async () => 'Tool execution handled by agent loop',
+    });
+  });
+}
 
 /**
  * Creates a ChatOpenAI model with optional tool bindings for agent mode.
@@ -609,12 +521,14 @@ export const AGENT_TOOL_DEFINITIONS: StructuredToolInterface[] = [
  * @param config - The AI service configuration
  * @param agentEnabled - Whether to create an agent-capable model with tool bindings
  * @param existingModel - An optional existing ChatOpenAI instance to reuse as base
+ * @param toolDefs - Tool definitions for agent mode (derived from actual tool instances)
  * @returns An object with the model and maxIterations setting
  */
 export function createChatModel(
   config: AIServiceConfig,
   agentEnabled: boolean,
   existingModel?: ChatOpenAI,
+  toolDefs?: DynamicStructuredTool[],
 ): { model: ChatOpenAI | ReturnType<ChatOpenAI['bindTools']>; maxIterations: number } {
   const model = existingModel ?? new ChatOpenAI({
     configuration: {
@@ -627,9 +541,9 @@ export function createChatModel(
     streaming: true,
   });
 
-  if (agentEnabled) {
+  if (agentEnabled && toolDefs && toolDefs.length > 0) {
     return {
-      model: model.bindTools(AGENT_TOOL_DEFINITIONS),
+      model: model.bindTools(toolDefs),
       maxIterations: AGENT_MAX_ITERATIONS,
     };
   }

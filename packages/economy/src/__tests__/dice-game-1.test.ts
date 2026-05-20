@@ -1,17 +1,17 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { DiceGame1Service, DefaultRandom } from '../dice/services/dice-game-1-service.js';
-import { DiceConfigRepository } from '../dice/repositories/dice-config-repo.js';
-import { GameTokenService } from '../token/services/game-token-service.js';
 import { GameRewardService } from '../dice/services/game-reward-service.js';
-import { GameTokenTransactionService } from '../token/services/game-token-tx-service.js';
+import type { DiceGame1Config } from '../domain/types.js';
+import { CurrencyTransactionSource } from '../domain/types.js';
 
 describe('DiceGame1Service', () => {
+  const mockGameRewardService = {
+    creditReward: vi.fn().mockResolvedValue(0),
+  } as unknown as GameRewardService;
+
   describe('calculateTotalReward', () => {
     const service = new DiceGame1Service(
-      {} as DiceConfigRepository,
-      {} as GameTokenService,
-      {} as GameTokenTransactionService,
-      {} as GameRewardService,
+      mockGameRewardService,
       DefaultRandom,
     );
 
@@ -53,10 +53,7 @@ describe('DiceGame1Service', () => {
       };
 
       const service = new DiceGame1Service(
-        {} as DiceConfigRepository,
-        {} as GameTokenService,
-        {} as GameTokenTransactionService,
-        {} as GameRewardService,
+        mockGameRewardService,
         random,
       );
 
@@ -72,10 +69,7 @@ describe('DiceGame1Service', () => {
       };
 
       const service = new DiceGame1Service(
-        {} as DiceConfigRepository,
-        {} as GameTokenService,
-        {} as GameTokenTransactionService,
-        {} as GameRewardService,
+        mockGameRewardService,
         random,
       );
 
@@ -94,42 +88,24 @@ describe('DiceGame1Service', () => {
         },
       };
 
-      const mockDiceConfigRepo = {
-        findDice1Config: vi.fn().mockResolvedValue({
-          guildId: 1,
-          minTokensPerPlay: 1,
-          maxTokensPerPlay: 10,
-          rewardPerDiceValue: 250000,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        }),
-      } as unknown as DiceConfigRepository;
-
-      const mockGameTokenService = {
-        tryDeductTokens: vi.fn().mockResolvedValue({
-          isOk: () => true,
-          isErr: () => false,
-          getValue: () => ({ guildId: 1, userId: 1, tokens: 7 }),
-        }),
-      } as unknown as GameTokenService;
-
-      const mockTokenTxService = {
-        recordTransaction: vi.fn().mockResolvedValue({}),
-      } as unknown as GameTokenTransactionService;
-
-      const mockGameRewardService = {
-        creditReward: vi.fn().mockResolvedValue(1500000),
+      const mockRewardService = {
+        creditReward: vi.fn()
+          .mockResolvedValueOnce(0)         // first call: get previous balance
+          .mockResolvedValueOnce(1500000),  // second call: apply reward
       } as unknown as GameRewardService;
 
-      const service = new DiceGame1Service(
-        mockDiceConfigRepo,
-        mockGameTokenService,
-        mockTokenTxService,
-        mockGameRewardService,
-        random,
-      );
+      const service = new DiceGame1Service(mockRewardService, random);
 
-      const result = await service.play(1, 1, 2);
+      const config: DiceGame1Config = {
+        guildId: 1,
+        minTokensPerPlay: 1,
+        maxTokensPerPlay: 10,
+        rewardPerDiceValue: 250000,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const result = await service.play(1, 1, 2, config);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -140,89 +116,76 @@ describe('DiceGame1Service', () => {
       }
 
       // Verify creditReward was called twice (once for 0 balance query, once for actual reward)
-      expect(mockGameRewardService.creditReward).toHaveBeenCalledTimes(2);
+      expect(mockRewardService.creditReward).toHaveBeenCalledTimes(2);
+      expect(mockRewardService.creditReward).toHaveBeenNthCalledWith(
+        1, 1, 1, 0, CurrencyTransactionSource.DICE_GAME_1_WIN,
+      );
+      expect(mockRewardService.creditReward).toHaveBeenNthCalledWith(
+        2, 1, 1, 1500000, CurrencyTransactionSource.DICE_GAME_1_WIN,
+      );
     });
 
-    it('should fail when tokens are insufficient', async () => {
-      const mockDiceConfigRepo = {
-        findDice1Config: vi.fn().mockResolvedValue({
-          guildId: 1,
-          minTokensPerPlay: 1,
-          maxTokensPerPlay: 10,
-          rewardPerDiceValue: 250000,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        }),
-      } as unknown as DiceConfigRepository;
+    it('should complete play successfully with valid inputs', async () => {
+      const mockRewardService = {
+        creditReward: vi.fn()
+          .mockResolvedValueOnce(1000)
+          .mockResolvedValueOnce(2500),
+      } as unknown as GameRewardService;
 
-      const mockGameTokenService = {
-        tryDeductTokens: vi.fn().mockResolvedValue({
-          isOk: () => false,
-          isErr: () => true,
-          getError: () => ({
-            category: 'INSUFFICIENT_TOKENS',
-            message: 'Insufficient tokens',
-          }),
-        }),
-      } as unknown as GameTokenService;
+      const service = new DiceGame1Service(mockRewardService, DefaultRandom);
 
-      const service = new DiceGame1Service(
-        mockDiceConfigRepo,
-        mockGameTokenService,
-        {} as GameTokenTransactionService,
-        {} as GameRewardService,
-        DefaultRandom,
-      );
+      const config: DiceGame1Config = {
+        guildId: 1,
+        minTokensPerPlay: 1,
+        maxTokensPerPlay: 10,
+        rewardPerDiceValue: 100000,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
 
-      const result = await service.play(1, 1, 5);
-      expect(result.isErr()).toBe(true);
+      const result = await service.play(1, 1, 3, config);
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.getValue().diceRolls).toHaveLength(3);
+      }
     });
 
     it('should fail when token count is below minimum', async () => {
-      const mockDiceConfigRepo = {
-        findDice1Config: vi.fn().mockResolvedValue({
-          guildId: 1,
-          minTokensPerPlay: 3,
-          maxTokensPerPlay: 10,
-          rewardPerDiceValue: 250000,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        }),
-      } as unknown as DiceConfigRepository;
-
       const service = new DiceGame1Service(
-        mockDiceConfigRepo,
-        {} as GameTokenService,
-        {} as GameTokenTransactionService,
-        {} as GameRewardService,
+        mockGameRewardService,
         DefaultRandom,
       );
 
-      const result = await service.play(1, 1, 1);
+      const config: DiceGame1Config = {
+        guildId: 1,
+        minTokensPerPlay: 3,
+        maxTokensPerPlay: 10,
+        rewardPerDiceValue: 250000,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const result = await service.play(1, 1, 1, config);
       expect(result.isErr()).toBe(true);
     });
 
     it('should fail when token count exceeds maximum', async () => {
-      const mockDiceConfigRepo = {
-        findDice1Config: vi.fn().mockResolvedValue({
-          guildId: 1,
-          minTokensPerPlay: 1,
-          maxTokensPerPlay: 5,
-          rewardPerDiceValue: 250000,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        }),
-      } as unknown as DiceConfigRepository;
-
       const service = new DiceGame1Service(
-        mockDiceConfigRepo,
-        {} as GameTokenService,
-        {} as GameTokenTransactionService,
-        {} as GameRewardService,
+        mockGameRewardService,
         DefaultRandom,
       );
 
-      const result = await service.play(1, 1, 10);
+      const config: DiceGame1Config = {
+        guildId: 1,
+        minTokensPerPlay: 1,
+        maxTokensPerPlay: 5,
+        rewardPerDiceValue: 250000,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const result = await service.play(1, 1, 10, config);
       expect(result.isErr()).toBe(true);
     });
   });

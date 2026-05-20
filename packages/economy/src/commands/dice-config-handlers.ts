@@ -1,6 +1,9 @@
 import {
   type DiscordInteraction,
   type DiscordContext,
+  type DomainEventPublisher,
+  type DiceGameConfigChangedEvent,
+  GameType,
 } from '@ltdjms/shared';
 import { type DiceConfigRepository } from '../dice/repositories/dice-config-repo.js';
 import { DiceGameMessages } from '../localization/dice-game-messages.js';
@@ -14,6 +17,7 @@ export class DiceGame1ConfigHandler {
 
   constructor(
     private readonly diceConfigRepository: DiceConfigRepository,
+    private readonly eventPublisher: DomainEventPublisher,
   ) {}
 
   async execute(
@@ -49,6 +53,9 @@ export class DiceGame1ConfigHandler {
     }
 
     try {
+      // Fetch old config (if any) for the change event
+      const oldConfig = await this.diceConfigRepository.findDice1Config(guildId);
+
       const saved = await this.diceConfigRepository.upsertDice1Config({
         guildId,
         minTokensPerPlay: minTokens,
@@ -57,6 +64,16 @@ export class DiceGame1ConfigHandler {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
+
+      // Publish config changed event (P2-15)
+      const event: DiceGameConfigChangedEvent = {
+        guildId: String(guildId),
+        eventType: 'dice_game_config_changed',
+        gameType: GameType.DICE_GAME_1,
+        oldConfig: oldConfig ? { ...oldConfig } : undefined,
+        newConfig: { ...saved },
+      };
+      this.eventPublisher.publish(event);
 
       await interaction.reply(
         `${DiceGameMessages.DICE_CONFIG_SUCCESS}\n${DiceGameMessages.DICE_CONFIG_1_DISPLAY
@@ -82,6 +99,7 @@ export class DiceGame2ConfigHandler {
 
   constructor(
     private readonly diceConfigRepository: DiceConfigRepository,
+    private readonly eventPublisher: DomainEventPublisher,
   ) {}
 
   async execute(
@@ -130,6 +148,9 @@ export class DiceGame2ConfigHandler {
     }
 
     try {
+      // Fetch old config (if any) for the change event
+      const oldConfig = await this.diceConfigRepository.findDice2Config(guildId);
+
       const saved = await this.diceConfigRepository.upsertDice2Config({
         guildId,
         minTokensPerPlay: minTokens,
@@ -141,6 +162,16 @@ export class DiceGame2ConfigHandler {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
+
+      // Publish config changed event (P2-15)
+      const event: DiceGameConfigChangedEvent = {
+        guildId: String(guildId),
+        eventType: 'dice_game_config_changed',
+        gameType: GameType.DICE_GAME_2,
+        oldConfig: oldConfig ? { ...oldConfig } : undefined,
+        newConfig: { ...saved },
+      };
+      this.eventPublisher.publish(event);
 
       await interaction.reply(
         `${DiceGameMessages.DICE_CONFIG_SUCCESS}\n${DiceGameMessages.DICE_CONFIG_2_DISPLAY

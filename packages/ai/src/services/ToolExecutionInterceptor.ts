@@ -4,13 +4,6 @@ import pino from 'pino';
 /**
  * Intercepts tool execution lifecycle events for observability.
  * Logs start, completion, and failure with timing information.
- *
- * TODO (P0-18): Wire this interceptor into the agent flow via AgentServiceFactory.
- *   The interceptor should be registered with a correlation ID per tool invocation,
- *   and onToolExecutionStarted/onToolExecutionCompleted/onToolExecutionFailed
- *   should be called by the LangChain agent executor callback layer.
- *   Once AgentServiceFactory.createAgent() configures the tool-execution pipeline,
- *   pass this interceptor so each tool call is wrapped with start/completion/failure logging.
  */
 export class ToolExecutionInterceptor {
   private readonly logger: pino.Logger;

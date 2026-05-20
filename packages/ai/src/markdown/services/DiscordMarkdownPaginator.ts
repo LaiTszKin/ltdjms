@@ -1,3 +1,5 @@
+// Paginator uses a tighter limit (1900) than the raw splitter (1980) to leave room
+// for code fence wrappers and other pipeline additions during pagination.
 const MAX_MESSAGE_LENGTH = 1900;
 const CODE_FENCE_RESERVED = 4; // 4 chars for code fence closure: \n```
 
@@ -63,6 +65,9 @@ export class DiscordMarkdownPaginator {
         openCodeFence = fence;
 
         remaining = remaining.slice(headingMatch).trimStart();
+        if (openCodeFence !== null) {
+          remaining = `\`\`\`${openCodeFence}\n` + remaining;
+        }
         continue;
       }
 
@@ -78,6 +83,9 @@ export class DiscordMarkdownPaginator {
         openCodeFence = fence;
 
         remaining = remaining.slice(fenceBoundary).trimStart();
+        if (openCodeFence !== null) {
+          remaining = `\`\`\`${openCodeFence}\n` + remaining;
+        }
         continue;
       }
 
@@ -91,6 +99,9 @@ export class DiscordMarkdownPaginator {
       openCodeFence = fence;
 
       remaining = remaining.slice(this.maxLength).trimStart();
+      if (openCodeFence !== null) {
+        remaining = `\`\`\`${openCodeFence}\n` + remaining;
+      }
     }
 
     return pages;
@@ -179,6 +190,6 @@ export class DiscordMarkdownPaginator {
     }
     // else: no open fence and fences are balanced → newFence stays null
 
-    return { closed: result.trimEnd(), fence: newFence };
+    return { closed: result.replace(/[ \t]+$/gm, ''), fence: newFence };
   }
 }

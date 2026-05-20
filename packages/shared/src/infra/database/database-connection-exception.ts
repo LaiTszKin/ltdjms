@@ -1,6 +1,9 @@
 export class DatabaseConnectionException extends Error {
-  constructor(message: string, public readonly cause?: unknown) {
+  constructor(message: string, cause?: Error) {
     super(message);
     this.name = 'DatabaseConnectionException';
+    if (cause) {
+      this.cause = cause;
+    }
   }
 }

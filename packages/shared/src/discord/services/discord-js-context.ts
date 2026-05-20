@@ -33,21 +33,24 @@ export class DiscordJsContext implements DiscordContext {
     return `<@${this.interaction.user.id}>`;
   }
 
+  private hasOptions(): boolean {
+    return 'options' in this.interaction;
+  }
+
   getOption(name: string): string | null {
-    if (!('options' in this.interaction)) {
+    if (!this.hasOptions()) {
       return null;
     }
-    const option = (this.interaction.options as Record<string, unknown>).get
-      ? (this.interaction.options as any).get(name)
-      : null;
+    const opts = (this.interaction as any).options;
+    const option = opts.get ? opts.get(name) : null;
     return option?.value?.toString() ?? null;
   }
 
   getOptionAsString(name: string): string | null {
-    if (!('options' in this.interaction)) {
+    if (!this.hasOptions()) {
       return null;
     }
-    const option = (this.interaction.options as any).get(name);
+    const option = (this.interaction as any).options.get(name);
     if (option && typeof option.value === 'string') {
       return option.value;
     }
@@ -55,13 +58,21 @@ export class DiscordJsContext implements DiscordContext {
   }
 
   getOptionAsNumber(name: string): number | null {
-    if (!('options' in this.interaction)) {
+    if (!this.hasOptions()) {
       return null;
     }
-    const option = (this.interaction.options as any).get(name);
+    const option = (this.interaction as any).options.get(name);
     if (option && typeof option.value === 'number') {
       return option.value;
     }
     return null;
+  }
+
+  getOptionAsUser(name: string): unknown | null {
+    if (!this.hasOptions()) {
+      return null;
+    }
+    const option = (this.interaction as any).options.getUser?.(name);
+    return option ?? null;
   }
 }

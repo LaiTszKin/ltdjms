@@ -77,8 +77,8 @@ export class AdminPanelCommand implements CommandHandler {
         .setDisabled(b.disabled),
     );
 
-    // Split into rows of 5 (max 5 buttons per ActionRow)
-    for (let i = 0; i < buttons.length; i += 5) {
+    // Split into rows of 3 (3x3 grid per spec)
+    for (let i = 0; i < buttons.length; i += 3) {
       rows.push(
         new ActionRowBuilder<ButtonBuilder>().addComponents(
           buttons.slice(i, i + 5),
@@ -97,8 +97,11 @@ export class AdminPanelCommand implements CommandHandler {
     try {
       const replyMsg = await raw.fetchReply();
       if (replyMsg && 'channelId' in replyMsg && 'id' in replyMsg) {
-        this.sessionManager.setContext(guildId, userId, 'channelId', String(replyMsg.channelId));
-        this.sessionManager.setContext(guildId, userId, 'messageId', String(replyMsg.id));
+        const session = this.sessionManager.getSession(guildId, userId);
+        if (session) {
+          session.channelId = String(replyMsg.channelId);
+          session.messageId = String(replyMsg.id);
+        }
       }
     } catch {
       // Non-critical: push updates will not be available but the panel still works

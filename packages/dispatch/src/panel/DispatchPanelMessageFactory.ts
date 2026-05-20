@@ -33,7 +33,7 @@ export function buildOrderCreatedEmbed(order: EscortDispatchOrder): EmbedView {
   };
 }
 
-/** 手動開立訂單成功。 */
+/** 手動開立訂單成功。@internal 目前未被呼叫，保留供後續使用。 */
 export function buildManualOrderCreatedEmbed(order: EscortDispatchOrder): EmbedView {
   return {
     title: `📋 手動開立訂單 #${order.orderNumber}`,
@@ -114,6 +114,7 @@ export function buildOrderCompletedEmbed(order: EscortDispatchOrder): EmbedView 
 /**
  * 訂單超時自動完成通知。
  * 由 ensureTimeoutCompletion 觸發，可於面板顯示超時資訊。
+ * @internal 目前未被呼叫，保留供後續使用。
  */
 export function buildOrderTimedOutEmbed(order: EscortDispatchOrder): EmbedView {
   return {
@@ -240,6 +241,7 @@ export function buildErrorEmbed(message: string): EmbedView {
   };
 }
 
+/** @internal 目前未被呼叫，保留供後續使用。 */
 export function buildSuccessEmbed(message: string): EmbedView {
   return {
     title: '✅ 操作成功',
@@ -249,6 +251,7 @@ export function buildSuccessEmbed(message: string): EmbedView {
   };
 }
 
+/** @internal 目前未被呼叫，保留供後續使用。 */
 export function buildWarningEmbed(message: string): EmbedView {
   return {
     title: '⚠️ 提示',

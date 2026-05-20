@@ -139,8 +139,8 @@ export interface AgentFailedEvent extends DomainEvent {
   readonly timestamp: Date;
 }
 
-export interface LangChain4jToolExecutionStartedEvent extends DomainEvent {
-  readonly eventType: 'langchain4j_tool_execution_started';
+export interface ToolExecutionStartedEvent extends DomainEvent {
+  readonly eventType: 'tool_execution_started';
   readonly guildId: string;
   readonly channelId: number;
   readonly userId: number;
@@ -148,8 +148,8 @@ export interface LangChain4jToolExecutionStartedEvent extends DomainEvent {
   readonly timestamp: Date;
 }
 
-export interface LangChain4jToolExecutedEvent extends DomainEvent {
-  readonly eventType: 'langchain4j_tool_executed';
+export interface ToolExecutedEvent extends DomainEvent {
+  readonly eventType: 'tool_executed';
   readonly guildId: string;
   readonly channelId: number;
   readonly userId: number;
@@ -157,6 +157,27 @@ export interface LangChain4jToolExecutedEvent extends DomainEvent {
   readonly result: string;
   readonly success: boolean;
   readonly timestamp: Date;
+}
+
+// ---- Dispatch Events ----
+
+export interface DispatchAfterSalesConfigChangedEvent extends DomainEvent {
+  readonly eventType: 'dispatch_after_sales_config_changed';
+  readonly guildId: string;
+}
+
+export interface EscortPricingChangedEvent extends DomainEvent {
+  readonly eventType: 'escort_pricing_changed';
+  readonly guildId: string;
+  readonly optionCode: string;
+  readonly newPrice: number;
+}
+
+export interface EscortCatalogChangedEvent extends DomainEvent {
+  readonly eventType: 'escort_catalog_changed';
+  readonly guildId: string;
+  readonly entryCode: string;
+  readonly operationType: OperationType;
 }
 
 // ---- Union type for any domain event ----
@@ -173,5 +194,8 @@ export type AnyDomainEvent =
   | AIAgentChannelConfigChangedEvent
   | AgentCompletedEvent
   | AgentFailedEvent
-  | LangChain4jToolExecutionStartedEvent
-  | LangChain4jToolExecutedEvent;
+  | ToolExecutionStartedEvent
+  | ToolExecutedEvent
+  | DispatchAfterSalesConfigChangedEvent
+  | EscortPricingChangedEvent
+  | EscortCatalogChangedEvent;

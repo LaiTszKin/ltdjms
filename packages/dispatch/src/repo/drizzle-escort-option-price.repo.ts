@@ -73,4 +73,12 @@ export class DrizzleEscortOptionPriceRepo implements EscortOptionPriceRepo {
 
     return rows.rowCount != null && rows.rowCount > 0;
   }
+
+  async countByOptionCode(optionCode: string): Promise<number> {
+    const rows = await this.db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(guildEscortOptionPrice)
+      .where(eq(guildEscortOptionPrice.optionCode, optionCode));
+    return rows[0]?.count ?? 0;
+  }
 }

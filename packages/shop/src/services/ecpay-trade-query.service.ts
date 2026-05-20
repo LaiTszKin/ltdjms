@@ -8,7 +8,7 @@ import pino from 'pino';
 const STAGE_ENDPOINT = 'https://payment-stage.ecpay.com.tw/Cashier/QueryTradeInfo/V5';
 const PROD_ENDPOINT = 'https://payment.ecpay.com.tw/Cashier/QueryTradeInfo/V5';
 
-const keepAliveAgent = new https.Agent({ keepAlive: true });
+const keepAliveAgent = new https.Agent({ keepAlive: true, keepAliveMsecs: 30000, timeout: 15000, maxSockets: 10, maxFreeSockets: 5 });
 
 export interface QueryTradeResult {
   orderNumber: string;

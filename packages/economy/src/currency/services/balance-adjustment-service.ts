@@ -83,19 +83,9 @@ export class BalanceAdjustmentService {
 
       const updated = adjustResult.getValue();
 
-      // Update cache
-      const cacheKey = this.cacheKeyGenerator.balanceKey(String(guildId), String(userId));
-      await this.cacheService.put(cacheKey, updated.balance, BalanceAdjustmentService.BALANCE_TTL_SECONDS);
-
-      // Publish event
-      this.eventPublisher.publish({
-        guildId: String(guildId),
-        userId,
-        eventType: 'balance_changed',
-        newBalance: updated.balance,
-      } as BalanceChangedEvent);
-
-      // Record transaction
+      // Record transaction first (P1-11) — ensures transaction is persisted
+      // before the event is published or the cache is updated, preventing
+      // a scenario where a crash after the event/cache update loses the record.
       await this.transactionService.recordTransaction(
         guildId,
         userId,
@@ -104,6 +94,19 @@ export class BalanceAdjustmentService {
         source,
         description,
       );
+
+      // Publish event
+      const event: BalanceChangedEvent = {
+        guildId: String(guildId),
+        userId,
+        eventType: 'balance_changed',
+        newBalance: updated.balance,
+      };
+      this.eventPublisher.publish(event);
+
+      // Update cache
+      const cacheKey = this.cacheKeyGenerator.balanceKey(String(guildId), String(userId));
+      await this.cacheService.put(cacheKey, updated.balance, BalanceAdjustmentService.BALANCE_TTL_SECONDS);
 
       const config = await this.configRepository.findByGuildId(guildId);
 
@@ -168,19 +171,7 @@ export class BalanceAdjustmentService {
 
       const updated = adjustResult.getValue();
 
-      // Update cache
-      const cacheKey = this.cacheKeyGenerator.balanceKey(String(guildId), String(userId));
-      await this.cacheService.put(cacheKey, updated.balance, BalanceAdjustmentService.BALANCE_TTL_SECONDS);
-
-      // Publish event
-      this.eventPublisher.publish({
-        guildId: String(guildId),
-        userId,
-        eventType: 'balance_changed',
-        newBalance: updated.balance,
-      } as BalanceChangedEvent);
-
-      // Record transaction
+      // Record transaction first (P1-11)
       await this.transactionService.recordTransaction(
         guildId,
         userId,
@@ -189,6 +180,19 @@ export class BalanceAdjustmentService {
         source,
         description,
       );
+
+      // Publish event
+      const event: BalanceChangedEvent = {
+        guildId: String(guildId),
+        userId,
+        eventType: 'balance_changed',
+        newBalance: updated.balance,
+      };
+      this.eventPublisher.publish(event);
+
+      // Update cache
+      const cacheKey = this.cacheKeyGenerator.balanceKey(String(guildId), String(userId));
+      await this.cacheService.put(cacheKey, updated.balance, BalanceAdjustmentService.BALANCE_TTL_SECONDS);
 
       const config = await this.configRepository.findByGuildId(guildId);
 

@@ -5,7 +5,6 @@ export {
   fromDbRow,
   createPending,
   createManualOpenOrder,
-  createPendingFull,
   createAutoHandoff,
   withConfirmed,
   withCompletionRequested,

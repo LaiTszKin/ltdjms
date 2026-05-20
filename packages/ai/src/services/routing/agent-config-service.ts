@@ -6,6 +6,7 @@ import {
   type Result,
   type CacheService,
   type DomainEventPublisher,
+  type DiscordRuntimeGateway,
   type AIAgentChannelConfigChangedEvent,
 } from '@ltdjms/shared';
 import type { AIAgentChannelConfig } from '../ai-chat-service.js';
@@ -120,11 +121,30 @@ export class DefaultAIAgentChannelConfigService
   constructor(
     private readonly repository: AIAgentChannelConfigRepository,
     private readonly cacheService: CacheService,
+    private readonly runtimeGateway?: DiscordRuntimeGateway,
     private readonly eventPublisher?: DomainEventPublisher,
   ) {}
 
   private buildCacheKey(guildId: string, channelId: string): string {
     return `${CACHE_KEY_PREFIX}${guildId}:${channelId}`;
+  }
+
+  /**
+   * Resolves a channel ID to its effective channel ID for agent config lookup.
+   * Thread channels inherit their parent channel's agent configuration (Spec R7.6).
+   */
+  private resolveChannelId(guildId: string, channelId: string): string {
+    if (!this.runtimeGateway) return channelId;
+    try {
+      const threadChannel = this.runtimeGateway.findThreadChannel(guildId, channelId);
+      if (threadChannel) {
+        const parentId = (threadChannel as { parentId: string | null }).parentId;
+        if (parentId) return parentId;
+      }
+    } catch {
+      // Runtime not ready — fall back to original channelId
+    }
+    return channelId;
   }
 
   /**
@@ -136,18 +156,22 @@ export class DefaultAIAgentChannelConfigService
    * async lookup.
    */
   isAgentEnabled(guildId: string, channelId: string): boolean {
-    return this.localSyncCache.get(this.buildCacheKey(guildId, channelId)) ?? false;
+    const effectiveChannelId = this.resolveChannelId(guildId, channelId);
+    return this.localSyncCache.get(this.buildCacheKey(guildId, effectiveChannelId)) ?? false;
   }
 
   /**
    * Async version of isAgentEnabled.
    * Also populates the local sync cache for subsequent sync lookups.
+   * Thread channels inherit their parent channel's agent configuration (Spec R7.6).
    */
   async isAgentEnabledAsync(
     guildId: string,
     channelId: string,
   ): Promise<boolean> {
-    const cacheKey = this.buildCacheKey(guildId, channelId);
+    // Resolve thread to parent channel for agent config inheritance
+    const effectiveChannelId = this.resolveChannelId(guildId, channelId);
+    const cacheKey = this.buildCacheKey(guildId, effectiveChannelId);
 
     try {
       // Try Redis cache first

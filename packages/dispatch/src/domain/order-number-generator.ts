@@ -10,11 +10,9 @@ export class EscortDispatchOrderNumberGenerator {
   private static readonly ALPHANUMERIC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
   private readonly clock: () => number;
-  private readonly alphanumeric: string;
 
   constructor(clock?: () => number) {
     this.clock = clock ?? (() => Date.now());
-    this.alphanumeric = EscortDispatchOrderNumberGenerator.ALPHANUMERIC;
   }
 
   /** 產生一組訂單編號。 */
@@ -31,11 +29,11 @@ export class EscortDispatchOrderNumberGenerator {
 
   private randomSuffix(): string {
     const chars: string[] = [];
-    const len = this.alphanumeric.length;
+    const len = EscortDispatchOrderNumberGenerator.ALPHANUMERIC.length;
     for (let i = 0; i < EscortDispatchOrderNumberGenerator.SUFFIX_LENGTH; i++) {
       // randomInt(min, max): max is exclusive, so range is [0, len)
       const idx = randomInt(0, len);
-      chars.push(this.alphanumeric[idx]);
+      chars.push(EscortDispatchOrderNumberGenerator.ALPHANUMERIC[idx]);
     }
     return chars.join('');
   }

@@ -41,16 +41,12 @@ export class CommonMarkValidator implements MarkdownValidator {
       return valid(markdown);
     }
 
-    // Compute line ranges that are inside code blocks (skip these during regex pass)
-    const codeBlockLines = new Set<number>();
-    this.collectCodeBlockLines(tokens, codeBlockLines);
-
     // Walk the token tree recursively for AST-based validation
-    this.walkTokens(tokens, lines, errors);
+    this.walkTokens(tokens, lines, markdown, errors);
 
     // Additional regex-based pass for heading/list format issues that the AST may miss.
     // The CommonMark spec requires space after #/list markers, but we flag it proactively.
-    this.regexFormatPass(lines, codeBlockLines, errors);
+    this.regexFormatPass(lines, errors);
 
     // Detect unclosed fenced code blocks by checking if the last code token
     // starts with a fence marker (``` or ~~~) but does not end with one.
@@ -88,28 +84,51 @@ export class CommonMarkValidator implements MarkdownValidator {
   private walkTokens(
     tokens: Tokens.Token[],
     lines: string[],
+    markdown: string,
     errors: MarkdownError[],
+    parentRaw?: string,
+    parentPos?: number,
   ): void {
+    let cursor = parentPos ?? 0;
     for (const token of tokens) {
+      // Compute character position of this token in the original markdown
+      let pos: number;
+      if (parentRaw !== undefined && parentPos !== undefined) {
+        const relativePos = parentRaw.indexOf(token.raw);
+        pos = relativePos >= 0 ? parentPos + relativePos : -1;
+      } else {
+        pos = markdown.indexOf(token.raw, cursor);
+      }
+
+      if (pos >= 0 && parentRaw === undefined) {
+        // Advance cursor past this token for next sibling search
+        cursor = pos + token.raw.length;
+      }
+
+      // Compute 1-based line number from character position
+      const lineNum = pos >= 0
+        ? markdown.slice(0, pos).split('\n').length
+        : 1;
+
       switch (token.type) {
         case 'heading':
-          this.validateHeadingToken(token as Tokens.Heading, lines, errors);
+          this.validateHeadingToken(token as Tokens.Heading, errors, lineNum);
           break;
         case 'code':
           // Code block is properly closed — nothing to validate inside
           break;
         case 'list':
-          this.validateListToken(token as Tokens.List, lines, errors);
+          this.validateListToken(token as Tokens.List, errors, markdown, pos >= 0 ? pos : 0);
           break;
         case 'hr':
-          this.validateHrToken(token as Tokens.Hr, lines, errors);
+          this.validateHrToken(token as Tokens.Hr, errors, lineNum);
           break;
         case 'table':
-          this.validateTableToken(token as Tokens.Table, lines, errors);
+          this.validateTableToken(token as Tokens.Table, errors, lineNum);
           break;
         case 'paragraph':
           // Check for inline headings and emphasis syntax issues in paragraph text
-          this.validateParagraphToken(token as Tokens.Paragraph, lines, errors);
+          this.validateParagraphToken(token as Tokens.Paragraph, errors, lineNum);
           break;
         default:
           break;
@@ -118,29 +137,16 @@ export class CommonMarkValidator implements MarkdownValidator {
       // Recurse into nested tokens (e.g. list items)
       const tok = token as Tokens.Token & { tokens?: Tokens.Token[] };
       if (tok.tokens && tok.tokens.length > 0) {
-        this.walkTokens(tok.tokens, lines, errors);
+        this.walkTokens(tok.tokens, lines, markdown, errors, token.raw, pos >= 0 ? pos : 0);
       }
     }
-  }
-
-  private findLineNumber(lines: string[], raw: string, startLine = 0): number {
-    const searchText = raw.slice(0, Math.min(raw.length, 50)).trimStart();
-    if (!searchText) return lines.length;
-
-    for (let i = startLine; i < lines.length; i++) {
-      if (lines[i].includes(searchText) || searchText.includes(lines[i].trim())) {
-        return i + 1;
-      }
-    }
-    return startLine + 1;
   }
 
   private validateHeadingToken(
     token: Tokens.Heading,
-    lines: Array<string>,
     errors: MarkdownError[],
+    lineNum: number,
   ): void {
-    const lineNum = this.findLineNumber(lines, token.raw);
 
     // Check heading level exceeded
     if (token.depth > 6) {
@@ -185,11 +191,10 @@ export class CommonMarkValidator implements MarkdownValidator {
 
   private validateParagraphToken(
     token: Tokens.Paragraph,
-    lines: Array<string>,
     errors: MarkdownError[],
+    lineNum: number,
   ): void {
     const raw = token.raw;
-    const lineNum = this.findLineNumber(lines, raw);
 
     // Check for inline headings (## not at start of line)
     const inlineHeadingMatch = raw.match(/(?<=[^\n#`])#{2,6}\s+\S/);
@@ -229,13 +234,23 @@ export class CommonMarkValidator implements MarkdownValidator {
 
   private validateListToken(
     token: Tokens.List,
-    lines: Array<string>,
     errors: MarkdownError[],
+    markdown: string,
+    listPos: number,
   ): void {
     const items = token.items;
+    let itemCursor = 0;
 
     for (const item of items) {
-      const itemLineNum = this.findLineNumber(lines, item.raw);
+      // Compute item's absolute position within the list's raw text
+      const relativePos = token.raw.indexOf(item.raw, itemCursor);
+      if (relativePos >= 0) {
+        itemCursor = relativePos + item.raw.length;
+      }
+      const absolutePos = relativePos >= 0 ? listPos + relativePos : -1;
+      const itemLineNum = absolutePos >= 0
+        ? markdown.slice(0, absolutePos).split('\n').length
+        : 1;
       const rawFirstLine = item.raw.split('\n')[0];
       const trimmed = rawFirstLine.trimStart();
 
@@ -277,10 +292,9 @@ export class CommonMarkValidator implements MarkdownValidator {
 
   private validateHrToken(
     token: Tokens.Hr,
-    lines: Array<string>,
     errors: MarkdownError[],
+    lineNum: number,
   ): void {
-    const lineNum = this.findLineNumber(lines, token.raw);
     errors.push({
       errorType: ErrorType.DISCORD_RENDER_ISSUE,
       line: lineNum,
@@ -292,10 +306,9 @@ export class CommonMarkValidator implements MarkdownValidator {
 
   private validateTableToken(
     token: Tokens.Table,
-    lines: Array<string>,
     errors: MarkdownError[],
+    lineNum: number,
   ): void {
-    const lineNum = this.findLineNumber(lines, token.raw);
     errors.push({
       errorType: ErrorType.DISCORD_RENDER_ISSUE,
       line: lineNum,
@@ -306,28 +319,12 @@ export class CommonMarkValidator implements MarkdownValidator {
   }
 
   /**
-   * Recursively collect line numbers that are inside fenced code blocks.
-   */
-  private collectCodeBlockLines(tokens: Tokens.Token[], codeBlockLines: Set<number>): void {
-    for (const token of tokens) {
-      if (token.type === 'code') {
-        // Skip all lines in code blocks - collectCodeBlockLines tracks them
-      }
-      const tok = token as Tokens.Token & { tokens?: Tokens.Token[] };
-      if (tok.tokens && tok.tokens.length > 0) {
-        this.collectCodeBlockLines(tok.tokens, codeBlockLines);
-      }
-    }
-  }
-
-  /**
    * Additional regex-based format pass for heading/list syntax issues
    * that the AST parser may not flag (since marked normalizes some syntax).
-   * Skips lines inside code blocks.
+   * Uses its own code fence tracking rather than the AST-based line set.
    */
   private regexFormatPass(
     lines: string[],
-    codeBlockLines: Set<number>,
     errors: MarkdownError[],
   ): void {
     // For simplicity, track code block state with same logic as old implementation

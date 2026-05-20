@@ -1,4 +1,4 @@
-import { eq, and, ilike, count, asc } from 'drizzle-orm';
+import { eq, and, ilike, count, asc, sql } from 'drizzle-orm';;
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { type Product } from '../domain/product-types.js';
 import { product as productTable } from './schema.js';
@@ -79,6 +79,53 @@ export class DrizzleProductRepository implements ProductRepository {
       .offset(page * size)
       .limit(size);
     return rows.map((r) => this.mapRow(r));
+  }
+
+  async create(data: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Promise<Product> {
+    const rows = await this.db
+      .insert(productTable)
+      .values({
+        guildId: BigInt(data.guildId),
+        name: data.name,
+        description: data.description,
+        rewardType: data.rewardType,
+        rewardAmount: data.rewardAmount != null ? BigInt(data.rewardAmount) : null,
+        currencyPrice: data.currencyPrice != null ? BigInt(data.currencyPrice) : null,
+        fiatPriceTwd: data.fiatPriceTwd != null ? BigInt(data.fiatPriceTwd) : null,
+        autoCreateEscortOrder: data.autoCreateEscortOrder,
+        escortOptionCode: data.escortOptionCode,
+      })
+      .returning();
+    return this.mapRow(rows[0] as Record<string, unknown>);
+  }
+
+  async update(id: number, data: Partial<Omit<Product, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Product | null> {
+    const values: Record<string, unknown> = {};
+    if (data.guildId !== undefined) values.guildId = BigInt(data.guildId);
+    if (data.name !== undefined) values.name = data.name;
+    if (data.description !== undefined) values.description = data.description;
+    if (data.rewardType !== undefined) values.rewardType = data.rewardType;
+    if (data.rewardAmount !== undefined) values.rewardAmount = data.rewardAmount != null ? BigInt(data.rewardAmount) : null;
+    if (data.currencyPrice !== undefined) values.currencyPrice = data.currencyPrice != null ? BigInt(data.currencyPrice) : null;
+    if (data.fiatPriceTwd !== undefined) values.fiatPriceTwd = data.fiatPriceTwd != null ? BigInt(data.fiatPriceTwd) : null;
+    if (data.autoCreateEscortOrder !== undefined) values.autoCreateEscortOrder = data.autoCreateEscortOrder;
+    if (data.escortOptionCode !== undefined) values.escortOptionCode = data.escortOptionCode;
+
+    const rows = await this.db
+      .update(productTable)
+      .set({ ...values, updatedAt: sql`NOW()` })
+      .where(eq(productTable.id, id))
+      .returning();
+    if (rows.length === 0) return null;
+    return this.mapRow(rows[0] as Record<string, unknown>);
+  }
+
+  async delete(id: number): Promise<boolean> {
+    const rows = await this.db
+      .delete(productTable)
+      .where(eq(productTable.id, id))
+      .returning({ id: productTable.id });
+    return rows.length > 0;
   }
 
   private mapRow(row: Record<string, unknown>): Product {

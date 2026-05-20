@@ -2,6 +2,10 @@
  * Cache key generator interface providing consistent cache key format.
  * Key format: cache:{guildId}:{entityType}:{entityId}
  * Matches Java CacheKeyGenerator.
+ *
+ * NOTE: guildId and userId are typed as string rather than a numeric type because
+ * discord.js uses snowflake strings for all IDs (e.g., "123456789012345678").
+ * This is a JS/TS modeling choice — the underlying values are snowflake strings.
  */
 export interface CacheKeyGenerator {
   readonly NAMESPACE: string;

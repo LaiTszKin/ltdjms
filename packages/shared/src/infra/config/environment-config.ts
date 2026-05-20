@@ -78,7 +78,7 @@ export class EnvironmentConfig {
   }
 
   /** Returns the validated config (calls parse() if not yet parsed). */
-  private get(): ConfigValues {
+  protected get(): ConfigValues {
     if (!this.config) {
       return this.parse();
     }

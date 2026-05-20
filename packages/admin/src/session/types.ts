@@ -1,6 +1,12 @@
 /**
- * Admin panel view state.
- * Tracks which screen the admin is currently viewing.
+ * Admin panel view state. Tracks which screen the admin is currently viewing.
+ *
+ * NOTE: This enum extends beyond the original spec (which defined MAIN and
+ * PRODUCT_LIST only). Additional states (BALANCE, TOKEN, GAME_CONFIG, AI_CHANNEL,
+ * AI_AGENT, DISPATCH_STAFF, ESCORT_PRICING, ESCORT_CATALOG, PRODUCT_DETAIL,
+ * PRODUCT_CODE_LIST) were added as the admin panel grew. These are legitimate
+ * extensions to support per-screen session-aware push updates and should be
+ * retained.
  */
 export enum AdminPanelViewState {
   MAIN = 'MAIN',

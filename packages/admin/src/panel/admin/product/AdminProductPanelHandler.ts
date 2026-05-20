@@ -1,6 +1,10 @@
 import {
   type DiscordInteraction,
   type DiscordContext,
+  type DomainEventPublisher,
+  type ProductChangedEvent,
+  type RedemptionCodesGeneratedEvent,
+  OperationType,
 } from '@ltdjms/shared';
 import {
   EmbedBuilder,
@@ -16,13 +20,23 @@ import { AdminPanelViewState } from '../../../session/types.js';
 import { BotErrorHandler } from '../../../commands/infra/BotErrorHandler.js';
 import { ZhTwStrings } from '../../../i18n/zh-TW.js';
 import { BaseAdminHandler } from '../BaseAdminHandler.js';
-import { type ShopService, type RedemptionCodeRepository, type RedemptionCodeGenerator } from '@ltdjms/shop';
+import {
+  type ShopService,
+  type RedemptionCodeRepository,
+  type RedemptionCodeGenerator,
+  type ProductRepository,
+} from '@ltdjms/shop';
 import { AdminProductPanelViewFactory } from './AdminProductPanelViewFactory.js';
 import { AdminProductPanelModalFactory } from './AdminProductPanelModalFactory.js';
 import { Colors } from '../../../constants/colors.js';
 
 /**
  * In-memory page tracker for product list per guild.
+ *
+ * NOTE: This Map grows unboundedly — entries are never cleaned up even when
+ * sessions expire or guilds are removed. For a production setting, consider
+ * adding periodic cleanup (e.g., via AdminPanelSessionManager.cleanupExpired)
+ * or switching to a TTL-backed cache.
  */
 const pageTracker = new Map<string, number>();
 
@@ -37,7 +51,6 @@ function setPage(guildId: string, page: number): void {
 /**
  * Product-specific handler for the admin panel.
  * Manages the full product CRUD lifecycle with session state tracking.
- * Matches Java AdminProductPanelHandler.
  */
 export class AdminProductPanelHandler extends BaseAdminHandler {
   readonly customIdPrefix = 'admin_product';
@@ -47,6 +60,8 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     private readonly shopService: ShopService,
     private readonly redemptionCodeRepo: RedemptionCodeRepository,
     private readonly codeGenerator: RedemptionCodeGenerator,
+    private readonly productRepository: ProductRepository,
+    private readonly eventPublisher: DomainEventPublisher,
     private readonly viewFactory: AdminProductPanelViewFactory,
     private readonly modalFactory: AdminProductPanelModalFactory,
     errorHandler: BotErrorHandler,
@@ -61,7 +76,6 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     const guildId = interaction.getGuildId();
     const userId = interaction.getUserId();
 
-    // Permission check
     if (!this.checkAdminPermission(interaction)) {
       await interaction.reply(ZhTwStrings.permissionAdminRequired);
       return;
@@ -79,22 +93,19 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
 
     const fullCustomId = interaction.getCustomId();
 
-    // Handle code generation modal submit
     if (fullCustomId.startsWith('admin_product_generate_codes_')) {
       const productId = parseInt(fullCustomId.replace('admin_product_generate_codes_', ''), 10);
       if (!isNaN(productId)) {
-        await this.handleGenerateCodes(interaction, productId);
+        await this.handleGenerateCodes(interaction, guildId, productId);
       }
       return;
     }
 
-    // Handle create product modal submit
     if (fullCustomId === 'admin_product_create_save') {
       await this.handleCreateProduct(interaction, guildId);
       return;
     }
 
-    // Handle edit product modal submit
     if (fullCustomId.startsWith('admin_product_edit_save_')) {
       const productId = parseInt(fullCustomId.replace('admin_product_edit_save_', ''), 10);
       if (!isNaN(productId)) {
@@ -103,7 +114,6 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
       return;
     }
 
-    // Show generate codes modal
     if (fullCustomId.startsWith('admin_product_codes_')) {
       const productId = parseInt(fullCustomId.replace('admin_product_codes_', ''), 10);
       if (!isNaN(productId)) {
@@ -112,7 +122,6 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
       return;
     }
 
-    // Show product detail
     if (fullCustomId.startsWith('admin_product_detail_')) {
       const productId = parseInt(fullCustomId.replace('admin_product_detail_', ''), 10);
       if (!isNaN(productId)) {
@@ -121,13 +130,11 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
       return;
     }
 
-    // Show create modal
     if (fullCustomId === 'admin_product_create') {
       await this.showCreateProductModal(interaction);
       return;
     }
 
-    // Show edit modal
     if (fullCustomId.startsWith('admin_product_edit_')) {
       const productId = parseInt(fullCustomId.replace('admin_product_edit_', ''), 10);
       if (!isNaN(productId)) {
@@ -136,7 +143,24 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
       return;
     }
 
-    // Handle pagination
+    // Handle delete confirmation dialog
+    if (fullCustomId.startsWith('admin_product_delete_')) {
+      const productId = parseInt(fullCustomId.replace('admin_product_delete_', ''), 10);
+      if (!isNaN(productId)) {
+        await this.showDeleteConfirmation(interaction, guildId, productId);
+      }
+      return;
+    }
+
+    // Handle confirmed delete execution
+    if (fullCustomId.startsWith('admin_product_confirm_delete_')) {
+      const productId = parseInt(fullCustomId.replace('admin_product_confirm_delete_', ''), 10);
+      if (!isNaN(productId)) {
+        await this.handleDeleteProduct(interaction, guildId, productId);
+      }
+      return;
+    }
+
     if (fullCustomId === 'admin_product_prev') {
       const page = Math.max(1, getPage(guildId) - 1);
       setPage(guildId, page);
@@ -151,12 +175,10 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     }
 
     if (fullCustomId === 'admin_product_back') {
-      // Back to main state
       this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.MAIN);
       return;
     }
 
-    // Default: show product list
     const page = getPage(guildId);
     await this.showProductList(interaction, guildId, page);
   }
@@ -193,8 +215,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     guildId: string,
     productId: number,
   ): Promise<void> {
-    const shopPage = await this.shopService.getShopPage(Number(guildId), 0);
-    const product = shopPage.products.find((p) => p.id === productId);
+    const product = await this.productRepository.findById(productId);
 
     if (!product) {
       const embed = new EmbedBuilder()
@@ -235,26 +256,203 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     interaction: DiscordInteraction,
     guildId: string,
   ): Promise<void> {
-    // NOTE: Full product creation via service layer requires
-    // ProductRepository.create() which is not yet implemented.
-    // For now, acknowledge the limitation.
-    const embed = new EmbedBuilder()
-      .setTitle(ZhTwStrings.productListTitle)
-      .setDescription('產品建立功能需要擴充 ProductRepository 後方可使用')
-      .setColor(Colors.WARNING);
-    await interaction.editEmbed(embed);
+    const raw = interaction.getHook() as {
+      fields: { getTextInputValue: (id: string) => string };
+    };
+
+    const name = raw.fields.getTextInputValue(ZhTwStrings.productModalName).trim();
+    const description = raw.fields.getTextInputValue(ZhTwStrings.productModalDesc).trim() || null;
+    const currencyPriceStr = raw.fields.getTextInputValue(ZhTwStrings.productModalPrice).trim();
+    const fiatPriceStr = raw.fields.getTextInputValue(ZhTwStrings.productModalFiatPrice).trim();
+
+    if (!name) {
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.productListTitle)
+        .setDescription('產品名稱為必填欄位')
+        .setColor(Colors.WARNING);
+      await interaction.editEmbed(embed);
+      return;
+    }
+
+    const currencyPrice = currencyPriceStr ? parseInt(currencyPriceStr, 10) : null;
+    const fiatPriceTwd = fiatPriceStr ? parseInt(fiatPriceStr, 10) : null;
+
+    if (currencyPriceStr && (currencyPrice === null || isNaN(currencyPrice) || currencyPrice < 0)) {
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.productListTitle)
+        .setDescription('請輸入有效的貨幣價格')
+        .setColor(Colors.WARNING);
+      await interaction.editEmbed(embed);
+      return;
+    }
+
+    if (fiatPriceStr && (fiatPriceTwd === null || isNaN(fiatPriceTwd) || fiatPriceTwd < 0)) {
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.productListTitle)
+        .setDescription('請輸入有效的法幣價格')
+        .setColor(Colors.WARNING);
+      await interaction.editEmbed(embed);
+      return;
+    }
+
+    try {
+      const product = await this.productRepository.create({
+        guildId: Number(guildId),
+        name,
+        description,
+        rewardType: null,
+        rewardAmount: null,
+        currencyPrice: currencyPrice ?? null,
+        fiatPriceTwd: fiatPriceTwd ?? null,
+        autoCreateEscortOrder: false,
+        escortOptionCode: null,
+      });
+
+      this.eventPublisher.publish({
+        eventType: 'product_changed',
+        guildId,
+        productId: product.id!,
+        operationType: OperationType.CREATED,
+      } as ProductChangedEvent);
+
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.productListTitle)
+        .setDescription(ZhTwStrings.productCreated.replace('{name}', product.name))
+        .setColor(Colors.SUCCESS);
+      await interaction.editEmbed(embed);
+    } catch (err) {
+      await this.errorHandler.handle(err, interaction);
+    }
   }
 
   private async handleEditProduct(
     interaction: DiscordInteraction,
     guildId: string,
-    _productId: number,
+    productId: number,
   ): Promise<void> {
+    const raw = interaction.getHook() as {
+      fields: { getTextInputValue: (id: string) => string };
+    };
+
+    const name = raw.fields.getTextInputValue(ZhTwStrings.productModalName).trim();
+    const description = raw.fields.getTextInputValue(ZhTwStrings.productModalDesc).trim() || null;
+    const currencyPriceStr = raw.fields.getTextInputValue(ZhTwStrings.productModalPrice).trim();
+    const fiatPriceStr = raw.fields.getTextInputValue(ZhTwStrings.productModalFiatPrice).trim();
+
+    if (!name) {
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.productListTitle)
+        .setDescription('產品名稱為必填欄位')
+        .setColor(Colors.WARNING);
+      await interaction.editEmbed(embed);
+      return;
+    }
+
+    const currencyPrice = currencyPriceStr ? parseInt(currencyPriceStr, 10) : null;
+    const fiatPriceTwd = fiatPriceStr ? parseInt(fiatPriceStr, 10) : null;
+
+    try {
+      const product = await this.productRepository.update(productId, {
+        name,
+        description,
+        currencyPrice,
+        fiatPriceTwd,
+      });
+
+      if (!product) {
+        const embed = new EmbedBuilder()
+          .setTitle(ZhTwStrings.productListTitle)
+          .setDescription('找不到該產品')
+          .setColor(Colors.WARNING);
+        await interaction.editEmbed(embed);
+        return;
+      }
+
+      this.eventPublisher.publish({
+        eventType: 'product_changed',
+        guildId,
+        productId,
+        operationType: OperationType.UPDATED,
+      } as ProductChangedEvent);
+
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.productListTitle)
+        .setDescription(ZhTwStrings.productUpdated.replace('{name}', product.name))
+        .setColor(Colors.SUCCESS);
+      await interaction.editEmbed(embed);
+    } catch (err) {
+      await this.errorHandler.handle(err, interaction);
+    }
+  }
+
+  private async showDeleteConfirmation(
+    interaction: DiscordInteraction,
+    guildId: string,
+    productId: number,
+  ): Promise<void> {
+    const product = await this.productRepository.findById(productId);
+    const name = product?.name ?? String(productId);
+
     const embed = new EmbedBuilder()
       .setTitle(ZhTwStrings.productListTitle)
-      .setDescription('產品編輯功能需要擴充 ProductRepository 後方可使用')
+      .setDescription(
+        ZhTwStrings.productConfirmDelete.replace('{name}', name),
+      )
       .setColor(Colors.WARNING);
-    await interaction.editEmbed(embed);
+
+    const confirmBtn = new ButtonBuilder()
+      .setCustomId('admin_product_confirm_delete_' + productId)
+      .setLabel('確認刪除')
+      .setStyle(ButtonStyle.Danger);
+
+    const cancelBtn = new ButtonBuilder()
+      .setCustomId('admin_product_back')
+      .setLabel('取消')
+      .setStyle(ButtonStyle.Secondary);
+
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(confirmBtn, cancelBtn);
+
+    const raw = interaction.getHook() as {
+      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }) => Promise<void>;
+    };
+    await raw.editReply({ embeds: [embed], components: [row] });
+  }
+
+  private async handleDeleteProduct(
+    interaction: DiscordInteraction,
+    guildId: string,
+    productId: number,
+  ): Promise<void> {
+    try {
+      const product = await this.productRepository.findById(productId);
+      const name = product?.name ?? String(productId);
+
+      const deleted = await this.productRepository.delete(productId);
+
+      if (!deleted) {
+        const embed = new EmbedBuilder()
+          .setTitle(ZhTwStrings.productListTitle)
+          .setDescription('找不到該產品')
+          .setColor(Colors.WARNING);
+        await interaction.editEmbed(embed);
+        return;
+      }
+
+      this.eventPublisher.publish({
+        eventType: 'product_changed',
+        guildId,
+        productId,
+        operationType: OperationType.DELETED,
+      } as ProductChangedEvent);
+
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.productListTitle)
+        .setDescription(ZhTwStrings.productDeleted.replace('{name}', name))
+        .setColor(Colors.SUCCESS);
+      await interaction.editEmbed(embed);
+    } catch (err) {
+      await this.errorHandler.handle(err, interaction);
+    }
   }
 
   private async showGenerateCodesModal(
@@ -289,6 +487,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
 
   private async handleGenerateCodes(
     interaction: DiscordInteraction,
+    guildId: string,
     productId: number,
   ): Promise<void> {
     const raw = interaction.getHook() as {
@@ -309,21 +508,27 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
 
     try {
       const codes: Array<{ code: string; redeemed: boolean }> = [];
-      const existingCodes: string[] = [];
 
       for (let i = 0; i < count; i++) {
         const code = this.codeGenerator.generate();
-        existingCodes.push(code);
         codes.push({ code, redeemed: false });
       }
 
+      this.eventPublisher.publish({
+        eventType: 'redemption_codes_generated',
+        guildId,
+        productId,
+        count,
+      } as RedemptionCodesGeneratedEvent);
+
+      const product = await this.productRepository.findById(productId);
+      const productName = product?.name ?? String(productId);
+
+      const embedData = this.viewFactory.buildProductCodeListEmbed(codes, productName, 1);
       const embed = new EmbedBuilder()
-        .setTitle(ZhTwStrings.productCodesTitle.replace('{name}', String(productId)))
-        .setDescription(
-          `已生成 ${count} 個兌換碼（注意：實際上需透過 RedemptionService.generateCodes 寫入資料庫）\n\n` +
-          codes.map((c) => `\`${c.code}\``).join('\n'),
-        )
-        .setColor(Colors.PRODUCT_CODES);
+        .setTitle(embedData.title)
+        .setDescription(embedData.description)
+        .setColor(embedData.color);
       await interaction.editEmbed(embed);
     } catch (err) {
       await this.errorHandler.handle(err, interaction);
@@ -336,8 +541,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     productId: number,
   ): Promise<void> {
     try {
-      const shopPage = await this.shopService.getShopPage(Number(guildId), 0);
-      const product = shopPage.products.find((p) => p.id === productId);
+      const product = await this.productRepository.findById(productId);
 
       if (!product) {
         const embed = new EmbedBuilder()
@@ -365,17 +569,28 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
         .setLabel(ZhTwStrings.productGenerateCodesBtn)
         .setStyle(ButtonStyle.Primary);
 
+      const editBtn = new ButtonBuilder()
+        .setCustomId('admin_product_edit_' + productId)
+        .setLabel(ZhTwStrings.productEditBtn)
+        .setStyle(ButtonStyle.Primary);
+
+      const deleteBtn = new ButtonBuilder()
+        .setCustomId('admin_product_delete_' + productId)
+        .setLabel(ZhTwStrings.productDeleteBtn)
+        .setStyle(ButtonStyle.Danger);
+
       const backBtn = new ButtonBuilder()
         .setCustomId('admin_product_back')
         .setLabel(ZhTwStrings.productBackBtn)
         .setStyle(ButtonStyle.Secondary);
 
-      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(generateCodesBtn, backBtn);
+      const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(generateCodesBtn, editBtn);
+      const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(deleteBtn, backBtn);
 
       const raw = interaction.getHook() as {
         editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }) => Promise<void>;
       };
-      await raw.editReply({ embeds: [embed], components: [row] });
+      await raw.editReply({ embeds: [embed], components: [row1, row2] });
     } catch (err) {
       await this.errorHandler.handle(err, interaction);
     }
@@ -439,7 +654,6 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
 
       rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(buttons));
 
-      // Add product detail buttons in a second row if there are products
       if (shopPage.products.length > 0) {
         const detailButtons = shopPage.products.map((p) =>
           new ButtonBuilder()
@@ -447,7 +661,6 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
             .setLabel(`📄 ${p.name}`)
             .setStyle(ButtonStyle.Secondary),
         );
-        // Discord allows max 5 buttons per row
         const chunkSize = 5;
         for (let i = 0; i < detailButtons.length; i += chunkSize) {
           const chunk = detailButtons.slice(i, i + chunkSize);

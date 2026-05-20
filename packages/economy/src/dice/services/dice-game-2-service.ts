@@ -95,13 +95,12 @@ export class DiceGame2Service {
       straightReward: analysis.straightReward,
       nonStraightReward: analysis.nonStraightReward,
       tripleReward: analysis.tripleReward,
-      currencyName: '',
-      currencyIcon: '',
     });
   }
 
   /**
    * Rolls the specified number of dice.
+   * @internal Exposed for test use only; not part of the public API.
    */
   rollDice(count: number): number[] {
     const rolls: number[] = [];
@@ -172,7 +171,9 @@ export class DiceGame2Service {
 
   /**
    * Finds all straight segments (consecutive increasing sequences of length >= 3).
-   * Matches Java DefaultDiceGame2Service.findStraights() exactly.
+   * Straight detection is value-based: sorts a copy of the input and removes
+   * duplicates before checking for consecutive increments, matching Java
+   * DefaultDiceGame2Service.findStraights() behavior.
    */
   private findStraights(
     diceRolls: readonly number[],
@@ -180,13 +181,24 @@ export class DiceGame2Service {
   ): number[][] {
     const straights: number[][] = [];
 
+    // Sort a copy and remove duplicates for straight detection.
+    // Dice values from rollDice() are random and unsorted, so the straight
+    // analysis must be value-based, not position-based.
+    const sorted = [...diceRolls].sort((a, b) => a - b);
+    const unique: number[] = [];
+    for (const val of sorted) {
+      if (unique.length === 0 || val !== unique[unique.length - 1]) {
+        unique.push(val);
+      }
+    }
+
+    // Find consecutive increasing sequences in the sorted, deduplicated array
     let i = 0;
-    while (i < diceRolls.length) {
+    while (i < unique.length) {
       const start = i;
-      // Find the longest increasing sequence starting at i
       while (
-        i + 1 < diceRolls.length &&
-        diceRolls[i + 1] === diceRolls[i] + 1
+        i + 1 < unique.length &&
+        unique[i + 1] === unique[i] + 1
       ) {
         i++;
       }
@@ -195,8 +207,15 @@ export class DiceGame2Service {
       if (length >= 3) {
         const segment: number[] = [];
         for (let j = start; j <= i; j++) {
-          segment.push(diceRolls[j]);
-          usedInStraight[j] = true;
+          const value = unique[j];
+          segment.push(value);
+          // Mark the first unused original die with this value as used in straight
+          for (let k = 0; k < diceRolls.length; k++) {
+            if (diceRolls[k] === value && !usedInStraight[k]) {
+              usedInStraight[k] = true;
+              break;
+            }
+          }
         }
         straights.push(segment);
       }
