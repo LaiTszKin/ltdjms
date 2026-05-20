@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en" data-atlas-page="submodule">
+<head>
+  <meta charset="utf-8">
+  <title>Shared Infrastructure · event-bus</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..500&family=Geist:wght@300..700&family=JetBrains+Mono:wght@400..600&display=swap">
+  <link rel="stylesheet" href="../../assets/architecture.css">
+</head>
+<body>
+  <header class="submodule-header">
+    <nav class="submodule-breadcrumb"><a href="../../index.html">← Atlas</a> · <a href="index.html">← Shared Infrastructure</a></nav>
+    <h1>event-bus <small class="submodule-kind submodule-kind--service">Service</small></h1>
+    <p class="submodule-role">同步領域事件匯流排：EventEmitter-based DomainEventPublisher (替代 CopyOnWriteArrayList Consumer)</p>
+  </header>
+  <main class="submodule-main">
+    <section class="sub-io" aria-label="Function I/O">
+      <h2>Function I/O</h2>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">In</th><th scope="col">Out</th><th scope="col">Side</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>publish</td><td>DomainEvent</td><td>void</td><td>io</td><td>同步發佈領域事件至所有已註冊 Consumer</td></tr>
+          <tr><td>register</td><td>Class&lt;DomainEvent&gt;, Consumer&lt;DomainEvent&gt;</td><td>void</td><td>io</td><td>註冊事件 Consumer，支援快取失效/面板更新/審計等監聽</td></tr>
+        </tbody>
+      </table>
+    </section>
+    <section class="sub-vars" aria-label="Variables">
+      <h2>Variables</h2>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Scope</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>consumers</td><td>Map&lt;Class&lt;?&gt;, List&lt;Consumer&lt;?&gt;&gt;&gt;</td><td>instance</td><td>事件類型→Consumer 列表映射，支援多個監聽器</td></tr>
+        </tbody>
+      </table>
+    </section>
+    <section class="sub-dataflow" aria-label="Internal data flow">
+      <h2>Internal data flow</h2>
+      <p class="sub-dataflow__empty">No internal dataflow steps recorded.</p>
+    </section>
+    <section class="sub-errors" aria-label="Errors">
+      <h2>Errors</h2>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">When</th><th scope="col">Means</th></tr></thead>
+        <tbody>
+          <tr><td>ErrConsumerUnhandled</td><td>Consumer 處理事件時拋出未預期例外</td><td>log error，不影響其他 Consumer 或發佈者（fire-and-forget）</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+  <script src="../../assets/viewer.client.js" defer></script>
+</body>
+</html>

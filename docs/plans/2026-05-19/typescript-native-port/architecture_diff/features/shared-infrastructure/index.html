@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en" data-atlas-page="feature">
+<head>
+  <meta charset="utf-8">
+  <title>Shared Infrastructure</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..500&family=Geist:wght@300..700&family=JetBrains+Mono:wght@400..600&display=swap">
+  <link rel="stylesheet" href="../../assets/architecture.css">
+</head>
+<body>
+  <header class="feature-header">
+    <nav class="feature-breadcrumb"><a href="../../index.html">← Atlas</a></nav>
+    <h1>Shared Infrastructure</h1>
+    
+  </header>
+  <main class="feature-main">
+    <section class="feature-story"><p>提供基礎設施服務給所有業務模組：Discord JDA 抽象層、領域事件系統、Redis 快取、Dagger DI 容器、共用結果型別。</p></section>
+    <section class="feature-submodules" aria-label="Submodules">
+      <h2>Submodules</h2>
+      <ul class="submodule-nav">
+      <li class="submodule-card">
+        <a class="submodule-card__link" href="discord-api.html">
+          <span class="submodule-card__name">discord-api</span>
+          <span class="submodule-card__kind submodule-card__kind--external">External</span>
+        </a>
+        <p class="submodule-card__role">Discord.js 抽象層：domain 介面、discord.js adapter、mock 實作、Embed/Button/SelectMenu 工具 (替代 JDA)</p>
+      </li>
+      <li class="submodule-card">
+        <a class="submodule-card__link" href="event-bus.html">
+          <span class="submodule-card__name">event-bus</span>
+          <span class="submodule-card__kind submodule-card__kind--service">Service</span>
+        </a>
+        <p class="submodule-card__role">同步領域事件匯流排：EventEmitter-based DomainEventPublisher (替代 CopyOnWriteArrayList Consumer)</p>
+      </li>
+      <li class="submodule-card">
+        <a class="submodule-card__link" href="cache-layer.html">
+          <span class="submodule-card__name">cache-layer</span>
+          <span class="submodule-card__kind submodule-card__kind--service">Service</span>
+        </a>
+        <p class="submodule-card__role">Redis 快取抽象 (ioredis 替代 Lettuce)：CacheService 介面、RedisCacheService、NoOpCacheService</p>
+      </li>
+      <li class="submodule-card">
+        <a class="submodule-card__link" href="di-container.html">
+          <span class="submodule-card__name">di-container</span>
+          <span class="submodule-card__kind submodule-card__kind--service">Service</span>
+        </a>
+        <p class="submodule-card__role">tsyringe 依賴注入容器 (替代 Dagger)：@singleton/@inject 裝飾器、container.resolve</p>
+      </li>
+      <li class="submodule-card">
+        <a class="submodule-card__link" href="di.html">
+          <span class="submodule-card__name">di</span>
+          <span class="submodule-card__kind submodule-card__kind--service">Service</span>
+        </a>
+        <p class="submodule-card__role">DI container (tsyringe, 替代 Dagger)</p>
+      </li>
+      <li class="submodule-card">
+        <a class="submodule-card__link" href="database.html">
+          <span class="submodule-card__name">database</span>
+          <span class="submodule-card__kind submodule-card__kind--service">Service</span>
+        </a>
+        <p class="submodule-card__role">Drizzle ORM + node-postgres 資料庫層 (替代 JOOQ/JDBC/HikariCP/Flyway)：連線池、migration runner、schema 定義</p>
+      </li>
+      <li class="submodule-card">
+        <a class="submodule-card__link" href="config.html">
+          <span class="submodule-card__name">config</span>
+          <span class="submodule-card__kind submodule-card__kind--service">Service</span>
+        </a>
+        <p class="submodule-card__role">Zod + dotenv 組態管理 (替代 Typesafe Config)：EnvironmentConfig、env loader、schema validation</p>
+      </li>
+      <li class="submodule-card">
+        <a class="submodule-card__link" href="logging.html">
+          <span class="submodule-card__name">logging</span>
+          <span class="submodule-card__kind submodule-card__kind--service">Service</span>
+        </a>
+        <p class="submodule-card__role">pino 結構化日誌 (替代 SLF4J/Logback)：JSON 輸出、child logger、level 控制</p>
+      </li>
+      <li class="submodule-card">
+        <a class="submodule-card__link" href="types.html">
+          <span class="submodule-card__name">types</span>
+          <span class="submodule-card__kind submodule-card__kind--pure-fn">Pure fn</span>
+        </a>
+        <p class="submodule-card__role">核心型別系統：Result&lt;T,E&gt;、DomainError (27 categories)、DomainEvent (12 types)</p>
+      </li>
+      </ul>
+    </section>
+    <section class="feature-edges" aria-label="Intra-feature edges">
+      <h2>Intra-feature edges</h2>
+      <ul class="feature-edges__list">
+        <li class="feature-edges__item feature-edges__item--call"><span class="feature-edges__endpoints">event-bus → cache-layer</span><span class="feature-edges__kind">call</span><span class="feature-edges__label">AgentConfigCacheInvalidationListener 監聽變更事件→失效快取</span></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
