@@ -75,11 +75,17 @@ export class GameTokenService {
 
   /**
    * Adjusts tokens with Result-based error handling.
+   * Records a transaction after the adjustment, cache update, and event publishing (P1-5).
+   *
+   * @param source - transaction source for recording (default ADMIN_ADJUSTMENT)
+   * @param description - optional description for the transaction record
    */
   async tryAdjustTokens(
     guildId: number,
     userId: number,
     amount: number,
+    source: GameTokenTransactionSource = GameTokenTransactionSource.ADMIN_ADJUSTMENT,
+    description: string | null = null,
   ): Promise<Result<TokenAdjustmentResult, DomainError>> {
     if (!Number.isFinite(amount)) {
       return new Err(
@@ -105,6 +111,16 @@ export class GameTokenService {
 
       // Update cache and publish event
       await this.updateCacheAndPublishEvent(guildId, userId, updated.tokens);
+
+      // Record transaction atomically with the token adjustment (P1-5)
+      await this.transactionService.recordTransaction(
+        guildId,
+        userId,
+        amount,
+        updated.tokens,
+        source,
+        description,
+      );
 
       return new Ok({
         guildId,
@@ -160,22 +176,8 @@ export class GameTokenService {
     }
 
     // Delegate to tryAdjustTokens which handles findOrCreate, adjustment,
-    // cache update, and event publishing (P2-16)
-    const result = await this.tryAdjustTokens(guildId, userId, -tokens);
-
-    if (result.isOk()) {
-      const adjustResult = result.getValue();
-
-      // Record transaction immediately after successful deduction (P1-10)
-      await this.transactionService.recordTransaction(
-        guildId,
-        userId,
-        -tokens,
-        adjustResult.newTokens,
-        source,
-        null,
-      );
-    }
+    // cache update, event publishing, and transaction recording (P1-5, P2-16)
+    const result = await this.tryAdjustTokens(guildId, userId, -tokens, source, null);
 
     return result;
   }
@@ -215,34 +217,5 @@ export class GameTokenService {
     );
 
     return updated;
-  }
-
-  /**
-   * Adjusts tokens (throws on error).
-   */
-  async adjustTokens(
-    guildId: number,
-    userId: number,
-    amount: number,
-  ): Promise<TokenAdjustmentResult> {
-    const current = await this.accountRepository.findOrCreate(guildId, userId);
-    const previousTokens = current.tokens;
-
-    const updated = await this.accountRepository.adjustTokens(
-      guildId,
-      userId,
-      amount,
-    );
-
-    // Update cache and publish event
-    await this.updateCacheAndPublishEvent(guildId, userId, updated.tokens);
-
-    return {
-      guildId,
-      userId,
-      previousTokens,
-      newTokens: updated.tokens,
-      adjustment: amount,
-    };
   }
 }

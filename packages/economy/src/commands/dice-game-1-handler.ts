@@ -27,6 +27,16 @@ import { resolveCurrencyDisplay } from './dice-utils.js';
 export class DiceGame1Handler {
   readonly commandName = 'dice-game-1';
 
+  /** Maps die face values to Discord emoji for display (P3-5). */
+  private static readonly DICE_EMOJI: Record<number, string> = {
+    1: ':one:',
+    2: ':two:',
+    3: ':three:',
+    4: ':four:',
+    5: ':five:',
+    6: ':six:',
+  };
+
   constructor(
     private readonly diceGame1Service: DiceGame1Service,
     private readonly diceConfigRepository: DiceConfigRepository,
@@ -106,7 +116,9 @@ export class DiceGame1Handler {
 
     const gameResult = result.getValue();
 
-    const diceDisplay = [...gameResult.diceRolls].join('、');
+    const diceDisplay = gameResult.diceRolls
+      .map((d: number) => DiceGame1Handler.DICE_EMOJI[d] ?? String(d))
+      .join(' ');
     const rewardDisplay = String(gameResult.totalReward);
 
     const message = [
