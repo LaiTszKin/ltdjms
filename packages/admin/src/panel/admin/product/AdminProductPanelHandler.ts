@@ -31,24 +31,6 @@ import { AdminProductPanelModalFactory } from './AdminProductPanelModalFactory.j
 import { Colors } from '../../../constants/colors.js';
 
 /**
- * In-memory page tracker for product list per guild.
- *
- * NOTE: This Map grows unboundedly — entries are never cleaned up even when
- * sessions expire or guilds are removed. For a production setting, consider
- * adding periodic cleanup (e.g., via AdminPanelSessionManager.cleanupExpired)
- * or switching to a TTL-backed cache.
- */
-const pageTracker = new Map<string, number>();
-
-function getPage(guildId: string): number {
-  return pageTracker.get(guildId) ?? 1;
-}
-
-function setPage(guildId: string, page: number): void {
-  pageTracker.set(guildId, page);
-}
-
-/**
  * Product-specific handler for the admin panel.
  * Manages the full product CRUD lifecycle with session state tracking.
  */
@@ -162,14 +144,14 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     }
 
     if (fullCustomId === 'admin_product_prev') {
-      const page = Math.max(1, getPage(guildId) - 1);
-      setPage(guildId, page);
+      const page = Math.max(1, parseInt(this.sessionManager.getContext(guildId, userId, 'productPage') ?? '1', 10) - 1);
+      this.sessionManager.setContext(guildId, userId, 'productPage', String(page));
       await this.showProductList(interaction, guildId, page);
       return;
     }
     if (fullCustomId === 'admin_product_next') {
-      const currentPage = getPage(guildId);
-      setPage(guildId, currentPage + 1);
+      const currentPage = parseInt(this.sessionManager.getContext(guildId, userId, 'productPage') ?? '1', 10);
+      this.sessionManager.setContext(guildId, userId, 'productPage', String(currentPage + 1));
       await this.showProductList(interaction, guildId, currentPage + 1);
       return;
     }
@@ -179,7 +161,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
       return;
     }
 
-    const page = getPage(guildId);
+    const page = parseInt(this.sessionManager.getContext(guildId, userId, 'productPage') ?? '1', 10);
     await this.showProductList(interaction, guildId, page);
   }
 

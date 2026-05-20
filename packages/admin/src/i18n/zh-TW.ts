@@ -319,7 +319,7 @@ export const ZhTwStrings = {
     [DomainErrorCategory.CHANNEL_NOT_FOUND]: '找不到指定的頻道',
     [DomainErrorCategory.DUPLICATE_CATEGORY]: '該分類已在白名單中',
     [DomainErrorCategory.CATEGORY_NOT_FOUND]: '找不到指定的分類',
-  } as Record<DomainErrorCategory, string>,
+  },
 
   // ============================================================
   // Discord API Common Error Codes
@@ -331,3 +331,12 @@ export const ZhTwStrings = {
 } as const;
 
 export type ZhTwStringsType = typeof ZhTwStrings;
+
+/**
+ * Type-level exhaustiveness check: ensures every DomainErrorCategory value
+ * has a corresponding entry in errorMapping.
+ * If a new category is added to DomainErrorCategory without adding its zh-TW
+ * message, this line will cause a compile-time error.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _exhaustiveCategoryCheck: DomainErrorCategory extends keyof typeof ZhTwStrings.errorMapping ? true : false = true;

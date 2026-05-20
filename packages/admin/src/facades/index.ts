@@ -7,3 +7,8 @@ export {
 } from './GameConfigManagementFacade.js';
 export { AIConfigManagementFacade } from './AIConfigManagementFacade.js';
 export { MemberInfoFacade, type MemberPanelView } from './MemberInfoFacade.js';
+export {
+  DispatchManagementFacade,
+  type CreateCatalogData,
+  type UpdateCatalogData,
+} from './DispatchManagementFacade.js';

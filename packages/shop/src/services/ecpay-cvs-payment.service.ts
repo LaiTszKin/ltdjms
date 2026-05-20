@@ -205,8 +205,31 @@ export class EcpayCvsPaymentService {
     return JSON.stringify(data);
   }
 
+  // Atomic counter for same-millisecond sequence numbers
+  private static sequenceCounter = 0;
+  private static lastTimestampMs = 0;
+
   private generateMerchantTradeNo(): string {
-    return `FD${crypto.randomUUID().replace(/-/g, '').substring(0, 18)}`;
+    const now = new Date();
+    const yy = pad2(now.getFullYear() % 100);
+    const MM = pad2(now.getMonth() + 1);
+    const dd = pad2(now.getDate());
+    const HH = pad2(now.getHours());
+    const mm = pad2(now.getMinutes());
+    const ss = pad2(now.getSeconds());
+    const ms = pad3(now.getMilliseconds());
+    const ts = `${yy}${MM}${dd}${HH}${mm}${ss}${ms}`;
+
+    // Synchronized sequence: reset on timestamp change, increment on same ms
+    const timestampMs = now.getTime();
+    if (timestampMs !== EcpayCvsPaymentService.lastTimestampMs) {
+      EcpayCvsPaymentService.lastTimestampMs = timestampMs;
+      EcpayCvsPaymentService.sequenceCounter = 0;
+    }
+    const seq = pad3(EcpayCvsPaymentService.sequenceCounter);
+    EcpayCvsPaymentService.sequenceCounter++;
+
+    return `FD${ts}${seq}`;
   }
 
   private clampCvsExpireMinutes(input: number): number {

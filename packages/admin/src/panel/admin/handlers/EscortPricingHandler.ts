@@ -1,8 +1,6 @@
 import {
   type DiscordInteraction,
   type DiscordContext,
-  type DomainEventPublisher,
-  type EscortPricingChangedEvent,
 } from '@ltdjms/shared';
 import {
   EmbedBuilder,
@@ -18,7 +16,7 @@ import { AdminPanelViewState } from '../../../session/types.js';
 import { BotErrorHandler } from '../../../commands/infra/BotErrorHandler.js';
 import { ZhTwStrings } from '../../../i18n/zh-TW.js';
 import { BaseAdminHandler } from '../BaseAdminHandler.js';
-import { type EscortOptionPricingService } from '@ltdjms/dispatch';
+import { DispatchManagementFacade } from '../../../facades/DispatchManagementFacade.js';
 import { AdminPanelModalFactory } from '../views/AdminPanelModalFactory.js';
 import { Colors } from '../../../constants/colors.js';
 
@@ -31,9 +29,8 @@ export class EscortPricingHandler extends BaseAdminHandler {
 
   constructor(
     sessionManager: AdminPanelSessionManager,
-    private readonly pricingService: EscortOptionPricingService,
+    private readonly facade: DispatchManagementFacade,
     private readonly modalFactory: AdminPanelModalFactory,
-    private readonly eventPublisher: DomainEventPublisher,
     errorHandler: BotErrorHandler,
   ) {
     super(sessionManager, errorHandler);
@@ -108,7 +105,7 @@ export class EscortPricingHandler extends BaseAdminHandler {
     optionCode: string,
   ): Promise<void> {
     // Get current pricing to pre-fill the modal
-    const pricesResult = await this.pricingService.listOptionPrices(Number(guildId));
+    const pricesResult = await this.facade.listPricing(guildId);
     let currentOverride: number | null = null;
     let optionName = optionCode;
 
@@ -174,21 +171,10 @@ export class EscortPricingHandler extends BaseAdminHandler {
       return;
     }
 
-    const result = await this.pricingService.updateOptionPrice(
-      Number(guildId),
-      Number(actorId),
-      optionCode,
-      price,
-    );
+    const result = await this.facade.updatePricing(guildId, actorId, optionCode, price);
 
     if (result.isOk()) {
       const updated = result.getValue();
-      this.eventPublisher.publish({
-        eventType: 'escort_pricing_changed',
-        guildId,
-        optionCode,
-        newPrice: price,
-      } as EscortPricingChangedEvent);
 
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.escortPricingTitle)
@@ -209,7 +195,7 @@ export class EscortPricingHandler extends BaseAdminHandler {
     guildId: string,
     optionCode: string,
   ): Promise<void> {
-    const pricesResult = await this.pricingService.listOptionPrices(Number(guildId));
+    const pricesResult = await this.facade.listPricing(guildId);
     let optionName = optionCode;
 
     if (pricesResult.isOk()) {
@@ -251,16 +237,9 @@ export class EscortPricingHandler extends BaseAdminHandler {
     actorId: string,
     optionCode: string,
   ): Promise<void> {
-    const result = await this.pricingService.resetOptionPrice(Number(guildId), optionCode);
+    const result = await this.facade.resetPricing(guildId, optionCode);
 
     if (result.isOk()) {
-      this.eventPublisher.publish({
-        eventType: 'escort_pricing_changed',
-        guildId,
-        optionCode,
-        newPrice: 0,
-      } as EscortPricingChangedEvent);
-
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.escortPricingTitle)
         .setDescription(
@@ -277,7 +256,7 @@ export class EscortPricingHandler extends BaseAdminHandler {
     interaction: DiscordInteraction,
     guildId: string,
   ): Promise<void> {
-    const result = await this.pricingService.listOptionPrices(Number(guildId));
+    const result = await this.facade.listPricing(guildId);
 
     let description: string;
     if (result.isOk()) {

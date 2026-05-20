@@ -17,28 +17,6 @@ import { Colors } from '../../../constants/colors.js';
 const PAGE_SIZE = 10;
 
 /**
- * In-memory page tracker for transaction history per user and type.
- * Key format: `${guildId}:${userId}:${type}`
- *
- * NOTE: This Map grows unboundedly — entries are never cleaned up even when
- * sessions expire. For a production setting, consider periodic cleanup or
- * a TTL-backed cache.
- */
-const pageTracker = new Map<string, number>();
-
-function pageKey(guildId: string, userId: string, type: string): string {
-  return `${guildId}:${userId}:${type}`;
-}
-
-function getPage(guildId: string, userId: string, type: string): number {
-  return pageTracker.get(pageKey(guildId, userId, type)) ?? 1;
-}
-
-function setPage(guildId: string, userId: string, type: string, page: number): void {
-  pageTracker.set(pageKey(guildId, userId, type), page);
-}
-
-/**
  * Handler for transaction history interactions (user_history_*).
  * Supports paginated view of currency, token, and redemption transactions.
  * Branches on full customId to distinguish types and prev/next navigation.
@@ -137,7 +115,7 @@ export class TransactionHistoryHandler implements InteractionHandler {
     fullCustomId: string,
   ): Promise<void> {
     const { page } = this.parseNavCustomId(fullCustomId, 'user_currency');
-    setPage(guildId, userId, 'currency', page);
+    this.sessionManager.setContext(guildId, userId, 'page_currency', String(page));
 
     const result = await this.memberInfoFacade.getCurrencyTransactionPage(
       guildId,
@@ -191,7 +169,7 @@ export class TransactionHistoryHandler implements InteractionHandler {
     fullCustomId: string,
   ): Promise<void> {
     const { page } = this.parseNavCustomId(fullCustomId, 'user_token');
-    setPage(guildId, userId, 'token', page);
+    this.sessionManager.setContext(guildId, userId, 'page_token', String(page));
 
     const result = await this.memberInfoFacade.getTokenTransactionPage(
       guildId,
@@ -244,7 +222,7 @@ export class TransactionHistoryHandler implements InteractionHandler {
     fullCustomId: string,
   ): Promise<void> {
     const { page } = this.parseNavCustomId(fullCustomId, 'user_redemption');
-    setPage(guildId, userId, 'redemption', page);
+    this.sessionManager.setContext(guildId, userId, 'page_redemption', String(page));
 
     const result = await this.memberInfoFacade.getProductRedemptionTransactionPage(
       guildId,

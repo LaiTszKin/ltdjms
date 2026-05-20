@@ -1,5 +1,6 @@
 import {
   CommandInteraction,
+  PermissionFlagsBits,
   type ButtonInteraction,
   type ModalSubmitInteraction,
   type EmbedBuilder,
@@ -82,5 +83,19 @@ export class DiscordJsInteraction implements DiscordInteraction {
 
   isAcknowledged(): boolean {
     return this.acknowledged;
+  }
+
+  isAdministrator(): boolean {
+    if (this.interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
+      return true;
+    }
+    if (this.interaction.guild?.ownerId === this.interaction.user.id) {
+      return true;
+    }
+    return false;
+  }
+
+  hasPermission(permission: bigint): boolean {
+    return this.interaction.memberPermissions?.has(permission) ?? false;
   }
 }

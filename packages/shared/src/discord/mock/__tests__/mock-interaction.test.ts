@@ -69,4 +69,32 @@ describe('MockDiscordInteraction', () => {
     const mock = new MockDiscordInteraction('123', '456');
     expect(mock.getHook()).toBeNull();
   });
+
+  it('isAdministrator defaults to false', () => {
+    const mock = new MockDiscordInteraction('123', '456');
+    expect(mock.isAdministrator()).toBe(false);
+  });
+
+  it('isAdministrator returns true when constructed with isAdmin flag', () => {
+    const mock = new MockDiscordInteraction('123', '456', '0', false, '', true);
+    expect(mock.isAdministrator()).toBe(true);
+  });
+
+  it('hasPermission returns true when admin', () => {
+    const mock = new MockDiscordInteraction('123', '456', '0', false, '', true);
+    expect(mock.hasPermission(0x8n)).toBe(true);
+  });
+
+  it('hasPermission returns false when not admin', () => {
+    const mock = new MockDiscordInteraction('123', '456');
+    expect(mock.hasPermission(0x8n)).toBe(false);
+  });
+
+  it('setAdministrator updates the admin flag', () => {
+    const mock = new MockDiscordInteraction('123', '456');
+    expect(mock.isAdministrator()).toBe(false);
+    mock.setAdministrator(true);
+    expect(mock.isAdministrator()).toBe(true);
+    expect(mock.hasPermission(0x8n)).toBe(true);
+  });
 });

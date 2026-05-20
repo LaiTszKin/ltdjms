@@ -1,9 +1,6 @@
 import {
   type DiscordInteraction,
   type DiscordContext,
-  type DomainEventPublisher,
-  type EscortCatalogChangedEvent,
-  OperationType,
 } from '@ltdjms/shared';
 import {
   EmbedBuilder,
@@ -19,10 +16,7 @@ import { AdminPanelViewState } from '../../../session/types.js';
 import { BotErrorHandler } from '../../../commands/infra/BotErrorHandler.js';
 import { ZhTwStrings } from '../../../i18n/zh-TW.js';
 import { BaseAdminHandler } from '../BaseAdminHandler.js';
-import {
-  type EscortOptionCatalogRepository,
-  type EscortOptionPriceRepo,
-} from '@ltdjms/dispatch';
+import { DispatchManagementFacade } from '../../../facades/DispatchManagementFacade.js';
 import { AdminPanelModalFactory } from '../views/AdminPanelModalFactory.js';
 import { Colors } from '../../../constants/colors.js';
 
@@ -35,10 +29,8 @@ export class EscortCatalogHandler extends BaseAdminHandler {
 
   constructor(
     sessionManager: AdminPanelSessionManager,
-    private readonly catalogRepository: EscortOptionCatalogRepository,
+    private readonly facade: DispatchManagementFacade,
     private readonly modalFactory: AdminPanelModalFactory,
-    private readonly optionPriceRepo: EscortOptionPriceRepo,
-    private readonly eventPublisher: DomainEventPublisher,
     errorHandler: BotErrorHandler,
   ) {
     super(sessionManager, errorHandler);
@@ -146,7 +138,8 @@ export class EscortCatalogHandler extends BaseAdminHandler {
     interaction: DiscordInteraction,
     entryCode: string,
   ): Promise<void> {
-    const entry = await this.catalogRepository.findByCode(entryCode);
+    const entryResult = await this.facade.findCatalogEntry(entryCode);
+    const entry = entryResult.isOk() ? entryResult.getValue() : null;
 
     const modalData = this.modalFactory.buildEscortCatalogModal(entry ?? { code: entryCode });
 
@@ -206,8 +199,8 @@ export class EscortCatalogHandler extends BaseAdminHandler {
       return;
     }
 
-    const exists = await this.catalogRepository.existsByCode(code);
-    if (exists) {
+    const existingEntry = await this.facade.findCatalogEntry(code);
+    if (existingEntry.isOk() && existingEntry.getValue()) {
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.escortCatalogTitle)
         .setDescription(`代碼「${code}」已存在`)
@@ -216,31 +209,25 @@ export class EscortCatalogHandler extends BaseAdminHandler {
       return;
     }
 
-    try {
-      const guildId = interaction.getGuildId();
-      const entry = await this.catalogRepository.create({
-        code,
-        type,
-        level: type,
-        mapScope: mapScope || code,
-        target: code,
-        priceTwd,
-      });
+    const guildId = interaction.getGuildId();
+    const result = await this.facade.createCatalogEntry(guildId, {
+      code,
+      type,
+      level: type,
+      mapScope: mapScope || code,
+      target: code,
+      priceTwd,
+    });
 
-      this.eventPublisher.publish({
-        eventType: 'escort_catalog_changed',
-        guildId,
-        entryCode: code,
-        operationType: OperationType.CREATED,
-      } as EscortCatalogChangedEvent);
-
+    if (result.isOk()) {
+      const entry = result.getValue();
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.escortCatalogTitle)
         .setDescription(ZhTwStrings.escortCatalogCreated.replace('{name}', `${entry.type} - ${entry.target}`))
         .setColor(Colors.SUCCESS);
       await interaction.editEmbed(embed);
-    } catch (err) {
-      await this.errorHandler.handle(err, interaction);
+    } else {
+      await this.errorHandler.handle(result.getError(), interaction);
     }
   }
 
@@ -275,14 +262,15 @@ export class EscortCatalogHandler extends BaseAdminHandler {
       return;
     }
 
-    try {
-      const guildId = interaction.getGuildId();
-      const updated = await this.catalogRepository.update(entryCode, {
-        mapScope: mapScope || undefined,
-        priceTwd,
-        type,
-      });
+    const guildId = interaction.getGuildId();
+    const result = await this.facade.updateCatalogEntry(guildId, entryCode, {
+      mapScope: mapScope || undefined,
+      priceTwd,
+      type,
+    });
 
+    if (result.isOk()) {
+      const updated = result.getValue();
       if (!updated) {
         const embed = new EmbedBuilder()
           .setTitle(ZhTwStrings.escortCatalogTitle)
@@ -292,20 +280,13 @@ export class EscortCatalogHandler extends BaseAdminHandler {
         return;
       }
 
-      this.eventPublisher.publish({
-        eventType: 'escort_catalog_changed',
-        guildId,
-        entryCode,
-        operationType: OperationType.UPDATED,
-      } as EscortCatalogChangedEvent);
-
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.escortCatalogTitle)
         .setDescription(ZhTwStrings.escortCatalogUpdated.replace('{name}', `${updated.type} - ${updated.target}`))
         .setColor(Colors.SUCCESS);
       await interaction.editEmbed(embed);
-    } catch (err) {
-      await this.errorHandler.handle(err, interaction);
+    } else {
+      await this.errorHandler.handle(result.getError(), interaction);
     }
   }
 
@@ -313,10 +294,12 @@ export class EscortCatalogHandler extends BaseAdminHandler {
     interaction: DiscordInteraction,
     entryCode: string,
   ): Promise<void> {
-    const entry = await this.catalogRepository.findByCode(entryCode);
-    const name = entry ? `${entry.type} - ${entry.target}` : entryCode;
+    const entryResult = await this.facade.findCatalogEntry(entryCode);
+    const existing = entryResult.isOk() ? entryResult.getValue() : null;
+    const name = existing ? `${existing.type} - ${existing.target}` : entryCode;
 
-    const refCount = await this.optionPriceRepo.countByOptionCode(entryCode);
+    const refCountResult = await this.facade.checkCatalogRefCount(entryCode);
+    const refCount = refCountResult.isOk() ? refCountResult.getValue() : 0;
     if (refCount > 0) {
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.escortCatalogTitle)
@@ -360,10 +343,10 @@ export class EscortCatalogHandler extends BaseAdminHandler {
     guildId: string,
     entryCode: string,
   ): Promise<void> {
-    try {
-      const deleted = await this.catalogRepository.delete(entryCode);
+    const result = await this.facade.deleteCatalogEntry(guildId, entryCode);
 
-      if (!deleted) {
+    if (result.isOk()) {
+      if (!result.getValue()) {
         const embed = new EmbedBuilder()
           .setTitle(ZhTwStrings.escortCatalogTitle)
           .setDescription('找不到該目錄項目')
@@ -372,26 +355,20 @@ export class EscortCatalogHandler extends BaseAdminHandler {
         return;
       }
 
-      this.eventPublisher.publish({
-        eventType: 'escort_catalog_changed',
-        guildId,
-        entryCode,
-        operationType: OperationType.DELETED,
-      } as EscortCatalogChangedEvent);
-
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.escortCatalogTitle)
         .setDescription(ZhTwStrings.escortCatalogDeleted.replace('{name}', entryCode))
         .setColor(Colors.SUCCESS);
       await interaction.editEmbed(embed);
-    } catch (err) {
-      await this.errorHandler.handle(err, interaction);
+    } else {
+      await this.errorHandler.handle(result.getError(), interaction);
     }
   }
 
   private async showCatalog(interaction: DiscordInteraction): Promise<void> {
-    try {
-      const entries = await this.catalogRepository.findAll();
+    const result = await this.facade.listCatalog();
+    if (result.isOk()) {
+      const entries = result.getValue();
       let description: string;
 
       if (entries.length === 0) {
@@ -412,8 +389,8 @@ export class EscortCatalogHandler extends BaseAdminHandler {
         .setDescription(description)
         .setColor(Colors.PRIMARY);
       await interaction.editEmbed(embed);
-    } catch (err) {
-      await this.errorHandler.handle(err, interaction);
+    } else {
+      await this.errorHandler.handle(result.getError(), interaction);
     }
   }
 }

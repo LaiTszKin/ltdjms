@@ -8,7 +8,6 @@ import { AdminPanelSessionManager } from '../../session/AdminPanelSessionManager
 import { AdminPanelViewFactory } from './views/AdminPanelViewFactory.js';
 import { CurrencyManagementFacade } from '../../facades/CurrencyManagementFacade.js';
 import { ZhTwStrings } from '../../i18n/zh-TW.js';
-import { PermissionFlagsBits } from 'discord.js';
 
 /**
  * /admin-panel slash command handler.
@@ -81,7 +80,7 @@ export class AdminPanelCommand implements CommandHandler {
     for (let i = 0; i < buttons.length; i += 3) {
       rows.push(
         new ActionRowBuilder<ButtonBuilder>().addComponents(
-          buttons.slice(i, i + 5),
+          buttons.slice(i, i + 3),
         ),
       );
     }
@@ -109,25 +108,6 @@ export class AdminPanelCommand implements CommandHandler {
   }
 
   private hasAdminPermission(interaction: DiscordInteraction): boolean {
-    try {
-      const raw = interaction.getHook() as {
-        memberPermissions?: { has(permission: bigint): boolean };
-        guild?: { ownerId: string };
-      };
-      const userId = String(interaction.getUserId());
-
-      // Check ADMINISTRATOR permission
-      if (raw.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
-        return true;
-      }
-
-      // Check guild owner
-      if (raw.guild?.ownerId === userId) {
-        return true;
-      }
-    } catch {
-      // If we cannot access the raw interaction, deny access
-    }
-    return false;
+    return interaction.isAdministrator();
   }
 }

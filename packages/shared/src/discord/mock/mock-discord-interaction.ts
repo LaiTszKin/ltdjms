@@ -10,6 +10,7 @@ export class MockDiscordInteraction implements DiscordInteraction {
   private readonly _userId: string;
   private readonly _ephemeral: boolean;
   private readonly _customId: string;
+  private _isAdministrator: boolean;
   private _acknowledged = false;
 
   private readonly _replyMessages: string[] = [];
@@ -23,11 +24,13 @@ export class MockDiscordInteraction implements DiscordInteraction {
     _channelId?: string,
     ephemeral = false,
     customId = '',
+    isAdmin = false,
   ) {
     this._guildId = guildId;
     this._userId = userId;
     this._ephemeral = ephemeral;
     this._customId = customId;
+    this._isAdministrator = isAdmin;
   }
 
   getGuildId(): string {
@@ -71,6 +74,19 @@ export class MockDiscordInteraction implements DiscordInteraction {
 
   isAcknowledged(): boolean {
     return this._acknowledged;
+  }
+
+  isAdministrator(): boolean {
+    return this._isAdministrator;
+  }
+
+  hasPermission(_permission: bigint): boolean {
+    return this._isAdministrator;
+  }
+
+  /** Sets the admin flag for testing. */
+  setAdministrator(isAdmin: boolean): void {
+    this._isAdministrator = isAdmin;
   }
 
   // ---- Test helpers ----
