@@ -206,7 +206,6 @@ export function configureAdminContainer(): void {
     balanceService,
     balanceAdjustmentService,
     currencyConfigService,
-    eventPublisher,
   );
   container.registerInstance(ADMIN_TOKENS.CurrencyManagementFacade, currencyFacade);
 
@@ -216,7 +215,6 @@ export function configureAdminContainer(): void {
   const tokenFacade = new GameTokenManagementFacade(
     gameTokenService,
     gameTokenTxService,
-    eventPublisher,
   );
   container.registerInstance(ADMIN_TOKENS.GameTokenManagementFacade, tokenFacade);
 
