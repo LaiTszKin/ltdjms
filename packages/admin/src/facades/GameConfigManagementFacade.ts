@@ -32,6 +32,7 @@ export interface DiceGame2ConfigUpdate {
   baseMultiplier: number;
   tripleLowBonus: number;
   tripleHighBonus: number;
+  faceMultipliers?: [number, number, number, number, number, number];
 }
 
 /**
@@ -190,6 +191,7 @@ export class GameConfigManagementFacade {
         baseMultiplier: config.baseMultiplier,
         tripleLowBonus: config.tripleLowBonus,
         tripleHighBonus: config.tripleHighBonus,
+        faceMultipliers: config.faceMultipliers ?? currentConfig?.faceMultipliers ?? [1, 1, 1, 1, 1, 1],
         createdAt: currentConfig?.createdAt ?? now,
         updatedAt: now,
       };
@@ -208,6 +210,7 @@ export class GameConfigManagementFacade {
           baseMultiplier: currentConfig.baseMultiplier,
           tripleLowBonus: currentConfig.tripleLowBonus,
           tripleHighBonus: currentConfig.tripleHighBonus,
+          faceMultipliers: currentConfig.faceMultipliers,
         } : undefined,
         newConfig: {
           minTokensPerPlay: config.minTokensPerPlay,
@@ -216,6 +219,7 @@ export class GameConfigManagementFacade {
           baseMultiplier: config.baseMultiplier,
           tripleLowBonus: config.tripleLowBonus,
           tripleHighBonus: config.tripleHighBonus,
+          faceMultipliers: config.faceMultipliers ?? [1, 1, 1, 1, 1, 1],
         },
       };
       this.eventPublisher.publish(event);

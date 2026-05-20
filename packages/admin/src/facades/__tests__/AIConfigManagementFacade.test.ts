@@ -44,7 +44,7 @@ describe('AIConfigManagementFacade', () => {
       ];
       mockChannelService.getAllowedChannels = vi.fn().mockResolvedValue(new Ok(channels));
 
-      const result = await facade.listAllowedChannels(guildId);
+      const result = await facade.getAllowedChannels(guildId);
       expect(result.isOk()).toBe(true);
       expect(result.getValue()).toHaveLength(1);
     });
@@ -62,7 +62,7 @@ describe('AIConfigManagementFacade', () => {
     it('should list agent channels', async () => {
       mockAgentService.getEnabledChannels = vi.fn().mockResolvedValue(new Ok(['456']));
 
-      const result = await facade.listAgentChannels(guildId);
+      const result = await facade.getAgentConfigs(guildId);
       expect(result.isOk()).toBe(true);
       expect(result.getValue()).toEqual(['456']);
     });

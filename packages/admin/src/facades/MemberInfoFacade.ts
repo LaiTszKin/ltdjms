@@ -84,8 +84,10 @@ export class MemberInfoFacade {
     userId: string,
   ): Promise<Result<MemberPanelView, DomainError>> {
     try {
-      const balanceView = await this.balanceService.getBalance(Number(guildId), Number(userId));
-      const tokenBalance = await this.tokenService.getBalance(Number(guildId), Number(userId));
+      const [balanceView, tokenBalance] = await Promise.all([
+        this.balanceService.getBalance(Number(guildId), Number(userId)),
+        this.tokenService.getBalance(Number(guildId), Number(userId)),
+      ]);
 
       return new Ok({
         guildId,

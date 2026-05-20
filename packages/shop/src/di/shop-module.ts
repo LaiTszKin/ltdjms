@@ -30,10 +30,12 @@ import { ShopAdminNotificationService } from '../services/shop-admin-notificatio
 import { EcpayCallbackHttpServer } from '../web/ecpay-callback-server.js';
 import {
   type EscortDispatchHandoffService,
+} from '../domain/escort-dispatch-handoff-service.js';
+import {
   type EscortOrderBuyerNotifier,
   type AdminOrderNotifier,
   type ProductRewardGranter,
-} from '../services/fiat-order-post-payment-worker.js';
+} from '../domain/notification-interfaces.js';
 
 // ============================================================
 // Third-party service interfaces expected by the shop module
@@ -219,7 +221,7 @@ export function configureContainer(options: ShopModuleOptions): void {
   const shopService = new ShopService(options.productRepository, log);
   container.registerInstance(SHOP_TOKENS.ShopService, shopService);
 
-  const shopCommandHandler = new ShopCommandHandler(shopService, fiatOrderService, currencyPurchase);
+  const shopCommandHandler = new ShopCommandHandler(shopService, fiatOrderService, currencyPurchase, options.productRepository);
   container.registerInstance(SHOP_TOKENS.ShopCommandHandler, shopCommandHandler);
 
   // ---- Redemption ----

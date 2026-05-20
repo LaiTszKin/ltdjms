@@ -158,13 +158,24 @@ export class DiscordMarkdownPaginator {
     let newFence: string | null = null;
 
     // Scan line-by-line to determine whether an open fence is closed
-    // or a new unclosed fence was opened in this page
+    // or a new unclosed fence was opened in this page.
+    // Track the language identifier of the most recently opened fence
+    // so it can be preserved across page boundaries (P1-3).
     let insideFence = openFence !== null;
+    let lastFenceLang = openFence ?? '';
     const lines = pageContent.split('\n');
 
     for (const line of lines) {
       const trimmed = line.trim();
-      if (/^(`{3,})/.test(trimmed) || /^(~{3,})/.test(trimmed)) {
+      const backtickMatch = trimmed.match(/^(`{3,})(\w*)/);
+      if (backtickMatch) {
+        const wasInside = insideFence;
+        insideFence = !insideFence;
+        // If we just opened a fence, capture the language identifier
+        if (!wasInside && insideFence) {
+          lastFenceLang = backtickMatch[2] ?? '';
+        }
+      } else if (/^(~{3,})/.test(trimmed)) {
         insideFence = !insideFence;
       }
     }
@@ -181,7 +192,7 @@ export class DiscordMarkdownPaginator {
     } else if (insideFence) {
       // A new code fence was opened but not closed — close it for this page
       result = result.trimEnd() + '\n```';
-      newFence = '```';
+      newFence = lastFenceLang; // preserve language identifier for next page
       // Trim to stay within maxLength if needed
       if (result.length > this.maxLength + CODE_FENCE_RESERVED) {
         result = result.slice(0, this.maxLength);

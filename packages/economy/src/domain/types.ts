@@ -135,6 +135,7 @@ export interface DiceGame2Config {
   readonly baseMultiplier: number;
   readonly tripleLowBonus: number;
   readonly tripleHighBonus: number;
+  readonly faceMultipliers: [number, number, number, number, number, number];
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }

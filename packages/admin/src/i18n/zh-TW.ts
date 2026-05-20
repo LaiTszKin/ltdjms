@@ -319,6 +319,9 @@ export const ZhTwStrings = {
     [DomainErrorCategory.CHANNEL_NOT_FOUND]: '找不到指定的頻道',
     [DomainErrorCategory.DUPLICATE_CATEGORY]: '該分類已在白名單中',
     [DomainErrorCategory.CATEGORY_NOT_FOUND]: '找不到指定的分類',
+    [DomainErrorCategory.REDEEM_CODE_USED]: '此兌換碼已被使用',
+    [DomainErrorCategory.REDEEM_CODE_EXPIRED]: '此兌換碼已過期',
+    [DomainErrorCategory.REDEEM_CODE_INVALID]: '兌換碼無效',
   },
 
   // ============================================================

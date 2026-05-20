@@ -120,10 +120,9 @@ export class AdminPanelModalFactory {
 
   /**
    * Builds a dice game 2 settings modal with all multipliers.
+   * Includes six individual dice face multipliers (face_1 through face_6),
+   * plus straightMultiplier, baseMultiplier, tripleLowBonus, tripleHighBonus.
    */
-  // TODO(P1-34): Spec R4.3 requires six individual dice face multipliers.
-  // DiceGame2Config currently has only four: straightMultiplier, baseMultiplier,
-  // tripleLowBonus, tripleHighBonus. Extend when the config type gains per-face fields.
   buildDiceGame2SettingsModal(currentConfig: DiceGame2Config): {
     title: string;
     fields: { label: string; value: string; minLength: number; maxLength: number; required: boolean }[];
@@ -173,6 +172,13 @@ export class AdminPanelModalFactory {
           maxLength: 10,
           required: true,
         },
+        ...(currentConfig.faceMultipliers.map((multiplier, i) => ({
+          label: `骰面 ${i + 1} 倍率`,
+          value: String(multiplier),
+          minLength: 1,
+          maxLength: 10,
+          required: true,
+        }))),
       ],
     };
   }

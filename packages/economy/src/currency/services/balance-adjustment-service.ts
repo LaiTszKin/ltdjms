@@ -132,6 +132,12 @@ export class BalanceAdjustmentService {
       );
     }
 
+    if (amount === 0) {
+      return new Err(
+        DomainError.invalidInput('調整金額不可為零'),
+      );
+    }
+
     // Overflow check using safe integer boundaries (spec R1.4)
     if (!isValidAdjustmentAmount(amount)) {
       return new Err(
@@ -190,5 +196,97 @@ export class BalanceAdjustmentService {
     // Delegate to processAdjustment which handles adjustment, transaction recording,
     // event publishing, and cache update — without a redundant findOrCreate query (P2-5).
     return this.processAdjustment(guildId, userId, delta, current.balance, source, description);
+  }
+
+  /**
+   * Batch-adjusts a member's balance by the total amount, splitting into chunks
+   * if maxChunkSize is specified (e.g. for reward amounts exceeding a per-operation limit).
+   * Records a single transaction, publishes one event, and updates cache once.
+   * Returns the aggregated result.
+   */
+  async tryBatchAdjust(
+    guildId: number,
+    userId: number,
+    totalAmount: number,
+    source: CurrencyTransactionSource = CurrencyTransactionSource.ADMIN_ADJUSTMENT,
+    description: string | null = null,
+    maxChunkSize?: number,
+  ): Promise<Result<BalanceAdjustmentResult, DomainError>> {
+    if (!Number.isFinite(totalAmount)) {
+      return new Err(
+        DomainError.invalidInput(`Invalid total adjustment amount: ${totalAmount}`),
+      );
+    }
+
+    if (totalAmount === 0) {
+      return new Err(
+        DomainError.invalidInput('調整金額不可為零'),
+      );
+    }
+
+    try {
+      const current = await this.accountRepository.findOrCreate(guildId, userId);
+      const previousBalance = current.balance;
+      let newBalance = previousBalance;
+
+      // Apply in chunks if maxChunkSize is specified
+      let remaining = totalAmount;
+      while (remaining !== 0) {
+        const chunk = maxChunkSize !== undefined
+          ? Math.min(Math.abs(remaining), maxChunkSize) * Math.sign(remaining)
+          : remaining;
+
+        const result = await this.accountRepository.tryAdjustBalance(guildId, userId, chunk);
+        if (result.isErr()) {
+          return new Err(result.getError());
+        }
+        newBalance = result.getValue().balance;
+        remaining -= chunk;
+      }
+
+      const actualAdjustment = newBalance - previousBalance;
+
+      // Record transaction (single record for the total adjustment)
+      await this.transactionService.recordTransaction(
+        guildId,
+        userId,
+        actualAdjustment,
+        newBalance,
+        source,
+        description,
+      );
+
+      // Publish event
+      const event: BalanceChangedEvent = {
+        guildId: String(guildId),
+        userId,
+        eventType: 'balance_changed',
+        newBalance,
+      };
+      this.eventPublisher.publish(event);
+
+      // Update cache
+      const cacheKey = this.cacheKeyGenerator.balanceKey(String(guildId), String(userId));
+      await this.cacheService.put(cacheKey, newBalance, BalanceAdjustmentService.BALANCE_TTL_SECONDS);
+
+      const config = await this.configRepository.findByGuildId(guildId);
+
+      return new Ok({
+        guildId,
+        userId,
+        previousBalance,
+        newBalance,
+        adjustment: actualAdjustment,
+        currencyName: config?.currencyName ?? DEFAULT_CURRENCY_NAME,
+        currencyIcon: config?.currencyIcon ?? DEFAULT_CURRENCY_ICON,
+      });
+    } catch (err) {
+      return new Err(
+        DomainError.persistenceFailure(
+          `Failed to batch adjust balance for guildId=${guildId}, userId=${userId}`,
+          err instanceof Error ? err : undefined,
+        ),
+      );
+    }
   }
 }

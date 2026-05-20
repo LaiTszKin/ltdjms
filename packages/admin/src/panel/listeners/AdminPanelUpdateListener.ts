@@ -23,6 +23,7 @@ import {
 import { AdminPanelSessionManager } from '../../session/AdminPanelSessionManager.js';
 import { AdminPanelViewState } from '../../session/types.js';
 import { CurrencyManagementFacade } from '../../facades/CurrencyManagementFacade.js';
+import { DispatchManagementFacade } from '../../facades/DispatchManagementFacade.js';
 import { AdminPanelViewFactory } from '../admin/views/AdminPanelViewFactory.js';
 
 /**
@@ -60,6 +61,7 @@ export class AdminPanelUpdateListener {
     private readonly sessionManager: AdminPanelSessionManager,
     private readonly discordGateway: DiscordRuntimeGateway,
     private readonly currencyFacade: CurrencyManagementFacade,
+    private readonly dispatchFacade: DispatchManagementFacade,
     private readonly viewFactory: AdminPanelViewFactory,
   ) {}
 
@@ -187,7 +189,8 @@ export class AdminPanelUpdateListener {
       const currencyConfig = configResult.isOk() ? configResult.getValue() : null;
 
       const guildName = await this.getGuildName(guildId);
-      const dispatchCount = 0; // TODO(P1-37): Query from dispatch service — 需注入 DispatchPanelService 或 EscortDispatchOrderService 來查詢 guild 的有效護航訂單數量
+      const dispatchResult = await this.dispatchFacade.countActiveOrders(guildId);
+      const dispatchCount = dispatchResult.isOk() ? dispatchResult.getValue() : 0;
 
       const mainPanel = this.viewFactory.buildMainPanelEmbed(
         guildName,

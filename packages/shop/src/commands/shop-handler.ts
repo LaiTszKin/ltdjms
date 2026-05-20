@@ -2,6 +2,7 @@ import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
 import { ShopService, type ShopPage } from '../services/shop.service.js';
 import { FiatOrderService, formatFiatOrderDMMessage } from '../services/fiat-order.service.js';
 import { CurrencyPurchaseService, formatPurchaseSuccessMessage } from '../services/currency-purchase.service.js';
+import type { ProductRepository } from '../domain/product-types.js';
 import {
   ModalBuilder,
   TextInputBuilder,
@@ -49,6 +50,7 @@ export class ShopCommandHandler {
     private readonly shopService: ShopService,
     private readonly fiatOrderService: FiatOrderService,
     private readonly currencyPurchaseService: CurrencyPurchaseService,
+    private readonly productRepository: ProductRepository,
   ) {}
 
   /**
@@ -288,7 +290,7 @@ export class ShopCommandHandler {
   ): Promise<void> {
     // Load all products at once (large page size) so the select menu is not
     // restricted to the first page only.
-    const page = await this.shopService.getShopPageWithSize(guildId, 1, 100);
+    const page = await this.shopService.getShopPageWithSize(guildId, 1, 25);
     if (ShopCommandHandler.pageIsEmpty(page)) {
       await interaction.reply('目前沒有可購買的商品');
       return;
@@ -333,9 +335,8 @@ export class ShopCommandHandler {
     guildId: number,
     productId: number,
   ): Promise<void> {
-    const page = await this.shopService.getShopPage(guildId, 1);
-    const product = page.products.find((p) => p.id === productId);
-    if (!product) {
+    const product = await this.productRepository.findById(productId);
+    if (!product || product.guildId !== guildId) {
       await interaction.reply('找不到此商品');
       return;
     }
@@ -393,7 +394,6 @@ export class ShopCommandHandler {
    * Once the shared layer extends DiscordInteraction, this can be removed.
    */
   private getRaw(interaction: DiscordInteraction): any {
-    // @ts-ignore - temporary until shared DiscordInteraction is extended
     return interaction.getHook();
   }
 

@@ -134,7 +134,7 @@ export function configureEconomyContainer(): void {
   container.registerInstance(ECONOMY_TOKENS.GameTokenService, gameTokenService);
 
   const gameRewardService = new GameRewardService(
-    currencyAccountRepo,
+    balanceAdjustmentService,
     currencyTxService,
     eventPublisher,
     cacheService,

@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { SchemaMigrationException } from './schema-migration-exception.js';
+import { DatabaseConnectionException } from './database-connection-exception.js';
 
 export interface DatabaseConfig {
   readonly url: string;
@@ -44,7 +44,7 @@ export async function createDatabasePool(config: DatabaseConfig): Promise<Pool> 
   // Close pool on failure
   await pool.end().catch(() => {});
 
-  throw new SchemaMigrationException(
+  throw new DatabaseConnectionException(
     `Failed to connect to database after 3 attempts: ${lastError?.message}`,
     lastError,
   );

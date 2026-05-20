@@ -101,17 +101,9 @@ export class AIChannelConfigHandler extends BaseAdminHandler {
     _guildId: string,
     action: 'add' | 'remove',
   ): Promise<void> {
-    const raw = interaction.getHook() as {
-      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<any>[] }) => Promise<void>;
-    };
-
     const customId = action === 'add'
       ? 'admin_aichannel_add_channel_select'
       : 'admin_aichannel_remove_channel_select';
-
-    const title = action === 'add'
-      ? ZhTwStrings.aiChannelAddBtn
-      : ZhTwStrings.aiChannelRemoveBtn;
 
     const embed = new EmbedBuilder()
       .setTitle(ZhTwStrings.aiChannelTitle)
@@ -123,23 +115,23 @@ export class AIChannelConfigHandler extends BaseAdminHandler {
       .setPlaceholder('請選擇頻道')
       .setChannelTypes(ChannelType.GuildText);
 
-    const row = new ActionRowBuilder<any>().addComponents(select);
-    await raw.editReply({ embeds: [embed], components: [row] });
+    const row = new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(select);
+    await interaction.editWithComponents(embed, [row]);
   }
 
   private async handleAddChannel(
     interaction: DiscordInteraction,
     guildId: string,
   ): Promise<void> {
-    const raw = interaction.getHook() as { values?: string[] };
-    const selectedIds = raw.values;
-    if (!selectedIds || selectedIds.length === 0) {
+    const selectedValues = interaction.getSelectedValues();
+    if (!selectedValues || selectedValues.length === 0) {
       await this.showChannelConfig(interaction, guildId);
       return;
     }
 
-    const channelId = selectedIds[0];
-    const result = await this.facade.addAllowedChannel(guildId, channelId, channelId);
+    const channelId = selectedValues[0];
+    const channelName = interaction.getChannelName(channelId) ?? channelId;
+    const result = await this.facade.addAllowedChannel(guildId, channelId, channelName);
 
     if (result.isOk()) {
       const embed = new EmbedBuilder()
@@ -156,14 +148,13 @@ export class AIChannelConfigHandler extends BaseAdminHandler {
     interaction: DiscordInteraction,
     guildId: string,
   ): Promise<void> {
-    const raw = interaction.getHook() as { values?: string[] };
-    const selectedIds = raw.values;
-    if (!selectedIds || selectedIds.length === 0) {
+    const selectedValues = interaction.getSelectedValues();
+    if (!selectedValues || selectedValues.length === 0) {
       await this.showChannelConfig(interaction, guildId);
       return;
     }
 
-    const channelId = selectedIds[0];
+    const channelId = selectedValues[0];
     const result = await this.facade.removeAllowedChannel(guildId, channelId);
 
     if (result.isOk()) {
@@ -181,14 +172,15 @@ export class AIChannelConfigHandler extends BaseAdminHandler {
     interaction: DiscordInteraction,
     guildId: string,
   ): Promise<void> {
-    const raw = interaction.getHook() as { values?: string[] };
-    const selectedCategory = String(raw.values?.[0] ?? '');
+    const selectedValues = interaction.getSelectedValues();
+    const selectedCategory = String(selectedValues[0] ?? '');
     if (!selectedCategory) {
       await this.showChannelConfig(interaction, guildId);
       return;
     }
 
-    const result = await this.facade.addAllowedCategory(guildId, selectedCategory, selectedCategory);
+    const categoryName = interaction.getChannelName(selectedCategory) ?? selectedCategory;
+    const result = await this.facade.addAllowedCategory(guildId, selectedCategory, categoryName);
 
     if (result.isOk()) {
       const embed = new EmbedBuilder()
@@ -205,8 +197,8 @@ export class AIChannelConfigHandler extends BaseAdminHandler {
     interaction: DiscordInteraction,
     guildId: string,
   ): Promise<void> {
-    const raw = interaction.getHook() as { values?: string[] };
-    const selectedCategory = String(raw.values?.[0] ?? '');
+    const selectedValues = interaction.getSelectedValues();
+    const selectedCategory = String(selectedValues[0] ?? '');
     if (!selectedCategory) {
       await this.showChannelConfig(interaction, guildId);
       return;

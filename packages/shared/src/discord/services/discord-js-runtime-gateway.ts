@@ -84,4 +84,16 @@ export class DiscordJsRuntimeGateway implements DiscordRuntimeGateway {
       return false;
     }
   }
+
+  async retrieveMemberById(guildId: string, userId: string): Promise<boolean> {
+    const client = this.requireReadyClient() as Client;
+    try {
+      const guild = client.guilds.cache.get(guildId);
+      if (!guild) return false;
+      await guild.members.fetch(userId);
+      return true;
+    } catch {
+      return false;
+    }
+  }
 }

@@ -5,7 +5,6 @@ import {
   CUSTOMER_CONFIRM_TIMEOUT_MS,
   createPending,
   createManualOpenOrder,
-  createPendingFull,
   createAutoHandoff,
   withConfirmed,
   withCompletionRequested,
@@ -27,6 +26,48 @@ import {
   hasCustomerConfirmationTimedOut,
   type EscortDispatchOrder,
 } from '../../src/domain/escort-dispatch-order.js';
+
+/** Test helper: creates a full EscortDispatchOrder with all fields set. */
+function createPendingFull(
+  orderNumber: string,
+  guildId: number,
+  assignedByUserId: number,
+  escortUserId: number,
+  customerUserId: number,
+  sourceType: SourceType,
+  sourceReference: string | null,
+  sourceProductId: number | null,
+  sourceProductName: string | null,
+  sourceCurrencyPrice: number | null,
+  sourceFiatPriceTwd: number | null,
+  sourceEscortOptionCode: string | null,
+): EscortDispatchOrder {
+  return {
+    id: null,
+    orderNumber,
+    guildId,
+    assignedByUserId,
+    escortUserId,
+    customerUserId,
+    sourceType,
+    sourceReference,
+    sourceProductId,
+    sourceProductName,
+    sourceCurrencyPrice,
+    sourceFiatPriceTwd,
+    sourceEscortOptionCode,
+    status: EscortDispatchOrderStatus.PENDING_CONFIRMATION,
+    createdAt: new Date(),
+    confirmedAt: null,
+    completionRequestedAt: null,
+    completedAt: null,
+    afterSalesRequestedAt: null,
+    afterSalesAssigneeUserId: null,
+    afterSalesAssignedAt: null,
+    afterSalesClosedAt: null,
+    updatedAt: new Date(),
+  };
+}
 
 function makeDefaultOrder(overrides?: Partial<EscortDispatchOrder>): EscortDispatchOrder {
   return createPending('ESC-20260520-A1B2C3', 100, 200, 300, 400);

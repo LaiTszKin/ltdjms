@@ -81,4 +81,13 @@ export class DrizzleEscortOptionPriceRepo implements EscortOptionPriceRepo {
       .where(eq(guildEscortOptionPrice.optionCode, optionCode));
     return rows[0]?.count ?? 0;
   }
+
+  async findGuildIdsByOptionCode(optionCode: string): Promise<number[]> {
+    const rows = await this.db
+      .select({ guildId: guildEscortOptionPrice.guildId })
+      .from(guildEscortOptionPrice)
+      .where(eq(guildEscortOptionPrice.optionCode, optionCode))
+      .orderBy(guildEscortOptionPrice.guildId);
+    return rows.map((r) => r.guildId);
+  }
 }

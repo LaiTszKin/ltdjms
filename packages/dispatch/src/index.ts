@@ -152,24 +152,18 @@ export {
   embedViewToApiEmbed,
   buttonsToComponents,
   buildPanelReplyPayload,
-  // Format utilities
-  formatPanelText,
   // Message factory
   buildOrderCreatedEmbed,
-  buildManualOrderCreatedEmbed,
   buildOrderAssignedEmbed,
   buildOrderConfirmedEmbed,
   buildPendingCustomerConfirmationEmbed,
   buildOrderCompletedEmbed,
-  buildOrderTimedOutEmbed,
   buildAfterSalesRequestedEmbed,
   buildAfterSalesClaimedEmbed,
   buildAfterSalesClosedEmbed,
   buildOrderDetailEmbed,
   buildOrderListEmbed,
   buildErrorEmbed,
-  buildSuccessEmbed,
-  buildWarningEmbed,
 } from './panel/index.js';
 
 // ============================================================

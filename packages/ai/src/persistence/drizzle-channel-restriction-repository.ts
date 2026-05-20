@@ -36,6 +36,20 @@ export class DrizzleAIChannelRestrictionRepository implements AIChannelRestricti
     this.log = logger ?? pino({ level: 'warn' });
   }
 
+  async findChannel(guildId: string, channelId: string): Promise<AllowedChannel | null> {
+    const [row] = await this.db
+      .select()
+      .from(aiAllowedChannel)
+      .where(
+        and(
+          eq(aiAllowedChannel.guildId, Number(guildId)),
+          eq(aiAllowedChannel.channelId, Number(channelId)),
+        ),
+      )
+      .limit(1);
+    return row ? mapChannelRow(row) : null;
+  }
+
   async findByGuildId(guildId: string): Promise<AllowedChannel[]> {
     const rows = await this.db
       .select()

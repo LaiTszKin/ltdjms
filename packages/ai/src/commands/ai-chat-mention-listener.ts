@@ -278,6 +278,8 @@ export class AIChatMentionListener {
     const thinkingMsg = await message.reply(
       ':thought_balloon: AI 正在思考...',
     );
+    const tracker = new ReasoningMessageTracker();
+    tracker.setInitialMessage(thinkingMsg);
 
     const handler: StreamingResponseHandler = {
       onChunk: (chunk: string, isComplete: boolean, error: DomainError | null, chunkType?: StreamChunkType) => {
@@ -288,26 +290,50 @@ export class AIChatMentionListener {
         }
 
         const type = chunkType ?? StreamChunkType.CONTENT;
-        if (type !== StreamChunkType.CONTENT || !chunk) return;
+
+        // Handle REASONING chunks (P2-12)
+        if (type === StreamChunkType.REASONING) {
+          if (this.showReasoning && chunk) {
+            this.sendToChannel(message, `-# ||${chunk}||`).then((msg) => {
+              if (msg) tracker.addReasoningMessage(msg);
+            });
+          }
+          if (isComplete) {
+            tracker.deleteReasoningMessages();
+          }
+          return;
+        }
+
+        if (type !== StreamChunkType.CONTENT || !chunk) {
+          if (isComplete) {
+            tracker.deleteReasoningMessages();
+          }
+          return;
+        }
 
         if (this.streamingBypassValidation) {
           // Buffer mode: collect all chunks
           if (isComplete) {
-            // Replace thinking message with final content (split if needed)
-            const pages = this.splitter.split(chunk);
-            // P2-41: Fallback for empty split result with non-empty content
-            if (pages.length === 0 && chunk) {
-              thinkingMsg.edit(chunk).catch(() => {});
-            } else if (pages.length > 0) {
-              thinkingMsg.edit(pages[0]).catch(() => {});
-              for (let i = 1; i < pages.length; i++) {
-                this.sendToChannel(message, pages[i]);
+            tracker.deleteReasoningMessages().then(() => {
+              // Replace thinking message with final content (split if needed)
+              const pages = this.splitter.split(chunk);
+              // P2-41: Fallback for empty split result with non-empty content
+              if (pages.length === 0 && chunk) {
+                thinkingMsg.edit(chunk).catch(() => {});
+              } else if (pages.length > 0) {
+                thinkingMsg.edit(pages[0]).catch(() => {});
+                for (let i = 1; i < pages.length; i++) {
+                  this.sendToChannel(message, pages[i]);
+                }
               }
-            }
+            });
           }
         } else {
           // Real-time mode: edit thinking message with content
           thinkingMsg.edit(chunk).catch(() => {});
+          if (isComplete) {
+            tracker.deleteReasoningMessages();
+          }
         }
       },
     };

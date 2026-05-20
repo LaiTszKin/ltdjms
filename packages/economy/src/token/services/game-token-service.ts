@@ -93,6 +93,12 @@ export class GameTokenService {
       );
     }
 
+    if (amount === 0) {
+      return new Err(
+        DomainError.invalidInput('調整金額不可為零'),
+      );
+    }
+
     try {
       const current = await this.accountRepository.findOrCreate(guildId, userId);
       const previousTokens = current.tokens;

@@ -159,6 +159,7 @@ export class DiceGame2ConfigHandler {
         baseMultiplier,
         tripleLowBonus,
         tripleHighBonus,
+        faceMultipliers: [1, 1, 1, 1, 1, 1],
         createdAt: new Date(),
         updatedAt: new Date(),
       });

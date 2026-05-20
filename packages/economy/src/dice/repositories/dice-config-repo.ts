@@ -95,6 +95,12 @@ export class DiceConfigRepository {
         baseMultiplier: config.baseMultiplier,
         tripleLowBonus: config.tripleLowBonus,
         tripleHighBonus: config.tripleHighBonus,
+        faceMultiplier1: config.faceMultipliers[0],
+        faceMultiplier2: config.faceMultipliers[1],
+        faceMultiplier3: config.faceMultipliers[2],
+        faceMultiplier4: config.faceMultipliers[3],
+        faceMultiplier5: config.faceMultipliers[4],
+        faceMultiplier6: config.faceMultipliers[5],
       })
       .onConflictDoUpdate({
         target: diceGame2Config.guildId,
@@ -105,6 +111,12 @@ export class DiceConfigRepository {
           baseMultiplier: config.baseMultiplier,
           tripleLowBonus: config.tripleLowBonus,
           tripleHighBonus: config.tripleHighBonus,
+          faceMultiplier1: config.faceMultipliers[0],
+          faceMultiplier2: config.faceMultipliers[1],
+          faceMultiplier3: config.faceMultipliers[2],
+          faceMultiplier4: config.faceMultipliers[3],
+          faceMultiplier5: config.faceMultipliers[4],
+          faceMultiplier6: config.faceMultipliers[5],
           updatedAt: sql`NOW()`,
         },
       })
@@ -156,6 +168,7 @@ export class DiceConfigRepository {
       baseMultiplier: 20000,
       tripleLowBonus: 1500000,
       tripleHighBonus: 2500000,
+      faceMultipliers: [1, 1, 1, 1, 1, 1],
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -174,6 +187,15 @@ function mapDice1ToDomain(row: Record<string, unknown>): DiceGame1Config {
 }
 
 function mapDice2ToDomain(row: Record<string, unknown>): DiceGame2Config {
+  const faceMultipliers: [number, number, number, number, number, number] = [1, 1, 1, 1, 1, 1];
+  // Read face multipliers from DB columns if present (fall back to defaults)
+  if (row.faceMultiplier1 != null) faceMultipliers[0] = row.faceMultiplier1 as number;
+  if (row.faceMultiplier2 != null) faceMultipliers[1] = row.faceMultiplier2 as number;
+  if (row.faceMultiplier3 != null) faceMultipliers[2] = row.faceMultiplier3 as number;
+  if (row.faceMultiplier4 != null) faceMultipliers[3] = row.faceMultiplier4 as number;
+  if (row.faceMultiplier5 != null) faceMultipliers[4] = row.faceMultiplier5 as number;
+  if (row.faceMultiplier6 != null) faceMultipliers[5] = row.faceMultiplier6 as number;
+
   return {
     guildId: row.guildId as number,
     minTokensPerPlay: row.minTokensPerPlay as number,
@@ -182,6 +204,7 @@ function mapDice2ToDomain(row: Record<string, unknown>): DiceGame2Config {
     baseMultiplier: row.baseMultiplier as number,
     tripleLowBonus: row.tripleLowBonus as number,
     tripleHighBonus: row.tripleHighBonus as number,
+    faceMultipliers,
     createdAt: row.createdAt as Date,
     updatedAt: row.updatedAt as Date,
   };

@@ -436,6 +436,7 @@ export function configureAdminContainer(): void {
     adminSessionManager,
     discordGateway,
     currencyFacade,
+    dispatchManagementFacade,
     adminPanelViewFactory,
   );
   container.registerInstance(ADMIN_TOKENS.AdminPanelUpdateListener, adminUpdateListener);

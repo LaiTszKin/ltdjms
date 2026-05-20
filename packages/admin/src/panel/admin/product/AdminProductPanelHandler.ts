@@ -176,6 +176,8 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
 
     if (fullCustomId === 'admin_product_back') {
       this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.PRODUCT_LIST);
+      const page = parseInt(this.sessionManager.getContext(guildId, userId, 'productPage') ?? '1', 10);
+      await this.showProductList(interaction, guildId, page);
       return;
     }
 

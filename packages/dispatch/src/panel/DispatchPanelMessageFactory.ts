@@ -9,7 +9,6 @@ import {
   isCompleted,
   isAfterSalesRequested,
   isAfterSalesInProgress,
-  isManualSource,
 } from '../domain/index.js';
 import { COLOR_INFO, COLOR_WARNING, COLOR_ERROR } from './DispatchPanelView.js';
 
@@ -30,22 +29,6 @@ export function buildOrderCreatedEmbed(order: EscortDispatchOrder): EmbedView {
       { name: '建立時間', value: order.createdAt.toLocaleString('zh-TW'), inline: false },
     ],
     footer: '等待護航者確認中...',
-  };
-}
-
-/** 手動開立訂單成功。@internal 目前未被呼叫，保留供後續使用。 */
-export function buildManualOrderCreatedEmbed(order: EscortDispatchOrder): EmbedView {
-  return {
-    title: `📋 手動開立訂單 #${order.orderNumber}`,
-    description: `客戶 <@${order.customerUserId}> 的護航訂單已建立，護航品類代碼：${order.sourceEscortOptionCode ?? '無'}`,
-    color: COLOR_INFO,
-    fields: [
-      { name: '訂單編號', value: order.orderNumber, inline: true },
-      { name: '客戶', value: `<@${order.customerUserId}>`, inline: true },
-      { name: '護航品類', value: order.sourceEscortOptionCode ?? '未指定', inline: true },
-      { name: '來源', value: isManualSource(order) ? '手動開立' : '自動交接', inline: true },
-    ],
-    footer: '請指派護航者',
   };
 }
 
@@ -108,25 +91,6 @@ export function buildOrderCompletedEmbed(order: EscortDispatchOrder): EmbedView 
       { name: '完成時間', value: order.completedAt?.toLocaleString('zh-TW') ?? 'N/A', inline: false },
     ],
     footer: '訂單已完成',
-  };
-}
-
-/**
- * 訂單超時自動完成通知。
- * 由 ensureTimeoutCompletion 觸發，可於面板顯示超時資訊。
- * @internal 目前未被呼叫，保留供後續使用。
- */
-export function buildOrderTimedOutEmbed(order: EscortDispatchOrder): EmbedView {
-  return {
-    title: `⏰ 訂單已自動完成 #${order.orderNumber}`,
-    description: `由於客戶未在 24 小時內確認，系統已自動完成此訂單。`,
-    color: COLOR_WARNING,
-    fields: [
-      { name: '訂單編號', value: order.orderNumber, inline: true },
-      { name: '護航者', value: `<@${order.escortUserId}>`, inline: true },
-      { name: '自動完成時間', value: order.completedAt?.toLocaleString('zh-TW') ?? 'N/A', inline: false },
-    ],
-    footer: '系統自動完成',
   };
 }
 
@@ -237,26 +201,6 @@ export function buildErrorEmbed(message: string): EmbedView {
     title: '❌ 操作失敗',
     description: message,
     color: COLOR_ERROR,
-    footer: '護航派單系統',
-  };
-}
-
-/** @internal 目前未被呼叫，保留供後續使用。 */
-export function buildSuccessEmbed(message: string): EmbedView {
-  return {
-    title: '✅ 操作成功',
-    description: message,
-    color: COLOR_INFO,
-    footer: '護航派單系統',
-  };
-}
-
-/** @internal 目前未被呼叫，保留供後續使用。 */
-export function buildWarningEmbed(message: string): EmbedView {
-  return {
-    title: '⚠️ 提示',
-    description: message,
-    color: COLOR_WARNING,
     footer: '護航派單系統',
   };
 }

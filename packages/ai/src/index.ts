@@ -34,7 +34,6 @@ export type {
   ModifyPermissionSetting,
   RoleCreateInfo,
   ToolExecutionContext,
-  AgentConfigUpdatedEvent,
   AIMessagePublishedEvent,
 } from './services/ai-chat-service.js';
 

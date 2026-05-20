@@ -71,4 +71,11 @@ export interface EscortDispatchOrderRepo {
 
   /** Counts active orders for a guild (orders not in terminal states). */
   countActiveByGuildId(guildId: number): Promise<number>;
+
+  /**
+   * Completes all timed-out PENDING_CUSTOMER_CONFIRMATION orders
+   * (completion_requested_at > 24h) in a single batch UPDATE.
+   * Returns the list of updated orders.
+   */
+  batchTimeoutCompletion(): Promise<EscortDispatchOrder[]>;
 }

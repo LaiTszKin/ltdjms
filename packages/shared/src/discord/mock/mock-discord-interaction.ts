@@ -90,6 +90,46 @@ export class MockDiscordInteraction implements DiscordInteraction {
     return this._isAdministrator;
   }
 
+  async showModal(_modal: unknown): Promise<void> {
+    // No-op in mock
+  }
+
+  getSelectedValues(): string[] {
+    return [];
+  }
+
+  getTextInputValue(_customId: string): string {
+    return '';
+  }
+
+  getGuildName(): string | null {
+    return null;
+  }
+
+  getChannelName(_channelId: string): string | null {
+    return null;
+  }
+
+  isButton(): boolean {
+    return true;
+  }
+
+  isModalSubmit(): boolean {
+    return false;
+  }
+
+  async replyWithComponents(
+    _embed: unknown,
+    _components: unknown[],
+  ): Promise<{ channelId: string; id: string } | null> {
+    this._acknowledged = true;
+    return null;
+  }
+
+  async editWithComponents(_embed: unknown, _components: unknown[]): Promise<void> {
+    // No-op in mock
+  }
+
   /** Sets the admin flag for testing. */
   setAdministrator(isAdmin: boolean): void {
     this._isAdministrator = isAdmin;
