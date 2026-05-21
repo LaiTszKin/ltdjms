@@ -222,7 +222,7 @@ export function configureContainer(options: ShopModuleOptions): void {
   const shopService = new ShopService(productRepo, log);
   container.registerInstance(SHOP_TOKENS.ShopService, shopService);
 
-  const shopCommandHandler = new ShopCommandHandler(shopService, fiatOrderService, currencyPurchase, productRepo);
+  const shopCommandHandler = new ShopCommandHandler(shopService, fiatOrderService, currencyPurchase, productService);
   container.registerInstance(SHOP_TOKENS.ShopCommandHandler, shopCommandHandler);
 
   // ---- Redemption ----

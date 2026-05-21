@@ -2,7 +2,7 @@ import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
 import { ShopService, type ShopPage } from '../services/shop.service.js';
 import { FiatOrderService, formatFiatOrderDMMessage } from '../services/fiat-order.service.js';
 import { CurrencyPurchaseService, formatPurchaseSuccessMessage } from '../services/currency-purchase.service.js';
-import type { ProductRepository } from '../domain/product-types.js';
+import { ProductService } from '../services/product-service.js';
 import {
   ModalBuilder,
   TextInputBuilder,
@@ -50,7 +50,7 @@ export class ShopCommandHandler {
     private readonly shopService: ShopService,
     private readonly fiatOrderService: FiatOrderService,
     private readonly currencyPurchaseService: CurrencyPurchaseService,
-    private readonly productRepository: ProductRepository,
+    private readonly productService: ProductService,
   ) {}
 
   /**
@@ -334,7 +334,7 @@ export class ShopCommandHandler {
     guildId: number,
     productId: number,
   ): Promise<void> {
-    const product = await this.productRepository.findById(productId);
+    const product = await this.productService.findById(productId);
     if (!product || product.guildId !== guildId) {
       await interaction.reply('找不到此商品');
       return;

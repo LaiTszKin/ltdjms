@@ -182,7 +182,7 @@ export function configureEconomyContainer(): void {
     diceGame1Service,
     diceConfigService,
     gameTokenService,
-    currencyConfigRepo,
+    currencyConfigService,
   );
   container.registerInstance(ECONOMY_TOKENS.DiceGame1Handler, diceGame1Handler);
 
@@ -190,7 +190,7 @@ export function configureEconomyContainer(): void {
     diceGame2Service,
     diceConfigService,
     gameTokenService,
-    currencyConfigRepo,
+    currencyConfigService,
   );
   container.registerInstance(ECONOMY_TOKENS.DiceGame2Handler, diceGame2Handler);
 

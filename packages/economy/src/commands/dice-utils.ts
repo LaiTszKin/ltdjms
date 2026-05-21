@@ -1,8 +1,4 @@
-import { type CurrencyConfigRepository } from '../currency/repositories/currency-config-repo.js';
-import {
-  DEFAULT_CURRENCY_NAME,
-  DEFAULT_CURRENCY_ICON,
-} from '../domain/types.js';
+import { type CurrencyConfigService } from '../currency/services/currency-config-service.js';
 
 /**
  * Resolves the currency display name and icon for a guild.
@@ -13,11 +9,11 @@ import {
  */
 export async function resolveCurrencyDisplay(
   guildId: number,
-  currencyConfigRepository: CurrencyConfigRepository,
+  currencyConfigService: CurrencyConfigService,
 ): Promise<{ currencyName: string; currencyIcon: string }> {
-  const currencyConfig = await currencyConfigRepository.findByGuildId(guildId);
+  const config = await currencyConfigService.getConfig(guildId);
   return {
-    currencyName: currencyConfig?.currencyName ?? DEFAULT_CURRENCY_NAME,
-    currencyIcon: currencyConfig?.currencyIcon ?? DEFAULT_CURRENCY_ICON,
+    currencyName: config.currencyName,
+    currencyIcon: config.currencyIcon,
   };
 }
