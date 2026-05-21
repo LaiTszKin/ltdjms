@@ -27,7 +27,6 @@ interface ActionRowPayload {
 
 /** The order-specific custom ID prefix for notification buttons. */
 const NOTIFY_PREFIX = 'dispatch_notify_';
-const NOTIFY_CONFIRM = `${NOTIFY_PREFIX}confirm`;
 const NOTIFY_COMPLETE = `${NOTIFY_PREFIX}complete`;
 const NOTIFY_CONFIRM_COMPLETION = `${NOTIFY_PREFIX}confirm_completion`;
 const NOTIFY_AFTER_SALES = `${NOTIFY_PREFIX}after_sales`;
@@ -43,38 +42,6 @@ export class DispatchNotificationService {
     private readonly gateway: DiscordRuntimeGateway,
     private readonly afterSalesStaffService?: DispatchAfterSalesStaffService,
   ) {}
-
-  /** @deprecated 未被外部呼叫，保留僅供向後相容。 */
-  async notifyEscortOrderCreated(order: EscortDispatchOrder): Promise<boolean> {
-    return this.sendDMEmbed(String(order.escortUserId), {
-      title: `📋 新護航訂單 #${order.orderNumber}`,
-      description: '您有新的護航訂單待確認，請前往面板查看詳情。',
-      color: COLOR_INFO,
-      fields: [
-        { name: '訂單編號', value: order.orderNumber, inline: true },
-        { name: '客戶', value: `<@${order.customerUserId}>`, inline: true },
-      ],
-      footer: { text: '請前往面板確認接單' },
-    }, [
-      { type: 1, components: [{ type: 2, style: 3, custom_id: `${NOTIFY_PREFIX}confirm:${order.orderNumber}`, label: '確認接單' }] },
-    ]);
-  }
-
-  /** @deprecated 未被外部呼叫，保留僅供向後相容。 */
-  async notifyEscortAssigned(order: EscortDispatchOrder): Promise<boolean> {
-    return this.sendDMEmbed(String(order.escortUserId), {
-      title: `📌 已指派訂單 #${order.orderNumber}`,
-      description: '您已被指派護航訂單，請前往面板確認接單。',
-      color: COLOR_WARNING,
-      fields: [
-        { name: '訂單編號', value: order.orderNumber, inline: true },
-        { name: '客戶', value: `<@${order.customerUserId}>`, inline: true },
-      ],
-      footer: { text: '請前往面板確認接單' },
-    }, [
-      { type: 1, components: [{ type: 2, style: 3, custom_id: `${NOTIFY_PREFIX}confirm:${order.orderNumber}`, label: '確認接單' }] },
-    ]);
-  }
 
   /** DM 給管理員與客戶：護航者已確認接單（embed 格式）。 */
   async notifyEscortConfirmed(order: EscortDispatchOrder): Promise<boolean> {

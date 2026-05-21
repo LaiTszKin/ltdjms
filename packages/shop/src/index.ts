@@ -1,3 +1,14 @@
+// Events
+export {
+  OperationType,
+} from './events/index.js';
+export type {
+  ProductChangedEvent,
+  RedemptionCodesGeneratedEvent,
+  ProductRedemptionTransaction,
+  ProductRedemptionCompletedEvent,
+} from './events/index.js';
+
 // Crypto
 export { encryptAES, decryptAES } from './crypto/ecpay-aes.js';
 export { buildCheckMacValue } from './crypto/ecpay-checkmac.js';
@@ -84,6 +95,8 @@ export { FiatOrderProcessingScheduler } from './services/fiat-order-processing-s
 export { CurrencyPurchaseService, formatPurchaseSuccessMessage } from './services/currency-purchase.service.js';
 export type { PurchaseResult } from './services/currency-purchase.service.js';
 
+export { ProductService } from './services/product-service.js';
+
 export { ShopService, ShopPageHelper, PAGE_SIZE } from './services/shop.service.js';
 export type { ShopPage } from './services/shop.service.js';
 
@@ -91,6 +104,9 @@ export {
   buildShopEmbed,
   buildEmptyShopEmbed,
   buildPaymentMethodChoiceEmbed,
+  buildBuyMenu,
+  buildSearchModal,
+  buildPaymentMethodChoiceComponents,
   buildShopComponents,
   buildSearchComponents,
   buildSearchResultEmbed,
@@ -132,7 +148,6 @@ export {
   type ProductRewardService,
   type BalanceService,
   type BalanceAdjustmentService,
-  type CurrencyTransactionService,
   type RedemptionTransactionService,
   type ShopModuleOptions,
 } from './di/shop-module.js';

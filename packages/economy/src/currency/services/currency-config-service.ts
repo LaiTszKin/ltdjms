@@ -5,8 +5,8 @@ import {
   okVoid,
   DomainError,
   type DomainEventPublisher,
-  type CurrencyConfigChangedEvent,
 } from '@ltdjms/shared';
+import type { CurrencyConfigChangedEvent } from '@ltdjms/economy';
 import { CurrencyConfigRepository } from '../repositories/currency-config-repo.js';
 import type { GuildCurrencyConfig } from '../../domain/types.js';
 import {

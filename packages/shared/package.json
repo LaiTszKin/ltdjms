@@ -9,6 +9,42 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./types": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/types/index.js"
+    },
+    "./discord": {
+      "types": "./dist/discord/index.d.ts",
+      "import": "./dist/discord/index.js"
+    },
+    "./discord/domain": {
+      "types": "./dist/discord/domain/index.d.ts",
+      "import": "./dist/discord/domain/index.js"
+    },
+    "./infra/config": {
+      "types": "./dist/infra/config/index.d.ts",
+      "import": "./dist/infra/config/index.js"
+    },
+    "./infra/cache": {
+      "types": "./dist/infra/cache/index.d.ts",
+      "import": "./dist/infra/cache/index.js"
+    },
+    "./infra/database": {
+      "types": "./dist/infra/database/index.d.ts",
+      "import": "./dist/infra/database/index.js"
+    },
+    "./infra/events": {
+      "types": "./dist/infra/events/index.d.ts",
+      "import": "./dist/infra/events/index.js"
+    },
+    "./infra/logger": {
+      "types": "./dist/infra/logger/index.d.ts",
+      "import": "./dist/infra/logger/index.js"
+    },
+    "./infra/di": {
+      "types": "./dist/infra/di/index.d.ts",
+      "import": "./dist/infra/di/index.js"
     }
   },
   "scripts": {

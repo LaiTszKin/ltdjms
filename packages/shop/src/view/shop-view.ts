@@ -113,6 +113,114 @@ export function buildPaymentMethodChoiceEmbed(product: Product): {
  * Builds the action row components (buttons) for the shop embed.
  * Includes pagination (prev/next), buy, and search buttons.
  */
+/**
+ * Builds a buy menu embed for selecting a product to purchase.
+ * Displays the product name, price, and confirmation prompt.
+ */
+export function buildBuyMenu(product: Product, userBalance: number): {
+  title: string;
+  description: string;
+  color: number;
+} {
+  return buildPurchaseConfirmEmbed(product, userBalance);
+}
+
+/**
+ * Builds a modal for searching products by keyword.
+ * Returns a modal-compatible object with customId, title, and components.
+ */
+export function buildSearchModal(): {
+  customId: string;
+  title: string;
+  components: Array<{
+    type: string;
+    components: Array<{
+      type: string;
+      customId: string;
+      label: string;
+      style: number;
+      placeholder: string;
+      required: boolean;
+      maxLength: number;
+    }>;
+  }>;
+} {
+  return {
+    customId: MODAL_SEARCH,
+    title: '搜尋商品',
+    components: [
+      {
+        type: 'actionRow',
+        components: [
+          {
+            type: 4,
+            customId: 'shop_search_keyword',
+            label: '關鍵字',
+            style: 1,
+            placeholder: '請輸入商品名稱關鍵字',
+            required: true,
+            maxLength: 100,
+          },
+        ],
+      },
+    ],
+  };
+}
+
+/**
+ * Builds action row components for choosing a payment method (currency or fiat).
+ */
+export function buildPaymentMethodChoiceComponents(product: Product): Array<{
+  type: string;
+  components: Array<{
+    type: string;
+    customId: string;
+    label: string;
+    style: number;
+    disabled?: boolean;
+  }>;
+}> {
+  const buttons: Array<{
+    type: string;
+    customId: string;
+    label: string;
+    style: number;
+    disabled?: boolean;
+  }> = [];
+
+  if (hasCurrencyPrice(product)) {
+    buttons.push({
+      type: 'button',
+      customId: `${BUTTON_PAY_WITH_CURRENCY}${product.id}`,
+      label: `💰 貨幣支付 (${formatCurrencyPrice(product)})`,
+      style: 3,
+    });
+  }
+
+  if (hasFiatPriceTwd(product)) {
+    buttons.push({
+      type: 'button',
+      customId: `${BUTTON_PAY_WITH_FIAT}${product.id}`,
+      label: `💳 法幣下單 (${formatFiatPriceTwd(product)})`,
+      style: 4,
+    });
+  }
+
+  buttons.push({
+    type: 'button',
+    customId: BUTTON_BACK_TO_SHOP,
+    label: '🏪 回商店',
+    style: 2,
+  });
+
+  return [
+    {
+      type: 'actionRow',
+      components: buttons,
+    },
+  ];
+}
+
 export function buildShopComponents(
   currentPage: number,
   totalPages: number,

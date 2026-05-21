@@ -154,15 +154,14 @@ Out of scope: 任何 Discord 互動邏輯
 
 ## Task 5: Session 管理
 
-Purpose: 實作管理面板與用戶面板的 session 生命週期管理，依賴 `@ltdjms/shared` 的 `DiscordSessionManager`。
+Purpose: 實作管理面板與用戶面板的 session 生命週期管理。自包含於 admin 套件，使用 in-memory Map + 選擇性 CacheService (Redis) 支援分散式 session。
 Requirements: R1.5、R5.8、R11.1、R12.3、R12.4
 Scope: `packages/admin/src/session/`
 Design refs: `INT-009`
 Contract refs: `EXT-051`
-Out of scope: Session 的底層儲存（由 `@ltdjms/shared` DiscordSessionManager 提供）
 
-- T5.1 [ ] **`packages/admin/src/session/AdminPanelSessionManager.ts`** — 實作管理面板 session：
-  - 注入 `DiscordSessionManager`（來自 `@ltdjms/shared`）
+- T5.1 [ ] **`packages/admin/src/session/AdminPanelSessionManager.ts`** — 實作管理面板 session（不依賴 shared 的 DiscordSessionManager，因為 shared 中不存在此類別）：
+  - 注入 `CacheService`（可選，來自 `@ltdjms/shared`），in-memory Map 為主儲存
   - Session key：`admin_panel:{guildId}:{userId}`
   - `createSession(guildId, userId, interactionHook)` → 建立 session，初始狀態 `MAIN`
   - `getSession(guildId, userId)` → 回傳 session 或 null（過期／不存在）
@@ -176,7 +175,7 @@ Out of scope: Session 的底層儲存（由 `@ltdjms/shared` DiscordSessionManag
   - Verify: 單元測試——session CRUD、狀態轉換、TTL 過期、新舊取代、guild-wide 查詢
 
 - T5.2 [ ] **`packages/admin/src/session/PanelSessionManager.ts`** — 實作用戶面板 session：
-  - 注入 `DiscordSessionManager`（來自 `@ltdjms/shared`）
+  - 注入 `CacheService`（可選，來自 `@ltdjms/shared`），in-memory Map 為主儲存
   - Session key：`user_panel:{guildId}:{userId}`
   - `createSession(guildId, userId, interactionHook)`、`getSession()`、`removeSession()`
   - `getAllForGuild(guildId)` → 供即時更新用

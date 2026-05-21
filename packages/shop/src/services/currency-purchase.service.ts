@@ -47,16 +47,6 @@ export class CurrencyPurchaseService {
         amount: number,
       ): Promise<Result<{ newBalance: number }, DomainError>>;
     },
-    private readonly transactionService: {
-      recordTransaction(
-        guildId: number,
-        userId: number,
-        amount: number,
-        balance: number,
-        source: string,
-        description: string,
-      ): Promise<void>;
-    },
     private readonly productRewardService: {
       grantReward(request: {
         guildId: number;
@@ -119,14 +109,6 @@ export class CurrencyPurchaseService {
     }
 
     const purchaseBalance = adjustResult.getValue().newBalance;
-    await this.transactionService.recordTransaction(
-      guildId,
-      userId,
-      -price,
-      purchaseBalance,
-      'PRODUCT_PURCHASE',
-      `購買商品: ${product.name}`,
-    );
 
     let finalBalance = purchaseBalance;
     let rewardMessage = '';
@@ -193,15 +175,6 @@ export class CurrencyPurchaseService {
       );
       return err(DomainError.persistenceFailure('商品獎勵發放失敗，且自動退款失敗'));
     }
-
-    await this.transactionService.recordTransaction(
-      guildId,
-      userId,
-      price,
-      refundResult.getValue().newBalance,
-      'PRODUCT_PURCHASE_REFUND',
-      `商品購買退款: ${product.name}`,
-    );
 
     return err(DomainError.unexpectedFailure('商品獎勵發放失敗，已自動退款'));
   }

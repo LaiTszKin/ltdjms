@@ -137,7 +137,11 @@ export class LangChainAIChatService implements AIChatService {
     userMessage: string,
     handler: StreamingResponseHandler,
     agentEnabled: boolean = false,
+    messageId?: string,
   ): Promise<void> {
+    if (messageId) {
+      return this.generateStreamingResponseWithId(guildId, channelId, userId, userMessage, messageId, handler, agentEnabled);
+    }
     await this.doStream(guildId, channelId, userId, userMessage, [], handler, agentEnabled);
   }
 
@@ -416,11 +420,15 @@ export class LangChainAIChatService implements AIChatService {
             }
             return noGuildMsg;
           }
-          // P1-13: Per-tool execution timeout (30 seconds) with timer cleanup (P2-15)
+          // P1-13: Per-tool execution timeout (30 seconds) with AbortController signal propagation (P3-5)
+          const abortController = new AbortController();
           let result: string;
           let timer: NodeJS.Timeout | undefined;
           const timeoutPromise = new Promise<never>((_, reject) => {
-            timer = setTimeout(() => reject(new Error(`工具「${tc.name}」執行逾時 (30 秒)`)), 30000);
+            timer = setTimeout(() => {
+              abortController.abort();
+              reject(new Error(`工具「${tc.name}」執行逾時 (30 秒)`));
+            }, 30000);
           });
           try {
             result = await Promise.race([tool.execute(args, guild), timeoutPromise]);

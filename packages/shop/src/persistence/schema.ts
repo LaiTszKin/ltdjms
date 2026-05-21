@@ -49,6 +49,8 @@ export const fiatOrder = pgTable(
   },
   (table) => ({
     orderNumberIdx: uniqueIndex('idx_fiat_order_number').on(table.orderNumber),
+    buyerUserIdIdx: index('idx_fiat_order_buyer_user_id').on(table.buyerUserId),
+    paymentNoIdx: index('idx_fiat_order_payment_no').on(table.paymentNo),
     postPaymentIdx: index('idx_fiat_order_post_payment').on(
       table.status,
       table.fulfilledAt,
@@ -130,4 +132,7 @@ export const product = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
+  (table) => ({
+    guildIdIdx: index('idx_product_guild_id').on(table.guildId),
+  }),
 );

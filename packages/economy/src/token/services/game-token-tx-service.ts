@@ -1,7 +1,7 @@
 import { TokenTransactionRepository } from '../repositories/token-tx-repo.js';
 import type { GameTokenTransaction } from '../../domain/types.js';
 import { GameTokenTransactionSource } from '../../domain/types.js';
-import { BaseTransactionService } from '../../shared/base-tx-service.js';
+import { BaseTransactionService } from '../../common/base-tx-service.js';
 
 /**
  * Service for querying and recording game token transaction history.

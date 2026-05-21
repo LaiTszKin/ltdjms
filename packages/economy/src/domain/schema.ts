@@ -144,6 +144,9 @@ export const diceGame1Config = pgTable(
 /**
  * Dice game 2 configuration table.
  * Configured multipliers for straights, base, and triple bonuses.
+ *
+ * NOTE: face_multiplier_1..6 欄位存在但未被 DiceGame2Service.analyzeRolls() 消費。
+ * Java 原版 DiceGame2Config 無此欄位。參見 domain/types.ts P3-3 TODO。
  */
 export const diceGame2Config = pgTable(
   'dice_game2_config',

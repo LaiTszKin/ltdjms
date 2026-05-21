@@ -131,6 +131,11 @@ Scope: `packages/economy/src/commands/`
 - T7.7 [ ] **`packages/economy/src/localization/dice-game-messages.ts`** — 移植 `DiceGameMessages.java`，zh-TW + English fallback
   - Verify: 單元測試：兩種 locale 的訊息內容與 Java 一致
 
+## Internal Dependencies
+
+- **currency (低層)** → **dice (高層)**: dice 模組依賴 currency 模組（GameRewardService → BalanceAdjustmentService）。不可反向依賴。
+- All services are independent of each other at the same level.
+
 ## Task 8: DI 註冊
 
 Purpose: 在 `@ltdjms/shared` 的 DI 容器中註冊所有 economy 服務。

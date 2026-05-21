@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DomainError, ok, okVoid, err, type Result } from '@ltdjms/shared';
+import { DomainError, ok, okVoid, err, type Result, type Unit } from '@ltdjms/shared';
 import type { EnvironmentConfig } from '@ltdjms/shared';
 
 /**
@@ -84,7 +84,7 @@ export class AIServiceConfig {
    * Validates range constraints.
    * Returns okVoid or err(DomainError).
    */
-  validate(): Result<void, DomainError> {
+  validate(): Result<Unit, DomainError> {
     const result = AIServiceConfigSchema.safeParse({
       baseUrl: this.baseUrl,
       apiKey: this.apiKey,
@@ -103,7 +103,7 @@ export class AIServiceConfig {
       ));
     }
 
-    return okVoid<DomainError>() as unknown as Result<void, DomainError>;
+    return okVoid<DomainError>();
   }
 
 }

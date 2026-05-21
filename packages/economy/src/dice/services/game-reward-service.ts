@@ -1,9 +1,9 @@
 import {
   type DomainEventPublisher,
-  type BalanceChangedEvent,
   type CacheService,
   type CacheKeyGenerator,
 } from '@ltdjms/shared';
+import type { BalanceChangedEvent } from '@ltdjms/economy';
 import { BalanceAdjustmentService } from '../../currency/services/balance-adjustment-service.js';
 import { BalanceService } from '../../currency/services/balance-service.js';
 import { CurrencyTransactionService } from '../../currency/services/currency-tx-service.js';
@@ -11,6 +11,9 @@ import type { CurrencyTransactionSource } from '../../domain/types.js';
 import { MAX_ADJUSTMENT_AMOUNT } from '../../domain/types.js';
 
 /**
+ * NOTE: This module depends on currency services (BalanceAdjustmentService, BalanceService, etc.).
+ * Dependency direction: currency (低層) ← dice (高層) — dice depends on currency.
+ *
  * Service for processing game rewards and adding them to member currency accounts.
  * Matches Java GameRewardService behavior exactly.
  *

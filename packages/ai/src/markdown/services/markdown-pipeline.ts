@@ -11,13 +11,13 @@ import { isValid } from '../types.js';
  * 由 MarkdownValidatingAIChatService 和 DiscordMarkdownStreamProcessor 共用，
  * 避免 pipeline 邏輯重複（P2-4）。
  */
-export function applyMarkdownPipeline(
+export async function applyMarkdownPipeline(
   markdown: string,
   sanitizer: DiscordMarkdownSanitizer,
   autoFixer: MarkdownAutoFixer,
   validator: CommonMarkValidator,
   paginator: DiscordMarkdownPaginator,
-): string[] {
+): Promise<string[]> {
   if (!markdown) return [markdown];
 
   let result = markdown;
@@ -31,6 +31,8 @@ export function applyMarkdownPipeline(
   // 3. Validate → if invalid, retry fix up to 3 times (spec R10)
   let validationResult = validator.validate(result);
   for (let attempt = 0; attempt < 3 && !isValid(validationResult); attempt++) {
+    // Yield to event loop between retries to avoid blocking
+    await new Promise<void>(resolve => setImmediate(resolve));
     result = autoFixer.autoFix(result);
     validationResult = validator.validate(result);
   }

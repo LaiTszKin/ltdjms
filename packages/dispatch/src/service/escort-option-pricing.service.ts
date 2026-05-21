@@ -116,6 +116,8 @@ export class EscortOptionPricingService {
 
     try {
       await this.repository.upsert(guildId, normalizedCode, priceTwd, updatedByUserId);
+      // Invalidate catalog cache so listOptionPrices reflects the updated pricing
+      this.catalogCache = null;
       return new Ok({
         optionCode: normalizedCode,
         option,
@@ -148,6 +150,8 @@ export class EscortOptionPricingService {
 
     try {
       await this.repository.delete(guildId, normalizedCode);
+      // Invalidate catalog cache so listOptionPrices reflects the reset pricing
+      this.catalogCache = null;
       return okVoid();
     } catch (e) {
       const err = e instanceof Error ? e : new Error(String(e));

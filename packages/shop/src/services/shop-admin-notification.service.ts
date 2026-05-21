@@ -1,6 +1,48 @@
 import type { DiscordRuntimeGateway } from '@ltdjms/shared';
+import type { DispatchOrderSnapshot } from '../domain/escort-dispatch-handoff-service.js';
 import type { Product } from '../domain/product-types.js';
 import pino from 'pino';
+
+/** Minimal discord.js User shape used by this service. */
+interface DiscordJsUser {
+  id: string;
+  send(message: string): Promise<unknown>;
+}
+
+/** Minimal discord.js GuildMember shape used by this service. */
+interface DiscordJsGuildMember {
+  user: DiscordJsUser;
+}
+
+/** Minimal discord.js Role shape used by this service. */
+interface DiscordJsRole {
+  permissions: {
+    has(permission: string): boolean;
+  };
+  members: Map<string, DiscordJsGuildMember>;
+}
+
+/** Minimal discord.js Guild shape used by this service. */
+interface DiscordJsGuild {
+  name: string;
+  ownerId: string;
+  roles: {
+    cache: Map<string, DiscordJsRole> & { find(predicate: (role: DiscordJsRole) => boolean): DiscordJsRole | undefined };
+  };
+  members: {
+    fetch(userId: string): Promise<DiscordJsGuildMember>;
+  };
+}
+
+/** Minimal discord.js Client shape used by this service. */
+interface DiscordJsClient {
+  guilds: {
+    cache: Map<string, DiscordJsGuild>;
+  };
+  users: {
+    fetch(userId: string): Promise<DiscordJsUser>;
+  };
+}
 
 export class ShopAdminNotificationService {
   private readonly log: pino.Logger;
@@ -16,7 +58,7 @@ export class ShopAdminNotificationService {
    * Adapter for the AdminOrderNotifier interface used by FiatOrderPostPaymentWorker (P1-10).
    * Delegates to the existing escort notification builder.
    */
-  notifyAdminsOrderCreated(guildId: number, buyerUserId: number, dispatchOrder: any): void {
+  notifyAdminsOrderCreated(guildId: number, buyerUserId: number, dispatchOrder: DispatchOrderSnapshot): void {
     if (!dispatchOrder) return;
     const guildName = this.getGuildName(guildId);
     const message = this.buildAdminEscortNotification(guildId, buyerUserId, dispatchOrder, guildName ?? undefined);
@@ -49,7 +91,7 @@ export class ShopAdminNotificationService {
     this.notifyGuildAdmins(guildId, message);
   }
 
-  notifyAdminsEscortOrderCreated(guildId: number, buyerUserId: number, dispatchOrder: any): void {
+  notifyAdminsEscortOrderCreated(guildId: number, buyerUserId: number, dispatchOrder: DispatchOrderSnapshot): void {
     if (!dispatchOrder) return;
 
     const guildName = this.getGuildName(guildId);
@@ -58,7 +100,7 @@ export class ShopAdminNotificationService {
   }
 
   private notifyGuildAdmins(guildId: number, message: string): void {
-    const client: any = this.discordRuntimeGateway.requireReadyClient();
+    const client = this.discordRuntimeGateway.requireReadyClient() as DiscordJsClient;
     const selfUserId = this.discordRuntimeGateway.selfUserId();
     const notified = new Set<string>();
 
@@ -70,8 +112,8 @@ export class ShopAdminNotificationService {
       }
 
       // Find members with ADMINISTRATOR permission via roles rather than iterating all guild members
-      const adminMembers = new Set<any>();
-      const adminRole = guild.roles.cache.find((role: any) => role.permissions.has('Administrator'));
+      const adminMembers = new Set<DiscordJsGuildMember>();
+      const adminRole = guild.roles.cache.find((role) => role.permissions.has('Administrator'));
       if (adminRole) {
         for (const [, member] of adminRole.members) {
           adminMembers.add(member);
@@ -97,14 +139,14 @@ export class ShopAdminNotificationService {
         !notified.has(ownerId)
       ) {
         guild.members.fetch(ownerId).then(
-          (ownerMember: any) => {
+          (ownerMember) => {
             if (ownerMember && ownerMember.user) {
               const ownerUserId = ownerMember.user.id;
               if (selfUserId && ownerUserId === selfUserId) return;
               this.sendAdminNotification(ownerMember.user, message);
             }
           },
-          (err: any) =>
+          (err: unknown) =>
             this.log.debug(
               { guildId, ownerId, error: err },
               'Failed to retrieve guild owner for order notification',
@@ -116,9 +158,9 @@ export class ShopAdminNotificationService {
     }
   }
 
-  private sendAdminNotification(user: any, message: string): void {
+  private sendAdminNotification(user: DiscordJsUser, message: string): void {
     try {
-      user.send(message).catch((err: any) => {
+      user.send(message).catch((err: unknown) => {
         this.log.warn(
           { adminUserId: user.id, error: err },
           'Failed to send admin DM for order notification',
@@ -134,7 +176,7 @@ export class ShopAdminNotificationService {
 
   private getGuildName(guildId: number): string | null {
     try {
-      const client: any = this.discordRuntimeGateway.requireReadyClient();
+      const client = this.discordRuntimeGateway.requireReadyClient() as DiscordJsClient;
       const guild = client.guilds.cache.get(guildId.toString());
       return guild?.name ?? null;
     } catch {

@@ -1,3 +1,4 @@
+import { processWithConcurrencyLimit } from '@ltdjms/shared';
 import type { FiatOrderRepository } from '../domain/fiat-order-repository.js';
 import type { FiatOrder } from '../domain/fiat-order.js';
 import { EcpayTradeQueryService } from './ecpay-trade-query.service.js';
@@ -29,32 +30,11 @@ export class FiatPaymentReconciliationService {
       createdAfter,
       DEFAULT_BATCH_SIZE,
     );
-    await this.processWithConcurrencyLimit(
+    await processWithConcurrencyLimit(
       orders,
       order => this.reconcileSingleOrder(order, now),
       5,
     );
-  }
-
-  private async processWithConcurrencyLimit<T>(
-    items: T[],
-    processor: (item: T) => Promise<void>,
-    concurrency: number,
-  ): Promise<void> {
-    const results: Promise<void>[] = [];
-    const executing = new Set<Promise<void>>();
-
-    for (const item of items) {
-      const promise = processor(item).finally(() => executing.delete(promise));
-      executing.add(promise);
-      results.push(promise);
-
-      if (executing.size >= concurrency) {
-        await Promise.race(executing);
-      }
-    }
-
-    await Promise.allSettled(results);
   }
 
   private async expirePendingOrders(now: Date): Promise<void> {

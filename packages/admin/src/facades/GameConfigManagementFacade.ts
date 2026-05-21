@@ -1,7 +1,7 @@
 import {
   type Result,
-  Ok,
-  Err,
+  ok,
+  err,
   DomainError,
 } from '@ltdjms/shared';
 import {
@@ -51,14 +51,14 @@ export class GameConfigManagementFacade {
     try {
       const config = await this.diceConfigService.findDice1Config(Number(guildId));
       if (!config) {
-        return new Err(DomainError.invalidInput('尚未設定骰子遊戲 1 的設定'));
+        return err(DomainError.invalidInput('尚未設定骰子遊戲 1 的設定'));
       }
-      return new Ok(config);
-    } catch (err) {
-      return new Err(
+      return ok(config);
+    } catch (e) {
+      return err(
         DomainError.persistenceFailure(
           `Failed to get dice game 1 config for guildId=${guildId}`,
-          err instanceof Error ? err : undefined,
+          e instanceof Error ? e : undefined,
         ),
       );
     }
@@ -78,10 +78,10 @@ export class GameConfigManagementFacade {
       config.maxTokensPerPlay <= 0 ||
       config.rewardPerDiceValue <= 0
     ) {
-      return new Err(DomainError.invalidInput('所有數值必須為正數'));
+      return err(DomainError.invalidInput('所有數值必須為正數'));
     }
     if (config.minTokensPerPlay >= config.maxTokensPerPlay) {
-      return new Err(DomainError.invalidInput('最高代幣必須大於最低代幣'));
+      return err(DomainError.invalidInput('最高代幣必須大於最低代幣'));
     }
 
     try {
@@ -100,12 +100,12 @@ export class GameConfigManagementFacade {
 
       const saved = await this.diceConfigService.upsertDice1Config(updated);
 
-      return new Ok(saved);
-    } catch (err) {
-      return new Err(
+      return ok(saved);
+    } catch (e) {
+      return err(
         DomainError.persistenceFailure(
           `Failed to update dice game 1 config for guildId=${guildId}`,
-          err instanceof Error ? err : undefined,
+          e instanceof Error ? e : undefined,
         ),
       );
     }
@@ -120,14 +120,14 @@ export class GameConfigManagementFacade {
     try {
       const config = await this.diceConfigService.findDice2Config(Number(guildId));
       if (!config) {
-        return new Err(DomainError.invalidInput('尚未設定骰子遊戲 2 的設定'));
+        return err(DomainError.invalidInput('尚未設定骰子遊戲 2 的設定'));
       }
-      return new Ok(config);
-    } catch (err) {
-      return new Err(
+      return ok(config);
+    } catch (e) {
+      return err(
         DomainError.persistenceFailure(
           `Failed to get dice game 2 config for guildId=${guildId}`,
-          err instanceof Error ? err : undefined,
+          e instanceof Error ? e : undefined,
         ),
       );
     }
@@ -150,10 +150,10 @@ export class GameConfigManagementFacade {
       config.tripleLowBonus < 1.0 ||
       config.tripleHighBonus < 1.0
     ) {
-      return new Err(DomainError.invalidInput('所有倍率必須大於或等於 1.0，代幣數量必須為正數'));
+      return err(DomainError.invalidInput('所有倍率必須大於或等於 1.0，代幣數量必須為正數'));
     }
     if (config.minTokensPerPlay >= config.maxTokensPerPlay) {
-      return new Err(DomainError.invalidInput('最高代幣必須大於最低代幣'));
+      return err(DomainError.invalidInput('最高代幣必須大於最低代幣'));
     }
 
     try {
@@ -176,12 +176,12 @@ export class GameConfigManagementFacade {
 
       const saved = await this.diceConfigService.upsertDice2Config(updated);
 
-      return new Ok(saved);
-    } catch (err) {
-      return new Err(
+      return ok(saved);
+    } catch (e) {
+      return err(
         DomainError.persistenceFailure(
           `Failed to update dice game 2 config for guildId=${guildId}`,
-          err instanceof Error ? err : undefined,
+          e instanceof Error ? e : undefined,
         ),
       );
     }

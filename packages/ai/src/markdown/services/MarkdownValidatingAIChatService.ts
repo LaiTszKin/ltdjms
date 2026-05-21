@@ -52,7 +52,7 @@ export class MarkdownValidatingAIChatService implements AIChatService {
     }
 
     const responses = result.getValue();
-    const validated = responses.map((r) => this.applyPipeline(r));
+    const validated = await Promise.all(responses.map((r) => this.applyPipeline(r)));
     return ok(validated.flat());
   }
 
@@ -63,6 +63,7 @@ export class MarkdownValidatingAIChatService implements AIChatService {
     userMessage: string,
     handler: StreamingResponseHandler,
     agentEnabled?: boolean,
+    messageId?: string,
   ): Promise<void> {
     if (!this.config.enableMarkdownValidation) {
       return this.delegate.generateStreamingResponse(
@@ -72,6 +73,7 @@ export class MarkdownValidatingAIChatService implements AIChatService {
         userMessage,
         handler,
         agentEnabled,
+        messageId,
       );
     }
 
@@ -83,6 +85,7 @@ export class MarkdownValidatingAIChatService implements AIChatService {
       userMessage,
       wrappedHandler,
       agentEnabled,
+      messageId,
     );
   }
 
@@ -161,10 +164,10 @@ export class MarkdownValidatingAIChatService implements AIChatService {
      * Flushes accumulated CONTENT chunks through the validation pipeline
      * and forwards validated pages via onChunk.
      */
-    const flushContent = (
+    const flushContent = async (
       isComplete: boolean,
       error: DomainError | null,
-    ): void => {
+    ): Promise<void> => {
       if (contentBuffer.isEmpty()) return;
 
       const fullContent = contentBuffer.getContent();
@@ -177,7 +180,7 @@ export class MarkdownValidatingAIChatService implements AIChatService {
         return;
       }
 
-      const validated = this.applyPipeline(fullContent);
+      const validated = await this.applyPipeline(fullContent);
       for (let i = 0; i < validated.length; i++) {
         const pageIsComplete = i === validated.length - 1;
         handler.onChunk(validated[i], pageIsComplete, null, StreamChunkType.CONTENT);
@@ -210,7 +213,8 @@ export class MarkdownValidatingAIChatService implements AIChatService {
         }
 
         if (isComplete) {
-          flushContent(true, null);
+          // Fire-and-forget: flushContent is async but onChunk returns void
+          flushContent(true, null).catch(() => {});
         }
       },
     };
@@ -221,7 +225,7 @@ export class MarkdownValidatingAIChatService implements AIChatService {
    * Pipeline: Sanitize → AutoFix → Validate → Paginate
    * 委派給共用工具函數 applyMarkdownPipeline（P2-4）。
    */
-  private applyPipeline(markdown: string): string[] {
+  private async applyPipeline(markdown: string): Promise<string[]> {
     return applyMarkdownPipeline(markdown, this.sanitizer, this.autoFixer, this.validator, this.paginator);
   }
 }

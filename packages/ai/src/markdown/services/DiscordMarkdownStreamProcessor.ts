@@ -23,7 +23,7 @@ export class DiscordMarkdownStreamProcessor {
   /**
    * Processes a chunk and returns pages if ready.
    */
-  onChunk(chunk: string): string[] {
+  async onChunk(chunk: string): Promise<string[]> {
     this.buffer += chunk;
 
     // Try to find a heading boundary as segment point
@@ -41,7 +41,7 @@ export class DiscordMarkdownStreamProcessor {
   /**
    * Flushes remaining content and returns final pages.
    */
-  flush(): string[] {
+  async flush(): Promise<string[]> {
     if (this.buffer.length === 0) return [];
     const segment = this.buffer;
     this.buffer = '';
@@ -52,7 +52,7 @@ export class DiscordMarkdownStreamProcessor {
    * Processes a complete segment through the pipeline.
    * 委派給共用工具函數 applyMarkdownPipeline（P2-4）。
    */
-  private processSegment(segment: string): string[] {
+  private async processSegment(segment: string): Promise<string[]> {
     return applyMarkdownPipeline(segment, this.sanitizer, this.autoFixer, this.validator, this.paginator);
   }
 

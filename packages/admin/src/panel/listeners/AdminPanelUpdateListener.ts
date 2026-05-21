@@ -1,16 +1,20 @@
-import {
-  type DomainEvent,
-  type BalanceChangedEvent,
-  type GameTokenChangedEvent,
-  type CurrencyConfigChangedEvent,
-  type DiceGameConfigChangedEvent,
-  type ProductChangedEvent,
-  type RedemptionCodesGeneratedEvent,
-  type AIAgentChannelConfigChangedEvent,
-  type ProductRedemptionCompletedEvent,
-  type AgentFailedEvent,
-  type DiscordRuntimeGateway,
-} from '@ltdjms/shared';
+import type { DomainEvent } from '@ltdjms/shared';
+import { type DiscordRuntimeGateway } from '@ltdjms/shared';
+import type {
+  BalanceChangedEvent,
+  GameTokenChangedEvent,
+  CurrencyConfigChangedEvent,
+  DiceGameConfigChangedEvent,
+} from '@ltdjms/economy';
+import type {
+  ProductChangedEvent,
+  RedemptionCodesGeneratedEvent,
+  ProductRedemptionCompletedEvent,
+} from '@ltdjms/shop';
+import type {
+  AIAgentChannelConfigChangedEvent,
+  AgentFailedEvent,
+} from '@ltdjms/ai';
 import {
   type Client,
   type TextChannel,

@@ -14,6 +14,10 @@ export class RedisCacheService implements CacheService {
   private circuitOpenSince = 0;
   private static readonly CIRCUIT_RETRY_AFTER_MS = 30000;
 
+  private readonly errorHandler = (err: Error): void => {
+    this.logger.warn({ err }, 'Redis cache operation failed: error');
+  };
+
   constructor(redisUri: string, logger?: Logger) {
     this.logger = logger ?? pino({ level: 'silent' });
     this.redis = new Redis(redisUri, {
@@ -25,9 +29,7 @@ export class RedisCacheService implements CacheService {
     });
 
     // Handle errors without crashing
-    this.redis.on('error', (err) => {
-      this.logger.warn({ err }, 'Redis cache operation failed: error');
-    });
+    this.redis.on('error', this.errorHandler);
   }
 
   private isCircuitOpen(): boolean {
@@ -93,6 +95,7 @@ export class RedisCacheService implements CacheService {
   /** Gracefully shuts down the Redis connection. */
   async shutdown(): Promise<void> {
     try {
+      this.redis.off('error', this.errorHandler);
       await this.redis.quit();
     } catch (err) {
       this.logger.warn({ err }, 'Redis cache operation failed: shutdown');

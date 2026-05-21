@@ -13,17 +13,6 @@ export enum CurrencyTransactionSource {
   PRODUCT_PURCHASE_REFUND = 'PRODUCT_PURCHASE_REFUND',
 }
 
-/** Display names in zh-TW for currency transaction sources. */
-export const CURRENCY_SOURCE_DISPLAY_NAMES: Record<CurrencyTransactionSource, string> = {
-  [CurrencyTransactionSource.ADMIN_ADJUSTMENT]: '管理員調整',
-  [CurrencyTransactionSource.DICE_GAME_1_WIN]: '骰子遊戲 1 獎勵',
-  [CurrencyTransactionSource.DICE_GAME_2_WIN]: '骰子遊戲 2 獎勵',
-  [CurrencyTransactionSource.REDEMPTION_CODE]: '兌換碼獎勵',
-  [CurrencyTransactionSource.PRODUCT_REWARD]: '商品獎勵',
-  [CurrencyTransactionSource.PRODUCT_PURCHASE]: '商品購買',
-  [CurrencyTransactionSource.PRODUCT_PURCHASE_REFUND]: '商品購買退款',
-};
-
 /** Guild currency configuration domain type. */
 export interface GuildCurrencyConfig {
   readonly guildId: number;
@@ -81,20 +70,6 @@ export enum GameTokenTransactionSource {
   PRODUCT_REWARD = 'PRODUCT_REWARD',
 }
 
-/** Display names in zh-TW for game token transaction sources. */
-export const TOKEN_SOURCE_DISPLAY_NAMES: Record<GameTokenTransactionSource, string> = {
-  [GameTokenTransactionSource.ADMIN_ADJUSTMENT]: '管理員調整',
-  [GameTokenTransactionSource.DICE_GAME_1_PLAY]: '骰子遊戲 1 消耗',
-  [GameTokenTransactionSource.DICE_GAME_1_REFUND]: '骰子遊戲 1 退款',
-  [GameTokenTransactionSource.DICE_GAME_2_PLAY]: '骰子遊戲 2 消耗',
-  [GameTokenTransactionSource.DICE_GAME_2_REFUND]: '骰子遊戲 2 退款',
-  [GameTokenTransactionSource.GAME_PLAY]: '遊戲消耗',
-  [GameTokenTransactionSource.REWARD]: '獎勵',
-  [GameTokenTransactionSource.INITIAL]: '初始化',
-  [GameTokenTransactionSource.REDEMPTION_CODE]: '兌換碼獎勵',
-  [GameTokenTransactionSource.PRODUCT_REWARD]: '商品獎勵',
-};
-
 /** Game token account domain type. */
 export interface GameTokenAccount {
   readonly guildId: number;
@@ -139,6 +114,12 @@ export interface DiceGame2Config {
   readonly baseMultiplier: number;
   readonly tripleLowBonus: number;
   readonly tripleHighBonus: number;
+  /**
+   * TODO(P3-3): faceMultipliers 欄位存在於 schema 與 domain type，
+   * 管理面板也可編輯此欄位，但 DiceGame2Service.analyzeRolls() 從未讀取使用。
+   * Java 原版 DiceGame2Config 無此欄位 — 此為 TypeScript 移植時新增但未被
+   * 遊戲邏輯消費的欄位，屬於 dead code。待確認是否應實作對應邏輯或移除。
+   */
   readonly faceMultipliers: [number, number, number, number, number, number];
   readonly createdAt: Date;
   readonly updatedAt: Date;

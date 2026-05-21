@@ -1,6 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
+import { Ok } from '@ltdjms/shared';
 import { DiceGame2Service } from '../dice/services/dice-game-2-service.js';
-import type { DiceGame2Config } from '../domain/types.js';
+import { BalanceService } from '../currency/services/balance-service.js';
+import type { DiceGame2Config, BalanceView } from '../domain/types.js';
 import { GameRewardService } from '../dice/services/game-reward-service.js';
 
 const defaultConfig: DiceGame2Config = {
@@ -23,8 +25,15 @@ describe('DiceGame2Service - analyzeRolls', () => {
     creditReward: vi.fn(),
   } as unknown as GameRewardService;
 
+  const mockBalanceService = {
+    tryGetBalance: vi.fn().mockResolvedValue(new Ok({
+      guildId: 1, userId: 1, balance: 0, currencyName: 'Coins', currencyIcon: '🪙',
+    } as BalanceView)),
+  } as unknown as BalanceService;
+
   const service = new DiceGame2Service(
     mockGameRewardService,
+    mockBalanceService,
     noopRandom,
   );
 

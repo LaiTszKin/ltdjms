@@ -6,13 +6,13 @@ import {
   type CacheService,
   type CacheKeyGenerator,
   type DomainEventPublisher,
-  type BalanceChangedEvent,
 } from '@ltdjms/shared';
+import type { BalanceChangedEvent } from '@ltdjms/economy';
 import { CurrencyAccountRepository } from '../repositories/currency-account-repo.js';
-import { CurrencyConfigRepository } from '../repositories/currency-config-repo.js';
 import { CurrencyTransactionService } from './currency-tx-service.js';
+import { BalanceService } from './balance-service.js';
 import type { BalanceAdjustmentResult } from '../../domain/types.js';
-import { CurrencyTransactionSource, DEFAULT_CURRENCY_NAME, DEFAULT_CURRENCY_ICON, BALANCE_CACHE_TTL, isValidAdjustmentAmount } from '../../domain/types.js';
+import { CurrencyTransactionSource, BALANCE_CACHE_TTL, isValidAdjustmentAmount } from '../../domain/types.js';
 
 /**
  * Service for adjusting member currency balances with validation.
@@ -23,7 +23,7 @@ export class BalanceAdjustmentService {
 
   constructor(
     private readonly accountRepository: CurrencyAccountRepository,
-    private readonly configRepository: CurrencyConfigRepository,
+    private readonly balanceService: BalanceService,
     private readonly transactionService: CurrencyTransactionService,
     private readonly eventPublisher: DomainEventPublisher,
     private readonly cacheService: CacheService,
@@ -102,7 +102,7 @@ export class BalanceAdjustmentService {
       const cacheKey = this.cacheKeyGenerator.balanceKey(String(guildId), String(userId));
       await this.cacheService.put(cacheKey, updated.balance, BalanceAdjustmentService.BALANCE_TTL_SECONDS);
 
-      const config = await this.configRepository.findByGuildId(guildId);
+      const cachedConfig = await this.balanceService.getCachedConfig(guildId);
 
       return new Ok({
         guildId,
@@ -110,8 +110,8 @@ export class BalanceAdjustmentService {
         previousBalance,
         newBalance: updated.balance,
         adjustment: amount,
-        currencyName: config?.currencyName ?? DEFAULT_CURRENCY_NAME,
-        currencyIcon: config?.currencyIcon ?? DEFAULT_CURRENCY_ICON,
+        currencyName: cachedConfig.currencyName,
+        currencyIcon: cachedConfig.currencyIcon,
       });
     } catch (err) {
       return new Err(
@@ -292,7 +292,7 @@ export class BalanceAdjustmentService {
       const cacheKey = this.cacheKeyGenerator.balanceKey(String(guildId), String(userId));
       await this.cacheService.put(cacheKey, newBalance, BalanceAdjustmentService.BALANCE_TTL_SECONDS);
 
-      const config = await this.configRepository.findByGuildId(guildId);
+      const cachedConfig = await this.balanceService.getCachedConfig(guildId);
 
       return new Ok({
         guildId,
@@ -300,8 +300,8 @@ export class BalanceAdjustmentService {
         previousBalance,
         newBalance,
         adjustment: actualAdjustment,
-        currencyName: config?.currencyName ?? DEFAULT_CURRENCY_NAME,
-        currencyIcon: config?.currencyIcon ?? DEFAULT_CURRENCY_ICON,
+        currencyName: cachedConfig.currencyName,
+        currencyIcon: cachedConfig.currencyIcon,
       });
     } catch (err) {
       return new Err(

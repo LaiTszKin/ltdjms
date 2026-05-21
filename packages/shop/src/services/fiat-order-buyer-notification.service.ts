@@ -2,6 +2,19 @@ import type { FiatOrder } from '../domain/fiat-order.js';
 import type { DiscordRuntimeGateway } from '@ltdjms/shared';
 import pino from 'pino';
 
+/** Minimal discord.js User shape used by this service. */
+interface DiscordJsUser {
+  id: string;
+  send(message: string): Promise<unknown>;
+}
+
+/** Minimal discord.js Client shape used by this service. */
+interface DiscordJsClient {
+  users: {
+    fetch(userId: string): Promise<DiscordJsUser>;
+  };
+}
+
 export class FiatOrderBuyerNotificationService {
   private readonly log: pino.Logger;
 
@@ -16,20 +29,20 @@ export class FiatOrderBuyerNotificationService {
     if (!order) return;
 
     try {
-      const client: any = this.discordRuntimeGateway.requireReadyClient();
+      const client = this.discordRuntimeGateway.requireReadyClient() as DiscordJsClient;
       const message = this.buildPaymentSucceededMessage(order);
 
       client.users.fetch(order.buyerUserId.toString()).then(
-        (buyerUser: any) => {
+        (buyerUser) => {
           buyerUser.send(message).catch(
-            (err: any) =>
+            (err: unknown) =>
               this.log.warn(
                 { orderNumber: order.orderNumber, buyerUserId: order.buyerUserId, error: err },
                 'Failed to DM buyer paid notification',
               ),
           );
         },
-        (err: any) =>
+        (err: unknown) =>
           this.log.warn(
             { orderNumber: order.orderNumber, buyerUserId: order.buyerUserId, error: err },
             'Failed to retrieve buyer user for paid notification',

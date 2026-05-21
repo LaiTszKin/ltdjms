@@ -12,27 +12,6 @@ export {
   DomainErrorCategory,
   DomainError,
   type DomainEvent,
-  type BalanceChangedEvent,
-  type GameTokenChangedEvent,
-  type CurrencyConfigChangedEvent,
-  GameType,
-  type DiceGameConfigChangedEvent,
-  OperationType,
-  type ProductChangedEvent,
-  type RedemptionCodesGeneratedEvent,
-  type ProductRedemptionTransaction,
-  type ProductRedemptionCompletedEvent,
-  type AIMessageEvent,
-  type AIAgentChannelConfigChangedEvent,
-  type DispatchAfterSalesConfigChangedEvent,
-  type EscortPricingChangedEvent,
-  type EscortCatalogChangedEvent,
-  type ConversationMessage,
-  type AgentCompletedEvent,
-  type AgentFailedEvent,
-  type ToolExecutionStartedEvent,
-  type ToolExecutedEvent,
-  type AnyDomainEvent,
 } from './types/index.js';
 
 // Config
@@ -45,7 +24,7 @@ export {
 } from './infra/config/index.js';
 
 // Logger
-export { createRootLogger, createChildLogger } from './infra/logger/index.js';
+export { createRootLogger } from './infra/logger/index.js';
 
 // Database
 export {
@@ -53,7 +32,6 @@ export {
   type DatabaseConfig,
   runMigrations,
   SchemaMigrationException,
-  DatabaseConnectionException,
 } from './infra/database/index.js';
 
 // Cache
@@ -75,6 +53,9 @@ export {
   TOKENS,
   type TokenMap,
 } from './infra/di/index.js';
+
+// Utils
+export { processWithConcurrencyLimit } from './utils/concurrency.js';
 
 // Discord
 export {

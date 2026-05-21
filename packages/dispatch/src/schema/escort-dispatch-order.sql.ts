@@ -44,6 +44,7 @@ export const escortDispatchOrder = pgTable(
     guildIdx: index('idx_escort_dispatch_order_guild_id').on(table.guildId),
     statusIdx: index('idx_escort_dispatch_order_status').on(table.status),
     escortUserIdx: index('idx_escort_dispatch_order_escort_user_id').on(table.escortUserId),
+    customerUserIdx: index('idx_escort_dispatch_order_customer_user_id').on(table.customerUserId),
     completionRequestedAtIdx: index('idx_escort_dispatch_order_completion_requested_at')
       .on(table.completionRequestedAt)
       .where(sql`${table.completionRequestedAt} IS NOT NULL`),

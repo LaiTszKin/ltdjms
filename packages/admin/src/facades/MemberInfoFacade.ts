@@ -1,4 +1,4 @@
-import { type Result, Ok, Err, DomainError } from '@ltdjms/shared';
+import { type Result, ok, err, DomainError } from '@ltdjms/shared';
 import {
   BalanceService,
   GameTokenService,
@@ -89,7 +89,7 @@ export class MemberInfoFacade {
         this.tokenService.getBalance(Number(guildId), Number(userId)),
       ]);
 
-      return new Ok({
+      return ok({
         guildId,
         userId,
         balance: balanceView.balance,
@@ -97,11 +97,11 @@ export class MemberInfoFacade {
         currencyIcon: balanceView.currencyIcon,
         tokens: tokenBalance,
       });
-    } catch (err) {
-      return new Err(
+    } catch (e) {
+      return err(
         DomainError.persistenceFailure(
           `Failed to get user panel view for guildId=${guildId}, userId=${userId}`,
-          err instanceof Error ? err : undefined,
+          e instanceof Error ? e : undefined,
         ),
       );
     }
@@ -123,12 +123,12 @@ export class MemberInfoFacade {
         page,
         pageSize,
       );
-      return new Ok(txPage);
-    } catch (err) {
-      return new Err(
+      return ok(txPage);
+    } catch (e) {
+      return err(
         DomainError.persistenceFailure(
           `Failed to get currency transactions for guildId=${guildId}, userId=${userId}`,
-          err instanceof Error ? err : undefined,
+          e instanceof Error ? e : undefined,
         ),
       );
     }
@@ -150,12 +150,12 @@ export class MemberInfoFacade {
         page,
         pageSize,
       );
-      return new Ok(txPage);
-    } catch (err) {
-      return new Err(
+      return ok(txPage);
+    } catch (e) {
+      return err(
         DomainError.persistenceFailure(
           `Failed to get token transactions for guildId=${guildId}, userId=${userId}`,
-          err instanceof Error ? err : undefined,
+          e instanceof Error ? e : undefined,
         ),
       );
     }
@@ -187,7 +187,7 @@ export class MemberInfoFacade {
       if (pageSize < 1) pageSize = 10;
 
       if (!this.redemptionTxService) {
-        return new Err(
+        return err(
           DomainError.unexpectedFailure('兌換記錄服務不可用'),
         );
       }
@@ -207,17 +207,17 @@ export class MemberInfoFacade {
         createdAt: item.createdAt,
       }));
 
-      return new Ok({
+      return ok({
         items,
         hasNext: txPage.hasNext,
         totalPages: txPage.totalPages,
         currentPage: txPage.currentPage,
       });
-    } catch (err) {
-      return new Err(
+    } catch (e) {
+      return err(
         DomainError.persistenceFailure(
           `Failed to get redemption transactions for guildId=${guildId}, userId=${userId}`,
-          err instanceof Error ? err : undefined,
+          e instanceof Error ? e : undefined,
         ),
       );
     }

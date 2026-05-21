@@ -1,3 +1,14 @@
+// Events
+export type {
+  AIMessageEvent,
+  AIAgentChannelConfigChangedEvent,
+  ConversationMessage,
+  AgentCompletedEvent,
+  AgentFailedEvent,
+  ToolExecutionStartedEvent,
+  ToolExecutedEvent,
+} from './events/index.js';
+
 // Config
 export { AIServiceConfig, AIServiceConfigSchema } from './config/ai-service-config.js';
 export type { AIServiceConfigValues } from './config/ai-service-config.js';

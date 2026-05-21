@@ -2,6 +2,19 @@ import type { DiscordRuntimeGateway } from '@ltdjms/shared';
 import type { DispatchOrderSnapshot } from '../domain/escort-dispatch-handoff-service.js';
 import pino from 'pino';
 
+/** Minimal discord.js User shape used by this service. */
+interface DiscordJsUser {
+  id: string;
+  send(message: string): Promise<unknown>;
+}
+
+/** Minimal discord.js Client shape used by this service. */
+interface DiscordJsClient {
+  users: {
+    fetch(userId: string): Promise<DiscordJsUser>;
+  };
+}
+
 export class EscortOrderBuyerNotificationService {
   private readonly log: pino.Logger;
 
@@ -23,20 +36,20 @@ export class EscortOrderBuyerNotificationService {
     }
 
     try {
-      const client: any = this.discordRuntimeGateway.requireReadyClient();
+      const client = this.discordRuntimeGateway.requireReadyClient() as DiscordJsClient;
       const message = this.buildEscortOrderCreatedMessage(order);
 
       client.users.fetch(order.customerUserId.toString()).then(
-        (buyerUser: any) => {
+        (buyerUser) => {
           buyerUser.send(message).catch(
-            (err: any) =>
+            (err: unknown) =>
               this.log.warn(
                 { orderNumber: order.orderNumber, buyerUserId: order.customerUserId, error: err },
                 'Failed to DM buyer escort order created',
               ),
           );
         },
-        (err: any) =>
+        (err: unknown) =>
           this.log.warn(
             { orderNumber: order.orderNumber, buyerUserId: order.customerUserId, error: err },
             'Failed to retrieve buyer user for escort order notification',
