@@ -19,7 +19,7 @@ export class TokenTransactionRepository {
       .insert(gameTokenTransaction)
       .values({
         guildId: tx.guildId,
-        userId: tx.userId,
+        userId: Number(tx.userId),
         amount: tx.amount,
         balanceAfter: tx.balanceAfter,
         source: tx.source,
@@ -36,7 +36,7 @@ export class TokenTransactionRepository {
    */
   async findByGuildIdAndUserId(
     guildId: number,
-    userId: number,
+    userId: string,
     limit: number,
     offset: number,
   ): Promise<GameTokenTransaction[]> {
@@ -46,7 +46,7 @@ export class TokenTransactionRepository {
       .where(
         and(
           eq(gameTokenTransaction.guildId, guildId),
-          eq(gameTokenTransaction.userId, userId),
+          eq(gameTokenTransaction.userId, Number(userId)),
         ),
       )
       .orderBy(desc(gameTokenTransaction.createdAt))
@@ -59,14 +59,14 @@ export class TokenTransactionRepository {
   /**
    * Counts total transactions for a guild and user.
    */
-  async count(guildId: number, userId: number): Promise<number> {
+  async count(guildId: number, userId: string): Promise<number> {
     const result = await this.db
       .select({ count: count() })
       .from(gameTokenTransaction)
       .where(
         and(
           eq(gameTokenTransaction.guildId, guildId),
-          eq(gameTokenTransaction.userId, userId),
+          eq(gameTokenTransaction.userId, Number(userId)),
         ),
       );
 
@@ -76,13 +76,13 @@ export class TokenTransactionRepository {
   /**
    * Deletes all transactions for a guild and user.
    */
-  async delete(guildId: number, userId: number): Promise<void> {
+  async delete(guildId: number, userId: string): Promise<void> {
     await this.db
       .delete(gameTokenTransaction)
       .where(
         and(
           eq(gameTokenTransaction.guildId, guildId),
-          eq(gameTokenTransaction.userId, userId),
+          eq(gameTokenTransaction.userId, Number(userId)),
         ),
       );
   }
@@ -92,7 +92,7 @@ function mapToDomain(row: Record<string, unknown>): GameTokenTransaction {
   return {
     id: row.id as number,
     guildId: row.guildId as number,
-    userId: row.userId as number,
+    userId: String(row.userId),
     amount: row.amount as number,
     balanceAfter: row.balanceAfter as number,
     source: row.source as GameTokenTransactionSource,

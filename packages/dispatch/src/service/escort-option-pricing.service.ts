@@ -2,27 +2,8 @@ import type { Result, Unit } from '@ltdjms/shared';
 import { Ok, Err, DomainError, okVoid } from '@ltdjms/shared';
 
 import type { EscortOptionPriceRepo } from '../repo/escort-option-price.repo.js';
+import type { EscortOptionCatalogRepository, EscortOptionCatalogEntry } from '../repo/escort-option-catalog.repo.js';
 import type { EscortOrderOption, OptionPriceView } from '../domain/option-price-view.js';
-
-/**
- * Minimal catalog entry for an escort option.
- * This will be replaced by the shared EscortOptionCatalogRepository once ported.
- */
-export interface EscortOptionCatalogEntry extends Omit<EscortOrderOption, 'defaultPriceTwd'> {
-  readonly priceTwd: number;
-}
-
-/**
- * Catalog repository interface for escort option CRUD.
- */
-export interface EscortOptionCatalogRepository {
-  findAll(): Promise<EscortOptionCatalogEntry[]>;
-  findByCode(code: string): Promise<EscortOptionCatalogEntry | null>;
-  existsByCode(code: string): Promise<boolean>;
-  create(entry: Omit<EscortOptionCatalogEntry, 'code'> & { code: string }): Promise<EscortOptionCatalogEntry>;
-  update(code: string, data: Partial<Omit<EscortOptionCatalogEntry, 'code'>>): Promise<EscortOptionCatalogEntry | null>;
-  delete(code: string): Promise<boolean>;
-}
 
 /**
  * Service for guild-level escort option pricing overrides.

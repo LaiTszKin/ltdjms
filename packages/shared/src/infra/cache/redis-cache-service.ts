@@ -12,7 +12,7 @@ export class RedisCacheService implements CacheService {
   private readonly logger: Logger;
   private circuitState: 'CLOSED' | 'OPEN' | 'HALF_OPEN' = 'CLOSED';
   private circuitOpenSince = 0;
-  private static readonly CIRCUIT_RETRY_AFTER_MS = 30000;
+  private static readonly CIRCUIT_RETRY_AFTER_MS = 5000;
 
   private readonly errorHandler = (err: Error): void => {
     this.logger.warn({ err }, 'Redis cache operation failed: error');

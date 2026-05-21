@@ -17,20 +17,20 @@ export class DrizzleDispatchAfterSalesStaffRepo implements DispatchAfterSalesSta
     return new Set(rows.map((r) => r.userId));
   }
 
-  async addStaff(guildId: number, userId: number): Promise<boolean> {
+  async addStaff(guildId: number, userId: string): Promise<boolean> {
     const result = await this.db
       .insert(dispatchAfterSalesStaff)
-      .values({ guildId, userId })
+      .values({ guildId, userId: Number(userId) })
       .onConflictDoNothing()
       .returning({ id: sql`1` });
 
     return result.length > 0;
   }
 
-  async removeStaff(guildId: number, userId: number): Promise<boolean> {
+  async removeStaff(guildId: number, userId: string): Promise<boolean> {
     // Use raw SQL with RETURNING to reliably get affected row count
     const result = await this.db.execute(
-      sql`DELETE FROM dispatch_after_sales_staff WHERE guild_id = ${guildId} AND user_id = ${userId} RETURNING 1`,
+      sql`DELETE FROM dispatch_after_sales_staff WHERE guild_id = ${guildId} AND user_id = ${Number(userId)} RETURNING 1`,
     );
 
     return result.rowCount != null && result.rowCount > 0;

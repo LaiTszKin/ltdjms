@@ -16,7 +16,7 @@ export interface RedemptionCodesGeneratedEvent extends DomainEvent {
 
 export interface ProductRedemptionTransaction {
   readonly id: string;
-  readonly userId: number;
+  readonly userId: string;
   readonly productId: number;
   readonly timestamp: Date;
 }
@@ -24,7 +24,7 @@ export interface ProductRedemptionTransaction {
 export interface ProductRedemptionCompletedEvent extends DomainEvent {
   readonly eventType: 'product_redemption_completed';
   readonly guildId: string;
-  readonly userId: number;
+  readonly userId: string;
   readonly transaction: ProductRedemptionTransaction;
   readonly timestamp: Date;
 }

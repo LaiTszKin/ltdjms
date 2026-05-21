@@ -3,7 +3,7 @@ import { Ok, Err, DomainError } from '@ltdjms/shared';
 
 import type { EscortDispatchOrderRepo } from '../repo/escort-dispatch-order.repo.js';
 import { EscortDispatchOrderNumberGenerator, generateUniqueOrderNumber } from '../domain/order-number-generator.js';
-import type { EscortOptionCatalogRepository } from './escort-option-pricing.service.js';
+import type { EscortOptionCatalogRepository } from '../repo/escort-option-catalog.repo.js';
 import { type DispatchAfterSalesStaffService } from './dispatch-after-sales-staff.service.js';
 import type { DispatchNotificationService } from '../notification/DispatchNotificationService.js';
 import {
@@ -345,7 +345,7 @@ export class EscortDispatchOrderService {
 
     // R8.1: Verify user is an after-sales staff member
     if (this.afterSalesStaffService) {
-      const isStaff = await this.afterSalesStaffService.isAfterSalesStaff(order.guildId, afterSalesUserId);
+      const isStaff = await this.afterSalesStaffService.isAfterSalesStaff(order.guildId, String(afterSalesUserId));
       if (!isStaff) {
         return new Err(DomainError.invalidInput('你不是售後人員，無法接手售後案件'));
       }

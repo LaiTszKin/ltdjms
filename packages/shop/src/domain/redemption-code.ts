@@ -51,7 +51,7 @@ export function createRedemptionCode(
   return validated;
 }
 
-export function withRedeemed(code: RedemptionCode, userId: number): RedemptionCode {
+export function withRedeemed(code: RedemptionCode, userId: string): RedemptionCode {
   if (isRedeemed(code)) {
     throw new Error('Code has already been redeemed');
   }

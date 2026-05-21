@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { isOk, isErr } from '@ltdjms/shared';
-import { EscortOptionPricingService, type EscortOptionCatalogRepository } from '../../src/service/escort-option-pricing.service.js';
+import { EscortOptionPricingService } from '../../src/service/escort-option-pricing.service.js';
+import type { EscortOptionCatalogRepository } from '../../src/repo/escort-option-catalog.repo.js';
 import type { EscortOptionPriceRepo } from '../../src/repo/escort-option-price.repo.js';
 
 describe('EscortOptionPricingService', () => {

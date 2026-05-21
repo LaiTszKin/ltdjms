@@ -37,7 +37,7 @@ export class GameRewardService {
    */
   async creditReward(
     guildId: number,
-    userId: number,
+    userId: string,
     rewardAmount: number,
     transactionSource: CurrencyTransactionSource,
   ): Promise<number> {
@@ -48,7 +48,7 @@ export class GameRewardService {
     if (rewardAmount === 0) {
       // No reward to credit — query the actual balance instead of returning 0,
       // so callers (e.g. DiceGame1Service) can get the current balance as previousBalance.
-      const balanceResult = await this.balanceService.tryGetBalance(guildId, userId);
+      const balanceResult = await this.balanceService.getBalance(guildId, userId);
       return balanceResult.isOk() ? balanceResult.getValue().balance : 0;
     }
 

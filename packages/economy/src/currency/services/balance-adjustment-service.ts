@@ -40,7 +40,7 @@ export class BalanceAdjustmentService {
    */
   private async processAdjustment(
     guildId: number,
-    userId: number,
+    userId: string,
     amount: number,
     previousBalance: number,
     source: CurrencyTransactionSource,
@@ -133,7 +133,7 @@ export class BalanceAdjustmentService {
    */
   async tryAdjustBalance(
     guildId: number,
-    userId: number,
+    userId: string,
     amount: number,
     source: CurrencyTransactionSource = CurrencyTransactionSource.ADMIN_ADJUSTMENT,
     description: string | null = null,
@@ -182,7 +182,7 @@ export class BalanceAdjustmentService {
    */
   async tryAdjustBalanceTo(
     guildId: number,
-    userId: number,
+    userId: string,
     targetBalance: number,
     source: CurrencyTransactionSource = CurrencyTransactionSource.ADMIN_ADJUSTMENT,
     description: string | null = null,
@@ -223,7 +223,7 @@ export class BalanceAdjustmentService {
    */
   async tryBatchAdjust(
     guildId: number,
-    userId: number,
+    userId: string,
     totalAmount: number,
     source: CurrencyTransactionSource = CurrencyTransactionSource.ADMIN_ADJUSTMENT,
     description: string | null = null,

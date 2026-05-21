@@ -36,8 +36,9 @@ describe('BalanceService', () => {
       mockCacheKeyGenerator,
     );
 
-    const view = await service.getBalance(1, 1);
-
+    const result = await service.getBalance(1, '1');
+    expect(result.isOk()).toBe(true);
+    const view = result.getValue();
     expect(view.balance).toBe(500);
     expect(view.currencyName).toBe('Gold');
     expect(view.currencyIcon).toBe('💰');
@@ -55,7 +56,7 @@ describe('BalanceService', () => {
     const mockAccountRepo = {
       findOrCreate: vi.fn().mockResolvedValue({
         guildId: 1,
-        userId: 1,
+        userId: '1',
         balance: 1000,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -73,12 +74,13 @@ describe('BalanceService', () => {
       mockCacheKeyGenerator,
     );
 
-    const view = await service.getBalance(1, 1);
-
+    const result = await service.getBalance(1, '1');
+    expect(result.isOk()).toBe(true);
+    const view = result.getValue();
     expect(view.balance).toBe(1000);
     expect(view.currencyName).toBe(DEFAULT_CURRENCY_NAME);
     expect(view.currencyIcon).toBe(DEFAULT_CURRENCY_ICON);
-    expect(mockAccountRepo.findOrCreate).toHaveBeenCalledWith(1, 1);
+    expect(mockAccountRepo.findOrCreate).toHaveBeenCalledWith(1, '1');
     expect(mockCacheService.put).toHaveBeenCalledWith(
       'cache:balance:1:1',
       1000,
@@ -96,7 +98,7 @@ describe('BalanceService', () => {
     const mockAccountRepo = {
       findOrCreate: vi.fn().mockResolvedValue({
         guildId: 1,
-        userId: 1,
+        userId: '1',
         balance: 0,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -114,10 +116,11 @@ describe('BalanceService', () => {
       mockCacheKeyGenerator,
     );
 
-    const view = await service.getBalance(1, 1);
-
+    const result = await service.getBalance(1, '1');
+    expect(result.isOk()).toBe(true);
+    const view = result.getValue();
     expect(view.balance).toBe(0);
-    expect(mockAccountRepo.findOrCreate).toHaveBeenCalledWith(1, 1);
+    expect(mockAccountRepo.findOrCreate).toHaveBeenCalledWith(1, '1');
   });
 
   it('should return config when guild has custom config', async () => {
@@ -130,7 +133,7 @@ describe('BalanceService', () => {
     const mockAccountRepo = {
       findOrCreate: vi.fn().mockResolvedValue({
         guildId: 1,
-        userId: 1,
+        userId: '1',
         balance: 200,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -154,8 +157,9 @@ describe('BalanceService', () => {
       mockCacheKeyGenerator,
     );
 
-    const view = await service.getBalance(1, 1);
-
+    const result = await service.getBalance(1, '1');
+    expect(result.isOk()).toBe(true);
+    const view = result.getValue();
     expect(view.currencyName).toBe('CustomCoin');
     expect(view.currencyIcon).toBe('💎');
   });

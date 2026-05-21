@@ -26,13 +26,13 @@ export interface RedemptionCodeRepository {
 
   markAsRedeemedIfAvailable(
     codeId: number,
-    userId: number,
+    userId: string,
     redeemedAt: Date,
   ): Promise<boolean>;
 
   clearRedeemedIfMatches(
     codeId: number,
-    userId: number,
+    userId: string,
     redeemedAt: Date,
   ): Promise<boolean>;
 

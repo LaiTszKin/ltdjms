@@ -109,7 +109,7 @@ export class FiatOrderPostPaymentWorker {
       if (hasFulfillmentReward(order) && !isRewardGranted(order)) {
         const rewardResult = await this.productRewardService.grantReward({
           guildId: order.guildId,
-          userId: order.buyerUserId,
+          userId: String(order.buyerUserId),
           product: fulfillmentProduct,
           amount: fulfillmentProduct.rewardAmount!,
           description: `法幣商品獎勵: ${fulfillmentProduct.name}`,

@@ -1,5 +1,6 @@
 import { container, TOKENS, type DiscordRuntimeGateway, type TokenMap } from '@ltdjms/shared';
-import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { type Pool } from 'pg';
 
 // Repositories
 import { DrizzleEscortDispatchOrderRepo } from '../repo/drizzle-escort-dispatch-order.repo.js';
@@ -15,10 +16,8 @@ import { EscortDispatchOrderService } from '../service/escort-dispatch-order.ser
 import { EscortDispatchHandoffService } from '../service/escort-dispatch-handoff.service.js';
 import { DispatchAfterSalesStaffService } from '../service/dispatch-after-sales-staff.service.js';
 import { EscortCatalogService } from '../service/escort-catalog.service.js';
-import {
-  EscortOptionPricingService,
-  type EscortOptionCatalogRepository,
-} from '../service/escort-option-pricing.service.js';
+import { EscortOptionPricingService } from '../service/escort-option-pricing.service.js';
+import type { EscortOptionCatalogRepository } from '../repo/escort-option-catalog.repo.js';
 
 // Notification
 import { DispatchNotificationService } from '../notification/DispatchNotificationService.js';
@@ -56,7 +55,8 @@ export const DISPATCH_TOKENS = {
  * Expected preregistered tokens: TOKENS.DatabasePool, TOKENS.DiscordRuntimeGateway.
  */
 export function configureDispatchContainer(): void {
-  const db = container.resolve<NodePgDatabase>(TOKENS.DatabasePool);
+  const rawPool = container.resolve<Pool>(TOKENS.DatabasePool);
+  const db = drizzle(rawPool);
 
   // ============================================================
   // Repositories (singleton instances)

@@ -13,8 +13,11 @@ import { DomainError, type Result, Ok, Err } from '@ltdjms/shared';
  * Provides the drizzle table reference and field-specific details
  * needed by the generic find-or-create / adjust / set / delete logic.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type DrizzleTable = any; // Drizzle doesn't export a usable generic table type for dynamic access
+
 export interface AccountRepositoryConfig<TAccount> {
-  readonly table: any;
+  readonly table: DrizzleTable;
   readonly balanceFieldName: string;
   readonly updatedAtFieldName: string;
   readonly defaultValues: Record<string, unknown>;
@@ -39,14 +42,14 @@ export class BaseAccountRepository<TAccount> {
    * Finds or creates an account for a member.
    * Uses INSERT...ON CONFLICT DO NOTHING with RETURNING to minimise DB round-trips.
    */
-  async findOrCreate(guildId: number, userId: number): Promise<TAccount> {
+  async findOrCreate(guildId: number, userId: string): Promise<TAccount> {
     const existing = await this.db
       .select()
       .from(this.cfg.table)
       .where(
         and(
           eq(this.cfg.table.guildId, guildId),
-          eq(this.cfg.table.userId, userId),
+          eq(this.cfg.table.userId, Number(userId)),
         ),
       )
       .limit(1);
@@ -60,7 +63,7 @@ export class BaseAccountRepository<TAccount> {
       .insert(this.cfg.table)
       .values({
         guildId,
-        userId,
+        userId: Number(userId),
         ...this.cfg.defaultValues,
       })
       .onConflictDoNothing()
@@ -79,7 +82,7 @@ export class BaseAccountRepository<TAccount> {
       .where(
         and(
           eq(this.cfg.table.guildId, guildId),
-          eq(this.cfg.table.userId, userId),
+          eq(this.cfg.table.userId, Number(userId)),
         ),
       )
       .limit(1);
@@ -93,7 +96,7 @@ export class BaseAccountRepository<TAccount> {
    */
   async findByGuildIdAndUserId(
     guildId: number,
-    userId: number,
+    userId: string,
   ): Promise<TAccount | null> {
     const rows = await this.db
       .select()
@@ -101,7 +104,7 @@ export class BaseAccountRepository<TAccount> {
       .where(
         and(
           eq(this.cfg.table.guildId, guildId),
-          eq(this.cfg.table.userId, userId),
+          eq(this.cfg.table.userId, Number(userId)),
         ),
       )
       .limit(1);
@@ -116,7 +119,7 @@ export class BaseAccountRepository<TAccount> {
    */
   async adjust(
     guildId: number,
-    userId: number,
+    userId: string,
     delta: number,
   ): Promise<TAccount> {
     const result = await this.db
@@ -128,7 +131,7 @@ export class BaseAccountRepository<TAccount> {
       .where(
         and(
           eq(this.cfg.table.guildId, guildId),
-          eq(this.cfg.table.userId, userId),
+          eq(this.cfg.table.userId, Number(userId)),
           sql`${this.cfg.table[this.cfg.balanceFieldName]} + ${delta} >= 0`,
         ),
       )
@@ -148,7 +151,7 @@ export class BaseAccountRepository<TAccount> {
    */
   async tryAdjust(
     guildId: number,
-    userId: number,
+    userId: string,
     delta: number,
   ): Promise<Result<TAccount, DomainError>> {
     try {
@@ -161,7 +164,7 @@ export class BaseAccountRepository<TAccount> {
         .where(
           and(
             eq(this.cfg.table.guildId, guildId),
-            eq(this.cfg.table.userId, userId),
+            eq(this.cfg.table.userId, Number(userId)),
             sql`${this.cfg.table[this.cfg.balanceFieldName]} + ${delta} >= 0`,
           ),
         )
@@ -193,7 +196,7 @@ export class BaseAccountRepository<TAccount> {
    */
   async set(
     guildId: number,
-    userId: number,
+    userId: string,
     newValue: number,
   ): Promise<TAccount> {
     if (newValue < 0) {
@@ -204,7 +207,7 @@ export class BaseAccountRepository<TAccount> {
       .insert(this.cfg.table)
       .values({
         guildId,
-        userId,
+        userId: Number(userId),
         [this.cfg.balanceFieldName]: newValue,
         ...this.cfg.defaultValues,
       } as any)
@@ -223,13 +226,13 @@ export class BaseAccountRepository<TAccount> {
   /**
    * Deletes an account.
    */
-  async delete(guildId: number, userId: number): Promise<void> {
+  async delete(guildId: number, userId: string): Promise<void> {
     await this.db
       .delete(this.cfg.table)
       .where(
         and(
           eq(this.cfg.table.guildId, guildId),
-          eq(this.cfg.table.userId, userId),
+          eq(this.cfg.table.userId, Number(userId)),
         ),
       );
   }

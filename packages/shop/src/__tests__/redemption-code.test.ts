@@ -30,16 +30,16 @@ describe('RedemptionCode', () => {
 
   it('should mark as redeemed', () => {
     const code = createRedemptionCode('TESTCODE', 1, 123, null);
-    const redeemed = withRedeemed(code, 456);
+    const redeemed = withRedeemed(code, '456');
     expect(isRedeemed(redeemed)).toBe(true);
-    expect(redeemed.redeemedBy).toBe(456);
+    expect(redeemed.redeemedBy).toBe('456');
     expect(redeemed.redeemedAt).toBeInstanceOf(Date);
   });
 
   it('should throw when redeeming already redeemed code', () => {
     const code = createRedemptionCode('TESTCODE', 1, 123, null);
-    const redeemed = withRedeemed(code, 456);
-    expect(() => withRedeemed(redeemed, 789)).toThrow('already been redeemed');
+    const redeemed = withRedeemed(code, '456');
+    expect(() => withRedeemed(redeemed, '789')).toThrow('already been redeemed');
   });
 
   it('should detect expired code', () => {
@@ -63,7 +63,7 @@ describe('RedemptionCode', () => {
     const code = createRedemptionCode('TESTCODE', 1, 123, null);
     expect(isValid(code)).toBe(true);
 
-    const redeemed = withRedeemed(code, 456);
+    const redeemed = withRedeemed(code, '456');
     expect(isValid(redeemed)).toBe(false);
   });
 

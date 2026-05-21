@@ -71,7 +71,7 @@ export class DefaultPromptLoader implements PromptLoader {
    * - If agentEnabled, additionally reads from `promptsDirPath/agent/`
    * - Files are sorted alphabetically within each group
    * - Directory not found: returns empty SystemPrompt with warning
-   * - File too large: returns DomainError PROMPT_FILE_TOO_LARGE
+   * - File too large or read failure: logs warning and skips the file
    */
   async loadPrompts(agentEnabled: boolean): Promise<Result<SystemPrompt, DomainError>> {
     const sections: PromptSection[] = [];
@@ -124,19 +124,20 @@ export class DefaultPromptLoader implements PromptLoader {
       try {
         const stats = await stat(filePath);
         if (stats.size > this.maxFileSizeBytes) {
-          return err(DomainError.promptFileTooLarge(
-            `Prompt file too large: ${fileName} (${stats.size} bytes, max ${this.maxFileSizeBytes})`,
-          ));
+          console.warn(
+            `[prompt-loader] Prompt file too large: ${fileName} (${stats.size} bytes, max ${this.maxFileSizeBytes}), skipping`,
+          );
+          continue;
         }
 
         const content = await readFile(filePath, 'utf-8');
         const name = fileName.replace(/\.md$/, '');
         sections.push({ name, content });
       } catch (cause) {
-        return err(DomainError.promptReadFailed(
-          `Failed to read prompt file: ${fileName}`,
-          cause instanceof Error ? cause : undefined,
-        ));
+        console.warn(
+          `[prompt-loader] Failed to read prompt file: ${fileName}, skipping`,
+        );
+        continue;
       }
     }
 

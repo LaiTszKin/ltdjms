@@ -49,7 +49,7 @@ export class DiceGame1Handler {
     context: DiscordContext,
   ): Promise<void> {
     const guildId = Number(interaction.getGuildId());
-    const userId = Number(interaction.getUserId());
+    const userId = interaction.getUserId();
 
     const tokenCountStr = context.getOptionAsString('tokens');
     if (!tokenCountStr) {

@@ -28,7 +28,7 @@ export class GameTokenAdjustHandler {
     }
 
     const guildId = Number(interaction.getGuildId());
-    const actorId = Number(interaction.getUserId());
+    const actorId = interaction.getUserId();
 
     const targetUserIdStr = context.getOptionAsString('user');
     const amountStr = context.getOptionAsString('amount');
@@ -38,10 +38,10 @@ export class GameTokenAdjustHandler {
       return;
     }
 
-    const targetUserId = parseInt(targetUserIdStr, 10);
+    const targetUserId = targetUserIdStr;
     const amount = parseInt(amountStr, 10);
 
-    if (!Number.isFinite(targetUserId) || !Number.isFinite(amount) || amount === 0) {
+    if (!targetUserId || !Number.isFinite(amount) || amount === 0) {
       await interaction.reply(DiceGameMessages.INVALID_OPTION);
       return;
     }

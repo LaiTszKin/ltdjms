@@ -90,13 +90,13 @@ export class DrizzleRedemptionCodeRepository implements RedemptionCodeRepository
 
   async markAsRedeemedIfAvailable(
     codeId: number,
-    userId: number,
+    userId: string,
     redeemedAt: Date,
   ): Promise<boolean> {
     const result = await this.db
       .update(redemptionCodeTable)
       .set({
-        redeemedBy: userId,
+        redeemedBy: Number(userId),
         redeemedAt,
       })
       .where(
@@ -115,7 +115,7 @@ export class DrizzleRedemptionCodeRepository implements RedemptionCodeRepository
 
   async clearRedeemedIfMatches(
     codeId: number,
-    userId: number,
+    userId: string,
     redeemedAt: Date,
   ): Promise<boolean> {
     const result = await this.db
@@ -127,7 +127,7 @@ export class DrizzleRedemptionCodeRepository implements RedemptionCodeRepository
       .where(
         and(
           eq(redemptionCodeTable.id, codeId),
-          eq(redemptionCodeTable.redeemedBy, userId),
+          eq(redemptionCodeTable.redeemedBy, Number(userId)),
           eq(redemptionCodeTable.redeemedAt, redeemedAt),
         ),
       );

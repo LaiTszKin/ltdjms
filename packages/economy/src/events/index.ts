@@ -3,14 +3,14 @@ import type { DomainEvent } from '@ltdjms/shared';
 export interface BalanceChangedEvent extends DomainEvent {
   readonly eventType: 'balance_changed';
   readonly guildId: string;
-  readonly userId: number;
+  readonly userId: string;
   readonly newBalance: number;
 }
 
 export interface GameTokenChangedEvent extends DomainEvent {
   readonly eventType: 'game_token_changed';
   readonly guildId: string;
-  readonly userId: number;
+  readonly userId: string;
   readonly newTokens: number;
 }
 

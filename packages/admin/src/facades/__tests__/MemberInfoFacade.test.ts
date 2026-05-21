@@ -54,7 +54,7 @@ describe('MemberInfoFacade', () => {
     it('should return combined balance and token info', async () => {
       const balanceView: BalanceView = {
         guildId: Number(guildId),
-        userId: Number(userId),
+        userId,
         balance: 500,
         currencyName: 'Coins',
         currencyIcon: '🪙',

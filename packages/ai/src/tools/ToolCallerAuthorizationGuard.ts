@@ -1,11 +1,17 @@
 import { PermissionFlagsBits, type Guild, type GuildMember } from 'discord.js';
 import { ToolExecutionContext } from './ToolExecutionContext.js';
+import pino from 'pino';
 
 /**
  * Validates that the tool caller has ADMINISTRATOR permission or is the guild owner.
  * Matches Java ToolCallerAuthorizationGuard.
  */
 export class ToolCallerAuthorizationGuard {
+  private readonly log: pino.Logger;
+
+  constructor(logger?: pino.Logger) {
+    this.log = logger ?? pino({ level: 'warn' });
+  }
   /**
    * Validates that the caller has administrator permissions.
    *
@@ -49,14 +55,10 @@ export class ToolCallerAuthorizationGuard {
         return null;
       }
 
-      console.warn(
-        `[Auth] Non-admin user ${userId} attempted to use tool ${toolName} in guild ${guild.id}`,
-      );
+      this.log.warn({ userId, toolName, guildId: guild.id }, 'Non-admin user attempted to use tool');
       return '你沒有權限使用此工具。';
     } catch {
-      console.warn(
-        `[Auth] Member not found for user ${userId} in guild ${guild.id} attempting tool ${toolName}`,
-      );
+      this.log.warn({ userId, toolName, guildId: guild.id }, 'Member not found for user attempting tool');
       return '無法在伺服器中找到你的成員資料。';
     }
   }

@@ -21,13 +21,13 @@ export class TokenAccountRepository extends BaseAccountRepository<GameTokenAccou
     });
   }
 
-  async adjustTokens(guildId: number, userId: number, delta: number): Promise<GameTokenAccount> {
+  async adjustTokens(guildId: number, userId: string, delta: number): Promise<GameTokenAccount> {
     return this.adjust(guildId, userId, delta);
   }
 
   async tryAdjustTokens(
     guildId: number,
-    userId: number,
+    userId: string,
     delta: number,
   ): ReturnType<BaseAccountRepository<GameTokenAccount>['tryAdjust']> {
     return this.tryAdjust(guildId, userId, delta);
@@ -35,7 +35,7 @@ export class TokenAccountRepository extends BaseAccountRepository<GameTokenAccou
 
   async setTokens(
     guildId: number,
-    userId: number,
+    userId: string,
     newTokens: number,
   ): Promise<GameTokenAccount> {
     return this.set(guildId, userId, newTokens);
@@ -53,7 +53,7 @@ class InsufficientTokensError extends Error {
 function mapToDomain(row: Record<string, unknown>): GameTokenAccount {
   return {
     guildId: row.guildId as number,
-    userId: row.userId as number,
+    userId: String(row.userId),
     tokens: row.tokens as number,
     createdAt: row.createdAt as Date,
     updatedAt: row.updatedAt as Date,

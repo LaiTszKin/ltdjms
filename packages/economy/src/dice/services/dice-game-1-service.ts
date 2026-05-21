@@ -10,7 +10,7 @@ import type { DiceGame1Config, DiceGame1Result } from '../../domain/types.js';
 import {
   CurrencyTransactionSource,
 } from '../../domain/types.js';
-import { type Random, DefaultRandom } from './random.js';
+import { type Random, DefaultRandom, rollDice } from './random.js';
 
 /**
  * Dice Game 1 service implementation.
@@ -34,7 +34,7 @@ export class DiceGame1Service {
    */
   async play(
     guildId: number,
-    userId: number,
+    userId: string,
     tokenCount: number,
     config: DiceGame1Config,
   ): Promise<Result<DiceGame1Result, DomainError>> {
@@ -67,7 +67,7 @@ export class DiceGame1Service {
 
     // Get previous balance directly from BalanceService instead of calling
     // creditReward(0) which would trigger a full DB read with config lookup for no reward.
-    const previousBalanceResult = await this.balanceService.tryGetBalance(guildId, userId);
+    const previousBalanceResult = await this.balanceService.getBalance(guildId, userId);
     const previousBalance = previousBalanceResult.isOk() ? previousBalanceResult.getValue().balance : 0;
 
     // Apply reward via GameRewardService
@@ -93,11 +93,7 @@ export class DiceGame1Service {
    * @internal Exposed for test use only; not part of the public API.
    */
   rollDice(count: number): number[] {
-    const rolls: number[] = [];
-    for (let i = 0; i < count; i++) {
-      rolls.push(this.random.nextInt(6) + 1);
-    }
-    return rolls;
+    return rollDice(count, this.random);
   }
 
   /**

@@ -29,7 +29,7 @@ describe('CurrencyManagementFacade', () => {
 
   beforeEach(() => {
     mockBalanceService = {
-      tryGetBalance: vi.fn(),
+      getBalance: vi.fn(),
     };
     mockAdjustService = {
       tryAdjustBalance: vi.fn(),
@@ -76,12 +76,12 @@ describe('CurrencyManagementFacade', () => {
     it('should return balance on success', async () => {
       const balance: BalanceView = {
         guildId: Number(guildId),
-        userId: Number(userId),
+        userId,
         balance: 500,
         currencyName: 'Coins',
         currencyIcon: '🪙',
       };
-      mockBalanceService.tryGetBalance = vi.fn().mockResolvedValue(new Ok(balance));
+      mockBalanceService.getBalance = vi.fn().mockResolvedValue(new Ok(balance));
 
       const result = await facade.getBalance(guildId, userId);
       expect(result.isOk()).toBe(true);
@@ -93,7 +93,7 @@ describe('CurrencyManagementFacade', () => {
     it('should add balance successfully', async () => {
       const adjustResult: BalanceAdjustmentResult = {
         guildId: Number(guildId),
-        userId: Number(userId),
+        userId,
         previousBalance: 100,
         newBalance: 200,
         adjustment: 100,
@@ -124,7 +124,7 @@ describe('CurrencyManagementFacade', () => {
     it('should deduct balance successfully', async () => {
       const adjustResult: BalanceAdjustmentResult = {
         guildId: Number(guildId),
-        userId: Number(userId),
+        userId,
         previousBalance: 200,
         newBalance: 100,
         adjustment: -100,
@@ -148,7 +148,7 @@ describe('CurrencyManagementFacade', () => {
     it('should set balance successfully', async () => {
       const adjustResult: BalanceAdjustmentResult = {
         guildId: Number(guildId),
-        userId: Number(userId),
+        userId,
         previousBalance: 100,
         newBalance: 500,
         adjustment: 400,

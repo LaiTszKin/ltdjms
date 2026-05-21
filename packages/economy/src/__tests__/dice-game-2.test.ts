@@ -25,8 +25,8 @@ describe('DiceGame2Service - analyzeRolls', () => {
   } as unknown as GameRewardService;
 
   const mockBalanceService = {
-    tryGetBalance: vi.fn().mockResolvedValue(new Ok({
-      guildId: 1, userId: 1, balance: 0, currencyName: 'Coins', currencyIcon: '🪙',
+    getBalance: vi.fn().mockResolvedValue(new Ok({
+      guildId: 1, userId: '1', balance: 0, currencyName: 'Coins', currencyIcon: '🪙',
     } as BalanceView)),
   } as unknown as BalanceService;
 

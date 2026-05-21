@@ -61,7 +61,7 @@ export class DispatchManagementFacade {
    * Publishes DispatchAfterSalesConfigChangedEvent on success.
    */
   async addStaff(guildId: string, userId: string): Promise<Result<boolean, DomainError>> {
-    const result = await this.staffService.addStaff(Number(guildId), Number(userId));
+    const result = await this.staffService.addStaff(Number(guildId), userId);
     if (result.isOk()) {
       this.eventPublisher.publish({
         eventType: 'dispatch_after_sales_config_changed',
@@ -77,7 +77,7 @@ export class DispatchManagementFacade {
    * Publishes DispatchAfterSalesConfigChangedEvent on success.
    */
   async removeStaff(guildId: string, userId: string): Promise<Result<boolean, DomainError>> {
-    const result = await this.staffService.removeStaff(Number(guildId), Number(userId));
+    const result = await this.staffService.removeStaff(Number(guildId), userId);
     if (result.isOk()) {
       this.eventPublisher.publish({
         eventType: 'dispatch_after_sales_config_changed',

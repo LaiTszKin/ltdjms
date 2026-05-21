@@ -162,8 +162,7 @@ export class ShopCommandHandler {
         await interaction.reply('法幣支付功能尚未啟用（缺少訂單服務）');
         return;
       }
-      const userId = parseInt(interaction.getUserId(), 10);
-      if (isNaN(userId)) return;
+      const userId = interaction.getUserId();
       const result = await this.fiatOrderService.createFiatOnlyOrder(guildId, userId, productId);
       if (result.isErr()) {
         await interaction.reply(`建立訂單失敗：${result.getError().message}`);
@@ -357,9 +356,8 @@ export class ShopCommandHandler {
       await interaction.reply('貨幣購買功能尚未啟用（缺少購買服務）');
       return;
     }
-    const userId = parseInt(interaction.getUserId(), 10);
-    if (isNaN(userId)) return;
-    const result = await this.currencyPurchaseService.purchaseProduct(guildId, userId, productId);
+    const userId = interaction.getUserId();
+        const result = await this.currencyPurchaseService.purchaseProduct(guildId, userId, productId);
     if (result.isErr()) {
       await interaction.reply(`購買失敗：${result.getError().message}`);
       return;

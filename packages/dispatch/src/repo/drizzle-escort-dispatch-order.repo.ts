@@ -1,6 +1,6 @@
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { eq, and, ne, isNull, notInArray, sql } from 'drizzle-orm';
-import { escortDispatchOrder } from '../schema/escort-dispatch-order.sql.js';
+import { escortDispatchOrder, type EscortDispatchOrderSelect } from '../schema/escort-dispatch-order.sql.js';
 import {
   type EscortDispatchOrder,
   EscortDispatchOrderStatus,
@@ -290,7 +290,7 @@ export class DrizzleEscortDispatchOrderRepo implements EscortDispatchOrderRepo {
 }
 
 /** Maps a DB row to domain EscortDispatchOrder, preserving ALL stored columns. */
-function mapRowToDomain(row: Record<string, unknown>): EscortDispatchOrder {
+function mapRowToDomain(row: EscortDispatchOrderSelect): EscortDispatchOrder {
   return fromDbRow({
     id: (row.id as number) ?? null,
     orderNumber: row.orderNumber as string,

@@ -13,16 +13,16 @@ import { DEFAULT_PAGE_SIZE, type TransactionPage } from '../domain/types.js';
 
 /** Minimal repository interface required by BaseTransactionService. */
 export interface TransactionRepository<TTransaction, TSource> {
-  count(guildId: number, userId: number): Promise<number>;
+  count(guildId: number, userId: string): Promise<number>;
   findByGuildIdAndUserId(
     guildId: number,
-    userId: number,
+    userId: string,
     limit: number,
     offset: number,
   ): Promise<TTransaction[]>;
   save(data: {
     guildId: number;
-    userId: number;
+    userId: string;
     amount: number;
     balanceAfter: number;
     source: TSource;
@@ -46,7 +46,7 @@ export class BaseTransactionService<TTransaction, TSource> {
    */
   async getTransactionPage(
     guildId: number,
-    userId: number,
+    userId: string,
     page: number = 1,
     pageSize: number = BaseTransactionService.DEFAULT_PAGE_SIZE,
   ): Promise<TransactionPage<TTransaction>> {
@@ -81,7 +81,7 @@ export class BaseTransactionService<TTransaction, TSource> {
    */
   async recordTransaction(
     guildId: number,
-    userId: number,
+    userId: string,
     amount: number,
     balanceAfter: number,
     source: TSource,

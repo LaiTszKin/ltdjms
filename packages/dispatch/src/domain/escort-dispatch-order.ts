@@ -489,22 +489,22 @@ export function isCompleted(order: EscortDispatchOrder): boolean {
 
 /** 僅護航者本人可確認接單。 */
 export function canBeConfirmedBy(order: EscortDispatchOrder, userId: number): boolean {
-  return order.escortUserId === userId;
+  return order.escortUserId === Number(userId);
 }
 
 /** 僅護航者本人可送出完成。 */
 export function canBeCompletedByEscort(order: EscortDispatchOrder, userId: number): boolean {
-  return order.escortUserId === userId;
+  return order.escortUserId === Number(userId);
 }
 
 /** 僅客戶本人可確認完成或申請售後。 */
 export function canBeConfirmedByCustomer(order: EscortDispatchOrder, userId: number): boolean {
-  return order.customerUserId === userId;
+  return order.customerUserId === Number(userId);
 }
 
 /** 是否為售後案件的接手人。 */
 export function isAfterSalesAssignee(order: EscortDispatchOrder, userId: number): boolean {
-  return order.afterSalesAssigneeUserId != null && order.afterSalesAssigneeUserId === userId;
+  return order.afterSalesAssigneeUserId != null && order.afterSalesAssigneeUserId === Number(userId);
 }
 
 // ---- Source Type Helpers ----

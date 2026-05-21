@@ -15,7 +15,7 @@ import type {
   EscortDispatchOrder,
 } from '../../domain/escort-dispatch-order.js';
 import type { EscortDispatchOrderRepo } from '../../repo/escort-dispatch-order.repo.js';
-import type { EscortOptionCatalogRepository } from '../../service/escort-option-pricing.service.js';
+import type { EscortOptionCatalogRepository } from '../../repo/escort-option-catalog.repo.js';
 import type { DispatchAfterSalesStaffService } from '../../service/dispatch-after-sales-staff.service.js';
 import type { DispatchNotificationService } from '../../notification/DispatchNotificationService.js';
 

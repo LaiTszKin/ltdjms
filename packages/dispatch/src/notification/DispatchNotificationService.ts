@@ -1,4 +1,5 @@
-import { type DiscordRuntimeGateway } from '@ltdjms/shared';
+import { processWithConcurrencyLimit } from '@ltdjms/shared';
+import type { DiscordRuntimeGateway } from '@ltdjms/shared';
 import { type EscortDispatchOrder } from '../domain/index.js';
 import { type DispatchAfterSalesStaffService } from '../service/dispatch-after-sales-staff.service.js';
 import { COLOR_INFO, COLOR_WARNING, COLOR_ERROR } from '../constants.js';
@@ -160,11 +161,11 @@ export class DispatchNotificationService {
       const onlineStaffIds = await this.filterOnlineStaff(order.guildId, [...staffIds]);
       const targetIds = onlineStaffIds.length > 0 ? onlineStaffIds : [...staffIds];
 
-      await Promise.all(targetIds.map((staffId) =>
+      await processWithConcurrencyLimit(targetIds, async (staffId) =>
         this.sendDMEmbed(String(staffId), embed, [
           { type: 1, components: [{ type: 2, style: 3, custom_id: `${NOTIFY_PREFIX}claim:${order.orderNumber}`, label: '承接售後' }] },
         ]),
-      ));
+      3);
       return true;
     } catch {
       return false;
@@ -244,16 +245,15 @@ export class DispatchNotificationService {
    * Uses the gateway to check member presence.
    */
   private async filterOnlineStaff(guildId: number, staffIds: number[]): Promise<number[]> {
-    const results = await Promise.all(
-      staffIds.map(async (staffId) => {
-        try {
-          const isOnline = await this.gateway.isMemberOnline(String(guildId), String(staffId));
-          return { id: staffId, online: isOnline };
-        } catch {
-          return { id: staffId, online: false };
-        }
-      }),
-    );
+    const results: { id: number; online: boolean }[] = [];
+    await processWithConcurrencyLimit(staffIds, async (staffId) => {
+      try {
+        const isOnline = await this.gateway.isMemberOnline(String(guildId), String(staffId));
+        results.push({ id: staffId, online: isOnline });
+      } catch {
+        results.push({ id: staffId, online: false });
+      }
+    }, 5);
     return results.filter((r) => r.online).map((r) => r.id);
   }
 }

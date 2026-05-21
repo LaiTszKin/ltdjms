@@ -4,7 +4,7 @@ import { escortOptionCatalog } from '../schema/escort-option-catalog.sql.js';
 import type {
   EscortOptionCatalogRepository,
   EscortOptionCatalogEntry,
-} from '../service/escort-option-pricing.service.js';
+} from './escort-option-catalog.repo.js';
 
 /**
  * Drizzle implementation of EscortOptionCatalogRepository backed by
@@ -17,7 +17,8 @@ export class DrizzleEscortOptionCatalogRepo implements EscortOptionCatalogReposi
     const rows = await this.db
       .select()
       .from(escortOptionCatalog)
-      .orderBy(escortOptionCatalog.code);
+      .orderBy(escortOptionCatalog.code)
+      .limit(200);
 
     return rows.map(row => ({
       code: row.code,

@@ -1,5 +1,5 @@
 import type { DomainEvent } from '@ltdjms/shared';
-import { type DiscordRuntimeGateway } from '@ltdjms/shared';
+import { type DiscordRuntimeGateway, processWithConcurrencyLimit } from '@ltdjms/shared';
 import type {
   BalanceChangedEvent,
   GameTokenChangedEvent,
@@ -18,14 +18,13 @@ import type {
 import {
   type Client,
   type TextChannel,
-  type Message,
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
 } from 'discord.js';
 import { AdminPanelSessionManager } from '../../session/AdminPanelSessionManager.js';
-import { AdminPanelViewState } from '../../session/types.js';
+import { AdminPanelViewState, type AdminPanelSessionData } from '../../session/types.js';
 import { CurrencyManagementFacade } from '../../facades/CurrencyManagementFacade.js';
 import { DispatchManagementFacade } from '../../facades/DispatchManagementFacade.js';
 import { AdminPanelViewFactory } from '../admin/views/AdminPanelViewFactory.js';
@@ -65,6 +64,18 @@ export class AdminPanelUpdateListener {
   private readonly lastUpdateTimestamps = new Map<string, number>();
   private cleanupCounter = 0;
 
+  /** Debounce timers that coalesce rapid consecutive same-key events into a single update. */
+  private readonly debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+  /** Coalescing window in ms: events within this interval reset the timer. */
+  private static readonly DEBOUNCE_MS = 500;
+
+  /** Max concurrent Discord API calls when processing batched updates. */
+  private static readonly MAX_CONCURRENCY = 3;
+
+  /** Max entries in the throttle map before evicting oldest entries. */
+  private static readonly MAX_THROTTLE_ENTRIES = 500;
+
   constructor(
     private readonly sessionManager: AdminPanelSessionManager,
     private readonly discordGateway: DiscordRuntimeGateway,
@@ -74,20 +85,63 @@ export class AdminPanelUpdateListener {
   ) {}
 
   /**
-   * Handles a domain event and updates relevant admin panels.
-   * Only updates panels that are in the relevant view state.
+   * Handles a domain event and schedules a debounced batched update for admin panels.
+   * Rapid consecutive same-type events are coalesced into a single update
+   * within a 500ms window, reducing Discord API calls from O(3 x sessions x events)
+   * to O(1 x channel-groups).
    */
   async onEvent(event: DomainEvent): Promise<void> {
     if (!this.isAdminRelevantEvent(event)) return;
 
-    const guildId = event.guildId;
+    const guildId = String(event.guildId);
+    const eventType = event.eventType;
+
+    // Debounce: coalesce rapid consecutive same-type events into a single batched update
+    const debounceKey = `${guildId}:${eventType}`;
+    this.scheduleDebouncedUpdate(debounceKey, guildId, event);
+  }
+
+  /**
+   * Schedules or resets the debounce timer for a given key.
+   * When the timer fires, the batched update is executed.
+   */
+  private scheduleDebouncedUpdate(
+    key: string,
+    guildId: string,
+    event: DomainEvent,
+  ): void {
+    const existing = this.debounceTimers.get(key);
+    if (existing) clearTimeout(existing);
+
+    const timer = setTimeout(() => {
+      this.debounceTimers.delete(key);
+      this.processBatchedUpdate(guildId, event).catch((err) => {
+        console.error(
+          `[AdminPanelUpdateListener] Error in batched update for ${key}:`,
+          err,
+        );
+      });
+    }, AdminPanelUpdateListener.DEBOUNCE_MS);
+
+    this.debounceTimers.set(key, timer);
+  }
+
+  /**
+   * Processes a batched update for all active sessions in a guild.
+   * Groups sessions by channelId so channel.fetch is called once per unique channel,
+   * then runs the channel groups concurrently with a bounded concurrency limit.
+   */
+  private async processBatchedUpdate(
+    guildId: string,
+    event: DomainEvent,
+  ): Promise<void> {
     const eventType = event.eventType;
 
     // Rate-limit protection: skip if less than 200ms since last same-type update
     const throttleKey = `${guildId}:${eventType}`;
     if (this.shouldThrottle(throttleKey)) return;
 
-    const sessions = this.sessionManager.getAllForGuild(String(guildId));
+    const sessions = this.sessionManager.getAllForGuild(guildId);
 
     if (sessions.length === 0) {
       console.log(
@@ -96,86 +150,96 @@ export class AdminPanelUpdateListener {
       return;
     }
 
-    // NOTE(P3-7): 對每個 session 獨立執行 Discord API 呼叫（channel.fetch、message.fetch、message.edit）。
-    // 在高事件頻率場景（如大量餘額變更）可能觸發 Discord API rate limit。
-    // 若遇到 rate limit，可在此層加入 debounce 機制：以 guildId + eventType 為 key，
-    // 累積事件後以固定間隔（如 500ms）批量更新。
-    let updatedCount = 0;
+    // Filter to sessions that should be updated for this event type
+    const relevantSessions = sessions.filter((s) =>
+      this.shouldUpdateForViewState(event, s.viewState),
+    );
+
+    // Group by channelId so channel.fetch is done once per unique channel.
+    // Also skips sessions without a channelId or messageId.
+    const channelGroupMap = new Map<string, AdminPanelSessionData[]>();
+    for (const session of relevantSessions) {
+      if (!session.channelId || !session.messageId) continue;
+      const group = channelGroupMap.get(session.channelId);
+      if (group) {
+        group.push(session);
+      } else {
+        channelGroupMap.set(session.channelId, [session]);
+      }
+    }
+
+    if (channelGroupMap.size === 0) return;
+
     const toRemove: Array<{ guildId: string; userId: string }> = [];
+    const client = this.discordGateway.requireReadyClient() as Client;
 
-    for (const session of sessions) {
-      try {
-        const shouldUpdate = this.shouldUpdateForViewState(event, session.viewState);
-        if (!shouldUpdate) continue;
+    // Pre-build the main panel embed once if any MAIN-view session needs it,
+    // rather than rebuilding per session.
+    const isMainEvent =
+      eventType === EVENT_TYPES.CURRENCY_CONFIG_CHANGED ||
+      eventType === EVENT_TYPES.DICE_GAME_CONFIG_CHANGED;
+    const hasMainViewSessions = relevantSessions.some(
+      (s) => s.viewState === AdminPanelViewState.MAIN,
+    );
 
-        updatedCount++;
+    let sharedMainPanel: {
+      embed: EmbedBuilder;
+      rows: ActionRowBuilder<ButtonBuilder>[];
+    } | null = null;
+    if (isMainEvent && hasMainViewSessions) {
+      sharedMainPanel = await this.buildMainPanelEmbed(guildId);
+    }
 
-        // Real-time push update: fetch the panel message and edit embed
-        const channelId = session.channelId;
-        const messageId = session.messageId;
-        if (channelId && messageId) {
+    const channelEntries = Array.from(channelGroupMap.entries());
+
+    await processWithConcurrencyLimit(
+      channelEntries,
+      async ([channelId, groupSessions]) => {
+        const channel = await client.channels.fetch(channelId);
+        if (!channel?.isTextBased()) return;
+        const textChannel = channel as TextChannel;
+
+        for (const session of groupSessions) {
           try {
-            const client = this.discordGateway.requireReadyClient() as Client;
-            const channel = await client.channels.fetch(channelId);
-            if (channel?.isTextBased()) {
-              const message = await (channel as TextChannel).messages.fetch(messageId);
-              // Rebuild embed with fresh data from facades.
-              // For MAIN view events (currency config, dice game config), rebuild
-              // the full main panel embed. For other view states, re-edit to trigger
-              // a visual refresh (fields will be populated when the user navigates).
-              const isMainViewRelevant =
-                (event.eventType === EVENT_TYPES.CURRENCY_CONFIG_CHANGED ||
-                 event.eventType === EVENT_TYPES.DICE_GAME_CONFIG_CHANGED) &&
-                session.viewState === AdminPanelViewState.MAIN;
+            const message = await textChannel.messages.fetch(session.messageId!);
 
-              if (isMainViewRelevant) {
-                const panelContent = await this.buildMainPanelEmbed(guildId);
-                if (panelContent) {
-                  await message.edit({
-                    embeds: [panelContent.embed],
-                    components: panelContent.rows,
-                  });
-                }
-              } else {
-                const existingEmbeds = message.embeds;
-                if (existingEmbeds.length > 0) {
-                  const updatedEmbed = existingEmbeds[0].data;
-                  await message.edit({ embeds: [updatedEmbed] });
-                }
+            if (isMainEvent && sharedMainPanel && session.viewState === AdminPanelViewState.MAIN) {
+              await message.edit({
+                embeds: [sharedMainPanel.embed],
+                components: sharedMainPanel.rows,
+              });
+            } else {
+              const existingEmbeds = message.embeds;
+              if (existingEmbeds.length > 0) {
+                const updatedEmbed = existingEmbeds[0].data;
+                await message.edit({ embeds: [updatedEmbed] });
               }
             }
-          } catch (fetchErr) {
-            // If the message or channel no longer exists, remove the session
+
             console.log(
-              `[AdminPanelUpdateListener] Failed to fetch message ${messageId} in channel ${channelId}: removing session`,
+              `[AdminPanelUpdateListener] Event ${eventType} triggers update for ` +
+              `guildId=${guildId}, userId=${session.userId}, viewState=${session.viewState}` +
+              `, channelId=${channelId}`,
+            );
+          } catch (fetchErr) {
+            console.log(
+              `[AdminPanelUpdateListener] Failed to fetch message ${session.messageId} in channel ${channelId}: removing session`,
             );
             toRemove.push({ guildId: session.guildId, userId: session.userId });
           }
         }
-
-        console.log(
-          `[AdminPanelUpdateListener] Event ${eventType} triggers update for ` +
-          `guildId=${guildId}, userId=${session.userId}, viewState=${session.viewState}` +
-          (session.channelId ? `, channelId=${session.channelId}` : ''),
-        );
-      } catch (err) {
-        console.error(
-          `[AdminPanelUpdateListener] Error updating panel for guildId=${guildId}, userId=${session.userId}:`,
-          err,
-        );
-      }
-    }
+      },
+      AdminPanelUpdateListener.MAX_CONCURRENCY,
+    );
 
     // Clean up stale sessions
     for (const { guildId: gId, userId: uId } of toRemove) {
       this.sessionManager.removeSession(gId, uId);
     }
 
-    if (updatedCount > 0) {
-      console.log(
-        `[AdminPanelUpdateListener] Event ${eventType}: updated ${updatedCount}/${sessions.length} active sessions in guildId=${guildId}`,
-      );
-    }
+    console.log(
+      `[AdminPanelUpdateListener] Event ${eventType}: updated ${channelGroupMap.size} channel groups in guildId=${guildId}`,
+    );
   }
 
   private async getGuildName(guildId: string): Promise<string> {
@@ -327,12 +391,21 @@ export class AdminPanelUpdateListener {
     if (now - last < minIntervalMs) return true;
     this.lastUpdateTimestamps.set(key, now);
 
-    // Periodic cleanup: evict entries older than 60s every 50 calls
+    // Periodic cleanup: evict entries older than 60s every 50 calls;
+    // if still over capacity after time-based eviction, trim oldest entries.
     this.cleanupCounter++;
     if (this.cleanupCounter % 50 === 0) {
       const cutoff = now - 60_000;
       for (const [k, v] of this.lastUpdateTimestamps) {
         if (v < cutoff) this.lastUpdateTimestamps.delete(k);
+      }
+      if (this.lastUpdateTimestamps.size >= AdminPanelUpdateListener.MAX_THROTTLE_ENTRIES) {
+        const sorted = [...this.lastUpdateTimestamps.entries()]
+          .sort((a, b) => a[1] - b[1]);
+        const evictCount = sorted.length - AdminPanelUpdateListener.MAX_THROTTLE_ENTRIES;
+        for (let i = 0; i < evictCount; i++) {
+          this.lastUpdateTimestamps.delete(sorted[i][0]);
+        }
       }
     }
 

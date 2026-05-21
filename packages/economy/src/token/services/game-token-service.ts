@@ -29,7 +29,7 @@ export class GameTokenService {
    */
   private async updateCacheAndPublishEvent(
     guildId: number,
-    userId: number,
+    userId: string,
     newTokens: number,
   ): Promise<void> {
     const cacheKey = this.cacheKeyGenerator.gameTokenKey(String(guildId), String(userId));
@@ -61,7 +61,7 @@ export class GameTokenService {
    * Uses cache (TTL 300s) - cache miss falls through to DB query.
    * Auto-creates the token account if it does not exist (P3-16).
    */
-  async getBalance(guildId: number, userId: number): Promise<number> {
+  async getBalance(guildId: number, userId: string): Promise<number> {
     const cacheKey = this.cacheKeyGenerator.gameTokenKey(String(guildId), String(userId));
     const cachedBalance = await this.cacheService.get<number>(cacheKey);
 
@@ -96,7 +96,7 @@ export class GameTokenService {
    */
   async tryAdjustTokens(
     guildId: number,
-    userId: number,
+    userId: string,
     amount: number,
     source: GameTokenTransactionSource = GameTokenTransactionSource.ADMIN_ADJUSTMENT,
     description: string | null = null,
@@ -164,7 +164,7 @@ export class GameTokenService {
    */
   async hasEnoughTokens(
     guildId: number,
-    userId: number,
+    userId: string,
     requiredTokens: number,
   ): Promise<boolean> {
     const balance = await this.getBalance(guildId, userId);
@@ -185,7 +185,7 @@ export class GameTokenService {
    */
   async tryDeductTokens(
     guildId: number,
-    userId: number,
+    userId: string,
     tokens: number,
     source: GameTokenTransactionSource = GameTokenTransactionSource.GAME_PLAY,
   ): Promise<Result<TokenAdjustmentResult, DomainError>> {
@@ -209,7 +209,7 @@ export class GameTokenService {
    */
   async deductTokens(
     guildId: number,
-    userId: number,
+    userId: string,
     tokens: number,
   ): Promise<GameTokenAccount> {
     if (tokens <= 0) {

@@ -19,9 +19,9 @@ export class BalanceHandler {
     context: DiscordContext,
   ): Promise<void> {
     const guildId = Number(interaction.getGuildId());
-    const userId = Number(interaction.getUserId());
+    const userId = interaction.getUserId();
 
-    const result = await this.balanceService.tryGetBalance(guildId, userId);
+    const result = await this.balanceService.getBalance(guildId, userId);
 
     if (result.isErr()) {
       await interaction.reply(DiceGameMessages.BALANCE_FETCH_FAILED);
