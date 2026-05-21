@@ -6,12 +6,11 @@ import {
 import { type DiceGame1Service } from '../dice/services/dice-game-1-service.js';
 import { type DiceConfigService } from '../dice/services/dice-config-service.js';
 import { type GameTokenService } from '../token/services/game-token-service.js';
-import { type CurrencyConfigRepository } from '../currency/repositories/currency-config-repo.js';
+import { type CurrencyConfigService } from '../currency/services/currency-config-service.js';
 import { DiceGameMessages } from '../localization/dice-game-messages.js';
 import {
   GameTokenTransactionSource,
 } from '../domain/types.js';
-import { resolveCurrencyDisplay } from './dice-utils.js';
 
 /**
  * /dice-game-1 slash command handler.
@@ -41,7 +40,7 @@ export class DiceGame1Handler {
     private readonly diceGame1Service: DiceGame1Service,
     private readonly diceConfigService: DiceConfigService,
     private readonly gameTokenService: GameTokenService,
-    private readonly currencyConfigRepository: CurrencyConfigRepository,
+    private readonly currencyConfigService: CurrencyConfigService,
   ) {}
 
   async execute(
@@ -100,7 +99,9 @@ export class DiceGame1Handler {
 
     try {
       // Get currency info for display (P2-3)
-      const { currencyName, currencyIcon } = await resolveCurrencyDisplay(guildId, this.currencyConfigRepository);
+      const currencyConfig = await this.currencyConfigService.getConfig(guildId);
+      const currencyName = currencyConfig.currencyName;
+      const currencyIcon = currencyConfig.currencyIcon;
 
       // Play the game
       const result = await this.diceGame1Service.play(guildId, userId, tokenCount, config);
