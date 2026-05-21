@@ -306,13 +306,15 @@ export class LangChainAIChatService implements AIChatService {
             }),
           );
 
-          // Execute each tool and add result as ToolMessage
-          for (const tc of toolCalls) {
-            const result = await this.executeTool(guildId, channelId, userId, tc, channelId);
+          // Execute tools in parallel and add results as ToolMessages
+          const results = await Promise.all(
+            toolCalls.map(tc => this.executeTool(guildId, channelId, userId, tc, channelId)),
+          );
+          for (let i = 0; i < toolCalls.length; i++) {
             messages.push(
               new ToolMessage({
-                tool_call_id: tc.id,
-                content: result,
+                tool_call_id: toolCalls[i].id,
+                content: results[i],
               }),
             );
           }
@@ -483,7 +485,7 @@ export class LangChainAIChatService implements AIChatService {
     const messages: BaseMessage[] = [];
 
     // Load system prompts (agent prompts included when agent is enabled)
-    const promptResult = this.promptLoader.loadPrompts(agentEnabled);
+    const promptResult = await this.promptLoader.loadPrompts(agentEnabled);
     if (promptResult.isOk()) {
       const systemPrompt = promptResult.getValue();
       const combined = systemPrompt.toCombinedString();

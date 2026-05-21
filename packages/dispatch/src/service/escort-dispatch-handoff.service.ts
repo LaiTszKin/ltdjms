@@ -75,6 +75,11 @@ export class EscortDispatchHandoffService {
         return new Err(DomainError.invalidInput('護航選項代碼無效'));
       }
 
+      // Defensive check: product.name must not be blank for auto-sourced orders.
+      if (!product.name || product.name.trim().length === 0) {
+        return new Err(DomainError.invalidInput('商品名稱為空白'));
+      }
+
       // Idempotency check
       const existing = await this.repository.findBySourceIdentity(sourceType, sourceReference);
       if (existing != null) {

@@ -241,8 +241,9 @@ export class EscortPricingHandler extends BaseAdminHandler {
     if (result.isOk()) {
       // Query global default price after reset
       const catalogEntry = await this.facade.findCatalogEntry(optionCode);
-      const defaultPrice = catalogEntry.isOk() && catalogEntry.getValue()
-        ? String(catalogEntry.getValue().priceTwd)
+      const catalogEntryValue = catalogEntry.isOk() ? catalogEntry.getValue() : null;
+      const defaultPrice = catalogEntryValue
+        ? String(catalogEntryValue.priceTwd)
         : '0';
 
       const embed = new EmbedBuilder()

@@ -1,4 +1,4 @@
-import { type Result, Ok, Err, DomainError } from '@ltdjms/shared';
+import { type Result, Ok, Err, DomainError, Unit } from '@ltdjms/shared';
 import type {
   AIChannelRestrictionService,
   AIAgentChannelConfigService,
@@ -54,7 +54,7 @@ export class AIConfigManagementFacade {
   async removeAllowedChannel(
     guildId: string,
     channelId: string,
-  ): Promise<Result<void, DomainError>> {
+  ): Promise<Result<Unit, DomainError>> {
     return this.channelRestrictionService.removeAllowedChannel(guildId, channelId);
   }
 
@@ -89,7 +89,7 @@ export class AIConfigManagementFacade {
   async removeAllowedCategory(
     guildId: string,
     categoryId: string,
-  ): Promise<Result<void, DomainError>> {
+  ): Promise<Result<Unit, DomainError>> {
     return this.channelRestrictionService.removeAllowedCategory(guildId, categoryId);
   }
 
@@ -116,7 +116,7 @@ export class AIConfigManagementFacade {
     guildId: string,
     channelId: string,
     _mode: AgentMode,
-  ): Promise<Result<void, DomainError>> {
+  ): Promise<Result<Unit, DomainError>> {
     return this.agentConfigService.setAgentEnabled(guildId, channelId, true);
   }
 
@@ -126,7 +126,7 @@ export class AIConfigManagementFacade {
   async disableAgent(
     guildId: string,
     channelId: string,
-  ): Promise<Result<void, DomainError>> {
+  ): Promise<Result<Unit, DomainError>> {
     return this.agentConfigService.setAgentEnabled(guildId, channelId, false);
   }
 
@@ -139,7 +139,7 @@ export class AIConfigManagementFacade {
     guildId: string,
     channelId: string,
     enabled: boolean,
-  ): Promise<Result<void, DomainError>> {
+  ): Promise<Result<Unit, DomainError>> {
     if (enabled) {
       return this.enableAgent(guildId, channelId, AgentMode.AGENT);
     }
@@ -152,7 +152,7 @@ export class AIConfigManagementFacade {
   async removeAgentConfig(
     guildId: string,
     channelId: string,
-  ): Promise<Result<void, DomainError>> {
+  ): Promise<Result<Unit, DomainError>> {
     return this.agentConfigService.removeChannel(guildId, channelId);
   }
 }

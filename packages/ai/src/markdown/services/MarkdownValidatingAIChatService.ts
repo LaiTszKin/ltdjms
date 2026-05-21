@@ -10,7 +10,6 @@ import { MarkdownAutoFixer } from '../autofix/MarkdownAutoFixer.js';
 import { CommonMarkValidator } from '../validation/CommonMarkValidator.js';
 import { DiscordMarkdownPaginator } from './DiscordMarkdownPaginator.js';
 import { applyMarkdownPipeline } from './markdown-pipeline.js';
-import { MessageChunkAccumulator } from '../../services/message-chunk-accumulator.js';
 
 /**
  * Decorator that wraps an AIChatService with Markdown validation pipeline.
@@ -150,39 +149,67 @@ export class MarkdownValidatingAIChatService implements AIChatService {
   }
 
   /**
-   * Creates a validating handler that accumulates CONTENT chunks and applies
-   * the markdown pipeline to the full content on completion (P1-13).
-   * This prevents validation errors from processing incomplete markdown chunks.
+   * Creates a validating handler that incrementally processes CONTENT chunks
+   * at paragraph/heading boundaries while the stream is still producing content (P3-15).
+   * Completed paragraphs are flushed through the pipeline and emitted early,
+   * reducing time-to-first-byte compared to buffering all content before processing.
    */
   private createValidatingHandler(
     handler: StreamingResponseHandler,
   ): StreamingResponseHandler {
     // Buffer for accumulating CONTENT chunks
-    const contentBuffer = new MessageChunkAccumulator();
+    let pendingContent = '';
 
     /**
-     * Flushes accumulated CONTENT chunks through the validation pipeline
+     * Finds the last natural boundary for incremental processing.
+     * Returns the index of the last complete paragraph/heading boundary,
+     * or 0 if no boundary is found.
+     */
+    const findBoundary = (content: string): number => {
+      // Find the last paragraph boundary (double newline)
+      const lastParaBreak = content.lastIndexOf('\n\n');
+      if (lastParaBreak > 0) {
+        return lastParaBreak + 2; // Include the \n\n separator
+      }
+      return 0;
+    };
+
+    /**
+     * Flushes completed content through the validation pipeline
      * and forwards validated pages via onChunk.
+     * Only processes content up to the last natural boundary;
+     * incomplete content stays in the buffer.
      */
     const flushContent = async (
       isComplete: boolean,
       error: DomainError | null,
     ): Promise<void> => {
-      if (contentBuffer.isEmpty()) return;
+      if (!pendingContent) return;
 
-      const fullContent = contentBuffer.getContent();
-      contentBuffer.clear();
+      // Determine how much content is ready to process
+      let readyContent: string;
+      if (isComplete) {
+        // On completion, process everything remaining
+        readyContent = pendingContent;
+        pendingContent = '';
+      } else {
+        // Find boundary and only process completed paragraphs
+        const boundary = findBoundary(pendingContent);
+        if (boundary <= 0) return; // No completed section yet
+        readyContent = pendingContent.slice(0, boundary);
+        pendingContent = pendingContent.slice(boundary);
+      }
 
-      if (!fullContent) return;
+      if (!readyContent) return;
 
       if (this.config.streamingBypassValidation) {
-        handler.onChunk(fullContent, isComplete, null, StreamChunkType.CONTENT);
+        handler.onChunk(readyContent, false, null, StreamChunkType.CONTENT);
         return;
       }
 
-      const validated = await this.applyPipeline(fullContent);
+      const validated = await this.applyPipeline(readyContent);
       for (let i = 0; i < validated.length; i++) {
-        const pageIsComplete = i === validated.length - 1;
+        const pageIsComplete = isComplete && i === validated.length - 1 && !pendingContent;
         handler.onChunk(validated[i], pageIsComplete, null, StreamChunkType.CONTENT);
       }
     };
@@ -207,14 +234,17 @@ export class MarkdownValidatingAIChatService implements AIChatService {
           return;
         }
 
-        // Accumulate CONTENT chunks; validate full content on completion
+        // Accumulate CONTENT chunks
         if (chunk) {
-          contentBuffer.add(chunk);
+          pendingContent += chunk;
         }
 
         if (isComplete) {
           // Fire-and-forget: flushContent is async but onChunk returns void
           flushContent(true, null).catch(() => {});
+        } else {
+          // Incremental flush: process completed paragraph/heading boundaries
+          flushContent(false, null).catch(() => {});
         }
       },
     };

@@ -43,6 +43,20 @@ export class DispatchNotificationService {
     private readonly afterSalesStaffService?: DispatchAfterSalesStaffService,
   ) {}
 
+  /** DM 給護航者：已分配到新訂單（embed 格式）。 */
+  async notifyEscortAssigned(order: EscortDispatchOrder): Promise<boolean> {
+    return this.sendDMEmbed(String(order.escortUserId), {
+      title: `📋 新訂單已分配 #${order.orderNumber}`,
+      description: '您已被分配一個新訂單，請前往面板確認。',
+      color: COLOR_INFO,
+      fields: [
+        { name: '訂單編號', value: order.orderNumber, inline: true },
+        { name: '客戶', value: `<@${order.customerUserId}>`, inline: true },
+      ],
+      footer: { text: '請前往面板處理' },
+    });
+  }
+
   /** DM 給管理員與客戶：護航者已確認接單（embed 格式）。 */
   async notifyEscortConfirmed(order: EscortDispatchOrder): Promise<boolean> {
     const embed: EmbedPayload = {

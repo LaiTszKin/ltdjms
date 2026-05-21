@@ -1,12 +1,12 @@
 import { type Result, ok, err, DomainError } from '@ltdjms/shared';
-import {
+import { CurrencyTransactionSource } from '@ltdjms/economy';
+import type {
   BalanceService,
   BalanceAdjustmentService,
   CurrencyConfigService,
-  CurrencyTransactionSource,
-  type GuildCurrencyConfig,
-  type BalanceView,
-  type BalanceAdjustmentResult,
+  GuildCurrencyConfig,
+  BalanceView,
+  BalanceAdjustmentResult,
 } from '@ltdjms/economy';
 
 /**

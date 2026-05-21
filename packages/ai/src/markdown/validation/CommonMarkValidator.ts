@@ -332,19 +332,14 @@ export class CommonMarkValidator implements MarkdownValidator {
    * Additional regex-based format pass for heading/list syntax issues
    * that the AST parser may not flag (since marked normalizes some syntax).
    * Uses its own code fence tracking rather than the AST-based line set.
-   */
-  /**
-   * NOTE(P3-9): 每行會執行多次 regex 匹配（heading、inline heading、list 等）。
-   * 若在大量行數的大型 Markdown 上遇到效能瓶頸，可考慮：
-   * - 合併 regex 成單一複合表達式
-   * - 提前 break（遇到第一個 error 即停止該行後續檢查）
-   * 目前單次驗證的行數規模較小（< 2000 lines），暫無優化必要。
+   * Uses compound regex expressions and early continue after each match (P2-10).
    */
   private regexFormatPass(
     lines: string[],
     errors: MarkdownError[],
   ): void {
-    // For simplicity, track code block state with same logic as old implementation
+    // Compound regex for code fence detection
+    const CODE_FENCE_RE = /^\s*(```|~~~)/;
     let inCodeBlock = false;
     let codeFenceChar = '';
 
@@ -353,10 +348,11 @@ export class CommonMarkValidator implements MarkdownValidator {
       const lineNum = i + 1;
 
       // Track code fence state
-      if (/^\s*(```|~~~)/.test(line)) {
+      const fenceMatch = line.match(CODE_FENCE_RE);
+      if (fenceMatch) {
         if (!inCodeBlock) {
           inCodeBlock = true;
-          codeFenceChar = line.match(/^(```|~~~)/)?.[1] ?? '```';
+          codeFenceChar = fenceMatch[1];
         } else if (line.trimStart().startsWith(codeFenceChar)) {
           inCodeBlock = false;
           codeFenceChar = '';
@@ -367,13 +363,13 @@ export class CommonMarkValidator implements MarkdownValidator {
 
       const trimmed = line.trimStart();
 
-      // Check headings that marked's AST might not flag (missing space after #)
+      // Compound heading check: match heading marker and content in one expression
       const headingMatch = line.match(/^(#{1,})(.*)$/);
       if (headingMatch) {
         const hashes = headingMatch[1];
         const content = headingMatch[2];
 
-        // Check heading level exceeded
+        // Check heading level exceeded first
         if (hashes.length > 6) {
           errors.push({
             errorType: ErrorType.HEADING_LEVEL_EXCEEDED,
@@ -394,6 +390,7 @@ export class CommonMarkValidator implements MarkdownValidator {
             context: line.slice(0, 50),
             suggestion: '# 後需要加上空格',
           });
+          continue;
         }
 
         // Check heading contains list marker
@@ -405,6 +402,7 @@ export class CommonMarkValidator implements MarkdownValidator {
             context: line.slice(0, 50),
             suggestion: '標題中不應包含列表標記',
           });
+          continue;
         }
       }
 
@@ -418,6 +416,7 @@ export class CommonMarkValidator implements MarkdownValidator {
           context: line.slice(Math.max(0, (inlineMatch.index ?? 0) - 5), (inlineMatch.index ?? 0) + 20),
           suggestion: '標題應在行首，而非行內',
         });
+        continue;
       }
 
       // Skip empty lines for list checks
@@ -426,35 +425,33 @@ export class CommonMarkValidator implements MarkdownValidator {
       // Skip emphasis syntax (*text* and **text**) — these are not list markers
       if (/^\*[^*]+\*$/.test(trimmed) || /^\*\*[^*]+\*\*$/.test(trimmed)) continue;
 
-      // Check unordered list: - or * or + without space after
-      const unorderedMatch = trimmed.match(/^[-*+](\S)/);
-      if (unorderedMatch) {
-        errors.push({
-          errorType: ErrorType.MALFORMED_LIST,
-          line: lineNum,
-          column: line.indexOf(trimmed[0]) + 2,
-          context: trimmed.slice(0, 50),
-          suggestion: '列表標記後需要加上空格（如 "- item"）',
-        });
+      // Compound list format check: merge unordered and ordered list marker checks
+      const listFormatMatch = trimmed.match(/^([-*+]|\d+\.)(\S)/);
+      if (listFormatMatch) {
+        const marker = listFormatMatch[1];
+        const isOrdered = /^\d+\.$/.test(marker);
+        if (isOrdered) {
+          const prefixLen = marker.length;
+          errors.push({
+            errorType: ErrorType.MALFORMED_LIST,
+            line: lineNum,
+            column: line.indexOf(trimmed[0]) + prefixLen + 1,
+            context: trimmed.slice(0, 50),
+            suggestion: '編號列表後需要加上空格（如 "1. item"）',
+          });
+        } else {
+          errors.push({
+            errorType: ErrorType.MALFORMED_LIST,
+            line: lineNum,
+            column: line.indexOf(trimmed[0]) + 2,
+            context: trimmed.slice(0, 50),
+            suggestion: '列表標記後需要加上空格（如 "- item"）',
+          });
+        }
         continue;
       }
 
-      // Check ordered list: 1. without space after
-      const orderedMatch = trimmed.match(/^\d+\.(\S)/);
-      if (orderedMatch) {
-        const prefixMatch = trimmed.match(/^\d+\./);
-        const prefixLen = prefixMatch ? prefixMatch[0].length : 0;
-        errors.push({
-          errorType: ErrorType.MALFORMED_LIST,
-          line: lineNum,
-          column: line.indexOf(trimmed[0]) + prefixLen + 1,
-          context: trimmed.slice(0, 50),
-          suggestion: '編號列表後需要加上空格（如 "1. item"）',
-        });
-        continue;
-      }
-
-      // Check nested list indentation
+      // Check nested list indentation (compound pattern for list item detection)
       if (/^[-*+]\s/.test(trimmed) || /^\d+\.\s/.test(trimmed)) {
         const leadingSpaces = line.length - line.trimStart().length;
         if (leadingSpaces > 0 && leadingSpaces % 4 !== 0) {
@@ -465,6 +462,7 @@ export class CommonMarkValidator implements MarkdownValidator {
             context: trimmed.slice(0, 50),
             suggestion: `巢狀列表縮排應為 4 的倍數（目前 ${leadingSpaces} 空格）`,
           });
+          continue;
         }
       }
 
@@ -477,6 +475,7 @@ export class CommonMarkValidator implements MarkdownValidator {
           context: trimmed.slice(0, 50),
           suggestion: 'Discord 不支援任務列表（task list），請改用普通列表',
         });
+        continue;
       }
     }
   }

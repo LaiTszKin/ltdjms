@@ -5,7 +5,7 @@ import { type EmbedView } from '../domain/embed-view.js';
  * Limits configuration for embed pagination.
  * Mirrors the constants on DiscordEmbedBuilder implementations.
  */
-export interface EmbedLimits {
+interface EmbedLimits {
   readonly MAX_TITLE_LENGTH: number;
   readonly MAX_DESCRIPTION_LENGTH: number;
   readonly MAX_FIELD_NAME_LENGTH: number;

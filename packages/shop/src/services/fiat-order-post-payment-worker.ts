@@ -87,8 +87,9 @@ export class FiatOrderPostPaymentWorker {
             throw e;
           }
         } else {
-          throw new Error(
-            `Fiat admin notification is already being processed: orderNumber=${order.orderNumber}`,
+          this.log.warn(
+            { orderNumber: order.orderNumber },
+            'Admin notification claim failed, another worker is processing',
           );
         }
       }

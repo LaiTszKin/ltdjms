@@ -23,7 +23,6 @@ import type {
   EscortCatalogService,
   EscortDispatchOrderService,
 } from '@ltdjms/dispatch';
-import type { DispatchPanelCommandHandler } from '@ltdjms/dispatch';
 import { DISPATCH_TOKENS } from '@ltdjms/dispatch';
 import type { ShopCommandHandler } from '@ltdjms/shop';
 
@@ -73,6 +72,10 @@ import { AdminPanelModalFactory } from '../panel/admin/views/AdminPanelModalFact
 import { AdminProductPanelViewFactory } from '../panel/admin/product/AdminProductPanelViewFactory.js';
 import { AdminProductPanelModalFactory } from '../panel/admin/product/AdminProductPanelModalFactory.js';
 import { UserPanelEmbedBuilder } from '../panel/user/UserPanelEmbedBuilder.js';
+
+/** Module-level handler references for DomainEventPublisher unregister support. */
+let _adminUpdateHandler: ((event: unknown) => void) | null = null;
+let _userUpdateHandler: ((event: unknown) => void) | null = null;
 
 /**
  * DI tokens for the admin module.
@@ -374,7 +377,7 @@ export function configureAdminContainer(): void {
   container.registerInstance(ADMIN_TOKENS.EscortCatalogHandler, escortCatalogHandler);
   slashCommandListener.registerInteractionHandler(escortCatalogHandler);
 
-  const dispatchPanelCommandHandler = container.resolve<DispatchPanelCommandHandler>(
+  const dispatchPanelCommandHandler = container.resolve<any>(
     DISPATCH_TOKENS.DispatchPanelCommandHandler,
   );
   slashCommandListener.registerCommand(dispatchPanelCommandHandler);
@@ -451,11 +454,12 @@ export function configureAdminContainer(): void {
     adminPanelViewFactory,
   );
   container.registerInstance(ADMIN_TOKENS.AdminPanelUpdateListener, adminUpdateListener);
-  eventPublisher.register((event: unknown) => {
+  _adminUpdateHandler = (event: unknown): void => {
     adminUpdateListener.onEvent(event as any).catch((err: unknown) => {
       console.error('[AdminPanelUpdateListener] Error:', err);
     });
-  });
+  };
+  eventPublisher.register(_adminUpdateHandler);
 
   const userUpdateListener = new UserPanelUpdateListener(
     panelSessionManager,
@@ -464,17 +468,19 @@ export function configureAdminContainer(): void {
     userPanelEmbedBuilder,
   );
   container.registerInstance(ADMIN_TOKENS.UserPanelUpdateListener, userUpdateListener);
-  eventPublisher.register((event: unknown) => {
+  _userUpdateHandler = (event: unknown): void => {
     userUpdateListener.onEvent(event as any).catch((err: unknown) => {
       console.error('[UserPanelUpdateListener] Error:', err);
     });
-  });
+  };
+  eventPublisher.register(_userUpdateHandler);
 
 }
 
 /**
  * Disposes admin module resources. Should be called during application shutdown.
- * Stops session cleanup intervals to prevent memory leaks.
+ * Stops session cleanup intervals and unregisters domain event listeners
+ * to prevent memory leaks.
  */
 export function disposeAdminContainer(): void {
   try {
@@ -489,5 +495,22 @@ export function disposeAdminContainer(): void {
     mgr.stopCleanupInterval();
   } catch {
     // Session manager not registered; nothing to dispose
+  }
+
+  // Unregister domain event listeners
+  try {
+    const publisher = container.resolve<DomainEventPublisher>(
+      TOKENS.DomainEventPublisher,
+    );
+    if (_adminUpdateHandler) {
+      publisher.unregister(_adminUpdateHandler);
+      _adminUpdateHandler = null;
+    }
+    if (_userUpdateHandler) {
+      publisher.unregister(_userUpdateHandler);
+      _userUpdateHandler = null;
+    }
+  } catch {
+    // DomainEventPublisher not available
   }
 }

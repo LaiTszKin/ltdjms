@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { Ok, Err, DomainError } from '@ltdjms/shared';
 import { GameRewardService } from '../dice/services/game-reward-service.js';
 import type { CurrencyTransactionSource } from '../domain/types.js';
+import { MAX_ADJUSTMENT_AMOUNT } from '../domain/types.js';
 import type { BalanceAdjustmentResult, BalanceView } from '../domain/types.js';
 
 describe('GameRewardService', () => {
@@ -12,29 +13,9 @@ describe('GameRewardService', () => {
     };
   }
 
-  /** Creates a mock CacheService for DI (P0-2). */
-  function createMockCacheService() {
-    return {
-      get: vi.fn(),
-      put: vi.fn().mockResolvedValue(undefined),
-      invalidate: vi.fn(),
-    };
-  }
-
-  /** Creates a mock CacheKeyGenerator for DI (P0-2). */
-  function createMockCacheKeyGenerator() {
-    return {
-      balanceKey: vi.fn().mockReturnValue('cache:balance:1:1'),
-      gameTokenKey: vi.fn(),
-      NAMESPACE: 'cache',
-    };
-  }
-
   describe('creditReward', () => {
     it('should return current balance when reward is 0 instead of returning 0 (P0-3)', async () => {
       const mockAdjustmentService = createMockBalanceAdjustmentService();
-      const mockTxService = { recordTransaction: vi.fn() };
-      const mockEventPublisher = { publish: vi.fn() };
       const mockBalanceService = {
         tryGetBalance: vi.fn().mockResolvedValue(new Ok({
           guildId: 1,
@@ -48,10 +29,6 @@ describe('GameRewardService', () => {
       const service = new GameRewardService(
         mockAdjustmentService as any,
         mockBalanceService as any,
-        mockTxService as any,
-        mockEventPublisher as any,
-        createMockCacheService(),
-        createMockCacheKeyGenerator(),
       );
 
       const balance = await service.creditReward(1, 1, 0, 'DICE_GAME_1_WIN' as CurrencyTransactionSource);
@@ -68,10 +45,6 @@ describe('GameRewardService', () => {
       const service = new GameRewardService(
         createMockBalanceAdjustmentService() as any,
         mockBalanceService as any,
-        {} as any,
-        {} as any,
-        createMockCacheService(),
-        createMockCacheKeyGenerator(),
       );
 
       await expect(
@@ -92,8 +65,6 @@ describe('GameRewardService', () => {
       };
       mockAdjustmentService.tryBatchAdjust.mockResolvedValue(new Ok(expectedResult));
 
-      const mockTxService = { recordTransaction: vi.fn() };
-      const mockEventPublisher = { publish: vi.fn() };
       const mockBalanceService = {
         tryGetBalance: vi.fn(),
       };
@@ -101,10 +72,6 @@ describe('GameRewardService', () => {
       const service = new GameRewardService(
         mockAdjustmentService as any,
         mockBalanceService as any,
-        mockTxService as any,
-        mockEventPublisher as any,
-        createMockCacheService(),
-        createMockCacheKeyGenerator(),
       );
 
       const balance = await service.creditReward(1, 1, 2500, 'DICE_GAME_1_WIN' as CurrencyTransactionSource);
@@ -112,7 +79,7 @@ describe('GameRewardService', () => {
       expect(balance).toBe(3500);
       expect(mockAdjustmentService.tryBatchAdjust).toHaveBeenCalledTimes(1);
       expect(mockAdjustmentService.tryBatchAdjust).toHaveBeenCalledWith(
-        1, 1, 2500, 'DICE_GAME_1_WIN', null, Number.MAX_SAFE_INTEGER,
+        1, 1, 2500, 'DICE_GAME_1_WIN', null, MAX_ADJUSTMENT_AMOUNT,
       );
     });
 
@@ -128,10 +95,6 @@ describe('GameRewardService', () => {
       const service = new GameRewardService(
         mockAdjustmentService as any,
         mockBalanceService as any,
-        {} as any,
-        {} as any,
-        createMockCacheService(),
-        createMockCacheKeyGenerator(),
       );
 
       await expect(

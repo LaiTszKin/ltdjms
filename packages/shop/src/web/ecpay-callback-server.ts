@@ -102,6 +102,7 @@ export class EcpayCallbackHttpServer {
     this.server.on('connection', (socket) => {
       this.connections.add(socket);
       socket.on('close', () => this.connections.delete(socket));
+      socket.on('error', () => this.connections.delete(socket));
     });
 
     // Handle server-level errors (P1-8)

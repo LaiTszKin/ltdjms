@@ -62,58 +62,16 @@ export class DiscordMarkdownSanitizer {
 
   /**
    * Converts Markdown tables to ```text code blocks.
+   * Uses a single regex to match complete table blocks and replace them inline.
    * Detects tables by header separator line pattern.
-   * Two-phase processing: first scan to identify table regions, then build result.
    */
   private convertTablesToCodeBlocks(text: string): string {
-    const lines = text.split('\n');
-    const TABLE_SEPARATOR = /^\s*\|?\s*[:\-]+(?:\s*\|\s*[:\-]+)+\s*\|?\s*$/;
+    // Match table blocks: header row (contains |), separator row (|---| pattern), optional data rows (contain |)
+    // Single regex pass instead of two-phase scanning
+    const TABLE_BLOCK = /^[^\n]*\|[^\n]*\n\s*\|?\s*[:\-]+(?:\s*\|\s*[:\-]+)+\s*\|?\s*(?:\n[^\n]*\|[^\n]*)*/gm;
 
-    // Phase 1: Scan for table regions (ranges of line indices [start, end))
-    const tableRegions: Array<{ start: number; end: number }> = [];
-    let i = 0;
-    while (i < lines.length) {
-      const line = lines[i];
-      if (TABLE_SEPARATOR.test(line)) {
-        // Table starts at the previous line (header) or this line if at index 0
-        const start = i > 0 ? i - 1 : i;
-        let end = i + 1; // end is exclusive
-
-        // Scan forward for table rows (lines starting with | or containing |)
-        i++;
-        while (i < lines.length) {
-          const nextLine = lines[i];
-          if (nextLine.trimStart().startsWith('|') || nextLine.includes('|')) {
-            end = i + 1;
-            i++;
-          } else {
-            break;
-          }
-        }
-        tableRegions.push({ start, end });
-      } else {
-        i++;
-      }
-    }
-
-    // Phase 2: Build result, replacing table regions with code blocks
-    const result: string[] = [];
-    let lastEnd = 0;
-    for (const region of tableRegions) {
-      // Add lines before this table
-      for (let j = lastEnd; j < region.start; j++) {
-        result.push(lines[j]);
-      }
-      // Convert table region to code block
-      const tableContent = lines.slice(region.start, region.end).join('\n');
-      result.push('```text\n' + tableContent + '\n```');
-      lastEnd = region.end;
-    }
-    // Add remaining lines after last table
-    for (let j = lastEnd; j < lines.length; j++) {
-      result.push(lines[j]);
-    }
-
-    return result.join('\n');
+    return text.replace(TABLE_BLOCK, (match) => {
+      return '```text\n' + match + '\n```';
+    });
   }
 }

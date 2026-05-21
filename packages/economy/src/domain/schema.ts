@@ -39,6 +39,7 @@ export const memberCurrencyAccount = pgTable(
   (table) => ({
     pk: primaryKey({ columns: [table.guildId, table.userId] }),
     guildIdx: index('idx_member_currency_account_guild').on(table.guildId),
+    userIdx: index('idx_member_currency_account_user').on(table.userId),
     balanceCheck: check('balance_non_negative', sql`${table.balance} >= 0`),
   }),
 );
@@ -88,6 +89,7 @@ export const gameTokenAccount = pgTable(
   (table) => ({
     pk: primaryKey({ columns: [table.guildId, table.userId] }),
     guildIdx: index('idx_game_token_account_guild').on(table.guildId),
+    userIdx: index('idx_game_token_account_user').on(table.userId),
     tokensCheck: check('tokens_non_negative', sql`${table.tokens} >= 0`),
   }),
 );

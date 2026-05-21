@@ -1,13 +1,13 @@
 import { type Result, ok, err, DomainError } from '@ltdjms/shared';
-import {
+import type {
   BalanceService,
   GameTokenService,
   CurrencyTransactionService,
   GameTokenTransactionService,
-  type BalanceView,
-  type CurrencyTransaction,
-  type GameTokenTransaction,
-  type TransactionPage,
+  BalanceView,
+  CurrencyTransaction,
+  GameTokenTransaction,
+  TransactionPage,
 } from '@ltdjms/economy';
 import {
   RedemptionService,

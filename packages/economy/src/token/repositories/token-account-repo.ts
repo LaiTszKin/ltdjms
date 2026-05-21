@@ -43,7 +43,7 @@ export class TokenAccountRepository extends BaseAccountRepository<GameTokenAccou
 }
 
 /** Error thrown when a token adjustment would result in a negative balance. */
-export class InsufficientTokensError extends Error {
+class InsufficientTokensError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'InsufficientTokensError';

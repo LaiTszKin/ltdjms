@@ -8,8 +8,6 @@ import { BaseTransactionService } from '../../common/base-tx-service.js';
  * Matches Java CurrencyTransactionService behavior.
  */
 export class CurrencyTransactionService extends BaseTransactionService<CurrencyTransaction, CurrencyTransactionSource> {
-  static readonly DEFAULT_PAGE_SIZE = BaseTransactionService.DEFAULT_PAGE_SIZE;
-
   constructor(transactionRepository: CurrencyTransactionRepository) {
     super(transactionRepository);
   }

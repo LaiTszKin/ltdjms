@@ -78,7 +78,7 @@ export function splitSelectMenusGeneric<T>(
 /**
  * Splits options and wraps each menu in an ActionRow.
  */
-export function buildSelectRows(
+function buildSelectRows(
   options: StringSelectMenuOptionBuilder[],
   customId: string,
   placeholder?: string,

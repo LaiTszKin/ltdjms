@@ -20,11 +20,12 @@ export class EscortDispatchOrderNumberGenerator {
   /** 產生一組訂單編號。 */
   generate(): string {
     const now = new Date(this.clock());
-    const datePart = [
-      now.getUTCFullYear().toString(),
-      String(now.getUTCMonth() + 1).padStart(2, '0'),
-      String(now.getUTCDate()).padStart(2, '0'),
-    ].join('');
+    const datePart = new Intl.DateTimeFormat('zh-TW', {
+      timeZone: 'Asia/Taipei',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(now).replace(/\//g, '');
 
     return `${EscortDispatchOrderNumberGenerator.PREFIX}-${datePart}-${this.randomSuffix()}`;
   }

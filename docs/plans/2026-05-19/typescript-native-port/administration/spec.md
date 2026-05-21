@@ -14,7 +14,7 @@
 
 - **管理面板** (`/admin-panel` slash command)：9 個功能按鈕的互動式 embed 面板，含貨幣管理、代幣管理、遊戲設定、產品／兌換碼管理、AI 頻道設定、AI Agent 設定、派單售後設定、護航定價、護航目錄 CRUD
 - **用戶面板** (`/user-panel` slash command)：餘額與代幣顯示、交易記錄（貨幣／代幣／兌換）分頁查詢、兌換碼輸入 Modal
-- **Facade 聚合層**（5 個 Facade）：`CurrencyManagementFacade`、`GameTokenManagementFacade`、`GameConfigManagementFacade`、`AIConfigManagementFacade`、`MemberInfoFacade`
+- **Facade 聚合層**（7 個 Facade）：`CurrencyManagementFacade`、`GameTokenManagementFacade`、`GameConfigManagementFacade`、`AIConfigManagementFacade`、`MemberInfoFacade`、`DispatchManagementFacade`、`ProductManagementFacade`
 - **Session 管理**：`AdminPanelSessionManager`（管理面板狀態追蹤：MAIN / PRODUCT_LIST / PRODUCT_DETAIL / PRODUCT_CODE_LIST）、`PanelSessionManager`（用戶面板 session 追蹤）。自包含於 admin 套件，使用 in-memory Map + 選擇性 CacheService (Redis)。無共享的 `DiscordSessionManager` 類別。TTL 15 分鐘。
 - **即時更新**：`AdminPanelUpdateListener`、`UserPanelUpdateListener` 監聽 DomainEvent 並更新已開啟的面板 embed
 - **Slash Command 註冊**：`SlashCommandListener`（集中式 JDA 事件分發）、`SlashCommandMetrics`（延遲追蹤 p50/p95/p99）、`BotErrorHandler`（DomainError 到用戶訊息對映）

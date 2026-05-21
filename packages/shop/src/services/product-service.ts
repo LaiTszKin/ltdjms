@@ -1,7 +1,8 @@
 import { type Result, ok, err, DomainError } from '@ltdjms/shared';
 import type { DomainEventPublisher } from '@ltdjms/shared';
 import { type Product, type ProductRepository } from '../domain/product-types.js';
-import { type ProductChangedEvent, OperationType } from '../events/index.js';
+import { OperationType } from '@ltdjms/shared';
+import { type ProductChangedEvent } from '../events/index.js';
 import pino from 'pino';
 
 export class ProductService {
