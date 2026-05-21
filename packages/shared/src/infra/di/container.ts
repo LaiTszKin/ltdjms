@@ -36,7 +36,7 @@ export function initializeContainer(options?: {
   if (options?.config) {
     tsyringeContainer.registerInstance(TOKENS.EnvironmentConfig, options.config);
   } else {
-    tsyringeContainer.registerSingleton(EnvironmentConfig);
+    tsyringeContainer.registerSingleton(TOKENS.EnvironmentConfig as symbol, EnvironmentConfig);
   }
 
   // Cache

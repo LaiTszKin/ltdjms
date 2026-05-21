@@ -139,10 +139,21 @@ export class DiscordJsInteraction implements DiscordInteraction {
   }
 
   isButton(): boolean {
+    // Prefer discord.js built-in method when available, fall back to duck-typing
+    // for robustness against discord.js version changes.
+    const interaction = this.interaction as unknown as Record<string, unknown>;
+    if (typeof interaction.isButton === 'function') {
+      return (interaction as { isButton: () => boolean }).isButton();
+    }
     return 'customId' in this.interaction && !('fields' in this.interaction);
   }
 
   isModalSubmit(): boolean {
+    // Prefer discord.js built-in method when available, fall back to duck-typing.
+    const interaction = this.interaction as unknown as Record<string, unknown>;
+    if (typeof interaction.isModalSubmit === 'function') {
+      return (interaction as { isModalSubmit: () => boolean }).isModalSubmit();
+    }
     return 'fields' in this.interaction;
   }
 

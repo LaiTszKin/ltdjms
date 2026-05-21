@@ -20,7 +20,6 @@ import { type Result, DomainError, ok, err, processWithConcurrencyLimit } from '
 import type { DiscordRuntimeGateway, DomainEventPublisher, DomainEvent } from '@ltdjms/shared';
 import { LangChainExceptionMapper } from './LangChainExceptionMapper.js';
 import type { PromptLoader } from '../prompts/prompt-loader.js';
-import { ToolCallerAuthorizationGuard } from '../tools/ToolCallerAuthorizationGuard.js';
 import { ToolExecutionContext } from '../tools/ToolExecutionContext.js';
 import { ToolExecutionInterceptor } from './ToolExecutionInterceptor.js';
 import { InMemoryToolCallHistory } from './memory/tool-call-history.js';
@@ -64,7 +63,6 @@ export class LangChainAIChatService implements AIChatService {
     private readonly promptLoader: PromptLoader,
     chatModel: ChatOpenAI,
     private readonly toolMap?: Map<string, RegisteredTool>,
-    private readonly authGuard?: ToolCallerAuthorizationGuard,
     private readonly interceptor?: ToolExecutionInterceptor,
     private readonly toolCallHistory?: InMemoryToolCallHistory,
     private readonly runtimeGateway?: DiscordRuntimeGateway,
@@ -366,7 +364,7 @@ export class LangChainAIChatService implements AIChatService {
 
       // Final completion signal (used by non-agent mode)
       if (!agentEnabled) {
-        handler.onChunk(totalContent || '', true, null);
+        handler.onChunk('', true, null);
       }
 
       // Publish AIMessageEvent after successful completion (INT-011)

@@ -5,12 +5,31 @@ import {
   DomainError,
 } from '@ltdjms/shared';
 import { GameRewardService } from './game-reward-service.js';
-import { BalanceService } from '../../currency/services/balance-service.js';
 import type { DiceGame1Config, DiceGame1Result } from '../../domain/types.js';
 import {
   CurrencyTransactionSource,
 } from '../../domain/types.js';
-import { type Random, DefaultRandom, rollDice } from './random.js';
+import { type Random, DefaultRandom, rollDice as randomRollDice } from './random.js';
+
+/**
+ * Rolls dice deterministically (for testing with predetermined values).
+ * @internal Exposed for test use only; not part of the public API.
+ */
+export function rollDice(count: number, random: Random): number[] {
+  return randomRollDice(count, random);
+}
+
+/**
+ * Calculates the total reward from dice rolls.
+ * @internal Exposed for test use only; not part of the public API.
+ */
+export function calculateTotalReward(
+  diceRolls: readonly number[],
+  rewardPerDiceValue: number,
+): number {
+  const sum = diceRolls.reduce((acc, val) => acc + val, 0);
+  return sum * rewardPerDiceValue;
+}
 
 /**
  * Dice Game 1 service implementation.
@@ -23,7 +42,6 @@ import { type Random, DefaultRandom, rollDice } from './random.js';
 export class DiceGame1Service {
   constructor(
     private readonly gameRewardService: GameRewardService,
-    private readonly balanceService: BalanceService,
     private readonly random: Random = DefaultRandom,
   ) {}
 
@@ -62,15 +80,10 @@ export class DiceGame1Service {
     }
 
     // Calculate total reward: sum(dice) * rewardPerDiceValue
-    const sum = diceRolls.reduce((acc, val) => acc + val, 0);
-    const totalReward = sum * config.rewardPerDiceValue;
+    const diceSum = diceRolls.reduce((acc, val) => acc + val, 0);
+    const totalReward = diceSum * config.rewardPerDiceValue;
 
-    // Get previous balance directly from BalanceService instead of calling
-    // creditReward(0) which would trigger a full DB read with config lookup for no reward.
-    const previousBalanceResult = await this.balanceService.getBalance(guildId, userId);
-    const previousBalance = previousBalanceResult.isOk() ? previousBalanceResult.getValue().balance : 0;
-
-    // Apply reward via GameRewardService
+    // Apply reward via GameRewardService — returns both previous and new balance (P1-25)
     const rewardResult = await this.gameRewardService.creditReward(
       guildId,
       userId,
@@ -81,35 +94,16 @@ export class DiceGame1Service {
     if (rewardResult.isErr()) {
       return new Err(rewardResult.getError());
     }
-    const newBalance = rewardResult.getValue();
+    const { previousBalance, newBalance } = rewardResult.getValue();
 
     return new Ok({
       guildId,
       userId,
       diceRolls,
+      diceSum,
       totalReward,
       previousBalance,
       newBalance,
     });
-  }
-
-  /**
-   * Rolls dice deterministically (for testing with predetermined values).
-   * @internal Exposed for test use only; not part of the public API.
-   */
-  rollDice(count: number): number[] {
-    return rollDice(count, this.random);
-  }
-
-  /**
-   * Calculates the total reward from dice rolls.
-   * @internal Exposed for test use only; not part of the public API.
-   */
-  calculateTotalReward(
-    diceRolls: readonly number[],
-    rewardPerDiceValue: number,
-  ): number {
-    const sum = diceRolls.reduce((acc, val) => acc + val, 0);
-    return sum * rewardPerDiceValue;
   }
 }

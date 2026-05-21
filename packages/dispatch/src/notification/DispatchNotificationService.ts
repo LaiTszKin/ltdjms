@@ -29,11 +29,12 @@ interface ActionRowPayload {
 /** The order-specific custom ID prefix for notification buttons. */
 const NOTIFY_PREFIX = 'dispatch_notify_';
 const NOTIFY_CONFIRM = `${NOTIFY_PREFIX}confirm`;
-const NOTIFY_COMPLETE = `${NOTIFY_PREFIX}complete`;
 const NOTIFY_CONFIRM_COMPLETION = `${NOTIFY_PREFIX}confirm_completion`;
 const NOTIFY_AFTER_SALES = `${NOTIFY_PREFIX}after_sales`;
 const NOTIFY_CLAIM = `${NOTIFY_PREFIX}claim`;
 const NOTIFY_CLOSE = `${NOTIFY_PREFIX}close`;
+
+const MAX_NOTIFICATION_RECIPIENTS = 20;
 
 /**
  * Best-effort DM notification service for escort dispatch events.
@@ -79,23 +80,20 @@ export class DispatchNotificationService {
       ],
       footer: { text: '服務進行中' },
     };
+    // P0-3: DM 給客戶及護航者（不 DM 管理員，不附「送出完成」按鈕）
     const results = await Promise.all([
-      // Extra notification: also DM the assigning admin (assignedByUserId) as a courtesy (P3-4)
-      this.sendDMEmbed(String(order.assignedByUserId), embed),
       this.sendDMEmbed(String(order.customerUserId), embed),
-      // R4: DM the escort with a "送出完成" button so they can mark the order complete (P0-7)
+      // 護航者通知不含「送出完成」按鈕——該按鈕僅在 R5 (notifyCompletionRequested) 出現
       this.sendDMEmbed(String(order.escortUserId), {
         title: `✅ 已確認接單 #${order.orderNumber}`,
-        description: '您已確認接單，請在服務完成後點擊下方按鈕。',
+        description: '您已確認接單，請在服務完成後操作送出完成。',
         color: COLOR_INFO,
         fields: [
           { name: '訂單編號', value: order.orderNumber, inline: true },
           { name: '客戶', value: `<@${order.customerUserId}>`, inline: true },
         ],
         footer: { text: '服務進行中' },
-      }, [
-        { type: 1, components: [{ type: 2, style: 3, custom_id: `${NOTIFY_COMPLETE}:${order.orderNumber}`, label: '送出完成' }] },
-      ]),
+      }),
     ]);
     return results.every(Boolean);
   }
@@ -167,7 +165,9 @@ export class DispatchNotificationService {
       // R7.4: Filter by online status. Send to online staff first.
       // If none online, send to all staff.
       const onlineStaffIds = await this.filterOnlineStaff(order.guildId, [...staffIds]);
-      const targetIds = onlineStaffIds.length > 0 ? onlineStaffIds : [...staffIds];
+      const filteredIds = onlineStaffIds.length > 0 ? onlineStaffIds : [...staffIds];
+      // P2-18: 限制單次通知人數，避免多人同時收到 DM
+      const targetIds = filteredIds.slice(0, MAX_NOTIFICATION_RECIPIENTS);
 
       await processWithConcurrencyLimit(targetIds, async (staffId) =>
         this.sendDMEmbed(String(staffId), embed, [
@@ -253,15 +253,16 @@ export class DispatchNotificationService {
    * Uses the gateway to check member presence.
    */
   private async filterOnlineStaff(guildId: number, staffIds: number[]): Promise<number[]> {
-    const results: { id: number; online: boolean }[] = [];
+    // P2-31/P3-21: 使用 Map 保留原始 staffIds 順序，避免 processWithConcurrencyLimit 回傳亂序
+    const results = new Map<number, boolean>();
     await processWithConcurrencyLimit(staffIds, async (staffId) => {
       try {
         const isOnline = await this.gateway.isMemberOnline(String(guildId), String(staffId));
-        results.push({ id: staffId, online: isOnline });
+        results.set(staffId, isOnline);
       } catch {
-        results.push({ id: staffId, online: false });
+        results.set(staffId, false);
       }
     }, 5);
-    return results.filter((r) => r.online).map((r) => r.id);
+    return staffIds.filter((id) => results.get(id) === true);
   }
 }

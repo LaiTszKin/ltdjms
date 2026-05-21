@@ -25,7 +25,7 @@ export {
 } from './infra/config/index.js';
 
 // Logger
-export { createRootLogger } from './infra/logger/index.js';
+export { createRootLogger, createChildLogger } from './infra/logger/index.js';
 
 // Database
 export {
@@ -76,4 +76,9 @@ export {
   DiscordJsRuntimeGateway,
   DiscordRuntimeNotReadyError,
   MockDiscordInteraction,
+  MockDiscordContext,
+  MockDiscordEmbedBuilder,
+  splitOptions,
+  type SelectMenuOption,
+  type SelectMenuDefinition,
 } from './discord/index.js';

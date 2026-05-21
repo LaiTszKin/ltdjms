@@ -1,8 +1,6 @@
 import { type EmbedView, type ButtonView, ButtonStyle } from '@ltdjms/shared';
 import { COLOR_INFO, COLOR_WARNING, COLOR_ERROR } from '../constants.js';
 
-export { COLOR_INFO, COLOR_WARNING, COLOR_ERROR };
-
 // ============================================================
 // Custom ID Constants
 // ============================================================

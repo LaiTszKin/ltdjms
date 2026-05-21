@@ -98,13 +98,14 @@ export async function runMigrations(
       }
 
       // Incremental: apply only unmarked migration files
-      for (const file of sqlFiles) {
-        const applied = await db.execute<{ count: number }>(
-          sql`SELECT COUNT(*)::int as "count" FROM ${sql.identifier(TRACKING_TABLE)} WHERE filename = ${file}`,
-        );
-        const alreadyApplied = applied.rows?.[0]?.count ?? 0;
+      // Batch all existence checks into a single query to avoid N round-trips
+      const appliedResult = await db.execute<{ filename: string }>(
+        sql`SELECT filename FROM ${sql.identifier(TRACKING_TABLE)}`,
+      );
+      const appliedFiles = new Set(appliedResult.rows?.map((r) => r.filename) ?? []);
 
-        if (alreadyApplied === 0) {
+      for (const file of sqlFiles) {
+        if (!appliedFiles.has(file)) {
           const filePath = join(migrationsDir, file);
           const fileContent = await readFile(filePath, 'utf-8');
 

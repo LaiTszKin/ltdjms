@@ -57,7 +57,7 @@ export class MessageSplitter {
     }
 
     // Try Chinese sentence boundaries
-    for (const delimiter of ['。', '！', '？', '\n']) {
+    for (const delimiter of ['。', '！', '？']) {
       const index = slice.lastIndexOf(delimiter);
       if (index > 0) {
         return index + delimiter.length;

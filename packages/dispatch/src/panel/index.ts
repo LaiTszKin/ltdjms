@@ -2,6 +2,8 @@ export { DispatchPanelCommandHandler } from './DispatchPanelCommandHandler.js';
 export { DispatchPanelInteractionHandler } from './DispatchPanelInteractionHandler.js';
 export { DispatchPanelSessionManager, type DispatchSessionState } from './DispatchPanelSessionManager.js';
 
+export { COLOR_INFO, COLOR_WARNING, COLOR_ERROR } from '../constants.js';
+
 export {
   // View constants
   MODE_SELECT,
@@ -19,10 +21,6 @@ export {
   SELECT_ESCORT_OPTION,
   SELECT_ESCORT_OPTION_EXTRA,
   SELECT_PENDING_ORDER,
-  // Colors
-  COLOR_INFO,
-  COLOR_WARNING,
-  COLOR_ERROR,
   // Embed builders
   buildModeSelectEmbed,
   buildCreateModeEmbed,

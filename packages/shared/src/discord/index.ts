@@ -19,6 +19,11 @@ export {
   DiscordJsRuntimeGateway,
   DiscordRuntimeNotReadyError,
 } from './services/discord-js-runtime-gateway.js';
+export {
+  splitOptions,
+  type SelectMenuOption,
+  type SelectMenuDefinition,
+} from './services/select-menu-util.js';
 
 
 // Mocks

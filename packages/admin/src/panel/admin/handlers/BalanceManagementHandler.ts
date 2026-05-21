@@ -169,8 +169,13 @@ export class BalanceManagementHandler extends BaseAdminHandler {
       .setTitle(modalData.title);
 
     for (const field of modalData.fields) {
+      const customId = field.label === ZhTwStrings.balanceModalAmountLabel
+        ? 'balance_amount'
+        : field.label === ZhTwStrings.balanceModalReasonLabel
+          ? 'balance_reason'
+          : field.label;
       const input = new TextInputBuilder()
-        .setCustomId(field.label)
+        .setCustomId(customId)
         .setLabel(field.label)
         .setStyle(TextInputStyle.Short)
         .setMinLength(field.minLength)
@@ -207,8 +212,8 @@ export class BalanceManagementHandler extends BaseAdminHandler {
       return;
     }
 
-    const amountStr = interaction.getTextInputValue('金額');
-    const reason = interaction.getTextInputValue('原因');
+    const amountStr = interaction.getTextInputValue('balance_amount');
+    const reason = interaction.getTextInputValue('balance_reason');
     const amount = parseInt(amountStr, 10);
 
     if (isNaN(amount) || amount <= 0) {
@@ -224,7 +229,7 @@ export class BalanceManagementHandler extends BaseAdminHandler {
     if (mode === 'add') {
       result = await this.facade.adjustBalance(guildId, selectedUserId, amount, reason, actorId);
     } else if (mode === 'deduct') {
-      result = await this.facade.deductBalance(guildId, selectedUserId, amount, reason, actorId);
+      result = await this.facade.adjustBalance(guildId, selectedUserId, -amount, reason, actorId);
     } else {
       result = await this.facade.setBalance(guildId, selectedUserId, amount, reason, actorId);
     }

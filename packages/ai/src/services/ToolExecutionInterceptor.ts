@@ -7,6 +7,7 @@ import pino from 'pino';
  */
 export class ToolExecutionInterceptor {
   private readonly logger: pino.Logger;
+  private static readonly MAX_ORPHANED_ENTRIES = 1000;
   private durations = new Map<string, { startTime: number; timer: ReturnType<typeof setTimeout> }>();
   // Entries are cleared on completion/failure via getAndClearDuration, or after 60s
   // via the fallback timeout. Under high concurrency with orphaned executions (no
@@ -29,6 +30,18 @@ export class ToolExecutionInterceptor {
     const timer = setTimeout(() => {
       this.durations.delete(correlationId);
     }, 60000).unref();
+
+    // Evict oldest entry when max size is exceeded
+    if (this.durations.size >= ToolExecutionInterceptor.MAX_ORPHANED_ENTRIES) {
+      const oldest = this.durations.keys().next().value;
+      if (oldest !== undefined) {
+        const entry = this.durations.get(oldest);
+        if (entry) {
+          clearTimeout(entry.timer);
+        }
+        this.durations.delete(oldest);
+      }
+    }
     this.durations.set(correlationId, { startTime: Date.now(), timer });
 
     this.logger.info({

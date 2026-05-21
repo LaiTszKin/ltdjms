@@ -256,7 +256,11 @@ export class RegexBasedAutoFixer implements MarkdownAutoFixer {
 
   private fixDiscordUnderlineBold(text: string): string {
     // __text__ → **text** (but not inside code blocks, already protected)
-    return text.replace(/__([^_\n]+)__/g, '**$1**');
+    // Word boundary checks prevent matching inside words (P3-17)
+    return text.replace(/(?:^|\s)__([^_\n]+)__(?=\s|$)/g, (match, p1) => {
+      const prefix = match[0] === ' ' ? ' ' : '';
+      return `${prefix}**${p1}**`;
+    });
   }
 
   // ===== Fix 13: Task List → Regular List =====

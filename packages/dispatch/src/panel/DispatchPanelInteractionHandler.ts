@@ -31,9 +31,6 @@ import {
   buildNoPendingOrdersEmbed,
   buildQueryFailedEmbed,
   splitSelectMenuOptions,
-  COLOR_INFO,
-  COLOR_WARNING,
-  COLOR_ERROR,
   MODE_SELECT,
   BUTTON_CREATE_MODE,
   BUTTON_ASSIGN_MODE,
@@ -52,6 +49,7 @@ import {
   SELECT_ESCORT_OPTION_EXTRA,
   SELECT_PENDING_ORDER,
 } from './DispatchPanelView.js';
+import { COLOR_INFO, COLOR_WARNING, COLOR_ERROR } from '../constants.js';
 import type { SelectOptionView } from './DispatchPanelView.js';
 import {
   buildOrderCreatedEmbed,
@@ -639,7 +637,8 @@ export class DispatchPanelInteractionHandler {
     const order = result.getValue();
 
     const detailView = buildOrderDetailEmbed(order);
-    const canConfirm = isPendingEscortConfirmation(order);
+    // P2-15: 僅在已指派護航者時顯示「確認接單」按鈕
+    const canConfirm = isPendingEscortConfirmation(order) && order.escortUserId > 0;
     const canComplete = isConfirmed(order);
     const canRequestAfterSales =
       isPendingCustomerConfirmation(order) ||
@@ -703,16 +702,7 @@ export class DispatchPanelInteractionHandler {
       return;
     }
 
-    // Validate customer exists in guild via DiscordRuntimeGateway
-    if (this.gateway) {
-      const memberExists = await this.gateway.retrieveMemberById(guildId, customerUserId);
-      if (!memberExists) {
-        const errorView = buildErrorEmbed('找不到指定客戶，請確認客戶 ID 是否正確。');
-        await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
-        return;
-      }
-    }
-
+    // P1-13: 成員驗證由 service 層處理，panel 層不再重複檢查
     session.selectedCustomerId = Number(customerUserId);
 
     const optionCode = session.selectedOptionCode ?? '未指定';
@@ -1058,7 +1048,7 @@ export class DispatchPanelInteractionHandler {
 
   /** Checks if the interaction originates from a guild channel. */
   private getInGuild(interaction: DiscordInteraction): boolean {
-    return interaction.getGuildId() !== '0';
+    return interaction.getGuildId() != null && interaction.getGuildId() !== '0';
   }
 
   /**

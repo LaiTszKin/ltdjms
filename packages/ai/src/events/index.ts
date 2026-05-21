@@ -3,7 +3,7 @@ import type { DomainEvent } from '@ltdjms/shared';
 export interface AIAgentChannelConfigChangedEvent extends DomainEvent {
   readonly eventType: 'ai_agent_channel_config_changed';
   readonly guildId: string;
-  readonly channelId: number;
+  readonly channelId: string;
   readonly agentEnabled: boolean;
   readonly changedAt: Date;
 }

@@ -204,7 +204,7 @@ export class TokenManagementHandler extends BaseAdminHandler {
     const reason = interaction.getTextInputValue('原因');
     const amount = parseInt(amountStr, 10);
 
-    if (isNaN(amount) || amount <= 0) {
+    if (isNaN(amount) || (mode === 'set' ? amount < 0 : amount <= 0)) {
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.tokenTitle)
         .setDescription('請輸入有效的正整數數量')

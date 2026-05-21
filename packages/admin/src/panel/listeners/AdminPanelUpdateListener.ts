@@ -20,15 +20,12 @@ import { Colors } from '../../constants/colors.js';
  * Event type string constants for discrimination.
  */
 const EVENT_TYPES = {
-  BALANCE_CHANGED: 'balance_changed',
-  GAME_TOKEN_CHANGED: 'game_token_changed',
   CURRENCY_CONFIG_CHANGED: 'currency_config_changed',
   DICE_GAME_CONFIG_CHANGED: 'dice_game_config_changed',
   PRODUCT_CHANGED: 'product_changed',
   REDEMPTION_CODES_GENERATED: 'redemption_codes_generated',
   PRODUCT_REDEMPTION_COMPLETED: 'product_redemption_completed',
   AI_AGENT_CHANNEL_CONFIG_CHANGED: 'ai_agent_channel_config_changed',
-  AGENT_FAILED: 'agent_failed',
   AI_CHANNEL_CONFIG_CHANGED: 'ai_channel_config_changed',
   DISPATCH_AFTER_SALES_CONFIG_CHANGED: 'dispatch_after_sales_config_changed',
   ESCORT_PRICING_CHANGED: 'escort_pricing_changed',
@@ -67,6 +64,12 @@ export class AdminPanelUpdateListener {
 
   /** Max entries in the throttle map before evicting oldest entries. */
   private static readonly MAX_THROTTLE_ENTRIES = 500;
+
+  /** TTL for guild name cache in ms (5 minutes). */
+  private static readonly GUILD_NAME_CACHE_TTL = 5 * 60 * 1000;
+
+  /** In-memory cache for guild names to avoid HTTP fetch on every event. */
+  private readonly guildNameCache = new Map<string, { name: string; expiresAt: number }>();
 
   constructor(
     private readonly sessionManager: AdminPanelSessionManager,
@@ -181,13 +184,6 @@ export class AdminPanelUpdateListener {
       (s) => s.viewState === AdminPanelViewState.MAIN,
     );
 
-    // Only process events that can produce meaningful view state changes.
-    // Non-rebuildable events (no facade available) skip entirely to avoid
-    // no-op message.edit() calls with identical content.
-    if (!isMainEvent && !isNonMainRebuildable) {
-      return;
-    }
-
     let sharedMainPanel: {
       embed: EmbedBuilder;
       rows: ActionRowBuilder<ButtonBuilder>[];
@@ -263,10 +259,19 @@ export class AdminPanelUpdateListener {
   }
 
   private async getGuildName(guildId: string): Promise<string> {
+    const cached = this.guildNameCache.get(guildId);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.name;
+    }
     try {
       const client = this.discordGateway.requireReadyClient() as Client;
       const guild = await client.guilds.fetch(guildId);
-      return guild?.name ?? `Guild ${guildId}`;
+      const name = guild?.name ?? `Guild ${guildId}`;
+      this.guildNameCache.set(guildId, {
+        name,
+        expiresAt: Date.now() + AdminPanelUpdateListener.GUILD_NAME_CACHE_TTL,
+      });
+      return name;
     } catch {
       return `Guild ${guildId}`;
     }
@@ -405,10 +410,7 @@ export class AdminPanelUpdateListener {
       EVENT_TYPES.PRODUCT_CHANGED,
       EVENT_TYPES.REDEMPTION_CODES_GENERATED,
       EVENT_TYPES.AI_AGENT_CHANNEL_CONFIG_CHANGED,
-      EVENT_TYPES.BALANCE_CHANGED,
-      EVENT_TYPES.GAME_TOKEN_CHANGED,
       EVENT_TYPES.PRODUCT_REDEMPTION_COMPLETED,
-      EVENT_TYPES.AGENT_FAILED,
       EVENT_TYPES.AI_CHANNEL_CONFIG_CHANGED,
       EVENT_TYPES.DISPATCH_AFTER_SALES_CONFIG_CHANGED,
       EVENT_TYPES.ESCORT_PRICING_CHANGED,
@@ -441,17 +443,8 @@ export class AdminPanelUpdateListener {
       case EVENT_TYPES.AI_AGENT_CHANNEL_CONFIG_CHANGED:
         return true;
 
-      case EVENT_TYPES.BALANCE_CHANGED:
-        return viewState === AdminPanelViewState.BALANCE;
-
-      case EVENT_TYPES.GAME_TOKEN_CHANGED:
-        return viewState === AdminPanelViewState.TOKEN;
-
       case EVENT_TYPES.PRODUCT_REDEMPTION_COMPLETED:
         return viewState === AdminPanelViewState.PRODUCT_CODE_LIST;
-
-      case EVENT_TYPES.AGENT_FAILED:
-        return true;
 
       case EVENT_TYPES.AI_CHANNEL_CONFIG_CHANGED:
         return viewState === AdminPanelViewState.AI_CHANNEL;

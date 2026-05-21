@@ -47,10 +47,9 @@ export class InMemoryAIAgentChannelConfigRepository
   ): Promise<Result<AIAgentChannelConfig | null, DomainError>> {
     const entry = this.store.get(this.key(guildId, channelId));
     if (!entry) {
-      // Match Drizzle repo behavior: ok(null) throws at runtime, so return Err instead
-      return err(DomainError.persistenceFailure(
-        `Agent config not found for guild ${guildId} channel ${channelId}`,
-      ));
+      // Ok rejects null/undefined values, so use err for not-found.
+      // fetchFromDb handles isErr() by returning false (not configured).
+      return err(DomainError.channelNotFound(`Agent config not found for ${guildId}:${channelId}`));
     }
     return ok(entry);
   }
@@ -271,7 +270,7 @@ export class DefaultAIAgentChannelConfigService
           const event: AIAgentChannelConfigChangedEvent = {
             guildId,
             eventType: 'ai_agent_channel_config_changed',
-            channelId: Number(channelId),
+            channelId: channelId,
             agentEnabled: enabled,
             changedAt: new Date(),
           };

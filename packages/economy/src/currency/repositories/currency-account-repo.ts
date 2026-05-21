@@ -21,26 +21,12 @@ export class CurrencyAccountRepository extends BaseAccountRepository<MemberCurre
     });
   }
 
-  // Public helper forwarding to conform to the base adjust method name.
-  // Consumers call adjustBalance() — map to BaseAccountRepository.adjust().
-  async adjustBalance(guildId: number, userId: string, delta: number): Promise<MemberCurrencyAccount> {
-    return this.adjust(guildId, userId, delta);
-  }
-
   async tryAdjustBalance(
     guildId: number,
     userId: string,
     delta: number,
   ): ReturnType<BaseAccountRepository<MemberCurrencyAccount>['tryAdjust']> {
     return this.tryAdjust(guildId, userId, delta);
-  }
-
-  async setBalance(
-    guildId: number,
-    userId: string,
-    newBalance: number,
-  ): Promise<MemberCurrencyAccount> {
-    return this.set(guildId, userId, newBalance);
   }
 }
 

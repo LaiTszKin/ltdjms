@@ -27,6 +27,9 @@ import { Colors } from '../../../constants/colors.js';
 export class EscortCatalogHandler extends BaseAdminHandler {
   readonly customIdPrefix = 'admin_escortcatalog';
 
+  /** Max items per page to stay within Discord's 5-ActionRow limit (1 add + 2 pairs + 1 nav). */
+  private static readonly ITEMS_PER_PAGE = 4;
+
   constructor(
     sessionManager: AdminPanelSessionManager,
     private readonly facade: DispatchManagementFacade,
@@ -59,6 +62,20 @@ export class EscortCatalogHandler extends BaseAdminHandler {
     this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.ESCORT_CATALOG);
 
     const fullCustomId = interaction.getCustomId();
+
+    // Pagination navigation
+    if (fullCustomId === 'admin_escortcatalog_page_prev') {
+      const currentPage = parseInt(this.sessionManager.getContext(guildId, userId, 'catalog_page') ?? '1', 10);
+      this.sessionManager.setContext(guildId, userId, 'catalog_page', String(Math.max(1, currentPage - 1)));
+      await this.showCatalog(interaction, guildId, userId);
+      return;
+    }
+    if (fullCustomId === 'admin_escortcatalog_page_next') {
+      const currentPage = parseInt(this.sessionManager.getContext(guildId, userId, 'catalog_page') ?? '1', 10);
+      this.sessionManager.setContext(guildId, userId, 'catalog_page', String(currentPage + 1));
+      await this.showCatalog(interaction, guildId, userId);
+      return;
+    }
 
     if (fullCustomId === 'admin_escortcatalog_create_save') {
       await this.handleCreateSave(interaction);
@@ -101,14 +118,17 @@ export class EscortCatalogHandler extends BaseAdminHandler {
       return;
     }
 
+    // Reset page when re-entering catalog list
+    this.sessionManager.setContext(guildId, userId, 'catalog_page', '1');
+
     // Handle back to catalog list
     if (fullCustomId === 'admin_escortcatalog_back') {
       this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.ESCORT_CATALOG);
-      await this.showCatalog(interaction);
+      await this.showCatalog(interaction, guildId, userId);
       return;
     }
 
-    await this.showCatalog(interaction);
+    await this.showCatalog(interaction, guildId, userId);
   }
 
   private async showCreateModal(interaction: DiscordInteraction): Promise<void> {
@@ -391,7 +411,11 @@ export class EscortCatalogHandler extends BaseAdminHandler {
     }
   }
 
-  private async showCatalog(interaction: DiscordInteraction): Promise<void> {
+  private async showCatalog(
+    interaction: DiscordInteraction,
+    guildId: string,
+    userId: string,
+  ): Promise<void> {
     const result = await this.facade.listCatalog();
     if (result.isOk()) {
       const entries = result.getValue();
@@ -400,14 +424,24 @@ export class EscortCatalogHandler extends BaseAdminHandler {
       if (entries.length === 0) {
         description = ZhTwStrings.escortCatalogEmpty;
       } else {
-        const items = entries.map((entry) =>
+        // Pagination: compute current page and slice entries
+        const pageStr = this.sessionManager.getContext(guildId, userId, 'catalog_page');
+        const currentPage = Math.max(1, parseInt(pageStr ?? '1', 10) || 1);
+        const totalPages = Math.max(1, Math.ceil(entries.length / EscortCatalogHandler.ITEMS_PER_PAGE));
+        const pageIndex = Math.min(currentPage - 1, totalPages - 1);
+        const pageEntries = entries.slice(
+          pageIndex * EscortCatalogHandler.ITEMS_PER_PAGE,
+          (pageIndex + 1) * EscortCatalogHandler.ITEMS_PER_PAGE,
+        );
+
+        const items = pageEntries.map((entry) =>
           ZhTwStrings.escortCatalogItem
             .replace('{name}', `${entry.type} - ${entry.target}`)
             .replace('{category}', entry.level)
             .replace('{price}', String(entry.priceTwd))
             .replace('{description}', entry.mapScope),
         );
-        description = items.join('\n\n');
+        description = `第 ${currentPage} / ${totalPages} 頁，共 ${entries.length} 項\n\n${items.join('\n\n')}`;
       }
 
       const embed = new EmbedBuilder()
@@ -425,9 +459,19 @@ export class EscortCatalogHandler extends BaseAdminHandler {
 
       rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(addBtn));
 
+      // Get current page entries for button rendering
+      const pageStr = this.sessionManager.getContext(guildId, userId, 'catalog_page');
+      const currentPage = Math.max(1, parseInt(pageStr ?? '1', 10) || 1);
+      const totalPages = Math.max(1, Math.ceil(entries.length / EscortCatalogHandler.ITEMS_PER_PAGE));
+      const pageIndex = Math.min(currentPage - 1, totalPages - 1);
+      const pageEntries = entries.slice(
+        pageIndex * EscortCatalogHandler.ITEMS_PER_PAGE,
+        (pageIndex + 1) * EscortCatalogHandler.ITEMS_PER_PAGE,
+      );
+
       // Per-item edit/delete buttons
-      if (entries.length > 0) {
-        const entryButtons = entries.flatMap((entry) => {
+      if (pageEntries.length > 0) {
+        const entryButtons = pageEntries.flatMap((entry) => {
           const editBtn = new ButtonBuilder()
             .setCustomId('admin_escortcatalog_edit_' + entry.code)
             .setLabel(`${ZhTwStrings.escortCatalogEditBtn} ${entry.code}`)
@@ -444,6 +488,21 @@ export class EscortCatalogHandler extends BaseAdminHandler {
           const chunk = entryButtons.slice(i, i + 2);
           rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(chunk));
         }
+      }
+
+      // Pagination navigation buttons
+      if (totalPages > 1) {
+        const prevBtn = new ButtonBuilder()
+          .setCustomId('admin_escortcatalog_page_prev')
+          .setLabel('上一頁')
+          .setStyle(ButtonStyle.Secondary)
+          .setDisabled(currentPage <= 1);
+        const nextBtn = new ButtonBuilder()
+          .setCustomId('admin_escortcatalog_page_next')
+          .setLabel('下一頁')
+          .setStyle(ButtonStyle.Secondary)
+          .setDisabled(currentPage >= totalPages);
+        rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(prevBtn, nextBtn));
       }
 
       await interaction.editWithComponents(embed, rows);

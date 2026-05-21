@@ -190,6 +190,21 @@ export class BalanceAdjustmentService {
   }
 
   /**
+   * Adjusts a member's balance — public alias for tryAdjustBalance.
+   * Exists to align with spec naming conventions while keeping tryAdjustBalance
+   * as the canonical implementation. (P1-24)
+   */
+  async adjustBalance(
+    guildId: number,
+    userId: string,
+    amount: number,
+    source: CurrencyTransactionSource = CurrencyTransactionSource.ADMIN_ADJUSTMENT,
+    description: string | null = null,
+  ): Promise<Result<BalanceAdjustmentResult, DomainError>> {
+    return this.tryAdjustBalance(guildId, userId, amount, source, description);
+  }
+
+  /**
    * Batch-adjusts a member's balance by the total amount, splitting into chunks
    * if maxChunkSize is specified (e.g. for reward amounts exceeding a per-operation limit).
    * Records a single transaction, publishes one event, and updates cache once.
@@ -219,6 +234,18 @@ export class BalanceAdjustmentService {
       const current = await this.accountRepository.findOrCreate(guildId, userId);
       const previousBalance = current.balance;
       let newBalance = previousBalance;
+
+      // Write a preliminary transaction record for audit trail.
+      // If a crash occurs mid-batch, this record documents the in-progress
+      // adjustment and the balance at which processing started. (P1-6)
+      await this.transactionService.recordTransaction(
+        guildId,
+        userId,
+        0,
+        previousBalance,
+        source,
+        `BATCH_PROCESSING:${totalAmount} from ${source}${description ? ` — ${description}` : ''}`,
+      );
 
       // Apply in chunks with compensating rollback on failure (P2-1)
       const appliedChunks: number[] = [];

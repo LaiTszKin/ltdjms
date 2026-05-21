@@ -107,14 +107,7 @@ export class DiceGame1Handler {
       const result = await this.diceGame1Service.play(guildId, userId, tokenCount, config);
 
       if (result.isErr()) {
-        // Refund tokens since they were already deducted (P0-2)
-        await this.gameTokenService.tryAdjustTokens(
-          guildId,
-          userId,
-          tokenCount,
-          GameTokenTransactionSource.DICE_GAME_1_REFUND,
-        );
-
+        // Spec says tokens are NOT refunded on game error/loss. (P1-4)
         const error = result.getError();
         if (error.category === DomainErrorCategory.INVALID_INPUT) {
           await interaction.reply(error.message);
@@ -136,7 +129,7 @@ export class DiceGame1Handler {
         '',
         DiceGameMessages.GAME_1_RESULT
           .replace('{dice}', diceDisplay)
-          .replace('{sum}', String(gameResult.diceRolls.reduce((a: number, b: number) => a + b, 0)))
+          .replace('{sum}', String(gameResult.diceSum))
           .replace('{reward}', rewardDisplay),
         '',
         `餘額變動：${String(gameResult.previousBalance)} → ${String(gameResult.newBalance)} ${currencyIcon}${currencyName}`,
@@ -148,13 +141,7 @@ export class DiceGame1Handler {
 
       await interaction.reply(message);
     } catch (error) {
-      // Refund tokens on unexpected throw (P0-2)
-      await this.gameTokenService.tryAdjustTokens(
-        guildId,
-        userId,
-        tokenCount,
-        GameTokenTransactionSource.DICE_GAME_1_REFUND,
-      );
+      // Spec says tokens are NOT refunded on game error/loss. (P1-4)
       await interaction.reply(DiceGameMessages.UNEXPECTED_ERROR);
     }
   }

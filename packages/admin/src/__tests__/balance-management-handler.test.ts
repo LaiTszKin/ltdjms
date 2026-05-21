@@ -26,7 +26,6 @@ function createMockFacade() {
   return {
     getBalance: vi.fn(),
     adjustBalance: vi.fn(),
-    deductBalance: vi.fn(),
     setBalance: vi.fn(),
   };
 }
@@ -197,14 +196,14 @@ describe('BalanceManagementHandler', () => {
 
     async function assertModalSubmit(
       customId: string,
-      facadeMethodName: 'adjustBalance' | 'deductBalance' | 'setBalance',
+      facadeMethodName: 'adjustBalance' | 'setBalance',
     ) {
       const interaction = new MockDiscordInteraction(
         guildId, userId, '10', false, customId, true,
       );
       vi.spyOn(interaction, 'getTextInputValue').mockImplementation((field: string) => {
-        if (field === '金額') return String(testAmount);
-        if (field === '原因') return 'test reason';
+        if (field === 'balance_amount') return String(testAmount);
+        if (field === 'balance_reason') return 'test reason';
         return '';
       });
 
@@ -236,7 +235,7 @@ describe('BalanceManagementHandler', () => {
     });
 
     it('should process deduct submission', async () => {
-      await assertModalSubmit('admin_balance_deduct', 'deductBalance');
+      await assertModalSubmit('admin_balance_deduct', 'adjustBalance');
     });
 
     it('should process set submission', async () => {
@@ -266,8 +265,8 @@ describe('BalanceManagementHandler', () => {
         guildId, userId, '10', false, 'admin_balance_add', true,
       );
       vi.spyOn(interaction, 'getTextInputValue').mockImplementation((field: string) => {
-        if (field === '金額') return '0';
-        if (field === '原因') return 'test reason';
+        if (field === 'balance_amount') return '0';
+        if (field === 'balance_reason') return 'test reason';
         return '';
       });
 
@@ -288,8 +287,8 @@ describe('BalanceManagementHandler', () => {
         guildId, userId, '10', false, 'admin_balance_add', true,
       );
       vi.spyOn(interaction, 'getTextInputValue').mockImplementation((field: string) => {
-        if (field === '金額') return '100';
-        if (field === '原因') return 'test';
+        if (field === 'balance_amount') return '100';
+        if (field === 'balance_reason') return 'test';
         return '';
       });
 

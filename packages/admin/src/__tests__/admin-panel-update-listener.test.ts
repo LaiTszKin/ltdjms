@@ -91,7 +91,7 @@ describe('AdminPanelUpdateListener', () => {
     it('should handle admin event with no active sessions', async () => {
       mockSessionManager.getAllForGuild.mockReturnValue([]);
 
-      const event: DomainEvent = { guildId, eventType: 'balance_changed' };
+      const event: DomainEvent = { guildId, eventType: 'currency_config_changed' };
       await listener.onEvent(event);
       await new Promise((resolve) => setTimeout(resolve, 10));
 
@@ -128,9 +128,9 @@ describe('AdminPanelUpdateListener', () => {
       );
     }
 
-    it('should skip BALANCE view state for non-rebuildable balance_changed', async () => {
+    it('should skip BALANCE view state for non-rebuildable product_changed', async () => {
       const matched = await getMatchedUserIds(
-        { guildId, eventType: 'balance_changed' },
+        { guildId, eventType: 'product_changed' },
         [
           { userId: '100', viewState: AdminPanelViewState.MAIN },
           { userId: '101', viewState: AdminPanelViewState.BALANCE },
@@ -138,7 +138,8 @@ describe('AdminPanelUpdateListener', () => {
         ],
       );
 
-      // P2-24: non-rebuildable events skip entirely to avoid no-op re-edits
+      // product_changed matches PRODUCT_LIST and PRODUCT_DETAIL view states;
+      // BALANCE and TOKEN should not be matched. MAIN also not matched.
       expect(matched).toEqual([]);
     });
 
@@ -152,7 +153,7 @@ describe('AdminPanelUpdateListener', () => {
         ],
       );
 
-      // P2-24: non-rebuildable events skip entirely to avoid no-op re-edits
+      // game_token_changed is no longer an admin-relevant event (P2-23), so no sessions are processed
       expect(matched).toEqual([]);
     });
 
@@ -171,7 +172,7 @@ describe('AdminPanelUpdateListener', () => {
       expect(matched).not.toContain('102');
     });
 
-    it('should skip all view states for non-rebuildable product_changed', async () => {
+    it('should match PRODUCT_LIST and PRODUCT_DETAIL for product_changed', async () => {
       const matched = await getMatchedUserIds(
         { guildId, eventType: 'product_changed' },
         [
@@ -181,11 +182,15 @@ describe('AdminPanelUpdateListener', () => {
         ],
       );
 
-      // P2-24: non-rebuildable events skip entirely to avoid no-op re-edits
-      expect(matched).toEqual([]);
+      // P1-15: non-rebuildable events now fall through to no-op re-edit.
+      // Matching sessions (PRODUCT_LIST, PRODUCT_DETAIL) attempt channel fetch
+      // which fails with the mock, causing removeSession.
+      expect(matched).toContain('101');
+      expect(matched).toContain('102');
+      expect(matched).not.toContain('100');
     });
 
-    it('should skip all view states for non-rebuildable redemption_codes_generated', async () => {
+    it('should match PRODUCT_CODE_LIST for redemption_codes_generated', async () => {
       const matched = await getMatchedUserIds(
         { guildId, eventType: 'redemption_codes_generated' },
         [
@@ -194,11 +199,11 @@ describe('AdminPanelUpdateListener', () => {
         ],
       );
 
-      // P2-24: non-rebuildable events skip entirely to avoid no-op re-edits
-      expect(matched).toEqual([]);
+      expect(matched).toContain('101');
+      expect(matched).not.toContain('100');
     });
 
-    it('should skip all view states for non-rebuildable product_redemption_completed', async () => {
+    it('should match PRODUCT_CODE_LIST for product_redemption_completed', async () => {
       const matched = await getMatchedUserIds(
         { guildId, eventType: 'product_redemption_completed' },
         [
@@ -207,11 +212,11 @@ describe('AdminPanelUpdateListener', () => {
         ],
       );
 
-      // P2-24: non-rebuildable events skip entirely to avoid no-op re-edits
-      expect(matched).toEqual([]);
+      expect(matched).toContain('101');
+      expect(matched).not.toContain('100');
     });
 
-    it('should skip all view states for non-rebuildable ai_channel_config_changed', async () => {
+    it('should match AI_CHANNEL for ai_channel_config_changed', async () => {
       const matched = await getMatchedUserIds(
         { guildId, eventType: 'ai_channel_config_changed' },
         [
@@ -221,11 +226,12 @@ describe('AdminPanelUpdateListener', () => {
         ],
       );
 
-      // P2-24: non-rebuildable events skip entirely to avoid no-op re-edits
-      expect(matched).toEqual([]);
+      expect(matched).toContain('101');
+      expect(matched).not.toContain('100');
+      expect(matched).not.toContain('102');
     });
 
-    it('should skip all view states for non-rebuildable dispatch_after_sales_config_changed', async () => {
+    it('should match DISPATCH_STAFF for dispatch_after_sales_config_changed', async () => {
       const matched = await getMatchedUserIds(
         { guildId, eventType: 'dispatch_after_sales_config_changed' },
         [
@@ -234,24 +240,11 @@ describe('AdminPanelUpdateListener', () => {
         ],
       );
 
-      // P2-24: non-rebuildable events skip entirely to avoid no-op re-edits
-      expect(matched).toEqual([]);
+      expect(matched).toContain('101');
+      expect(matched).not.toContain('100');
     });
 
-    it('should match all view states for currency_config_changed', async () => {
-      const matched = await getMatchedUserIds(
-        { guildId, eventType: 'currency_config_changed' },
-        Object.values(AdminPanelViewState).map((state, i) => ({
-          userId: String(100 + i),
-          viewState: state,
-        })),
-      );
-
-      // All sessions should match for currency_config_changed
-      expect(matched.length).toBe(Object.values(AdminPanelViewState).length);
-    });
-
-    it('should skip all view states for non-rebuildable ai_agent_channel_config_changed', async () => {
+    it('should match all view states for ai_agent_channel_config_changed', async () => {
       const matched = await getMatchedUserIds(
         { guildId, eventType: 'ai_agent_channel_config_changed' },
         [
@@ -261,21 +254,8 @@ describe('AdminPanelUpdateListener', () => {
         ],
       );
 
-      // P2-24: non-rebuildable events skip entirely to avoid no-op re-edits
-      expect(matched).toEqual([]);
-    });
-
-    it('should skip all view states for non-rebuildable agent_failed', async () => {
-      const matched = await getMatchedUserIds(
-        { guildId, eventType: 'agent_failed' },
-        [
-          { userId: '100', viewState: AdminPanelViewState.MAIN },
-          { userId: '101', viewState: AdminPanelViewState.BALANCE },
-        ],
-      );
-
-      // P2-24: non-rebuildable events skip entirely to avoid no-op re-edits
-      expect(matched).toEqual([]);
+      // ai_agent_channel_config_changed matches all view states
+      expect(matched.length).toBe(3);
     });
 
     it('should match all view states for escort_pricing_changed', async () => {
@@ -340,16 +320,14 @@ describe('AdminPanelUpdateListener', () => {
   // ================================================================
 
   describe('all 13 admin-relevant event types', () => {
+    // P2-23: balance_changed, game_token_changed, agent_failed removed from admin-relevant events
     const adminEventTypes = [
-      'balance_changed',
-      'game_token_changed',
       'currency_config_changed',
       'dice_game_config_changed',
       'product_changed',
       'redemption_codes_generated',
       'product_redemption_completed',
       'ai_agent_channel_config_changed',
-      'agent_failed',
       'ai_channel_config_changed',
       'dispatch_after_sales_config_changed',
       'escort_pricing_changed',

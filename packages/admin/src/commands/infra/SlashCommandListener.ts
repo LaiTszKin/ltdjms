@@ -6,9 +6,6 @@ import {
   DiscordJsContext,
 } from '@ltdjms/shared';
 import {
-  type CommandInteraction,
-  type ButtonInteraction,
-  type ModalSubmitInteraction,
   type Client,
 } from 'discord.js';
 import { type CommandHandler, type InteractionHandler } from './CommandHandler.js';
@@ -130,15 +127,13 @@ export class SlashCommandListener {
   }
 
   private createInteraction(raw: unknown): DiscordInteraction {
-    return new DiscordJsInteraction(
-      raw as CommandInteraction | ButtonInteraction | ModalSubmitInteraction,
-    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return new DiscordJsInteraction(raw as any);
   }
 
   private createContext(raw: unknown): DiscordContext {
-    return new DiscordJsContext(
-      raw as CommandInteraction | ButtonInteraction | ModalSubmitInteraction,
-    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return new DiscordJsContext(raw as any);
   }
 
   // ---- Dispatch ----

@@ -291,12 +291,12 @@ export class EscortPricingHandler extends BaseAdminHandler {
     for (const p of prices) {
       const editBtn = new ButtonBuilder()
         .setCustomId('admin_escortprice_edit_' + p.optionCode)
-        .setLabel(`編輯 ${p.optionCode}`)
+        .setLabel(ZhTwStrings.escortPricingEditBtn)
         .setStyle(ButtonStyle.Primary);
 
       const resetBtn = new ButtonBuilder()
         .setCustomId('admin_escortprice_reset_' + p.optionCode)
-        .setLabel(`重設 ${p.optionCode}`)
+        .setLabel(ZhTwStrings.escortPricingResetBtn)
         .setStyle(ButtonStyle.Danger);
 
       rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(editBtn, resetBtn));

@@ -17,7 +17,9 @@ export class DiceConfigService {
 
   /**
    * Finds dice game 1 configuration by guild ID.
-   * Returns null if not found.
+   *
+   * @param guildId the Discord guild ID
+   * @returns The dice game 1 config, or null if no configuration exists for this guild
    */
   async findDice1Config(guildId: number): Promise<DiceGame1Config | null> {
     return this.diceConfigRepository.findDice1Config(guildId);
@@ -25,7 +27,9 @@ export class DiceConfigService {
 
   /**
    * Finds dice game 2 configuration by guild ID.
-   * Returns null if not found.
+   *
+   * @param guildId the Discord guild ID
+   * @returns The dice game 2 config, or null if no configuration exists for this guild
    */
   async findDice2Config(guildId: number): Promise<DiceGame2Config | null> {
     return this.diceConfigRepository.findDice2Config(guildId);

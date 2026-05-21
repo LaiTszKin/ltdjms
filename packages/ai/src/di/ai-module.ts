@@ -324,7 +324,6 @@ export function initializeAIModule(): void {
     promptLoader,
     sharedChatModel,
     toolMap,
-    authGuard,
     toolExecutionInterceptor,
     toolCallHistory,
     runtimeGateway,

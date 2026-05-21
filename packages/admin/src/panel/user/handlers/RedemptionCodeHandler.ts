@@ -148,11 +148,19 @@ export class RedemptionCodeHandler implements InteractionHandler {
 
     if (result.isOk()) {
       const redemption = result.getValue();
+
+      // Fetch updated balance to reflect post-redemption state
+      const memberSummary = await this.memberInfoFacade.getMemberSummary(guildId, userId);
+      let description = ZhTwStrings.redeemSuccess.replace('{product}', redemption.product.name);
+      if (memberSummary.isOk()) {
+        const summary = memberSummary.getValue();
+        description += `\n\n當前餘額：${summary.balance} ${summary.currencyIcon}`;
+        description += `\n遊戲代幣：${summary.tokens} 個`;
+      }
+
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.redeemCodeModalTitle)
-        .setDescription(
-          ZhTwStrings.redeemSuccess.replace('{product}', redemption.product.name),
-        )
+        .setDescription(description)
         .setColor(0x57F287);
       await interaction.editEmbed(embed);
     } else {

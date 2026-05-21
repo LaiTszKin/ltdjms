@@ -122,7 +122,7 @@ export class TransactionHistoryHandler implements InteractionHandler {
     if (result.isOk()) {
       const txPage = result.getValue();
       totalPages = txPage.totalPages;
-      const txs = txPage.transactions as unknown as Array<{ createdAt: Date; amount: number; description?: string }>;
+      const txs = txPage.transactions;
       if (txs.length === 0) {
         description = ZhTwStrings.historyEmpty;
       } else {

@@ -139,7 +139,7 @@ export async function main(): Promise<void> {
       if (result.isErr()) {
         return new Err(result.getError());
       }
-      return new Ok({ amount: request.amount, currencyBalanceAfter: result.getValue() });
+      return new Ok({ amount: request.amount, currencyBalanceAfter: result.getValue().newBalance });
     },
   };
 

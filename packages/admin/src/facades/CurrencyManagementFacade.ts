@@ -62,48 +62,6 @@ export class CurrencyManagementFacade {
   }
 
   /**
-   * Deducts from a member's balance.
-   *
-   * NOTE: This is a convenience wrapper around adjustBalance that negates the
-   * amount. Not explicitly listed in the original spec (R13.1), but provided
-   * as a symmetric counterpart to adjustBalance for clarity in the admin panel.
-   */
-  async deductBalance(
-    guildId: string,
-    userId: string,
-    amount: number,
-    reason: string,
-    actorId: string,
-  ): Promise<Result<BalanceAdjustmentResult, DomainError>> {
-    const validation = this.validateAdjustmentAmount(amount, '扣除');
-    if (validation) return validation;
-
-    const result = await this.balanceAdjustmentService.tryAdjustBalance(
-      Number(guildId),
-      userId,
-      -amount,
-      CurrencyTransactionSource.ADMIN_ADJUSTMENT,
-      `管理員 ${actorId}：${reason}`,
-    );
-
-    if (result.isOk()) return result;
-
-    // Enhance insufficient balance errors with current balance info
-    if (result.getError().category === 'INSUFFICIENT_BALANCE') {
-      const balanceResult = await this.balanceService.getBalance(Number(guildId), userId);
-      if (balanceResult.isOk()) {
-        return err(
-          DomainError.insufficientBalance(
-            `目標用戶餘額不足，當前餘額：${balanceResult.getValue().balance}`,
-          ),
-        );
-      }
-    }
-
-    return result;
-  }
-
-  /**
    * Sets a member's balance to a specific target value.
    * Computes the delta from current balance and applies it via tryAdjustBalance.
    */

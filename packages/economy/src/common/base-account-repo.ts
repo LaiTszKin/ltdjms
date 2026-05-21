@@ -6,7 +6,7 @@
 
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { eq, and, sql } from 'drizzle-orm';
-import { DomainError, type Result, Ok, Err } from '@ltdjms/shared';
+import { DomainError, type Result, Ok, Err, safeSnowflakeToNumber } from '@ltdjms/shared';
 
 /**
  * Configuration for a concrete account repository.
@@ -49,7 +49,7 @@ export class BaseAccountRepository<TAccount> {
       .where(
         and(
           eq(this.cfg.table.guildId, guildId),
-          eq(this.cfg.table.userId, Number(userId)),
+          eq(this.cfg.table.userId, safeSnowflakeToNumber(userId)),
         ),
       )
       .limit(1);
@@ -63,7 +63,7 @@ export class BaseAccountRepository<TAccount> {
       .insert(this.cfg.table)
       .values({
         guildId,
-        userId: Number(userId),
+        userId: safeSnowflakeToNumber(userId),
         ...this.cfg.defaultValues,
       })
       .onConflictDoNothing()
@@ -82,7 +82,7 @@ export class BaseAccountRepository<TAccount> {
       .where(
         and(
           eq(this.cfg.table.guildId, guildId),
-          eq(this.cfg.table.userId, Number(userId)),
+          eq(this.cfg.table.userId, safeSnowflakeToNumber(userId)),
         ),
       )
       .limit(1);
@@ -104,7 +104,7 @@ export class BaseAccountRepository<TAccount> {
       .where(
         and(
           eq(this.cfg.table.guildId, guildId),
-          eq(this.cfg.table.userId, Number(userId)),
+          eq(this.cfg.table.userId, safeSnowflakeToNumber(userId)),
         ),
       )
       .limit(1);
@@ -131,7 +131,7 @@ export class BaseAccountRepository<TAccount> {
       .where(
         and(
           eq(this.cfg.table.guildId, guildId),
-          eq(this.cfg.table.userId, Number(userId)),
+          eq(this.cfg.table.userId, safeSnowflakeToNumber(userId)),
           sql`${this.cfg.table[this.cfg.balanceFieldName]} + ${delta} >= 0`,
         ),
       )
@@ -164,7 +164,7 @@ export class BaseAccountRepository<TAccount> {
         .where(
           and(
             eq(this.cfg.table.guildId, guildId),
-            eq(this.cfg.table.userId, Number(userId)),
+            eq(this.cfg.table.userId, safeSnowflakeToNumber(userId)),
             sql`${this.cfg.table[this.cfg.balanceFieldName]} + ${delta} >= 0`,
           ),
         )
@@ -207,7 +207,7 @@ export class BaseAccountRepository<TAccount> {
       .insert(this.cfg.table)
       .values({
         guildId,
-        userId: Number(userId),
+        userId: safeSnowflakeToNumber(userId),
         [this.cfg.balanceFieldName]: newValue,
         ...this.cfg.defaultValues,
       } as any)
@@ -232,7 +232,7 @@ export class BaseAccountRepository<TAccount> {
       .where(
         and(
           eq(this.cfg.table.guildId, guildId),
-          eq(this.cfg.table.userId, Number(userId)),
+          eq(this.cfg.table.userId, safeSnowflakeToNumber(userId)),
         ),
       );
   }

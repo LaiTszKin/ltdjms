@@ -1,54 +1,41 @@
 import { describe, it, expect, vi } from 'vitest';
 import { Ok } from '@ltdjms/shared';
-import { DiceGame1Service } from '../dice/services/dice-game-1-service.js';
+import { DiceGame1Service, calculateTotalReward, rollDice } from '../dice/services/dice-game-1-service.js';
 import { DefaultRandom } from '../dice/services/random.js';
 import { GameRewardService } from '../dice/services/game-reward-service.js';
-import { BalanceService } from '../currency/services/balance-service.js';
-import type { DiceGame1Config, BalanceView } from '../domain/types.js';
+import type { DiceGame1Config } from '../domain/types.js';
 import { CurrencyTransactionSource } from '../domain/types.js';
 
 describe('DiceGame1Service', () => {
   const mockGameRewardService = {
-    creditReward: vi.fn().mockResolvedValue(new Ok(0)),
+    creditReward: vi.fn().mockResolvedValue(new Ok({ previousBalance: 0, newBalance: 0 })),
   } as unknown as GameRewardService;
 
-  const mockBalanceService = {
-    getBalance: vi.fn().mockResolvedValue(new Ok({
-      guildId: 1, userId: '1', balance: 0, currencyName: 'Coins', currencyIcon: '🪙',
-    } as BalanceView)),
-  } as unknown as BalanceService;
-
   describe('calculateTotalReward', () => {
-    const service = new DiceGame1Service(
-      mockGameRewardService,
-      mockBalanceService,
-      DefaultRandom,
-    );
-
     it('should calculate reward as sum of dice times rewardPerDiceValue', () => {
       // [1, 2, 3] sum = 6, reward = 6 * 250000 = 1500000
-      const reward = service.calculateTotalReward([1, 2, 3], 250000);
+      const reward = calculateTotalReward([1, 2, 3], 250000);
       expect(reward).toBe(1500000);
     });
 
     it('should handle empty dice list', () => {
-      const reward = service.calculateTotalReward([], 250000);
+      const reward = calculateTotalReward([], 250000);
       expect(reward).toBe(0);
     });
 
     it('should handle single die', () => {
-      const reward = service.calculateTotalReward([6], 250000);
+      const reward = calculateTotalReward([6], 250000);
       expect(reward).toBe(1500000);
     });
 
     it('should handle maximum dice values', () => {
       // [6, 6, 6, 6, 6] sum = 30, reward = 30 * 250000 = 7500000
-      const reward = service.calculateTotalReward([6, 6, 6, 6, 6], 250000);
+      const reward = calculateTotalReward([6, 6, 6, 6, 6], 250000);
       expect(reward).toBe(7500000);
     });
 
     it('should use configured rewardPerDiceValue', () => {
-      const reward = service.calculateTotalReward([1, 2, 3], 100000);
+      const reward = calculateTotalReward([1, 2, 3], 100000);
       expect(reward).toBe(600000);
     });
   });
@@ -62,13 +49,7 @@ describe('DiceGame1Service', () => {
         },
       };
 
-      const service = new DiceGame1Service(
-        mockGameRewardService,
-        mockBalanceService,
-        random,
-      );
-
-      const rolls = service.rollDice(3);
+      const rolls = rollDice(3, random);
       expect(rolls).toEqual([1, 1, 1]);
     });
 
@@ -79,13 +60,7 @@ describe('DiceGame1Service', () => {
         },
       };
 
-      const service = new DiceGame1Service(
-        mockGameRewardService,
-        mockBalanceService,
-        random,
-      );
-
-      const rolls = service.rollDice(5);
+      const rolls = rollDice(5, random);
       expect(rolls).toHaveLength(5);
       expect(rolls).toEqual([4, 4, 4, 4, 4]);
     });
@@ -101,16 +76,10 @@ describe('DiceGame1Service', () => {
       };
 
       const mockRewardService = {
-        creditReward: vi.fn().mockResolvedValue(new Ok(1500000)),
+        creditReward: vi.fn().mockResolvedValue(new Ok({ previousBalance: 0, newBalance: 1500000 })),
       } as unknown as GameRewardService;
 
-      const mockBalService = {
-        getBalance: vi.fn().mockResolvedValue(new Ok({
-          guildId: 1, userId: '1', balance: 0, currencyName: 'Coins', currencyIcon: '🪙',
-        } as BalanceView)),
-      } as unknown as BalanceService;
-
-      const service = new DiceGame1Service(mockRewardService, mockBalService, random);
+      const service = new DiceGame1Service(mockRewardService, random);
 
       const config: DiceGame1Config = {
         guildId: 1,
@@ -136,16 +105,14 @@ describe('DiceGame1Service', () => {
       expect(mockRewardService.creditReward).toHaveBeenCalledWith(
         1, "1", 1500000, CurrencyTransactionSource.DICE_GAME_1_WIN,
       );
-      // Verify previous balance was fetched from BalanceService instead of creditReward(0)
-      expect(mockBalService.getBalance).toHaveBeenCalledWith(1, '1');
     });
 
     it('should complete play successfully with valid inputs', async () => {
       const mockRewardService = {
-        creditReward: vi.fn().mockResolvedValue(new Ok(2500)),
+        creditReward: vi.fn().mockResolvedValue(new Ok({ previousBalance: 0, newBalance: 2500 })),
       } as unknown as GameRewardService;
 
-      const service = new DiceGame1Service(mockRewardService, mockBalanceService, DefaultRandom);
+      const service = new DiceGame1Service(mockRewardService, DefaultRandom);
 
       const config: DiceGame1Config = {
         guildId: 1,
@@ -167,7 +134,6 @@ describe('DiceGame1Service', () => {
     it('should fail when token count is below minimum', async () => {
       const service = new DiceGame1Service(
         mockGameRewardService,
-        mockBalanceService,
         DefaultRandom,
       );
 
@@ -187,7 +153,6 @@ describe('DiceGame1Service', () => {
     it('should fail when token count exceeds maximum', async () => {
       const service = new DiceGame1Service(
         mockGameRewardService,
-        mockBalanceService,
         DefaultRandom,
       );
 

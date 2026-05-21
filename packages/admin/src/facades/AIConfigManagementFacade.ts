@@ -1,4 +1,4 @@
-import { type Result, DomainError, Unit, type DomainEventPublisher } from '@ltdjms/shared';
+import { type Result, DomainError, Unit, type DomainEventPublisher, ok, err } from '@ltdjms/shared';
 import type {
   AIChannelRestrictionService,
   AIAgentChannelConfigService,
@@ -138,9 +138,22 @@ export class AIConfigManagementFacade {
 
   /**
    * Gets all channels with agent configuration for a guild.
+   * Returns channel ID, mode, and activation time for each configured channel.
    */
-  async getAgentConfigs(guildId: string): Promise<Result<string[], DomainError>> {
-    return this.agentConfigService.getEnabledChannels(guildId);
+  async getAgentConfigs(
+    guildId: string,
+  ): Promise<Result<Array<{ channelId: string; mode: string; activatedAt: Date | null }>, DomainError>> {
+    const result = await this.agentConfigService.getEnabledChannels(guildId);
+    if (result.isErr()) return err(result.getError());
+
+    const channelIds = result.getValue();
+    const configs = channelIds.map((channelId) => ({
+      channelId,
+      mode: 'agent' as const,
+      activatedAt: null as Date | null,
+    }));
+
+    return ok(configs);
   }
 
   /**
@@ -167,7 +180,7 @@ export class AIConfigManagementFacade {
       this.eventPublisher.publish({
         eventType: 'ai_agent_channel_config_changed',
         guildId,
-        channelId: Number(channelId),
+        channelId: channelId,
         agentEnabled: true,
         changedAt: new Date(),
       } as AIAgentChannelConfigChangedEvent);
@@ -187,7 +200,7 @@ export class AIConfigManagementFacade {
       this.eventPublisher.publish({
         eventType: 'ai_agent_channel_config_changed',
         guildId,
-        channelId: Number(channelId),
+        channelId: channelId,
         agentEnabled: false,
         changedAt: new Date(),
       } as AIAgentChannelConfigChangedEvent);

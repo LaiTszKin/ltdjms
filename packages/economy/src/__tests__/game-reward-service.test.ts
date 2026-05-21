@@ -35,7 +35,8 @@ describe('GameRewardService', () => {
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
-        expect(result.getValue()).toBe(5000);
+        // 0-reward path returns {previousBalance, newBalance} object
+        expect(result.getValue()).toEqual({ previousBalance: 5000, newBalance: 5000 });
       }
       expect(mockBalanceService.getBalance).toHaveBeenCalledWith(1, '1');
       expect(mockAdjustmentService.tryBatchAdjust).not.toHaveBeenCalled();
@@ -81,7 +82,7 @@ describe('GameRewardService', () => {
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
-        expect(result.getValue()).toBe(3500);
+        expect((result.getValue() as unknown as { newBalance: number }).newBalance).toBe(3500);
       }
       expect(mockAdjustmentService.tryBatchAdjust).toHaveBeenCalledTimes(1);
       expect(mockAdjustmentService.tryBatchAdjust).toHaveBeenCalledWith(
