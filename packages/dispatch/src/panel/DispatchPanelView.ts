@@ -1,4 +1,5 @@
 import { type EmbedView, type ButtonView, ButtonStyle } from '@ltdjms/shared';
+import { COLOR_INFO, COLOR_WARNING, COLOR_ERROR } from '../constants.js';
 
 // ============================================================
 // Custom ID Constants
@@ -21,14 +22,6 @@ export const BUTTON_ASSIGN_CONFIRM = 'dispatch_assign_confirm';
 export const SELECT_ESCORT_OPTION = 'dispatch_select_escort_option';
 export const SELECT_ESCORT_OPTION_EXTRA = 'dispatch_select_escort_option_extra';
 export const SELECT_PENDING_ORDER = 'dispatch_select_pending_order';
-
-// ============================================================
-// Embed Colors
-// ============================================================
-
-export const COLOR_INFO = 0x57f287;
-export const COLOR_WARNING = 0xfee75c;
-export const COLOR_ERROR = 0xed4245;
 
 // ============================================================
 // Embed Builders

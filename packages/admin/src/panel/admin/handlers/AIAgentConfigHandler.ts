@@ -169,16 +169,13 @@ export class AIAgentConfigHandler extends BaseAdminHandler {
     interaction: DiscordInteraction,
     guildId: string,
   ): Promise<void> {
-    const selectedValues = interaction.getSelectedValues();
-    const mode = selectedValues[0] ?? 'default';
-
     const channelId = this.sessionManager.getContext(guildId, interaction.getUserId(), 'agent_channel');
     if (!channelId) {
       await this.showAgentConfig(interaction, guildId);
       return;
     }
 
-    const result = await this.facade.enableAgent(guildId, channelId, mode);
+    const result = await this.facade.enableAgent(guildId, channelId);
 
     if (result.isOk()) {
       const embed = new EmbedBuilder()

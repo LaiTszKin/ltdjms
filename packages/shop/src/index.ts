@@ -62,9 +62,6 @@ export {
   productRedemptionTransaction,
   product,
 } from './persistence/schema.js';
-export { DrizzleFiatOrderRepository } from './persistence/drizzle-fiat-order-repository.js';
-export { DrizzleRedemptionCodeRepository } from './persistence/drizzle-redemption-code-repository.js';
-export { DrizzleProductRepository } from './persistence/drizzle-product-repository.js';
 
 // Services
 export { EcpayCvsPaymentService } from './services/ecpay-cvs-payment.service.js';
@@ -143,5 +140,3 @@ export {
 export type { DispatchOrderSnapshot, EscortDispatchHandoffService } from './domain/escort-dispatch-handoff-service.js';
 export type { EscortOrderBuyerNotifier, AdminOrderNotifier, GrantRewardRequest, ProductRewardGranter } from './domain/notification-interfaces.js';
 
-// Persistence (additional)
-export { DrizzleRedemptionTransactionService } from './persistence/drizzle-redemption-transaction-service.js';

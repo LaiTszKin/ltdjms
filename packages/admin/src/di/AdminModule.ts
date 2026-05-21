@@ -2,7 +2,7 @@ import { container, TOKENS } from '@ltdjms/shared';
 import type { DomainEventPublisher, DiscordRuntimeGateway } from '@ltdjms/shared';
 import type { BalanceService, BalanceAdjustmentService, CurrencyConfigService } from '@ltdjms/economy';
 import type { CurrencyTransactionService, GameTokenService, GameTokenTransactionService } from '@ltdjms/economy';
-import type { DiceConfigRepository } from '@ltdjms/economy';
+import type { DiceConfigService } from '@ltdjms/economy';
 import type {
   BalanceHandler,
   CurrencyConfigHandler,
@@ -103,7 +103,6 @@ export const ADMIN_TOKENS = {
   BalanceManagementHandler: Symbol('BalanceManagementHandler'),
   TokenManagementHandler: Symbol('TokenManagementHandler'),
   GameSettingsHandler: Symbol('GameSettingsHandler'),
-  ProductManagementHandler: Symbol('ProductManagementHandler'),
   AIChannelConfigHandler: Symbol('AIChannelConfigHandler'),
   AIAgentConfigHandler: Symbol('AIAgentConfigHandler'),
   DispatchAfterSalesHandler: Symbol('DispatchAfterSalesHandler'),
@@ -218,11 +217,10 @@ export function configureAdminContainer(): void {
   );
   container.registerInstance(ADMIN_TOKENS.GameTokenManagementFacade, tokenFacade);
 
-  const diceConfigRepo = container.resolve<DiceConfigRepository>(ECONOMY_TOKENS.DiceConfigRepository);
+  const diceConfigService = container.resolve<DiceConfigService>(ECONOMY_TOKENS.DiceConfigService);
 
   const gameConfigFacade = new GameConfigManagementFacade(
-    diceConfigRepo,
-    eventPublisher,
+    diceConfigService,
   );
   container.registerInstance(ADMIN_TOKENS.GameConfigManagementFacade, gameConfigFacade);
 

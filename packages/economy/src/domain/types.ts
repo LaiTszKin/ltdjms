@@ -71,7 +71,9 @@ export interface BalanceView {
 export enum GameTokenTransactionSource {
   ADMIN_ADJUSTMENT = 'ADMIN_ADJUSTMENT',
   DICE_GAME_1_PLAY = 'DICE_GAME_1_PLAY',
+  DICE_GAME_1_REFUND = 'DICE_GAME_1_REFUND',
   DICE_GAME_2_PLAY = 'DICE_GAME_2_PLAY',
+  DICE_GAME_2_REFUND = 'DICE_GAME_2_REFUND',
   GAME_PLAY = 'GAME_PLAY',
   REWARD = 'REWARD',
   INITIAL = 'INITIAL',
@@ -83,7 +85,9 @@ export enum GameTokenTransactionSource {
 export const TOKEN_SOURCE_DISPLAY_NAMES: Record<GameTokenTransactionSource, string> = {
   [GameTokenTransactionSource.ADMIN_ADJUSTMENT]: '管理員調整',
   [GameTokenTransactionSource.DICE_GAME_1_PLAY]: '骰子遊戲 1 消耗',
+  [GameTokenTransactionSource.DICE_GAME_1_REFUND]: '骰子遊戲 1 退款',
   [GameTokenTransactionSource.DICE_GAME_2_PLAY]: '骰子遊戲 2 消耗',
+  [GameTokenTransactionSource.DICE_GAME_2_REFUND]: '骰子遊戲 2 退款',
   [GameTokenTransactionSource.GAME_PLAY]: '遊戲消耗',
   [GameTokenTransactionSource.REWARD]: '獎勵',
   [GameTokenTransactionSource.INITIAL]: '初始化',

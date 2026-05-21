@@ -89,55 +89,74 @@ export class DiceGame2Handler {
       return;
     }
 
-    // Get currency info for display (P2-3)
-    const { currencyName, currencyIcon } = await resolveCurrencyDisplay(guildId, this.currencyConfigRepository);
+    try {
+      // Get currency info for display (P2-3)
+      const { currencyName, currencyIcon } = await resolveCurrencyDisplay(guildId, this.currencyConfigRepository);
 
-    // Play the game
-    const result = await this.diceGame2Service.play(guildId, userId, tokenCount, config);
+      // Play the game
+      const result = await this.diceGame2Service.play(guildId, userId, tokenCount, config);
 
-    if (result.isErr()) {
-      const error = result.getError();
-      if (error.category === DomainErrorCategory.INVALID_INPUT) {
-        await interaction.reply(error.message);
-      } else {
-        await interaction.reply(DiceGameMessages.UNEXPECTED_ERROR);
+      if (result.isErr()) {
+        // Refund tokens since they were already deducted (P0-2)
+        await this.gameTokenService.tryAdjustTokens(
+          guildId,
+          userId,
+          tokenCount,
+          GameTokenTransactionSource.DICE_GAME_2_REFUND,
+        );
+
+        const error = result.getError();
+        if (error.category === DomainErrorCategory.INVALID_INPUT) {
+          await interaction.reply(error.message);
+        } else {
+          await interaction.reply(DiceGameMessages.UNEXPECTED_ERROR);
+        }
+        return;
       }
-      return;
-    }
 
-    const gameResult = result.getValue();
+      const gameResult = result.getValue();
 
-    const diceDisplay = [...gameResult.diceRolls].join('、');
-    const straightDisplay =
-      gameResult.straightSegments.length > 0
-        ? gameResult.straightSegments
-            .map((seg: readonly number[]) => `[${[...seg].join('、')}]`)
-            .join(' ')
-        : '無';
-    const tripleDisplay =
-      gameResult.tripleSegments.length > 0
-        ? gameResult.tripleSegments
-            .map((seg: readonly number[]) => `[${[...seg].join('、')}]`)
-            .join(' ')
-        : '無';
+      const diceDisplay = [...gameResult.diceRolls].join('、');
+      const straightDisplay =
+        gameResult.straightSegments.length > 0
+          ? gameResult.straightSegments
+              .map((seg: readonly number[]) => `[${[...seg].join('、')}]`)
+              .join(' ')
+          : '無';
+      const tripleDisplay =
+        gameResult.tripleSegments.length > 0
+          ? gameResult.tripleSegments
+              .map((seg: readonly number[]) => `[${[...seg].join('、')}]`)
+              .join(' ')
+          : '無';
 
-    const message = [
-      `**${DiceGameMessages.GAME_2_TITLE}**`,
-      '',
-      DiceGameMessages.GAME_2_RESULT
-        .replace('{dice}', diceDisplay)
-        .replace('{straightSegments}', straightDisplay)
-        .replace('{tripleSegments}', tripleDisplay)
-        .replace('{straightReward}', String(gameResult.straightReward))
-        .replace('{tripleReward}', String(gameResult.tripleReward))
-        .replace('{baseReward}', String(gameResult.nonStraightReward))
-        .replace('{totalReward}', String(gameResult.totalReward))
-        .replace('{previousBalance}', String(gameResult.previousBalance))
-        .replace('{newBalance}', String(gameResult.newBalance)),
-      `
+      const message = [
+        `**${DiceGameMessages.GAME_2_TITLE}**`,
+        '',
+        DiceGameMessages.GAME_2_RESULT
+          .replace('{dice}', diceDisplay)
+          .replace('{straightSegments}', straightDisplay)
+          .replace('{tripleSegments}', tripleDisplay)
+          .replace('{straightReward}', String(gameResult.straightReward))
+          .replace('{tripleReward}', String(gameResult.tripleReward))
+          .replace('{baseReward}', String(gameResult.nonStraightReward))
+          .replace('{totalReward}', String(gameResult.totalReward))
+          .replace('{previousBalance}', String(gameResult.previousBalance))
+          .replace('{newBalance}', String(gameResult.newBalance)),
+        `
 	貨幣：${currencyIcon}${currencyName}`,
-    ].join('\n');
+      ].join('\n');
 
-    await interaction.reply(message);
+      await interaction.reply(message);
+    } catch (error) {
+      // Refund tokens on unexpected throw (P0-2)
+      await this.gameTokenService.tryAdjustTokens(
+        guildId,
+        userId,
+        tokenCount,
+        GameTokenTransactionSource.DICE_GAME_2_REFUND,
+      );
+      await interaction.reply(DiceGameMessages.UNEXPECTED_ERROR);
+    }
   }
 }

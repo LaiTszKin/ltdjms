@@ -3,12 +3,9 @@ import {
   Ok,
   Err,
   DomainError,
-  GameType,
-  type DiceGameConfigChangedEvent,
-  type DomainEventPublisher,
 } from '@ltdjms/shared';
 import {
-  DiceConfigRepository,
+  DiceConfigService,
   type DiceGame1Config,
   type DiceGame2Config,
 } from '@ltdjms/economy';
@@ -42,8 +39,7 @@ export interface DiceGame2ConfigUpdate {
  */
 export class GameConfigManagementFacade {
   constructor(
-    private readonly diceConfigRepo: DiceConfigRepository,
-    private readonly eventPublisher: DomainEventPublisher,
+    private readonly diceConfigService: DiceConfigService,
   ) {}
 
   /**
@@ -53,7 +49,7 @@ export class GameConfigManagementFacade {
     guildId: string,
   ): Promise<Result<DiceGame1Config, DomainError>> {
     try {
-      const config = await this.diceConfigRepo.findDice1Config(Number(guildId));
+      const config = await this.diceConfigService.findDice1Config(Number(guildId));
       if (!config) {
         return new Err(DomainError.invalidInput('尚未設定骰子遊戲 1 的設定'));
       }
@@ -91,7 +87,7 @@ export class GameConfigManagementFacade {
     try {
       const now = new Date();
       const numericGuildId = Number(guildId);
-      const currentConfig = await this.diceConfigRepo.findDice1Config(numericGuildId);
+      const currentConfig = await this.diceConfigService.findDice1Config(numericGuildId);
 
       const updated: DiceGame1Config = {
         guildId: numericGuildId,
@@ -102,25 +98,7 @@ export class GameConfigManagementFacade {
         updatedAt: now,
       };
 
-      const saved = await this.diceConfigRepo.upsertDice1Config(updated);
-
-      // Publish event with old and new config
-      const event: DiceGameConfigChangedEvent = {
-        guildId,
-        eventType: 'dice_game_config_changed',
-        gameType: GameType.DICE_GAME_1,
-        oldConfig: currentConfig ? {
-          minTokensPerPlay: currentConfig.minTokensPerPlay,
-          maxTokensPerPlay: currentConfig.maxTokensPerPlay,
-          rewardPerDiceValue: currentConfig.rewardPerDiceValue,
-        } : undefined,
-        newConfig: {
-          minTokensPerPlay: config.minTokensPerPlay,
-          maxTokensPerPlay: config.maxTokensPerPlay,
-          rewardPerDiceValue: config.rewardPerDiceValue,
-        },
-      };
-      this.eventPublisher.publish(event);
+      const saved = await this.diceConfigService.upsertDice1Config(updated);
 
       return new Ok(saved);
     } catch (err) {
@@ -140,7 +118,7 @@ export class GameConfigManagementFacade {
     guildId: string,
   ): Promise<Result<DiceGame2Config, DomainError>> {
     try {
-      const config = await this.diceConfigRepo.findDice2Config(Number(guildId));
+      const config = await this.diceConfigService.findDice2Config(Number(guildId));
       if (!config) {
         return new Err(DomainError.invalidInput('尚未設定骰子遊戲 2 的設定'));
       }
@@ -181,7 +159,7 @@ export class GameConfigManagementFacade {
     try {
       const now = new Date();
       const numericGuildId = Number(guildId);
-      const currentConfig = await this.diceConfigRepo.findDice2Config(numericGuildId);
+      const currentConfig = await this.diceConfigService.findDice2Config(numericGuildId);
 
       const updated: DiceGame2Config = {
         guildId: numericGuildId,
@@ -196,33 +174,7 @@ export class GameConfigManagementFacade {
         updatedAt: now,
       };
 
-      const saved = await this.diceConfigRepo.upsertDice2Config(updated);
-
-      // Publish event with old and new config
-      const event: DiceGameConfigChangedEvent = {
-        guildId,
-        eventType: 'dice_game_config_changed',
-        gameType: GameType.DICE_GAME_2,
-        oldConfig: currentConfig ? {
-          minTokensPerPlay: currentConfig.minTokensPerPlay,
-          maxTokensPerPlay: currentConfig.maxTokensPerPlay,
-          straightMultiplier: currentConfig.straightMultiplier,
-          baseMultiplier: currentConfig.baseMultiplier,
-          tripleLowBonus: currentConfig.tripleLowBonus,
-          tripleHighBonus: currentConfig.tripleHighBonus,
-          faceMultipliers: currentConfig.faceMultipliers,
-        } : undefined,
-        newConfig: {
-          minTokensPerPlay: config.minTokensPerPlay,
-          maxTokensPerPlay: config.maxTokensPerPlay,
-          straightMultiplier: config.straightMultiplier,
-          baseMultiplier: config.baseMultiplier,
-          tripleLowBonus: config.tripleLowBonus,
-          tripleHighBonus: config.tripleHighBonus,
-          faceMultipliers: config.faceMultipliers ?? [1, 1, 1, 1, 1, 1],
-        },
-      };
-      this.eventPublisher.publish(event);
+      const saved = await this.diceConfigService.upsertDice2Config(updated);
 
       return new Ok(saved);
     } catch (err) {

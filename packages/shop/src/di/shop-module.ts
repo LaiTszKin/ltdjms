@@ -5,7 +5,9 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type pino from 'pino';
 
 import { DrizzleFiatOrderRepository } from '../persistence/drizzle-fiat-order-repository.js';
+import { DrizzleProductRepository } from '../persistence/drizzle-product-repository.js';
 import { DrizzleRedemptionCodeRepository } from '../persistence/drizzle-redemption-code-repository.js';
+import { DrizzleRedemptionTransactionService } from '../persistence/drizzle-redemption-transaction-service.js';
 import type { FiatOrderRepository } from '../domain/fiat-order-repository.js';
 import type { RedemptionCodeRepository } from '../domain/redemption-code-repository.js';
 import type { Product, ProductRepository } from '../domain/product-types.js';
@@ -85,13 +87,11 @@ export interface RedemptionTransactionService {
 /** Configuration options for the shop module container. */
 export interface ShopModuleOptions {
   db: NodePgDatabase;
-  productRepository: ProductRepository;
   productRewardService: ProductRewardService;
   escortDispatchHandoffService: EscortDispatchHandoffService;
   balanceService: BalanceService;
   balanceAdjustmentService: BalanceAdjustmentService;
   currencyTransactionService: CurrencyTransactionService;
-  redemptionTransactionService: RedemptionTransactionService;
   logger?: pino.Logger;
 }
 
@@ -128,15 +128,17 @@ export function configureContainer(options: ShopModuleOptions): void {
   // ---- Repositories ----
   const fiatOrderRepo = new DrizzleFiatOrderRepository(options.db, log);
   const redemptionCodeRepo = new DrizzleRedemptionCodeRepository(options.db, log);
+  const productRepo = new DrizzleProductRepository(options.db);
+  const redemptionTxService = new DrizzleRedemptionTransactionService(options.db);
 
   container.registerInstance<FiatOrderRepository>(SHOP_TOKENS.FiatOrderRepository, fiatOrderRepo);
   container.registerInstance<RedemptionCodeRepository>(
     SHOP_TOKENS.RedemptionCodeRepository,
     redemptionCodeRepo,
   );
-  container.registerInstance<typeof options.productRepository>(
+  container.registerInstance<ProductRepository>(
     SHOP_TOKENS.ProductRepository,
-    options.productRepository,
+    productRepo,
   );
 
   // ---- Notification Services ----
@@ -161,7 +163,7 @@ export function configureContainer(options: ShopModuleOptions): void {
 
   // ---- FiatOrder Service ----
   const fiatOrderService = new FiatOrderService(
-    options.productRepository,
+    productRepo,
     ecpayCvsPayment,
     fiatOrderRepo,
     log,
@@ -208,7 +210,7 @@ export function configureContainer(options: ShopModuleOptions): void {
 
   // ---- Currency Purchase ----
   const currencyPurchase = new CurrencyPurchaseService(
-    options.productRepository,
+    productRepo,
     options.balanceService,
     options.balanceAdjustmentService,
     options.currencyTransactionService,
@@ -218,18 +220,17 @@ export function configureContainer(options: ShopModuleOptions): void {
   container.registerInstance(SHOP_TOKENS.CurrencyPurchaseService, currencyPurchase);
 
   // ---- Shop Service ----
-  const shopService = new ShopService(options.productRepository, log);
+  const shopService = new ShopService(productRepo, log);
   container.registerInstance(SHOP_TOKENS.ShopService, shopService);
 
-  const shopCommandHandler = new ShopCommandHandler(shopService, fiatOrderService, currencyPurchase, options.productRepository);
+  const shopCommandHandler = new ShopCommandHandler(shopService, fiatOrderService, currencyPurchase, productRepo);
   container.registerInstance(SHOP_TOKENS.ShopCommandHandler, shopCommandHandler);
 
   // ---- Redemption ----
   const codeGenerator = new RedemptionCodeGenerator();
-  const redemptionTxService: RedemptionTransactionService = options.redemptionTransactionService;
   const redemptionService = new RedemptionService(
     redemptionCodeRepo,
-    options.productRepository,
+    productRepo,
     codeGenerator,
     options.productRewardService,
     redemptionTxService,

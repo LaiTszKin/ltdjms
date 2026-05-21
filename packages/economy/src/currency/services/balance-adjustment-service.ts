@@ -55,6 +55,15 @@ export class BalanceAdjustmentService {
       );
     }
 
+    // Check for underflow: previousBalance + amount must not go below MIN_SAFE_INTEGER (P1-1)
+    if (amount < 0 && previousBalance < Number.MIN_SAFE_INTEGER - amount) {
+      return new Err(
+        DomainError.invalidInput(
+          `Balance underflow: ${previousBalance} + ${amount} below minimum safe integer`,
+        ),
+      );
+    }
+
     try {
       const adjustResult = await this.accountRepository.tryAdjustBalance(
         guildId,
@@ -229,19 +238,33 @@ export class BalanceAdjustmentService {
       const previousBalance = current.balance;
       let newBalance = previousBalance;
 
-      // Apply in chunks if maxChunkSize is specified
+      // Apply in chunks with compensating rollback on failure (P2-1)
+      const appliedChunks: number[] = [];
       let remaining = totalAmount;
-      while (remaining !== 0) {
-        const chunk = maxChunkSize !== undefined
-          ? Math.min(Math.abs(remaining), maxChunkSize) * Math.sign(remaining)
-          : remaining;
+      try {
+        while (remaining !== 0) {
+          const chunk = maxChunkSize !== undefined
+            ? Math.min(Math.abs(remaining), maxChunkSize) * Math.sign(remaining)
+            : remaining;
 
-        const result = await this.accountRepository.tryAdjustBalance(guildId, userId, chunk);
-        if (result.isErr()) {
-          return new Err(result.getError());
+          const result = await this.accountRepository.tryAdjustBalance(guildId, userId, chunk);
+          if (result.isErr()) {
+            // Rollback applied chunks on expected error (P2-1)
+            for (let i = appliedChunks.length - 1; i >= 0; i--) {
+              await this.accountRepository.tryAdjustBalance(guildId, userId, -appliedChunks[i]);
+            }
+            return new Err(result.getError());
+          }
+          appliedChunks.push(chunk);
+          newBalance = result.getValue().balance;
+          remaining -= chunk;
         }
-        newBalance = result.getValue().balance;
-        remaining -= chunk;
+      } catch (txErr) {
+        // Rollback applied chunks on unexpected error and re-throw (P2-1)
+        for (let i = appliedChunks.length - 1; i >= 0; i--) {
+          await this.accountRepository.tryAdjustBalance(guildId, userId, -appliedChunks[i]);
+        }
+        throw txErr;
       }
 
       const actualAdjustment = newBalance - previousBalance;

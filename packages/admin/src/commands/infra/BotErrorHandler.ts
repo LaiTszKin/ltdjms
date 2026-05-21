@@ -86,13 +86,9 @@ export class BotErrorHandler {
   private handleDomainError(error: DomainError): string {
     const categoryMessage = ZhTwStrings.errorMapping[error.category];
     if (categoryMessage) {
-      // Append the error detail if available and different from category message
-      if (error.message && error.message !== categoryMessage) {
-        return `${categoryMessage}（${error.message}）`;
-      }
       return categoryMessage;
     }
-    return error.message || ZhTwStrings.unexpectedError;
+    return ZhTwStrings.unexpectedError;
   }
 }
 

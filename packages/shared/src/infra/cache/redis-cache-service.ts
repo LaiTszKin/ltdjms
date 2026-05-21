@@ -10,6 +10,9 @@ import { type CacheService } from './cache-service.js';
 export class RedisCacheService implements CacheService {
   private readonly redis: Redis;
   private readonly logger: Logger;
+  private circuitOpen = false;
+  private circuitOpenSince = 0;
+  private static readonly CIRCUIT_RETRY_AFTER_MS = 30000;
 
   constructor(redisUri: string, logger?: Logger) {
     this.logger = logger ?? pino({ level: 'silent' });
@@ -27,7 +30,23 @@ export class RedisCacheService implements CacheService {
     });
   }
 
+  private isCircuitOpen(): boolean {
+    if (!this.circuitOpen) return false;
+    if (Date.now() - this.circuitOpenSince >= RedisCacheService.CIRCUIT_RETRY_AFTER_MS) {
+      this.circuitOpen = false;
+      return false;
+    }
+    return true;
+  }
+
+  private openCircuit(): void {
+    this.circuitOpen = true;
+    this.circuitOpenSince = Date.now();
+    this.logger.warn('Redis circuit breaker opened');
+  }
+
   async get<T>(key: string): Promise<T | null> {
+    if (this.isCircuitOpen()) return null;
     try {
       const value = await this.redis.get(key);
       if (value === null) {
@@ -35,12 +54,14 @@ export class RedisCacheService implements CacheService {
       }
       return JSON.parse(value) as T;
     } catch (err) {
+      this.openCircuit();
       this.logger.warn({ err }, 'Redis cache operation failed: get');
       return null;
     }
   }
 
   async put(key: string, value: unknown, ttlSeconds: number): Promise<void> {
+    if (this.isCircuitOpen()) return;
     try {
       const serialized = JSON.stringify(value);
       if (ttlSeconds > 0) {
@@ -49,14 +70,17 @@ export class RedisCacheService implements CacheService {
         await this.redis.set(key, serialized);
       }
     } catch (err) {
+      this.openCircuit();
       this.logger.warn({ err }, 'Redis cache operation failed: put');
     }
   }
 
   async invalidate(key: string): Promise<void> {
+    if (this.isCircuitOpen()) return;
     try {
       await this.redis.del(key);
     } catch (err) {
+      this.openCircuit();
       this.logger.warn({ err }, 'Redis cache operation failed: invalidate');
     }
   }
