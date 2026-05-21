@@ -125,13 +125,13 @@ describe('P0-1: AES-CBC golden-data cross-validation', () => {
 
     it('should produce different ciphertext when IV differs', () => {
       const cipher1 = encryptAES(fixturePlainText, hashKey, hashIv);
-      const cipher2 = encryptAES(fixturePlainText, hashKey, 'DifferentIv1234567');
+      const cipher2 = encryptAES(fixturePlainText, hashKey, 'DiffIv12345678901');
       expect(cipher1).not.toBe(cipher2);
     });
 
     it('should produce different ciphertext when key differs', () => {
       const cipher1 = encryptAES(fixturePlainText, hashKey, hashIv);
-      const cipher2 = encryptAES(fixturePlainText, 'DifferentKey1234567', hashIv);
+      const cipher2 = encryptAES(fixturePlainText, 'Key12345678901234', hashIv);
       expect(cipher1).not.toBe(cipher2);
     });
   });
