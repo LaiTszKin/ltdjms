@@ -7,7 +7,7 @@ import pino from 'pino';
  */
 export class ToolExecutionInterceptor {
   private readonly logger: pino.Logger;
-  private durations = new Map<string, number>();
+  private durations = new Map<string, { startTime: number; timer: ReturnType<typeof setTimeout> }>();
 
   constructor(logger?: pino.Logger) {
     this.logger = logger ?? pino({ name: 'tool-execution-interceptor' });
@@ -23,14 +23,17 @@ export class ToolExecutionInterceptor {
    */
   onToolExecutionStarted(toolName: string, params: Record<string, unknown>): string {
     const correlationId = randomUUID();
-    this.durations.set(correlationId, Date.now());
+    const timer = setTimeout(() => {
+      this.durations.delete(correlationId);
+    }, 60000);
+    this.durations.set(correlationId, { startTime: Date.now(), timer });
 
     this.logger.info({
       event: 'tool_execution_started',
       timestamp: new Date().toISOString(),
       correlationId,
       toolName,
-      params,
+      paramKeys: Object.keys(params),
     }, `Tool execution started: ${toolName}`);
 
     return correlationId;
@@ -82,9 +85,10 @@ export class ToolExecutionInterceptor {
    * Returns 0 if no timing was recorded.
    */
   private getAndClearDuration(correlationId: string): number {
-    const startTime = this.durations.get(correlationId);
-    if (startTime === undefined) return 0;
+    const entry = this.durations.get(correlationId);
+    if (entry === undefined) return 0;
+    clearTimeout(entry.timer);
     this.durations.delete(correlationId);
-    return Date.now() - startTime;
+    return Date.now() - entry.startTime;
   }
 }

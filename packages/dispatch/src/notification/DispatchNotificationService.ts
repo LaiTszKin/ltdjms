@@ -1,11 +1,7 @@
 import { type DiscordRuntimeGateway } from '@ltdjms/shared';
 import { type EscortDispatchOrder, SourceType } from '../domain/index.js';
 import { type DispatchAfterSalesStaffService } from '../service/dispatch-after-sales-staff.service.js';
-
-/** Embed color constants matching DispatchPanelView palette. */
-const COLOR_INFO = 0x57f287;
-const COLOR_WARNING = 0xfee75c;
-const COLOR_ERROR = 0xed4245;
+import { COLOR_INFO, COLOR_WARNING, COLOR_ERROR } from '../constants.js';
 
 /** Shape accepted by discord.js DMChannel.send() for embeds. */
 interface EmbedPayload {

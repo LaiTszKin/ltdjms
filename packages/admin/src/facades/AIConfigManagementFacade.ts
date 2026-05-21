@@ -104,26 +104,11 @@ export class AIConfigManagementFacade {
   }
 
   /**
-   * Enables agent mode for a channel with the specified mode.
-   *
-   * NOTE: The `_mode` parameter is accepted for API consistency but is currently
-   * ignored because AIAgentChannelConfigService.setAgentEnabled(guildId, channelId, enabled)
-   * only supports a boolean on/off toggle. Once the service supports mode selection
-   * (e.g., 'chat', 'agent', 'hybrid'), pass `_mode` through to the service.
-   *
-   * TODO(P1-36): Pass `mode` through to the service layer when setAgentEnabled
-   * signature is extended to accept a mode parameter.
-   * TODO(P2-8): Once AIAgentChannelConfigService.setAgentEnabled supports a mode
-   * parameter (chat/agent/hybrid), update the handler to collect the mode choice
-   * from the admin and pass it here instead of the hardcoded 'default'.
-   * TODO(P2-7): 目前 _mode 被忽略；當 setAgentEnabled 支援 mode 參數時，
-   * 將 `_mode` 傳入 service call：
-   * return this.agentConfigService.setAgentEnabled(guildId, channelId, true, _mode);
+   * Enables agent mode for a channel.
    */
   async enableAgent(
     guildId: string,
     channelId: string,
-    _mode: string,
   ): Promise<Result<void, DomainError>> {
     return this.agentConfigService.setAgentEnabled(guildId, channelId, true);
   }
@@ -148,7 +133,7 @@ export class AIConfigManagementFacade {
     enabled: boolean,
   ): Promise<Result<void, DomainError>> {
     if (enabled) {
-      return this.enableAgent(guildId, channelId, 'default');
+      return this.enableAgent(guildId, channelId);
     }
     return this.disableAgent(guildId, channelId);
   }

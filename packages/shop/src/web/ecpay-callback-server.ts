@@ -167,27 +167,6 @@ export class EcpayCallbackHttpServer {
   }
 
   private getLandingPageHtml(): string {
-    return `<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LTDJMS - ECPay Callback Server</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 20px; color: #333; }
-    h1 { color: #5865F2; }
-    .status { background: #f0f0f0; padding: 16px; border-radius: 8px; margin: 20px 0; }
-    code { background: #e8e8e8; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
-  </style>
-</head>
-<body>
-  <h1>LTDJMS ECPay Callback Server</h1>
-  <div class="status">
-    <p>This server is running and ready to receive ECPay payment callbacks.</p>
-  </div>
-  <p>Callback endpoint: <code>POST ${this.config.getEcpayCallbackPath()}</code></p>
-  <p>Return URL configured: <code>${this.config.getEcpayReturnUrl() || '(not set)'}</code></p>
-</body>
-</html>`;
+    return '<html><body><h1>ECPay Callback Server is running</h1></body></html>';
   }
 }

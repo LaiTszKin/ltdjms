@@ -69,23 +69,24 @@ export class ShopAdminNotificationService {
         return;
       }
 
-      // NOTE: This iterates all cached guild members to find admins via permission check.
-      // This is a fire-and-forget notification and is acceptable for typical guild sizes.
-      // If a large guild experiences performance issues, consider using Discord's
-      // permission-based member search API instead of iterating the entire cache.
-      const members = guild.members.cache;
-      if (members && members.size > 0) {
-        for (const [, member] of members) {
-          if (!this.isAdmin(member)) continue;
-          const adminUserId = member.user.id;
-          if (selfUserId && adminUserId === selfUserId) {
-            this.log.debug({ guildId, selfUserId }, 'Skipping bot self when notifying admins');
-            continue;
-          }
-          if (notified.has(adminUserId)) continue;
-          notified.add(adminUserId);
-          this.sendAdminNotification(member.user, message);
+      // Find members with ADMINISTRATOR permission via roles rather than iterating all guild members
+      const adminMembers = new Set<any>();
+      const adminRole = guild.roles.cache.find((role: any) => role.permissions.has('Administrator'));
+      if (adminRole) {
+        for (const [, member] of adminRole.members) {
+          adminMembers.add(member);
         }
+      }
+
+      for (const member of adminMembers) {
+        const adminUserId = member.user.id;
+        if (selfUserId && adminUserId === selfUserId) {
+          this.log.debug({ guildId, selfUserId }, 'Skipping bot self when notifying admins');
+          continue;
+        }
+        if (notified.has(adminUserId)) continue;
+        notified.add(adminUserId);
+        this.sendAdminNotification(member.user, message);
       }
 
       // Also notify guild owner if not already notified
@@ -193,15 +194,6 @@ export class ShopAdminNotificationService {
     lines.push(`**Dispatch 編號：** \`${order.orderNumber}\``);
     lines.push('\n請使用 `/dispatch-panel` 檢視或後續處理此工作項。');
     return lines.join('\n');
-  }
-
-  private isAdmin(member: any): boolean {
-    if (!member) return false;
-    try {
-      return member.permissions.has('Administrator');
-    } catch {
-      return false;
-    }
   }
 
   private describeSourceType(sourceType: string | null): string {

@@ -5,6 +5,7 @@ import pino from 'pino';
 
 const DEFAULT_BATCH_SIZE = 20;
 const RECONCILIATION_WINDOW_DAYS = 7;
+const MAX_RETRY_ATTEMPTS = 10;
 const EXPIRED_TERMINAL_REASON = 'EXPIRED';
 
 export class FiatPaymentReconciliationService {
@@ -28,9 +29,32 @@ export class FiatPaymentReconciliationService {
       createdAfter,
       DEFAULT_BATCH_SIZE,
     );
-    for (const order of orders) {
-      await this.reconcileSingleOrder(order, now);
+    await this.processWithConcurrencyLimit(
+      orders,
+      order => this.reconcileSingleOrder(order, now),
+      5,
+    );
+  }
+
+  private async processWithConcurrencyLimit<T>(
+    items: T[],
+    processor: (item: T) => Promise<void>,
+    concurrency: number,
+  ): Promise<void> {
+    const results: Promise<void>[] = [];
+    const executing = new Set<Promise<void>>();
+
+    for (const item of items) {
+      const promise = processor(item).finally(() => executing.delete(promise));
+      executing.add(promise);
+      results.push(promise);
+
+      if (executing.size >= concurrency) {
+        await Promise.race(executing);
+      }
     }
+
+    await Promise.allSettled(results);
   }
 
   private async expirePendingOrders(now: Date): Promise<void> {
@@ -90,6 +114,19 @@ export class FiatPaymentReconciliationService {
   }
 
   private async scheduleRetry(order: FiatOrder, now: Date): Promise<void> {
+    if (order.reconciliationAttemptCount >= MAX_RETRY_ATTEMPTS) {
+      this.log.error(
+        { orderNumber: order.orderNumber, attemptCount: order.reconciliationAttemptCount },
+        'Max reconciliation retry attempts reached, expiring order',
+      );
+      await this.fiatOrderRepository.markExpiredIfPending(
+        order.orderNumber,
+        now,
+        'RECONCILIATION_FAILED',
+      );
+      return;
+    }
+
     const nextAttempt = order.reconciliationAttemptCount + 1;
     const delaySeconds = Math.min(300, 30 * nextAttempt);
     const nextAttemptAt = new Date(now.getTime() + delaySeconds * 1000);

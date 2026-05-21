@@ -7,7 +7,7 @@
     "format": "prettier --write \"packages/*/src/**/*.ts\" \"*.{ts,mjs,js,json}\"",
     "format:check": "prettier --check \"packages/*/src/**/*.ts\" \"*.{ts,mjs,js,json}\"",
     "lint": "eslint packages/*/src/",
-    "dev": "tsx watch packages/shared/src/main.ts"
+    "dev": "tsx watch packages/admin/src/main.ts"
   },
   "devDependencies": {
     "typescript": "^5.5.0",

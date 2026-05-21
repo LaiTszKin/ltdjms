@@ -28,10 +28,12 @@ describe('BotErrorHandler', () => {
       }
     });
 
-    it('should include error details when available', () => {
+    it('should not leak error details to users', () => {
       const error = DomainError.insufficientBalance('Current balance: 100');
       const message = handler.toUserMessage(error);
-      expect(message).toContain('100');
+      // User-facing message must not contain internal error details
+      expect(message).not.toContain('100');
+      expect(message).toContain('不足');
     });
 
     it('should handle INSUFFICIENT_BALANCE', () => {

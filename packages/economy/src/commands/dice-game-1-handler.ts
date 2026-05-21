@@ -98,44 +98,63 @@ export class DiceGame1Handler {
       return;
     }
 
-    // Get currency info for display (P2-3)
-    const { currencyName, currencyIcon } = await resolveCurrencyDisplay(guildId, this.currencyConfigRepository);
+    try {
+      // Get currency info for display (P2-3)
+      const { currencyName, currencyIcon } = await resolveCurrencyDisplay(guildId, this.currencyConfigRepository);
 
-    // Play the game
-    const result = await this.diceGame1Service.play(guildId, userId, tokenCount, config);
+      // Play the game
+      const result = await this.diceGame1Service.play(guildId, userId, tokenCount, config);
 
-    if (result.isErr()) {
-      const error = result.getError();
-      if (error.category === DomainErrorCategory.INVALID_INPUT) {
-        await interaction.reply(error.message);
-      } else {
-        await interaction.reply(DiceGameMessages.UNEXPECTED_ERROR);
+      if (result.isErr()) {
+        // Refund tokens since they were already deducted (P0-2)
+        await this.gameTokenService.tryAdjustTokens(
+          guildId,
+          userId,
+          tokenCount,
+          GameTokenTransactionSource.DICE_GAME_1_REFUND,
+        );
+
+        const error = result.getError();
+        if (error.category === DomainErrorCategory.INVALID_INPUT) {
+          await interaction.reply(error.message);
+        } else {
+          await interaction.reply(DiceGameMessages.UNEXPECTED_ERROR);
+        }
+        return;
       }
-      return;
+
+      const gameResult = result.getValue();
+
+      const diceDisplay = gameResult.diceRolls
+        .map((d: number) => DiceGame1Handler.DICE_EMOJI[d] ?? String(d))
+        .join(' ');
+      const rewardDisplay = String(gameResult.totalReward);
+
+      const message = [
+        `**${DiceGameMessages.GAME_1_TITLE}**`,
+        '',
+        DiceGameMessages.GAME_1_RESULT
+          .replace('{dice}', diceDisplay)
+          .replace('{sum}', String(gameResult.diceRolls.reduce((a: number, b: number) => a + b, 0)))
+          .replace('{reward}', rewardDisplay),
+        '',
+        `餘額變動：${String(gameResult.previousBalance)} → ${String(gameResult.newBalance)} ${currencyIcon}${currencyName}`,
+        '',
+        `_${DiceGameMessages.GAME_1_DESCRIPTION
+          .replace('{count}', String(tokenCount))
+          .replace('{reward}', String(gameResult.totalReward))}_`,
+      ].join('\n');
+
+      await interaction.reply(message);
+    } catch (error) {
+      // Refund tokens on unexpected throw (P0-2)
+      await this.gameTokenService.tryAdjustTokens(
+        guildId,
+        userId,
+        tokenCount,
+        GameTokenTransactionSource.DICE_GAME_1_REFUND,
+      );
+      await interaction.reply(DiceGameMessages.UNEXPECTED_ERROR);
     }
-
-    const gameResult = result.getValue();
-
-    const diceDisplay = gameResult.diceRolls
-      .map((d: number) => DiceGame1Handler.DICE_EMOJI[d] ?? String(d))
-      .join(' ');
-    const rewardDisplay = String(gameResult.totalReward);
-
-    const message = [
-      `**${DiceGameMessages.GAME_1_TITLE}**`,
-      '',
-      DiceGameMessages.GAME_1_RESULT
-        .replace('{dice}', diceDisplay)
-        .replace('{sum}', String(gameResult.diceRolls.reduce((a: number, b: number) => a + b, 0)))
-        .replace('{reward}', rewardDisplay),
-      '',
-      `餘額變動：${String(gameResult.previousBalance)} → ${String(gameResult.newBalance)} ${currencyIcon}${currencyName}`,
-      '',
-      `_${DiceGameMessages.GAME_1_DESCRIPTION
-        .replace('{count}', String(tokenCount))
-        .replace('{reward}', String(gameResult.totalReward))}_`,
-    ].join('\n');
-
-    await interaction.reply(message);
   }
 }

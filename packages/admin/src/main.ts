@@ -17,8 +17,6 @@ import { configureDispatchContainer, DISPATCH_TOKENS } from '@ltdjms/dispatch';
 import {
   configureContainer as configureShopContainer,
   SHOP_TOKENS,
-  DrizzleProductRepository,
-  DrizzleRedemptionTransactionService,
   FiatOrderProcessingScheduler,
   EcpayCallbackHttpServer,
 } from '@ltdjms/shop';
@@ -85,8 +83,6 @@ async function main(): Promise<void> {
   configureDispatchContainer();
 
   // 9. Shop module prerequisites
-  const productRepository = new DrizzleProductRepository(db);
-  const redemptionTransactionService = new DrizzleRedemptionTransactionService(db);
   const balanceService = container.resolve<BalanceService>(ECONOMY_TOKENS.BalanceService);
   const balanceAdjustmentService = container.resolve<BalanceAdjustmentService>(ECONOMY_TOKENS.BalanceAdjustmentService);
   const currencyTransactionService = container.resolve<CurrencyTransactionService>(ECONOMY_TOKENS.CurrencyTransactionService);
@@ -116,13 +112,11 @@ async function main(): Promise<void> {
 
   configureShopContainer({
     db,
-    productRepository,
     productRewardService,
     escortDispatchHandoffService,
     balanceService,
     balanceAdjustmentService,
     currencyTransactionService,
-    redemptionTransactionService,
     logger,
   });
 
