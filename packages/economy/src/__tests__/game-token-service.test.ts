@@ -126,7 +126,7 @@ describe('GameTokenService', () => {
       const balance = await service.getBalance(1, '1');
 
       expect(balance).toBe(0);
-      expect(mockAccountRepo.findOrCreate).toHaveBeenCalledWith(1, 1);
+      expect(mockAccountRepo.findOrCreate).toHaveBeenCalledWith(1, "1");
     });
   });
 

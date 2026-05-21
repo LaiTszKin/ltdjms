@@ -36,7 +36,7 @@ describe('RedemptionCode', () => {
     if (redeemedResult.isOk()) {
       const redeemed = redeemedResult.getValue();
       expect(isRedeemed(redeemed)).toBe(true);
-      expect(redeemed.redeemedBy).toBe('456');
+      expect(redeemed.redeemedBy).toBe(456);
       expect(redeemed.redeemedAt).toBeInstanceOf(Date);
     }
   });
