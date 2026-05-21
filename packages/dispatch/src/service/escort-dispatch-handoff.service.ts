@@ -87,7 +87,7 @@ export class EscortDispatchHandoffService {
       }
 
       const orderNumber = await this.generateUniqueOrderNumber();
-      const order = createAutoHandoff(
+      const orderResult = createAutoHandoff(
         orderNumber,
         guildId,
         0, // assignedByUserId=0 (auto)
@@ -101,8 +101,11 @@ export class EscortDispatchHandoffService {
         product.fiatPriceTwd,
         product.escortOptionCode,
       );
+      if (orderResult.isErr()) {
+        return orderResult;
+      }
 
-      const saved = await this.repository.save(order);
+      const saved = await this.repository.save(orderResult.getValue());
       return new Ok(saved);
     } catch (e) {
       const err = e instanceof Error ? e : new Error(String(e));

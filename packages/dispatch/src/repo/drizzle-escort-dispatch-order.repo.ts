@@ -291,7 +291,7 @@ export class DrizzleEscortDispatchOrderRepo implements EscortDispatchOrderRepo {
 
 /** Maps a DB row to domain EscortDispatchOrder, preserving ALL stored columns. */
 function mapRowToDomain(row: EscortDispatchOrderSelect): EscortDispatchOrder {
-  return fromDbRow({
+  const result = fromDbRow({
     id: (row.id as number) ?? null,
     orderNumber: row.orderNumber as string,
     guildId: row.guildId as number,
@@ -316,4 +316,6 @@ function mapRowToDomain(row: EscortDispatchOrderSelect): EscortDispatchOrder {
     sourceFiatPriceTwd: (row.sourceFiatPriceTwd as number) ?? null,
     sourceEscortOptionCode: (row.sourceEscortOptionCode as string) ?? null,
   });
+  // DB data should always pass validation; throw on corruption to fail fast
+  return result.getValue();
 }

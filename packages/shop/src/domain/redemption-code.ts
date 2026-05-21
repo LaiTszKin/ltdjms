@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ok, err, DomainError, type Result } from '@ltdjms/shared';
 
 /** Length of generated redemption codes. */
 export const CODE_LENGTH = 16;
@@ -51,15 +52,15 @@ export function createRedemptionCode(
   return validated;
 }
 
-export function withRedeemed(code: RedemptionCode, userId: string): RedemptionCode {
+export function withRedeemed(code: RedemptionCode, userId: string): Result<RedemptionCode, DomainError> {
   if (isRedeemed(code)) {
-    throw new Error('Code has already been redeemed');
+    return err(DomainError.invalidInput('Code has already been redeemed'));
   }
-  return RedemptionCodeSchema.parse({
+  return ok(RedemptionCodeSchema.parse({
     ...code,
-    redeemedBy: userId,
+    redeemedBy: Number(userId),
     redeemedAt: new Date(),
-  });
+  }));
 }
 
 export function isRedeemed(code: RedemptionCode): boolean {
@@ -78,15 +79,15 @@ export function isInvalidated(code: RedemptionCode): boolean {
   return code.invalidatedAt !== null;
 }
 
-export function withInvalidated(code: RedemptionCode): RedemptionCode {
+export function withInvalidated(code: RedemptionCode): Result<RedemptionCode, DomainError> {
   if (isInvalidated(code)) {
-    throw new Error('Code has already been invalidated');
+    return err(DomainError.invalidInput('Code has already been invalidated'));
   }
-  return RedemptionCodeSchema.parse({
+  return ok(RedemptionCodeSchema.parse({
     ...code,
     productId: null,
     invalidatedAt: new Date(),
-  });
+  }));
 }
 
 export function belongsToGuild(code: RedemptionCode, guildId: number): boolean {
