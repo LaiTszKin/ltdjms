@@ -3,7 +3,7 @@ import {
   DomainError,
   DomainErrorCategory,
 } from '@ltdjms/shared';
-import { DiscordAPIError, EmbedBuilder } from 'discord.js';
+import { EmbedBuilder } from 'discord.js';
 import { ZhTwStrings } from '../../i18n/zh-TW.js';
 
 /**

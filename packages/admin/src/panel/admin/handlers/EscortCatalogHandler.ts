@@ -343,6 +343,22 @@ export class EscortCatalogHandler extends BaseAdminHandler {
     guildId: string,
     entryCode: string,
   ): Promise<void> {
+    // Re-check referential integrity before deleting (closes TOCTOU window)
+    const refCountResult = await this.facade.checkCatalogRefCount(entryCode);
+    const refCount = refCountResult.isOk() ? refCountResult.getValue() : 0;
+    if (refCount > 0) {
+      const embed = new EmbedBuilder()
+        .setTitle(ZhTwStrings.escortCatalogTitle)
+        .setDescription(
+          ZhTwStrings.escortCatalogDeleteBlocked
+            .replace('{name}', entryCode)
+            .replace('{guilds}', `${refCount} 個 guild`),
+        )
+        .setColor(Colors.WARNING);
+      await interaction.editEmbed(embed);
+      return;
+    }
+
     const result = await this.facade.deleteCatalogEntry(guildId, entryCode);
 
     if (result.isOk()) {

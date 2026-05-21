@@ -19,6 +19,7 @@ export class DomainEventPublisher {
   private readonly wrapperMap = new WeakMap<(event: DomainEvent) => void | Promise<void>, (event: DomainEvent) => void>();
 
   constructor(logger?: Logger) {
+    this.emitter.setMaxListeners(50);
     this.logger = logger ?? pino({ level: 'silent' });
   }
 

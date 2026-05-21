@@ -1,4 +1,4 @@
-import { type Result, Ok, Err, DomainError, Unit } from '@ltdjms/shared';
+import { type Result, DomainError, Unit } from '@ltdjms/shared';
 import type {
   AIChannelRestrictionService,
   AIAgentChannelConfigService,
@@ -108,15 +108,21 @@ export class AIConfigManagementFacade {
    * Enables agent mode for a channel.
    *
    * @param mode - The agent mode to enable (CHAT, AGENT, or HYBRID).
-   *   Currently accepted but the underlying service layer only supports
-   *   enabled/disabled boolean. TODO: pass mode through to service when
-   *   AIAgentChannelConfigService supports it.
+   *   Currently only AGENT mode is supported; CHAT and HYBRID fall back
+   *   to AGENT until the service layer supports mode discrimination.
+   *   Tracking: spec administration R7.2 + DB schema migration needed.
    */
   async enableAgent(
     guildId: string,
     channelId: string,
-    _mode: AgentMode,
+    mode: AgentMode,
   ): Promise<Result<Unit, DomainError>> {
+    if (mode !== AgentMode.AGENT) {
+      console.warn(
+        `[AIConfigManagementFacade] Non-AGENT mode (${mode}) requested for guild=${guildId}, ` +
+        `channel=${channelId}. Falling back to AGENT — service layer only supports enabled/disabled.`,
+      );
+    }
     return this.agentConfigService.setAgentEnabled(guildId, channelId, true);
   }
 

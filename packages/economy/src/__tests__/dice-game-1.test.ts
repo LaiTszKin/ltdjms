@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { Ok } from '@ltdjms/shared';
-import { DiceGame1Service, DefaultRandom } from '../dice/services/dice-game-1-service.js';
+import { DiceGame1Service } from '../dice/services/dice-game-1-service.js';
+import { DefaultRandom } from '../dice/services/random.js';
 import { GameRewardService } from '../dice/services/game-reward-service.js';
 import { BalanceService } from '../currency/services/balance-service.js';
 import type { DiceGame1Config, BalanceView } from '../domain/types.js';

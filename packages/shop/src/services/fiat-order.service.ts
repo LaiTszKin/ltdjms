@@ -1,7 +1,7 @@
 import { Result, ok, err, DomainError } from '@ltdjms/shared';
 import type { FiatOrderRepository } from '../domain/fiat-order-repository.js';
-import { type FiatOrder, createPending, toFulfillmentProduct } from '../domain/fiat-order.js';
-import { EcpayCvsPaymentService, type CvsPaymentCode } from './ecpay-cvs-payment.service.js';
+import { createPending, toFulfillmentProduct } from '../domain/fiat-order.js';
+import { EcpayCvsPaymentService } from './ecpay-cvs-payment.service.js';
 import {
   type Product,
   type RewardType,

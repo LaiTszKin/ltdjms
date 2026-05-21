@@ -1,7 +1,8 @@
 import { encryptAES, decryptAES } from '../crypto/ecpay-aes.js';
 import type { EnvironmentConfig } from '@ltdjms/shared';
 import { Result, ok, err, DomainError } from '@ltdjms/shared';
-import { fetch, Agent } from 'undici';
+import { Agent } from 'undici';
+import { fetchWithRetry } from './fetch-retry.js';
 import crypto from 'node:crypto';
 import pino from 'pino';
 
@@ -104,7 +105,7 @@ export class EcpayCvsPaymentService {
 
       const endpoint = this.config.getEcpayStageMode() ? STAGE_ENDPOINT : PROD_ENDPOINT;
 
-      const response = await fetch(endpoint, {
+      const response = await fetchWithRetry(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(root),

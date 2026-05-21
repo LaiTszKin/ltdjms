@@ -1,10 +1,11 @@
-import { DomainError, ok, okVoid, err, type Result, type Unit, type DomainEvent } from '@ltdjms/shared';
+import { DomainError, ok, okVoid, err, type Result, type Unit } from '@ltdjms/shared';
 import type { DomainEventPublisher } from '@ltdjms/shared';
 import type {
   AllowedChannel,
   AllowedCategory,
   AIChannelRestriction,
 } from '../ai-chat-service.js';
+import type { AIChannelConfigChangedEvent } from '../../events/index.js';
 import { z } from 'zod';
 
 // ===== Repository Interface =====
@@ -327,7 +328,7 @@ export class DefaultAIChannelRestrictionService
         guildId,
         changeType: 'channel_added',
         targetId: channel.channelId,
-      } as DomainEvent);
+      } as AIChannelConfigChangedEvent);
     }
     return result;
   }
@@ -345,7 +346,7 @@ export class DefaultAIChannelRestrictionService
         guildId,
         changeType: 'category_added',
         targetId: category.categoryId,
-      } as DomainEvent);
+      } as AIChannelConfigChangedEvent);
     }
     return result;
   }
@@ -362,7 +363,7 @@ export class DefaultAIChannelRestrictionService
         guildId,
         changeType: 'channel_removed',
         targetId: channelId,
-      } as DomainEvent);
+      } as AIChannelConfigChangedEvent);
     }
     return result;
   }
@@ -379,7 +380,7 @@ export class DefaultAIChannelRestrictionService
         guildId,
         changeType: 'category_removed',
         targetId: categoryId,
-      } as DomainEvent);
+      } as AIChannelConfigChangedEvent);
     }
     return result;
   }

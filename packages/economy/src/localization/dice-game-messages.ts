@@ -11,9 +11,6 @@ export const DiceGameMessages = {
   GAME_1_DESCRIPTION: '擲 {count} 顆骰子，每點獎勵 {reward} 貨幣',
   GAME_1_RESULT:
     '**骰子結果：** {dice}\n**總和：** {sum}\n**獎勵：** {reward} 貨幣',
-  // TODO: Wire into dice game 1 handler (packages/economy/src/dice/handlers/) as compact embed variant
-  GAME_1_REWARD_DETAIL:
-    '骰子：{dice} | 總和：{sum} | 獎勵：{reward} 貨幣',
 
   // ============================================================
   // Dice Game 2
@@ -22,9 +19,6 @@ export const DiceGameMessages = {
   GAME_2_DESCRIPTION: '每 1 代幣擲 3 顆骰子，分析順子、三條與一般骰子',
   GAME_2_RESULT:
     '**骰子結果：** {dice}\n\n**順子區段：** {straightSegments}\n**三條區段：** {tripleSegments}\n\n**順子獎勵：** {straightReward}\n**三條獎勵：** {tripleReward}\n**一般獎勵：** {baseReward}\n**總獎勵：** {totalReward} 貨幣\n\n**餘額變動：** {previousBalance} → {newBalance} 貨幣',
-  // TODO: Wire into dice game 2 handler (packages/economy/src/dice/handlers/) as compact embed variant
-  GAME_2_RESULT_SIMPLE:
-    '骰子：{dice} | 順子：{straightReward} | 三條：{tripleReward} | 一般：{baseReward} | 總計：{totalReward}',
 
   // ============================================================
   // Balance
@@ -36,7 +30,6 @@ export const DiceGameMessages = {
   // ============================================================
   // Currency Config
   // ============================================================
-  CURRENCY_CONFIG_TITLE: '貨幣設定',
   CURRENCY_CONFIG_SUCCESS: '貨幣設定已成功更新\n名稱：{name}\n圖標：{icon}',
   CURRENCY_CONFIG_FAILED: '貨幣設定更新失敗：{reason}',
 
@@ -65,16 +58,9 @@ export const DiceGameMessages = {
   // ============================================================
   // Common / Errors
   // ============================================================
-  PERMISSION_DENIED: '你沒有執行此操作的權限',
   UNEXPECTED_ERROR: '發生未預期的錯誤，請聯絡管理員',
-  GAME_NOT_CONFIGURED: '此遊戲尚未設定，請管理員先進行設定',
   INVALID_TOKEN_COUNT: '代幣數量無效',
   TOKEN_COUNT_TOO_LOW: '代幣數量低於最低限制（{min}）',
   TOKEN_COUNT_TOO_HIGH: '代幣數量超過最高限制（{max}）',
   INVALID_OPTION: '指令參數無效',
-  INSUFFICIENT_BALANCE: '餘額不足',
-  OVERFLOW_ERROR: '操作導致數值溢位，請聯絡管理員',
-  INVALID_CURRENCY_CONFIG: '貨幣設定無效',
 } as const;
-
-export type DiceGameMessagesType = typeof DiceGameMessages;

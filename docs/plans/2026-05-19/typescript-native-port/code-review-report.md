@@ -1,16 +1,19 @@
 # Code Review Report
 
-- **Spec**: TypeScript Native Port (6-module batch)
+- **Spec**: TypeScript Native Port (6-package monorepo)
 - **Date**: 2026-05-21
-- **Reviewer**: Claude (QA skill, 6-dimension parallel review)
-- **Scope**: packages/shared, economy, shop, dispatch, ai, admin — ~150 TypeScript source files
-- **Spec references**: shared-infrastructure (R1-R9), guild-economy (R1-R6), shop-payment (R1-R12), escort-dispatch (R1-R15), ai-chat-agent (R1-R15), administration (R1-R14)
+- **Reviewer**: QA Agent (6-dimension parallel review)
 
 ---
 
 ## 審查摘要
 
-本次為全新六維度審查（幻覺代碼、冗余代碼、實作偏移、spec 遺漏、架構瑕疵、性能隱患），不參考舊有 report。共發現 **17 項問題**（0 P0 / 2 P1 / 8 P2 / 7 P3）。整體而言實作質量高——無幻覺代碼、無 spec 完全遺漏、無循環依賴、依賴方向正確。主要改善空間集中在：barrel export 精簡化、Markdown 處理管線性能、Facade 的 type-only import。
+本次審查針對 6 個 TypeScript package（shared、economy、shop、dispatch、ai、admin）與對應 spec 文件進行 6 維度全面審查：幻覺代碼、冗余代碼、實作偏移、Spec 遺漏、架構瑕疵、性能隱患。
+
+- **總檔案數**：201 個 TypeScript 原始檔
+- **發現問題總數**：28 個（P0: 2, P1: 3, P2: 11, P3: 12）
+- **無幻覺代碼**：所有 import、API 呼叫、型別引用均正確有效
+- **無循環依賴**：架構分層邊界嚴謹，未發現違反依賴方向
 
 ---
 
@@ -18,192 +21,263 @@
 
 ### P0 — 嚴重缺陷
 
-無。（未發現會導致執行時期 crash、資料損毀或安全漏洞的問題。）
+| # | 問題描述 | 影響 | 檔案 | 行數 |
+|---|--------|------|------|------|
+| 1 | Panel Listener 的 `lastUpdateTimestamps` Map 無上限增長，無淘汰機制 | 長時間運行後記憶體持續增長，可能導致 OOM | `packages/admin/src/panel/listeners/AdminPanelUpdateListener.ts`、`UserPanelUpdateListener.ts` | L65, L31 |
+| 2 | `DomainEventPublisher` 未呼叫 `setMaxListeners()`。若 DI 容器重新初始化，舊 listener 累積 | 開發熱重載或容器重建時 EventEmitter 警告，listener 重複觸發 | `packages/shared/src/infra/events/domain-event-publisher.ts` | L1-14 |
 
 ### P1 — 重要問題
 
 | # | 問題描述 | 影響 | 檔案 | 行數 |
 |---|--------|------|------|------|
-| 1 | 5 個 package 的 barrel export 洩露 concrete implementation（Handler、View、Web Server、Scheduler 等），違反 spec「僅 Facade、service interface、event type、DI token 應對外公開」的封裝原則 | 下游 consumer 可繞過 Facade 直接依賴 concrete class，造成耦合風險 | `packages/admin/src/index.ts`, `shop/src/index.ts`, `economy/src/index.ts`, `ai/src/index.ts`, `dispatch/src/index.ts` | — |
-| 2 | CommonMarkValidator 對每個 AST token 重複執行 O(n) 的字串 slice+split 來計算行號，大文件（數百 token）時造成 O(n*m) 耗時 | Markdown 驗證在大型 AI 回應時可能阻塞 event loop 數十毫秒 | `packages/ai/src/markdown/validation/CommonMarkValidator.ts` | L108, L120, L256-262 |
+| 1 | `EscortCatalogHandler.delete()` 直接執行 DELETE，未檢查 `guild_escort_option_price` 表的參照完整性 | 管理員可刪除有活躍 guild 引用的目錄項目，導致孤立定價記錄 | `packages/admin/src/panel/admin/handlers/EscortCatalogHandler.ts`（delete 操作）| L110-115 |
+| 2 | `EcpayCallbackHttpServer` 無全域 request timeout middleware | 慢速客戶端可無限期佔用連線，socket idle cleanup 30s 不足以防禦 slowloris | `packages/shop/src/web/ecpay-callback-server.ts` | L94 |
+| 3 | Redis circuit breaker 斷開後缺乏 half-open probe 機制 | 若 30 秒冷卻期內無後續請求，circuit 永遠保持 open（不會自行恢復探測） | `packages/shared/src/infra/cache/redis-cache-service.ts` | L36-38 |
 
 ### P2 — 一般問題
 
 | # | 問題描述 | 影響 | 檔案 | 行數 |
 |---|--------|------|------|------|
-| 1 | `DiscordMarkdownStreamProcessor` 類別從未被 import 或實例化（僅在註解中被提及），為 dead code | 佔用維護負擔，誤導讀者以為 streaming 路徑有獨立處理器 | `packages/ai/src/markdown/services/DiscordMarkdownStreamProcessor.ts` | 全檔案 |
-| 2 | `splitSelectMenus`、`splitSelectMenusGeneric`、`createButtonView` 從 shared barrel 匯出但無任何外部 consumer 引用 | 增加 public API surface，未來修改時需考慮不必要的 backward compat | `packages/shared/src/index.ts` | L76-80 |
-| 3 | Post-payment worker 在 handoff/reward 失敗時拋出 `new Error()` 而非 spec R7.5/R7.6 要求的語義型別（對應 Java `IllegalStateException`） | catch block 仍會觸發 release+retry（行為正確），但失去例外型別的語義信號，可能影響監控／告警分類 | `packages/shop/src/services/fiat-order-post-payment-worker.ts` | L63-64, L106-107 |
-| 4 | RegexBasedAutoFixer 將 spec R10 要求的 step 9-14 合併為單一 `applyLineFixes()` pass，其中 step 14 (fixHorizontalRules) 在 step 12-13 之前執行，與 spec 定義的嚴格順序不一致 | 目前各 step 處理互不重疊的語法元素，輸出結果相同；但若未來在 step 11-14 之間插入新規則，合併 pass 會跳過其位置 | `packages/ai/src/markdown/autofix/RegexBasedAutoFixer.ts` | L44-49 |
-| 5 | 3 個 Facade 以 value import 引入 concrete service class，但僅用於 constructor parameter type annotation。應使用 `import type` | 不必要的 runtime import，增加 module init 負擔，且違反 Facade 應依賴介面而非實作的原則 | `packages/admin/src/facades/GameConfigManagementFacade.ts:8`, `GameTokenManagementFacade.ts:3`, `MemberInfoFacade.ts:13` | — |
-| 6 | Markdown processing retry loop (validate → autofix → retry up to 3x) 在每次迭代中同步執行完整的 AST parse + regex pass，無時間預算保護 | 對於極長 AI 回應（>10000 字元），可能阻塞 event loop 數百毫秒 | `packages/ai/src/markdown/services/markdown-pipeline.ts` | L33-38 |
-| 7 | DiscordMarkdownSanitizer 執行 5 次連續的 full-string regex replace，每次建立新字串。convertTablesToCodeBlocks 的複雜多行 regex 在畸形輸入上可能發生 pathological backtracking | 大型回應時產生顯著的中間字串記憶體分配 | `packages/ai/src/markdown/services/DiscordMarkdownSanitizer.ts` | L22-38 |
-| 8 | Agent 模式下 `doStream` 將所有 CONTENT chunk 緩衝在 `totalContent` 中，直到所有 tool iteration 完成才發送給 Discord | 長回應時延遲 TTFB（Time to First Byte），且佔用記憶體 | `packages/ai/src/services/LangChainAIChatService.ts` | L257, L336-337 |
+| 1 | `AIConfigManagementFacade.enableAgent()` 接收 `mode: AgentMode` 參數但以 `_mode` 忽略，底層 `setAgentEnabled()` 僅接受 boolean | 三種 AgentMode（CHAT/AGENT/HYBRID）無法傳遞；管理員設定的模式被靜默丟棄 | `packages/admin/src/facades/AIConfigManagementFacade.ts` | L115-121 |
+| 2 | `ShopView` 新增中間支付方式選擇 UI（`buildPaymentMethodChoiceEmbed`），spec R1 定義的購買流程為直接購買 | 使用者體驗偏離 spec；按鈕 customId（`BUTTON_PAY_WITH_CURRENCY`/`BUTTON_PAY_WITH_FIAT`）未在 spec R1.6 中定義 | `packages/shop/src/view/shop-view.ts` | L90-222 |
+| 3 | `FiatPaymentReconciliationService` 使用 `batchMarkExpired` 一次標記整批，取代 spec 定義的逐筆 conditional UPDATE `WHERE status = PENDING_PAYMENT` | 失去 per-row 狀態檢查保護，可能將非 PENDING_PAYMENT 狀態的訂單誤標為逾期 | `packages/shop/src/services/fiat-payment-reconciliation.service.ts` | L40-45 |
+| 4 | `PanelSessionManager` 與 `AdminPanelSessionManager` 有大量重複邏輯（session CRUD、過期清理、Redis 回退），僅 type parameter 不同 | 維護成本增加；修改 session 邏輯需同步兩個檔案 | `packages/admin/src/session/PanelSessionManager.ts`、`AdminPanelSessionManager.ts` | - |
+| 5 | `AIChannelConfigChangedEvent` 缺乏 typed interface。頻道限制服務以 raw object `{eventType: 'ai_channel_config_changed'}` 發布事件，而 `AIAgentChannelConfigChangedEvent` 有正確定義的型別介面 | 型別安全不一致；listener 端以 string constant 匹配而非 typed event | `packages/ai/src/services/routing/channel-restriction-service.ts`、`packages/ai/src/events/index.ts` | - |
+| 6 | `EmojiValidator` 未提取為獨立可注入 class。spec R3.2 引用 `EmojiValidator`，但表情驗證邏輯內聯於 `currency-config-service.ts` | 無法在測試中獨立驗證表情邏輯；違反單一職責原則 | `packages/economy/src/currency/services/currency-config-service.ts` | - |
+| 7 | `View Factory` 和 `ModalFactory` 直接導入跨 package 的 domain type（`GuildCurrencyConfig`、`DiceGame1Config`、`EscortOptionCatalogEntry`） | View 層與其他模組的 domain model 耦合；domain model 變更可能導致 view 層需要修改 | `packages/admin/src/panel/admin/views/AdminPanelViewFactory.ts`、`AdminPanelModalFactory.ts` | L3, L2 |
+| 8 | Panel 即時更新逐個 session 進行 Discord API 呼叫（`channel.fetch` + `message.fetch` + `message.edit`），無批處理或並發限制 | 1000 個活躍 session 的 guild 會在單次事件中發起 3000 次 API 呼叫 | `packages/admin/src/panel/listeners/AdminPanelUpdateListener.ts`、`UserPanelUpdateListener.ts` | L104, L80 |
+| 9 | ECPay `fetch` 呼叫（trade query、CVS payment）無 transient failure 重試機制 | 網路短暫中斷導致用戶可見錯誤（已設 15s timeout，但無 retry） | `packages/shop/src/services/ecpay-trade-query.service.ts`、`ecpay-cvs-payment.service.ts` | L60, L107 |
+| 10 | 多處未使用的 import（`DiscordAPIError`、`Ok/Err`、`AdminPanelViewState`、`SystemPrompt`、`PermissionSetting`、`DomainEvent`、`SourceType`、`FiatOrder/CvsPaymentCode`） | 增加 bundle 大小、降低可讀性 | 8 個檔案（詳見解決方案） | - |
+| 11 | `BalanceAdjustmentService` 新增 spec 未定義的方法：`tryAdjustBalanceTo()`、`tryBatchAdjust()` | API 表面超出 spec 定義；外部呼叫者可能依賴非合約方法 | `packages/economy/src/currency/services/balance-adjustment-service.ts` | L178, L219 |
 
 ### P3 — 建議改善
 
 | # | 問題描述 | 影響 | 檔案 | 行數 |
 |---|--------|------|------|------|
-| 1 | `channel-restriction-service.ts` 對 `DomainEventPublisher` 使用 value import，但僅用於 type annotation | 微小的 bundle size 影響 | `packages/ai/src/services/routing/channel-restriction-service.ts` | L1 |
-| 2 | economy 和 ai package 內 5 個檔案從自己的 package barrel (`@ltdjms/economy`, `@ltdjms/ai`) import event type，而非使用相對路徑 | 將 source file 耦合到 package 的 compiled dist 輸出 | economy: `game-token-service.ts`, `dice-config-service.ts`, `currency-config-service.ts`, `balance-adjustment-service.ts`; ai: `agent-config-service.ts` | — |
-| 3 | economy schema 匯出 14 個 Drizzle-inferred type（`*Select`/`*Insert`）但全未被 import | 死碼，增加 schema 檔案長度 | `packages/economy/src/domain/schema.ts` | L177-196 |
-| 4 | dispatch repo barrel 匯出 4 個 concrete `Drizzle*` class，僅在 `dispatch-module.ts` 內部使用 | 內部實作細節不必要地暴露 | `packages/dispatch/src/repo/index.ts` | L2,5,8,10 |
-| 5 | `AdminPanelModalFactory.buildEscortPricingEditModal` 接受 `_globalPrice` 參數但從未讀取 | 誤導 API 語義 | `packages/admin/src/panel/admin/views/AdminPanelModalFactory.ts` | L93 |
-| 6 | EcpayCallbackHttpServer 的 connections Set 在 socket `error` 事件移除條目，但若 `close` 從未觸發（極端 edge case），條目會持續存在 | 優雅關閉時殘留 socket 引用 | `packages/shop/src/web/ecpay-callback-server.ts` | L101-106 |
-| 7 | InMemoryToolCallHistory store 最多 10,000 conversation × 50 entries，無 TTL 淘汰機制 | 長期運行的 bot 可能累積數十 MB heap | `packages/ai/src/services/memory/tool-call-history.ts` | L100 |
+| 1 | `AdminPanelViewState` 被 import 但未使用 | Dead import | `packages/admin/src/panel/admin/AdminPanelRouter.ts` | L7 |
+| 2 | `showDiceGameConfig()` private 方法定義但從未被呼叫 | Dead code | `packages/admin/src/panel/admin/handlers/GameSettingsHandler.ts` | L268 |
+| 3 | `buildSelectRows()` 函數被 export 但無外部呼叫者 | Dead code | `packages/shared/src/discord/services/select-menu-util.ts` | L81 |
+| 4 | `DiceGameMessagesType` type 被 export 但無外部使用者 | Dead type export | `packages/economy/src/localization/dice-game-messages.ts` | L80 |
+| 5 | 8 個 localization key 定義但未被使用（`GAME_1_REWARD_DETAIL`、`CURRENCY_CONFIG_TITLE`、`PERMISSION_DENIED` 等） | 增加 localization 檔案大小 | `packages/economy/src/localization/dice-game-messages.ts` | - |
+| 6 | `DiceGame2Service` 從 `dice-game-1-service.ts` 導入 `Random` 與 `DefaultRandom`，造成 game2 對 game1 基礎設施的強依賴 | 非必要的跨模組內部耦合 | `packages/economy/src/dice/services/dice-game-2-service.ts` | - |
+| 7 | `FiatOrderService.createFiatOnlyOrder()` 接受額外的 `tradeDesc?: string` 可選參數，超出 spec R4.1 API 簽名 | API 表面與 spec 不一致 | `packages/shop/src/services/fiat-order.service.ts` | L69-74 |
+| 8 | FiatOrder Zod schema 定義 31 個欄位，spec scope 描述「36 欄位 record」 | 欄位數量與 spec 不完全一致（部分欄位可能以不同方式表達） | `packages/shop/src/domain/fiat-order.ts` | - |
+| 9 | spec 要求 FiatOrderRepository 有 16 個方法 + 3 組 claim/release，實作介面方法數較少 | 與 Java 原版介面不完全對應 | `packages/shop/src/domain/fiat-order-repository.ts` | - |
+| 10 | Claim 方法的 crash recovery timeout（`OR processing_at < now() - 5 minutes`）需確認是否在所有 claim 方法中實作 | spec edge case 要求的 5 分鐘僵死鎖定自動釋放 | `packages/shop/src/services/fiat-order-post-payment-worker.ts` | - |
+| 11 | `ToolExecutionInterceptor` Map 條目在 `onToolExecutionCompleted/Failed` 未被呼叫時僅靠 60s cleanup timeout，高並發下暫時累積陳舊 metadata | 記憶體短暫膨脹 | `packages/ai/src/services/ToolExecutionInterceptor.ts` | L10 |
+| 12 | `createManualOpenOrder` 對 MANUAL 來源設定了 `sourceEscortOptionCode`，spec R1.4 對此欄位在 MANUAL 來源下的行為無定義 | 行為模糊，可能與 Java 原版不一致 | `packages/dispatch/src/domain/escort-dispatch-order.ts` | L233-253 |
 
 ---
 
 ## 解決方案
 
-### P1 修復
+### P0 修復
 
-#### P1-1: Barrel export 精簡化 — 5 個 package 移除 concrete implementation export
+#### P0-1: Panel Listener lastUpdateTimestamps Map 無上限增長
 
 - **涉及檔案**：
-  - `packages/admin/src/index.ts` — 移除 `AdminPanelUpdateListener`、`UserPanelUpdateListener`
-  - `packages/shop/src/index.ts` — 移除 `ShopService`、`RedemptionCodeGenerator`、`RedemptionService`、`FiatOrderProcessingScheduler`、`ShopCommandHandler`、`EcpayCallbackHttpServer`、`createRedemptionCode`
-  - `packages/economy/src/index.ts` — 移除 7 個 concrete service + 7 個 command handler
-  - `packages/ai/src/index.ts` — 移除 `LangChainAIChatService`、`LangChainExceptionMapper`、`DefaultPromptLoader`、`SystemPrompt`、`AIChatMentionListener`
-  - `packages/dispatch/src/index.ts` — 移除 `EscortDispatchOrderService`、`EscortDispatchHandoffService`、`DispatchAfterSalesStaffService`、`EscortOptionPricingService`、`EscortCatalogService`
-- **根因**：barrel export 未區分 public API（Facade、interface、event type、DI token）與 internal implementation。各 package 的 concrete service class 僅應透過 DI 模組註冊被解析，不應被外部直接 import。
-- **修復方案**：逐 package 審查 index.ts，保留 interface/type-only export、event type、DI token。移除所有 concrete class、handler、web server、scheduler 的 export。若 admin 需要某 concrete class（如 module 註冊），透過 DI module 檔案內部引用而非 barrel。
-- **驗證方式**：`npx tsc --noEmit` 在精簡後通過；確認 admin/src/main.ts 中的 DI 註冊仍可解析所有服務。
+  - `packages/admin/src/panel/listeners/AdminPanelUpdateListener.ts` > `lastUpdateTimestamps`（L65）
+  - `packages/admin/src/panel/listeners/UserPanelUpdateListener.ts` > `lastUpdateTimestamps`（L31）
+- **根因**：Map 以 `guildId:eventType` 為 key 記錄最後更新時間戳，用於去重複事件。但從未清理舊條目，每個唯一的 guild+eventType 組合永久佔用記憶體。
+- **修復方案**：
+  1. 在 `isDuplicateEvent()` 檢查中加入淘汰邏輯：每次檢查時遍歷 Map 刪除超過 60 秒的舊條目
+  2. 或使用 `setInterval` 定期清理（加上 `.unref()` 避免阻止 process 退出）
+  3. 或改用 LRU cache（如 `lru-cache` npm 套件）限制最大條目數
+- **驗證方式**：模擬多 guild 長時間運行，確認 Map size 在清理後收斂至合理範圍（不超過活躍 guild × 事件類型數）
 
-#### P1-2: CommonMarkValidator 行號計算優化
+#### P0-2: DomainEventPublisher 未設 setMaxListeners
 
-- **涉及檔案**：`packages/ai/src/markdown/validation/CommonMarkValidator.ts` > `walkTokens`（L108, L120）、`validateListToken`（L256-262）
-- **根因**：每個 AST token 透過 `markdown.slice(0, pos).split('\n').length` 計算行號，對 N 個 token 產生 O(N) 次 O(M) 的 slice+split。
-- **修復方案**：在 `validate()` 入口一次建立行首偏移陣列（`lineStarts: number[]`），提供 `getLineNumber(offset)` 用 binary search 查詢，取代每次的 slice+split。
-- **驗證方式**：既有 CommonMarkValidator 單元測試全數通過；用 5000 字 AI 回應進行 benchmark，行號計算耗時從 O(n*m) 降為 O(n log k)。
+- **涉及檔案**：`packages/shared/src/infra/events/domain-event-publisher.ts` > `constructor`（L1-14）
+- **根因**：`EventEmitter` 預設 maxListeners 為 10。當超過 10 個 listener 註冊同一事件類型時，Node.js 會發出 `MaxListenersExceededWarning`。在 DI 容器重建情境下（熱重載），listener 可能重複註冊。
+- **修復方案**：
+  1. 在建構子中加入 `this.emitter.setMaxListeners(50)`（或更高，取決於預期 listener 數量）
+  2. 在 `register()` 前先檢查是否已有相同 listener，避免重複註冊
+- **驗證方式**：註冊超過 10 個 listener 後確認無 `MaxListenersExceededWarning`
 
----
+### P1 修復
+
+#### P1-1: EscortCatalogHandler.delete() 缺乏參照完整性檢查
+
+- **涉及檔案**：`packages/admin/src/panel/admin/handlers/EscortCatalogHandler.ts`（delete handler）、`packages/dispatch/src/repo/drizzle-escort-option-catalog.repo.ts`（L110-115）
+- **根因**：spec administration R10.4 要求「刪除前檢查參照完整性（查詢有無 guild-level pricing 覆寫引用該項目）」，但實作直接執行 `DELETE FROM escort_option_catalog WHERE code = ?`，未先查詢 `guild_escort_option_price` 表。
+- **修復方案**：
+  1. 在 repository 層新增 `countGuildPriceReferences(code: string): Promise<number>` 方法
+  2. 在 handler 層的 delete 流程中加入：若 count > 0，回傳 DomainError 列出受影響的 guild 名稱與數量，阻止刪除
+  3. spec R10.5 要求「有活躍引用時顯示具體 guild 名稱與數量」
+- **驗證方式**：為有 guild price override 的 catalog 項目的刪除操作撰寫測試，確認回傳阻斷錯誤
+
+#### P1-2: EcpayCallbackHttpServer 無 request timeout
+
+- **涉及檔案**：`packages/shop/src/web/ecpay-callback-server.ts` > `start()`（L94）
+- **根因**：Express 伺服器未設定全域 request timeout。socket 層有 30s idle cleanup，但活躍但緩慢的連線不受此限。
+- **修復方案**：在 `app.use()` 鏈中加入 `server.setTimeout(30000, (socket) => { socket.destroy(); })` 或中介軟體設定 request socket timeout
+- **驗證方式**：模擬慢速 POST 請求，確認 30 秒後連線被強制關閉
+
+#### P1-3: Redis circuit breaker 缺乏 half-open probe
+
+- **涉及檔案**：`packages/shared/src/infra/cache/redis-cache-service.ts` > circuit breaker 邏輯（L36-38）
+- **根因**：circuit 斷開後設定了 30 秒冷卻時間，但若此期間無任何請求進入，circuit 永遠保持在 open 狀態。需要在下一次請求時檢查冷卻時間是否已過，自動轉為 half-open 並 probe。
+- **修復方案**：在每次 cache 操作前，檢查 `isOpen && Date.now() - openedAt > cooldownMs`，若已過冷卻期，自動轉為 half-open 狀態並嘗試一次 Redis 操作來探測恢復
+- **驗證方式**：模擬 Redis 斷線 → 恢復，確認 circuit 在冷卻期後自動嘗試重新連線
 
 ### P2 修復
 
-#### P2-1: 移除 dead code — DiscordMarkdownStreamProcessor
-
-- **涉及檔案**：`packages/ai/src/markdown/services/DiscordMarkdownStreamProcessor.ts`（全檔案）
-- **根因**：此類別從未被 import 或實例化，僅在 `markdown-pipeline.ts` 的註解中提及。相依的 `MarkdownHeadingSegmenter`（僅被此檔案 import）也一併變成 dead code。
-- **修復方案**：刪除 `DiscordMarkdownStreamProcessor.ts` 及 `markdown-heading-segmenter.ts`。
-- **驗證方式**：`npx tsc --noEmit` 通過；grep 確認無其他檔案 import 這兩個模組。
-
-#### P2-2: 移除 shared barrel 中未被外部引用的 export
-
-- **涉及檔案**：`packages/shared/src/index.ts`（L76-80）
-- **根因**：`splitSelectMenus`、`splitSelectMenusGeneric`、`createButtonView` 僅在 shared package 內部使用，無任何外部 consumer。
-- **修復方案**：從 shared barrel 移除這三個 export。
-- **驗證方式**：`npx tsc --noEmit` 通過；grep 確認無 `@ltdjms/shared` consumer import 這些符號。
-
-#### P2-3: Post-payment worker 使用語義錯誤型別
-
-- **涉及檔案**：`packages/shop/src/services/fiat-order-post-payment-worker.ts` > `processSingleOrder`（L63-64, L106-107）
-- **根因**：handoff/reward 失敗時拋出 `new Error(msg)`，但 spec R7.5/R7.6 要求拋出語義型別（對應 Java `IllegalStateException`），以區分「可重試的工作流狀態違規」與「未預期錯誤」。
-- **修復方案**：定義 `WorkflowStateException`（或直接使用 `DomainError.unexpectedFailure()` 包裝），在 catch block 中依型別區分處理：workflow 狀態違規 → release + retry；其他錯誤 → log error + release。
-- **驗證方式**：既有 post-payment worker 測試通過；確認 release+retry 行為保持不變。
-
-#### P2-4: RegexBasedAutoFixer 恢復嚴格的 fix step 順序
-
-- **涉及檔案**：`packages/ai/src/markdown/autofix/RegexBasedAutoFixer.ts` > `autoFix()`（L44-49）
-- **根因**：`applyLineFixes()` 將 step 9 (fixListFormat)、10 (normalizeUnorderedListMarkers)、11 (fixNestedListIndentation)、14 (fixHorizontalRules) 合併為單一 line-by-line pass，導致 step 14 在 step 12-13 之前執行。雖然目前各 step 處理互不重疊的 syntax element，但違反 spec R10.2 的嚴格順序約定。
-- **修復方案**：將 `applyLineFixes()` 拆分回 4 個獨立 step，按 spec 定義順序呼叫：9→10→11→12→13→14。
-- **驗證方式**：既有 autofixer 單元測試通過；確保輸出與修改前一致。
-
-#### P2-5: Facade 改用 `import type` 引入 concrete service class
+#### P2-1: AIConfigManagementFacade AgentMode 被忽略
 
 - **涉及檔案**：
-  - `packages/admin/src/facades/GameConfigManagementFacade.ts:8` — `DiceConfigService`
-  - `packages/admin/src/facades/GameTokenManagementFacade.ts:3` — `GameTokenService`、`GameTokenTransactionService`
-  - `packages/admin/src/facades/MemberInfoFacade.ts:13` — `RedemptionService`
-- **根因**：這些 concrete class 僅用於 constructor parameter type annotation（tsyringe `@inject()` 裝飾器），不需要 runtime value import。Value import 增加不必要的 module init 負擔，且違反 Facade 應依賴介面的原則。
-- **修復方案**：將上述 import 改為 `import type { ... }`。注意 `GameTokenTransactionSource` 和 `CurrencyTransactionSource` 是 enum，需保持 value import（runtime 使用）。
-- **驗證方式**：`npx tsc --noEmit` 通過；確認 DI 解析仍正常。
+  - `packages/admin/src/facades/AIConfigManagementFacade.ts` > `enableAgent()`（L115-121）
+  - `packages/ai/src/services/routing/agent-config-service.ts` > `setAgentEnabled()`
+- **根因**：spec administration R7.2 要求「啟用時需選擇 Agent 模式類型」，但底層 AIAgentChannelConfigService 的資料表 schema（`ai_agent_channel_config`）僅有 `enabled boolean` 欄位，無 `mode` 欄位。`AgentMode` enum 存在但整條呼叫鏈未串接。
+- **修復方案**：
+  1. 在 `ai_agent_channel_config` 資料表新增 `mode` 欄位（varchar，預設 'agent'）
+  2. 更新 Drizzle schema、repository interface、service 層以支援 mode 參數
+  3. 移除 Facade 中的 `_mode` 前綴，將 mode 傳遞至 service
+- **驗證方式**：透過管理面板啟用不同 mode 的 Agent 頻道，確認 mode 被正確持久化與讀取
 
-#### P2-6: Markdown pipeline 加入時間預算保護
+#### P2-2: ShopView 新增中間支付方式選擇 UI
 
-- **涉及檔案**：`packages/ai/src/markdown/services/markdown-pipeline.ts` > retry loop（L33-38）
-- **根因**：validate → autofix → retry loop 無時間預算，對極長回應可能阻塞 event loop 數百毫秒。
-- **修復方案**：加入 `MAX_PROCESSING_TIME_MS = 500` 時間預算，在每次迭代前檢查 `Date.now() - startTime`，超時則提前退出並 logged warning，回傳目前的最佳結果。
-- **驗證方式**：用 20000 字 AI 回應測試，確認 pipeline 在 500ms 內返回。
+- **涉及檔案**：`packages/shop/src/view/shop-view.ts` > `buildPaymentMethodChoiceEmbed()`（L90-222）
+- **根因**：實作在商品購買流程中插入了 spec 未定義的支付方式選擇畫面。雖然提升了 UX（區分貨幣／法幣支付），但偏離了 spec R1.6 定義的按鈕行為（`shop_buy` 直接進入購買）。
+- **修復方案**（二選一）：
+  - A：移除中間 UI，讓 `shop_buy` 按鈕依商品屬性自動決定支付方式（僅貨幣價格 → 貨幣購買，僅法幣價格 → 法幣訂單，兩者皆有 → 才顯示選擇）
+  - B：在 spec 中記錄此 UI 增強為 intentional deviation
+- **驗證方式**：確認購買流程步驟數與 spec 一致
 
-#### P2-7: DiscordMarkdownSanitizer 合併 regex pass
+#### P2-3: FiatPaymentReconciliationService 使用 batchMarkExpired 取代逐筆 conditional UPDATE
 
-- **涉及檔案**：`packages/ai/src/markdown/services/DiscordMarkdownSanitizer.ts` > `sanitize()`（L22-38, L71）
-- **根因**：5 次連續 `result.replace()` 每次建立新字串。`convertTablesToCodeBlocks` regex 可能發生 pathological backtracking。
-- **修復方案**：合併 HTML 註解和 HTML 標籤的移除為單次 pass（`/<!--[\s\S]*?-->/g` 和 `/<[^>]*>/g` 可合併為一次 replace）。為 table regex 加入 input size guard（>50000 chars 時跳過表格轉換）。
-- **驗證方式**：既有 sanitizer 測試通過；benchmark 確認大型輸入的處理時間減少。
+- **涉及檔案**：`packages/shop/src/services/fiat-payment-reconciliation.service.ts` > expire 邏輯（L40-45）
+- **根因**：spec shop-payment R8.2 定義 `markExpiredIfPending` 為 conditional UPDATE `WHERE order_number = ? AND status = PENDING_PAYMENT AND paid_at IS NULL`，逐筆執行。實作改為 `batchMarkExpired` 一次性標記整批，可能更新非 PENDING_PAYMENT 狀態的訂單。
+- **修復方案**：
+  1. 檢查 `batchMarkExpired` 實作的 WHERE 條件是否包含 `status = PENDING_PAYMENT AND paid_at IS NULL`
+  2. 若未包含，改回逐筆 conditional UPDATE 或修正 batch SQL
+- **驗證方式**：確認 `batchMarkExpired` SQL 包含必要的狀態檢查條件
 
-#### P2-8: Agent 模式考慮增量發送 CONTENT chunk
+#### P2-4: SessionManager 重複程式碼
 
-- **涉及檔案**：`packages/ai/src/services/LangChainAIChatService.ts` > `doStream()`（L257, L336-337）
-- **根因**：Agent 模式下所有 CONTENT chunk 緩衝到全部 tool iteration 完成才發送，延遲 TTFB。
-- **修復方案**：在每個 tool iteration 之間（`onCompleteResponse` 回調）發送當輪累積的內容，而非累積到所有 iteration 結束。注意需維持 reasoning 訊息先刪除再顯示最終內容的行為（spec R4.3）。
-- **驗證方式**：Agent 模式整合測試確認內容分段送達而非一次全部出現。
+- **涉及檔案**：`packages/admin/src/session/PanelSessionManager.ts`、`AdminPanelSessionManager.ts`
+- **根因**：兩個 class 實作幾乎相同的 session CRUD、TTL 過期清理、Redis 回退邏輯。僅 `PanelSessionData` vs `AdminPanelSessionData` type parameter 不同。
+- **修復方案**：提取共用邏輯至泛型 base class `AbstractSessionManager<T>`，兩個具體 class 繼承並只提供 type-specific 的方法
+- **驗證方式**：所有現有 session 測試通過，無功能回歸
 
----
+#### P2-5: AIChannelConfigChangedEvent 缺乏 typed interface
+
+- **涉及檔案**：`packages/ai/src/services/routing/channel-restriction-service.ts`、`packages/ai/src/events/index.ts`
+- **根因**：頻道限制服務發布事件時使用 raw object `{eventType: 'ai_channel_config_changed'}`，而非 typed interface。對比 `AIAgentChannelConfigChangedEvent` 有正確定義的型別。
+- **修復方案**：在 `packages/ai/src/events/index.ts` 中新增 `AIChannelConfigChangedEvent` 介面，並在 `channel-restriction-service.ts` 中使用該型別
+- **驗證方式**：TypeScript 編譯通過，AdminPanelUpdateListener 改用 typed event
+
+#### P2-6: EmojiValidator 未提取為獨立 class
+
+- **涉及檔案**：`packages/economy/src/currency/services/currency-config-service.ts`
+- **根因**：spec guild-economy R3.2 引用 `EmojiValidator` 作為可注入組件，但實作將表情驗證邏輯內聯在 `CurrencyConfigService.updateConfig()` 方法中。
+- **修復方案**：
+  1. 將表情驗證邏輯提取至 `packages/economy/src/currency/services/emoji-validator.ts`
+  2. 定義 `EmojiValidator` class，包含 `isValidEmoji(value: string): boolean` 方法
+  3. 透過 DI 注入至 `CurrencyConfigService`
+- **驗證方式**：為 `EmojiValidator` 撰寫獨立單元測試（Unicode emoji、自訂 emoji `<:name:id>`、`<a:name:id>`、無效輸入）
+
+#### P2-7: View 層直接導入跨 package domain type
+
+- **涉及檔案**：
+  - `packages/admin/src/panel/admin/views/AdminPanelViewFactory.ts`（L3）
+  - `packages/admin/src/panel/admin/views/AdminPanelModalFactory.ts`（L2）
+- **根因**：View factory 直接從 `@ltdjms/economy` 和 `@ltdjms/dispatch` 導入 domain model type。雖然是 type-only import（編譯後不產生依賴），但表示 view 層知曉其他模組的內部資料結構。
+- **修復方案**：在 Facade 層定義 view-specific DTO（如 `CurrencyConfigView`、`EscortOptionView`），View factory 僅依賴這些 DTO
+- **驗證方式**：View factory 的 import 僅限於 `@ltdjms/admin` 內部型別
+
+#### P2-8: Panel 即時更新 N+1 Discord API 呼叫
+
+- **涉及檔案**：
+  - `packages/admin/src/panel/listeners/AdminPanelUpdateListener.ts`（L104）
+  - `packages/admin/src/panel/listeners/UserPanelUpdateListener.ts`（L80）
+- **根因**：更新迴圈對每個 active session 依序執行 `channel.fetch()` → `message.fetch()` → `message.edit()`。1000 個 session = 3000 次 API 呼叫，且是序列執行。
+- **修復方案**：
+  1. 使用 `Promise.all()` 並行處理（加上並發限制如 `p-limit`）
+  2. 按 guild 分組，使用 `guild.channels.fetch()` 批量取得 channel
+  3. 若 session 更新失敗（InteractionHook expired），立即清理而非重試
+- **驗證方式**：模擬大量 session，確認更新總耗時在可接受範圍內
+
+#### P2-9: ECPay fetch 無 retry 機制
+
+- **涉及檔案**：
+  - `packages/shop/src/services/ecpay-trade-query.service.ts`（L60）
+  - `packages/shop/src/services/ecpay-cvs-payment.service.ts`（L107）
+- **根因**：對 ECPay API 的外部 HTTP 呼叫僅設定 15s timeout，但網路瞬斷（DNS 解析失敗、TCP 重設）直接拋出錯誤給呼叫者，無重試。
+- **修復方案**：包裝 fetch 呼叫加入 retry 邏輯（最多 3 次，指數退避 1s/2s/4s），僅對 transient errors（ECONNRESET、ETIMEDOUT、ENOTFOUND）重試
+- **驗證方式**：mock fetch 在前 2 次拋出 `ECONNRESET`、第 3 次成功，確認 retry 邏輯正確
+
+#### P2-10: 未使用的 import (8 處)
+
+- **涉及檔案**：
+  - `packages/admin/src/commands/infra/BotErrorHandler.ts`（L6）：`DiscordAPIError`
+  - `packages/admin/src/facades/AIConfigManagementFacade.ts`（L1）：`Ok`、`Err`
+  - `packages/admin/src/panel/admin/AdminPanelRouter.ts`（L7）：`AdminPanelViewState`
+  - `packages/ai/src/services/LangChainAIChatService.ts`（L22）：`SystemPrompt`
+  - `packages/ai/src/tools/CreateRoleTool.ts`（L4）：`PermissionSetting`
+  - `packages/ai/src/services/routing/agent-config-cache-invalidation-listener.ts`（L1）：`DomainEvent`
+  - `packages/dispatch/src/notification/DispatchNotificationService.ts`（L2）：`SourceType`
+  - `packages/shop/src/services/fiat-order.service.ts`（L3-4）：`FiatOrder`、`CvsPaymentCode`
+- **修復方案**：逐一移除未使用的 import，執行 `pnpm tsc --noEmit` 確認無編譯錯誤
+- **驗證方式**：`pnpm lint && pnpm -r exec tsc --noEmit`
+
+#### P2-11: BalanceAdjustmentService 新增非 spec 方法
+
+- **涉及檔案**：`packages/economy/src/currency/services/balance-adjustment-service.ts`（L178, L219）
+- **根因**：spec guild-economy R2.1 僅定義 `adjustBalance()`。`tryAdjustBalanceTo()` 和 `tryBatchAdjust()` 是實作中新增的便利方法。
+- **修復方案**（二選一）：
+  - A：在 spec 中記錄這些方法為必要的內部實作細節（`tryBatchAdjust` 被 GameRewardService 用於大額獎勵拆分）
+  - B：若無外部呼叫者，改為 private
+- **驗證方式**：確認所有呼叫者均透過 `adjustBalance` 介面方法
 
 ### P3 改善
 
-#### P3-1: channel-restriction-service 改用 type-only import
+#### P3-1~P3-5: Dead code 清理
 
-- **涉及檔案**：`packages/ai/src/services/routing/channel-restriction-service.ts:1`
-- **根因**：`DomainEventPublisher` 僅用於 constructor parameter type annotation。
-- **修復方案**：將 `DomainEventPublisher` 從 value import 改為 `type DomainEventPublisher`。
-- **驗證方式**：`npx tsc --noEmit` 通過。
+- **涉及檔案**：
+  - `packages/admin/src/panel/admin/AdminPanelRouter.ts`（L7）：移除 `AdminPanelViewState` import
+  - `packages/admin/src/panel/admin/handlers/GameSettingsHandler.ts`（L268）：移除 `showDiceGameConfig()` private 方法
+  - `packages/shared/src/discord/services/select-menu-util.ts`（L81）：移除 `buildSelectRows()` 函數（若無外部使用）
+  - `packages/economy/src/localization/dice-game-messages.ts`（L80）：移除 `DiceGameMessagesType` type export
+  - `packages/economy/src/localization/dice-game-messages.ts`：移除 8 個未使用的 localization key
+- **修復方案**：逐一移除，執行編譯與測試確認
+- **驗證方式**：`pnpm -r exec tsc --noEmit && pnpm vitest run`
 
-#### P3-2: Self-referential barrel import 改用相對路徑
+#### P3-6: DiceGame2 對 Game1 的非必要耦合
 
-- **涉及檔案**：economy 4 個 service、ai 1 個 service（詳見問題表 P3-2）
-- **根因**：同 package 內從自己的 barrel (`@ltdjms/economy`) import event type，將 source file 耦合到 dist 輸出。
-- **修復方案**：改用相對路徑 import（如 `../../events/index.js`）。
-- **驗證方式**：`npx tsc --noEmit` 通過。
+- **涉及檔案**：`packages/economy/src/dice/services/dice-game-2-service.ts`
+- **根因**：`DiceGame2Service` 從 `dice-game-1-service.ts` 導入 `Random` 和 `DefaultRandom`。`Random` 介面應提取至共用位置。
+- **修復方案**：將 `Random` 介面和 `DefaultRandom` 實作移至 `packages/economy/src/dice/services/random.ts`，兩個 game service 從新位置導入
+- **驗證方式**：確認 `dice-game-2-service.ts` 不再從 `dice-game-1-service.ts` 導入
 
-#### P3-3: 移除 economy schema 中 14 個未使用的 Drizzle type export
+#### P3-7~P3-10: Spec 一致性微調
 
-- **涉及檔案**：`packages/economy/src/domain/schema.ts`（L177-196）
-- **根因**：所有 `*Select`/`*Insert` type 均未被 import；economy package 使用 `domain/types.ts` 中的自訂 domain type。
-- **修復方案**：移除 14 個 dead type export。
-- **驗證方式**：`npx tsc --noEmit` 通過。
+- **P3-7**：`FiatOrderService.createFiatOnlyOrder()` 移除 `tradeDesc` 參數或記錄為 intentional API extension
+- **P3-8**：比對 FiatOrder Zod schema 與 Java `FiatOrder.java` record 的欄位清單，確認 31 vs 36 差異來源
+- **P3-9**：比對 `FiatOrderRepository` 介面方法數與 Java `FiatOrderRepository.java`，確認是否有遺漏的必要方法
+- **P3-10**：在所有 claim 方法的 WHERE 條件中確認包含 `OR processing_at < now() - interval '5 minutes'` crash recovery timeout
 
-#### P3-4: 移除 dispatch repo barrel 中的 concrete Drizzle class export
+#### P3-11: ToolExecutionInterceptor 陳舊 metadata
 
-- **涉及檔案**：`packages/dispatch/src/repo/index.ts`（L2,5,8,10）
-- **根因**：4 個 `Drizzle*` class 僅在 `dispatch-module.ts` 中用於 DI 註冊。
-- **修復方案**：從 repo barrel 移除，保留 interface export（`EscortDispatchOrderRepository` 等）。
-- **驗證方式**：`npx tsc --noEmit` 通過；DI module 內部引用不受影響。
+- **涉及檔案**：`packages/ai/src/services/ToolExecutionInterceptor.ts`（L10）
+- **根因**：Map 條目在 `onToolExecutionCompleted/Failed` 未被呼叫時最多存活 60 秒（cleanup timeout）。
+- **修復方案**：採用 `WeakRef` 或在 60s cleanup 中主動清理「從未被 completed/failed 的條目」，而非僅依賴被動 timeout
+- **驗證方式**：模擬 tool 執行後無 completed callback，確認條目在 cleanup 中被移除
 
-#### P3-5: 移除 AdminPanelModalFactory 中未使用的 `_globalPrice` 參數
+#### P3-12: MANUAL 來源的 sourceEscortOptionCode
 
-- **涉及檔案**：`packages/admin/src/panel/admin/views/AdminPanelModalFactory.ts:93`
-- **根因**：`buildEscortPricingEditModal` 接受 `_globalPrice` 參數但從未讀取。
-- **修復方案**：從函數簽名移除該參數，並更新所有呼叫點。
-- **驗證方式**：`npx tsc --noEmit` 通過。
-
-#### P3-6: EcpayCallbackHttpServer connections Set 加入防禦性清理
-
-- **涉及檔案**：`packages/shop/src/web/ecpay-callback-server.ts`（L101-106）
-- **根因**：若 socket 觸發 `error` 後永不觸發 `close`（極端 edge case），對應條目殘留在 Set 中。
-- **修復方案**：在 `error` handler 中加入 `setTimeout(() => connections.delete(socket), 30000).unref()` 作為防禦性延遲清理。
-- **驗證方式**：程式碼審查確認。
-
-#### P3-7: InMemoryToolCallHistory 加入 TTL 淘汰
-
-- **涉及檔案**：`packages/ai/src/services/memory/tool-call-history.ts`（L100）
-- **根因**：store 有上限但無 TTL，長期運行的 bot 記憶體持續增長。
-- **修復方案**：加入 `setInterval` 清理超過 1 小時的 conversation entries，timer 使用 `.unref()`。
-- **驗證方式**：既有 tool-call-history 測試通過。
+- **涉及檔案**：`packages/dispatch/src/domain/escort-dispatch-order.ts`（L233-253）
+- **根因**：spec R1.4 定義 MANUAL 來源的 source 欄位均為 null，但未明確列出 `sourceEscortOptionCode`。實作對此欄位賦值。
+- **修復方案**：比對 Java `EscortDispatchOrder.java` 確認 MANUAL 來源下的實際行為，然後統一 spec 或實作
+- **驗證方式**：確認 createManualOpenOrder 的 sourceEscortOptionCode 值與 Java 一致
 
 ---
 
-## 維度總結
+## 審查後記
 
-| 維度 | 發現數 | P0 | P1 | P2 | P3 | 關鍵主題 |
-|------|--------|----|----|----|----|---------|
-| 1. 幻覺代碼 | 0 | 0 | 0 | 0 | 0 | 無 Java-ism、無不存在的 API 引用、所有 @ltdjms/* import 可解析 |
-| 2. 冗余代碼 | 7 | 0 | 0 | 2 | 5 | Dead class、unused barrel export、self-referential import、dead Drizzle type |
-| 3. 實作偏移 | 2 | 0 | 0 | 2 | 0 | Error type 語義、autofix step 順序 |
-| 4. Spec 遺漏 | 0 | 0 | 0 | 0 | 0 | 所有 ~100 項 spec 需求已實作；DiceGame1 職責分離為合理設計選擇 |
-| 5. 架構瑕疵 | 2 | 0 | 1 | 1 | 0 | Barrel 封裝、Facade type-only import |
-| 6. 性能隱患 | 6 | 0 | 1 | 3 | 2 | O(n*m) 行號計算、regex churn、Agent 緩衝延遲、socket leak |
+本次審查確認了 TypeScript 移植的整體品質良好：無幻覺代碼、無循環依賴、架構分層嚴謹、核心業務邏輯與 spec 高度一致。發現的 28 個問題主要集中在以下類別：
 
-**總計**: 0 P0 / 2 P1 / 8 P2 / 7 P3 = **17 項問題**
+1. **記憶體管理**（P0-1, P0-2, P3-11）：長時間運行的資源清理不足
+2. **Spec 一致性**（P1-1, P2-1, P2-2, P2-3, P3-7~P3-10, P3-12）：部分實作與 spec 定義的行為有偏差
+3. **程式碼品質**（P2-4~P2-7, P2-10, P3-1~P3-6）：冗余程式碼、型別安全、模組耦合
+
+建議優先修復 P0 和 P1 項目（共 5 項），這些涉及運維穩定性和資料完整性。P2 項目（11 項）可在正常開發迭代中逐步處理。P3 項目（12 項）屬於程式碼衛生改善。

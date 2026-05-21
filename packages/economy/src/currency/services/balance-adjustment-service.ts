@@ -174,6 +174,11 @@ export class BalanceAdjustmentService {
    * Adjusts a member's balance to a specific target value.
    * Computes the delta from the current balance and delegates to processAdjustment,
    * avoiding a redundant findOrCreate query (P2-5).
+   *
+   * NOTE: This method is NOT defined in spec guild-economy R2.1 (which only defines
+   * `adjustBalance()`). It was added as an internal convenience for setting absolute
+   * balance values (e.g. admin panel adjustment). External callers should use
+   * `tryAdjustBalance()` instead.
    */
   async tryAdjustBalanceTo(
     guildId: number,

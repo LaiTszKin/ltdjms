@@ -2,7 +2,8 @@ import { buildCheckMacValue } from '../crypto/ecpay-checkmac.js';
 import { javaUrlEncode } from '../crypto/url-encoder.js';
 import type { EnvironmentConfig } from '@ltdjms/shared';
 import { Result, ok, err, DomainError } from '@ltdjms/shared';
-import { fetch, Agent } from 'undici';
+import { Agent } from 'undici';
+import { fetchWithRetry } from './fetch-retry.js';
 import pino from 'pino';
 
 const STAGE_ENDPOINT = 'https://payment-stage.ecpay.com.tw/Cashier/QueryTradeInfo/V5';
@@ -57,7 +58,7 @@ export class EcpayTradeQueryService {
       const formBody = this.buildFormBody(params);
       const endpoint = this.config.getEcpayStageMode() ? STAGE_ENDPOINT : PROD_ENDPOINT;
 
-      const response = await fetch(endpoint, {
+      const response = await fetchWithRetry(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
