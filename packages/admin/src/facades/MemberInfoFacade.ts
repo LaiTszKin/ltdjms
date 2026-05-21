@@ -10,7 +10,7 @@ import type {
   TransactionPage,
 } from '@ltdjms/economy';
 import {
-  RedemptionService,
+  type RedemptionService,
   type RedemptionResult,
   type RedemptionTransactionService,
 } from '@ltdjms/shop';

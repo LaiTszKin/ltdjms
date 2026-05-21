@@ -7,7 +7,7 @@ import {
   type CacheKeyGenerator,
   type DomainEventPublisher,
 } from '@ltdjms/shared';
-import type { GameTokenChangedEvent } from '@ltdjms/economy';
+import type { GameTokenChangedEvent } from '../../events/index.js';
 import { TokenAccountRepository } from '../repositories/token-account-repo.js';
 import { GameTokenTransactionService } from './game-token-tx-service.js';
 import type { GameTokenAccount, TokenAdjustmentResult } from '../../domain/types.js';

@@ -5,8 +5,6 @@
 export {
   EscortDispatchOrderStatus,
   SourceType,
-  EscortDispatchOrderNumberGenerator,
-  optionPriceToDisplayLine,
 } from './domain/index.js';
 
 export type {
@@ -29,15 +27,14 @@ export type {
 // Services
 // ============================================================
 
-export {
+export type {
   EscortDispatchOrderService,
-  EscortDispatchHandoffService,
   DispatchAfterSalesStaffService,
   EscortOptionPricingService,
   EscortCatalogService,
-  type EscortOptionCatalogEntry,
-  type CreateCatalogData,
-  type UpdateCatalogData,
+  EscortOptionCatalogEntry,
+  CreateCatalogData,
+  UpdateCatalogData,
 } from './service/index.js';
 
 // ============================================================

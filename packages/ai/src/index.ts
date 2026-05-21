@@ -9,10 +9,6 @@ export { AIServiceConfig, AIServiceConfigSchema } from './config/ai-service-conf
 export type { AIServiceConfigValues } from './config/ai-service-config.js';
 
 // Prompts
-export {
-  DefaultPromptLoader,
-  SystemPrompt,
-} from './prompts/prompt-loader.js';
 export type { PromptLoader, PromptSection } from './prompts/prompt-loader.js';
 
 // AI Chat Service Interfaces and Types
@@ -22,7 +18,6 @@ export {
   Source,
   RedactionMode,
   ConversationIdStrategy,
-  MAX_MESSAGE_LENGTH,
 } from './services/ai-chat-service.js';
 export type {
   AIChatService,
@@ -42,7 +37,6 @@ export type {
 } from './services/ai-chat-service.js';
 
 // Routing
-export { AIChatMentionRoutingDecision, resolveRestrictionChannelId, resolveCategoryId } from './services/routing/routing-decision.js';
 export type {
   AIChannelRestrictionService,
   AIChannelRestrictionRepository,
@@ -53,18 +47,8 @@ export type {
   AIAgentChannelConfigRepository,
 } from './services/routing/agent-config-service.js';
 
-// Chat Services
-export { LangChainAIChatService } from './services/LangChainAIChatService.js';
-export { LangChainExceptionMapper } from './services/LangChainExceptionMapper.js';
-
 // Markdown Types
-export {
-  ErrorType,
-  valid,
-  invalid,
-  isValid,
-  isInvalid,
-} from './markdown/types.js';
+export { ErrorType } from './markdown/types.js';
 export type {
   MarkdownError,
   ValidationResult,

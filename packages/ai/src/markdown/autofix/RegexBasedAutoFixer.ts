@@ -41,10 +41,13 @@ export class RegexBasedAutoFixer implements MarkdownAutoFixer {
       result = this.fixHeadingInlineListItems(result);
       result = this.fixEmbeddedLists(result);
       result = this.fixInlineListMarkersInListLines(result);
-      // Merged line-based fixes: single split → multi-fix → join (P3-16)
-      result = this.applyLineFixes(result);
+      // Step 9-14: separate line-based fixes in strict order
+      result = this.fixListFormat(result);
+      result = this.normalizeUnorderedListMarkers(result);
+      result = this.fixNestedListIndentation(result);
       result = this.fixDiscordUnderlineBold(result);
       result = this.fixTaskList(result);
+      result = this.fixHorizontalRules(result);
 
       // Restore code blocks
       result = this.restoreCodeBlocks(result, codeBlocks);
@@ -180,56 +183,73 @@ export class RegexBasedAutoFixer implements MarkdownAutoFixer {
     return text.replace(/^(\s*[-*+]\s+.+?)([-*+])\s+/gm, '$1\n$2 ');
   }
 
-  /**
-   * Merged line-based fix pass (P3-16).
-   * Combines fixListFormat, normalizeUnorderedListMarkers, fixNestedListIndentation,
-   * and fixHorizontalRules into a single split → multi-fix → join pass.
-   */
-  private applyLineFixes(text: string): string {
-    const lines = text.split('\n');
-    const result: string[] = [];
+  // ===== Fix 9: List Format (space after list markers) =====
 
-    for (const line of lines) {
-      // fixHorizontalRules: filter out standalone hr lines
-      const trimmedStart = line.trimStart();
-      if (/^[-*_]{3,}$/.test(trimmedStart.trimEnd()) && trimmedStart.trimEnd().length >= 3) {
-        continue;
-      }
-
-      let fixed = line;
-      const trimmed = fixed.trimStart();
-
-      // fixListFormat: skip hr, emphasis-only, headings, and bold-containing lines
-      if (
-        !/^[-*_]{3,}$/.test(trimmed) &&
-        !/^\*[^*]+\*$/.test(trimmed) &&
-        !/^\*\*[^*]+\*\*$/.test(trimmed) &&
-        !/^#{1,6}\s/.test(trimmed) &&
-        !/\*\*/.test(trimmed)
-      ) {
-        fixed = fixed.replace(/^(\s*)([-*+])(\S)/, '$1$2 $3');
-        fixed = fixed.replace(/^(\s*)(\d+)\.(\S)/, '$1$2. $3');
-      }
-
-      // Normalize unordered list markers: * and + → -
-      if (/^\s*[*+]\s/.test(fixed)) {
-        fixed = fixed.replace(/^(\s*)[*+](\s)/, '$1-$2');
-      }
-
-      // fixNestedListIndentation: round to nearest multiple of 4
-      const listTrimmed = fixed.trimStart();
-      if (listTrimmed && (/^[-*+]\s/.test(listTrimmed) || /^\d+\.\s/.test(listTrimmed))) {
-        const leadingSpaces = fixed.length - listTrimmed.length;
-        if (leadingSpaces > 0 && leadingSpaces % 4 !== 0) {
-          const chars = ' '.repeat(Math.round(leadingSpaces / 4) * 4);
-          fixed = chars + listTrimmed;
+  private fixListFormat(text: string): string {
+    return text
+      .split('\n')
+      .map((line) => {
+        const trimmed = line.trimStart();
+        if (
+          !/^[-*_]{3,}$/.test(trimmed) &&
+          !/^\*[^*]+\*$/.test(trimmed) &&
+          !/^\*\*[^*]+\*\*$/.test(trimmed) &&
+          !/^#{1,6}\s/.test(trimmed) &&
+          !/\*\*/.test(trimmed)
+        ) {
+          let fixed = line;
+          fixed = fixed.replace(/^(\s*)([-*+])(\S)/, '$1$2 $3');
+          fixed = fixed.replace(/^(\s*)(\d+)\.(\S)/, '$1$2. $3');
+          return fixed;
         }
-      }
+        return line;
+      })
+      .join('\n');
+  }
 
-      result.push(fixed);
-    }
+  // ===== Fix 10: Normalize Unordered List Markers =====
 
-    return result.join('\n');
+  private normalizeUnorderedListMarkers(text: string): string {
+    return text
+      .split('\n')
+      .map((line) => {
+        if (/^\s*[*+]\s/.test(line)) {
+          return line.replace(/^(\s*)[*+](\s)/, '$1-$2');
+        }
+        return line;
+      })
+      .join('\n');
+  }
+
+  // ===== Fix 11: Nested List Indentation =====
+
+  private fixNestedListIndentation(text: string): string {
+    return text
+      .split('\n')
+      .map((line) => {
+        const listTrimmed = line.trimStart();
+        if (listTrimmed && (/^[-*+]\s/.test(listTrimmed) || /^\d+\.\s/.test(listTrimmed))) {
+          const leadingSpaces = line.length - listTrimmed.length;
+          if (leadingSpaces > 0 && leadingSpaces % 4 !== 0) {
+            const chars = ' '.repeat(Math.round(leadingSpaces / 4) * 4);
+            return chars + listTrimmed;
+          }
+        }
+        return line;
+      })
+      .join('\n');
+  }
+
+  // ===== Fix 14: Horizontal Rules =====
+
+  private fixHorizontalRules(text: string): string {
+    return text
+      .split('\n')
+      .filter((line) => {
+        const trimmedStart = line.trimStart();
+        return !(/^[-*_]{3,}$/.test(trimmedStart.trimEnd()) && trimmedStart.trimEnd().length >= 3);
+      })
+      .join('\n');
   }
 
   // ===== Fix 12: Discord Underline Bold → Asterisk Bold =====

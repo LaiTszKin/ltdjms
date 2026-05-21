@@ -173,24 +173,5 @@ export const diceGame2Config = pgTable(
   }),
 );
 
-// Type exports for select and insert
-export type GuildCurrencyConfigSelect = typeof guildCurrencyConfig.$inferSelect;
-export type GuildCurrencyConfigInsert = typeof guildCurrencyConfig.$inferInsert;
-
-export type MemberCurrencyAccountSelect = typeof memberCurrencyAccount.$inferSelect;
-export type MemberCurrencyAccountInsert = typeof memberCurrencyAccount.$inferInsert;
-
-export type CurrencyTransactionSelect = typeof currencyTransaction.$inferSelect;
-export type CurrencyTransactionInsert = typeof currencyTransaction.$inferInsert;
-
-export type GameTokenAccountSelect = typeof gameTokenAccount.$inferSelect;
-export type GameTokenAccountInsert = typeof gameTokenAccount.$inferInsert;
-
-export type GameTokenTransactionSelect = typeof gameTokenTransaction.$inferSelect;
-export type GameTokenTransactionInsert = typeof gameTokenTransaction.$inferInsert;
-
-export type DiceGame1ConfigSelect = typeof diceGame1Config.$inferSelect;
-export type DiceGame1ConfigInsert = typeof diceGame1Config.$inferInsert;
-
-export type DiceGame2ConfigSelect = typeof diceGame2Config.$inferSelect;
-export type DiceGame2ConfigInsert = typeof diceGame2Config.$inferInsert;
+// Type exports for select and insert — intentionally empty; domain types
+// are defined in domain/types.ts.

@@ -5,7 +5,7 @@ import {
   DomainError,
 } from '@ltdjms/shared';
 import {
-  DiceConfigService,
+  type DiceConfigService,
   type DiceGame1Config,
   type DiceGame2Config,
 } from '@ltdjms/economy';

@@ -211,6 +211,7 @@ export class LangChainAIChatService implements AIChatService {
         : { model: this.chatModel, maxIterations: 1 };
 
       let totalContent = '';
+      let sentContentLength = 0;
       let reasoningBuffer = '';
 
       /**
@@ -319,6 +320,12 @@ export class LangChainAIChatService implements AIChatService {
             );
           }
 
+          // P2-8: Send accumulated content from this iteration before continuing
+          if (agentEnabled && totalContent.length > sentContentLength) {
+            handler.onChunk(totalContent.slice(sentContentLength), false, null, StreamChunkType.CONTENT);
+            sentContentLength = totalContent.length;
+          }
+
           // Continue to next iteration for model to process tool results
           continue;
         }
@@ -332,9 +339,10 @@ export class LangChainAIChatService implements AIChatService {
         return;
       }
 
-      // For agent mode: emit full accumulated content with completion signal
+      // P2-8: Send remaining accumulated content with completion signal
       if (agentEnabled && totalContent) {
-        handler.onChunk(totalContent, true, null, StreamChunkType.CONTENT);
+        const remaining = totalContent.slice(sentContentLength);
+        handler.onChunk(remaining, true, null, StreamChunkType.CONTENT);
       }
 
       // Final completion signal (used by non-agent mode)

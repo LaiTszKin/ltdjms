@@ -92,7 +92,6 @@ export class AdminPanelModalFactory {
    */
   buildEscortPricingEditModal(
     optionName: string,
-    _globalPrice: number,
     currentOverride: number | null,
   ): {
     title: string;

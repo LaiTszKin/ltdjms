@@ -13,6 +13,17 @@ import type { DispatchOrderSnapshot, EscortDispatchHandoffService } from '../dom
 import type { EscortOrderBuyerNotifier, AdminOrderNotifier, ProductRewardGranter } from '../domain/notification-interfaces.js';
 import pino from 'pino';
 
+/**
+ * Exception indicating a workflow state violation that prevents processing.
+ * The operation should be released and retried rather than logged as a failure.
+ */
+export class WorkflowStateException extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'WorkflowStateException';
+  }
+}
+
 const DEFAULT_BATCH_SIZE = 20;
 
 export class FiatOrderPostPaymentWorker {
@@ -61,7 +72,7 @@ export class FiatOrderPostPaymentWorker {
           order.orderNumber,
         );
         if (!handoffResult.isOk()) {
-          throw new Error(handoffResult.getError().message);
+          throw new WorkflowStateException(handoffResult.getError().message);
         }
 
         const dispatchOrder = handoffResult.getValue();
@@ -104,7 +115,7 @@ export class FiatOrderPostPaymentWorker {
           description: `法幣商品獎勵: ${fulfillmentProduct.name}`,
         });
         if (rewardResult.isErr()) {
-          throw new Error(rewardResult.getError().message);
+          throw new WorkflowStateException(rewardResult.getError().message);
         }
         await this.fiatOrderRepository.markRewardGrantedIfNeeded(
           order.orderNumber,
@@ -116,7 +127,11 @@ export class FiatOrderPostPaymentWorker {
       await this.fiatOrderRepository.markFulfilledIfNeeded(order.orderNumber, new Date());
     } catch (e) {
       await this.fiatOrderRepository.releaseFulfillmentProcessing(order.orderNumber);
-      this.log.warn({ orderNumber: order.orderNumber, error: e }, 'Failed to process paid fiat order');
+      if (e instanceof WorkflowStateException) {
+        this.log.warn({ orderNumber: order.orderNumber, error: e }, 'Workflow state violation processing paid fiat order');
+      } else {
+        this.log.error({ orderNumber: order.orderNumber, error: e }, 'Failed to process paid fiat order');
+      }
     }
   }
 }

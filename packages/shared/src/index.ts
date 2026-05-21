@@ -73,8 +73,5 @@ export {
   DiscordJsEmbedBuilder,
   DiscordJsRuntimeGateway,
   DiscordRuntimeNotReadyError,
-  splitSelectMenus,
-  splitSelectMenusGeneric,
-  createButtonView,
   MockDiscordInteraction,
 } from './discord/index.js';

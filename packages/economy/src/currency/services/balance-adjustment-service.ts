@@ -7,7 +7,7 @@ import {
   type CacheKeyGenerator,
   type DomainEventPublisher,
 } from '@ltdjms/shared';
-import type { BalanceChangedEvent } from '@ltdjms/economy';
+import type { BalanceChangedEvent } from '../../events/index.js';
 import { CurrencyAccountRepository } from '../repositories/currency-account-repo.js';
 import { CurrencyTransactionService } from './currency-tx-service.js';
 import { BalanceService } from './balance-service.js';
