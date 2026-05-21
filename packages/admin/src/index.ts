@@ -28,4 +28,9 @@ export type { AdminPanelSessionData, PanelSessionData } from './session/index.js
 // ============================================================
 // DI
 // ============================================================
-export { configureAdminContainer, ADMIN_TOKENS } from './di/index.js';
+export { configureAdminContainer, disposeAdminContainer, ADMIN_TOKENS } from './di/index.js';
+
+// ============================================================
+// Commands
+// ============================================================
+export { SlashCommandRegistrar } from './commands/registration/SlashCommandRegistrar.js';
