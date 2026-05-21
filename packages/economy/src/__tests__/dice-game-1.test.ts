@@ -134,7 +134,7 @@ describe('DiceGame1Service', () => {
       // Verify creditReward was called once (only for the actual reward, not for balance query)
       expect(mockRewardService.creditReward).toHaveBeenCalledTimes(1);
       expect(mockRewardService.creditReward).toHaveBeenCalledWith(
-        1, 1, 1500000, CurrencyTransactionSource.DICE_GAME_1_WIN,
+        1, "1", 1500000, CurrencyTransactionSource.DICE_GAME_1_WIN,
       );
       // Verify previous balance was fetched from BalanceService instead of creditReward(0)
       expect(mockBalService.getBalance).toHaveBeenCalledWith(1, '1');
