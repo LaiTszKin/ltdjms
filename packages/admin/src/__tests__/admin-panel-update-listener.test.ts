@@ -23,6 +23,21 @@ function createSession(
   };
 }
 
+/** Creates a mock Discord client whose message.fetch will fail. */
+function createMockClientWithFailingMessageFetch(): Record<string, unknown> {
+  return {
+    channels: {
+      fetch: vi.fn().mockResolvedValue({
+        isTextBased: () => true,
+        messages: { fetch: vi.fn().mockRejectedValue(new Error('Message not found')) },
+      }),
+    },
+    guilds: {
+      fetch: vi.fn().mockResolvedValue({ name: 'Test Guild' }),
+    },
+  };
+}
+
 describe('AdminPanelUpdateListener', () => {
   let listener: AdminPanelUpdateListener;
   let mockSessionManager: Record<string, ReturnType<typeof vi.fn>>;
@@ -34,7 +49,7 @@ describe('AdminPanelUpdateListener', () => {
   const guildId = '1';
 
   beforeEach(() => {
-    vi.useFakeTimers();
+    AdminPanelUpdateListener.DEBOUNCE_MS = 1; // minimal delay for fast tests
     mockSessionManager = {
       getAllForGuild: vi.fn(),
       removeSession: vi.fn(),
@@ -74,15 +89,13 @@ describe('AdminPanelUpdateListener', () => {
     });
 
     it('should handle admin event with no active sessions', async () => {
-      vi.useFakeTimers();
       mockSessionManager.getAllForGuild.mockReturnValue([]);
 
       const event: DomainEvent = { guildId, eventType: 'balance_changed' };
       await listener.onEvent(event);
-      await vi.advanceTimersByTimeAsync(AdminPanelUpdateListener.DEBOUNCE_MS + 1);
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(mockSessionManager.getAllForGuild).toHaveBeenCalledWith(guildId);
-      vi.useRealTimers();
     });
   });
 
@@ -104,17 +117,11 @@ describe('AdminPanelUpdateListener', () => {
       mockSessionManager.getAllForGuild.mockReturnValue(
         sessions.map((s) => createSession(s.userId, s.viewState)),
       );
-      mockDiscordGateway.requireReadyClient.mockReturnValue({
-        channels: {
-          fetch: vi.fn().mockRejectedValue(new Error('Channel not found')),
-        },
-        guilds: {
-          fetch: vi.fn().mockRejectedValue(new Error('Guild not found')),
-        },
-      } as never);
+      mockDiscordGateway.requireReadyClient.mockReturnValue(createMockClientWithFailingMessageFetch());
 
       await listener.onEvent(event);
-      await vi.advanceTimersByTimeAsync(AdminPanelUpdateListener.DEBOUNCE_MS + 1);
+      // Wait for debounce timer (DEBOUNCE_MS = 1ms) to fire
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       return mockSessionManager.removeSession.mock.calls.map(
         (call: string[]) => call[1], // userId is the second arg
@@ -306,13 +313,11 @@ describe('AdminPanelUpdateListener', () => {
     it('should remove session when channel/message fetch fails', async () => {
       const sessions = [createSession('100', AdminPanelViewState.MAIN, true)];
       mockSessionManager.getAllForGuild.mockReturnValue(sessions);
-      mockDiscordGateway.requireReadyClient.mockReturnValue({
-        channels: { fetch: vi.fn().mockRejectedValue(new Error('Channel not found')) },
-      } as never);
+      mockDiscordGateway.requireReadyClient.mockReturnValue(createMockClientWithFailingMessageFetch());
 
       const event: DomainEvent = { guildId, eventType: 'currency_config_changed' };
       await listener.onEvent(event);
-      await vi.advanceTimersByTimeAsync(AdminPanelUpdateListener.DEBOUNCE_MS + 1);
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(mockSessionManager.removeSession).toHaveBeenCalledWith('1', '100');
     });
@@ -324,7 +329,7 @@ describe('AdminPanelUpdateListener', () => {
 
       const event: DomainEvent = { guildId, eventType: 'currency_config_changed' };
       await listener.onEvent(event);
-      await vi.advanceTimersByTimeAsync(AdminPanelUpdateListener.DEBOUNCE_MS + 1);
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       // removeSession should NOT be called — session without channelId/messageId
       // is counted as "updated" but no fetch is attempted
@@ -358,13 +363,11 @@ describe('AdminPanelUpdateListener', () => {
         mockSessionManager.getAllForGuild.mockReturnValue([
           createSession('100', AdminPanelViewState.MAIN, true),
         ]);
-        mockDiscordGateway.requireReadyClient.mockReturnValue({
-          channels: { fetch: vi.fn().mockRejectedValue(new Error('Channel not found')) },
-        } as never);
+        mockDiscordGateway.requireReadyClient.mockReturnValue(createMockClientWithFailingMessageFetch());
 
         const event: DomainEvent = { guildId, eventType };
         await listener.onEvent(event);
-        await vi.advanceTimersByTimeAsync(AdminPanelUpdateListener.DEBOUNCE_MS + 1);
+        await new Promise((resolve) => setTimeout(resolve, 10));
 
         // If the event was processed, getAllForGuild was called
         expect(mockSessionManager.getAllForGuild).toHaveBeenCalledWith(guildId);
