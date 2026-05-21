@@ -195,7 +195,7 @@ export class RegexBasedAutoFixer implements MarkdownAutoFixer {
           !/^\*[^*]+\*$/.test(trimmed) &&
           !/^\*\*[^*]+\*\*$/.test(trimmed) &&
           !/^#{1,6}\s/.test(trimmed) &&
-          !/\*\*/.test(trimmed)
+          !/^\s*\*\*/.test(trimmed)
         ) {
           let fixed = line;
           fixed = fixed.replace(/^(\s*)([-*+])(\S)/, '$1$2 $3');

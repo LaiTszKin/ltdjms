@@ -105,6 +105,7 @@ export class CurrencyManagementFacade {
 
   /**
    * Sets a member's balance to a specific target value.
+   * Computes the delta from current balance and applies it via tryAdjustBalance.
    */
   async setBalance(
     guildId: string,
@@ -117,10 +118,18 @@ export class CurrencyManagementFacade {
       return err(DomainError.invalidInput('設定金額必須為非負整數'));
     }
 
-    return this.balanceAdjustmentService.tryAdjustBalanceTo(
+    const currentResult = await this.balanceService.getBalance(Number(guildId), userId);
+    if (currentResult.isErr()) {
+      return err(currentResult.getError());
+    }
+
+    const currentBalance = currentResult.getValue().balance;
+    const delta = amount - currentBalance;
+
+    return this.balanceAdjustmentService.tryAdjustBalance(
       Number(guildId),
       userId,
-      amount,
+      delta,
       CurrencyTransactionSource.ADMIN_ADJUSTMENT,
       `管理員 ${actorId}：${reason}`,
     );

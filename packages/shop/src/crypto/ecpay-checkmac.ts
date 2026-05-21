@@ -34,9 +34,6 @@ export function buildCheckMacValue(
   let encoded = javaUrlEncode(checkStr).toLowerCase();
 
   // 4. ECPay-specific URL encoding substitutions
-  // NOTE: %20 → + is technically redundant because javaUrlEncode already
-  // converts spaces to + (line 15 of url-encoder.ts). Kept for exact
-  // alignment with Java EcpayTradeQueryService.buildCheckMacValue() (P3-4).
   const substitutions: [RegExp, string][] = [
     [/%2d/g, '-'],
     [/%5f/g, '_'],
@@ -45,7 +42,6 @@ export function buildCheckMacValue(
     [/%2a/g, '*'],
     [/%28/g, '('],
     [/%29/g, ')'],
-    [/%20/g, '+'],
     [/%7e/g, '~'],
   ];
   for (const [pattern, replacement] of substitutions) {

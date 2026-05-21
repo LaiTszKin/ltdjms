@@ -8,7 +8,7 @@ export const DiceGameMessages = {
   // Dice Game 1
   // ============================================================
   GAME_1_TITLE: '🎲 骰子遊戲 1',
-  GAME_1_DESCRIPTION: '擲 {count} 顆骰子，每點獎勵 {reward} 貨幣',
+  GAME_1_DESCRIPTION: '擲 {count} 顆骰子，總獎勵 {reward} 貨幣',
   GAME_1_RESULT:
     '**骰子結果：** {dice}\n**總和：** {sum}\n**獎勵：** {reward} 貨幣',
 

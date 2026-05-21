@@ -34,7 +34,7 @@ export interface RedemptionTransactionEntry {
   readonly id: number;
   readonly productName: string;
   readonly code: string;
-  readonly rewardedAmount: number | null;
+  readonly rewardAmount: number | null;
   readonly createdAt: Date;
 }
 
@@ -203,7 +203,7 @@ export class MemberInfoFacade {
         id: item.id,
         productName: item.productName,
         code: item.code,
-        rewardedAmount: item.rewardedAmount,
+        rewardAmount: item.rewardAmount,
         createdAt: item.createdAt,
       }));
 

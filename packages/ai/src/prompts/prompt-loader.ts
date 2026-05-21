@@ -133,8 +133,7 @@ export class DefaultPromptLoader implements PromptLoader {
       return ok([]);
     }
 
-    const sections: PromptSection[] = [];
-    for (const fileName of mdFiles) {
+    const filePromises = mdFiles.map(async (fileName) => {
       const filePath = join(dirPath, fileName);
 
       try {
@@ -143,19 +142,22 @@ export class DefaultPromptLoader implements PromptLoader {
           console.warn(
             `[prompt-loader] Prompt file too large: ${fileName} (${stats.size} bytes, max ${this.maxFileSizeBytes}), skipping`,
           );
-          continue;
+          return null;
         }
 
         const content = await readFile(filePath, 'utf-8');
         const name = fileName.replace(/\.md$/, '');
-        sections.push({ name, content });
+        return { name, content } as PromptSection;
       } catch (cause) {
         console.warn(
           `[prompt-loader] Failed to read prompt file: ${fileName}, skipping`,
         );
-        continue;
+        return null;
       }
-    }
+    });
+
+    const results = await Promise.all(filePromises);
+    const sections: PromptSection[] = results.filter((r): r is PromptSection => r !== null);
 
     return ok(sections);
   }

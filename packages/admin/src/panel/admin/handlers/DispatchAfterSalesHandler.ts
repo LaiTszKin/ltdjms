@@ -6,6 +6,8 @@ import {
   EmbedBuilder,
   ActionRowBuilder,
   UserSelectMenuBuilder,
+  ButtonBuilder,
+  ButtonStyle,
 } from 'discord.js';
 import { AdminPanelSessionManager } from '../../../session/AdminPanelSessionManager.js';
 import { AdminPanelViewState } from '../../../session/types.js';
@@ -171,6 +173,18 @@ export class DispatchAfterSalesHandler extends BaseAdminHandler {
       .setTitle(ZhTwStrings.dispatchTitle)
       .setDescription(description)
       .setColor(Colors.PRIMARY);
-    await interaction.editEmbed(embed);
+
+    const addBtn = new ButtonBuilder()
+      .setCustomId('admin_dispatch_add')
+      .setLabel(ZhTwStrings.dispatchAddBtn)
+      .setStyle(ButtonStyle.Success);
+
+    const removeBtn = new ButtonBuilder()
+      .setCustomId('admin_dispatch_remove')
+      .setLabel(ZhTwStrings.dispatchRemoveBtn)
+      .setStyle(ButtonStyle.Danger);
+
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(addBtn, removeBtn);
+    await interaction.editWithComponents(embed, [row]);
   }
 }

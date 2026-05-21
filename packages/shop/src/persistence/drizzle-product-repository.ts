@@ -1,4 +1,4 @@
-import { eq, and, ilike, count, asc, sql } from 'drizzle-orm';;
+import { eq, and, ilike, count, asc, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { type Product, type ProductRepository } from '../domain/product-types.js';
 import { product as productTable } from './schema.js';
@@ -81,19 +81,20 @@ export class DrizzleProductRepository implements ProductRepository {
   }
 
   async create(data: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Promise<Product> {
+    const insertData: Record<string, unknown> = {
+      guildId: Number(data.guildId),
+      name: data.name,
+      description: data.description,
+      rewardType: data.rewardType,
+      rewardAmount: data.rewardAmount != null ? BigInt(data.rewardAmount) : null,
+      currencyPrice: data.currencyPrice != null ? BigInt(data.currencyPrice) : null,
+      fiatPriceTwd: data.fiatPriceTwd != null ? BigInt(data.fiatPriceTwd) : null,
+      autoCreateEscortOrder: data.autoCreateEscortOrder,
+      escortOptionCode: data.escortOptionCode,
+    };
     const rows = await this.db
       .insert(productTable)
-      .values({
-        guildId: Number(data.guildId),
-        name: data.name,
-        description: data.description,
-        rewardType: data.rewardType,
-        rewardAmount: data.rewardAmount != null ? BigInt(data.rewardAmount) : null,
-        currencyPrice: data.currencyPrice != null ? BigInt(data.currencyPrice) : null,
-        fiatPriceTwd: data.fiatPriceTwd != null ? BigInt(data.fiatPriceTwd) : null,
-        autoCreateEscortOrder: data.autoCreateEscortOrder,
-        escortOptionCode: data.escortOptionCode,
-      })
+      .values(insertData as any)
       .returning();
     return this.mapRow(rows[0] as Record<string, unknown>);
   }

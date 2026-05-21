@@ -7,7 +7,6 @@ export interface DatabaseConfig {
   readonly connectionTimeoutMillis: number;
   readonly idleTimeoutMillis: number;
   readonly minIdle?: number;
-  readonly maxLifetime?: number;
 }
 
 /**

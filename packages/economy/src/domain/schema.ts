@@ -39,7 +39,6 @@ export const memberCurrencyAccount = pgTable(
   (table) => ({
     pk: primaryKey({ columns: [table.guildId, table.userId] }),
     guildIdx: index('idx_member_currency_account_guild').on(table.guildId),
-    userIdx: index('idx_member_currency_account_user').on(table.userId),
     balanceCheck: check('balance_non_negative', sql`${table.balance} >= 0`),
   }),
 );
@@ -65,9 +64,9 @@ export const currencyTransaction = pgTable(
     guildUserIdx: index('idx_currency_transaction_guild_user').on(
       table.guildId,
       table.userId,
-      table.createdAt,
+      table.createdAt.desc(),
     ),
-    guildIdx: index('idx_currency_transaction_guild').on(table.guildId, table.createdAt),
+    guildIdx: index('idx_currency_transaction_guild').on(table.guildId, table.createdAt.desc()),
     sourceIdx: index('idx_currency_transaction_source').on(table.source),
     balanceAfterCheck: check('currency_tx_balance_after_non_negative', sql`${table.balanceAfter} >= 0`),
   }),
@@ -89,7 +88,6 @@ export const gameTokenAccount = pgTable(
   (table) => ({
     pk: primaryKey({ columns: [table.guildId, table.userId] }),
     guildIdx: index('idx_game_token_account_guild').on(table.guildId),
-    userIdx: index('idx_game_token_account_user').on(table.userId),
     tokensCheck: check('tokens_non_negative', sql`${table.tokens} >= 0`),
   }),
 );
@@ -115,9 +113,9 @@ export const gameTokenTransaction = pgTable(
     guildUserIdx: index('idx_game_token_transaction_guild_user').on(
       table.guildId,
       table.userId,
-      table.createdAt,
+      table.createdAt.desc(),
     ),
-    guildIdx: index('idx_game_token_transaction_guild').on(table.guildId, table.createdAt),
+    guildIdx: index('idx_game_token_transaction_guild').on(table.guildId, table.createdAt.desc()),
     sourceIdx: index('idx_game_token_transaction_source').on(table.source),
     balanceAfterCheck: check('game_token_tx_balance_after_non_negative', sql`${table.balanceAfter} >= 0`),
   }),
@@ -138,10 +136,10 @@ export const diceGame1Config = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    minTokensCheck: check('dice1_min_tokens_non_negative', sql`${table.minTokensPerPlay} >= 0`),
-    maxTokensCheck: check('dice1_max_tokens_non_negative', sql`${table.maxTokensPerPlay} >= 0`),
-    rewardCheck: check('dice1_reward_non_negative', sql`${table.rewardPerDiceValue} >= 0`),
-    minMaxCheck: check('dice1_min_le_max', sql`${table.minTokensPerPlay} <= ${table.maxTokensPerPlay}`),
+    minTokensCheck: check('dice_game1_min_tokens_non_negative', sql`${table.minTokensPerPlay} >= 0`),
+    maxTokensCheck: check('dice_game1_max_tokens_non_negative', sql`${table.maxTokensPerPlay} >= 0`),
+    rewardCheck: check('dice_game1_reward_non_negative', sql`${table.rewardPerDiceValue} >= 0`),
+    minMaxCheck: check('dice_game1_min_le_max', sql`${table.minTokensPerPlay} <= ${table.maxTokensPerPlay}`),
   }),
 );
 
@@ -163,13 +161,13 @@ export const diceGame2Config = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    minTokensCheck: check('dice2_min_tokens_non_negative', sql`${table.minTokensPerPlay} >= 0`),
-    maxTokensCheck: check('dice2_max_tokens_non_negative', sql`${table.maxTokensPerPlay} >= 0`),
-    straightMulCheck: check('dice2_straight_mul_non_negative', sql`${table.straightMultiplier} >= 0`),
-    baseMulCheck: check('dice2_base_mul_non_negative', sql`${table.baseMultiplier} >= 0`),
-    tripleLowCheck: check('dice2_triple_low_non_negative', sql`${table.tripleLowBonus} >= 0`),
-    tripleHighCheck: check('dice2_triple_high_non_negative', sql`${table.tripleHighBonus} >= 0`),
-    minMaxCheck: check('dice2_min_le_max', sql`${table.minTokensPerPlay} <= ${table.maxTokensPerPlay}`),
+    minTokensCheck: check('dice_game2_min_tokens_non_negative', sql`${table.minTokensPerPlay} >= 0`),
+    maxTokensCheck: check('dice_game2_max_tokens_non_negative', sql`${table.maxTokensPerPlay} >= 0`),
+    straightMulCheck: check('dice_game2_straight_mul_non_negative', sql`${table.straightMultiplier} >= 0`),
+    baseMulCheck: check('dice_game2_base_mul_non_negative', sql`${table.baseMultiplier} >= 0`),
+    tripleLowCheck: check('dice_game2_triple_low_non_negative', sql`${table.tripleLowBonus} >= 0`),
+    tripleHighCheck: check('dice_game2_triple_high_non_negative', sql`${table.tripleHighBonus} >= 0`),
+    minMaxCheck: check('dice_game2_min_le_max', sql`${table.minTokensPerPlay} <= ${table.maxTokensPerPlay}`),
   }),
 );
 

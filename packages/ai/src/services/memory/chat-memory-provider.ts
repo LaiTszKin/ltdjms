@@ -6,6 +6,15 @@ import { TokenEstimator } from './TokenEstimator.js';
 import type { DiscordRuntimeGateway } from '@ltdjms/shared';
 
 /**
+ * Interface for conversation memory providers.
+ * Implementations fetch historical context and persist new conversation turns.
+ */
+export interface ChatMemoryProvider {
+  /** Retrieves conversation history for the given memory/conversation ID. */
+  getMemory(memoryId: string): Promise<Array<{ role: string; content: string }>>;
+}
+
+/**
  * Fetches Discord thread message history for conversation memory.
  * Matches Java DiscordThreadHistoryProvider.
  */
@@ -63,7 +72,7 @@ export class DiscordThreadHistoryProvider {
  * Builds memory from Discord thread history + in-memory tool call history.
  * Matches Java SimplifiedChatMemoryProvider.
  */
-export class SimplifiedChatMemoryProvider {
+export class SimplifiedChatMemoryProvider implements ChatMemoryProvider {
   private readonly maxMessages: number;
 
   constructor(

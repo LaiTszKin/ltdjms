@@ -1,9 +1,11 @@
-import { type Result, DomainError, Unit } from '@ltdjms/shared';
+import { type Result, DomainError, Unit, type DomainEventPublisher } from '@ltdjms/shared';
 import type {
   AIChannelRestrictionService,
   AIAgentChannelConfigService,
   AllowedChannel,
   AllowedCategory,
+  AIChannelConfigChangedEvent,
+  AIAgentChannelConfigChangedEvent,
 } from '@ltdjms/ai';
 import { AgentMode } from './agent-mode.js';
 
@@ -16,6 +18,7 @@ export class AIConfigManagementFacade {
   constructor(
     private readonly channelRestrictionService: AIChannelRestrictionService,
     private readonly agentConfigService: AIAgentChannelConfigService,
+    private readonly eventPublisher: DomainEventPublisher,
   ) {}
 
   // ============================================================
@@ -42,10 +45,19 @@ export class AIConfigManagementFacade {
     channelId: string,
     channelName: string,
   ): Promise<Result<AllowedChannel, DomainError>> {
-    return this.channelRestrictionService.addAllowedChannel(guildId, {
+    const result = await this.channelRestrictionService.addAllowedChannel(guildId, {
       channelId,
       channelName,
     });
+    if (result.isOk()) {
+      this.eventPublisher.publish({
+        eventType: 'ai_channel_config_changed',
+        guildId,
+        changeType: 'channel_added',
+        targetId: channelId,
+      } as AIChannelConfigChangedEvent);
+    }
+    return result;
   }
 
   /**
@@ -55,7 +67,16 @@ export class AIConfigManagementFacade {
     guildId: string,
     channelId: string,
   ): Promise<Result<Unit, DomainError>> {
-    return this.channelRestrictionService.removeAllowedChannel(guildId, channelId);
+    const result = await this.channelRestrictionService.removeAllowedChannel(guildId, channelId);
+    if (result.isOk()) {
+      this.eventPublisher.publish({
+        eventType: 'ai_channel_config_changed',
+        guildId,
+        changeType: 'channel_removed',
+        targetId: channelId,
+      } as AIChannelConfigChangedEvent);
+    }
+    return result;
   }
 
   // ============================================================
@@ -77,10 +98,19 @@ export class AIConfigManagementFacade {
     categoryId: string,
     categoryName: string,
   ): Promise<Result<AllowedCategory, DomainError>> {
-    return this.channelRestrictionService.addAllowedCategory(guildId, {
+    const result = await this.channelRestrictionService.addAllowedCategory(guildId, {
       categoryId,
       categoryName,
     });
+    if (result.isOk()) {
+      this.eventPublisher.publish({
+        eventType: 'ai_channel_config_changed',
+        guildId,
+        changeType: 'category_added',
+        targetId: categoryId,
+      } as AIChannelConfigChangedEvent);
+    }
+    return result;
   }
 
   /**
@@ -90,7 +120,16 @@ export class AIConfigManagementFacade {
     guildId: string,
     categoryId: string,
   ): Promise<Result<Unit, DomainError>> {
-    return this.channelRestrictionService.removeAllowedCategory(guildId, categoryId);
+    const result = await this.channelRestrictionService.removeAllowedCategory(guildId, categoryId);
+    if (result.isOk()) {
+      this.eventPublisher.publish({
+        eventType: 'ai_channel_config_changed',
+        guildId,
+        changeType: 'category_removed',
+        targetId: categoryId,
+      } as AIChannelConfigChangedEvent);
+    }
+    return result;
   }
 
   // ============================================================
@@ -123,7 +162,17 @@ export class AIConfigManagementFacade {
         `channel=${channelId}. Falling back to AGENT — service layer only supports enabled/disabled.`,
       );
     }
-    return this.agentConfigService.setAgentEnabled(guildId, channelId, true);
+    const result = await this.agentConfigService.setAgentEnabled(guildId, channelId, true);
+    if (result.isOk()) {
+      this.eventPublisher.publish({
+        eventType: 'ai_agent_channel_config_changed',
+        guildId,
+        channelId: Number(channelId),
+        agentEnabled: true,
+        changedAt: new Date(),
+      } as AIAgentChannelConfigChangedEvent);
+    }
+    return result;
   }
 
   /**
@@ -133,7 +182,17 @@ export class AIConfigManagementFacade {
     guildId: string,
     channelId: string,
   ): Promise<Result<Unit, DomainError>> {
-    return this.agentConfigService.setAgentEnabled(guildId, channelId, false);
+    const result = await this.agentConfigService.setAgentEnabled(guildId, channelId, false);
+    if (result.isOk()) {
+      this.eventPublisher.publish({
+        eventType: 'ai_agent_channel_config_changed',
+        guildId,
+        channelId: Number(channelId),
+        agentEnabled: false,
+        changedAt: new Date(),
+      } as AIAgentChannelConfigChangedEvent);
+    }
+    return result;
   }
 
   /**

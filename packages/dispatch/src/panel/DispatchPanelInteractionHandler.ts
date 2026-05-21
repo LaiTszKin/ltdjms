@@ -101,7 +101,7 @@ export class DispatchPanelInteractionHandler {
       }
 
       // Admin permission check (spec R14.1) — only for guild panel interactions
-      if (!(await this.checkAdminPermission(interaction, context, guildId, userId))) {
+      if (!(await this.checkAdminPermission(interaction))) {
         await interaction.reply('你沒有權限使用派單面板。');
         return;
       }
@@ -1043,9 +1043,6 @@ export class DispatchPanelInteractionHandler {
 
   private async checkAdminPermission(
     interaction: DiscordInteraction,
-    _context: DiscordContext,
-    _guildId: string,
-    _userId: string,
   ): Promise<boolean> {
     // isAdministrator() 同時檢查 ADMINISTRATOR 權限與 guild owner（ownerId）
     return interaction.isAdministrator();

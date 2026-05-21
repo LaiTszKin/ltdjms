@@ -145,7 +145,7 @@ export class DiceGame2Handler {
           .replace('{previousBalance}', String(gameResult.previousBalance))
           .replace('{newBalance}', String(gameResult.newBalance)),
         `
-	貨幣：${currencyIcon}${currencyName}`,
+  貨幣：${currencyIcon}${currencyName}`,
       ].join('\n');
 
       await interaction.reply(message);

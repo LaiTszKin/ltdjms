@@ -18,6 +18,7 @@ import {
   buildSearchComponents,
   buildSearchResultEmbed,
   buildPaymentMethodChoiceEmbed,
+  buildPaymentMethodChoiceComponents,
   buildPurchaseConfirmEmbed,
   decodeKeyword,
   BUTTON_PREV_PAGE,
@@ -64,7 +65,15 @@ export class ShopCommandHandler {
     await interaction.deferReply();
 
     const guildId = this.parseGuildId(interaction.getGuildId());
-    if (guildId == null) return;
+    if (guildId == null) {
+      const hook = this.getRaw(interaction);
+      if (hook) {
+        await hook.editReply({ content: '無法解析伺服器 ID' });
+      } else {
+        await interaction.editEmbed({ title: '錯誤', description: '無法解析伺服器 ID', color: 0xED4245 });
+      }
+      return;
+    }
 
     const page = await this.shopService.getShopPage(guildId, 1);
 
@@ -158,10 +167,6 @@ export class ShopCommandHandler {
     if (customId.startsWith(BUTTON_PAY_WITH_FIAT)) {
       const productId = parseInt(customId.replace(BUTTON_PAY_WITH_FIAT, ''), 10);
       if (isNaN(productId)) return;
-      if (!this.fiatOrderService) {
-        await interaction.reply('法幣支付功能尚未啟用（缺少訂單服務）');
-        return;
-      }
       const userId = interaction.getUserId();
       const result = await this.fiatOrderService.createFiatOnlyOrder(guildId, userId, productId);
       if (result.isErr()) {
@@ -340,7 +345,8 @@ export class ShopCommandHandler {
       return;
     }
     const embed = buildPaymentMethodChoiceEmbed(product);
-    await interaction.editEmbed(embed);
+    const components = buildPaymentMethodChoiceComponents(product);
+    await this.editWithComponents(interaction, embed, components);
   }
 
   /**
@@ -352,10 +358,6 @@ export class ShopCommandHandler {
     guildId: number,
     productId: number,
   ): Promise<void> {
-    if (!this.currencyPurchaseService) {
-      await interaction.reply('貨幣購買功能尚未啟用（缺少購買服務）');
-      return;
-    }
     const userId = interaction.getUserId();
         const result = await this.currencyPurchaseService.purchaseProduct(guildId, userId, productId);
     if (result.isErr()) {

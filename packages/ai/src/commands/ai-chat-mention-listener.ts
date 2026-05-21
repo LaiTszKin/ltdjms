@@ -104,12 +104,11 @@ export class AIChatMentionListener {
       const restrictionChannelId = this.resolveRestrictionChannelId(message);
 
       // Resolve category ID (thread -> parent channel -> category)
-      const categoryId = resolveCategoryId(message.channel, message.guild);
+      const categoryId = resolveCategoryId(message.channel);
 
       // Get routing decision
       const decision: Decision = await this.routingDecision.decide(
         guildId,
-        channelId,
         restrictionChannelId,
         categoryId,
       );

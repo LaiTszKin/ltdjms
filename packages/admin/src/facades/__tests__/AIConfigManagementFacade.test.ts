@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { Ok, Err, DomainError, DomainErrorCategory } from '@ltdjms/shared';
+import { Ok, Err, DomainError, DomainErrorCategory, type DomainEventPublisher } from '@ltdjms/shared';
 import { AIConfigManagementFacade } from '../AIConfigManagementFacade.js';
 import type {
   AIChannelRestrictionService,
@@ -12,6 +12,7 @@ describe('AIConfigManagementFacade', () => {
   let facade: AIConfigManagementFacade;
   let mockChannelService: Partial<AIChannelRestrictionService>;
   let mockAgentService: Partial<AIAgentChannelConfigService>;
+  let mockEventPublisher: Partial<DomainEventPublisher>;
 
   const guildId = '123';
   const channelId = '456';
@@ -30,10 +31,14 @@ describe('AIConfigManagementFacade', () => {
       setAgentEnabled: vi.fn(),
       removeChannel: vi.fn(),
     };
+    mockEventPublisher = {
+      publish: vi.fn(),
+    };
 
     facade = new AIConfigManagementFacade(
       mockChannelService as AIChannelRestrictionService,
       mockAgentService as AIAgentChannelConfigService,
+      mockEventPublisher as DomainEventPublisher,
     );
   });
 

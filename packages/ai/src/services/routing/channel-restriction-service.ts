@@ -236,7 +236,7 @@ export class DefaultAIChannelRestrictionService
   private static readonly DEFAULT_TTL_MS = 5 * 60 * 1000; // 5 minutes
   private static readonly MAX_CACHE_SIZE = 10_000;
 
-  private cache: Map<string, { value: boolean; expiresAt: number }> = new Map();
+  private cache: Map<string, { value: ChannelAllowResult; expiresAt: number }> = new Map();
 
   constructor(
     private readonly repository: AIChannelRestrictionRepository,
@@ -258,7 +258,7 @@ export class DefaultAIChannelRestrictionService
     channelId: string,
     categoryId?: string,
   ): Promise<ChannelAllowResult> {
-    const cacheKey = `${guildId}:${channelId}`;
+    const cacheKey = categoryId ? `${guildId}:${channelId}:${categoryId}` : `${guildId}:${channelId}`;
     const cached = this.cache.get(cacheKey);
     if (cached !== undefined) {
       if (Date.now() < cached.expiresAt) {
@@ -274,7 +274,7 @@ export class DefaultAIChannelRestrictionService
     // Check channel-level allowlist first (P2-16: direct query instead of loading all channels)
     const channelEntry = await this.repository.findChannel(guildId, channelId);
     if (channelEntry) {
-      this.setCache(cacheKey, { value: true, expiresAt: now + ttl });
+      this.setCache(cacheKey, { value: 'channel' as const, expiresAt: now + ttl });
       return 'channel';
     }
 
@@ -284,12 +284,12 @@ export class DefaultAIChannelRestrictionService
       const categoryMatch = categories.some(
         (c) => c.categoryId === categoryId,
       );
-      this.setCache(cacheKey, { value: categoryMatch, expiresAt: now + ttl });
+      this.setCache(cacheKey, { value: categoryMatch ? 'category' as const : false as const, expiresAt: now + ttl });
       return categoryMatch ? 'category' : false;
     }
 
     // Empty allowlist = default deny
-    this.setCache(cacheKey, { value: false, expiresAt: now + ttl });
+    this.setCache(cacheKey, { value: false as const, expiresAt: now + ttl });
     return false;
   }
 
@@ -390,7 +390,7 @@ export class DefaultAIChannelRestrictionService
     return result;
   }
 
-  private setCache(cacheKey: string, value: { value: boolean; expiresAt: number }): void {
+  private setCache(cacheKey: string, value: { value: ChannelAllowResult; expiresAt: number }): void {
     if (
       this.cache.size >= DefaultAIChannelRestrictionService.MAX_CACHE_SIZE
       && !this.cache.has(cacheKey)

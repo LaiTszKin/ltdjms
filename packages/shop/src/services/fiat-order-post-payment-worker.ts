@@ -46,36 +46,33 @@ export class FiatOrderPostPaymentWorker {
     await processWithConcurrencyLimit(orders, order => this.processSingleOrder(order), 5);
   }
 
-  async processSingleOrder(order: FiatOrder): Promise<void> {
+  async processSingleOrder(incomingOrder: FiatOrder): Promise<void> {
     const claimTime = new Date();
     const claimed = await this.fiatOrderRepository.claimFulfillmentProcessing(
-      order.orderNumber,
+      incomingOrder.orderNumber,
       claimTime,
     );
     if (!claimed) return;
 
+    // Re-query after claim to use fresh data for guard conditions (P3-10)
+    const order = await this.fiatOrderRepository.findByOrderNumber(incomingOrder.orderNumber);
+    if (!order) {
+      await this.fiatOrderRepository.releaseFulfillmentProcessing(incomingOrder.orderNumber);
+      return;
+    }
+
     try {
       const fulfillmentProduct = toFulfillmentProduct(order);
 
-      // Step 1: Buyer notification (idempotent)
+      // Step 1: Buyer notification (idempotent, mark before notify to prevent
+      // duplicate sends on crash recovery — P3-7)
       if (!isBuyerNotified(order)) {
-        this.buyerNotificationService.notifyPaymentSucceeded(order);
         await this.fiatOrderRepository.markBuyerNotifiedIfNeeded(order.orderNumber, new Date());
+        this.buyerNotificationService.notifyPaymentSucceeded(order);
       }
 
-      // Step 2: Escort handoff (conditional)
-      if (shouldAutoCreateEscortOrder(order) && !isAdminNotified(order)) {
-        const handoffResult = await this.escortDispatchHandoffService.handoffFromFiatPayment(
-          order.guildId,
-          order.buyerUserId,
-          fulfillmentProduct,
-          order.orderNumber,
-        );
-        if (!handoffResult.isOk()) {
-          throw new WorkflowStateException(handoffResult.getError().message);
-        }
-
-        const dispatchOrder = handoffResult.getValue();
+      // Step 2: Admin notification (always, independent of escort — P2-13)
+      if (!isAdminNotified(order)) {
         const adminClaimTime = new Date();
         const adminClaimed = await this.fiatOrderRepository.claimAdminNotificationProcessing(
           order.orderNumber,
@@ -83,12 +80,35 @@ export class FiatOrderPostPaymentWorker {
         );
         if (adminClaimed) {
           try {
-            this.escortOrderBuyerNotificationService.notifyEscortOrderCreated(dispatchOrder);
-            this.adminNotificationService.notifyAdminsOrderCreated(
-              dispatchOrder.guildId,
-              dispatchOrder.customerUserId,
-              dispatchOrder,
-            );
+            if (shouldAutoCreateEscortOrder(order)) {
+              const handoffResult = await this.escortDispatchHandoffService.handoffFromFiatPayment(
+                order.guildId,
+                order.buyerUserId,
+                fulfillmentProduct,
+                order.orderNumber,
+              );
+              if (!handoffResult.isOk()) {
+                throw new WorkflowStateException(handoffResult.getError().message);
+              }
+
+              const dispatchOrder = handoffResult.getValue();
+              this.escortOrderBuyerNotificationService.notifyEscortOrderCreated(dispatchOrder);
+              this.adminNotificationService.notifyAdminsOrderCreated(
+                dispatchOrder.guildId,
+                dispatchOrder.customerUserId,
+                dispatchOrder,
+              );
+            } else {
+              this.adminNotificationService.notifyAdminsOrderCreated(
+                order.guildId,
+                order.buyerUserId,
+                {
+                  guildId: order.guildId,
+                  customerUserId: order.buyerUserId,
+                  orderNumber: order.orderNumber,
+                },
+              );
+            }
             await this.fiatOrderRepository.markAdminNotifiedIfNeeded(
               order.orderNumber,
               adminClaimTime,

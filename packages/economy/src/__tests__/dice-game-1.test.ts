@@ -9,7 +9,7 @@ import { CurrencyTransactionSource } from '../domain/types.js';
 
 describe('DiceGame1Service', () => {
   const mockGameRewardService = {
-    creditReward: vi.fn().mockResolvedValue(0),
+    creditReward: vi.fn().mockResolvedValue(new Ok(0)),
   } as unknown as GameRewardService;
 
   const mockBalanceService = {
@@ -101,7 +101,7 @@ describe('DiceGame1Service', () => {
       };
 
       const mockRewardService = {
-        creditReward: vi.fn().mockResolvedValue(1500000),
+        creditReward: vi.fn().mockResolvedValue(new Ok(1500000)),
       } as unknown as GameRewardService;
 
       const mockBalService = {
@@ -142,7 +142,7 @@ describe('DiceGame1Service', () => {
 
     it('should complete play successfully with valid inputs', async () => {
       const mockRewardService = {
-        creditReward: vi.fn().mockResolvedValue(2500),
+        creditReward: vi.fn().mockResolvedValue(new Ok(2500)),
       } as unknown as GameRewardService;
 
       const service = new DiceGame1Service(mockRewardService, mockBalanceService, DefaultRandom);

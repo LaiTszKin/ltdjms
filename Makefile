@@ -2,7 +2,14 @@
 
 # TypeScript commands (default)
 build:
-	tsc -b
+	npx tsc --project packages/shared && \
+	npx tsc --project packages/economy && \
+	npx tsc --project packages/shop && \
+	npx tsc --project packages/dispatch && \
+	npx tsc --project packages/ai && \
+	npx tsc --project packages/admin && \
+	npx tsc apps/bot/src/main.ts --outDir apps/bot/dist --declaration --sourceMap --skipLibCheck \
+		--strict --moduleResolution NodeNext --module NodeNext --target ES2022 --esModuleInterop
 
 test:
 	pnpm vitest run

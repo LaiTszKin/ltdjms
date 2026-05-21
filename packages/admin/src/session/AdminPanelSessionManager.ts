@@ -1,72 +1,27 @@
-import { type CacheService } from '@ltdjms/shared';
 import { AdminPanelViewState, type AdminPanelSessionData } from './types.js';
+import { BaseSessionManager } from './BaseSessionManager.js';
 
 /**
- * Session key prefix for admin panel sessions.
- */
-const SESSION_KEY_PREFIX = 'admin_panel:';
-
-/**
- * Default session TTL in seconds (15 minutes).
- */
-const DEFAULT_TTL_S = 15 * 60;
-
-/**
- * Default session TTL in milliseconds (15 minutes) for in-memory fallback.
- */
-const DEFAULT_TTL_MS = DEFAULT_TTL_S * 1000;
-
-/**
- * Manages admin panel sessions with in-memory storage.
- * Optionally backed by a CacheService (Redis) for distributed session support.
+ * Manages admin panel sessions with in-memory storage only.
  * Each guild+user can have at most one active session.
  * Matches Java AdminPanelSessionManager.
  *
- * NOTE(P2-2): 與 PanelSessionManager 有大量重複程式碼（createSession、getSession、
- * removeSession、getAllForGuild、cleanupExpired 等）。兩者的差異在於：
- * - 本類別使用 AdminPanelSessionData（含 viewState、context）
- * - PanelSessionManager 使用 PanelSessionData（僅 context，無 viewState）
- * 若要抽取公用基底類別，需注意建構子和 session 類型的泛型化。
+ * Differences from PanelSessionManager:
+ * - Uses AdminPanelSessionData (with viewState and required context)
+ * - No CacheService dependency (in-memory only)
  */
-export class AdminPanelSessionManager {
-  /** Maximum number of in-memory sessions before evicting oldest. */
-  private static readonly MAX_SESSIONS = 1000;
-
-  /** In-memory session store (fallback when cache is unavailable). guildId:userId → session data. */
-  private readonly sessions = new Map<string, AdminPanelSessionData>();
-  private cleanupIntervalId: ReturnType<typeof setInterval> | null = null;
-
-  constructor(
-    private readonly cacheService?: CacheService,
-  ) {}
-
-  private buildKey(guildId: string, userId: string): string {
-    return `${SESSION_KEY_PREFIX}${guildId}:${userId}`;
+export class AdminPanelSessionManager extends BaseSessionManager<AdminPanelSessionData> {
+  constructor() {
+    super(); // No cache service for admin panel sessions
   }
 
-  /**
-   * Creates a new admin panel session.
-   * Automatically replaces any existing session for the same guild+user.
-   * Persists to Redis cache when available.
-   */
-  createSession(
-    guildId: string,
-    userId: string,
-  ): AdminPanelSessionData {
-    const key = this.buildKey(guildId, userId);
+  protected getKeyPrefix(): string {
+    return 'admin_panel:';
+  }
 
-    // Evict oldest session if at capacity before creating a new one
-    if (this.sessions.size >= AdminPanelSessionManager.MAX_SESSIONS) {
-      const oldestKey = this.sessions.keys().next().value;
-      if (oldestKey) {
-        this.sessions.delete(oldestKey);
-      }
-    }
-
-    this.sessions.delete(key);
-
+  protected createSessionData(guildId: string, userId: string): AdminPanelSessionData {
     const now = Date.now();
-    const session: AdminPanelSessionData = {
+    return {
       guildId,
       userId,
       viewState: AdminPanelViewState.MAIN,
@@ -74,44 +29,6 @@ export class AdminPanelSessionManager {
       createdAt: now,
       lastAccessedAt: now,
     };
-
-    this.sessions.set(key, session);
-
-    // Try to persist to cache when available
-    if (this.cacheService) {
-      this.cacheService.put(key, session, DEFAULT_TTL_S).catch(() => {
-        // Cache write failure is non-critical; in-memory fallback still works
-      });
-    }
-
-    return session;
-  }
-
-  /**
-   * Gets an active session for the given guild+user.
-   * Returns null if no session exists or the session has expired.
-   *
-   * NOTE: Cache-aside was removed to fix P1-3 (see QA-REPORT). The fire-and-forget
-   * pattern could not properly await Redis, so session state is exclusively in-memory.
-   * For horizontal scaling, a shared Redis-backed session store should be added
-   * by converting this method to async and awaiting the cache get.
-   */
-  getSession(
-    guildId: string,
-    userId: string,
-  ): AdminPanelSessionData | null {
-    const key = this.buildKey(guildId, userId);
-
-    const session = this.sessions.get(key);
-    if (!session) return null;
-
-    if (this.isExpired(session)) {
-      this.sessions.delete(key);
-      return null;
-    }
-
-    session.lastAccessedAt = Date.now();
-    return session;
   }
 
   /**
@@ -125,7 +42,7 @@ export class AdminPanelSessionManager {
     const session = this.getSession(guildId, userId);
     if (!session) return false;
 
-    (session as AdminPanelSessionData).viewState = state;
+    session.viewState = state;
     return true;
   }
 
@@ -138,120 +55,5 @@ export class AdminPanelSessionManager {
   ): AdminPanelViewState | null {
     const session = this.getSession(guildId, userId);
     return session?.viewState ?? null;
-  }
-
-  /**
-   * Stores a context value in the session.
-   */
-  setContext(
-    guildId: string,
-    userId: string,
-    key: string,
-    value: string,
-  ): boolean {
-    const session = this.getSession(guildId, userId);
-    if (!session) return false;
-
-    session.context[key] = value;
-    return true;
-  }
-
-  /**
-   * Gets a context value from the session.
-   */
-  getContext(
-    guildId: string,
-    userId: string,
-    key: string,
-  ): string | null {
-    const session = this.getSession(guildId, userId);
-    return session?.context[key] ?? null;
-  }
-
-  /**
-   * Removes a session from both memory and cache.
-   */
-  removeSession(guildId: string, userId: string): void {
-    const key = this.buildKey(guildId, userId);
-    this.sessions.delete(key);
-
-    if (this.cacheService) {
-      this.cacheService.invalidate(key).catch(() => {
-        // Cache invalidation failure is non-critical
-      });
-    }
-  }
-
-  /**
-   * Gets all active sessions for a guild.
-   * Filters out expired sessions.
-   */
-  getAllForGuild(guildId: string): AdminPanelSessionData[] {
-    const results: AdminPanelSessionData[] = [];
-    const prefix = `${SESSION_KEY_PREFIX}${guildId}:`;
-
-    for (const [key, session] of this.sessions) {
-      if (key.startsWith(prefix)) {
-        if (!this.isExpired(session)) {
-          results.push(session);
-        } else {
-          this.sessions.delete(key);
-        }
-      }
-    }
-
-    return results;
-  }
-
-  /**
-   * Checks whether a session has expired.
-   */
-  private isExpired(session: AdminPanelSessionData): boolean {
-    return Date.now() - session.lastAccessedAt > DEFAULT_TTL_MS;
-  }
-
-  /**
-   * Cleans up all expired sessions.
-   */
-  cleanupExpired(): number {
-    if (this.sessions.size === 0) return 0;
-    let removed = 0;
-    for (const [key, session] of this.sessions) {
-      if (this.isExpired(session)) {
-        this.sessions.delete(key);
-        removed++;
-      }
-    }
-    return removed;
-  }
-
-  /**
-   * Starts an interval-based cleanup of expired sessions.
-   * Should be called during DI setup (e.g., in configureAdminContainer).
-   * @param intervalMs - cleanup interval in milliseconds (default 60 seconds)
-   */
-  startCleanupInterval(intervalMs: number = 60_000): void {
-    if (this.cleanupIntervalId !== null) return;
-    this.cleanupIntervalId = setInterval(() => {
-      this.cleanupExpired();
-    }, intervalMs).unref();
-  }
-
-  /**
-   * Stops the cleanup interval. Should be called during application shutdown.
-   */
-  stopCleanupInterval(): void {
-    if (this.cleanupIntervalId !== null) {
-      clearInterval(this.cleanupIntervalId);
-      this.cleanupIntervalId = null;
-    }
-  }
-
-  /**
-   * Returns the total number of active sessions.
-   */
-  getActiveSessionCount(): number {
-    this.cleanupExpired();
-    return this.sessions.size;
   }
 }

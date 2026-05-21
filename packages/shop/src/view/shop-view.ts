@@ -1,4 +1,4 @@
-import { type Product, hasCurrencyPrice, hasFiatPriceTwd, hasReward, formatCurrencyPrice, formatFiatPriceTwd, formatReward } from '../domain/product-types.js';
+import { type Product, hasCurrencyPrice, hasFiatPriceTwd, isFiatOnly, hasReward, formatCurrencyPrice, formatFiatPriceTwd, formatReward } from '../domain/product-types.js';
 import { PAGE_SIZE } from '../services/shop.service.js';
 
 // Theme color constants (P3-12)
@@ -26,7 +26,6 @@ export function encodeKeyword(keyword: string): string {
 export function decodeKeyword(encoded: string): string {
   return Buffer.from(encoded, 'base64').toString('utf-8');
 }
-
 
 export function buildShopEmbed(
   products: Product[],
@@ -155,7 +154,7 @@ export function buildSearchModal(): {
         type: 'actionRow',
         components: [
           {
-            type: 4 as const,
+            type: 4 as unknown as 'text',
             customId: 'shop_search_keyword',
             label: '關鍵字',
             style: 1,
@@ -200,7 +199,7 @@ export function buildPaymentMethodChoiceComponents(product: Product): Array<{
     });
   }
 
-  if (hasFiatPriceTwd(product)) {
+  if (isFiatOnly(product)) {
     buttons.push({
       type: 'button',
       customId: `${BUTTON_PAY_WITH_FIAT}${product.id}`,

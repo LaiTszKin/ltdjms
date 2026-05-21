@@ -28,7 +28,6 @@ export class AdminProductPanelModalFactory {
         { label: ZhTwStrings.productModalPrice, placeholder: ZhTwStrings.productModalPricePlaceholder, minLength: 0, maxLength: 20, required: true },
         { label: ZhTwStrings.productModalFiatPrice, placeholder: ZhTwStrings.productModalFiatPricePlaceholder, minLength: 0, maxLength: 20, required: false },
         { label: ZhTwStrings.productModalImageUrl, placeholder: ZhTwStrings.productModalImageUrlPlaceholder, minLength: 0, maxLength: 500, required: false },
-        { label: ZhTwStrings.productModalStock, placeholder: ZhTwStrings.productModalStockPlaceholder, minLength: 1, maxLength: 10, required: false },
       ],
     };
   }

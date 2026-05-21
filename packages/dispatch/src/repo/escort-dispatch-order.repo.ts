@@ -7,8 +7,8 @@ export interface EscortDispatchOrderRepo {
   /** 儲存新訂單並回傳帶有資料庫主鍵的實體。 */
   save(order: EscortDispatchOrder): Promise<EscortDispatchOrder>;
 
-  /** 更新既有訂單並回傳最新狀態。 */
-  update(order: EscortDispatchOrder, expectedStatus?: EscortDispatchOrderStatus): Promise<EscortDispatchOrder>;
+  /** 更新既有訂單並回傳最新狀態。若無符合條件的列則回傳 null。 */
+  update(order: EscortDispatchOrder, expectedStatus?: EscortDispatchOrderStatus): Promise<EscortDispatchOrder | null>;
 
   /** 依訂單編號查詢。 */
   findByOrderNumber(orderNumber: string): Promise<EscortDispatchOrder | null>;

@@ -11,7 +11,7 @@ import type { GameTokenChangedEvent } from '../../events/index.js';
 import { TokenAccountRepository } from '../repositories/token-account-repo.js';
 import { GameTokenTransactionService } from './game-token-tx-service.js';
 import type { GameTokenAccount, TokenAdjustmentResult } from '../../domain/types.js';
-import { TOKEN_CACHE_TTL, GameTokenTransactionSource } from '../../domain/types.js';
+import { TOKEN_CACHE_TTL, GameTokenTransactionSource, isValidAdjustmentAmount } from '../../domain/types.js';
 
 /**
  * Service for managing game token accounts with caching.
@@ -113,9 +113,29 @@ export class GameTokenService {
       );
     }
 
+    // Validate adjustment amount does not exceed maximum (P3-18)
+    if (!isValidAdjustmentAmount(amount)) {
+      return new Err(
+        DomainError.invalidInput(`Adjustment exceeds maximum: ${amount}`),
+      );
+    }
+
     try {
       const current = await this.accountRepository.findOrCreate(guildId, userId);
       const previousTokens = current.tokens;
+
+      // Overflow check: ensure adjustment does not exceed MAX_SAFE_INTEGER (P2-4)
+      if (amount > 0 && previousTokens > Number.MAX_SAFE_INTEGER - amount) {
+        return new Err(
+          DomainError.invalidInput(`Adjustment would overflow: ${amount}`),
+        );
+      }
+      // Underflow check: ensure tokens do not go below zero (P2-4)
+      if (amount < 0 && previousTokens < Math.abs(amount)) {
+        return new Err(
+          DomainError.insufficientTokens(`Insufficient tokens: ${previousTokens} < ${Math.abs(amount)}`),
+        );
+      }
 
       const adjustResult = await this.accountRepository.tryAdjustTokens(
         guildId,

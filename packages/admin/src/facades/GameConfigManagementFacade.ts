@@ -3,11 +3,14 @@ import {
   ok,
   err,
   DomainError,
+  type DomainEventPublisher,
 } from '@ltdjms/shared';
 import {
   type DiceConfigService,
   type DiceGame1Config,
   type DiceGame2Config,
+  type DiceGameConfigChangedEvent,
+  GameType,
 } from '@ltdjms/economy';
 
 /**
@@ -39,6 +42,7 @@ export interface DiceGame2ConfigUpdate {
 export class GameConfigManagementFacade {
   constructor(
     private readonly diceConfigService: DiceConfigService,
+    private readonly eventPublisher: DomainEventPublisher,
   ) {}
 
   /**
@@ -98,6 +102,12 @@ export class GameConfigManagementFacade {
       };
 
       const saved = await this.diceConfigService.upsertDice1Config(updated);
+
+      this.eventPublisher.publish({
+        eventType: 'dice_game_config_changed',
+        guildId,
+        gameType: GameType.DICE_GAME_1,
+      } as DiceGameConfigChangedEvent);
 
       return ok(saved);
     } catch (e) {
@@ -173,6 +183,12 @@ export class GameConfigManagementFacade {
       };
 
       const saved = await this.diceConfigService.upsertDice2Config(updated);
+
+      this.eventPublisher.publish({
+        eventType: 'dice_game_config_changed',
+        guildId,
+        gameType: GameType.DICE_GAME_2,
+      } as DiceGameConfigChangedEvent);
 
       return ok(saved);
     } catch (e) {

@@ -7,6 +7,8 @@ import {
   ActionRowBuilder,
   ChannelType,
   ChannelSelectMenuBuilder,
+  ButtonBuilder,
+  ButtonStyle,
 } from 'discord.js';
 import { AdminPanelSessionManager } from '../../../session/AdminPanelSessionManager.js';
 import { AdminPanelViewState } from '../../../session/types.js';
@@ -84,11 +86,11 @@ export class AIChannelConfigHandler extends BaseAdminHandler {
       return;
     }
     if (fullCustomId === 'admin_aichannel_add_category') {
-      await this.showChannelConfig(interaction, guildId);
+      await this.showCategorySelect(interaction, guildId, 'add');
       return;
     }
     if (fullCustomId === 'admin_aichannel_remove_category') {
-      await this.showChannelConfig(interaction, guildId);
+      await this.showCategorySelect(interaction, guildId, 'remove');
       return;
     }
 
@@ -114,6 +116,29 @@ export class AIChannelConfigHandler extends BaseAdminHandler {
       .setCustomId(customId)
       .setPlaceholder('請選擇頻道')
       .setChannelTypes(ChannelType.GuildText);
+
+    const row = new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(select);
+    await interaction.editWithComponents(embed, [row]);
+  }
+
+  private async showCategorySelect(
+    interaction: DiscordInteraction,
+    _guildId: string,
+    action: 'add' | 'remove',
+  ): Promise<void> {
+    const customId = action === 'add'
+      ? 'admin_aichannel_add_category_confirm'
+      : 'admin_aichannel_remove_category_confirm';
+
+    const embed = new EmbedBuilder()
+      .setTitle(ZhTwStrings.aiChannelTitle)
+      .setDescription(`請選擇要${action === 'add' ? '新增' : '移除'}的分類`)
+      .setColor(Colors.PRIMARY);
+
+    const select = new ChannelSelectMenuBuilder()
+      .setCustomId(customId)
+      .setPlaceholder('請選擇分類')
+      .setChannelTypes(ChannelType.GuildCategory);
 
     const row = new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(select);
     await interaction.editWithComponents(embed, [row]);
@@ -244,6 +269,30 @@ export class AIChannelConfigHandler extends BaseAdminHandler {
       .setTitle(ZhTwStrings.aiChannelTitle)
       .setDescription(description)
       .setColor(Colors.PRIMARY);
-    await interaction.editEmbed(embed);
+
+    const addChannelBtn = new ButtonBuilder()
+      .setCustomId('admin_aichannel_add_channel')
+      .setLabel('新增頻道')
+      .setStyle(ButtonStyle.Success);
+
+    const addCategoryBtn = new ButtonBuilder()
+      .setCustomId('admin_aichannel_add_category')
+      .setLabel('新增分類')
+      .setStyle(ButtonStyle.Success);
+
+    const removeChannelBtn = new ButtonBuilder()
+      .setCustomId('admin_aichannel_remove_channel')
+      .setLabel('移除頻道')
+      .setStyle(ButtonStyle.Danger);
+
+    const removeCategoryBtn = new ButtonBuilder()
+      .setCustomId('admin_aichannel_remove_category')
+      .setLabel('移除分類')
+      .setStyle(ButtonStyle.Danger);
+
+    const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(addChannelBtn, addCategoryBtn);
+    const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(removeChannelBtn, removeCategoryBtn);
+
+    await interaction.editWithComponents(embed, [row1, row2]);
   }
 }

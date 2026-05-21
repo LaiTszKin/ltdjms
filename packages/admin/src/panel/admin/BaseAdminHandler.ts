@@ -8,6 +8,19 @@ import { type AdminPanelSessionData } from '../../session/types.js';
 import { BotErrorHandler } from '../../commands/infra/BotErrorHandler.js';
 
 /**
+ * Ensures the interaction has been deferred.
+ * Safe to call multiple times — the DiscordInteraction abstraction
+ * checks isAcknowledged() before deferring.
+ */
+export async function ensureDeferred(
+  interaction: DiscordInteraction,
+): Promise<void> {
+  if (!interaction.isAcknowledged()) {
+    await interaction.deferReply();
+  }
+}
+
+/**
  * Abstract base class for admin panel interaction handlers.
  * Provides common admin permission checking, session access, and deferred reply.
  *
@@ -55,8 +68,6 @@ export abstract class BaseAdminHandler implements InteractionHandler {
   protected async ensureDeferred(
     interaction: DiscordInteraction,
   ): Promise<void> {
-    if (!interaction.isAcknowledged()) {
-      await interaction.deferReply();
-    }
+    return ensureDeferred(interaction);
   }
 }

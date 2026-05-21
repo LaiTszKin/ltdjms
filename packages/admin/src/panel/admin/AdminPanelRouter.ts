@@ -12,7 +12,7 @@ import { ZhTwStrings } from '../../i18n/zh-TW.js';
  * have been tried) and returns an error message to the user.
  * Matches Java AdminPanelRouter.
  */
-export class AdminPanelRouter implements InteractionHandler {
+export class AdminPanelFallbackHandler implements InteractionHandler {
   readonly customIdPrefix = 'admin_';
 
   constructor(

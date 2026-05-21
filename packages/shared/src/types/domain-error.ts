@@ -41,12 +41,15 @@ export enum DomainErrorCategory {
  * Used as the error type in Result<T, DomainError>.
  * Matches Java DomainError record.
  */
-export class DomainError {
+export class DomainError extends Error {
   constructor(
     readonly category: DomainErrorCategory,
-    readonly message: string,
+    message: string,
     readonly cause?: Error,
   ) {
+    super(message);
+    this.name = 'DomainError';
+
     if (category === null || category === undefined) {
       throw new Error('category must not be null');
     }

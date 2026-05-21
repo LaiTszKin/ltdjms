@@ -64,7 +64,13 @@ export interface BalanceService {
 
 /** Balance adjustment service interface as used by shop services. */
 export interface BalanceAdjustmentService {
-  tryAdjustBalance(guildId: number, userId: string, amount: number): Promise<Result<{ newBalance: number }, DomainError>>;
+  tryAdjustBalance(
+    guildId: number,
+    userId: string,
+    amount: number,
+    source?: string,
+    description?: string | null,
+  ): Promise<Result<{ newBalance: number }, DomainError>>;
 }
 
 /** Redemption transaction service interface as used by shop services. */
@@ -73,7 +79,7 @@ export interface RedemptionTransactionService {
 
   /** Gets a paginated page of redemption transactions for a user. */
   getUserRedemptionPage(guildId: number, userId: string, page: number, pageSize: number): Promise<{
-    items: Array<{ id: number; productName: string; code: string; rewardedAmount: number | null; createdAt: Date }>;
+    items: Array<{ id: number; productName: string; code: string; rewardAmount: number | null; createdAt: Date }>;
     hasNext: boolean;
     totalPages: number;
     currentPage: number;
@@ -116,7 +122,7 @@ export const SHOP_TOKENS = {
 };
 
 export function configureContainer(options: ShopModuleOptions): void {
-  const config: EnvironmentConfig = container.resolve(EnvironmentConfig);
+  const config: EnvironmentConfig = container.resolve<EnvironmentConfig>(TOKENS.EnvironmentConfig);
   const discordRuntimeGateway: DiscordRuntimeGateway = container.resolve(TOKENS.DiscordRuntimeGateway);
   const eventPublisher: DomainEventPublisher = container.resolve(TOKENS.DomainEventPublisher);
   const log = options.logger ?? container.resolve<pino.Logger>(TOKENS.Logger);

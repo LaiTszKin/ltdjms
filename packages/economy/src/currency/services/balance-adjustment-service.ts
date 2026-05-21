@@ -12,7 +12,7 @@ import { CurrencyAccountRepository } from '../repositories/currency-account-repo
 import { CurrencyTransactionService } from './currency-tx-service.js';
 import { BalanceService } from './balance-service.js';
 import type { BalanceAdjustmentResult } from '../../domain/types.js';
-import { CurrencyTransactionSource, BALANCE_CACHE_TTL, isValidAdjustmentAmount } from '../../domain/types.js';
+import { CurrencyTransactionSource, BALANCE_CACHE_TTL, isValidAdjustmentAmount, MAX_ADJUSTMENT_AMOUNT } from '../../domain/types.js';
 
 /**
  * Service for adjusting member currency balances with validation.
@@ -101,11 +101,12 @@ export class BalanceAdjustmentService {
       };
       this.eventPublisher.publish(event);
 
-      // Update cache
+      // Update cache and fetch config in parallel (P3-5)
       const cacheKey = this.cacheKeyGenerator.balanceKey(String(guildId), String(userId));
-      await this.cacheService.put(cacheKey, updated.balance, BalanceAdjustmentService.BALANCE_TTL_SECONDS);
-
-      const cachedConfig = await this.balanceService.getCachedConfig(guildId);
+      const [cachedConfig] = await Promise.all([
+        this.balanceService.getCachedConfig(guildId),
+        this.cacheService.put(cacheKey, updated.balance, BalanceAdjustmentService.BALANCE_TTL_SECONDS),
+      ]);
 
       return new Ok({
         guildId,
@@ -123,6 +124,24 @@ export class BalanceAdjustmentService {
           err instanceof Error ? err : undefined,
         ),
       );
+    }
+  }
+
+  /**
+   * Rolls back all applied chunks with a single compensating adjustment.
+   * Used by tryBatchAdjust when a chunk fails mid-batch.
+   */
+  private async rollbackAppliedChunks(
+    guildId: number,
+    userId: string,
+    appliedChunks: number[],
+  ): Promise<void> {
+    const totalApplied = appliedChunks.reduce((sum, c) => sum + c, 0);
+    if (totalApplied !== 0) {
+      const rollbackResult = await this.accountRepository.tryAdjustBalance(guildId, userId, -totalApplied);
+      if (rollbackResult.isErr()) {
+        console.error('[BalanceAdjustmentService] Rollback failed after batch error:', rollbackResult.getError());
+      }
     }
   }
 
@@ -153,7 +172,7 @@ export class BalanceAdjustmentService {
     // Overflow check using safe integer boundaries (spec R1.4)
     if (!isValidAdjustmentAmount(amount)) {
       return new Err(
-        DomainError.invalidInput(`Amount exceeds maximum: |${amount}| > ${Number.MAX_SAFE_INTEGER}`),
+        DomainError.invalidInput(`Amount exceeds maximum: |${amount}| > ${MAX_ADJUSTMENT_AMOUNT}`),
       );
     }
 
@@ -168,51 +187,6 @@ export class BalanceAdjustmentService {
         ),
       );
     }
-  }
-
-  /**
-   * Adjusts a member's balance to a specific target value.
-   * Computes the delta from the current balance and delegates to processAdjustment,
-   * avoiding a redundant findOrCreate query (P2-5).
-   *
-   * NOTE: This method is NOT defined in spec guild-economy R2.1 (which only defines
-   * `adjustBalance()`). It was added as an internal convenience for setting absolute
-   * balance values (e.g. admin panel adjustment). External callers should use
-   * `tryAdjustBalance()` instead.
-   */
-  async tryAdjustBalanceTo(
-    guildId: number,
-    userId: string,
-    targetBalance: number,
-    source: CurrencyTransactionSource = CurrencyTransactionSource.ADMIN_ADJUSTMENT,
-    description: string | null = null,
-  ): Promise<Result<BalanceAdjustmentResult, DomainError>> {
-    if (targetBalance < 0) {
-      return new Err(
-        DomainError.invalidInput(`Target balance cannot be negative: ${targetBalance}`),
-      );
-    }
-
-    const current = await this.accountRepository.findOrCreate(guildId, userId);
-    const delta = targetBalance - current.balance;
-
-    // Validate delta the same way tryAdjustBalance does (P1-8)
-    if (!Number.isFinite(delta)) {
-      return new Err(
-        DomainError.invalidInput(
-          `Adjustment would cause overflow: target=${targetBalance}, current=${current.balance}`,
-        ),
-      );
-    }
-    if (!isValidAdjustmentAmount(delta)) {
-      return new Err(
-        DomainError.invalidInput(`Delta exceeds maximum: |${delta}| > ${Number.MAX_SAFE_INTEGER}`),
-      );
-    }
-
-    // Delegate to processAdjustment which handles adjustment, transaction recording,
-    // event publishing, and cache update — without a redundant findOrCreate query (P2-5).
-    return this.processAdjustment(guildId, userId, delta, current.balance, source, description);
   }
 
   /**
@@ -257,11 +231,7 @@ export class BalanceAdjustmentService {
 
           const result = await this.accountRepository.tryAdjustBalance(guildId, userId, chunk);
           if (result.isErr()) {
-            // Rollback all applied chunks with a single adjustment (P2-16)
-            const totalApplied = appliedChunks.reduce((sum, c) => sum + c, 0);
-            if (totalApplied !== 0) {
-              await this.accountRepository.tryAdjustBalance(guildId, userId, -totalApplied);
-            }
+            await this.rollbackAppliedChunks(guildId, userId, appliedChunks);
             return new Err(result.getError());
           }
           appliedChunks.push(chunk);
@@ -269,11 +239,7 @@ export class BalanceAdjustmentService {
           remaining -= chunk;
         }
       } catch (txErr) {
-        // Rollback all applied chunks with a single adjustment (P2-16)
-        const totalApplied = appliedChunks.reduce((sum, c) => sum + c, 0);
-        if (totalApplied !== 0) {
-          await this.accountRepository.tryAdjustBalance(guildId, userId, -totalApplied);
-        }
+        await this.rollbackAppliedChunks(guildId, userId, appliedChunks);
         throw txErr;
       }
 
@@ -298,11 +264,12 @@ export class BalanceAdjustmentService {
       };
       this.eventPublisher.publish(event);
 
-      // Update cache
+      // Update cache and fetch config in parallel (P3-5)
       const cacheKey = this.cacheKeyGenerator.balanceKey(String(guildId), String(userId));
-      await this.cacheService.put(cacheKey, newBalance, BalanceAdjustmentService.BALANCE_TTL_SECONDS);
-
-      const cachedConfig = await this.balanceService.getCachedConfig(guildId);
+      const [cachedConfig] = await Promise.all([
+        this.balanceService.getCachedConfig(guildId),
+        this.cacheService.put(cacheKey, newBalance, BalanceAdjustmentService.BALANCE_TTL_SECONDS),
+      ]);
 
       return new Ok({
         guildId,

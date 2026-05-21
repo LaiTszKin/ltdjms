@@ -54,47 +54,6 @@ export class AdminPanelViewFactory {
   }
 
   /**
-   * Builds the Dice Game 1 configuration embed data.
-   * Displays min/max tokens and reward per dice value.
-   */
-  buildDiceGame1ConfigEmbed(config: DiceGame1Config): {
-    title: string;
-    description: string;
-    color: number;
-  } {
-    return {
-      title: ZhTwStrings.gameDice1Title,
-      description: ZhTwStrings.gameDice1Fields
-        .replace('{min}', String(config.minTokensPerPlay))
-        .replace('{max}', String(config.maxTokensPerPlay))
-        .replace('{reward}', String(config.rewardPerDiceValue)),
-      color: Colors.WARNING,
-    };
-  }
-
-  /**
-   * Builds the Dice Game 2 configuration embed data.
-   * Displays min/max tokens, multipliers, and bonuses.
-   */
-  buildDiceGame2ConfigEmbed(config: DiceGame2Config): {
-    title: string;
-    description: string;
-    color: number;
-  } {
-    return {
-      title: ZhTwStrings.gameDice2Title,
-      description: ZhTwStrings.gameDice2Fields
-        .replace('{min}', String(config.minTokensPerPlay))
-        .replace('{max}', String(config.maxTokensPerPlay))
-        .replace('{straight}', String(config.straightMultiplier))
-        .replace('{base}', String(config.baseMultiplier))
-        .replace('{lowTriple}', String(config.tripleLowBonus))
-        .replace('{highTriple}', String(config.tripleHighBonus)),
-      color: Colors.WARNING,
-    };
-  }
-
-  /**
    * Builds the game overview embed data with both dice game configs.
    * Handles unconfigured games by showing "尚未設定".
    */

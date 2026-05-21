@@ -33,7 +33,6 @@ describe('CurrencyManagementFacade', () => {
     };
     mockAdjustService = {
       tryAdjustBalance: vi.fn(),
-      tryAdjustBalanceTo: vi.fn(),
     };
     mockConfigService = {
       tryGetConfig: vi.fn(),
@@ -146,6 +145,15 @@ describe('CurrencyManagementFacade', () => {
 
   describe('setBalance', () => {
     it('should set balance successfully', async () => {
+      const currentBalanceResult: BalanceView = {
+        guildId: Number(guildId),
+        userId,
+        balance: 100,
+        currencyName: 'Coins',
+        currencyIcon: '🪙',
+      };
+      mockBalanceService.getBalance = vi.fn().mockResolvedValue(new Ok(currentBalanceResult));
+
       const adjustResult: BalanceAdjustmentResult = {
         guildId: Number(guildId),
         userId,
@@ -155,7 +163,7 @@ describe('CurrencyManagementFacade', () => {
         currencyName: 'Coins',
         currencyIcon: '🪙',
       };
-      mockAdjustService.tryAdjustBalanceTo = vi.fn().mockResolvedValue(new Ok(adjustResult));
+      mockAdjustService.tryAdjustBalance = vi.fn().mockResolvedValue(new Ok(adjustResult));
 
       const result = await facade.setBalance(guildId, userId, 500, 'test set', actorId);
       expect(result.isOk()).toBe(true);

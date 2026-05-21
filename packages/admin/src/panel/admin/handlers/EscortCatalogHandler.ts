@@ -347,12 +347,22 @@ export class EscortCatalogHandler extends BaseAdminHandler {
     const refCountResult = await this.facade.checkCatalogRefCount(entryCode);
     const refCount = refCountResult.isOk() ? refCountResult.getValue() : 0;
     if (refCount > 0) {
+      // Query guild names for the referencing guilds
+      const guildIdsResult = await this.facade.findCatalogRefGuildIds(entryCode);
+      const guildList = guildIdsResult.isOk() && guildIdsResult.getValue().length > 0
+        ? guildIdsResult.getValue().map((id) => `Guild ${id}`).join('\n')
+        : `${refCount} 個 guild`;
+
+      const entryResult = await this.facade.findCatalogEntry(entryCode);
+      const existing = entryResult.isOk() ? entryResult.getValue() : null;
+      const name = existing ? `${existing.type} - ${existing.target}` : entryCode;
+
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.escortCatalogTitle)
         .setDescription(
           ZhTwStrings.escortCatalogDeleteBlocked
-            .replace('{name}', entryCode)
-            .replace('{guilds}', `${refCount} 個 guild`),
+            .replace('{name}', name)
+            .replace('{guilds}', guildList),
         )
         .setColor(Colors.WARNING);
       await interaction.editEmbed(embed);

@@ -80,7 +80,7 @@ describe('MemberInfoFacade', () => {
 
   describe('redeemCode', () => {
     it('should delegate to redemption service', async () => {
-      const successResult = { code: {} as any, product: {} as any, rewardedAmount: null };
+      const successResult = { code: {} as any, product: {} as any, rewardAmount: null };
       mockRedemptionService.redeemCode = vi.fn().mockResolvedValue(new Ok(successResult));
 
       const result = await facade.redeemCode(guildId, userId, 'TESTCODE12345678');

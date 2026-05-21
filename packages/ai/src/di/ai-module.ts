@@ -164,7 +164,6 @@ export function initializeAIModule(): void {
   const agentConfigService = new DefaultAIAgentChannelConfigService(
     agentConfigRepo,
     cacheService,
-    runtimeGateway,
     eventPublisher,
   );
   container.registerInstance<AIAgentChannelConfigService>(
@@ -303,6 +302,23 @@ export function initializeAIModule(): void {
   });
   container.registerInstance(AI_TOKENS.ChatOpenAI, sharedChatModel);
 
+  // ===== Memory (created before AI Chat Service so it can be injected) =====
+
+  const threadHistoryProvider = new DiscordThreadHistoryProvider(runtimeGateway);
+  container.registerInstance(AI_TOKENS.DiscordThreadHistoryProvider, threadHistoryProvider);
+
+  // TokenEstimator for context-window management (P2-26)
+  const tokenEstimator = new TokenEstimator();
+  container.registerInstance(AI_TOKENS.TokenEstimator, tokenEstimator);
+
+  const memoryProvider = new SimplifiedChatMemoryProvider(
+    threadHistoryProvider,
+    toolCallHistory,
+    runtimeGateway,
+    tokenEstimator,
+  );
+  container.registerInstance(AI_TOKENS.SimplifiedChatMemoryProvider, memoryProvider);
+
   const langChainService = new LangChainAIChatService(
     aiConfig,
     promptLoader,
@@ -313,6 +329,7 @@ export function initializeAIModule(): void {
     toolCallHistory,
     runtimeGateway,
     eventPublisher,
+    memoryProvider,
   );
   container.registerInstance(AI_TOKENS.LangChainAIChatService, langChainService);
 
@@ -337,23 +354,6 @@ export function initializeAIModule(): void {
     aiChatService = langChainService;
   }
   container.registerInstance<AIChatService>(AI_TOKENS.AIChatService, aiChatService);
-
-  // ===== Memory =====
-
-  const threadHistoryProvider = new DiscordThreadHistoryProvider(runtimeGateway);
-  container.registerInstance(AI_TOKENS.DiscordThreadHistoryProvider, threadHistoryProvider);
-
-  // TokenEstimator for context-window management (P2-26)
-  const tokenEstimator = new TokenEstimator();
-  container.registerInstance(AI_TOKENS.TokenEstimator, tokenEstimator);
-
-  const memoryProvider = new SimplifiedChatMemoryProvider(
-    threadHistoryProvider,
-    toolCallHistory,
-    runtimeGateway,
-    tokenEstimator,
-  );
-  container.registerInstance(AI_TOKENS.SimplifiedChatMemoryProvider, memoryProvider);
 
   // ===== Agent Config Cache Invalidation Listener =====
   // Subscribes to AIAgentChannelConfigChangedEvent and invalidates cache entries

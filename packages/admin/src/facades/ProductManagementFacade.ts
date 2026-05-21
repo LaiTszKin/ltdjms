@@ -115,21 +115,9 @@ export class ProductManagementFacade {
   // ================================================================
 
   /**
-   * Generates the specified number of redemption code strings.
-   */
-  generateCodes(count: number): string[] {
-    const codes: string[] = [];
-    for (let i = 0; i < count; i++) {
-      codes.push(this.codeGenerator.generate());
-    }
-    return codes;
-  }
-
-  /**
    * Generates redemption codes and saves them in a single operation.
    * Encapsulates codeGenerator.generate() + createRedemptionCode() + repository.saveAll()
    * and publishes RedemptionCodesGeneratedEvent.
-   * This method does NOT call saveCodes() to prevent double event publishing.
    */
   async generateAndSaveCodes(
     productId: number,
@@ -147,27 +135,6 @@ export class ProductManagementFacade {
     this.eventPublisher.publish({
       eventType: 'redemption_codes_generated',
       guildId: String(guildId),
-      productId,
-      count,
-    } as RedemptionCodesGeneratedEvent);
-
-    return saved;
-  }
-
-  /**
-   * Saves multiple redemption codes and publishes RedemptionCodesGeneratedEvent.
-   */
-  async saveCodes(
-    codes: RedemptionCode[],
-    guildId: string,
-    productId: number,
-    count: number,
-  ): Promise<RedemptionCode[]> {
-    const saved = await this.redemptionCodeRepo.saveAll(codes);
-
-    this.eventPublisher.publish({
-      eventType: 'redemption_codes_generated',
-      guildId,
       productId,
       count,
     } as RedemptionCodesGeneratedEvent);

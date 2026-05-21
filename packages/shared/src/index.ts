@@ -57,6 +57,7 @@ export {
 
 // Utils
 export { processWithConcurrencyLimit } from './utils/concurrency.js';
+export { safeSnowflakeToNumber } from './utils/snowflake.js';
 
 // Discord
 export {
@@ -68,6 +69,7 @@ export {
   type FieldView,
   type ButtonView,
   ButtonStyle,
+  createButtonView,
   DiscordJsInteraction,
   DiscordJsContext,
   DiscordJsEmbedBuilder,

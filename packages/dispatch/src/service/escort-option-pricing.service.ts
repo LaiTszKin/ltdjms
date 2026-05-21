@@ -22,6 +22,11 @@ export class EscortOptionPricingService {
   private catalogCache: { data: EscortOptionCatalogEntry[]; expiry: number } | null = null;
   private static readonly CATALOG_CACHE_TTL_MS = 5 * 60 * 1000;
 
+  /** Clears the in-memory catalog cache so the next listOptionPrices call re-fetches from DB. */
+  clearCatalogCache(): void {
+    this.catalogCache = null;
+  }
+
   private async getCachedCatalogs(): Promise<EscortOptionCatalogEntry[]> {
     const now = Date.now();
     if (this.catalogCache != null && now < this.catalogCache.expiry) {

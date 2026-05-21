@@ -1,4 +1,4 @@
-import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
+import { type DiscordInteraction } from '@ltdjms/shared';
 import { type EscortDispatchOrderService } from '../service/index.js';
 import {
   buildModeSelectEmbed,
@@ -17,7 +17,7 @@ export class DispatchPanelCommandHandler {
 
   constructor(private readonly dispatchOrderService: EscortDispatchOrderService) {}
 
-  async execute(interaction: DiscordInteraction, _context: DiscordContext): Promise<void> {
+  async execute(interaction: DiscordInteraction): Promise<void> {
     try {
       // Admin permission check (spec R14.1) — also enforced by
       // defaultMemberPermissions on the command definition.

@@ -63,11 +63,14 @@ export class FiatPaymentReconciliationService {
       if (!trade.paid) {
         const decisionTime = new Date();
         if (decisionTime >= order.expireAt) {
-          await this.fiatOrderRepository.markExpiredIfPending(
+          const expired = await this.fiatOrderRepository.markExpiredIfPending(
             order.orderNumber,
             decisionTime,
             EXPIRED_TERMINAL_REASON,
           );
+          if (!expired) {
+            await this.fiatOrderRepository.releaseReconciliationProcessing(order.orderNumber);
+          }
         } else {
           await this.scheduleRetry(order, decisionTime);
         }

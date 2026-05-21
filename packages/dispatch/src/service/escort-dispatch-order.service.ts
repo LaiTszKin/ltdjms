@@ -30,7 +30,6 @@ import {
   hasCustomerConfirmationTimedOut,
 } from '../domain/index.js';
 
-const MAX_ORDER_NUMBER_RETRIES = 20;
 const DEFAULT_HISTORY_LIMIT = 10;
 const DEFAULT_PENDING_ASSIGNMENT_LIMIT = 5;
 const MAX_HISTORY_LIMIT = 20;
@@ -46,9 +45,9 @@ export class EscortDispatchOrderService {
 
   constructor(
     private readonly repository: EscortDispatchOrderRepo,
+    private readonly catalogRepository: EscortOptionCatalogRepository,
     orderNumberGenerator?: EscortDispatchOrderNumberGenerator,
     clock?: () => number,
-    private readonly catalogRepository?: EscortOptionCatalogRepository,
     private readonly afterSalesStaffService?: DispatchAfterSalesStaffService,
     private readonly logger?: TokenMap['Logger'],
     private readonly notificationService?: DispatchNotificationService,
@@ -84,6 +83,10 @@ export class EscortDispatchOrderService {
     }
     try {
       const saved = await this.repository.save(pendingResult.getValue());
+      // Notify escort when order is created with an assigned escort
+      if (this.notificationService && saved.escortUserId > 0) {
+        await this.notificationService.notifyEscortAssigned(saved);
+      }
       return new Ok(saved);
     } catch (e) {
       const err = e instanceof Error ? e : new Error(String(e));
@@ -248,6 +251,9 @@ export class EscortDispatchOrderService {
         completionRequestedResult.getValue(),
         EscortDispatchOrderStatus.CONFIRMED,
       );
+      if (updated == null) {
+        return new Err(DomainError.invalidInput('送出完成失敗，訂單狀態可能已被變更'));
+      }
       return new Ok(updated);
     } catch (e) {
       const err = e instanceof Error ? e : new Error(String(e));
@@ -290,6 +296,9 @@ export class EscortDispatchOrderService {
         completedResult.getValue(),
         EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION,
       );
+      if (updated == null) {
+        return new Err(DomainError.invalidInput('客戶確認完成失敗，訂單狀態可能已被變更'));
+      }
       return new Ok(updated);
     } catch (e) {
       const err = e instanceof Error ? e : new Error(String(e));
@@ -342,6 +351,9 @@ export class EscortDispatchOrderService {
         afterSalesResult.getValue(),
         expectedStatus,
       );
+      if (updated == null) {
+        return new Err(DomainError.invalidInput('申請售後失敗，訂單狀態可能已被變更'));
+      }
       return new Ok(updated);
     } catch (e) {
       const err = e instanceof Error ? e : new Error(String(e));
@@ -530,6 +542,14 @@ export class EscortDispatchOrderService {
     try {
       const updated = await this.repository.update(completedResult.getValue(), EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION);
 
+      if (updated == null) {
+        // If optimistic lock failed, return original order (non-blocking)
+        this.logWarn('Timeout auto-completion skipped — order status changed', {
+          orderNumber: order.orderNumber,
+        });
+        return order;
+      }
+
       // Spec R10: timeout auto-completion only logs a warning, does NOT send notifications
       this.logWarn('Order auto-completed due to customer confirmation timeout', {
         orderNumber: order.orderNumber,
@@ -574,7 +594,7 @@ export class EscortDispatchOrderService {
     return generateUniqueOrderNumber(
       this.orderNumberGenerator!,
       (orderNumber) => this.repository.existsByOrderNumber(orderNumber),
-      MAX_ORDER_NUMBER_RETRIES,
+      20,
     );
   }
 }

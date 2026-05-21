@@ -5,8 +5,6 @@ import type { EscortDispatchOrderRepo } from '../repo/escort-dispatch-order.repo
 import { EscortDispatchOrderNumberGenerator, generateUniqueOrderNumber } from '../domain/order-number-generator.js';
 import { type EscortDispatchOrder, SourceType, createAutoHandoff } from '../domain/index.js';
 
-const MAX_ORDER_NUMBER_RETRIES = 20;
-
 /**
  * Product snapshot used for handoff from shop purchases.
  * This provides a minimal type for the handoff service without depending on a full Product module.
@@ -128,7 +126,7 @@ export class EscortDispatchHandoffService {
     return generateUniqueOrderNumber(
       this.orderNumberGenerator!,
       (orderNumber) => this.repository.existsByOrderNumber(orderNumber),
-      MAX_ORDER_NUMBER_RETRIES,
+      20,
     );
   }
 }

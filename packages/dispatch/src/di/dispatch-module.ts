@@ -124,9 +124,9 @@ export function configureDispatchContainer(): void {
 
   const dispatchOrderService = new EscortDispatchOrderService(
     dispatchOrderRepo,
+    catalogRepo,
     orderNumberGenerator,
     undefined, // clock — use default Date.now
-    catalogRepo,
     afterSalesStaffService,
     logger,
     notificationService,

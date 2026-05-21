@@ -24,7 +24,7 @@ const MAX_BATCH_SIZE = 100;
 export interface RedemptionResult {
   code: RedemptionCode;
   product: Product;
-  rewardedAmount: number | null;
+  rewardAmount: number | null;
 }
 
 export function formatRedemptionSuccessMessage(result: RedemptionResult): string {
@@ -33,7 +33,7 @@ export function formatRedemptionSuccessMessage(result: RedemptionResult): string
   if (result.product.description) {
     parts.push(result.product.description);
   }
-  if (result.rewardedAmount !== null && hasReward(result.product)) {
+  if (result.rewardAmount !== null && hasReward(result.product)) {
     const formatted = formatReward(result.product);
     parts.push(`已發放獎勵：${formatted}`);
   }
@@ -211,7 +211,7 @@ export class RedemptionService {
         return err(DomainError.invalidInput('此兌換碼已被使用或不可用'));
       }
 
-      let rewardedAmount: number | null = null;
+      let rewardAmount: number | null = null;
       if (hasReward(product)) {
         const rewardResult = await this.productRewardService.grantReward({
           guildId,
@@ -229,7 +229,7 @@ export class RedemptionService {
           );
           return err(rollbackError);
         }
-        rewardedAmount = rewardResult.getValue().amount;
+        rewardAmount = rewardResult.getValue().amount;
       }
 
       const transaction = await this.transactionService.recordTransaction(
@@ -252,7 +252,7 @@ export class RedemptionService {
         'Successfully redeemed code',
       );
 
-      return ok({ code: redeemedCode, product, rewardedAmount });
+      return ok({ code: redeemedCode, product, rewardAmount });
     } catch (e) {
       this.log.error({ code: getMaskedCode(code), error: e }, 'Failed to redeem code');
       return err(DomainError.persistenceFailure('兌換失敗'));

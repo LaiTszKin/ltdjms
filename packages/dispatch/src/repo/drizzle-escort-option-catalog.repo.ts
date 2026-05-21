@@ -17,8 +17,7 @@ export class DrizzleEscortOptionCatalogRepo implements EscortOptionCatalogReposi
     const rows = await this.db
       .select()
       .from(escortOptionCatalog)
-      .orderBy(escortOptionCatalog.code)
-      .limit(200);
+      .orderBy(escortOptionCatalog.code);
 
     return rows.map(row => ({
       code: row.code,
