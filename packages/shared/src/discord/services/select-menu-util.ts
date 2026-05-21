@@ -75,15 +75,3 @@ export function splitSelectMenusGeneric<T>(
   return menus;
 }
 
-/**
- * Splits options and wraps each menu in an ActionRow.
- */
-function buildSelectRows(
-  options: StringSelectMenuOptionBuilder[],
-  customId: string,
-  placeholder?: string,
-): ActionRowBuilder<StringSelectMenuBuilder>[] {
-  return splitSelectMenus(options, customId, placeholder).map((menu) =>
-    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu),
-  );
-}

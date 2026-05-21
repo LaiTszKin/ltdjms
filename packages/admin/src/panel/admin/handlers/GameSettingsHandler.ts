@@ -265,36 +265,6 @@ export class GameSettingsHandler extends BaseAdminHandler {
     }
   }
 
-  private async showDiceGameConfig(
-    interaction: DiscordInteraction,
-    guildId: string,
-    gameNumber: '1' | '2',
-  ): Promise<void> {
-    if (gameNumber === '1') {
-      const configResult = await this.facade.getDiceGame1Config(guildId);
-      if (configResult.isOk()) {
-        const cfg = configResult.getValue();
-        const embedData = this.viewFactory.buildDiceGame1ConfigEmbed(cfg);
-        const embed = new EmbedBuilder()
-          .setTitle(embedData.title)
-          .setDescription(embedData.description)
-          .setColor(embedData.color);
-        await interaction.editEmbed(embed);
-      }
-    } else {
-      const configResult = await this.facade.getDiceGame2Config(guildId);
-      if (configResult.isOk()) {
-        const cfg = configResult.getValue();
-        const embedData = this.viewFactory.buildDiceGame2ConfigEmbed(cfg);
-        const embed = new EmbedBuilder()
-          .setTitle(embedData.title)
-          .setDescription(embedData.description)
-          .setColor(embedData.color);
-        await interaction.editEmbed(embed);
-      }
-    }
-  }
-
   private async showGameOverview(
     interaction: DiscordInteraction,
     guildId: string,

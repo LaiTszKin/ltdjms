@@ -1,7 +1,6 @@
 import { type Guild, PermissionFlagsBits } from 'discord.js';
 import { z } from 'zod';
 import { ToolCallerAuthorizationGuard } from './ToolCallerAuthorizationGuard.js';
-import { type PermissionSetting } from '../services/ai-chat-service.js';
 
 export const CreateRoleParamsSchema = z.object({
   name: z.string().min(1).max(100),

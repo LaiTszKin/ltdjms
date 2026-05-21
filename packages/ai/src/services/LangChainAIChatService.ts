@@ -19,7 +19,7 @@ import {
 import { type Result, DomainError, ok, err } from '@ltdjms/shared';
 import type { DiscordRuntimeGateway, DomainEventPublisher, DomainEvent } from '@ltdjms/shared';
 import { LangChainExceptionMapper } from './LangChainExceptionMapper.js';
-import type { PromptLoader, SystemPrompt } from '../prompts/prompt-loader.js';
+import type { PromptLoader } from '../prompts/prompt-loader.js';
 import { ToolCallerAuthorizationGuard } from '../tools/ToolCallerAuthorizationGuard.js';
 import { ToolExecutionContext } from '../tools/ToolExecutionContext.js';
 import { ToolExecutionInterceptor } from './ToolExecutionInterceptor.js';

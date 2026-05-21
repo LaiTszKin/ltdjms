@@ -10,7 +10,7 @@ import { type CacheService } from './cache-service.js';
 export class RedisCacheService implements CacheService {
   private readonly redis: Redis;
   private readonly logger: Logger;
-  private circuitOpen = false;
+  private circuitState: 'CLOSED' | 'OPEN' | 'HALF_OPEN' = 'CLOSED';
   private circuitOpenSince = 0;
   private static readonly CIRCUIT_RETRY_AFTER_MS = 30000;
 
@@ -32,17 +32,30 @@ export class RedisCacheService implements CacheService {
     this.redis.on('error', this.errorHandler);
   }
 
+  /**
+   * Returns true if the operation should be skipped.
+   * In HALF_OPEN state, allows one probe operation through.
+   */
   private isCircuitOpen(): boolean {
-    if (!this.circuitOpen) return false;
+    if (this.circuitState === 'CLOSED') return false;
+    if (this.circuitState === 'HALF_OPEN') return false; // allow probe
+    // OPEN state: check if cooldown has passed → transition to HALF_OPEN
     if (Date.now() - this.circuitOpenSince >= RedisCacheService.CIRCUIT_RETRY_AFTER_MS) {
-      this.circuitOpen = false;
-      return false;
+      this.circuitState = 'HALF_OPEN';
+      return false; // allow this request as a probe
     }
     return true;
   }
 
+  /** Marks a failed probe by re-opening the circuit. */
+  private onCircuitProbeFailed(): void {
+    this.circuitState = 'OPEN';
+    this.circuitOpenSince = Date.now();
+    this.logger.warn('Redis circuit breaker: half-open probe failed, re-opened');
+  }
+
   private openCircuit(): void {
-    this.circuitOpen = true;
+    this.circuitState = 'OPEN';
     this.circuitOpenSince = Date.now();
     this.logger.warn('Redis circuit breaker opened');
   }
@@ -51,12 +64,20 @@ export class RedisCacheService implements CacheService {
     if (this.isCircuitOpen()) return null;
     try {
       const value = await this.redis.get(key);
+      if (this.circuitState === 'HALF_OPEN') {
+        this.circuitState = 'CLOSED';
+        this.logger.info('Redis circuit breaker: half-open probe succeeded, closed');
+      }
       if (value === null) {
         return null;
       }
       return JSON.parse(value) as T;
     } catch (err) {
-      this.openCircuit();
+      if (this.circuitState === 'HALF_OPEN') {
+        this.onCircuitProbeFailed();
+      } else {
+        this.openCircuit();
+      }
       this.logger.warn({ err }, 'Redis cache operation failed: get');
       return null;
     }
@@ -71,8 +92,16 @@ export class RedisCacheService implements CacheService {
       } else {
         await this.redis.set(key, serialized);
       }
+      if (this.circuitState === 'HALF_OPEN') {
+        this.circuitState = 'CLOSED';
+        this.logger.info('Redis circuit breaker: half-open probe succeeded, closed');
+      }
     } catch (err) {
-      this.openCircuit();
+      if (this.circuitState === 'HALF_OPEN') {
+        this.onCircuitProbeFailed();
+      } else {
+        this.openCircuit();
+      }
       this.logger.warn({ err }, 'Redis cache operation failed: put');
     }
   }
@@ -81,8 +110,16 @@ export class RedisCacheService implements CacheService {
     if (this.isCircuitOpen()) return;
     try {
       await this.redis.del(key);
+      if (this.circuitState === 'HALF_OPEN') {
+        this.circuitState = 'CLOSED';
+        this.logger.info('Redis circuit breaker: half-open probe succeeded, closed');
+      }
     } catch (err) {
-      this.openCircuit();
+      if (this.circuitState === 'HALF_OPEN') {
+        this.onCircuitProbeFailed();
+      } else {
+        this.openCircuit();
+      }
       this.logger.warn({ err }, 'Redis cache operation failed: invalidate');
     }
   }

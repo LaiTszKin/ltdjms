@@ -63,6 +63,8 @@ const EVENT_TYPES = {
 export class AdminPanelUpdateListener {
   /** Tracks last update timestamp per guildId:eventType for rate-limit protection. */
   private readonly lastUpdateTimestamps = new Map<string, number>();
+  private cleanupCounter = 0;
+
   constructor(
     private readonly sessionManager: AdminPanelSessionManager,
     private readonly discordGateway: DiscordRuntimeGateway,
@@ -324,6 +326,16 @@ export class AdminPanelUpdateListener {
     const last = this.lastUpdateTimestamps.get(key) ?? 0;
     if (now - last < minIntervalMs) return true;
     this.lastUpdateTimestamps.set(key, now);
+
+    // Periodic cleanup: evict entries older than 60s every 50 calls
+    this.cleanupCounter++;
+    if (this.cleanupCounter % 50 === 0) {
+      const cutoff = now - 60_000;
+      for (const [k, v] of this.lastUpdateTimestamps) {
+        if (v < cutoff) this.lastUpdateTimestamps.delete(k);
+      }
+    }
+
     return false;
   }
 }

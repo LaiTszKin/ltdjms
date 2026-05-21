@@ -84,8 +84,10 @@ export function buildEmptyShopEmbed(): { title: string; description: string; col
 
 /**
  * Builds an embed for choosing a payment method for a product.
- * This is a logical addition beyond the spec to provide a user-friendly
- * payment method selection UI before confirming the purchase (P2-21).
+ * This is an intentional UX enhancement beyond the spec: when a product
+ * has both currency and fiat prices, the user selects a payment method
+ * before proceeding. Spec R1.6 defines a direct purchase flow; this UI
+ * step was added to support dual-pricing products.
  */
 export function buildPaymentMethodChoiceEmbed(product: Product): {
   title: string;
@@ -169,6 +171,7 @@ export function buildSearchModal(): {
 
 /**
  * Builds action row components for choosing a payment method (currency or fiat).
+ * Used when a product supports both payment types (spec R1.6 extension).
  */
 export function buildPaymentMethodChoiceComponents(product: Product): Array<{
   type: string;

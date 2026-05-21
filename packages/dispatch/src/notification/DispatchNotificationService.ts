@@ -1,5 +1,5 @@
 import { type DiscordRuntimeGateway } from '@ltdjms/shared';
-import { type EscortDispatchOrder, SourceType } from '../domain/index.js';
+import { type EscortDispatchOrder } from '../domain/index.js';
 import { type DispatchAfterSalesStaffService } from '../service/dispatch-after-sales-staff.service.js';
 import { COLOR_INFO, COLOR_WARNING, COLOR_ERROR } from '../constants.js';
 

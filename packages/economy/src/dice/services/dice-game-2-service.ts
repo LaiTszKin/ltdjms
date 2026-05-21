@@ -11,8 +11,8 @@ import {
   CurrencyTransactionSource,
   DICE_GAME_2_DICE_PER_TOKEN,
 } from '../../domain/types.js';
-import type { Random } from './dice-game-1-service.js';
-import { DefaultRandom } from './dice-game-1-service.js';
+import type { Random } from './random.js';
+import { DefaultRandom } from './random.js';
 
 /**
  * Dice Game 2 service implementation.

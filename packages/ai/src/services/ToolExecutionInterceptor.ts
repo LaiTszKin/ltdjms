@@ -8,6 +8,9 @@ import pino from 'pino';
 export class ToolExecutionInterceptor {
   private readonly logger: pino.Logger;
   private durations = new Map<string, { startTime: number; timer: ReturnType<typeof setTimeout> }>();
+  // Entries are cleared on completion/failure via getAndClearDuration, or after 60s
+  // via the fallback timeout. Under high concurrency with orphaned executions (no
+  // completed/failed callback), entries accumulate until the 60s timeout fires.
 
   constructor(logger?: pino.Logger) {
     this.logger = logger ?? pino({ name: 'tool-execution-interceptor' });

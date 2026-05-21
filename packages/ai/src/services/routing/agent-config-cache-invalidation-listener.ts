@@ -1,4 +1,4 @@
-import { type DomainEventPublisher, type CacheService, type DomainEvent } from '@ltdjms/shared';
+import { type DomainEventPublisher, type CacheService } from '@ltdjms/shared';
 import pino from 'pino';
 
 const CACHE_KEY_PREFIX = 'agent:config:';

@@ -7,6 +7,7 @@ import {
   type DomainEventPublisher,
 } from '@ltdjms/shared';
 import type { CurrencyConfigChangedEvent } from '../../events/index.js';
+import { EmojiValidator } from './emoji-validator.js';
 import { CurrencyConfigRepository } from '../repositories/currency-config-repo.js';
 import type { GuildCurrencyConfig } from '../../domain/types.js';
 import {
@@ -17,12 +18,6 @@ import {
 } from '../../domain/types.js';
 
 /**
- * Canonical pattern to detect Discord custom emoji format.
- * Matches `<:name:id>` or `<a:name:id>` where id is numeric.
- */
-const CUSTOM_EMOJI_PATTERN = /^<a?:[^:]+:\d+>$/;
-
-/**
  * Service for managing guild currency configuration.
  * Matches Java CurrencyConfigService behavior.
  */
@@ -30,6 +25,7 @@ export class CurrencyConfigService {
   constructor(
     private readonly configRepository: CurrencyConfigRepository,
     private readonly eventPublisher: DomainEventPublisher,
+    private readonly emojiValidator: EmojiValidator,
   ) {}
 
   /**
@@ -74,7 +70,10 @@ export class CurrencyConfigService {
   ): Promise<GuildCurrencyConfig> {
     // Validate inputs
     validateName(name);
-    validateIcon(icon);
+    const iconValidation = this.emojiValidator.validate(icon);
+    if (iconValidation.isErr()) {
+      throw iconValidation.getError();
+    }
 
     // Get existing config or create default
     const current = await this.configRepository.findByGuildId(guildId);
@@ -113,7 +112,7 @@ export class CurrencyConfigService {
       return new Err(nameValidation.getError());
     }
 
-    const iconValidation = tryValidateIcon(icon);
+    const iconValidation = this.emojiValidator.validate(icon);
     if (iconValidation.isErr()) {
       return new Err(iconValidation.getError());
     }
@@ -163,44 +162,3 @@ function tryValidateName(name: string): Result<import('@ltdjms/shared').Unit, Do
   return okVoid();
 }
 
-function validateIcon(icon: string): void {
-  const result = tryValidateIcon(icon);
-  if (result.isErr()) {
-    throw result.getError();
-  }
-}
-
-function tryValidateIcon(icon: string): Result<import('@ltdjms/shared').Unit, DomainError> {
-  if (!icon || icon.trim().length === 0) {
-    return new Err(DomainError.invalidInput('Currency icon cannot be blank'));
-  }
-  if (icon.length > MAX_CURRENCY_ICON_LENGTH) {
-    return new Err(
-      DomainError.invalidInput(
-        `Currency icon cannot exceed ${MAX_CURRENCY_ICON_LENGTH} characters`,
-      ),
-    );
-  }
-
-  if (looksLikeCustomEmoji(icon)) {
-    if (!CUSTOM_EMOJI_PATTERN.test(icon)) {
-      return new Err(
-        DomainError.invalidInput(
-          `Invalid Discord custom emoji: '${icon}'. Please ensure the emoji exists and is accessible.`,
-        ),
-      );
-    }
-  }
-
-  return okVoid();
-}
-
-/**
- * Checks whether a string "looks like" a Discord custom emoji attempt.
- * Uses a loose heuristic (starts with `<`) so that the strict CUSTOM_EMOJI_PATTERN
- * validation in tryValidateIcon has a chance to reject malformed custom emoji strings.
- * Plain Unicode emoji (e.g. 🪙) do NOT start with `<` and bypass the custom emoji check.
- */
-function looksLikeCustomEmoji(icon: string): boolean {
-  return icon.startsWith('<');
-}

@@ -98,6 +98,9 @@ export class EcpayCallbackHttpServer {
       );
     });
 
+    // Enforce 30s request timeout to prevent slow client attacks
+    this.server.setTimeout(30_000);
+
     // Track active connections for graceful shutdown (P3-8)
     this.server.on('connection', (socket) => {
       this.connections.add(socket);

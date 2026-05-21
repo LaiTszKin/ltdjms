@@ -12,6 +12,7 @@ import { DiceConfigRepository } from '../dice/repositories/dice-config-repo.js';
 import { BalanceService } from '../currency/services/balance-service.js';
 import { BalanceAdjustmentService } from '../currency/services/balance-adjustment-service.js';
 import { CurrencyConfigService } from '../currency/services/currency-config-service.js';
+import { EmojiValidator } from '../currency/services/emoji-validator.js';
 import { CurrencyTransactionService } from '../currency/services/currency-tx-service.js';
 import { GameTokenService } from '../token/services/game-token-service.js';
 import { GameTokenTransactionService } from '../token/services/game-token-tx-service.js';
@@ -44,6 +45,7 @@ export const ECONOMY_TOKENS = {
   BalanceService: Symbol('BalanceService'),
   BalanceAdjustmentService: Symbol('BalanceAdjustmentService'),
   CurrencyConfigService: Symbol('CurrencyConfigService'),
+  EmojiValidator: Symbol('EmojiValidator'),
   CurrencyTransactionService: Symbol('CurrencyTransactionService'),
   GameTokenService: Symbol('GameTokenService'),
   GameTokenTransactionService: Symbol('GameTokenTransactionService'),
@@ -120,7 +122,10 @@ export function configureEconomyContainer(): void {
   );
   container.registerInstance(ECONOMY_TOKENS.BalanceAdjustmentService, balanceAdjustmentService);
 
-  const currencyConfigService = new CurrencyConfigService(currencyConfigRepo, eventPublisher);
+  const emojiValidator = new EmojiValidator();
+  container.registerInstance(ECONOMY_TOKENS.EmojiValidator, emojiValidator);
+
+  const currencyConfigService = new CurrencyConfigService(currencyConfigRepo, eventPublisher, emojiValidator);
   container.registerInstance(ECONOMY_TOKENS.CurrencyConfigService, currencyConfigService);
 
   const gameTokenTxService = new GameTokenTransactionService(tokenTxRepo);

@@ -229,7 +229,12 @@ export function createPending(
   });
 }
 
-/** 手動開立尚未派發給護航者的護航訂單（escortUserId=0）。 */
+/**
+ * Creates a manual dispatch order (no escort assigned yet).
+ * NOTE: spec R1.4 defines MANUAL source's source fields as null but does not
+ * explicitly list sourceEscortOptionCode. This implementation passes the value
+ * through for reference; verify against Java if alignment is needed (P3-12).
+ */
 export function createManualOpenOrder(
   orderNumber: string,
   guildId: number,

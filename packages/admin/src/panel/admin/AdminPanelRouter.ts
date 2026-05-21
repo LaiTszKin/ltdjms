@@ -4,7 +4,6 @@ import {
 } from '@ltdjms/shared';
 import { type InteractionHandler } from '../../commands/infra/CommandHandler.js';
 import { AdminPanelSessionManager } from '../../session/AdminPanelSessionManager.js';
-import { AdminPanelViewState } from '../../session/types.js';
 import { ZhTwStrings } from '../../i18n/zh-TW.js';
 
 /**
