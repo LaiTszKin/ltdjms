@@ -13,7 +13,6 @@ const defaultConfig: DiceGame2Config = {
   baseMultiplier: 20000,
   tripleLowBonus: 1500000,
   tripleHighBonus: 2500000,
-  faceMultipliers: [1, 1, 1, 1, 1, 1],
   createdAt: new Date(),
   updatedAt: new Date(),
 };

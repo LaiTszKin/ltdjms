@@ -80,8 +80,7 @@ export class DiceGame1ConfigHandler {
 
 /**
  * /dice-game-2-config slash command handler (admin only).
- * Updates the dice game 2 configuration (min/max tokens, multipliers, bonuses,
- * and individual face multipliers).
+ * Updates the dice game 2 configuration (min/max tokens, multipliers, bonuses).
  */
 export class DiceGame2ConfigHandler {
   readonly commandName = 'dice-game-2-config';
@@ -140,21 +139,6 @@ export class DiceGame2ConfigHandler {
       return;
     }
 
-    // Parse optional face multipliers (P1-5)
-    const faceMultipliers: [number, number, number, number, number, number] = [
-      parseInt(context.getOptionAsString('face-1') ?? '1', 10),
-      parseInt(context.getOptionAsString('face-2') ?? '1', 10),
-      parseInt(context.getOptionAsString('face-3') ?? '1', 10),
-      parseInt(context.getOptionAsString('face-4') ?? '1', 10),
-      parseInt(context.getOptionAsString('face-5') ?? '1', 10),
-      parseInt(context.getOptionAsString('face-6') ?? '1', 10),
-    ];
-
-    if (faceMultipliers.some(m => !Number.isFinite(m) || m < 0)) {
-      await interaction.reply(DiceGameMessages.INVALID_OPTION);
-      return;
-    }
-
     try {
       const saved = await this.diceConfigService.upsertDice2Config({
         guildId,
@@ -164,7 +148,6 @@ export class DiceGame2ConfigHandler {
         baseMultiplier,
         tripleLowBonus,
         tripleHighBonus,
-        faceMultipliers,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -176,13 +159,7 @@ export class DiceGame2ConfigHandler {
           .replace('{straightMul}', String(saved.straightMultiplier))
           .replace('{baseMul}', String(saved.baseMultiplier))
           .replace('{tripleLow}', String(saved.tripleLowBonus))
-          .replace('{tripleHigh}', String(saved.tripleHighBonus))
-          .replace('{face1}', String(saved.faceMultipliers[0]))
-          .replace('{face2}', String(saved.faceMultipliers[1]))
-          .replace('{face3}', String(saved.faceMultipliers[2]))
-          .replace('{face4}', String(saved.faceMultipliers[3]))
-          .replace('{face5}', String(saved.faceMultipliers[4]))
-          .replace('{face6}', String(saved.faceMultipliers[5]))}`,
+          .replace('{tripleHigh}', String(saved.tripleHighBonus))}`,
       );
     } catch (err) {
       await interaction.reply(

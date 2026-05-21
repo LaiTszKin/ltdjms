@@ -37,7 +37,7 @@ export class DiscordJsEmbedBuilder implements DiscordEmbedBuilder {
   setDescription(description: string): DiscordEmbedBuilder {
     this.embed.setDescription(
       description.length > this.MAX_DESCRIPTION_LENGTH
-        ? description.slice(0, this.MAX_DESCRIPTION_LENGTH)
+        ? this.truncate(description, this.MAX_DESCRIPTION_LENGTH)
         : description,
     );
     return this;

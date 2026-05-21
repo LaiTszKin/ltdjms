@@ -48,7 +48,6 @@ export {
   BalanceManagementHandler,
   TokenManagementHandler,
   GameSettingsHandler,
-  ProductManagementHandler,
   AIChannelConfigHandler,
   AIAgentConfigHandler,
   DispatchAfterSalesHandler,

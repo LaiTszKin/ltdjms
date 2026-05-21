@@ -77,7 +77,7 @@ export class InMemoryAIAgentChannelConfigRepository
   async remove(
     guildId: string,
     channelId: string,
-  ): Promise<Result<void, DomainError>> {
+  ): Promise<Result<Unit, DomainError>> {
     this.store.delete(this.key(guildId, channelId));
     return okVoid<DomainError>();
   }
@@ -118,6 +118,12 @@ export class DefaultAIAgentChannelConfigService
    * Local in-memory cache for the sync isAgentEnabled() fallback.
    */
   private localSyncCache = new Map<string, boolean>();
+  private static readonly MAX_SYNC_CACHE_SIZE = 10_000;
+
+  /**
+   * Pending in-flight DB lookups keyed by cacheKey, used for cache stampede protection.
+   */
+  private pendingFetches = new Map<string, Promise<boolean>>();
 
   constructor(
     private readonly repository: AIAgentChannelConfigRepository,
@@ -174,20 +180,44 @@ export class DefaultAIAgentChannelConfigService
     const effectiveChannelId = this.resolveChannelId(guildId, channelId);
     const cacheKey = this.buildCacheKey(guildId, effectiveChannelId);
 
+    // Cache stampede protection: deduplicate concurrent lookups for the same key
+    const pending = this.pendingFetches.get(cacheKey);
+    if (pending) {
+      return pending;
+    }
+
     try {
       // Try Redis cache first
       const cached = await this.cacheService.get<string>(cacheKey);
       if (cached !== null) {
         const enabled = cached === 'true';
-        this.localSyncCache.set(cacheKey, enabled);
+        this.setLocalSyncCache(cacheKey, enabled);
         return enabled;
       }
     } catch {
       // Redis unavailable — fall through to DB
     }
 
+    // Stampede-protected DB lookup
+    const promise = this.fetchFromDb(guildId, effectiveChannelId, cacheKey);
+    this.pendingFetches.set(cacheKey, promise);
     try {
-      // Fallback to DB
+      return await promise;
+    } finally {
+      this.pendingFetches.delete(cacheKey);
+    }
+  }
+
+  /**
+   * Performs the actual DB lookup for agent channel config.
+   * Extracted to allow cache stampede deduplication via pendingFetches.
+   */
+  private async fetchFromDb(
+    guildId: string,
+    effectiveChannelId: string,
+    cacheKey: string,
+  ): Promise<boolean> {
+    try {
       const result = await this.repository.findByGuildAndChannel(
         guildId,
         effectiveChannelId,
@@ -207,15 +237,31 @@ export class DefaultAIAgentChannelConfigService
           // Cache write failure is non-fatal
         }
 
-        this.localSyncCache.set(cacheKey, enabled);
+        this.setLocalSyncCache(cacheKey, enabled);
         return enabled;
       }
     } catch {
       // DB failure — return false (pure chat mode)
     }
 
-    this.localSyncCache.set(cacheKey, false);
+    this.setLocalSyncCache(cacheKey, false);
     return false;
+  }
+
+  /**
+   * Sets a value in the local sync cache with LRU eviction.
+   */
+  private setLocalSyncCache(cacheKey: string, enabled: boolean): void {
+    if (
+      this.localSyncCache.size >= DefaultAIAgentChannelConfigService.MAX_SYNC_CACHE_SIZE
+      && !this.localSyncCache.has(cacheKey)
+    ) {
+      const oldest = this.localSyncCache.keys().next().value;
+      if (oldest !== undefined) {
+        this.localSyncCache.delete(oldest);
+      }
+    }
+    this.localSyncCache.set(cacheKey, enabled);
   }
 
   async setAgentEnabled(

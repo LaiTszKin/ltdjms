@@ -96,11 +96,13 @@ export class ConversationIdBuilder {
  */
 export class InMemoryToolCallHistory {
   private static readonly MAX_HISTORY_PER_CONVERSATION = 50;
+  private static readonly MAX_CONVERSATIONS = 10_000;
   private store: Map<string, ToolCallEntry[]> = new Map();
 
   /**
    * Adds a tool call entry to history.
    * FIFO eviction when exceeding MAX_HISTORY_PER_CONVERSATION.
+   * LRU eviction when exceeding MAX_CONVERSATIONS.
    */
   addToolCall(
     threadId: string,
@@ -108,6 +110,15 @@ export class InMemoryToolCallHistory {
     entry: ToolCallEntry,
   ): void {
     const key = ConversationIdBuilder.buildToolCallKey(threadId, userId);
+
+    // LRU eviction: if at capacity and this is a new conversation, drop the oldest
+    if (this.store.size >= InMemoryToolCallHistory.MAX_CONVERSATIONS && !this.store.has(key)) {
+      const oldestKey = this.store.keys().next().value;
+      if (oldestKey !== undefined) {
+        this.store.delete(oldestKey);
+      }
+    }
+
     const history = this.store.get(key) ?? [];
 
     history.push(entry);

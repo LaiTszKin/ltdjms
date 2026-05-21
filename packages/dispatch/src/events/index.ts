@@ -1,5 +1,4 @@
-import type { DomainEvent } from '@ltdjms/shared';
-import { OperationType } from '@ltdjms/shop';
+import { OperationType, type DomainEvent } from '@ltdjms/shared';
 
 export interface DispatchAfterSalesConfigChangedEvent extends DomainEvent {
   readonly eventType: 'dispatch_after_sales_config_changed';

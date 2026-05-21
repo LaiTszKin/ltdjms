@@ -18,3 +18,5 @@ export {
 export {
   type DomainEvent,
 } from './events/domain-event.js';
+
+export { OperationType } from './operation-type.js';

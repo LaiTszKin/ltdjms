@@ -6,6 +6,7 @@ export {
   type DiceGame2ConfigUpdate,
 } from './GameConfigManagementFacade.js';
 export { AIConfigManagementFacade } from './AIConfigManagementFacade.js';
+export { AgentMode } from './agent-mode.js';
 export { MemberInfoFacade, type MemberPanelView } from './MemberInfoFacade.js';
 export { DispatchManagementFacade } from './DispatchManagementFacade.js';
-export type { CreateCatalogData, UpdateCatalogData } from '@ltdjms/dispatch';
+export { ProductManagementFacade } from './ProductManagementFacade.js';

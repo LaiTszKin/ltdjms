@@ -27,6 +27,8 @@ const EVENT_TYPES = {
  * Matches Java UserPanelUpdateListener.
  */
 export class UserPanelUpdateListener {
+  /** Tracks last update timestamp per guildId:eventType for rate-limit protection. */
+  private readonly lastUpdateTimestamps = new Map<string, number>();
   constructor(
     private readonly sessionManager: PanelSessionManager,
     private readonly memberInfoFacade: MemberInfoFacade,
@@ -43,6 +45,11 @@ export class UserPanelUpdateListener {
     if (!this.isRelevantEvent(event)) return;
 
     const guildId = String(event.guildId);
+    const eventType = event.eventType;
+
+    // Rate-limit protection: skip if less than 200ms since last same-type update
+    const throttleKey = `${guildId}:${eventType}`;
+    if (this.shouldThrottle(throttleKey)) return;
 
     // Get all active sessions for this guild
     const sessions = this.sessionManager.getAllForGuild(guildId);
@@ -150,5 +157,14 @@ export class UserPanelUpdateListener {
       event.eventType === EVENT_TYPES.GAME_TOKEN_CHANGED ||
       event.eventType === EVENT_TYPES.CURRENCY_CONFIG_CHANGED
     );
+  }
+
+  /** Rate-limit: skip if less than minIntervalMs (default 200ms) since last update for same key. */
+  private shouldThrottle(key: string, minIntervalMs = 200): boolean {
+    const now = Date.now();
+    const last = this.lastUpdateTimestamps.get(key) ?? 0;
+    if (now - last < minIntervalMs) return true;
+    this.lastUpdateTimestamps.set(key, now);
+    return false;
   }
 }

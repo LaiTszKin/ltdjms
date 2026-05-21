@@ -112,6 +112,7 @@ export const productRedemptionTransaction = pgTable(
   },
   (table) => ({
     redemptionCodeIdx: index('idx_prt_redemption_code').on(table.redemptionCodeId),
+    guildUserIdx: index('idx_prt_guild_user').on(table.guildId, table.userId),
   }),
 );
 

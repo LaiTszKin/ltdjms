@@ -1,4 +1,4 @@
-import { DomainError, ok, okVoid, err, type Result, type Unit } from '@ltdjms/shared';
+import { DomainError, ok, okVoid, err, type Result, type Unit, DomainEventPublisher, type DomainEvent } from '@ltdjms/shared';
 import type {
   AllowedChannel,
   AllowedCategory,
@@ -223,11 +223,13 @@ export class DefaultAIChannelRestrictionService
   implements AIChannelRestrictionService
 {
   private static readonly DEFAULT_TTL_MS = 5 * 60 * 1000; // 5 minutes
+  private static readonly MAX_CACHE_SIZE = 10_000;
 
   private cache: Map<string, { value: boolean; expiresAt: number }> = new Map();
 
   constructor(
     private readonly repository: AIChannelRestrictionRepository,
+    private readonly eventPublisher?: DomainEventPublisher,
     private readonly cacheTtlMs: number = DefaultAIChannelRestrictionService.DEFAULT_TTL_MS,
   ) {}
 
@@ -261,7 +263,7 @@ export class DefaultAIChannelRestrictionService
     // Check channel-level allowlist first (P2-16: direct query instead of loading all channels)
     const channelEntry = await this.repository.findChannel(guildId, channelId);
     if (channelEntry) {
-      this.cache.set(cacheKey, { value: true, expiresAt: now + ttl });
+      this.setCache(cacheKey, { value: true, expiresAt: now + ttl });
       return 'channel';
     }
 
@@ -271,12 +273,12 @@ export class DefaultAIChannelRestrictionService
       const categoryMatch = categories.some(
         (c) => c.categoryId === categoryId,
       );
-      this.cache.set(cacheKey, { value: categoryMatch, expiresAt: now + ttl });
+      this.setCache(cacheKey, { value: categoryMatch, expiresAt: now + ttl });
       return categoryMatch ? 'category' : false;
     }
 
     // Empty allowlist = default deny
-    this.cache.set(cacheKey, { value: false, expiresAt: now + ttl });
+    this.setCache(cacheKey, { value: false, expiresAt: now + ttl });
     return false;
   }
 
@@ -319,6 +321,12 @@ export class DefaultAIChannelRestrictionService
     const result = await this.repository.addChannel(guildId, channel);
     if (result.isOk()) {
       this.cache.delete(`${guildId}:${channel.channelId}`);
+      this.eventPublisher?.publish({
+        eventType: 'ai_channel_config_changed',
+        guildId,
+        changeType: 'channel_added',
+        targetId: channel.channelId,
+      } as DomainEvent);
     }
     return result;
   }
@@ -331,6 +339,12 @@ export class DefaultAIChannelRestrictionService
     if (result.isOk()) {
       // Invalidate all channel caches for this guild since category allowlist changed
       this.invalidateGuildCache(guildId);
+      this.eventPublisher?.publish({
+        eventType: 'ai_channel_config_changed',
+        guildId,
+        changeType: 'category_added',
+        targetId: category.categoryId,
+      } as DomainEvent);
     }
     return result;
   }
@@ -342,6 +356,12 @@ export class DefaultAIChannelRestrictionService
     const result = await this.repository.removeChannel(guildId, channelId);
     if (result.isOk()) {
       this.cache.delete(`${guildId}:${channelId}`);
+      this.eventPublisher?.publish({
+        eventType: 'ai_channel_config_changed',
+        guildId,
+        changeType: 'channel_removed',
+        targetId: channelId,
+      } as DomainEvent);
     }
     return result;
   }
@@ -353,8 +373,27 @@ export class DefaultAIChannelRestrictionService
     const result = await this.repository.removeCategory(guildId, categoryId);
     if (result.isOk()) {
       this.invalidateGuildCache(guildId);
+      this.eventPublisher?.publish({
+        eventType: 'ai_channel_config_changed',
+        guildId,
+        changeType: 'category_removed',
+        targetId: categoryId,
+      } as DomainEvent);
     }
     return result;
+  }
+
+  private setCache(cacheKey: string, value: { value: boolean; expiresAt: number }): void {
+    if (
+      this.cache.size >= DefaultAIChannelRestrictionService.MAX_CACHE_SIZE
+      && !this.cache.has(cacheKey)
+    ) {
+      const oldest = this.cache.keys().next().value;
+      if (oldest !== undefined) {
+        this.cache.delete(oldest);
+      }
+    }
+    this.cache.set(cacheKey, value);
   }
 
   private invalidateGuildCache(guildId: string): void {

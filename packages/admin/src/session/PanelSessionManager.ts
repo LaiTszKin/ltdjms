@@ -188,7 +188,7 @@ export class PanelSessionManager {
     if (this.cleanupIntervalId !== null) return;
     this.cleanupIntervalId = setInterval(() => {
       this.cleanupExpired();
-    }, intervalMs);
+    }, intervalMs).unref();
   }
 
   /**

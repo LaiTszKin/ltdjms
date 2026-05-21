@@ -1,13 +1,7 @@
 import {
   type DiscordInteraction,
   type DiscordContext,
-  type DomainEventPublisher,
 } from '@ltdjms/shared';
-import {
-  type ProductChangedEvent,
-  type RedemptionCodesGeneratedEvent,
-  OperationType,
-} from '@ltdjms/shop';
 import {
   EmbedBuilder,
   ActionRowBuilder,
@@ -23,13 +17,10 @@ import { BotErrorHandler } from '../../../commands/infra/BotErrorHandler.js';
 import { ZhTwStrings } from '../../../i18n/zh-TW.js';
 import { BaseAdminHandler } from '../BaseAdminHandler.js';
 import {
-  type ShopService,
-  type RedemptionCodeRepository,
-  type RedemptionCodeGenerator,
-  type ProductRepository,
   createRedemptionCode,
   type RedemptionCode,
 } from '@ltdjms/shop';
+import { ProductManagementFacade } from '../../../facades/ProductManagementFacade.js';
 import { AdminProductPanelViewFactory } from './AdminProductPanelViewFactory.js';
 import { AdminProductPanelModalFactory } from './AdminProductPanelModalFactory.js';
 import { Colors } from '../../../constants/colors.js';
@@ -43,11 +34,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
 
   constructor(
     sessionManager: AdminPanelSessionManager,
-    private readonly shopService: ShopService,
-    private readonly redemptionCodeRepo: RedemptionCodeRepository,
-    private readonly codeGenerator: RedemptionCodeGenerator,
-    private readonly productRepository: ProductRepository,
-    private readonly eventPublisher: DomainEventPublisher,
+    private readonly productFacade: ProductManagementFacade,
     private readonly viewFactory: AdminProductPanelViewFactory,
     private readonly modalFactory: AdminProductPanelModalFactory,
     errorHandler: BotErrorHandler,
@@ -218,7 +205,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     guildId: string,
     productId: number,
   ): Promise<void> {
-    const product = await this.productRepository.findById(productId);
+    const product = await this.productFacade.findProductById(productId);
 
     if (!product) {
       const embed = new EmbedBuilder()
@@ -295,28 +282,24 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     }
 
     try {
-      const product = await this.productRepository.create({
-        guildId: Number(guildId),
-        name,
-        description,
-        rewardType: null,
-        rewardAmount: null,
-        currencyPrice: currencyPrice ?? null,
-        fiatPriceTwd: fiatPriceTwd ?? null,
-        autoCreateEscortOrder: false,
-        escortOptionCode: null,
-      });
+      const product = await this.productFacade.createProduct(
+        {
+          guildId: Number(guildId),
+          name,
+          description,
+          rewardType: null,
+          rewardAmount: null,
+          currencyPrice: currencyPrice ?? null,
+          fiatPriceTwd: fiatPriceTwd ?? null,
+          autoCreateEscortOrder: false,
+          escortOptionCode: null,
+        },
+        guildId,
+      );
 
       if (imageUrl) {
         this.sessionManager.setContext(guildId, String(product.id!), 'productImageUrl', imageUrl);
       }
-
-      this.eventPublisher.publish({
-        eventType: 'product_changed',
-        guildId,
-        productId: product.id!,
-        operationType: OperationType.CREATED,
-      } as ProductChangedEvent);
 
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.productListTitle)
@@ -352,12 +335,11 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     const fiatPriceTwd = fiatPriceStr ? parseInt(fiatPriceStr, 10) : null;
 
     try {
-      const product = await this.productRepository.update(productId, {
-        name,
-        description,
-        currencyPrice,
-        fiatPriceTwd,
-      });
+      const product = await this.productFacade.updateProduct(
+        productId,
+        { name, description, currencyPrice, fiatPriceTwd },
+        guildId,
+      );
 
       if (!product) {
         const embed = new EmbedBuilder()
@@ -371,13 +353,6 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
       if (imageUrl) {
         this.sessionManager.setContext(guildId, String(productId), 'productImageUrl', imageUrl);
       }
-
-      this.eventPublisher.publish({
-        eventType: 'product_changed',
-        guildId,
-        productId,
-        operationType: OperationType.UPDATED,
-      } as ProductChangedEvent);
 
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.productListTitle)
@@ -394,7 +369,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     guildId: string,
     productId: number,
   ): Promise<void> {
-    const product = await this.productRepository.findById(productId);
+    const product = await this.productFacade.findProductById(productId);
     const name = product?.name ?? String(productId);
 
     const embed = new EmbedBuilder()
@@ -425,10 +400,10 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     productId: number,
   ): Promise<void> {
     try {
-      const product = await this.productRepository.findById(productId);
+      const product = await this.productFacade.findProductById(productId);
       const name = product?.name ?? String(productId);
 
-      const deleted = await this.productRepository.delete(productId);
+      const deleted = await this.productFacade.deleteProduct(productId, guildId);
 
       if (!deleted) {
         const embed = new EmbedBuilder()
@@ -438,13 +413,6 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
         await interaction.editEmbed(embed);
         return;
       }
-
-      this.eventPublisher.publish({
-        eventType: 'product_changed',
-        guildId,
-        productId,
-        operationType: OperationType.DELETED,
-      } as ProductChangedEvent);
 
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.productListTitle)
@@ -515,26 +483,16 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     }
 
     try {
-      const codeStrings: string[] = [];
-      for (let i = 0; i < count; i++) {
-        codeStrings.push(this.codeGenerator.generate());
-      }
+      const codeStrings = this.productFacade.generateCodes(count);
 
       const redemptionCodes: RedemptionCode[] = codeStrings.map((codeStr) =>
         createRedemptionCode(codeStr, productId, Number(guildId), expiresAt),
       );
-      const savedCodes = await this.redemptionCodeRepo.saveAll(redemptionCodes);
-
-      this.eventPublisher.publish({
-        eventType: 'redemption_codes_generated',
-        guildId,
-        productId,
-        count,
-      } as RedemptionCodesGeneratedEvent);
+      const savedCodes = await this.productFacade.saveCodes(redemptionCodes, guildId, productId, count);
 
       this.sessionManager.setViewState(guildId, interaction.getUserId(), AdminPanelViewState.PRODUCT_CODE_LIST);
 
-      const product = await this.productRepository.findById(productId);
+      const product = await this.productFacade.findProductById(productId);
       const productName = product?.name ?? String(productId);
 
       const displayCodes = savedCodes.map((c: RedemptionCode) => ({ code: c.code, redeemed: c.redeemedBy !== null }));
@@ -589,7 +547,11 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     }
 
     try {
-      const product = await this.productRepository.update(productId, { fiatPriceTwd });
+      const product = await this.productFacade.updateProduct(
+        productId,
+        { fiatPriceTwd },
+        guildId,
+      );
       if (!product) {
         const embed = new EmbedBuilder()
           .setTitle(ZhTwStrings.productListTitle)
@@ -598,13 +560,6 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
         await interaction.editEmbed(embed);
         return;
       }
-
-      this.eventPublisher.publish({
-        eventType: 'product_changed',
-        guildId,
-        productId,
-        operationType: OperationType.UPDATED,
-      } as ProductChangedEvent);
 
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.productListTitle)
@@ -624,7 +579,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     try {
       this.sessionManager.setViewState(guildId, interaction.getUserId(), AdminPanelViewState.PRODUCT_DETAIL);
 
-      const product = await this.productRepository.findById(productId);
+      const product = await this.productFacade.findProductById(productId);
 
       if (!product) {
         const embed = new EmbedBuilder()
@@ -635,7 +590,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
         return;
       }
 
-      const codeStats = await this.redemptionCodeRepo.getStatsByProductId(productId);
+      const codeStats = await this.productFacade.getCodeStatsByProductId(productId);
 
       const embedData = this.viewFactory.buildProductDetailEmbed(product, codeStats);
       const embed = new EmbedBuilder()
@@ -687,7 +642,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     page: number,
   ): Promise<void> {
     try {
-      const shopPage = await this.shopService.getShopPage(Number(guildId), page);
+      const shopPage = await this.productFacade.getShopPage(Number(guildId), page);
 
       const embedData = this.viewFactory.buildProductListEmbed(
         shopPage.products,

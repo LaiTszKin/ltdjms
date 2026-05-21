@@ -1,12 +1,7 @@
 // Events
 export type {
-  AIMessageEvent,
   AIAgentChannelConfigChangedEvent,
-  ConversationMessage,
-  AgentCompletedEvent,
   AgentFailedEvent,
-  ToolExecutionStartedEvent,
-  ToolExecutedEvent,
 } from './events/index.js';
 
 // Config
@@ -45,7 +40,6 @@ export type {
   ModifyPermissionSetting,
   RoleCreateInfo,
   ToolExecutionContext,
-  AIMessagePublishedEvent,
 } from './services/ai-chat-service.js';
 
 // Routing
@@ -70,7 +64,6 @@ export type {
 
 // Chat Services
 export { LangChainAIChatService } from './services/LangChainAIChatService.js';
-export { MessageSplitter } from './services/MessageSplitter.js';
 export { LangChainExceptionMapper } from './services/LangChainExceptionMapper.js';
 
 // Memory

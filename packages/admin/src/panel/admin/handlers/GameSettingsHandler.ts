@@ -244,13 +244,6 @@ export class GameSettingsHandler extends BaseAdminHandler {
         return;
       }
 
-      // Parse face multiplier fields (optional, default to 1 if not present)
-      const faceMultipliers: [number, number, number, number, number, number] = [1, 1, 1, 1, 1, 1];
-      for (let i = 0; i < 6; i++) {
-        const val = parseFloat(interaction.getTextInputValue(`faceMultiplier${i + 1}`));
-        if (!isNaN(val)) faceMultipliers[i] = val;
-      }
-
       const result = await this.facade.updateDiceGame2Config(guildId, {
         minTokensPerPlay: min,
         maxTokensPerPlay: max,
@@ -258,7 +251,6 @@ export class GameSettingsHandler extends BaseAdminHandler {
         baseMultiplier: base,
         tripleLowBonus: tripleLow,
         tripleHighBonus: tripleHigh,
-        faceMultipliers,
       });
 
       if (result.isOk()) {

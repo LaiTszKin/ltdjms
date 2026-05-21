@@ -13,7 +13,7 @@ import {
 import { AdminPanelSessionManager } from '../../../session/AdminPanelSessionManager.js';
 import { AdminPanelViewState } from '../../../session/types.js';
 import { BotErrorHandler } from '../../../commands/infra/BotErrorHandler.js';
-import { AIConfigManagementFacade } from '../../../facades/AIConfigManagementFacade.js';
+import { AIConfigManagementFacade, AgentMode } from '../../../facades/index.js';
 import { ZhTwStrings } from '../../../i18n/zh-TW.js';
 import { BaseAdminHandler } from '../BaseAdminHandler.js';
 import { Colors } from '../../../constants/colors.js';
@@ -175,7 +175,12 @@ export class AIAgentConfigHandler extends BaseAdminHandler {
       return;
     }
 
-    const result = await this.facade.enableAgent(guildId, channelId);
+    // Read mode from string select menu values
+    const selectedValues = interaction.getSelectedValues();
+    const modeValue = selectedValues?.[0] ?? 'agent';
+    const mode = this.parseAgentMode(modeValue);
+
+    const result = await this.facade.enableAgent(guildId, channelId, mode);
 
     if (result.isOk()) {
       const embed = new EmbedBuilder()
@@ -233,6 +238,19 @@ export class AIAgentConfigHandler extends BaseAdminHandler {
       await interaction.editEmbed(embed);
     } else {
       await this.errorHandler.handle(result.getError(), interaction);
+    }
+  }
+
+  /** Maps a UI mode string ('chat'|'agent'|'hybrid') to an AgentMode enum value. */
+  private parseAgentMode(value: string): AgentMode {
+    switch (value.toLowerCase()) {
+      case 'chat':
+        return AgentMode.CHAT;
+      case 'hybrid':
+        return AgentMode.HYBRID;
+      case 'agent':
+      default:
+        return AgentMode.AGENT;
     }
   }
 

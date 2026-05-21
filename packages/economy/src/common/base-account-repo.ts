@@ -1,3 +1,9 @@
+/**
+ * NOTE: This is a TypeScript-specific abstraction not present in the Java original.
+ * Kept for code reuse between currency and game token implementations.
+ * If this abstraction causes maintenance burden, inline into the concrete classes.
+ */
+
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { eq, and, sql } from 'drizzle-orm';
 import { DomainError, type Result, Ok, Err } from '@ltdjms/shared';
@@ -182,6 +188,8 @@ export class BaseAccountRepository<TAccount> {
 
   /**
    * Sets the stored value to an exact amount.
+   * Uses INSERT...ON CONFLICT DO UPDATE (upsert) to avoid a separate
+   * findOrCreate round-trip (P1-10).
    */
   async set(
     guildId: number,
@@ -192,22 +200,22 @@ export class BaseAccountRepository<TAccount> {
       throw new Error(`Cannot set negative value: ${newValue}`);
     }
 
-    // Ensure account exists
-    await this.findOrCreate(guildId, userId);
-
     const result = await this.db
-      .update(this.cfg.table)
-      .set({
+      .insert(this.cfg.table)
+      .values({
+        guildId,
+        userId,
         [this.cfg.balanceFieldName]: newValue,
-        [this.cfg.updatedAtFieldName]: sql`NOW()`,
+        ...this.cfg.defaultValues,
       } as any)
-      .where(
-        and(
-          eq(this.cfg.table.guildId, guildId),
-          eq(this.cfg.table.userId, userId),
-        ),
-      )
-      .returning();
+      .onConflictDoUpdate({
+        target: [this.cfg.table.guildId, this.cfg.table.userId],
+        set: {
+          [this.cfg.balanceFieldName]: newValue,
+          [this.cfg.updatedAtFieldName]: sql`NOW()`,
+        } as any,
+      })
+      .returning() as unknown as any[];
 
     return this.cfg.mapToDomain(result[0]);
   }

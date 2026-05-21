@@ -114,13 +114,6 @@ export interface DiceGame2Config {
   readonly baseMultiplier: number;
   readonly tripleLowBonus: number;
   readonly tripleHighBonus: number;
-  /**
-   * TODO(P3-3): faceMultipliers 欄位存在於 schema 與 domain type，
-   * 管理面板也可編輯此欄位，但 DiceGame2Service.analyzeRolls() 從未讀取使用。
-   * Java 原版 DiceGame2Config 無此欄位 — 此為 TypeScript 移植時新增但未被
-   * 遊戲邏輯消費的欄位，屬於 dead code。待確認是否應實作對應邏輯或移除。
-   */
-  readonly faceMultipliers: [number, number, number, number, number, number];
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }
