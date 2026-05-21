@@ -40,6 +40,7 @@ import { AdminPanelSessionManager } from '../session/AdminPanelSessionManager.js
 import { PanelSessionManager } from '../session/PanelSessionManager.js';
 
 // Infra
+import type { CommandHandler } from '../commands/infra/CommandHandler.js';
 import { SlashCommandListener } from '../commands/infra/SlashCommandListener.js';
 import { SlashCommandMetrics } from '../commands/infra/SlashCommandMetrics.js';
 import { BotErrorHandler } from '../commands/infra/BotErrorHandler.js';
@@ -377,7 +378,7 @@ export function configureAdminContainer(): void {
   container.registerInstance(ADMIN_TOKENS.EscortCatalogHandler, escortCatalogHandler);
   slashCommandListener.registerInteractionHandler(escortCatalogHandler);
 
-  const dispatchPanelCommandHandler = container.resolve(
+  const dispatchPanelCommandHandler = container.resolve<CommandHandler>(
     DISPATCH_TOKENS.DispatchPanelCommandHandler,
   );
   slashCommandListener.registerCommand(dispatchPanelCommandHandler);
