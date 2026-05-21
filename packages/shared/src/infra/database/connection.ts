@@ -17,7 +17,7 @@ export interface DatabaseConfig {
 export async function createDatabasePool(config: DatabaseConfig): Promise<Pool> {
   const pool = new Pool({
     connectionString: config.url,
-    max: config.max ?? 5,
+    max: config.max ?? 20,
     min: config.minIdle ?? 0,
     connectionTimeoutMillis: config.connectionTimeoutMillis ?? 5000,
     idleTimeoutMillis: config.idleTimeoutMillis ?? 30000,

@@ -96,8 +96,8 @@ export class ConversationIdBuilder {
  */
 export class InMemoryToolCallHistory {
   private static readonly MAX_HISTORY_PER_CONVERSATION = 50;
-  private static readonly MAX_CONVERSATIONS = 10_000;
-  private static readonly TTL_MS = 60 * 60 * 1000; // 1 hour
+  private static readonly MAX_CONVERSATIONS = 2_000;
+  private static readonly TTL_MS = 10 * 60 * 1000; // 10 minutes
   private store: Map<string, ToolCallEntry[]> = new Map();
 
   constructor() {

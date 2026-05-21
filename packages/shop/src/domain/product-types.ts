@@ -32,9 +32,9 @@ export function formatReward(product: Product): string | null {
   if (!hasReward(product)) return null;
   switch (product.rewardType) {
     case RewardType.CURRENCY:
-      return `${product.rewardAmount!.toLocaleString()} 货币`;
+      return `${product.rewardAmount!.toLocaleString()} 貨幣`;
     case RewardType.TOKEN:
-      return `${product.rewardAmount!.toLocaleString()} 代币`;
+      return `${product.rewardAmount!.toLocaleString()} 代幣`;
     default:
       return null;
   }
@@ -46,7 +46,7 @@ export function hasCurrencyPrice(product: Product): boolean {
 
 export function formatCurrencyPrice(product: Product): string | null {
   if (!hasCurrencyPrice(product)) return null;
-  return `${product.currencyPrice!.toLocaleString()} 货币`;
+  return `${product.currencyPrice!.toLocaleString()} 貨幣`;
 }
 
 export function hasFiatPriceTwd(product: Product): boolean {

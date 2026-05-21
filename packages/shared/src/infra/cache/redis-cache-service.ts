@@ -61,22 +61,28 @@ export class RedisCacheService implements CacheService {
   }
 
   async get<T>(key: string): Promise<T | null> {
-    if (this.isCircuitOpen()) return null;
+    // Stale-while-revalidate (P2-11): when circuit is OPEN, we still
+    // attempt the read so transient Redis failures don't cascade to DB.
+    // If Redis has recovered, the circuit self-heals; if not, we return
+    // null as before — no worse than the early return.
+    const circuitSkippedThisRead = this.isCircuitOpen();
     try {
       const value = await this.redis.get(key);
-      if (this.circuitState === 'HALF_OPEN') {
+      if (circuitSkippedThisRead && this.circuitState !== 'CLOSED') {
         this.circuitState = 'CLOSED';
-        this.logger.info('Redis circuit breaker: half-open probe succeeded, closed');
+        this.logger.info('Redis circuit breaker: stale-while-revalidate succeeded, closed');
       }
       if (value === null) {
         return null;
       }
       return JSON.parse(value) as T;
     } catch (err) {
-      if (this.circuitState === 'HALF_OPEN') {
-        this.onCircuitProbeFailed();
-      } else {
-        this.openCircuit();
+      if (!circuitSkippedThisRead) {
+        if (this.circuitState === 'HALF_OPEN') {
+          this.onCircuitProbeFailed();
+        } else {
+          this.openCircuit();
+        }
       }
       this.logger.warn({ err }, 'Redis cache operation failed: get');
       return null;
