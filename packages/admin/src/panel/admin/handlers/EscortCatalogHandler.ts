@@ -137,8 +137,7 @@ export class EscortCatalogHandler extends BaseAdminHandler {
       );
     }
 
-    const raw = interaction.getHook() as { showModal: (m: ModalBuilder) => Promise<void> };
-    await raw.showModal(modal);
+    await interaction.showModal(modal);
   }
 
   private async showEditModal(
@@ -173,19 +172,14 @@ export class EscortCatalogHandler extends BaseAdminHandler {
       );
     }
 
-    const raw = interaction.getHook() as { showModal: (m: ModalBuilder) => Promise<void> };
-    await raw.showModal(modal);
+    await interaction.showModal(modal);
   }
 
   private async handleCreateSave(interaction: DiscordInteraction): Promise<void> {
-    const raw = interaction.getHook() as {
-      fields: { getTextInputValue: (id: string) => string };
-    };
-
-    const code = raw.fields.getTextInputValue(ZhTwStrings.escortCatalogModalName).trim();
-    const mapScope = raw.fields.getTextInputValue(ZhTwStrings.escortCatalogModalDesc).trim();
-    const priceStr = raw.fields.getTextInputValue(ZhTwStrings.escortCatalogModalPrice).trim();
-    const type = raw.fields.getTextInputValue(ZhTwStrings.escortCatalogModalCategory).trim();
+    const code = interaction.getTextInputValue(ZhTwStrings.escortCatalogModalName).trim();
+    const mapScope = interaction.getTextInputValue(ZhTwStrings.escortCatalogModalDesc).trim();
+    const priceStr = interaction.getTextInputValue(ZhTwStrings.escortCatalogModalPrice).trim();
+    const type = interaction.getTextInputValue(ZhTwStrings.escortCatalogModalCategory).trim();
 
     if (!code || !type || !priceStr) {
       const embed = new EmbedBuilder()
@@ -242,13 +236,9 @@ export class EscortCatalogHandler extends BaseAdminHandler {
     interaction: DiscordInteraction,
     entryCode: string,
   ): Promise<void> {
-    const raw = interaction.getHook() as {
-      fields: { getTextInputValue: (id: string) => string };
-    };
-
-    const mapScope = raw.fields.getTextInputValue(ZhTwStrings.escortCatalogModalDesc).trim();
-    const priceStr = raw.fields.getTextInputValue(ZhTwStrings.escortCatalogModalPrice).trim();
-    const type = raw.fields.getTextInputValue(ZhTwStrings.escortCatalogModalCategory).trim();
+    const mapScope = interaction.getTextInputValue(ZhTwStrings.escortCatalogModalDesc).trim();
+    const priceStr = interaction.getTextInputValue(ZhTwStrings.escortCatalogModalPrice).trim();
+    const type = interaction.getTextInputValue(ZhTwStrings.escortCatalogModalCategory).trim();
 
     if (!type || !priceStr) {
       const embed = new EmbedBuilder()
@@ -345,10 +335,7 @@ export class EscortCatalogHandler extends BaseAdminHandler {
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(confirmBtn, cancelBtn);
 
-    const raw = interaction.getHook() as {
-      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }) => Promise<void>;
-    };
-    await raw.editReply({ embeds: [embed], components: [row] });
+    await interaction.editWithComponents(embed, [row]);
   }
 
   private async handleDelete(
@@ -433,10 +420,7 @@ export class EscortCatalogHandler extends BaseAdminHandler {
         }
       }
 
-      const raw = interaction.getHook() as {
-        editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }) => Promise<void>;
-      };
-      await raw.editReply({ embeds: [embed], components: rows });
+      await interaction.editWithComponents(embed, rows);
     } else {
       await this.errorHandler.handle(result.getError(), interaction);
     }

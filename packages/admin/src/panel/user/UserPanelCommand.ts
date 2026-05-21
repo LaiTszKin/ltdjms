@@ -32,6 +32,9 @@ export class UserPanelCommand implements CommandHandler {
     // Create session
     this.sessionManager.createSession(guildId, userId);
 
+    // Defer to prevent Discord 3-second timeout during async facade calls.
+    await interaction.deferReply();
+
     // Query member info
     const result = await this.memberInfoFacade.getUserPanelView(guildId, userId);
 

@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { Ok, Err, DomainError } from '@ltdjms/shared';
 import { GameRewardService } from '../dice/services/game-reward-service.js';
 import type { CurrencyTransactionSource } from '../domain/types.js';
-import type { BalanceAdjustmentResult } from '../domain/types.js';
+import type { BalanceAdjustmentResult, BalanceView } from '../domain/types.js';
 
 describe('GameRewardService', () => {
   /** Creates a mock BalanceAdjustmentService for DI (P2-8). */
@@ -31,13 +31,23 @@ describe('GameRewardService', () => {
   }
 
   describe('creditReward', () => {
-    it('should return 0 when reward is 0', async () => {
+    it('should return current balance when reward is 0 instead of returning 0 (P0-3)', async () => {
       const mockAdjustmentService = createMockBalanceAdjustmentService();
       const mockTxService = { recordTransaction: vi.fn() };
       const mockEventPublisher = { publish: vi.fn() };
+      const mockBalanceService = {
+        tryGetBalance: vi.fn().mockResolvedValue(new Ok({
+          guildId: 1,
+          userId: 1,
+          balance: 5000,
+          currencyName: 'LTD',
+          currencyIcon: 'L',
+        } as BalanceView)),
+      };
 
       const service = new GameRewardService(
         mockAdjustmentService as any,
+        mockBalanceService as any,
         mockTxService as any,
         mockEventPublisher as any,
         createMockCacheService(),
@@ -46,13 +56,18 @@ describe('GameRewardService', () => {
 
       const balance = await service.creditReward(1, 1, 0, 'DICE_GAME_1_WIN' as CurrencyTransactionSource);
 
-      expect(balance).toBe(0);
+      expect(balance).toBe(5000);
+      expect(mockBalanceService.tryGetBalance).toHaveBeenCalledWith(1, 1);
       expect(mockAdjustmentService.tryBatchAdjust).not.toHaveBeenCalled();
     });
 
     it('should throw on negative reward', async () => {
+      const mockBalanceService = {
+        tryGetBalance: vi.fn(),
+      };
       const service = new GameRewardService(
         createMockBalanceAdjustmentService() as any,
+        mockBalanceService as any,
         {} as any,
         {} as any,
         createMockCacheService(),
@@ -79,9 +94,13 @@ describe('GameRewardService', () => {
 
       const mockTxService = { recordTransaction: vi.fn() };
       const mockEventPublisher = { publish: vi.fn() };
+      const mockBalanceService = {
+        tryGetBalance: vi.fn(),
+      };
 
       const service = new GameRewardService(
         mockAdjustmentService as any,
+        mockBalanceService as any,
         mockTxService as any,
         mockEventPublisher as any,
         createMockCacheService(),
@@ -103,8 +122,12 @@ describe('GameRewardService', () => {
         new Err(DomainError.invalidInput('Insufficient balance')),
       );
 
+      const mockBalanceService = {
+        tryGetBalance: vi.fn(),
+      };
       const service = new GameRewardService(
         mockAdjustmentService as any,
+        mockBalanceService as any,
         {} as any,
         {} as any,
         createMockCacheService(),

@@ -152,8 +152,7 @@ export class EscortPricingHandler extends BaseAdminHandler {
       );
     }
 
-    const raw = interaction.getHook() as { showModal: (m: ModalBuilder) => Promise<void> };
-    await raw.showModal(modal);
+    await interaction.showModal(modal);
   }
 
   private async handleEditPriceSave(
@@ -162,11 +161,7 @@ export class EscortPricingHandler extends BaseAdminHandler {
     actorId: string,
     optionCode: string,
   ): Promise<void> {
-    const raw = interaction.getHook() as {
-      fields: { getTextInputValue: (id: string) => string };
-    };
-
-    const priceStr = raw.fields.getTextInputValue(ZhTwStrings.escortPricingEditLabel);
+    const priceStr = interaction.getTextInputValue(ZhTwStrings.escortPricingEditLabel);
     const price = parseInt(priceStr, 10);
 
     if (isNaN(price) || price <= 0) {
@@ -232,10 +227,7 @@ export class EscortPricingHandler extends BaseAdminHandler {
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(confirmBtn, cancelBtn);
 
-    const raw = interaction.getHook() as {
-      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }) => Promise<void>;
-    };
-    await raw.editReply({ embeds: [embed], components: [row] });
+    await interaction.editWithComponents(embed, [row]);
   }
 
   private async handleResetPrice(

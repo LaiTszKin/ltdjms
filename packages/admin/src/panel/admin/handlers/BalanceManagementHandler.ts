@@ -10,6 +10,7 @@ import {
   TextInputBuilder,
   TextInputStyle,
   ButtonBuilder,
+  ButtonStyle,
 } from 'discord.js';
 import { CurrencyManagementFacade } from '../../../facades/CurrencyManagementFacade.js';
 import { AdminPanelSessionManager } from '../../../session/AdminPanelSessionManager.js';
@@ -135,15 +136,15 @@ export class BalanceManagementHandler extends BaseAdminHandler {
       const addBtn = new ButtonBuilder()
         .setCustomId('admin_balance_modal_add')
         .setLabel(ZhTwStrings.balanceAdjustAdd)
-        .setStyle(3 as any);
+        .setStyle(ButtonStyle.Success);
       const deductBtn = new ButtonBuilder()
         .setCustomId('admin_balance_modal_deduct')
         .setLabel(ZhTwStrings.balanceAdjustDeduct)
-        .setStyle(4 as any);
+        .setStyle(ButtonStyle.Danger);
       const setBtn = new ButtonBuilder()
         .setCustomId('admin_balance_modal_set')
         .setLabel(ZhTwStrings.balanceAdjustSet)
-        .setStyle(1 as any);
+        .setStyle(ButtonStyle.Primary);
 
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(addBtn, deductBtn, setBtn);
 
@@ -233,14 +234,16 @@ export class BalanceManagementHandler extends BaseAdminHandler {
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.balanceTitle)
         .setDescription(
-          `調整成功！\n調整前：${adjustResult.previousBalance}\n調整後：${adjustResult.newBalance}`,
+          ZhTwStrings.balanceSuccessAdjust
+            .replace('{before}', String(adjustResult.previousBalance))
+            .replace('{after}', String(adjustResult.newBalance)),
         )
         .setColor(Colors.SUCCESS);
       await interaction.editEmbed(embed);
     } else {
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.balanceTitle)
-        .setDescription('調整失敗：' + result.getError().message)
+        .setDescription(ZhTwStrings.balanceErrorPrefix + result.getError().message)
         .setColor(Colors.DANGER);
       await interaction.editEmbed(embed);
     }

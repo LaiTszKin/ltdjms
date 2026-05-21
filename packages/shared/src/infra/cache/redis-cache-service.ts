@@ -44,7 +44,7 @@ export class RedisCacheService implements CacheService {
     try {
       const serialized = JSON.stringify(value);
       if (ttlSeconds > 0) {
-        await this.redis.setex(key, ttlSeconds, serialized);
+        await this.redis.set(key, serialized, 'EX', ttlSeconds);
       } else {
         await this.redis.set(key, serialized);
       }

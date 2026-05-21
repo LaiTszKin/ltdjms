@@ -28,10 +28,11 @@ export function applyMarkdownPipeline(
   // 2. AutoFix
   result = autoFixer.autoFix(result);
 
-  // 3. Validate → if invalid, retry fix once
-  const validationResult = validator.validate(result);
-  if (!isValid(validationResult)) {
+  // 3. Validate → if invalid, retry fix up to 3 times (spec R10)
+  let validationResult = validator.validate(result);
+  for (let attempt = 0; attempt < 3 && !isValid(validationResult); attempt++) {
     result = autoFixer.autoFix(result);
+    validationResult = validator.validate(result);
   }
 
   // 4. Paginate

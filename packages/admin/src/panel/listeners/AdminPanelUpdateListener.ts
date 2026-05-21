@@ -297,10 +297,10 @@ export class AdminPanelUpdateListener {
         return viewState === AdminPanelViewState.DISPATCH_STAFF;
 
       case EVENT_TYPES.ESCORT_PRICING_CHANGED:
-        return viewState === AdminPanelViewState.ESCORT_PRICING;
+        return true;
 
       case EVENT_TYPES.ESCORT_CATALOG_CHANGED:
-        return viewState === AdminPanelViewState.ESCORT_CATALOG;
+        return true;
 
       default:
         return false;

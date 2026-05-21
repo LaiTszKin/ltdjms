@@ -509,16 +509,10 @@ export class EscortDispatchOrderService {
       const completed = withCompleted(order, new Date(this.clock!()));
       const updated = await this.repository.update(completed, EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION);
 
-      // P2-2: Notify customer and escort about auto-completion due to timeout
-      if (this.notificationService) {
-        this.notificationService.notifyCustomerConfirmed(updated)
-          .catch((notifyErr) => {
-            this.logWarn('Failed to send auto-completion notification', {
-              orderNumber: order.orderNumber,
-              error: notifyErr instanceof Error ? notifyErr.message : String(notifyErr),
-            });
-          });
-      }
+      // Spec R10: timeout auto-completion only logs a warning, does NOT send notifications
+      this.logWarn('Order auto-completed due to customer confirmation timeout', {
+        orderNumber: order.orderNumber,
+      });
 
       return updated;
     } catch (e) {

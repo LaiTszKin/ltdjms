@@ -10,6 +10,7 @@ import {
   TextInputBuilder,
   TextInputStyle,
   ButtonBuilder,
+  ButtonStyle,
 } from 'discord.js';
 import { GameTokenManagementFacade } from '../../../facades/GameTokenManagementFacade.js';
 import { AdminPanelSessionManager } from '../../../session/AdminPanelSessionManager.js';
@@ -131,15 +132,15 @@ export class TokenManagementHandler extends BaseAdminHandler {
       const addBtn = new ButtonBuilder()
         .setCustomId('admin_token_modal_add')
         .setLabel(ZhTwStrings.balanceAdjustAdd)
-        .setStyle(3 as any);
+        .setStyle(ButtonStyle.Success);
       const deductBtn = new ButtonBuilder()
         .setCustomId('admin_token_modal_deduct')
         .setLabel(ZhTwStrings.balanceAdjustDeduct)
-        .setStyle(4 as any);
+        .setStyle(ButtonStyle.Danger);
       const setBtn = new ButtonBuilder()
         .setCustomId('admin_token_modal_set')
         .setLabel(ZhTwStrings.balanceAdjustSet)
-        .setStyle(1 as any);
+        .setStyle(ButtonStyle.Primary);
 
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(addBtn, deductBtn, setBtn);
       await interaction.editWithComponents(embed, [row]);
@@ -226,14 +227,16 @@ export class TokenManagementHandler extends BaseAdminHandler {
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.tokenTitle)
         .setDescription(
-          `調整成功！\n調整前：${adjustResult.previousTokens}\n調整後：${adjustResult.newTokens}`,
+          ZhTwStrings.tokenSuccessAdjust
+            .replace('{before}', String(adjustResult.previousTokens))
+            .replace('{after}', String(adjustResult.newTokens)),
         )
         .setColor(Colors.PRIMARY);
       await interaction.editEmbed(embed);
     } else {
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.tokenTitle)
-        .setDescription('調整失敗：' + result.getError().message)
+        .setDescription(ZhTwStrings.tokenErrorPrefix + result.getError().message)
         .setColor(Colors.PRIMARY);
       await interaction.editEmbed(embed);
     }

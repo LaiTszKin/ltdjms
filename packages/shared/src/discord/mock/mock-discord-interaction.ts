@@ -12,6 +12,7 @@ export class MockDiscordInteraction implements DiscordInteraction {
   private readonly _ephemeral: boolean;
   private readonly _customId: string;
   private _isAdministrator: boolean;
+  private readonly _interactionType: 'button' | 'modalSubmit' | 'chatInput' | 'stringSelect';
   private _acknowledged = false;
 
   private readonly _replyMessages: string[] = [];
@@ -26,6 +27,7 @@ export class MockDiscordInteraction implements DiscordInteraction {
     ephemeral = false,
     customId = '',
     isAdmin = false,
+    interactionType: 'button' | 'modalSubmit' | 'chatInput' | 'stringSelect' = 'button',
   ) {
     this._guildId = guildId;
     this._userId = userId;
@@ -33,6 +35,7 @@ export class MockDiscordInteraction implements DiscordInteraction {
     this._ephemeral = ephemeral;
     this._customId = customId;
     this._isAdministrator = isAdmin;
+    this._interactionType = interactionType;
   }
 
   getChannelId(): string {
@@ -111,7 +114,7 @@ export class MockDiscordInteraction implements DiscordInteraction {
   }
 
   isButton(): boolean {
-    return true;
+    return this._interactionType === 'button';
   }
 
   isModalSubmit(): boolean {

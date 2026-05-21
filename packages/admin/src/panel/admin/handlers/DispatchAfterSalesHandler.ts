@@ -83,10 +83,6 @@ export class DispatchAfterSalesHandler extends BaseAdminHandler {
     interaction: DiscordInteraction,
     action: 'add' | 'remove',
   ): Promise<void> {
-    const raw = interaction.getHook() as {
-      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<UserSelectMenuBuilder>[] }) => Promise<void>;
-    };
-
     const customId = action === 'add' ? 'admin_dispatch_add_select' : 'admin_dispatch_remove_select';
     const desc = action === 'add' ? ZhTwStrings.dispatchSelectMember : ZhTwStrings.dispatchSelectRemove;
     const title = action === 'add' ? ZhTwStrings.dispatchAddBtn : ZhTwStrings.dispatchRemoveBtn;
@@ -101,16 +97,15 @@ export class DispatchAfterSalesHandler extends BaseAdminHandler {
       .setPlaceholder(title);
 
     const row = new ActionRowBuilder<UserSelectMenuBuilder>().addComponents(select);
-    await raw.editReply({ embeds: [embed], components: [row] });
+    await interaction.editWithComponents(embed, [row]);
   }
 
   private async handleAddStaff(
     interaction: DiscordInteraction,
     guildId: string,
   ): Promise<void> {
-    const raw = interaction.getHook() as { values?: string[] };
-    const selectedIds = raw.values;
-    if (!selectedIds || selectedIds.length === 0) {
+    const selectedIds = interaction.getSelectedValues();
+    if (selectedIds.length === 0) {
       await this.showStaffList(interaction, guildId);
       return;
     }
@@ -133,9 +128,8 @@ export class DispatchAfterSalesHandler extends BaseAdminHandler {
     interaction: DiscordInteraction,
     guildId: string,
   ): Promise<void> {
-    const raw = interaction.getHook() as { values?: string[] };
-    const selectedIds = raw.values;
-    if (!selectedIds || selectedIds.length === 0) {
+    const selectedIds = interaction.getSelectedValues();
+    if (selectedIds.length === 0) {
       await this.showStaffList(interaction, guildId);
       return;
     }

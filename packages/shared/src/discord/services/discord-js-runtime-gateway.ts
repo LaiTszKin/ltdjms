@@ -58,7 +58,8 @@ export class DiscordJsRuntimeGateway implements DiscordRuntimeGateway {
     const client = this.requireReadyClient() as Client;
     const guild = client.guilds.cache.get(guildId);
     if (!guild) return null;
-    return guild.channels.cache.get(threadId) ?? null;
+    // Thread channels may be in threads.cache (especially archived threads)
+    return guild.channels.cache.get(threadId) ?? (guild as { threads?: { cache: Map<string, unknown> } }).threads?.cache.get(threadId) ?? null;
   }
 
   async sendDM(userId: string, message: Record<string, unknown>): Promise<boolean> {

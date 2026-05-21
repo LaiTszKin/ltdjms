@@ -22,6 +22,11 @@ export class GameTokenAdjustHandler {
     interaction: DiscordInteraction,
     context: DiscordContext,
   ): Promise<void> {
+    if (!interaction.isAdministrator()) {
+      await interaction.reply('此操作需要管理員權限');
+      return;
+    }
+
     const guildId = Number(interaction.getGuildId());
     const actorId = Number(interaction.getUserId());
 

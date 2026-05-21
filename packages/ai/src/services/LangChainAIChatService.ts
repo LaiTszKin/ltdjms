@@ -17,7 +17,7 @@ import {
   type StreamChunk,
 } from './ai-chat-service.js';
 import { type Result, DomainError, ok, err } from '@ltdjms/shared';
-import type { DiscordRuntimeGateway } from '@ltdjms/shared';
+import type { DiscordRuntimeGateway, DomainEventPublisher, DomainEvent } from '@ltdjms/shared';
 import { LangChainExceptionMapper } from './LangChainExceptionMapper.js';
 import type { PromptLoader, SystemPrompt } from '../prompts/prompt-loader.js';
 import { ToolCallerAuthorizationGuard } from '../tools/ToolCallerAuthorizationGuard.js';
@@ -67,6 +67,7 @@ export class LangChainAIChatService implements AIChatService {
     private readonly interceptor?: ToolExecutionInterceptor,
     private readonly toolCallHistory?: InMemoryToolCallHistory,
     private readonly runtimeGateway?: DiscordRuntimeGateway,
+    private readonly eventPublisher?: DomainEventPublisher,
     private readonly exceptionMapper: LangChainExceptionMapper = new LangChainExceptionMapper(),
   ) {
     this.config = config;
@@ -333,6 +334,22 @@ export class LangChainAIChatService implements AIChatService {
       // Final completion signal (used by non-agent mode)
       if (!agentEnabled) {
         handler.onChunk(totalContent || '', true, null);
+      }
+
+      // Publish AIMessageEvent after successful completion (INT-011)
+      if (this.eventPublisher && totalContent) {
+        const event: DomainEvent = {
+          eventType: 'ai_message' as const,
+          guildId,
+          channelId,
+          threadId: null,
+          userId,
+          userMessage,
+          aiResponse: totalContent,
+          timestamp: new Date(),
+          messageId: messageId ? Number(messageId) : 0,
+        } as unknown as DomainEvent;
+        this.eventPublisher.publish(event);
       }
     } catch (error) {
       const domainError = this.exceptionMapper.map(error);

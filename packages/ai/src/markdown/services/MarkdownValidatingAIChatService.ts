@@ -10,6 +10,7 @@ import { MarkdownAutoFixer } from '../autofix/MarkdownAutoFixer.js';
 import { CommonMarkValidator } from '../validation/CommonMarkValidator.js';
 import { DiscordMarkdownPaginator } from './DiscordMarkdownPaginator.js';
 import { applyMarkdownPipeline } from './markdown-pipeline.js';
+import { MessageChunkAccumulator } from '../../services/message-chunk-accumulator.js';
 
 /**
  * Decorator that wraps an AIChatService with Markdown validation pipeline.
@@ -154,7 +155,7 @@ export class MarkdownValidatingAIChatService implements AIChatService {
     handler: StreamingResponseHandler,
   ): StreamingResponseHandler {
     // Buffer for accumulating CONTENT chunks
-    let contentBuffer: string[] = [];
+    const contentBuffer = new MessageChunkAccumulator();
 
     /**
      * Flushes accumulated CONTENT chunks through the validation pipeline
@@ -164,10 +165,10 @@ export class MarkdownValidatingAIChatService implements AIChatService {
       isComplete: boolean,
       error: DomainError | null,
     ): void => {
-      if (contentBuffer.length === 0) return;
+      if (contentBuffer.isEmpty()) return;
 
-      const fullContent = contentBuffer.join('');
-      contentBuffer = [];
+      const fullContent = contentBuffer.getContent();
+      contentBuffer.clear();
 
       if (!fullContent) return;
 
@@ -205,7 +206,7 @@ export class MarkdownValidatingAIChatService implements AIChatService {
 
         // Accumulate CONTENT chunks; validate full content on completion
         if (chunk) {
-          contentBuffer.push(chunk);
+          contentBuffer.add(chunk);
         }
 
         if (isComplete) {

@@ -1,12 +1,12 @@
 import { ZhTwStrings } from '../../../i18n/zh-TW.js';
 import { Colors } from '../../../constants/colors.js';
-import type { GuildCurrencyConfig } from '@ltdjms/economy';
+import type { GuildCurrencyConfig, DiceGame1Config, DiceGame2Config } from '@ltdjms/economy';
 
 /**
  * Generic embed view builder for admin panels.
  * Provides structured data that Discord embed builders consume.
- * Only the main panel embed is built by this factory. Other views are
- * constructed inline by their respective handlers.
+ * Handles the main panel embed, game settings embeds, and other
+ * admin panel views.
  *
  * @see AdminProductPanelViewFactory — product-specific views
  */
@@ -50,6 +50,97 @@ export class AdminPanelViewFactory {
         { id: 'admin_escortprice', label: ZhTwStrings.adminPanelBtnEscortPrice, style: 1, disabled: false },
         { id: 'admin_escortcatalog', label: ZhTwStrings.adminPanelBtnEscortCatalog, style: 1, disabled: false },
       ],
+    };
+  }
+
+  /**
+   * Builds the Dice Game 1 configuration embed data.
+   * Displays min/max tokens and reward per dice value.
+   */
+  buildDiceGame1ConfigEmbed(config: DiceGame1Config): {
+    title: string;
+    description: string;
+    color: number;
+  } {
+    return {
+      title: ZhTwStrings.gameDice1Title,
+      description: ZhTwStrings.gameDice1Fields
+        .replace('{min}', String(config.minTokensPerPlay))
+        .replace('{max}', String(config.maxTokensPerPlay))
+        .replace('{reward}', String(config.rewardPerDiceValue)),
+      color: Colors.WARNING,
+    };
+  }
+
+  /**
+   * Builds the Dice Game 2 configuration embed data.
+   * Displays min/max tokens, multipliers, and bonuses.
+   */
+  buildDiceGame2ConfigEmbed(config: DiceGame2Config): {
+    title: string;
+    description: string;
+    color: number;
+  } {
+    return {
+      title: ZhTwStrings.gameDice2Title,
+      description: ZhTwStrings.gameDice2Fields
+        .replace('{min}', String(config.minTokensPerPlay))
+        .replace('{max}', String(config.maxTokensPerPlay))
+        .replace('{straight}', String(config.straightMultiplier))
+        .replace('{base}', String(config.baseMultiplier))
+        .replace('{lowTriple}', String(config.tripleLowBonus))
+        .replace('{highTriple}', String(config.tripleHighBonus)),
+      color: Colors.WARNING,
+    };
+  }
+
+  /**
+   * Builds the game overview embed data with both dice game configs.
+   * Handles unconfigured games by showing "尚未設定".
+   */
+  buildGameOverviewEmbed(
+    dice1Config: DiceGame1Config | null,
+    dice2Config: DiceGame2Config | null,
+  ): {
+    title: string;
+    description: string;
+    color: number;
+  } {
+    const descriptionLines: string[] = [];
+    descriptionLines.push(`**${ZhTwStrings.gameDiceGame1}**`);
+
+    if (dice1Config) {
+      descriptionLines.push(
+        ZhTwStrings.gameDice1Fields
+          .replace('{min}', String(dice1Config.minTokensPerPlay))
+          .replace('{max}', String(dice1Config.maxTokensPerPlay))
+          .replace('{reward}', String(dice1Config.rewardPerDiceValue)),
+      );
+    } else {
+      descriptionLines.push('尚未設定');
+    }
+
+    descriptionLines.push('');
+    descriptionLines.push(`**${ZhTwStrings.gameDiceGame2}**`);
+
+    if (dice2Config) {
+      descriptionLines.push(
+        ZhTwStrings.gameDice2Fields
+          .replace('{min}', String(dice2Config.minTokensPerPlay))
+          .replace('{max}', String(dice2Config.maxTokensPerPlay))
+          .replace('{straight}', String(dice2Config.straightMultiplier))
+          .replace('{base}', String(dice2Config.baseMultiplier))
+          .replace('{lowTriple}', String(dice2Config.tripleLowBonus))
+          .replace('{highTriple}', String(dice2Config.tripleHighBonus)),
+      );
+    } else {
+      descriptionLines.push('尚未設定');
+    }
+
+    return {
+      title: ZhTwStrings.gameSelectTitle,
+      description: descriptionLines.join('\n'),
+      color: Colors.WARNING,
     };
   }
 }

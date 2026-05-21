@@ -105,14 +105,15 @@ Out of scope: 其他 repository、service 邏輯
   - `markExpiredIfPending`: WHERE `order_number=? AND status='PENDING_PAYMENT' AND paid_at IS NULL AND expired_at IS NULL AND COALESCE(expire_at, created_at + INTERVAL '7 days') <= ?`
   - Verify: 每個方法單獨測試 conditional UPDATE 行為（條件不匹配時回傳 null / rowsAffected=0）
 - T4.3 [ ] **`packages/shop/src/persistence/drizzle-fiat-order-repository.ts`** — 實作 claim/release 方法（`processing_at` lightweight row-level lock）
-  - `claimFulfillmentProcessing`: `UPDATE ... SET fulfillment_processing_at=? WHERE order_number=? AND fulfilled_at IS NULL AND fulfillment_processing_at IS NULL`，回傳 `rowsAffected > 0`
+  - `claimFulfillmentProcessing`: `UPDATE ... SET fulfillment_processing_at=? WHERE order_number=? AND fulfilled_at IS NULL AND (fulfillment_processing_at IS NULL OR fulfillment_processing_at < now() - interval '5 minutes')`，回傳 `rowsAffected > 0`
   - `releaseFulfillmentProcessing`: `UPDATE ... SET fulfillment_processing_at=NULL WHERE order_number=? AND fulfilled_at IS NULL`
-  - `claimAdminNotificationProcessing`: `UPDATE ... SET admin_notification_processing_at=? WHERE order_number=? AND admin_notified_at IS NULL AND admin_notification_processing_at IS NULL`
+  - `claimAdminNotificationProcessing`: `UPDATE ... SET admin_notification_processing_at=? WHERE order_number=? AND admin_notified_at IS NULL AND (admin_notification_processing_at IS NULL OR admin_notification_processing_at < now() - interval '5 minutes')`
   - `releaseAdminNotificationProcessing`: `UPDATE ... SET admin_notification_processing_at=NULL WHERE order_number=? AND admin_notified_at IS NULL`
-  - `claimReconciliationProcessing`: `UPDATE ... SET reconciliation_processing_at=? WHERE order_number=? AND status='PENDING_PAYMENT' AND paid_at IS NULL AND reconciliation_processing_at IS NULL AND COALESCE(expire_at, created_at + INTERVAL '7 days') > ?`（加上 expire_at 檢查避免 claim 已過期訂單）
+  - `claimReconciliationProcessing`: `UPDATE ... SET reconciliation_processing_at=? WHERE order_number=? AND status='PENDING_PAYMENT' AND paid_at IS NULL AND (reconciliation_processing_at IS NULL OR reconciliation_processing_at < now() - interval '5 minutes') AND COALESCE(expire_at, created_at + INTERVAL '7 days') > ?`
   - `releaseReconciliationProcessing`: `UPDATE ... SET reconciliation_processing_at=NULL WHERE order_number=? AND paid_at IS NULL`
   - `markReconciliationAttempted`: `UPDATE ... SET reconciliation_processing_at=NULL, reconciliation_attempt_count=?, reconciliation_next_attempt_at=? WHERE order_number=? AND paid_at IS NULL RETURNING *`
-  - Verify: 並發 claim 競爭整合測試（兩個同時 claim，只有一個成功）
+  - 實作細節：Claim 條件包含 `OR processing_at < now() - interval '5 minutes'` 以自動釋放僵死鎖定（crash recovery）。5 分鐘的選擇理由為 post-payment pipeline 最長執行時間 < 30 秒，5 分鐘足以區分真正僵死鎖定與慢查詢。
+  - Verify: 並發 claim 競爭整合測試（兩個同時 claim，只有一個成功）；模擬 crash 場景驗證 5 分鐘後鎖定被正確釋放
 - T4.4 [ ] **`packages/shop/src/persistence/drizzle-fiat-order-repository.ts`** — 實作查詢方法
   - `findOrdersPendingPostPayment(limit)`: WHERE `status='PAID' AND fulfilled_at IS NULL AND fulfillment_processing_at IS NULL ORDER BY paid_at ASC NULLS LAST, created_at ASC LIMIT ?`
   - `findOrdersPendingExpiry(notAfter, limit)`: WHERE `status='PENDING_PAYMENT' AND paid_at IS NULL AND reconciliation_processing_at IS NULL AND COALESCE(expire_at, created_at + INTERVAL '7 days') <= ?`

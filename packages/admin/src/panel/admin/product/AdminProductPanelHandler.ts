@@ -208,8 +208,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
       );
     }
 
-    const raw = interaction.getHook() as { showModal: (m: ModalBuilder) => Promise<void> };
-    await raw.showModal(modal);
+    await interaction.showModal(modal);
   }
 
   private async showEditProductModal(
@@ -250,23 +249,18 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
       );
     }
 
-    const raw = interaction.getHook() as { showModal: (m: ModalBuilder) => Promise<void> };
-    await raw.showModal(modal);
+    await interaction.showModal(modal);
   }
 
   private async handleCreateProduct(
     interaction: DiscordInteraction,
     guildId: string,
   ): Promise<void> {
-    const raw = interaction.getHook() as {
-      fields: { getTextInputValue: (id: string) => string };
-    };
-
-    const name = raw.fields.getTextInputValue(ZhTwStrings.productModalName).trim();
-    const description = raw.fields.getTextInputValue(ZhTwStrings.productModalDesc).trim() || null;
-    const currencyPriceStr = raw.fields.getTextInputValue(ZhTwStrings.productModalPrice).trim();
-    const fiatPriceStr = raw.fields.getTextInputValue(ZhTwStrings.productModalFiatPrice).trim();
-    const imageUrl = raw.fields.getTextInputValue(ZhTwStrings.productModalImageUrl).trim() || null;
+    const name = interaction.getTextInputValue(ZhTwStrings.productModalName).trim();
+    const description = interaction.getTextInputValue(ZhTwStrings.productModalDesc).trim() || null;
+    const currencyPriceStr = interaction.getTextInputValue(ZhTwStrings.productModalPrice).trim();
+    const fiatPriceStr = interaction.getTextInputValue(ZhTwStrings.productModalFiatPrice).trim();
+    const imageUrl = interaction.getTextInputValue(ZhTwStrings.productModalImageUrl).trim() || null;
 
     if (!name) {
       const embed = new EmbedBuilder()
@@ -337,15 +331,11 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     guildId: string,
     productId: number,
   ): Promise<void> {
-    const raw = interaction.getHook() as {
-      fields: { getTextInputValue: (id: string) => string };
-    };
-
-    const name = raw.fields.getTextInputValue(ZhTwStrings.productModalName).trim();
-    const description = raw.fields.getTextInputValue(ZhTwStrings.productModalDesc).trim() || null;
-    const currencyPriceStr = raw.fields.getTextInputValue(ZhTwStrings.productModalPrice).trim();
-    const fiatPriceStr = raw.fields.getTextInputValue(ZhTwStrings.productModalFiatPrice).trim();
-    const imageUrl = raw.fields.getTextInputValue(ZhTwStrings.productModalImageUrl).trim() || null;
+    const name = interaction.getTextInputValue(ZhTwStrings.productModalName).trim();
+    const description = interaction.getTextInputValue(ZhTwStrings.productModalDesc).trim() || null;
+    const currencyPriceStr = interaction.getTextInputValue(ZhTwStrings.productModalPrice).trim();
+    const fiatPriceStr = interaction.getTextInputValue(ZhTwStrings.productModalFiatPrice).trim();
+    const imageUrl = interaction.getTextInputValue(ZhTwStrings.productModalImageUrl).trim() || null;
 
     if (!name) {
       const embed = new EmbedBuilder()
@@ -424,10 +414,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(confirmBtn, cancelBtn);
 
-    const raw = interaction.getHook() as {
-      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }) => Promise<void>;
-    };
-    await raw.editReply({ embeds: [embed], components: [row] });
+    await interaction.editWithComponents(embed, [row]);
   }
 
   private async handleDeleteProduct(
@@ -493,8 +480,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
       );
     }
 
-    const raw = interaction.getHook() as { showModal: (m: ModalBuilder) => Promise<void> };
-    await raw.showModal(modal);
+    await interaction.showModal(modal);
   }
 
   private async handleGenerateCodes(
@@ -502,11 +488,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     guildId: string,
     productId: number,
   ): Promise<void> {
-    const raw = interaction.getHook() as {
-      fields: { getTextInputValue: (id: string) => string };
-    };
-
-    const countStr = raw.fields.getTextInputValue(ZhTwStrings.generateCodesCountLabel);
+    const countStr = interaction.getTextInputValue(ZhTwStrings.generateCodesCountLabel);
     const count = parseInt(countStr, 10);
 
     if (isNaN(count) || count <= 0 || count > 100) {
@@ -518,8 +500,8 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
       return;
     }
 
-    const note = raw.fields.getTextInputValue(ZhTwStrings.generateCodesNoteLabel).trim();
-    const daysStr = raw.fields.getTextInputValue(ZhTwStrings.generateCodesDaysLabel).trim();
+    const note = interaction.getTextInputValue(ZhTwStrings.generateCodesNoteLabel).trim();
+    const daysStr = interaction.getTextInputValue(ZhTwStrings.generateCodesDaysLabel).trim();
 
     let expiresAt: Date | null = null;
     if (daysStr) {
@@ -584,8 +566,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
 
     modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
 
-    const raw = interaction.getHook() as { showModal: (m: ModalBuilder) => Promise<void> };
-    await raw.showModal(modal);
+    await interaction.showModal(modal);
   }
 
   private async handleSetFiatPrice(
@@ -593,11 +574,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     guildId: string,
     productId: number,
   ): Promise<void> {
-    const raw = interaction.getHook() as {
-      fields: { getTextInputValue: (id: string) => string };
-    };
-
-    const fiatPriceStr = raw.fields.getTextInputValue(ZhTwStrings.productModalFiatPrice).trim();
+    const fiatPriceStr = interaction.getTextInputValue(ZhTwStrings.productModalFiatPrice).trim();
     const fiatPriceTwd = fiatPriceStr ? parseInt(fiatPriceStr, 10) : null;
 
     if (fiatPriceTwd === null || isNaN(fiatPriceTwd) || fiatPriceTwd < 0) {
@@ -696,10 +673,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
       const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(generateCodesBtn, editBtn, fiatPriceBtn);
       const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(deleteBtn, backBtn);
 
-      const raw = interaction.getHook() as {
-        editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }) => Promise<void>;
-      };
-      await raw.editReply({ embeds: [embed], components: [row1, row2] });
+      await interaction.editWithComponents(embed, [row1, row2]);
     } catch (err) {
       await this.errorHandler.handle(err, interaction);
     }
@@ -779,10 +753,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
         }
       }
 
-      const raw = interaction.getHook() as {
-        editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }) => Promise<void>;
-      };
-      await raw.editReply({ embeds: [embed], components: rows });
+      await interaction.editWithComponents(embed, rows);
     } catch (err) {
       await this.errorHandler.handle(err, interaction);
     }

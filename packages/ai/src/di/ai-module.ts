@@ -308,6 +308,7 @@ export function initializeAIModule(): void {
     toolExecutionInterceptor,
     toolCallHistory,
     runtimeGateway,
+    eventPublisher,
   );
   container.registerInstance(AI_TOKENS.LangChainAIChatService, langChainService);
 

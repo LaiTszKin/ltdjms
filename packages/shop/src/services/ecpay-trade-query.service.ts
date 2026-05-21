@@ -2,13 +2,13 @@ import { buildCheckMacValue } from '../crypto/ecpay-checkmac.js';
 import { javaUrlEncode } from '../crypto/url-encoder.js';
 import type { EnvironmentConfig } from '@ltdjms/shared';
 import { Result, ok, err, DomainError } from '@ltdjms/shared';
-import { fetch, Dispatcher } from 'undici';
+import { fetch, Agent } from 'undici';
 import pino from 'pino';
 
 const STAGE_ENDPOINT = 'https://payment-stage.ecpay.com.tw/Cashier/QueryTradeInfo/V5';
 const PROD_ENDPOINT = 'https://payment.ecpay.com.tw/Cashier/QueryTradeInfo/V5';
 
-const keepAliveDispatcher = new Dispatcher();
+const keepAliveDispatcher = new Agent({ keepAliveTimeout: 10 });
 
 export interface QueryTradeResult {
   orderNumber: string;

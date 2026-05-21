@@ -63,11 +63,10 @@ export class DomainEventPublisher {
   }
 
   /**
-   * Publishes an event to all registered listeners asynchronously.
-   * Listeners are dispatched via setImmediate so no single listener blocks
-   * subsequent listeners. All listeners must be registered via {@link register()};
-   * listeners attached directly via emitter.on() bypass error handling.
-   * Exceptions from individual listeners are caught and logged but do not propagate.
+   * Publishes an event to all registered listeners synchronously.
+   * Listeners are invoked in registration order. Exceptions from individual
+   * listeners are caught and logged but do not propagate to subsequent listeners.
+   * Matches spec R6.1 "同步分發，所有已註冊的 listener 依序被呼叫".
    * @param event - the domain event to publish
    */
   publish(event: DomainEvent): void {
@@ -79,16 +78,14 @@ export class DomainEventPublisher {
     this.logger.debug({ event }, 'Publishing event');
 
     for (const listener of listeners) {
-      setImmediate(() => {
-        try {
-          listener(event);
-        } catch (err) {
-          this.logger.error(
-            { eventName: typeof event, err },
-            '[DomainEventPublisher] Error handling event',
-          );
-        }
-      });
+      try {
+        listener(event);
+      } catch (err) {
+        this.logger.error(
+          { eventName: typeof event, err },
+          '[DomainEventPublisher] Error handling event',
+        );
+      }
     }
   }
 

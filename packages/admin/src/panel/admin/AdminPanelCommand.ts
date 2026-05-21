@@ -29,6 +29,8 @@ export class AdminPanelCommand implements CommandHandler {
     interaction: DiscordInteraction,
     context: DiscordContext,
   ): Promise<void> {
+    await interaction.deferReply();
+
     // Permission check (second layer)
     if (!this.hasAdminPermission(interaction)) {
       await interaction.reply(ZhTwStrings.permissionAdminRequired);

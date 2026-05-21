@@ -1,17 +1,22 @@
 import { encryptAES, decryptAES } from '../crypto/ecpay-aes.js';
 import type { EnvironmentConfig } from '@ltdjms/shared';
 import { Result, ok, err, DomainError } from '@ltdjms/shared';
-import { fetch, Dispatcher } from 'undici';
+import { fetch, Agent } from 'undici';
 import crypto from 'node:crypto';
 import pino from 'pino';
 
 const STAGE_ENDPOINT = 'https://ecpayment-stage.ecpay.com.tw/1.0.0/Cashier/GenPaymentCode';
 const PROD_ENDPOINT = 'https://ecpayment.ecpay.com.tw/1.0.0/Cashier/GenPaymentCode';
+// ECPay official stage (test) credentials — these are PUBLIC test credentials.
+// They are embedded here for stage-mode detection: the application compares
+// the user's .env values against these constants and refuses to start in
+// production mode (ECPAY_STAGE_MODE=false) if stage credentials are detected.
+// DO NOT add production credentials here — they belong in .env only.
 const OFFICIAL_STAGE_MERCHANT_ID = '3002607';
 const OFFICIAL_STAGE_HASH_KEY = 'pwFHCqoQZGmho4w6';
 const OFFICIAL_STAGE_HASH_IV = 'EkRm7iFT261dpevs';
 
-const keepAliveDispatcher = new Dispatcher();
+const keepAliveDispatcher = new Agent({ keepAliveTimeout: 10 });
 
 function pad2(n: number): string {
   return n.toString().padStart(2, '0');
@@ -213,6 +218,16 @@ export class EcpayCvsPaymentService {
   private static sequenceCounter = 0;
   private static lastTimestampMs = 0;
 
+  /**
+   * Generates a unique MerchantTradeNo in format `FD{yyMMddHHmmssSSS}{3-digit-seq}`.
+   *
+   * Thread-safety in Node.js: this method is fully synchronous (no await points),
+   * so it runs atomically within a single event-loop tick. Two concurrent async
+   * callers cannot interleave inside this method. Safe for single-process.
+   *
+   * Multi-process: static counters are process-local — if horizontal scaling is
+   * needed, replace with Redis INCR or crypto.randomUUID()-based generation.
+   */
   private generateMerchantTradeNo(): string {
     const now = new Date();
     const yy = pad2(now.getFullYear() % 100);
