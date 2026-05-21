@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   Ok,
   DomainError,
+  type DomainEventPublisher,
 } from '@ltdjms/shared';
 import { GameConfigManagementFacade } from '../GameConfigManagementFacade.js';
 import type { DiceConfigService } from '@ltdjms/economy';
@@ -10,6 +11,7 @@ import type { DiceGame1Config, DiceGame2Config } from '@ltdjms/economy';
 describe('GameConfigManagementFacade', () => {
   let facade: GameConfigManagementFacade;
   let mockService: Partial<DiceConfigService>;
+  let mockEventPublisher: Partial<DomainEventPublisher>;
 
   const guildId = '1';
 
@@ -20,9 +22,13 @@ describe('GameConfigManagementFacade', () => {
       upsertDice1Config: vi.fn(),
       upsertDice2Config: vi.fn(),
     };
+    mockEventPublisher = {
+      publish: vi.fn(),
+    };
 
     facade = new GameConfigManagementFacade(
       mockService as DiceConfigService,
+      mockEventPublisher as DomainEventPublisher,
     );
   });
 

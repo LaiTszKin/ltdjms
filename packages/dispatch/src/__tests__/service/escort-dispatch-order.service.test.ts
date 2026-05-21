@@ -97,21 +97,35 @@ function createMockGateway(): DiscordRuntimeGateway {
   };
 }
 
+function createMockCatalogRepo(): EscortOptionCatalogRepository {
+  return {
+    findAll: vi.fn().mockResolvedValue([]),
+    findByCode: vi.fn().mockResolvedValue(null),
+    existsByCode: vi.fn().mockResolvedValue(true),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+  };
+}
+
 describe('EscortDispatchOrderService', () => {
   let repo: ReturnType<typeof createMockRepo>;
   let gateway: ReturnType<typeof createMockGateway>;
   let service: EscortDispatchOrderService;
 
+  let mockCatalogRepo: EscortOptionCatalogRepository;
+
   beforeEach(() => {
     repo = createMockRepo();
     gateway = createMockGateway();
+    mockCatalogRepo = createMockCatalogRepo();
     // Gateway member lookup must succeed by default, otherwise all create* methods fail
     vi.mocked(gateway.retrieveMemberById).mockResolvedValue({} as never);
     service = new EscortDispatchOrderService(
       repo,
+      mockCatalogRepo,
       undefined, // orderNumberGenerator (default)
       FIXED_CLOCK,
-      undefined, // catalogRepository
       undefined, // afterSalesStaffService
       undefined, // logger
       undefined, // notificationService
@@ -161,7 +175,8 @@ describe('EscortDispatchOrderService', () => {
       // Service without gateway
       const noGatewayService = new EscortDispatchOrderService(
         repo,
-        undefined, FIXED_CLOCK, undefined, undefined, undefined, undefined, undefined,
+        mockCatalogRepo,
+        undefined, FIXED_CLOCK, undefined, undefined, undefined, undefined,
       );
       vi.spyOn(repo, 'existsByOrderNumber').mockResolvedValue(false);
       vi.spyOn(repo, 'save').mockResolvedValue(makeOrder());
@@ -199,8 +214,9 @@ describe('EscortDispatchOrderService', () => {
     function createServiceWithCatalog(): EscortDispatchOrderService {
       return new EscortDispatchOrderService(
         repo,
+        mockCatalogRepo,
         undefined, FIXED_CLOCK,
-        mockCatalogRepo, undefined, undefined, undefined, gateway,
+        undefined, undefined, undefined, gateway,
       );
     }
 
@@ -467,8 +483,9 @@ describe('EscortDispatchOrderService', () => {
     function createServiceWithStaff(): EscortDispatchOrderService {
       return new EscortDispatchOrderService(
         repo,
+        mockCatalogRepo,
         undefined, FIXED_CLOCK,
-        undefined, afterSalesStaffService, undefined, undefined, gateway,
+        afterSalesStaffService, undefined, undefined, gateway,
       );
     }
 

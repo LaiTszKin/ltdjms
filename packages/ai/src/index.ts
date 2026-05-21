@@ -2,6 +2,7 @@
 export type {
   AIAgentChannelConfigChangedEvent,
   AgentFailedEvent,
+  AIChannelConfigChangedEvent,
 } from './events/index.js';
 
 // Config

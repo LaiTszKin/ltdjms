@@ -1,4 +1,4 @@
-import { ChannelType, type Channel, type Guild } from 'discord.js';
+import { ChannelType, type Channel } from 'discord.js';
 import { Decision, Route, Source } from '../ai-chat-service.js';
 import { AIAgentChannelConfigService } from './agent-config-service.js';
 import { AIChannelRestrictionService } from './channel-restriction-service.js';
@@ -20,7 +20,6 @@ export function resolveRestrictionChannelId(channel: Channel): string {
  */
 export function resolveCategoryId(
   channel: Channel,
-  guild: Guild,
 ): string | null {
   let targetChannel = channel;
 
@@ -65,13 +64,11 @@ export class AIChatMentionRoutingDecision {
    * Decides the route for a given channel.
    *
    * @param guildId - The guild ID
-   * @param channelId - The original channel ID (may be a thread)
    * @param restrictionChannelId - The resolved channel ID for restrictions (thread → parent)
    * @param categoryId - The category ID (if any)
    */
   async decide(
     guildId: string,
-    channelId: string,
     restrictionChannelId: string,
     categoryId: string | null,
   ): Promise<Decision> {

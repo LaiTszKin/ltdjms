@@ -71,12 +71,17 @@ export class DiceGame1Service {
     const previousBalance = previousBalanceResult.isOk() ? previousBalanceResult.getValue().balance : 0;
 
     // Apply reward via GameRewardService
-    const newBalance = await this.gameRewardService.creditReward(
+    const rewardResult = await this.gameRewardService.creditReward(
       guildId,
       userId,
       totalReward,
       CurrencyTransactionSource.DICE_GAME_1_WIN,
     );
+
+    if (rewardResult.isErr()) {
+      return new Err(rewardResult.getError());
+    }
+    const newBalance = rewardResult.getValue();
 
     return new Ok({
       guildId,

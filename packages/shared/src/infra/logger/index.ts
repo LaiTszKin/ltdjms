@@ -1,1 +1,1 @@
-export { createRootLogger } from './logger.js';
+export { createRootLogger, createChildLogger } from './logger.js';

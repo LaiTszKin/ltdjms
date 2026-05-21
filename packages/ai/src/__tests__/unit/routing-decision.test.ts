@@ -70,7 +70,7 @@ describe('AIChatMentionRoutingDecision', () => {
   it('should route to AGENT_ROUTE when agent is enabled (priority 1)', async () => {
     vi.spyOn(agentConfigService, 'isAgentEnabled').mockReturnValue(true);
 
-    const result = await decision.decide('guild-1', 'channel-3', 'channel-3', null);
+    const result = await decision.decide('guild-1', 'channel-3', null);
     expect(result.route).toBe(Route.AGENT_ROUTE);
     expect(result.source).toBe(Source.AGENT_CONFIG);
   });
@@ -78,7 +78,7 @@ describe('AIChatMentionRoutingDecision', () => {
   it('should route to AI_CHAT_ROUTE when channel is allowlisted (priority 2)', async () => {
     vi.spyOn(agentConfigService, 'isAgentEnabled').mockReturnValue(false);
 
-    const result = await decision.decide('guild-1', 'channel-1', 'channel-1', null);
+    const result = await decision.decide('guild-1', 'channel-1', null);
     expect(result.route).toBe(Route.AI_CHAT_ROUTE);
     expect(result.source).toBe(Source.CHANNEL_ALLOWLIST);
   });
@@ -87,7 +87,7 @@ describe('AIChatMentionRoutingDecision', () => {
     vi.spyOn(agentConfigService, 'isAgentEnabled').mockReturnValue(false);
 
     // channel-2 is not in channel allowlist, but belongs to cat-1
-    const result = await decision.decide('guild-1', 'channel-2', 'channel-2', 'cat-1');
+    const result = await decision.decide('guild-1', 'channel-2', 'cat-1');
     expect(result.route).toBe(Route.AI_CHAT_ROUTE);
     expect(result.source).toBe(Source.CATEGORY_ALLOWLIST);
   });
@@ -95,7 +95,7 @@ describe('AIChatMentionRoutingDecision', () => {
   it('should route to DENY when no allowlist and no agent config', async () => {
     vi.spyOn(agentConfigService, 'isAgentEnabled').mockReturnValue(false);
 
-    const result = await decision.decide('guild-1', 'channel-99', 'channel-99', null);
+    const result = await decision.decide('guild-1', 'channel-99', null);
     expect(result.route).toBe(Route.DENY);
     expect(result.source).toBe(Source.NO_ALLOWLIST);
   });
@@ -105,7 +105,7 @@ describe('AIChatMentionRoutingDecision', () => {
       new Error('Redis unavailable'),
     );
 
-    const result = await decision.decide('guild-1', 'channel-99', 'channel-99', null);
+    const result = await decision.decide('guild-1', 'channel-99', null);
     expect(result.route).toBe(Route.DENY);
     expect(result.source).toBe(Source.AGENT_CONFIG_UNAVAILABLE);
   });
@@ -114,14 +114,14 @@ describe('AIChatMentionRoutingDecision', () => {
     vi.spyOn(agentConfigService, 'isAgentEnabled').mockReturnValue(true);
 
     // Thread channel "thread-1" has parent "channel-3" which has agent enabled
-    const result = await decision.decide('guild-1', 'thread-1', 'channel-3', null);
+    const result = await decision.decide('guild-1', 'channel-3', null);
     expect(result.route).toBe(Route.AGENT_ROUTE);
   });
 
   it('should include detail string for debugging', async () => {
     vi.spyOn(agentConfigService, 'isAgentEnabled').mockReturnValue(true);
 
-    const result = await decision.decide('guild-1', 'channel-3', 'channel-3', null);
+    const result = await decision.decide('guild-1', 'channel-3', null);
     expect(result.detail).toBeTruthy();
     expect(typeof result.detail).toBe('string');
   });
@@ -149,7 +149,7 @@ describe('resolveCategoryId', () => {
     } as unknown as Channel;
 
     const guild = { id: 'guild-1' } as Guild;
-    expect(resolveCategoryId(channel, guild)).toBe('cat-1');
+    expect(resolveCategoryId(channel)).toBe('cat-1');
   });
 
   it('should return its own ID for category channels', () => {
@@ -160,7 +160,7 @@ describe('resolveCategoryId', () => {
     } as unknown as Channel;
 
     const guild = { id: 'guild-1' } as Guild;
-    expect(resolveCategoryId(channel, guild)).toBe('cat-1');
+    expect(resolveCategoryId(channel)).toBe('cat-1');
   });
 
   it('should return null for channels without parent', () => {
@@ -171,6 +171,6 @@ describe('resolveCategoryId', () => {
     } as unknown as Channel;
 
     const guild = { id: 'guild-1' } as Guild;
-    expect(resolveCategoryId(channel, guild)).toBeNull();
+    expect(resolveCategoryId(channel)).toBeNull();
   });
 });

@@ -34,8 +34,13 @@ const ShopSlashCommand: SlashCommandDefinition = {
 };
 
 /** /redeem-code — redeem a code (available to all members). */
-// TODO(P1-39): Add RedeemCodeSlashCommand definition once the redeem-code
-// slash command is implemented in the shop module.
+const RedeemCodeSlashCommand: SlashCommandDefinition = {
+  name: 'redeem-code',
+  description: '輸入兌換碼',
+  defaultMemberPermissions: null,
+  nameLocalizations: { 'zh-TW': '兌換碼' },
+  descriptionLocalizations: { 'zh-TW': '輸入兌換碼來兌換商品' },
+};
 
 /**
  * Aggregate of all slash command definitions across all packages.
@@ -56,6 +61,7 @@ const ALL_COMMAND_DEFINITIONS: SlashCommandDefinition[] = [
   CurrencyConfigSlashCommand,
   // Shop commands
   ShopSlashCommand,
+  RedeemCodeSlashCommand,
   // Dispatch commands
   DispatchPanelSlashCommand,
 ];

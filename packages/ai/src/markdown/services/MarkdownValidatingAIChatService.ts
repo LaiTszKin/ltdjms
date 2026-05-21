@@ -19,7 +19,9 @@ import { applyMarkdownPipeline } from './markdown-pipeline.js';
  * REASONING and TOOL_INTENT chunks pass through unmodified.
  */
 export class MarkdownValidatingAIChatService implements AIChatService {
-  readonly config: AIServiceConfig;
+  get config(): AIServiceConfig {
+    return this.delegate.config;
+  }
 
   constructor(
     private readonly delegate: AIChatService,
@@ -27,9 +29,7 @@ export class MarkdownValidatingAIChatService implements AIChatService {
     private readonly autoFixer: MarkdownAutoFixer,
     private readonly validator: CommonMarkValidator,
     private readonly paginator: DiscordMarkdownPaginator,
-  ) {
-    this.config = delegate.config;
-  }
+  ) {}
 
   async generateResponse(
     guildId: string,
@@ -215,7 +215,7 @@ export class MarkdownValidatingAIChatService implements AIChatService {
     };
 
     return {
-      onChunk: (chunk: string, isComplete: boolean, error: DomainError | null, chunkType?: StreamChunkType) => {
+      onChunk: async (chunk: string, isComplete: boolean, error: DomainError | null, chunkType?: StreamChunkType) => {
         if (error) {
           handler.onChunk(chunk, isComplete, error, chunkType);
           return;
@@ -240,11 +240,10 @@ export class MarkdownValidatingAIChatService implements AIChatService {
         }
 
         if (isComplete) {
-          // Fire-and-forget: flushContent is async but onChunk returns void
-          flushContent(true, null).catch(() => {});
+          await flushContent(true, null);
         } else {
           // Incremental flush: process completed paragraph/heading boundaries
-          flushContent(false, null).catch(() => {});
+          await flushContent(false, null);
         }
       },
     };

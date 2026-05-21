@@ -1,4 +1,5 @@
 import { decryptAES } from '../crypto/ecpay-aes.js';
+import { buildCheckMacValue } from '../crypto/ecpay-checkmac.js';
 import type { EnvironmentConfig } from '@ltdjms/shared';
 import type { FiatOrderRepository } from '../domain/fiat-order-repository.js';
 import type { FiatOrder } from '../domain/fiat-order.js';
@@ -54,12 +55,13 @@ export class FiatPaymentCallbackService {
         ? (requestBody as Record<string, unknown>)
         : this.parseBodyString(String(requestBody), contentType);
 
-      const callbackPayload = this.truncateTo(
-        typeof requestBody === 'object' && requestBody !== null
-          ? JSON.stringify(requestBody)
-          : String(requestBody),
-        4000,
-      );
+      // Validate CheckMacValue before processing — prevents payload tampering
+      if (!this.validateCheckMacValue(bodyObj)) {
+        this.log.warn({}, 'ECPay callback rejected: CheckMacValue mismatch');
+        return CallbackResult.fail(400);
+      }
+
+      const callbackPayload = this.truncateTo(JSON.stringify(bodyObj), 4000);
 
       const { node: callbackNode, rawDecrypted } = this.parseCallbackNode(bodyObj, contentType);
       const orderNumber = this.extractOrderNumber(callbackNode);
@@ -70,12 +72,15 @@ export class FiatPaymentCallbackService {
 
       const tradeStatus = this.extractTradeStatus(callbackNode);
       const paymentMessage = this.extractPaymentMessage(callbackNode);
+      const truncatedPaymentMessage = paymentMessage !== null && paymentMessage.length > 512
+        ? paymentMessage.substring(0, 512)
+        : paymentMessage;
       const paid = this.isPaidStatus(tradeStatus);
 
       return await this.processWithOrderAsync(
         orderNumber,
         tradeStatus,
-        paymentMessage,
+        truncatedPaymentMessage,
         paid,
         callbackPayload,
         callbackNode,
@@ -269,6 +274,49 @@ export class FiatPaymentCallbackService {
     const nestedTradeAmt = this.parsePositiveLong(callbackNode.OrderInfo?.TradeAmt ?? null);
     if (nestedTradeAmt !== null) return nestedTradeAmt;
     return this.parsePositiveLong(callbackNode.OrderInfo?.TotalAmount ?? null);
+  }
+
+  /**
+   * Validates the CheckMacValue of the incoming ECPay callback payload.
+   * Rebuilds the hash from all outer parameters (excluding CheckMacValue itself)
+   * and compares against the provided CheckMacValue.
+   * Prevents payload tampering per ECPay security specification.
+   */
+  private validateCheckMacValue(bodyObj: Record<string, unknown>): boolean {
+    const hashKey = this.config.getEcpayHashKey();
+    const hashIv = this.config.getEcpayHashIv();
+    if (!hashKey || !hashIv) {
+      this.log.warn('ECPAY_HASH_KEY / ECPAY_HASH_IV not configured — skipping CheckMacValue validation');
+      return true;
+    }
+
+    const providedCheckMacValue = bodyObj['CheckMacValue'];
+    if (!providedCheckMacValue || String(providedCheckMacValue).trim().length === 0) {
+      this.log.warn('ECPay callback missing CheckMacValue');
+      return false;
+    }
+
+    // Build params record from bodyObj excluding CheckMacValue
+    const params: Record<string, string> = {};
+    for (const [key, value] of Object.entries(bodyObj)) {
+      if (key === 'CheckMacValue') continue;
+      if (value !== null && value !== undefined) {
+        params[key] = String(value);
+      }
+    }
+
+    const expectedHash = buildCheckMacValue(params, hashKey, hashIv);
+    const actualHash = String(providedCheckMacValue).trim();
+
+    if (expectedHash !== actualHash) {
+      this.log.warn(
+        { expectedHash, actualHash },
+        'ECPay callback CheckMacValue mismatch',
+      );
+      return false;
+    }
+
+    return true;
   }
 
   private isValidPaidCallback(callbackNode: EcpayCallbackPayload, order: FiatOrder, orderNumber: string): boolean {

@@ -264,30 +264,44 @@ export class EscortPricingHandler extends BaseAdminHandler {
     const result = await this.facade.listPricing(guildId);
 
     let description: string;
-    if (result.isOk()) {
-      const prices = result.getValue();
-      if (prices.length === 0) {
-        description = '目前沒有任何護航定價資料';
-      } else {
-        const lines = prices.map((p) => {
-          const overrideLine = p.overridden
-            ? ZhTwStrings.escortPricingGuildOverride.replace('{price}', String(p.effectivePriceTwd))
-            : ZhTwStrings.escortPricingNoOverride;
-          return ZhTwStrings.escortPricingItem
-            .replace('{name}', `${p.option.type} - ${p.option.target}`)
-            .replace('{default}', String(p.defaultPriceTwd))
-            .replace('{guildOverride}', overrideLine);
-        });
-        description = lines.join('\n\n');
-      }
+    const prices = result.isOk() ? result.getValue() : [];
+    if (prices.length === 0) {
+      description = '目前沒有任何護航定價資料';
     } else {
-      description = '護航定價資料暫時無法取得';
+      const lines = prices.map((p) => {
+        const overrideLine = p.overridden
+          ? ZhTwStrings.escortPricingGuildOverride.replace('{price}', String(p.effectivePriceTwd))
+          : ZhTwStrings.escortPricingNoOverride;
+        return ZhTwStrings.escortPricingItem
+          .replace('{name}', `${p.option.type} - ${p.option.target}`)
+          .replace('{default}', String(p.defaultPriceTwd))
+          .replace('{guildOverride}', overrideLine);
+      });
+      description = lines.join('\n\n');
     }
 
     const embed = new EmbedBuilder()
       .setTitle(ZhTwStrings.escortPricingTitle)
       .setDescription(description)
       .setColor(Colors.WARNING);
-    await interaction.editEmbed(embed);
+
+    const rows: ActionRowBuilder<ButtonBuilder>[] = [];
+
+    // Per-pricing edit/reset buttons
+    for (const p of prices) {
+      const editBtn = new ButtonBuilder()
+        .setCustomId('admin_escortprice_edit_' + p.optionCode)
+        .setLabel(`編輯 ${p.optionCode}`)
+        .setStyle(ButtonStyle.Primary);
+
+      const resetBtn = new ButtonBuilder()
+        .setCustomId('admin_escortprice_reset_' + p.optionCode)
+        .setLabel(`重設 ${p.optionCode}`)
+        .setStyle(ButtonStyle.Danger);
+
+      rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(editBtn, resetBtn));
+    }
+
+    await interaction.editWithComponents(embed, rows);
   }
 }

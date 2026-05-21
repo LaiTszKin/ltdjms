@@ -154,10 +154,9 @@ export class SlashCommandListener {
     type: InteractionType,
     commandNameOrCustomId: string,
   ): Promise<void> {
-    // Auto-defer if not already acknowledged, to prevent Discord 3-second timeout.
-    if (!interaction.isAcknowledged()) {
-      await interaction.deferReply();
-    }
+    // Handlers manage their own reply lifecycle (defer, modal, etc.).
+    // No blanket auto-defer — chatInput commands need modal support,
+    // and button/modal handlers manage their own acknowledgement strategy.
 
     const startTime = this.metrics.recordStart(commandNameOrCustomId);
 

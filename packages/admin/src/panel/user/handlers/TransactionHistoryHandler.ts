@@ -13,6 +13,7 @@ import { MemberInfoFacade } from '../../../facades/MemberInfoFacade.js';
 import { PanelSessionManager } from '../../../session/PanelSessionManager.js';
 import { ZhTwStrings } from '../../../i18n/zh-TW.js';
 import { Colors } from '../../../constants/colors.js';
+import { ensureDeferred } from '../../admin/BaseAdminHandler.js';
 
 const PAGE_SIZE = 10;
 
@@ -42,7 +43,7 @@ export class TransactionHistoryHandler implements InteractionHandler {
       return;
     }
 
-    await this.ensureDeferred(interaction);
+    await ensureDeferred(interaction);
 
     const fullCustomId = interaction.getCustomId();
 
@@ -73,15 +74,6 @@ export class TransactionHistoryHandler implements InteractionHandler {
       return { page: isNaN(p) ? 1 : p };
     }
     return { page: 1 };
-  }
-
-  /**
-   * Ensures the interaction has been deferred before replying.
-   */
-  private async ensureDeferred(interaction: DiscordInteraction): Promise<void> {
-    if (!interaction.isAcknowledged()) {
-      await interaction.deferReply();
-    }
   }
 
   private buildNavRow(

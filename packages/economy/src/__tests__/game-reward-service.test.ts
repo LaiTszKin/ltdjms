@@ -31,14 +31,17 @@ describe('GameRewardService', () => {
         mockBalanceService as any,
       );
 
-      const balance = await service.creditReward(1, '1', 0, 'DICE_GAME_1_WIN' as CurrencyTransactionSource);
+      const result = await service.creditReward(1, '1', 0, 'DICE_GAME_1_WIN' as CurrencyTransactionSource);
 
-      expect(balance).toBe(5000);
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.getValue()).toBe(5000);
+      }
       expect(mockBalanceService.getBalance).toHaveBeenCalledWith(1, '1');
       expect(mockAdjustmentService.tryBatchAdjust).not.toHaveBeenCalled();
     });
 
-    it('should throw on negative reward', async () => {
+    it('should return Err on negative reward', async () => {
       const mockBalanceService = {
         getBalance: vi.fn(),
       };
@@ -47,9 +50,9 @@ describe('GameRewardService', () => {
         mockBalanceService as any,
       );
 
-      await expect(
-        service.creditReward(1, '1', -100, 'DICE_GAME_1_WIN' as CurrencyTransactionSource),
-      ).rejects.toThrow('Reward amount cannot be negative');
+      const result = await service.creditReward(1, '1', -100, 'DICE_GAME_1_WIN' as CurrencyTransactionSource);
+
+      expect(result.isErr()).toBe(true);
     });
 
     it('should apply reward via BalanceAdjustmentService', async () => {
@@ -74,16 +77,19 @@ describe('GameRewardService', () => {
         mockBalanceService as any,
       );
 
-      const balance = await service.creditReward(1, '1', 2500, 'DICE_GAME_1_WIN' as CurrencyTransactionSource);
+      const result = await service.creditReward(1, '1', 2500, 'DICE_GAME_1_WIN' as CurrencyTransactionSource);
 
-      expect(balance).toBe(3500);
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.getValue()).toBe(3500);
+      }
       expect(mockAdjustmentService.tryBatchAdjust).toHaveBeenCalledTimes(1);
       expect(mockAdjustmentService.tryBatchAdjust).toHaveBeenCalledWith(
         1, "1", 2500, 'DICE_GAME_1_WIN', null, MAX_ADJUSTMENT_AMOUNT,
       );
     });
 
-    it('should throw when BalanceAdjustmentService returns Err', async () => {
+    it('should return Err when BalanceAdjustmentService returns Err', async () => {
       const mockAdjustmentService = createMockBalanceAdjustmentService();
       mockAdjustmentService.tryBatchAdjust.mockResolvedValue(
         new Err(DomainError.invalidInput('Insufficient balance')),
@@ -97,9 +103,9 @@ describe('GameRewardService', () => {
         mockBalanceService as any,
       );
 
-      await expect(
-        service.creditReward(1, '1', 500, 'DICE_GAME_1_WIN' as CurrencyTransactionSource),
-      ).rejects.toThrow('Failed to credit reward');
+      const result = await service.creditReward(1, '1', 500, 'DICE_GAME_1_WIN' as CurrencyTransactionSource);
+
+      expect(result.isErr()).toBe(true);
     });
   });
 });

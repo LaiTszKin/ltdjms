@@ -28,6 +28,7 @@ interface ActionRowPayload {
 
 /** The order-specific custom ID prefix for notification buttons. */
 const NOTIFY_PREFIX = 'dispatch_notify_';
+const NOTIFY_CONFIRM = `${NOTIFY_PREFIX}confirm`;
 const NOTIFY_COMPLETE = `${NOTIFY_PREFIX}complete`;
 const NOTIFY_CONFIRM_COMPLETION = `${NOTIFY_PREFIX}confirm_completion`;
 const NOTIFY_AFTER_SALES = `${NOTIFY_PREFIX}after_sales`;
@@ -44,18 +45,25 @@ export class DispatchNotificationService {
     private readonly afterSalesStaffService?: DispatchAfterSalesStaffService,
   ) {}
 
-  /** DM 給護航者：已分配到新訂單（embed 格式）。 */
+  /** DM 給護航者：已分配到新訂單（embed 格式），附「確認接單」按鈕。 */
   async notifyEscortAssigned(order: EscortDispatchOrder): Promise<boolean> {
     return this.sendDMEmbed(String(order.escortUserId), {
       title: `📋 新訂單已分配 #${order.orderNumber}`,
-      description: '您已被分配一個新訂單，請前往面板確認。',
+      description: '您已被分配一個新訂單，請點擊下方按鈕確認接單。',
       color: COLOR_INFO,
       fields: [
         { name: '訂單編號', value: order.orderNumber, inline: true },
         { name: '客戶', value: `<@${order.customerUserId}>`, inline: true },
       ],
-      footer: { text: '請前往面板處理' },
-    });
+      footer: { text: '請在時限內確認接單' },
+    }, [
+      {
+        type: 1,
+        components: [
+          { type: 2, style: 3, custom_id: `${NOTIFY_CONFIRM}:${order.orderNumber}`, label: '確認接單' },
+        ],
+      },
+    ]);
   }
 
   /** DM 給管理員與客戶：護航者已確認接單（embed 格式）。 */
@@ -86,7 +94,7 @@ export class DispatchNotificationService {
         ],
         footer: { text: '服務進行中' },
       }, [
-        { type: 1, components: [{ type: 2, style: 3, custom_id: `${NOTIFY_PREFIX}complete:${order.orderNumber}`, label: '送出完成' }] },
+        { type: 1, components: [{ type: 2, style: 3, custom_id: `${NOTIFY_COMPLETE}:${order.orderNumber}`, label: '送出完成' }] },
       ]),
     ]);
     return results.every(Boolean);
@@ -107,8 +115,8 @@ export class DispatchNotificationService {
       {
         type: 1,
         components: [
-          { type: 2, style: 3, custom_id: `${NOTIFY_PREFIX}confirm_completion:${order.orderNumber}`, label: '確認完成' },
-          { type: 2, style: 4, custom_id: `${NOTIFY_PREFIX}after_sales:${order.orderNumber}`, label: '申請售後' },
+          { type: 2, style: 3, custom_id: `${NOTIFY_CONFIRM_COMPLETION}:${order.orderNumber}`, label: '確認完成' },
+          { type: 2, style: 4, custom_id: `${NOTIFY_AFTER_SALES}:${order.orderNumber}`, label: '申請售後' },
         ],
       },
     ]);
@@ -163,7 +171,7 @@ export class DispatchNotificationService {
 
       await processWithConcurrencyLimit(targetIds, async (staffId) =>
         this.sendDMEmbed(String(staffId), embed, [
-          { type: 1, components: [{ type: 2, style: 3, custom_id: `${NOTIFY_PREFIX}claim:${order.orderNumber}`, label: '承接售後' }] },
+          { type: 1, components: [{ type: 2, style: 3, custom_id: `${NOTIFY_CLAIM}:${order.orderNumber}`, label: '承接售後' }] },
         ]),
       3);
       return true;
@@ -198,7 +206,7 @@ export class DispatchNotificationService {
         ],
         footer: { text: '售後處理中' },
       }, [
-        { type: 1, components: [{ type: 2, style: 4, custom_id: `${NOTIFY_PREFIX}close:${order.orderNumber}`, label: '結案' }] },
+        { type: 1, components: [{ type: 2, style: 4, custom_id: `${NOTIFY_CLOSE}:${order.orderNumber}`, label: '結案' }] },
       ]);
     }
 

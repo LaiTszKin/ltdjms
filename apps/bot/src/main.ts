@@ -8,6 +8,7 @@ import {
   initializeContainer,
   container,
   DiscordJsRuntimeGateway,
+  DiscordJsEmbedBuilder,
   Ok,
   Err,
   DomainError,
@@ -86,8 +87,9 @@ export async function main(): Promise<void> {
   const eventPublisher = new DomainEventPublisher();
   logger.info('Domain event publisher initialized');
 
-  // 5. Discord runtime gateway
+  // 5. Discord runtime gateway + embed builder
   const runtimeGateway = new DiscordJsRuntimeGateway();
+  const discordEmbedBuilder = new DiscordJsEmbedBuilder(logger);
 
   // 6. Initialize shared DI container
   initializeContainer({
@@ -95,6 +97,7 @@ export async function main(): Promise<void> {
     cacheService,
     eventPublisher,
     runtimeGateway,
+    embedBuilder: discordEmbedBuilder,
     logger,
     databasePool: pool,
   });
@@ -127,19 +130,16 @@ export async function main(): Promise<void> {
   );
   const productRewardService: ProductRewardService = {
     async grantReward(request) {
-      try {
-        const newBalance = await gameRewardService.creditReward(
-          request.guildId,
-          request.userId,
-          request.amount,
-          CurrencyTransactionSource.PRODUCT_REWARD,
-        );
-        return new Ok({ amount: request.amount, currencyBalanceAfter: newBalance });
-      } catch (e) {
-        return new Err(
-          DomainError.unexpectedFailure(e instanceof Error ? e.message : String(e)),
-        );
+      const result = await gameRewardService.creditReward(
+        request.guildId,
+        request.userId,
+        request.amount,
+        CurrencyTransactionSource.PRODUCT_REWARD,
+      );
+      if (result.isErr()) {
+        return new Err(result.getError());
       }
+      return new Ok({ amount: request.amount, currencyBalanceAfter: result.getValue() });
     },
   };
 

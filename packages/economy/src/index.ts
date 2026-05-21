@@ -8,6 +8,7 @@ export type {
   CurrencyConfigChangedEvent,
   DiceGameConfigChangedEvent,
 } from './events/index.js';
+export { GameType } from './events/index.js';
 
 // ============================================================
 // Domain

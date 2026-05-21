@@ -45,6 +45,8 @@ export class CurrencyPurchaseService {
         guildId: number,
         userId: string,
         amount: number,
+        source?: string,
+        description?: string | null,
       ): Promise<Result<{ newBalance: number }, DomainError>>;
     },
     private readonly productRewardService: {
@@ -102,6 +104,8 @@ export class CurrencyPurchaseService {
       guildId,
       userId,
       -price,
+      'PRODUCT_PURCHASE',
+      `購買商品: ${product.name}`,
     );
     if (adjustResult.isErr()) {
       this.log.error({ guildId, userId, productId }, 'Failed to deduct currency for purchase');
@@ -128,7 +132,6 @@ export class CurrencyPurchaseService {
           product,
           price,
           rewardResult.getError(),
-          productId,
         );
       }
 
@@ -156,10 +159,9 @@ export class CurrencyPurchaseService {
     product: Product,
     price: number,
     rewardError: DomainError,
-    productId: number,
   ): Promise<Result<PurchaseResult, DomainError>> {
     this.log.error(
-      { guildId, userId, productId, reason: rewardError.message },
+      { guildId, userId, productId: product.id, reason: rewardError.message },
       'Failed to grant reward for purchased product',
     );
 
@@ -167,10 +169,12 @@ export class CurrencyPurchaseService {
       guildId,
       userId,
       price,
+      'PRODUCT_PURCHASE_REFUND',
+      `退款: ${product.name} (獎勵發放失敗)`,
     );
     if (refundResult.isErr()) {
       this.log.error(
-        { guildId, userId, productId, reason: refundResult.getError().message },
+        { guildId, userId, productId: product.id, reason: refundResult.getError().message },
         'Failed to refund purchase after reward failure',
       );
       return err(DomainError.persistenceFailure('商品獎勵發放失敗，且自動退款失敗'));

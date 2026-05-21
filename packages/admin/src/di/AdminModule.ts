@@ -47,7 +47,7 @@ import { BotErrorHandler } from '../commands/infra/BotErrorHandler.js';
 
 // Handlers
 import { AdminPanelCommand } from '../panel/admin/AdminPanelCommand.js';
-import { AdminPanelRouter } from '../panel/admin/AdminPanelRouter.js';
+import { AdminPanelFallbackHandler } from '../panel/admin/AdminPanelRouter.js';
 import { BalanceManagementHandler } from '../panel/admin/handlers/BalanceManagementHandler.js';
 import { TokenManagementHandler } from '../panel/admin/handlers/TokenManagementHandler.js';
 import { GameSettingsHandler } from '../panel/admin/handlers/GameSettingsHandler.js';
@@ -62,6 +62,7 @@ import { AdminProductPanelHandler } from '../panel/admin/product/AdminProductPan
 import { UserPanelCommand } from '../panel/user/UserPanelCommand.js';
 import { TransactionHistoryHandler } from '../panel/user/handlers/TransactionHistoryHandler.js';
 import { RedemptionCodeHandler } from '../panel/user/handlers/RedemptionCodeHandler.js';
+import { RedeemCodeCommandHandler } from '../panel/user/handlers/RedeemCodeCommandHandler.js';
 
 // Listeners
 import { AdminPanelUpdateListener } from '../panel/listeners/AdminPanelUpdateListener.js';
@@ -104,7 +105,7 @@ export const ADMIN_TOKENS = {
 
   // Admin commands
   AdminPanelCommand: Symbol('AdminPanelCommand'),
-  AdminPanelRouter: Symbol('AdminPanelRouter'),
+  AdminPanelFallbackHandler: Symbol('AdminPanelFallbackHandler'),
 
   // Admin handlers
   BalanceManagementHandler: Symbol('BalanceManagementHandler'),
@@ -166,7 +167,7 @@ export function configureAdminContainer(): void {
     // CacheService not registered; session managers will use in-memory storage only
   }
 
-  const adminSessionManager = new AdminPanelSessionManager(cacheService);
+  const adminSessionManager = new AdminPanelSessionManager();
   container.registerInstance(
     ADMIN_TOKENS.AdminPanelSessionManager,
     adminSessionManager,
@@ -228,6 +229,7 @@ export function configureAdminContainer(): void {
 
   const gameConfigFacade = new GameConfigManagementFacade(
     diceConfigService,
+    eventPublisher,
   );
   container.registerInstance(ADMIN_TOKENS.GameConfigManagementFacade, gameConfigFacade);
 
@@ -237,6 +239,7 @@ export function configureAdminContainer(): void {
   const aiConfigFacade = new AIConfigManagementFacade(
     channelRestrictionService,
     agentConfigService,
+    eventPublisher,
   );
   container.registerInstance(ADMIN_TOKENS.AIConfigManagementFacade, aiConfigFacade);
 
@@ -301,9 +304,9 @@ export function configureAdminContainer(): void {
   container.registerInstance(ADMIN_TOKENS.AdminPanelCommand, adminPanelCommand);
   slashCommandListener.registerCommand(adminPanelCommand);
 
-  const adminPanelRouter = new AdminPanelRouter(adminSessionManager);
-  container.registerInstance(ADMIN_TOKENS.AdminPanelRouter, adminPanelRouter);
-  slashCommandListener.registerInteractionHandler(adminPanelRouter);
+  const adminPanelFallbackHandler = new AdminPanelFallbackHandler(adminSessionManager);
+  container.registerInstance(ADMIN_TOKENS.AdminPanelFallbackHandler, adminPanelFallbackHandler);
+  slashCommandListener.registerInteractionHandler(adminPanelFallbackHandler);
 
   // ============================================================
   // Admin Panel Handlers
@@ -438,6 +441,9 @@ export function configureAdminContainer(): void {
   );
   container.registerInstance(ADMIN_TOKENS.RedemptionCodeHandler, redeemHandler);
   slashCommandListener.registerInteractionHandler(redeemHandler);
+
+  const redeemCmdHandler = new RedeemCodeCommandHandler();
+  slashCommandListener.registerCommand(redeemCmdHandler);
 
   // ============================================================
   // Listeners (register with DomainEventPublisher)

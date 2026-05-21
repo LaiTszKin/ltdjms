@@ -16,7 +16,7 @@ import {
   StreamChunkType,
   type StreamChunk,
 } from './ai-chat-service.js';
-import { type Result, DomainError, ok, err } from '@ltdjms/shared';
+import { type Result, DomainError, ok, err, processWithConcurrencyLimit } from '@ltdjms/shared';
 import type { DiscordRuntimeGateway, DomainEventPublisher, DomainEvent } from '@ltdjms/shared';
 import { LangChainExceptionMapper } from './LangChainExceptionMapper.js';
 import type { PromptLoader } from '../prompts/prompt-loader.js';
@@ -24,6 +24,7 @@ import { ToolCallerAuthorizationGuard } from '../tools/ToolCallerAuthorizationGu
 import { ToolExecutionContext } from '../tools/ToolExecutionContext.js';
 import { ToolExecutionInterceptor } from './ToolExecutionInterceptor.js';
 import { InMemoryToolCallHistory } from './memory/tool-call-history.js';
+import type { ChatMemoryProvider } from './memory/chat-memory-provider.js';
 
 // ===== Types =====
 
@@ -68,6 +69,7 @@ export class LangChainAIChatService implements AIChatService {
     private readonly toolCallHistory?: InMemoryToolCallHistory,
     private readonly runtimeGateway?: DiscordRuntimeGateway,
     private readonly eventPublisher?: DomainEventPublisher,
+    private readonly memoryProvider?: ChatMemoryProvider,
     private readonly exceptionMapper: LangChainExceptionMapper = new LangChainExceptionMapper(),
   ) {
     this.config = config;
@@ -114,7 +116,7 @@ export class LangChainAIChatService implements AIChatService {
       userId,
       userMessage,
       {
-        onChunk: (chunk: string, _isComplete: boolean, error: DomainError | null) => {
+        onChunk: async (chunk: string, _isComplete: boolean, error: DomainError | null) => {
           if (error) {
             errorRef.current = error;
           }
@@ -202,7 +204,22 @@ export class LangChainAIChatService implements AIChatService {
 
     try {
       // Build messages array (agent prompts included when agent is enabled)
-      const messages = await this.buildMessages(guildId, userMessage, history, agentEnabled);
+      const messages = await this.buildMessages(userMessage, history, agentEnabled);
+
+      // Append conversation memory if memory provider is available (P2-11)
+      if (this.memoryProvider) {
+        const memoryId = `${guildId}:${channelId}:${userId}`;
+        const memoryMessages = await this.memoryProvider.getMemory(memoryId);
+        for (const mem of memoryMessages) {
+          if (mem.role === 'user') {
+            messages.push(new HumanMessage(mem.content));
+          } else if (mem.role === 'assistant') {
+            messages.push(new AIMessage(mem.content));
+          } else if (mem.role === 'system') {
+            messages.push(new SystemMessage(mem.content));
+          }
+        }
+      }
 
       // Use tool-bound model when agent is enabled (reuse existing model)
       const toolDefs = agentEnabled ? this.buildToolDefinitions() : [];
@@ -307,9 +324,11 @@ export class LangChainAIChatService implements AIChatService {
             }),
           );
 
-          // Execute tools in parallel and add results as ToolMessages
-          const results = await Promise.all(
-            toolCalls.map(tc => this.executeTool(guildId, channelId, userId, tc, channelId)),
+          // Execute tools with bounded concurrency (max 3 parallel) and add results as ToolMessages (P2-12)
+          const results = await processWithConcurrencyLimit(
+            toolCalls,
+            tc => this.executeTool(guildId, channelId, userId, tc, channelId),
+            3,
           );
           for (let i = 0; i < toolCalls.length; i++) {
             messages.push(
@@ -351,19 +370,27 @@ export class LangChainAIChatService implements AIChatService {
       }
 
       // Publish AIMessageEvent after successful completion (INT-011)
+      // Runtime field checks ensure type safety before casting (P2-14).
       if (this.eventPublisher && totalContent) {
-        const event: DomainEvent = {
-          eventType: 'ai_message' as const,
-          guildId,
-          channelId,
-          threadId: null,
-          userId,
-          userMessage,
-          aiResponse: totalContent,
-          timestamp: new Date(),
-          messageId: messageId ? Number(messageId) : 0,
-        } as unknown as DomainEvent;
-        this.eventPublisher.publish(event);
+        const hasRequiredFields =
+          typeof guildId === 'string' && !!guildId &&
+          typeof channelId === 'string' && !!channelId &&
+          typeof userId === 'string' && !!userId &&
+          typeof userMessage === 'string';
+        if (hasRequiredFields) {
+          const event: DomainEvent = {
+            eventType: 'ai_message',
+            guildId,
+            channelId,
+            threadId: null,
+            userId,
+            userMessage,
+            aiResponse: totalContent,
+            timestamp: new Date(),
+            messageId: messageId ? Number(messageId) : 0,
+          } as unknown as DomainEvent;
+          this.eventPublisher.publish(event);
+        }
       }
     } catch (error) {
       const domainError = this.exceptionMapper.map(error);
@@ -391,7 +418,7 @@ export class LangChainAIChatService implements AIChatService {
     channelId: string,
     userId: string,
     tc: { name: string; args: string; id: string },
-    threadId: string = '',
+    sourceId: string = '',
   ): Promise<string> {
     const tool = this.toolMap?.get(tc.name);
     if (!tool) {
@@ -454,7 +481,7 @@ export class LangChainAIChatService implements AIChatService {
           // P0-9: Record in tool call history (use threadId/channelId as key)
           if (this.toolCallHistory) {
             const summary = InMemoryToolCallHistory.createMemorySummary(tc.name, args, result);
-            const historyKey = threadId || channelId;
+            const historyKey = sourceId || channelId;
             this.toolCallHistory.addToolCall(
               historyKey,
               userId,
@@ -485,7 +512,6 @@ export class LangChainAIChatService implements AIChatService {
    * Builds the message array for the LLM call.
    */
   private async buildMessages(
-    guildId: string,
     userMessage: string,
     history: Array<{ role: string; content: string }>,
     agentEnabled: boolean = false,

@@ -22,8 +22,8 @@ export class DrizzleRedemptionTransactionService implements RedemptionTransactio
       userId: Number(userId),
       productId: product.id as number,
       productName: product.name,
-      redemptionCodeId: code.id ?? 0,
-      code: code.code,
+      redemptionCode: code.code,
+      quantity: 1,
     });
   }
 
@@ -33,7 +33,7 @@ export class DrizzleRedemptionTransactionService implements RedemptionTransactio
     page: number,
     pageSize: number,
   ): Promise<{
-    items: Array<{ id: number; productName: string; code: string; rewardedAmount: number | null; createdAt: Date }>;
+    items: Array<{ id: number; productName: string; code: string; rewardAmount: number | null; createdAt: Date }>;
     hasNext: boolean;
     totalPages: number;
     currentPage: number;
@@ -61,8 +61,8 @@ export class DrizzleRedemptionTransactionService implements RedemptionTransactio
     const items = rows.map((row) => ({
       id: Number(row.id),
       productName: String(row.productName ?? ''),
-      code: String(row.code ?? ''),
-      rewardedAmount: row.rewardedAmount != null ? Number(row.rewardedAmount) : null,
+      code: String(row.redemptionCode ?? ''),
+      rewardAmount: row.rewardAmount != null ? Number(row.rewardAmount) : null,
       createdAt: new Date(String(row.createdAt)),
     }));
 

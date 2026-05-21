@@ -1,4 +1,4 @@
-import { pgTable, serial, bigint, varchar, boolean, integer, timestamp, text, uniqueIndex, index } from 'drizzle-orm/pg-core';
+import { pgTable, serial, bigserial, bigint, varchar, boolean, integer, timestamp, text, uniqueIndex, index } from 'drizzle-orm/pg-core';
 
 /**
  * fiat_order table — matches Flyway V021-V026 exactly.
@@ -100,19 +100,20 @@ export const redemptionCode = pgTable(
 export const productRedemptionTransaction = pgTable(
   'product_redemption_transaction',
   {
-    id: serial('id').primaryKey(),
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
     guildId: bigint('guild_id', { mode: 'number' }).notNull(),
     userId: bigint('user_id', { mode: 'number' }).notNull(),
     productId: bigint('product_id', { mode: 'number' }).notNull(),
     productName: varchar('product_name', { length: 100 }).notNull(),
-    redemptionCodeId: bigint('redemption_code_id', { mode: 'number' }).notNull(),
-    code: varchar('code', { length: 32 }).notNull(),
-    rewardedAmount: bigint('rewarded_amount', { mode: 'number' }),
+    redemptionCode: varchar('redemption_code', { length: 32 }).notNull(),
+    quantity: integer('quantity').notNull(),
+    rewardType: varchar('reward_type', { length: 20 }),
+    rewardAmount: bigint('reward_amount', { mode: 'number' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    redemptionCodeIdx: index('idx_prt_redemption_code').on(table.redemptionCodeId),
-    guildUserIdx: index('idx_prt_guild_user').on(table.guildId, table.userId),
+    userGuildCreatedIdx: index('idx_user_guild_created').on(table.userId, table.guildId, table.createdAt),
+    productIdx: index('idx_product').on(table.productId),
   }),
 );
 

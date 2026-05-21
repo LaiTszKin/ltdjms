@@ -118,7 +118,7 @@ export class MockDiscordInteraction implements DiscordInteraction {
   }
 
   isModalSubmit(): boolean {
-    return false;
+    return this._interactionType === 'modalSubmit';
   }
 
   async replyWithComponents(

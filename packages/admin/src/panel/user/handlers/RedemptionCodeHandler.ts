@@ -14,6 +14,7 @@ import { type InteractionHandler } from '../../../commands/infra/CommandHandler.
 import { MemberInfoFacade } from '../../../facades/MemberInfoFacade.js';
 import { PanelSessionManager } from '../../../session/PanelSessionManager.js';
 import { ZhTwStrings } from '../../../i18n/zh-TW.js';
+import { ensureDeferred } from '../../admin/BaseAdminHandler.js';
 
 /**
  * Handler for redemption code interactions (user_redeem_*).
@@ -52,13 +53,13 @@ export class RedemptionCodeHandler implements InteractionHandler {
 
     if (fullCustomId === 'user_redeem_submit') {
       // Process the redemption
-      await this.ensureDeferred(interaction);
+      await ensureDeferred(interaction);
       await this.processRedemption(interaction, guildId, userId);
       return;
     }
 
     // Default: show redemption history as a preview
-    await this.ensureDeferred(interaction);
+    await ensureDeferred(interaction);
 
     const result = await this.memberInfoFacade.getProductRedemptionTransactionPage(
       guildId,
@@ -94,17 +95,10 @@ export class RedemptionCodeHandler implements InteractionHandler {
   }
 
   /**
-   * Ensures the interaction has been deferred before replying.
+   * Builds a redeem code modal.
+   * Shared with RedeemCodeCommandHandler to avoid duplicate modal construction.
    */
-  private async ensureDeferred(interaction: DiscordInteraction): Promise<void> {
-    if (!interaction.isAcknowledged()) {
-      await interaction.deferReply();
-    }
-  }
-
-  private async showRedeemModal(
-    interaction: DiscordInteraction,
-  ): Promise<void> {
+  static buildRedeemModal(): ModalBuilder {
     const modal = new ModalBuilder()
       .setCustomId('user_redeem_submit')
       .setTitle(ZhTwStrings.redeemCodeModalTitle);
@@ -122,7 +116,13 @@ export class RedemptionCodeHandler implements InteractionHandler {
       new ActionRowBuilder<TextInputBuilder>().addComponents(codeInput),
     );
 
-    await interaction.showModal(modal);
+    return modal;
+  }
+
+  private async showRedeemModal(
+    interaction: DiscordInteraction,
+  ): Promise<void> {
+    await interaction.showModal(RedemptionCodeHandler.buildRedeemModal());
   }
 
   private async processRedemption(

@@ -7,7 +7,6 @@ import {
   type Unit,
   type CacheService,
   type DomainEventPublisher,
-  type DiscordRuntimeGateway,
 } from '@ltdjms/shared';
 import type { AIAgentChannelConfigChangedEvent } from '../../events/index.js';
 import type { AIAgentChannelConfig } from '../ai-chat-service.js';
@@ -47,7 +46,13 @@ export class InMemoryAIAgentChannelConfigRepository
     channelId: string,
   ): Promise<Result<AIAgentChannelConfig | null, DomainError>> {
     const entry = this.store.get(this.key(guildId, channelId));
-    return ok(entry ?? null);
+    if (!entry) {
+      // Match Drizzle repo behavior: ok(null) throws at runtime, so return Err instead
+      return err(DomainError.persistenceFailure(
+        `Agent config not found for guild ${guildId} channel ${channelId}`,
+      ));
+    }
+    return ok(entry);
   }
 
   async upsert(
@@ -128,30 +133,11 @@ export class DefaultAIAgentChannelConfigService
   constructor(
     private readonly repository: AIAgentChannelConfigRepository,
     private readonly cacheService: CacheService,
-    private readonly runtimeGateway?: DiscordRuntimeGateway,
     private readonly eventPublisher?: DomainEventPublisher,
   ) {}
 
   private buildCacheKey(guildId: string, channelId: string): string {
     return `${CACHE_KEY_PREFIX}${guildId}:${channelId}`;
-  }
-
-  /**
-   * Resolves a channel ID to its effective channel ID for agent config lookup.
-   * Thread channels inherit their parent channel's agent configuration (Spec R7.6).
-   */
-  private resolveChannelId(guildId: string, channelId: string): string {
-    if (!this.runtimeGateway) return channelId;
-    try {
-      const threadChannel = this.runtimeGateway.findThreadChannel(guildId, channelId);
-      if (threadChannel) {
-        const parentId = (threadChannel as { parentId: string | null }).parentId;
-        if (parentId) return parentId;
-      }
-    } catch {
-      // Runtime not ready — fall back to original channelId
-    }
-    return channelId;
   }
 
   /**
@@ -161,24 +147,24 @@ export class DefaultAIAgentChannelConfigService
    * Prefer isAgentEnabledAsync() for production use, since this sync version
    * may return stale values until the local cache is populated by a prior
    * async lookup.
+   * Thread channels inherit their parent channel's agent configuration (Spec R7.6);
+   * callers must resolve threads to parent channels before calling this method.
    */
   isAgentEnabled(guildId: string, channelId: string): boolean {
-    const effectiveChannelId = this.resolveChannelId(guildId, channelId);
-    return this.localSyncCache.get(this.buildCacheKey(guildId, effectiveChannelId)) ?? false;
+    return this.localSyncCache.get(this.buildCacheKey(guildId, channelId)) ?? false;
   }
 
   /**
    * Async version of isAgentEnabled.
    * Also populates the local sync cache for subsequent sync lookups.
-   * Thread channels inherit their parent channel's agent configuration (Spec R7.6).
+   * Thread channels inherit their parent channel's agent configuration (Spec R7.6);
+   * callers must resolve threads to parent channels before calling this method.
    */
   async isAgentEnabledAsync(
     guildId: string,
     channelId: string,
   ): Promise<boolean> {
-    // Resolve thread to parent channel for agent config inheritance
-    const effectiveChannelId = this.resolveChannelId(guildId, channelId);
-    const cacheKey = this.buildCacheKey(guildId, effectiveChannelId);
+    const cacheKey = this.buildCacheKey(guildId, channelId);
 
     // Cache stampede protection: deduplicate concurrent lookups for the same key
     const pending = this.pendingFetches.get(cacheKey);
@@ -199,7 +185,7 @@ export class DefaultAIAgentChannelConfigService
     }
 
     // Stampede-protected DB lookup
-    const promise = this.fetchFromDb(guildId, effectiveChannelId, cacheKey);
+    const promise = this.fetchFromDb(guildId, channelId, cacheKey);
     this.pendingFetches.set(cacheKey, promise);
     try {
       return await promise;
@@ -240,8 +226,9 @@ export class DefaultAIAgentChannelConfigService
         this.setLocalSyncCache(cacheKey, enabled);
         return enabled;
       }
-    } catch {
-      // DB failure — return false (pure chat mode)
+    } catch (cause) {
+      // DB failure — propagate so callers can distinguish unavailable from disabled
+      throw cause;
     }
 
     this.setLocalSyncCache(cacheKey, false);

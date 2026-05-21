@@ -1,3 +1,9 @@
+import {
+  type Result,
+  Ok,
+  Err,
+  DomainError,
+} from '@ltdjms/shared';
 import { BalanceAdjustmentService } from '../../currency/services/balance-adjustment-service.js';
 import { BalanceService } from '../../currency/services/balance-service.js';
 import type { CurrencyTransactionSource } from '../../domain/types.js';
@@ -16,8 +22,6 @@ import { MAX_ADJUSTMENT_AMOUNT } from '../../domain/types.js';
  * Delegates actual balance adjustment to BalanceAdjustmentService (P2-8).
  */
 export class GameRewardService {
-  private static readonly BALANCE_TTL_SECONDS = 300;
-
   constructor(
     private readonly balanceAdjustmentService: BalanceAdjustmentService,
     private readonly balanceService: BalanceService,
@@ -40,16 +44,18 @@ export class GameRewardService {
     userId: string,
     rewardAmount: number,
     transactionSource: CurrencyTransactionSource,
-  ): Promise<number> {
+  ): Promise<Result<number, DomainError>> {
     if (rewardAmount < 0) {
-      throw new Error(`Reward amount cannot be negative: ${rewardAmount}`);
+      return new Err(
+        DomainError.invalidInput(`Reward amount cannot be negative: ${rewardAmount}`),
+      );
     }
 
     if (rewardAmount === 0) {
       // No reward to credit — query the actual balance instead of returning 0,
       // so callers (e.g. DiceGame1Service) can get the current balance as previousBalance.
       const balanceResult = await this.balanceService.getBalance(guildId, userId);
-      return balanceResult.isOk() ? balanceResult.getValue().balance : 0;
+      return new Ok(balanceResult.isOk() ? balanceResult.getValue().balance : 0);
     }
 
     const result = await this.balanceAdjustmentService.tryBatchAdjust(
@@ -62,11 +68,13 @@ export class GameRewardService {
     );
 
     if (result.isErr()) {
-      throw new Error(
-        `Failed to credit reward for guildId=${guildId}, userId=${userId}: ${result.getError().message}`,
+      return new Err(
+        DomainError.persistenceFailure(
+          `Failed to credit reward for guildId=${guildId}, userId=${userId}`,
+        ),
       );
     }
 
-    return result.getValue().newBalance;
+    return new Ok(result.getValue().newBalance);
   }
 }

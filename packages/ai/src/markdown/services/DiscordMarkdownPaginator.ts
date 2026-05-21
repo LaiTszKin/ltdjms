@@ -163,20 +163,14 @@ export class DiscordMarkdownPaginator {
     // so it can be preserved across page boundaries (P1-3).
     let insideFence = openFence !== null;
     let lastFenceLang = openFence ?? '';
-    const lines = pageContent.split('\n');
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      const backtickMatch = trimmed.match(/^(`{3,})(\w*)/);
-      if (backtickMatch) {
-        const wasInside = insideFence;
-        insideFence = !insideFence;
-        // If we just opened a fence, capture the language identifier
-        if (!wasInside && insideFence) {
-          lastFenceLang = backtickMatch[2] ?? '';
-        }
-      } else if (/^(~{3,})/.test(trimmed)) {
-        insideFence = !insideFence;
+    // Scan for code fence boundaries using regex (avoids split('\n') array allocation)
+    const fencePattern = /^(?:`{3,})(\w*)|^(?:~{3,})/gm;
+    let match;
+    while ((match = fencePattern.exec(pageContent)) !== null) {
+      const wasInside = insideFence;
+      insideFence = !insideFence;
+      if (!wasInside && insideFence) {
+        lastFenceLang = match[1] ?? '';
       }
     }
 

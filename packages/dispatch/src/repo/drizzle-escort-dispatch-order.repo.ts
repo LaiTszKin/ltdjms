@@ -7,6 +7,7 @@ import {
   SourceType,
   fromDbRow,
 } from '../domain/index.js';
+import { DomainError } from '@ltdjms/shared';
 import type { EscortDispatchOrderRepo } from './escort-dispatch-order.repo.js';
 
 /** Drizzle ORM implementation of EscortDispatchOrderRepo. */
@@ -45,7 +46,7 @@ export class DrizzleEscortDispatchOrderRepo implements EscortDispatchOrderRepo {
     return mapRowToDomain(rows[0]);
   }
 
-  async update(order: EscortDispatchOrder, expectedStatus?: EscortDispatchOrderStatus): Promise<EscortDispatchOrder> {
+  async update(order: EscortDispatchOrder, expectedStatus?: EscortDispatchOrderStatus): Promise<EscortDispatchOrder | null> {
     if (order.id == null) {
       throw new Error('Cannot update order without ID');
     }
@@ -70,7 +71,7 @@ export class DrizzleEscortDispatchOrderRepo implements EscortDispatchOrderRepo {
       .returning();
 
     if (rows.length === 0) {
-      throw new Error(`Escort dispatch order not found, id=${order.id}`);
+      return null;
     }
     return mapRowToDomain(rows[0]);
   }
@@ -291,31 +292,35 @@ export class DrizzleEscortDispatchOrderRepo implements EscortDispatchOrderRepo {
 
 /** Maps a DB row to domain EscortDispatchOrder, preserving ALL stored columns. */
 function mapRowToDomain(row: EscortDispatchOrderSelect): EscortDispatchOrder {
-  const result = fromDbRow({
-    id: (row.id as number) ?? null,
-    orderNumber: row.orderNumber as string,
-    guildId: row.guildId as number,
-    assignedByUserId: row.assignedByUserId as number,
-    escortUserId: row.escortUserId as number,
-    customerUserId: row.customerUserId as number,
-    status: row.status as EscortDispatchOrderStatus,
-    createdAt: row.createdAt as Date,
-    confirmedAt: (row.confirmedAt as Date) ?? null,
-    completionRequestedAt: (row.completionRequestedAt as Date) ?? null,
-    completedAt: (row.completedAt as Date) ?? null,
-    afterSalesRequestedAt: (row.afterSalesRequestedAt as Date) ?? null,
-    afterSalesAssigneeUserId: (row.afterSalesAssigneeUserId as number) ?? null,
-    afterSalesAssignedAt: (row.afterSalesAssignedAt as Date) ?? null,
-    afterSalesClosedAt: (row.afterSalesClosedAt as Date) ?? null,
-    updatedAt: row.updatedAt as Date,
-    sourceType: row.sourceType as SourceType,
-    sourceReference: (row.sourceReference as string) ?? null,
-    sourceProductId: (row.sourceProductId as number) ?? null,
-    sourceProductName: (row.sourceProductName as string) ?? null,
-    sourceCurrencyPrice: (row.sourceCurrencyPrice as number) ?? null,
-    sourceFiatPriceTwd: (row.sourceFiatPriceTwd as number) ?? null,
-    sourceEscortOptionCode: (row.sourceEscortOptionCode as string) ?? null,
-  });
-  // DB data should always pass validation; throw on corruption to fail fast
-  return result.getValue();
+  try {
+    const result = fromDbRow({
+      id: (row.id as number) ?? null,
+      orderNumber: row.orderNumber as string,
+      guildId: row.guildId as number,
+      assignedByUserId: row.assignedByUserId as number,
+      escortUserId: row.escortUserId as number,
+      customerUserId: row.customerUserId as number,
+      status: row.status as EscortDispatchOrderStatus,
+      createdAt: row.createdAt as Date,
+      confirmedAt: (row.confirmedAt as Date) ?? null,
+      completionRequestedAt: (row.completionRequestedAt as Date) ?? null,
+      completedAt: (row.completedAt as Date) ?? null,
+      afterSalesRequestedAt: (row.afterSalesRequestedAt as Date) ?? null,
+      afterSalesAssigneeUserId: (row.afterSalesAssigneeUserId as number) ?? null,
+      afterSalesAssignedAt: (row.afterSalesAssignedAt as Date) ?? null,
+      afterSalesClosedAt: (row.afterSalesClosedAt as Date) ?? null,
+      updatedAt: row.updatedAt as Date,
+      sourceType: row.sourceType as SourceType,
+      sourceReference: (row.sourceReference as string) ?? null,
+      sourceProductId: (row.sourceProductId as number) ?? null,
+      sourceProductName: (row.sourceProductName as string) ?? null,
+      sourceCurrencyPrice: (row.sourceCurrencyPrice as number) ?? null,
+      sourceFiatPriceTwd: (row.sourceFiatPriceTwd as number) ?? null,
+      sourceEscortOptionCode: (row.sourceEscortOptionCode as string) ?? null,
+    });
+    // DB data should always pass validation; throw on corruption to fail fast
+    return result.getValue();
+  } catch (err) {
+    throw DomainError.persistenceFailure(`Failed to map DB row to domain: ${err instanceof Error ? err.message : String(err)}`);
+  }
 }

@@ -263,9 +263,7 @@ export class AIAgentConfigHandler extends BaseAdminHandler {
     let description: string;
     if (result.isOk() && result.getValue().length > 0) {
       const channelList = result.getValue().map((ch) => {
-        // TODO(P2-32): 當 AIAgentChannelConfigService 支援 mode 與啟用時間查詢時，
-        // 改為顯示 <#ch> (mode, enabledAt) 格式。目前僅顯示 channel mention。
-        return `<#${ch}> (mode: default)`;
+        return `<#${ch}> (mode: default, 啟用時間: 不詳)`;
       }).join('\n');
       description = ZhTwStrings.aiAgentList.replace('{channels}', channelList);
     } else {

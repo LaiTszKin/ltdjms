@@ -91,13 +91,13 @@ export class CommonMarkValidator implements MarkdownValidator {
       seen.add(key);
     }
 
-    // Detect unclosed fenced code blocks by checking if the last code token
-    // starts with a fence marker (``` or ~~~) but does not end with one.
-    // Indented code blocks (4-space indent) are always closed by definition.
-    if (tokens.length > 0) {
-      const lastToken = tokens[tokens.length - 1];
-      if (lastToken.type === 'code') {
-        const codeToken = lastToken as Tokens.Code;
+    // Detect unclosed fenced code blocks by checking ALL code tokens, not just the last one.
+    // An unclosed fence anywhere in the token stream will appear as a 'code' token
+    // whose raw starts with a fence marker but whose trimmed end does not contain the closing fence.
+    // Iterating through all tokens ensures mid-content unclosed blocks are also flagged.
+    for (const token of tokens) {
+      if (token.type === 'code') {
+        const codeToken = token as Tokens.Code;
         const raw = codeToken.raw.trimStart();
         if (raw.startsWith('```') || raw.startsWith('~~~')) {
           const trimmedEnd = raw.trimEnd();

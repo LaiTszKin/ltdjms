@@ -1,20 +1,5 @@
 import type { DomainEvent } from '@ltdjms/shared';
 import { type DiscordRuntimeGateway, processWithConcurrencyLimit } from '@ltdjms/shared';
-import type {
-  BalanceChangedEvent,
-  GameTokenChangedEvent,
-  CurrencyConfigChangedEvent,
-  DiceGameConfigChangedEvent,
-} from '@ltdjms/economy';
-import type {
-  ProductChangedEvent,
-  RedemptionCodesGeneratedEvent,
-  ProductRedemptionCompletedEvent,
-} from '@ltdjms/shop';
-import type {
-  AIAgentChannelConfigChangedEvent,
-  AgentFailedEvent,
-} from '@ltdjms/ai';
 import {
   type Client,
   type TextChannel,
@@ -28,6 +13,8 @@ import { AdminPanelViewState, type AdminPanelSessionData } from '../../session/t
 import { CurrencyManagementFacade } from '../../facades/CurrencyManagementFacade.js';
 import { DispatchManagementFacade } from '../../facades/DispatchManagementFacade.js';
 import { AdminPanelViewFactory } from '../admin/views/AdminPanelViewFactory.js';
+import { ZhTwStrings } from '../../i18n/zh-TW.js';
+import { Colors } from '../../constants/colors.js';
 
 /**
  * Event type string constants for discrimination.
@@ -54,10 +41,14 @@ const EVENT_TYPES = {
  * Uses eventType discriminant for type-safe event identification.
  * Matches Java AdminPanelUpdateListener.
  *
- * NOTE(P2-17): 目前僅注入 CurrencyManagementFacade，因此非 MAIN 視圖的更新
- * 僅為 no-op re-edit（視覺刷新但內容不變）。若需非 MAIN 視圖的完整重建，
- * 應注入 ProductFacade、GameTokenFacade 等對應的 facade。
- * 見 buildMainPanelEmbed() 下方 else 分支。
+ * MAIN 視圖更新：CURRENCY_CONFIG_CHANGED / DICE_GAME_CONFIG_CHANGED 事件觸發
+ * buildMainPanelEmbed() 完整重建主面板 embed。
+ *
+ * 非 MAIN 視圖更新：
+ * - ESCORT_PRICING_CHANGED / ESCORT_CATALOG_CHANGED → 經由 dispatchFacade
+ *   取得即時資料，由 buildNonMainPanelEmbed() 重建對應 embed。
+ * - 其餘事件（PRODUCT_CHANGED、AI_*）因無對應 facade 注入，仍為 no-op re-edit。
+ *   若要支援，需注入 ProductManagementFacade / AIConfigManagementFacade。
  */
 export class AdminPanelUpdateListener {
   /** Tracks last update timestamp per guildId:eventType for rate-limit protection. */
@@ -179,9 +170,23 @@ export class AdminPanelUpdateListener {
     const isMainEvent =
       eventType === EVENT_TYPES.CURRENCY_CONFIG_CHANGED ||
       eventType === EVENT_TYPES.DICE_GAME_CONFIG_CHANGED;
+
+    // Non-main rebuildable events: we have the facade to rebuild embeds for
+    // specific non-MAIN view states (e.g., ESCORT_PRICING, ESCORT_CATALOG).
+    const isNonMainRebuildable =
+      eventType === EVENT_TYPES.ESCORT_PRICING_CHANGED ||
+      eventType === EVENT_TYPES.ESCORT_CATALOG_CHANGED;
+
     const hasMainViewSessions = relevantSessions.some(
       (s) => s.viewState === AdminPanelViewState.MAIN,
     );
+
+    // Only process events that can produce meaningful view state changes.
+    // Non-rebuildable events (no facade available) skip entirely to avoid
+    // no-op message.edit() calls with identical content.
+    if (!isMainEvent && !isNonMainRebuildable) {
+      return;
+    }
 
     let sharedMainPanel: {
       embed: EmbedBuilder;
@@ -209,6 +214,20 @@ export class AdminPanelUpdateListener {
                 embeds: [sharedMainPanel.embed],
                 components: sharedMainPanel.rows,
               });
+            } else if (isNonMainRebuildable) {
+              const nonMainPanel = await this.buildNonMainPanelEmbed(guildId, session.viewState);
+              if (nonMainPanel) {
+                await message.edit({
+                  embeds: [nonMainPanel.embed],
+                  components: nonMainPanel.rows,
+                });
+              } else {
+                const existingEmbeds = message.embeds;
+                if (existingEmbeds.length > 0) {
+                  const updatedEmbed = existingEmbeds[0].data;
+                  await message.edit({ embeds: [updatedEmbed] });
+                }
+              }
             } else {
               const existingEmbeds = message.embeds;
               if (existingEmbeds.length > 0) {
@@ -307,6 +326,72 @@ export class AdminPanelUpdateListener {
     } catch (err) {
       console.error(
         `[AdminPanelUpdateListener] Error building main panel embed for guildId=${guildId}:`,
+        err,
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Rebuilds a non-MAIN admin panel embed with fresh data from facades.
+   * Called by processBatchedUpdate for non-main rebuildable events.
+   * Currently handles ESCORT_PRICING and ESCORT_CATALOG view states
+   * via dispatchFacade. Other view states return null (no-op fallback).
+   */
+  private async buildNonMainPanelEmbed(
+    guildId: string,
+    viewState: AdminPanelViewState,
+  ): Promise<{
+    embed: EmbedBuilder;
+    rows: ActionRowBuilder<ButtonBuilder>[];
+  } | null> {
+    try {
+      switch (viewState) {
+        case AdminPanelViewState.ESCORT_PRICING: {
+          const pricingResult = await this.dispatchFacade.listPricing(guildId);
+          if (!pricingResult.isOk()) return null;
+          const pricing = pricingResult.getValue();
+
+          const lines = pricing.map((p) => {
+            const suffix = p.overridden ? `（已覆蓋）NT$${p.effectivePriceTwd.toLocaleString()}` : `（預設）NT$${p.effectivePriceTwd.toLocaleString()}`;
+            return `\`${p.optionCode}\` ${p.option.type}｜${p.option.level}｜${p.option.target}｜${suffix}`;
+          });
+
+          const embed = new EmbedBuilder()
+            .setTitle(ZhTwStrings.escortPricingTitle)
+            .setDescription(lines.length > 0 ? lines.join('\n') : '暫無定價資料')
+            .setColor(Colors.PRIMARY);
+
+          return { embed, rows: [] };
+        }
+
+        case AdminPanelViewState.ESCORT_CATALOG: {
+          const catalogResult = await this.dispatchFacade.listCatalog();
+          if (!catalogResult.isOk()) return null;
+          const catalog = catalogResult.getValue();
+
+          const lines = catalog.map((c) => {
+            return `\`${c.code}\` ${c.type}｜${c.level}｜${c.target}｜NT$${c.priceTwd.toLocaleString()}`;
+          });
+
+          const description = lines.length > 0
+            ? lines.join('\n')
+            : ZhTwStrings.escortCatalogEmpty;
+
+          const embed = new EmbedBuilder()
+            .setTitle(ZhTwStrings.escortCatalogTitle)
+            .setDescription(description)
+            .setColor(Colors.PRIMARY);
+
+          return { embed, rows: [] };
+        }
+
+        default:
+          return null;
+      }
+    } catch (err) {
+      console.error(
+        `[AdminPanelUpdateListener] Error building non-main panel embed for guildId=${guildId}, viewState=${viewState}:`,
         err,
       );
       return null;
