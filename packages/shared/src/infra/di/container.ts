@@ -3,15 +3,13 @@ import { EnvironmentConfig } from '../config/environment-config.js';
 import { NoOpCacheService } from '../cache/noop-cache-service.js';
 import { DefaultCacheKeyGenerator } from '../cache/cache-key-generator.js';
 import { DomainEventPublisher } from '../events/domain-event-publisher.js';
-import { DiscordJsRuntimeGateway } from '../../discord/services/discord-js-runtime-gateway.js';
-import { DiscordJsEmbedBuilder } from '../../discord/services/discord-js-embed-builder.js';
 import { TOKENS } from './tokens.js';
 import type { CacheService } from '../cache/cache-service.js';
 import type { CacheKeyGenerator } from '../cache/cache-key-generator.js';
 import type { DiscordRuntimeGateway } from '../../discord/domain/discord-runtime-gateway.js';
 import type { DiscordEmbedBuilder } from '../../discord/domain/discord-embed-builder.js';
 import type { DomainEvent } from '../../types/events/domain-event.js';
-import pino from 'pino';
+import pino, { type Logger } from 'pino';
 import { type Pool } from 'pg';
 
 /**
@@ -29,8 +27,8 @@ export function initializeContainer(options?: {
   eventPublisher?: DomainEventPublisher;
   runtimeGateway?: DiscordRuntimeGateway;
   embedBuilder?: DiscordEmbedBuilder;
-  logger?: pino.Logger;
-  databasePool?: unknown;
+  logger?: Logger;
+  databasePool?: Pool;
   /** Domain event listeners to register at startup. */
   eventListeners?: Array<(event: DomainEvent) => void>;
 }): void {
@@ -106,22 +104,12 @@ export function initializeContainer(options?: {
       TOKENS.DiscordRuntimeGateway,
       options.runtimeGateway,
     );
-  } else {
-    tsyringeContainer.registerInstance<DiscordRuntimeGateway>(
-      TOKENS.DiscordRuntimeGateway,
-      new DiscordJsRuntimeGateway(),
-    );
   }
 
   if (options?.embedBuilder) {
     tsyringeContainer.registerInstance<DiscordEmbedBuilder>(
       TOKENS.DiscordEmbedBuilder,
       options.embedBuilder,
-    );
-  } else {
-    tsyringeContainer.registerInstance<DiscordEmbedBuilder>(
-      TOKENS.DiscordEmbedBuilder,
-      new DiscordJsEmbedBuilder(),
     );
   }
 
@@ -141,7 +129,7 @@ export function initializeContainer(options?: {
     // In production this must be explicitly provided.
     tsyringeContainer.registerInstance(
       TOKENS.DatabasePool,
-      new Proxy({} as Pool, {
+      new Proxy({}, {
         get(_target, prop) {
           throw new Error(
             `DatabasePool.${String(prop)} accessed but no pool was provided. ` +

@@ -1,6 +1,5 @@
 import { Redis } from 'ioredis';
-import pino from 'pino';
-import { type Logger } from 'pino';
+import pino, { type Logger } from 'pino';
 import { type CacheService } from './cache-service.js';
 
 /**
@@ -13,10 +12,13 @@ export class RedisCacheService implements CacheService {
   private readonly logger: Logger;
 
   constructor(redisUri: string, logger?: Logger) {
-    this.logger = logger ?? (pino({ level: 'silent' }) as Logger);
+    this.logger = logger ?? pino({ level: 'silent' });
     this.redis = new Redis(redisUri, {
-      maxRetriesPerRequest: null,
+      maxRetriesPerRequest: 3,
       enableReadyCheck: true,
+      connectTimeout: 5000,
+      enableOfflineQueue: false,
+      retryStrategy: (times) => Math.min(times * 100, 3000),
     });
 
     // Handle errors without crashing
@@ -42,7 +44,7 @@ export class RedisCacheService implements CacheService {
     try {
       const serialized = JSON.stringify(value);
       if (ttlSeconds > 0) {
-        await this.redis.setex(key, ttlSeconds, serialized);
+        await this.redis.set(key, serialized, 'EX', ttlSeconds);
       } else {
         await this.redis.set(key, serialized);
       }

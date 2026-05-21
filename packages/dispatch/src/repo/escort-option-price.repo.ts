@@ -24,4 +24,7 @@ export interface EscortOptionPriceRepo {
 
   /** Counts how many guilds have price overrides for the given option code. */
   countByOptionCode(optionCode: string): Promise<number>;
+
+  /** Returns the guild IDs that have price overrides for the given option code. */
+  findGuildIdsByOptionCode(optionCode: string): Promise<number[]>;
 }

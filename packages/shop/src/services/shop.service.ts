@@ -11,12 +11,6 @@ export const ShopPageHelper = {
   isEmpty(page: ShopPage): boolean {
     return page.products.length === 0;
   },
-  hasPreviousPage(page: ShopPage): boolean {
-    return page.currentPage > 1;
-  },
-  hasNextPage(page: ShopPage): boolean {
-    return page.currentPage < page.totalPages;
-  },
   formatPageIndicator(page: ShopPage): string {
     if (page.totalPages <= 1) {
       return `共 ${page.products.length} 個商品`;
@@ -25,7 +19,7 @@ export const ShopPageHelper = {
   },
 };
 
-export const PAGE_SIZE = 10;
+export const PAGE_SIZE = 5;
 
 export class ShopService {
   private readonly log: pino.Logger;
@@ -48,17 +42,25 @@ export class ShopService {
   }
 
   async getShopPage(guildId: number, page: number): Promise<ShopPage> {
-    this.log.debug({ guildId, page, pageSize: PAGE_SIZE }, 'Getting shop page');
+    return this.getShopPageWithSize(guildId, page, PAGE_SIZE);
+  }
+
+  /**
+   * Like getShopPage but accepts an explicit page size override.
+   * Used by ShopCommandHandler.showBuySelection to load all products at once.
+   */
+  async getShopPageWithSize(guildId: number, page: number, pageSize: number): Promise<ShopPage> {
+    this.log.debug({ guildId, page, pageSize }, 'Getting shop page');
 
     const totalCount = await this.productRepository.countByGuildId(guildId);
-    const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
     // Ensure page is within valid range (0-based internally)
     const validPage = Math.max(0, Math.min(page, totalPages - 1));
     const products = await this.productRepository.findByGuildIdPaginated(
       guildId,
       validPage,
-      PAGE_SIZE,
+      pageSize,
     );
 
     this.log.debug({ validPage, productCount: products.length, totalPages }, 'Shop page result');
@@ -93,12 +95,4 @@ export class ShopService {
     return { products, currentPage: validPage + 1, totalPages };
   }
 
-  async getProductCount(guildId: number): Promise<number> {
-    return this.productRepository.countByGuildId(guildId);
-  }
-
-  async hasProducts(guildId: number): Promise<boolean> {
-    const count = await this.productRepository.countByGuildId(guildId);
-    return count > 0;
-  }
 }

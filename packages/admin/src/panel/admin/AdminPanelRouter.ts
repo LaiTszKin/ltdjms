@@ -8,8 +8,9 @@ import { AdminPanelViewState } from '../../session/types.js';
 import { ZhTwStrings } from '../../i18n/zh-TW.js';
 
 /**
- * Routes admin panel button/select/modal interactions to the appropriate sub-handler
- * based on the customId prefix.
+ * Catch-all fallback handler for admin panel button/select/modal interactions.
+ * Routes unmatched admin_* prefix interactions (after longer-prefix sub-handlers
+ * have been tried) and returns an error message to the user.
  * Matches Java AdminPanelRouter.
  */
 export class AdminPanelRouter implements InteractionHandler {

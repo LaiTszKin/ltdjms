@@ -27,13 +27,7 @@ export interface StreamChunk {
  * Matches Java StreamingResponseHandler.
  */
 export interface StreamingResponseHandler {
-  onChunk(chunk: string, isComplete: boolean, error: DomainError | null): void;
-  onChunkWithType(
-    chunk: string,
-    isComplete: boolean,
-    error: DomainError | null,
-    type: StreamChunkType,
-  ): void;
+  onChunk(chunk: string, isComplete: boolean, error: DomainError | null, chunkType?: StreamChunkType): void;
 }
 
 /**
@@ -224,11 +218,7 @@ export interface ToolExecutionContext {
 
 // ===== Domain Events for AI =====
 
-export interface AgentConfigUpdatedEvent {
-  guildId: string;
-  channelId: string;
-  enabled: boolean;
-}
+// AgentConfigUpdatedEvent removed (unused; AIAgentChannelConfigChangedEvent is used instead)
 
 export interface AIMessagePublishedEvent {
   guildId: string;

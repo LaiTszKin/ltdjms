@@ -1,4 +1,4 @@
-import { EmbedBuilder, type APIEmbed } from 'discord.js';
+import type { APIEmbed } from 'discord.js';
 import { type DiscordEmbedBuilder } from '../domain/discord-embed-builder.js';
 import { type EmbedView, type FieldView } from '../domain/embed-view.js';
 import { paginateEmbedView } from '../services/embed-pagination.js';
@@ -71,15 +71,21 @@ export class MockDiscordEmbedBuilder implements DiscordEmbedBuilder {
   }
 
   build(): APIEmbed {
-    const builder = new EmbedBuilder();
-    if (this._title) builder.setTitle(this._title);
-    if (this._description) builder.setDescription(this._description);
-    if (this._color) builder.setColor(this._color);
-    if (this._footer) builder.setFooter({ text: this._footer });
-    for (const f of this._fields) {
-      builder.addFields({ name: f.name, value: f.value, inline: f.inline });
+    const embed: APIEmbed = {};
+    if (this._title !== undefined) embed.title = this._title;
+    if (this._description !== undefined) embed.description = this._description;
+    if (this._color !== undefined) embed.color = this._color;
+    if (this._fields.length > 0) {
+      embed.fields = this._fields.map((f) => ({
+        name: f.name,
+        value: f.value,
+        inline: f.inline,
+      }));
     }
-    return builder.toJSON();
+    if (this._footer !== undefined) {
+      embed.footer = { text: this._footer };
+    }
+    return embed;
   }
 
   buildPaginated(data: EmbedView): APIEmbed[] {

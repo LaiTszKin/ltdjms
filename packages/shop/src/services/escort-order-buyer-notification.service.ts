@@ -1,4 +1,5 @@
 import type { DiscordRuntimeGateway } from '@ltdjms/shared';
+import type { DispatchOrderSnapshot } from '../domain/escort-dispatch-handoff-service.js';
 import pino from 'pino';
 
 export class EscortOrderBuyerNotificationService {
@@ -11,7 +12,7 @@ export class EscortOrderBuyerNotificationService {
     this.log = logger ?? pino({ level: 'warn' });
   }
 
-  notifyEscortOrderCreated(order: any): void {
+  notifyEscortOrderCreated(order: DispatchOrderSnapshot): void {
     if (!order) return;
 
     // Skip notification if the buyer is the bot itself
@@ -49,7 +50,7 @@ export class EscortOrderBuyerNotificationService {
     }
   }
 
-  buildEscortOrderCreatedMessage(order: any): string {
+  buildEscortOrderCreatedMessage(order: DispatchOrderSnapshot): string {
     const lines: string[] = [];
     lines.push('🛡️ 護航訂單已建立，正在等待處理\n');
     if (order.sourceProductName) {
@@ -69,7 +70,7 @@ export class EscortOrderBuyerNotificationService {
     }
   }
 
-  private formatPaymentMethod(order: any): string {
+  private formatPaymentMethod(order: DispatchOrderSnapshot): string {
     const sourceType = order.sourceType;
     if (!sourceType) return '未知';
 

@@ -95,6 +95,13 @@ export class EscortPricingHandler extends BaseAdminHandler {
       return;
     }
 
+    // Handle back to pricing list
+    if (fullCustomId === 'admin_escortprice_back') {
+      this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.ESCORT_PRICING);
+      await this.showPricingList(interaction, guildId);
+      return;
+    }
+
     // Default: show pricing list
     await this.showPricingList(interaction, guildId);
   }
@@ -145,8 +152,7 @@ export class EscortPricingHandler extends BaseAdminHandler {
       );
     }
 
-    const raw = interaction.getHook() as { showModal: (m: ModalBuilder) => Promise<void> };
-    await raw.showModal(modal);
+    await interaction.showModal(modal);
   }
 
   private async handleEditPriceSave(
@@ -155,11 +161,7 @@ export class EscortPricingHandler extends BaseAdminHandler {
     actorId: string,
     optionCode: string,
   ): Promise<void> {
-    const raw = interaction.getHook() as {
-      fields: { getTextInputValue: (id: string) => string };
-    };
-
-    const priceStr = raw.fields.getTextInputValue(ZhTwStrings.escortPricingEditLabel);
+    const priceStr = interaction.getTextInputValue(ZhTwStrings.escortPricingEditLabel);
     const price = parseInt(priceStr, 10);
 
     if (isNaN(price) || price <= 0) {
@@ -225,10 +227,7 @@ export class EscortPricingHandler extends BaseAdminHandler {
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(confirmBtn, cancelBtn);
 
-    const raw = interaction.getHook() as {
-      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }) => Promise<void>;
-    };
-    await raw.editReply({ embeds: [embed], components: [row] });
+    await interaction.editWithComponents(embed, [row]);
   }
 
   private async handleResetPrice(
@@ -240,10 +239,16 @@ export class EscortPricingHandler extends BaseAdminHandler {
     const result = await this.facade.resetPricing(guildId, optionCode);
 
     if (result.isOk()) {
+      // Query global default price after reset
+      const catalogEntry = await this.facade.findCatalogEntry(optionCode);
+      const defaultPrice = catalogEntry.isOk() && catalogEntry.getValue()
+        ? String(catalogEntry.getValue().priceTwd)
+        : '0';
+
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.escortPricingTitle)
         .setDescription(
-          ZhTwStrings.escortPricingResetDone.replace('{name}', optionCode).replace('{price}', '0'),
+          ZhTwStrings.escortPricingResetDone.replace('{name}', optionCode).replace('{price}', defaultPrice),
         )
         .setColor(Colors.SUCCESS);
       await interaction.editEmbed(embed);

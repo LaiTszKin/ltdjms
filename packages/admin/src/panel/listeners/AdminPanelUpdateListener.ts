@@ -23,6 +23,7 @@ import {
 import { AdminPanelSessionManager } from '../../session/AdminPanelSessionManager.js';
 import { AdminPanelViewState } from '../../session/types.js';
 import { CurrencyManagementFacade } from '../../facades/CurrencyManagementFacade.js';
+import { DispatchManagementFacade } from '../../facades/DispatchManagementFacade.js';
 import { AdminPanelViewFactory } from '../admin/views/AdminPanelViewFactory.js';
 
 /**
@@ -38,6 +39,10 @@ const EVENT_TYPES = {
   PRODUCT_REDEMPTION_COMPLETED: 'product_redemption_completed',
   AI_AGENT_CHANNEL_CONFIG_CHANGED: 'ai_agent_channel_config_changed',
   AGENT_FAILED: 'agent_failed',
+  AI_CHANNEL_CONFIG_CHANGED: 'ai_channel_config_changed',
+  DISPATCH_AFTER_SALES_CONFIG_CHANGED: 'dispatch_after_sales_config_changed',
+  ESCORT_PRICING_CHANGED: 'escort_pricing_changed',
+  ESCORT_CATALOG_CHANGED: 'escort_catalog_changed',
 } as const;
 
 /**
@@ -45,12 +50,18 @@ const EVENT_TYPES = {
  * Handles 13+ event types across different admin panel view states.
  * Uses eventType discriminant for type-safe event identification.
  * Matches Java AdminPanelUpdateListener.
+ *
+ * NOTE(P2-17): 目前僅注入 CurrencyManagementFacade，因此非 MAIN 視圖的更新
+ * 僅為 no-op re-edit（視覺刷新但內容不變）。若需非 MAIN 視圖的完整重建，
+ * 應注入 ProductFacade、GameTokenFacade 等對應的 facade。
+ * 見 buildMainPanelEmbed() 下方 else 分支。
  */
 export class AdminPanelUpdateListener {
   constructor(
     private readonly sessionManager: AdminPanelSessionManager,
     private readonly discordGateway: DiscordRuntimeGateway,
     private readonly currencyFacade: CurrencyManagementFacade,
+    private readonly dispatchFacade: DispatchManagementFacade,
     private readonly viewFactory: AdminPanelViewFactory,
   ) {}
 
@@ -72,6 +83,10 @@ export class AdminPanelUpdateListener {
       return;
     }
 
+    // NOTE(P3-7): 對每個 session 獨立執行 Discord API 呼叫（channel.fetch、message.fetch、message.edit）。
+    // 在高事件頻率場景（如大量餘額變更）可能觸發 Discord API rate limit。
+    // 若遇到 rate limit，可在此層加入 debounce 機制：以 guildId + eventType 為 key，
+    // 累積事件後以固定間隔（如 500ms）批量更新。
     let updatedCount = 0;
     const toRemove: Array<{ guildId: string; userId: string }> = [];
 
@@ -174,7 +189,8 @@ export class AdminPanelUpdateListener {
       const currencyConfig = configResult.isOk() ? configResult.getValue() : null;
 
       const guildName = await this.getGuildName(guildId);
-      const dispatchCount = 0; // TODO(P1-37): Query from dispatch service
+      const dispatchResult = await this.dispatchFacade.countActiveOrders(guildId);
+      const dispatchCount = dispatchResult.isOk() ? dispatchResult.getValue() : 0;
 
       const mainPanel = this.viewFactory.buildMainPanelEmbed(
         guildName,
@@ -204,7 +220,7 @@ export class AdminPanelUpdateListener {
       for (let i = 0; i < buttons.length; i += 3) {
         rows.push(
           new ActionRowBuilder<ButtonBuilder>().addComponents(
-            buttons.slice(i, i + 5),
+            buttons.slice(i, i + 3),
           ),
         );
       }
@@ -230,6 +246,10 @@ export class AdminPanelUpdateListener {
       EVENT_TYPES.GAME_TOKEN_CHANGED,
       EVENT_TYPES.PRODUCT_REDEMPTION_COMPLETED,
       EVENT_TYPES.AGENT_FAILED,
+      EVENT_TYPES.AI_CHANNEL_CONFIG_CHANGED,
+      EVENT_TYPES.DISPATCH_AFTER_SALES_CONFIG_CHANGED,
+      EVENT_TYPES.ESCORT_PRICING_CHANGED,
+      EVENT_TYPES.ESCORT_CATALOG_CHANGED,
     ]);
     return relevantTypes.has(event.eventType);
   }
@@ -268,6 +288,18 @@ export class AdminPanelUpdateListener {
         return viewState === AdminPanelViewState.PRODUCT_CODE_LIST;
 
       case EVENT_TYPES.AGENT_FAILED:
+        return true;
+
+      case EVENT_TYPES.AI_CHANNEL_CONFIG_CHANGED:
+        return viewState === AdminPanelViewState.AI_CHANNEL;
+
+      case EVENT_TYPES.DISPATCH_AFTER_SALES_CONFIG_CHANGED:
+        return viewState === AdminPanelViewState.DISPATCH_STAFF;
+
+      case EVENT_TYPES.ESCORT_PRICING_CHANGED:
+        return true;
+
+      case EVENT_TYPES.ESCORT_CATALOG_CHANGED:
         return true;
 
       default:

@@ -56,6 +56,26 @@ export interface EscortDispatchOrderRepo {
     closedAt: Date,
   ): Promise<EscortDispatchOrder | null>;
 
+  /**
+   * 原子確認訂單（護航者接單確認）。
+   * 僅在訂單狀態為 PENDING_CONFIRMATION 且 escortUserId 匹配時成功。
+   */
+  confirmOrder(
+    orderNumber: string,
+    expectedEscortUserId: number,
+    confirmedAt: Date,
+  ): Promise<EscortDispatchOrder | null>;
+
   /** 檢查訂單編號是否已存在。 */
   existsByOrderNumber(orderNumber: string): Promise<boolean>;
+
+  /** Counts active orders for a guild (orders not in terminal states). */
+  countActiveByGuildId(guildId: number): Promise<number>;
+
+  /**
+   * Completes all timed-out PENDING_CUSTOMER_CONFIRMATION orders
+   * (completion_requested_at > 24h) in a single batch UPDATE.
+   * Returns the list of updated orders.
+   */
+  batchTimeoutCompletion(): Promise<EscortDispatchOrder[]>;
 }

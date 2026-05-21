@@ -3,26 +3,30 @@ import {
   type DiscordContext,
 } from '@ltdjms/shared';
 import { GameTokenService } from '../token/services/game-token-service.js';
-import { GameTokenTransactionService } from '../token/services/game-token-tx-service.js';
 import { GameTokenTransactionSource } from '../domain/types.js';
 import { DiceGameMessages } from '../localization/dice-game-messages.js';
 
 /**
  * /game-token-adjust slash command handler (admin only).
  * Adjusts a member's game token balance by the specified amount.
+ * Transaction recording is handled internally by GameTokenService.tryAdjustTokens (P1-5).
  */
 export class GameTokenAdjustHandler {
   readonly commandName = 'game-token-adjust';
 
   constructor(
     private readonly gameTokenService: GameTokenService,
-    private readonly gameTokenTransactionService: GameTokenTransactionService,
   ) {}
 
   async execute(
     interaction: DiscordInteraction,
     context: DiscordContext,
   ): Promise<void> {
+    if (!interaction.isAdministrator()) {
+      await interaction.reply('此操作需要管理員權限');
+      return;
+    }
+
     const guildId = Number(interaction.getGuildId());
     const actorId = Number(interaction.getUserId());
 
@@ -46,6 +50,8 @@ export class GameTokenAdjustHandler {
       guildId,
       targetUserId,
       amount,
+      GameTokenTransactionSource.ADMIN_ADJUSTMENT,
+      `Admin adjusted by ${actorId}`,
     );
 
     if (result.isErr()) {
@@ -58,16 +64,6 @@ export class GameTokenAdjustHandler {
     }
 
     const adjustment = result.getValue();
-
-    // Record token transaction
-    await this.gameTokenTransactionService.recordTransaction(
-      guildId,
-      targetUserId,
-      amount,
-      adjustment.newTokens,
-      GameTokenTransactionSource.ADMIN_ADJUSTMENT,
-      `Admin adjusted by ${actorId}`,
-    );
 
     const message = [
       `**${DiceGameMessages.TOKEN_ADJUST_TITLE}**`,

@@ -7,6 +7,7 @@ import { type CommandHandler } from '../../commands/infra/CommandHandler.js';
 import { AdminPanelSessionManager } from '../../session/AdminPanelSessionManager.js';
 import { AdminPanelViewFactory } from './views/AdminPanelViewFactory.js';
 import { CurrencyManagementFacade } from '../../facades/CurrencyManagementFacade.js';
+import { DispatchManagementFacade } from '../../facades/DispatchManagementFacade.js';
 import { ZhTwStrings } from '../../i18n/zh-TW.js';
 
 /**
@@ -21,12 +22,15 @@ export class AdminPanelCommand implements CommandHandler {
     private readonly sessionManager: AdminPanelSessionManager,
     private readonly viewFactory: AdminPanelViewFactory,
     private readonly currencyFacade: CurrencyManagementFacade,
+    private readonly dispatchFacade: DispatchManagementFacade,
   ) {}
 
   async execute(
     interaction: DiscordInteraction,
     context: DiscordContext,
   ): Promise<void> {
+    await interaction.deferReply();
+
     // Permission check (second layer)
     if (!this.hasAdminPermission(interaction)) {
       await interaction.reply(ZhTwStrings.permissionAdminRequired);
@@ -42,13 +46,11 @@ export class AdminPanelCommand implements CommandHandler {
     const configResult = await this.currencyFacade.getConfig(guildId);
     const currencyConfig = configResult.isOk() ? configResult.getValue() : null;
 
-    // TODO(P1-37): Query active dispatch order count from a dispatch service
-    // (e.g., EscortOrderService) once it is available. Currently hardcoded to 0.
-    const dispatchCount = 0;
+    const dispatchResult = await this.dispatchFacade.countActiveOrders(guildId);
+    const dispatchCount = dispatchResult.isOk() ? dispatchResult.getValue() : 0;
 
-    // Attempt to get the actual guild name from the raw interaction
-    const rawHook = interaction.getHook() as { guild?: { name?: string } };
-    const guildName = rawHook.guild?.name ?? `Guild ${guildId}`;
+    // Attempt to get the actual guild name from the interaction
+    const guildName = interaction.getGuildName() ?? `Guild ${guildId}`;
 
     const mainPanel = this.viewFactory.buildMainPanelEmbed(
       guildName,
@@ -85,25 +87,15 @@ export class AdminPanelCommand implements CommandHandler {
       );
     }
 
-    // Use the raw discord.js interaction to send embed with components
-    const raw = interaction.getHook() as {
-      reply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }) => Promise<unknown>;
-      fetchReply: () => Promise<{ channelId: string; id: string }>;
-    };
-    await raw.reply({ embeds: [embed], components: rows });
+    // Send embed with components and store channelId/messageId for real-time push updates
+    const replyMeta = await interaction.replyWithComponents(embed, rows);
 
-    // Store channelId and messageId for real-time push updates via listeners
-    try {
-      const replyMsg = await raw.fetchReply();
-      if (replyMsg && 'channelId' in replyMsg && 'id' in replyMsg) {
-        const session = this.sessionManager.getSession(guildId, userId);
-        if (session) {
-          session.channelId = String(replyMsg.channelId);
-          session.messageId = String(replyMsg.id);
-        }
+    if (replyMeta) {
+      const session = this.sessionManager.getSession(guildId, userId);
+      if (session) {
+        session.channelId = replyMeta.channelId;
+        session.messageId = replyMeta.id;
       }
-    } catch {
-      // Non-critical: push updates will not be available but the panel still works
     }
   }
 

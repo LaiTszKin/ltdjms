@@ -8,9 +8,11 @@ import { type DiscordInteraction } from '../domain/discord-interaction.js';
 export class MockDiscordInteraction implements DiscordInteraction {
   private readonly _guildId: string;
   private readonly _userId: string;
+  private readonly _channelId: string | undefined;
   private readonly _ephemeral: boolean;
   private readonly _customId: string;
   private _isAdministrator: boolean;
+  private readonly _interactionType: 'button' | 'modalSubmit' | 'chatInput' | 'stringSelect';
   private _acknowledged = false;
 
   private readonly _replyMessages: string[] = [];
@@ -21,16 +23,23 @@ export class MockDiscordInteraction implements DiscordInteraction {
   constructor(
     guildId: string,
     userId: string,
-    _channelId?: string,
+    channelId?: string,
     ephemeral = false,
     customId = '',
     isAdmin = false,
+    interactionType: 'button' | 'modalSubmit' | 'chatInput' | 'stringSelect' = 'button',
   ) {
     this._guildId = guildId;
     this._userId = userId;
+    this._channelId = channelId;
     this._ephemeral = ephemeral;
     this._customId = customId;
     this._isAdministrator = isAdmin;
+    this._interactionType = interactionType;
+  }
+
+  getChannelId(): string {
+    return this._channelId ?? '0';
   }
 
   getGuildId(): string {
@@ -82,6 +91,46 @@ export class MockDiscordInteraction implements DiscordInteraction {
 
   hasPermission(_permission: bigint): boolean {
     return this._isAdministrator;
+  }
+
+  async showModal(_modal: unknown): Promise<void> {
+    // No-op in mock
+  }
+
+  getSelectedValues(): string[] {
+    return [];
+  }
+
+  getTextInputValue(_customId: string): string {
+    return '';
+  }
+
+  getGuildName(): string | null {
+    return null;
+  }
+
+  getChannelName(_channelId: string): string | null {
+    return null;
+  }
+
+  isButton(): boolean {
+    return this._interactionType === 'button';
+  }
+
+  isModalSubmit(): boolean {
+    return false;
+  }
+
+  async replyWithComponents(
+    _embed: unknown,
+    _components: unknown[],
+  ): Promise<{ channelId: string; id: string } | null> {
+    this._acknowledged = true;
+    return null;
+  }
+
+  async editWithComponents(_embed: unknown, _components: unknown[]): Promise<void> {
+    // No-op in mock
   }
 
   /** Sets the admin flag for testing. */

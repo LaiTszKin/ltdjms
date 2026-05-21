@@ -28,15 +28,14 @@ export class DiscordMarkdownSanitizer {
     result = result.replace(/<[^>]*>/g, '');
 
     // 3. Flatten nested blockquotes (e.g. ">> > text" → "> text")
-    result = result.replace(/^(?:\s*>\s*)+/gm, (match) => {
-      // Collapse multiple > levels into single level
-      const content = match.replace(/^(?:\s*>\s*)+/, '').trimStart();
-      if (!content) return '>';
-      return '> ' + content;
-    });
+    // Regex matches leading blockquote prefix only; the rest of the line is preserved.
+    result = result.replace(/^(?:\s*>\s*)+/gm, '> ');
 
     // 4. Convert tables to ```text code blocks
     result = this.convertTablesToCodeBlocks(result);
+
+    // 5. Remove trailing whitespace on each line（P3-10：移至 pipeline 前端，僅執行一次）
+    result = result.replace(/[ \t]+$/gm, '');
 
     // Restore code blocks
     result = this.restoreCodeBlocks(result, codeBlocks);

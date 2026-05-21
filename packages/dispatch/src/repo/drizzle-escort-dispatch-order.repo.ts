@@ -1,7 +1,8 @@
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq, and, ne, isNull, sql } from 'drizzle-orm';
+import { eq, and, ne, isNull, notInArray, sql } from 'drizzle-orm';
 import { escortDispatchOrder } from '../schema/escort-dispatch-order.sql.js';
-import { type EscortDispatchOrder,
+import {
+  type EscortDispatchOrder,
   EscortDispatchOrderStatus,
   SourceType,
   fromDbRow,
@@ -64,8 +65,6 @@ export class DrizzleEscortDispatchOrderRepo implements EscortDispatchOrderRepo {
         afterSalesAssignedAt: order.afterSalesAssignedAt,
         afterSalesClosedAt: order.afterSalesClosedAt,
         updatedAt: order.updatedAt,
-        escortUserId: order.escortUserId,
-        assignedByUserId: order.assignedByUserId,
       })
       .where(and(...conditions))
       .returning();
@@ -141,14 +140,14 @@ export class DrizzleEscortDispatchOrderRepo implements EscortDispatchOrderRepo {
   async assignEscort(
     orderNumber: string,
     assignedByUserId: number,
-    escortUserId: number,
+    escortUserIdValue: number,
     assignedAt: Date,
   ): Promise<EscortDispatchOrder | null> {
     const rows = await this.db
       .update(escortDispatchOrder)
       .set({
         assignedByUserId,
-        escortUserId,
+        escortUserId: escortUserIdValue,
         updatedAt: assignedAt,
       })
       .where(
@@ -156,7 +155,7 @@ export class DrizzleEscortDispatchOrderRepo implements EscortDispatchOrderRepo {
           eq(escortDispatchOrder.orderNumber, orderNumber),
           eq(escortDispatchOrder.status, EscortDispatchOrderStatus.PENDING_CONFIRMATION),
           eq(escortDispatchOrder.escortUserId, 0),
-          ne(escortDispatchOrder.customerUserId, escortUserId),
+          ne(escortDispatchOrder.customerUserId, escortUserIdValue),
         ),
       )
       .returning();
@@ -175,6 +174,7 @@ export class DrizzleEscortDispatchOrderRepo implements EscortDispatchOrderRepo {
         status: EscortDispatchOrderStatus.AFTER_SALES_IN_PROGRESS,
         afterSalesAssigneeUserId: assigneeUserId,
         afterSalesAssignedAt: assignedAt,
+        afterSalesClosedAt: null,
         updatedAt: assignedAt,
       })
       .where(
@@ -182,6 +182,36 @@ export class DrizzleEscortDispatchOrderRepo implements EscortDispatchOrderRepo {
           eq(escortDispatchOrder.orderNumber, orderNumber),
           eq(escortDispatchOrder.status, EscortDispatchOrderStatus.AFTER_SALES_REQUESTED),
           isNull(escortDispatchOrder.afterSalesAssigneeUserId),
+        ),
+      )
+      .returning();
+
+    return rows.length > 0 ? mapRowToDomain(rows[0]) : null;
+  }
+
+  async confirmOrder(
+    orderNumber: string,
+    expectedEscortUserId: number,
+    confirmedAt: Date,
+  ): Promise<EscortDispatchOrder | null> {
+    const rows = await this.db
+      .update(escortDispatchOrder)
+      .set({
+        status: EscortDispatchOrderStatus.CONFIRMED,
+        confirmedAt,
+        completionRequestedAt: null,
+        completedAt: null,
+        afterSalesRequestedAt: null,
+        afterSalesAssigneeUserId: null,
+        afterSalesAssignedAt: null,
+        afterSalesClosedAt: null,
+        updatedAt: confirmedAt,
+      })
+      .where(
+        and(
+          eq(escortDispatchOrder.orderNumber, orderNumber),
+          eq(escortDispatchOrder.status, EscortDispatchOrderStatus.PENDING_CONFIRMATION),
+          eq(escortDispatchOrder.escortUserId, expectedEscortUserId),
         ),
       )
       .returning();
@@ -221,6 +251,41 @@ export class DrizzleEscortDispatchOrderRepo implements EscortDispatchOrderRepo {
       .limit(1);
 
     return rows.length > 0;
+  }
+
+  async batchTimeoutCompletion(): Promise<EscortDispatchOrder[]> {
+    const rows = await this.db
+      .update(escortDispatchOrder)
+      .set({
+        status: EscortDispatchOrderStatus.COMPLETED,
+        completedAt: sql`NOW()`,
+        updatedAt: sql`NOW()`,
+      })
+      .where(
+        and(
+          eq(escortDispatchOrder.status, EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION),
+          sql`${escortDispatchOrder.completionRequestedAt} < NOW() - INTERVAL '24 hours'`,
+        ),
+      )
+      .returning();
+
+    return rows.map(mapRowToDomain);
+  }
+
+  async countActiveByGuildId(guildId: number): Promise<number> {
+    const [row] = await this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(escortDispatchOrder)
+      .where(
+        and(
+          eq(escortDispatchOrder.guildId, guildId),
+          notInArray(escortDispatchOrder.status, [
+            EscortDispatchOrderStatus.COMPLETED,
+            EscortDispatchOrderStatus.AFTER_SALES_CLOSED,
+          ]),
+        ),
+      );
+    return row ? Number(row.count) : 0;
   }
 }
 

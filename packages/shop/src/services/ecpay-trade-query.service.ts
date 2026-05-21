@@ -2,13 +2,13 @@ import { buildCheckMacValue } from '../crypto/ecpay-checkmac.js';
 import { javaUrlEncode } from '../crypto/url-encoder.js';
 import type { EnvironmentConfig } from '@ltdjms/shared';
 import { Result, ok, err, DomainError } from '@ltdjms/shared';
-import https from 'node:https';
+import { fetch, Agent } from 'undici';
 import pino from 'pino';
 
 const STAGE_ENDPOINT = 'https://payment-stage.ecpay.com.tw/Cashier/QueryTradeInfo/V5';
 const PROD_ENDPOINT = 'https://payment.ecpay.com.tw/Cashier/QueryTradeInfo/V5';
 
-const keepAliveAgent = new https.Agent({ keepAlive: true, keepAliveMsecs: 30000, timeout: 15000, maxSockets: 10, maxFreeSockets: 5 });
+const keepAliveDispatcher = new Agent({ keepAliveTimeout: 10 });
 
 export interface QueryTradeResult {
   orderNumber: string;
@@ -64,10 +64,12 @@ export class EcpayTradeQueryService {
         },
         body: formBody,
         signal: AbortSignal.timeout(15000),
-        agent: keepAliveAgent,
-      } as any);
+        dispatcher: keepAliveDispatcher,
+      });
 
       if (!response.ok) {
+        const body = await response.text();
+        this.log.warn({ status: response.status, body }, 'ECPay query trade failed');
         return err(
           DomainError.unexpectedFailure(`綠界查單失敗（HTTP ${response.status}）`),
         );
@@ -95,7 +97,7 @@ export class EcpayTradeQueryService {
         message,
       });
     } catch (e: any) {
-      if (e.name === 'AbortError') {
+      if (e.name === 'TimeoutError' || e.name === 'AbortError') {
         return err(DomainError.unexpectedFailure('綠界查單逾時'));
       }
       this.log.warn({ error: e, orderNumber }, 'Failed to query ECPay trade info');

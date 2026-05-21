@@ -109,37 +109,39 @@ function validateSourceSnapshot(order: EscortDispatchOrder): void {
 }
 
 function validateRequiredTimestamps(order: EscortDispatchOrder): void {
-  switch (order.status) {
+  const s = order.status;
+  switch (s) {
     case EscortDispatchOrderStatus.PENDING_CONFIRMATION:
       break;
     case EscortDispatchOrderStatus.CONFIRMED:
-      requireField('confirmedAt', order.confirmedAt);
+      requireField('confirmedAt', order.confirmedAt, s);
       break;
     case EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION:
-      requireField('confirmedAt', order.confirmedAt);
-      requireField('completionRequestedAt', order.completionRequestedAt);
+      requireField('confirmedAt', order.confirmedAt, s);
+      requireField('completionRequestedAt', order.completionRequestedAt, s);
       break;
     case EscortDispatchOrderStatus.COMPLETED:
-      requireField('completedAt', order.completedAt);
+      requireField('completedAt', order.completedAt, s);
       break;
     case EscortDispatchOrderStatus.AFTER_SALES_REQUESTED:
-      requireField('afterSalesRequestedAt', order.afterSalesRequestedAt);
+      requireField('afterSalesRequestedAt', order.afterSalesRequestedAt, s);
       break;
     case EscortDispatchOrderStatus.AFTER_SALES_IN_PROGRESS:
-      requireField('afterSalesRequestedAt', order.afterSalesRequestedAt);
-      requireField('afterSalesAssigneeUserId', order.afterSalesAssigneeUserId);
-      requireField('afterSalesAssignedAt', order.afterSalesAssignedAt);
+      requireField('afterSalesRequestedAt', order.afterSalesRequestedAt, s);
+      requireField('afterSalesAssigneeUserId', order.afterSalesAssigneeUserId, s);
+      requireField('afterSalesAssignedAt', order.afterSalesAssignedAt, s);
       break;
     case EscortDispatchOrderStatus.AFTER_SALES_CLOSED:
-      requireField('afterSalesAssigneeUserId', order.afterSalesAssigneeUserId);
-      requireField('afterSalesClosedAt', order.afterSalesClosedAt);
+      requireField('afterSalesRequestedAt', order.afterSalesRequestedAt, s);
+      requireField('afterSalesAssigneeUserId', order.afterSalesAssigneeUserId, s);
+      requireField('afterSalesClosedAt', order.afterSalesClosedAt, s);
       break;
   }
 }
 
-function requireField(name: string, value: unknown): void {
+function requireField(name: string, value: unknown, status?: EscortDispatchOrderStatus): void {
   if (value == null) {
-    throw new Error(`${name} must not be null for status`);
+    throw new Error(`${name} must not be null for status ${status ?? 'unknown'}`);
   }
 }
 
@@ -416,6 +418,22 @@ export function withAfterSalesInProgress(
     afterSalesAssignedAt: assignedAt,
     afterSalesClosedAt: null,
     status: EscortDispatchOrderStatus.AFTER_SALES_IN_PROGRESS,
+  });
+}
+
+/** 指派護航者後回傳新狀態物件（escortUserId 從 0 更新為指定值，狀態維持 PENDING_CONFIRMATION）。 */
+export function withAssignedEscort(
+  order: EscortDispatchOrder,
+  assignedBy: number,
+  escortUserIdValue: number,
+  assignedAt: Date,
+): EscortDispatchOrder {
+  return createOrder({
+    ...order,
+    id: order.id,
+    assignedByUserId: assignedBy,
+    escortUserId: escortUserIdValue,
+    updatedAt: assignedAt,
   });
 }
 

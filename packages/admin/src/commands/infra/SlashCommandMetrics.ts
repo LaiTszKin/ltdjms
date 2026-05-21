@@ -40,14 +40,22 @@ export class SlashCommandMetrics {
   recordEnd(commandName: string, elapsedMs: number, success: boolean): void {
     // Update ring buffer
     if (!this.latencies.has(commandName)) {
-      this.latencies.set(commandName, new Array(SlashCommandMetrics.WINDOW_SIZE).fill(0));
+      // 使用動態增長陣列（P3-11）：初始為空，逐步 push 直到 WINDOW_SIZE，
+      // 之後以 ring buffer 模式覆寫。避免預先填充 1000 個 0 影響百分位計算。
+      this.latencies.set(commandName, []);
       this.indices.set(commandName, 0);
       this.counts.set(commandName, 0);
     }
 
     const buffer = this.latencies.get(commandName)!;
     const idx = this.indices.get(commandName)!;
-    buffer[idx] = elapsedMs;
+
+    if (buffer.length < SlashCommandMetrics.WINDOW_SIZE) {
+      buffer.push(elapsedMs);
+    } else {
+      buffer[idx] = elapsedMs;
+    }
+
     this.indices.set(commandName, (idx + 1) % SlashCommandMetrics.WINDOW_SIZE);
     this.counts.set(commandName, this.counts.get(commandName)! + 1);
 

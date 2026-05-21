@@ -13,6 +13,7 @@ import { AdminPanelSessionManager } from '../../../session/AdminPanelSessionMana
 import { AdminPanelViewState } from '../../../session/types.js';
 import { BotErrorHandler } from '../../../commands/infra/BotErrorHandler.js';
 import { GameConfigManagementFacade } from '../../../facades/GameConfigManagementFacade.js';
+import { AdminPanelViewFactory } from '../views/AdminPanelViewFactory.js';
 import { ZhTwStrings } from '../../../i18n/zh-TW.js';
 import { BaseAdminHandler } from '../BaseAdminHandler.js';
 import { Colors } from '../../../constants/colors.js';
@@ -26,6 +27,7 @@ export class GameSettingsHandler extends BaseAdminHandler {
 
   constructor(
     private readonly facade: GameConfigManagementFacade,
+    private readonly viewFactory: AdminPanelViewFactory,
     sessionManager: AdminPanelSessionManager,
     errorHandler: BotErrorHandler,
   ) {
@@ -123,8 +125,7 @@ export class GameSettingsHandler extends BaseAdminHandler {
         ),
       );
 
-      const raw = interaction.getHook() as { showModal: (m: ModalBuilder) => Promise<void> };
-      await raw.showModal(modal);
+      await interaction.showModal(modal);
     } else {
       const configResult = await this.facade.getDiceGame2Config(guildId);
       if (configResult.isErr()) {
@@ -178,15 +179,6 @@ export class GameSettingsHandler extends BaseAdminHandler {
             .setValue(String(cfg.tripleLowBonus))
             .setMinLength(1).setMaxLength(10).setRequired(true),
         ),
-      );
-
-      // Add the 6th field in a separate modal call stack
-      // TODO(P1-34): Spec R4.3 requires six individual dice face multipliers
-      // (one per dice value 1-6). DiceGame2Config currently only has four
-      // multiplier fields (straightMultiplier, baseMultiplier, tripleLowBonus,
-      // tripleHighBonus). When DiceGame2Config is extended with per-face multipliers,
-      // add the corresponding modal fields here.
-      modal.addComponents(
         new ActionRowBuilder<TextInputBuilder>().addComponents(
           new TextInputBuilder()
             .setCustomId('tripleHighBonus')
@@ -197,8 +189,7 @@ export class GameSettingsHandler extends BaseAdminHandler {
         ),
       );
 
-      const raw = interaction.getHook() as { showModal: (m: ModalBuilder) => Promise<void> };
-      await raw.showModal(modal);
+      await interaction.showModal(modal);
     }
   }
 
@@ -207,14 +198,10 @@ export class GameSettingsHandler extends BaseAdminHandler {
     guildId: string,
     gameNumber: '1' | '2',
   ): Promise<void> {
-    const raw = interaction.getHook() as {
-      fields: { getTextInputValue: (id: string) => string };
-    };
-
     if (gameNumber === '1') {
-      const min = parseInt(raw.fields.getTextInputValue('minTokensPerPlay'), 10);
-      const max = parseInt(raw.fields.getTextInputValue('maxTokensPerPlay'), 10);
-      const reward = parseInt(raw.fields.getTextInputValue('rewardPerDiceValue'), 10);
+      const min = parseInt(interaction.getTextInputValue('minTokensPerPlay'), 10);
+      const max = parseInt(interaction.getTextInputValue('maxTokensPerPlay'), 10);
+      const reward = parseInt(interaction.getTextInputValue('rewardPerDiceValue'), 10);
 
       if (isNaN(min) || isNaN(max) || isNaN(reward)) {
         const embed = new EmbedBuilder()
@@ -241,12 +228,12 @@ export class GameSettingsHandler extends BaseAdminHandler {
         await this.errorHandler.handle(result.getError(), interaction);
       }
     } else {
-      const min = parseInt(raw.fields.getTextInputValue('minTokensPerPlay'), 10);
-      const max = parseInt(raw.fields.getTextInputValue('maxTokensPerPlay'), 10);
-      const straight = parseFloat(raw.fields.getTextInputValue('straightMultiplier'));
-      const base = parseFloat(raw.fields.getTextInputValue('baseMultiplier'));
-      const tripleLow = parseFloat(raw.fields.getTextInputValue('tripleLowBonus'));
-      const tripleHigh = parseFloat(raw.fields.getTextInputValue('tripleHighBonus'));
+      const min = parseInt(interaction.getTextInputValue('minTokensPerPlay'), 10);
+      const max = parseInt(interaction.getTextInputValue('maxTokensPerPlay'), 10);
+      const straight = parseFloat(interaction.getTextInputValue('straightMultiplier'));
+      const base = parseFloat(interaction.getTextInputValue('baseMultiplier'));
+      const tripleLow = parseFloat(interaction.getTextInputValue('tripleLowBonus'));
+      const tripleHigh = parseFloat(interaction.getTextInputValue('tripleHighBonus'));
 
       if (isNaN(min) || isNaN(max) || isNaN(straight) || isNaN(base) || isNaN(tripleLow) || isNaN(tripleHigh)) {
         const embed = new EmbedBuilder()
@@ -257,6 +244,13 @@ export class GameSettingsHandler extends BaseAdminHandler {
         return;
       }
 
+      // Parse face multiplier fields (optional, default to 1 if not present)
+      const faceMultipliers: [number, number, number, number, number, number] = [1, 1, 1, 1, 1, 1];
+      for (let i = 0; i < 6; i++) {
+        const val = parseFloat(interaction.getTextInputValue(`faceMultiplier${i + 1}`));
+        if (!isNaN(val)) faceMultipliers[i] = val;
+      }
+
       const result = await this.facade.updateDiceGame2Config(guildId, {
         minTokensPerPlay: min,
         maxTokensPerPlay: max,
@@ -264,6 +258,7 @@ export class GameSettingsHandler extends BaseAdminHandler {
         baseMultiplier: base,
         tripleLowBonus: tripleLow,
         tripleHighBonus: tripleHigh,
+        faceMultipliers,
       });
 
       if (result.isOk()) {
@@ -287,33 +282,22 @@ export class GameSettingsHandler extends BaseAdminHandler {
       const configResult = await this.facade.getDiceGame1Config(guildId);
       if (configResult.isOk()) {
         const cfg = configResult.getValue();
+        const embedData = this.viewFactory.buildDiceGame1ConfigEmbed(cfg);
         const embed = new EmbedBuilder()
-          .setTitle(ZhTwStrings.gameDice1Title)
-          .setDescription(
-            ZhTwStrings.gameDice1Fields
-              .replace('{min}', String(cfg.minTokensPerPlay))
-              .replace('{max}', String(cfg.maxTokensPerPlay))
-              .replace('{reward}', String(cfg.rewardPerDiceValue)),
-          )
-          .setColor(Colors.WARNING);
+          .setTitle(embedData.title)
+          .setDescription(embedData.description)
+          .setColor(embedData.color);
         await interaction.editEmbed(embed);
       }
     } else {
       const configResult = await this.facade.getDiceGame2Config(guildId);
       if (configResult.isOk()) {
         const cfg = configResult.getValue();
+        const embedData = this.viewFactory.buildDiceGame2ConfigEmbed(cfg);
         const embed = new EmbedBuilder()
-          .setTitle(ZhTwStrings.gameDice2Title)
-          .setDescription(
-            ZhTwStrings.gameDice2Fields
-              .replace('{min}', String(cfg.minTokensPerPlay))
-              .replace('{max}', String(cfg.maxTokensPerPlay))
-              .replace('{straight}', String(cfg.straightMultiplier))
-              .replace('{base}', String(cfg.baseMultiplier))
-              .replace('{lowTriple}', String(cfg.tripleLowBonus))
-              .replace('{highTriple}', String(cfg.tripleHighBonus)),
-          )
-          .setColor(Colors.WARNING);
+          .setTitle(embedData.title)
+          .setDescription(embedData.description)
+          .setColor(embedData.color);
         await interaction.editEmbed(embed);
       }
     }
@@ -326,43 +310,14 @@ export class GameSettingsHandler extends BaseAdminHandler {
     const dice1Result = await this.facade.getDiceGame1Config(guildId);
     const dice2Result = await this.facade.getDiceGame2Config(guildId);
 
-    const descriptionLines: string[] = [];
-    descriptionLines.push(`**${ZhTwStrings.gameDiceGame1}**`);
+    const dice1Config = dice1Result.isOk() ? dice1Result.getValue() : null;
+    const dice2Config = dice2Result.isOk() ? dice2Result.getValue() : null;
 
-    if (dice1Result.isOk()) {
-      const cfg = dice1Result.getValue();
-      descriptionLines.push(
-        ZhTwStrings.gameDice1Fields
-          .replace('{min}', String(cfg.minTokensPerPlay))
-          .replace('{max}', String(cfg.maxTokensPerPlay))
-          .replace('{reward}', String(cfg.rewardPerDiceValue)),
-      );
-    } else {
-      descriptionLines.push('尚未設定');
-    }
-
-    descriptionLines.push('');
-    descriptionLines.push(`**${ZhTwStrings.gameDiceGame2}**`);
-
-    if (dice2Result.isOk()) {
-      const cfg = dice2Result.getValue();
-      descriptionLines.push(
-        ZhTwStrings.gameDice2Fields
-          .replace('{min}', String(cfg.minTokensPerPlay))
-          .replace('{max}', String(cfg.maxTokensPerPlay))
-          .replace('{straight}', String(cfg.straightMultiplier))
-          .replace('{base}', String(cfg.baseMultiplier))
-          .replace('{lowTriple}', String(cfg.tripleLowBonus))
-          .replace('{highTriple}', String(cfg.tripleHighBonus)),
-      );
-    } else {
-      descriptionLines.push('尚未設定');
-    }
-
+    const embedData = this.viewFactory.buildGameOverviewEmbed(dice1Config, dice2Config);
     const embed = new EmbedBuilder()
-      .setTitle(ZhTwStrings.gameSelectTitle)
-      .setDescription(descriptionLines.join('\n'))
-      .setColor(Colors.WARNING);
+      .setTitle(embedData.title)
+      .setDescription(embedData.description)
+      .setColor(embedData.color);
     await interaction.editEmbed(embed);
   }
 }

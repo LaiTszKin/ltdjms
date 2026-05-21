@@ -40,10 +40,10 @@ export const ConfigSchema = z.object({
   DB_URL: z.string().optional(),
 
   // Connection pool
-  DB_POOL_MAX_SIZE: z.coerce.number().int().positive().default(10),
+  DB_POOL_MAX_SIZE: z.coerce.number().int().positive().default(5),
   DB_POOL_MIN_IDLE: z.coerce.number().int().min(0).default(2),
-  DB_POOL_CONNECTION_TIMEOUT: z.coerce.number().positive().default(30000),
-  DB_POOL_IDLE_TIMEOUT: z.coerce.number().positive().default(600000),
+  DB_POOL_CONNECTION_TIMEOUT: z.coerce.number().positive().default(5000),
+  DB_POOL_IDLE_TIMEOUT: z.coerce.number().positive().default(30000),
   DB_POOL_MAX_LIFETIME: z.coerce.number().positive().default(1800000),
 
   // Redis

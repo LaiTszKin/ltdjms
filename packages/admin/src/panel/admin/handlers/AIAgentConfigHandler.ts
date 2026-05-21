@@ -7,6 +7,8 @@ import {
   ActionRowBuilder,
   ChannelType,
   ChannelSelectMenuBuilder,
+  StringSelectMenuBuilder,
+  StringSelectMenuOptionBuilder,
 } from 'discord.js';
 import { AdminPanelSessionManager } from '../../../session/AdminPanelSessionManager.js';
 import { AdminPanelViewState } from '../../../session/types.js';
@@ -58,7 +60,11 @@ export class AIAgentConfigHandler extends BaseAdminHandler {
 
     // Handle channel select menu results
     if (fullCustomId === 'admin_aiagent_enable_select') {
-      await this.handleEnableAgent(interaction, guildId);
+      await this.handleChannelSelected(interaction, guildId);
+      return;
+    }
+    if (fullCustomId === 'admin_aiagent_enable_mode_select') {
+      await this.handleEnableAgentWithMode(interaction, guildId);
       return;
     }
     if (fullCustomId === 'admin_aiagent_disable_select') {
@@ -92,10 +98,6 @@ export class AIAgentConfigHandler extends BaseAdminHandler {
     interaction: DiscordInteraction,
     action: 'enable' | 'disable' | 'remove',
   ): Promise<void> {
-    const raw = interaction.getHook() as {
-      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<any>[] }) => Promise<void>;
-    };
-
     const customIdMap: Record<string, string> = {
       enable: 'admin_aiagent_enable_select',
       disable: 'admin_aiagent_disable_select',
@@ -117,26 +119,66 @@ export class AIAgentConfigHandler extends BaseAdminHandler {
       .setPlaceholder('請選擇頻道')
       .setChannelTypes(ChannelType.GuildText);
 
-    const row = new ActionRowBuilder<any>().addComponents(select);
-    await raw.editReply({ embeds: [embed], components: [row] });
+    const row = new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(select);
+    await interaction.editWithComponents(embed, [row]);
   }
 
-  private async handleEnableAgent(
+  private async handleChannelSelected(
     interaction: DiscordInteraction,
     guildId: string,
   ): Promise<void> {
-    const raw = interaction.getHook() as { values?: string[] };
-    const selectedIds = raw.values;
-    if (!selectedIds || selectedIds.length === 0) {
+    const selectedValues = interaction.getSelectedValues();
+    if (!selectedValues || selectedValues.length === 0) {
       await this.showAgentConfig(interaction, guildId);
       return;
     }
 
-    const channelId = selectedIds[0];
-    // TODO(P2-8): Add mode selection UI before enabling agent. The current flow
-    // hardcodes 'default' mode. The admin should be able to choose between
-    // 'chat', 'agent', or 'hybrid' mode when enabling a channel.
-    const result = await this.facade.enableAgent(guildId, channelId, 'default');
+    const channelId = selectedValues[0];
+    // Store channelId in session context for the next step
+    this.sessionManager.setContext(guildId, interaction.getUserId(), 'agent_channel', channelId);
+
+    // Show mode selection menu
+    const embed = new EmbedBuilder()
+      .setTitle(ZhTwStrings.aiAgentTitle)
+      .setDescription('請選擇 Agent 模式')
+      .setColor(Colors.PRIMARY);
+
+    const modeSelect = new StringSelectMenuBuilder()
+      .setCustomId('admin_aiagent_enable_mode_select')
+      .setPlaceholder(ZhTwStrings.aiAgentModeLabel)
+      .addOptions(
+        new StringSelectMenuOptionBuilder()
+          .setLabel('Chat')
+          .setDescription('純聊天模式，不包含 Agent 工具')
+          .setValue('chat'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('Agent')
+          .setDescription('含工具執行的完整 Agent 模式')
+          .setValue('agent'),
+        new StringSelectMenuOptionBuilder()
+          .setLabel('Hybrid')
+          .setDescription('聊天 + Agent 混合模式')
+          .setValue('hybrid'),
+      );
+
+    const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(modeSelect);
+    await interaction.editWithComponents(embed, [row]);
+  }
+
+  private async handleEnableAgentWithMode(
+    interaction: DiscordInteraction,
+    guildId: string,
+  ): Promise<void> {
+    const selectedValues = interaction.getSelectedValues();
+    const mode = selectedValues[0] ?? 'default';
+
+    const channelId = this.sessionManager.getContext(guildId, interaction.getUserId(), 'agent_channel');
+    if (!channelId) {
+      await this.showAgentConfig(interaction, guildId);
+      return;
+    }
+
+    const result = await this.facade.enableAgent(guildId, channelId, mode);
 
     if (result.isOk()) {
       const embed = new EmbedBuilder()
@@ -153,14 +195,13 @@ export class AIAgentConfigHandler extends BaseAdminHandler {
     interaction: DiscordInteraction,
     guildId: string,
   ): Promise<void> {
-    const raw = interaction.getHook() as { values?: string[] };
-    const selectedIds = raw.values;
-    if (!selectedIds || selectedIds.length === 0) {
+    const selectedValues = interaction.getSelectedValues();
+    if (!selectedValues || selectedValues.length === 0) {
       await this.showAgentConfig(interaction, guildId);
       return;
     }
 
-    const channelId = selectedIds[0];
+    const channelId = selectedValues[0];
     const result = await this.facade.disableAgent(guildId, channelId);
 
     if (result.isOk()) {
@@ -178,14 +219,13 @@ export class AIAgentConfigHandler extends BaseAdminHandler {
     interaction: DiscordInteraction,
     guildId: string,
   ): Promise<void> {
-    const raw = interaction.getHook() as { values?: string[] };
-    const selectedIds = raw.values;
-    if (!selectedIds || selectedIds.length === 0) {
+    const selectedValues = interaction.getSelectedValues();
+    if (!selectedValues || selectedValues.length === 0) {
       await this.showAgentConfig(interaction, guildId);
       return;
     }
 
-    const channelId = selectedIds[0];
+    const channelId = selectedValues[0];
     const result = await this.facade.removeAgentConfig(guildId, channelId);
 
     if (result.isOk()) {
@@ -207,7 +247,11 @@ export class AIAgentConfigHandler extends BaseAdminHandler {
 
     let description: string;
     if (result.isOk() && result.getValue().length > 0) {
-      const channelList = result.getValue().map((ch) => `<#${ch}>`).join('\n');
+      const channelList = result.getValue().map((ch) => {
+        // TODO(P2-32): 當 AIAgentChannelConfigService 支援 mode 與啟用時間查詢時，
+        // 改為顯示 <#ch> (mode, enabledAt) 格式。目前僅顯示 channel mention。
+        return `<#${ch}> (mode: default)`;
+      }).join('\n');
       description = ZhTwStrings.aiAgentList.replace('{channels}', channelList);
     } else {
       description = ZhTwStrings.aiAgentEmpty;

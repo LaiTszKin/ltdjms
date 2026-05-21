@@ -9,6 +9,8 @@
 import { parseDotEnv, ConfigSchema } from '@ltdjms/shared';
 import { SlashCommandRegistrar } from './SlashCommandRegistrar.js';
 import { readFileSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 async function main(): Promise<void> {
   // Parse CLI args
@@ -20,10 +22,12 @@ async function main(): Promise<void> {
       ? args[guildIdIndex + 1]
       : undefined;
 
-  // Load env from .env file if it exists
+  // Load env from .env file relative to the monorepo root (two levels up from this script)
+  const scriptDir = dirname(fileURLToPath(import.meta.url));
+  const envPath = resolve(scriptDir, '..', '..', '..', '..', '..', '.env');
   let env: Record<string, string> = {};
   try {
-    const content = readFileSync('.env', 'utf-8');
+    const content = readFileSync(envPath, 'utf-8');
     env = parseDotEnv(content);
   } catch {
     // .env file not found

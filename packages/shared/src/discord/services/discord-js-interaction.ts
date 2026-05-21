@@ -4,6 +4,7 @@ import {
   type ButtonInteraction,
   type ModalSubmitInteraction,
   type EmbedBuilder,
+  ModalBuilder,
 } from 'discord.js';
 import { type DiscordInteraction } from '../domain/discord-interaction.js';
 
@@ -85,6 +86,10 @@ export class DiscordJsInteraction implements DiscordInteraction {
     return this.acknowledged;
   }
 
+  getChannelId(): string {
+    return this.interaction.channelId ?? '0';
+  }
+
   isAdministrator(): boolean {
     if (this.interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
       return true;
@@ -97,5 +102,80 @@ export class DiscordJsInteraction implements DiscordInteraction {
 
   hasPermission(permission: bigint): boolean {
     return this.interaction.memberPermissions?.has(permission) ?? false;
+  }
+
+  async showModal(modal: unknown): Promise<void> {
+    // ModalSubmitInteraction does not support showModal; only CommandInteraction and ButtonInteraction do.
+    if ('showModal' in this.interaction) {
+      await (this.interaction as CommandInteraction | ButtonInteraction).showModal(
+        modal as ModalBuilder,
+      );
+    }
+  }
+
+  getSelectedValues(): string[] {
+    if ('values' in this.interaction) {
+      return (this.interaction as { values: string[] }).values;
+    }
+    return [];
+  }
+
+  getTextInputValue(customId: string): string {
+    if ('fields' in this.interaction) {
+      return (this.interaction as { fields: { getTextInputValue: (id: string) => string } }).fields.getTextInputValue(customId);
+    }
+    return '';
+  }
+
+  getGuildName(): string | null {
+    return this.interaction.guild?.name ?? null;
+  }
+
+  getChannelName(channelId: string): string | null {
+    const guild = this.interaction.guild;
+    if (!guild) return null;
+    const channel = guild.channels.cache.get(channelId);
+    return channel?.name ?? null;
+  }
+
+  isButton(): boolean {
+    return 'customId' in this.interaction && !('fields' in this.interaction);
+  }
+
+  isModalSubmit(): boolean {
+    return 'fields' in this.interaction;
+  }
+
+  async replyWithComponents(
+    embed: unknown,
+    components: unknown[],
+  ): Promise<{ channelId: string; id: string } | null> {
+    const discordEmbed = embed as EmbedBuilder;
+    // Callers pass ActionRowBuilder<T>[] at runtime; cast through any for discord.js type compatibility
+    const opts: Record<string, unknown> = { embeds: [discordEmbed], components };
+    if (this.acknowledged) {
+      await this.interaction.followUp(opts as Record<string, unknown>);
+    } else {
+      await this.interaction.reply(opts as Record<string, unknown>);
+      this.acknowledged = true;
+    }
+
+    try {
+      const replyMsg = await this.interaction.fetchReply();
+      if (replyMsg && 'channelId' in replyMsg && 'id' in replyMsg) {
+        return {
+          channelId: String(replyMsg.channelId),
+          id: String(replyMsg.id),
+        };
+      }
+    } catch {
+      // Non-critical: reply metadata unavailable
+    }
+    return null;
+  }
+
+  async editWithComponents(embed: unknown, components: unknown[]): Promise<void> {
+    const opts: Record<string, unknown> = { embeds: [embed as EmbedBuilder], components };
+    await this.interaction.editReply(opts as Record<string, unknown>);
   }
 }

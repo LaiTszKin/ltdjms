@@ -40,7 +40,6 @@ describe('GameTokenManagementFacade', () => {
     facade = new GameTokenManagementFacade(
       mockTokenService as GameTokenService,
       mockTxService as GameTokenTransactionService,
-      mockEventPublisher,
     );
   });
 

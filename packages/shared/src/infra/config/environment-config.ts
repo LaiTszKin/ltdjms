@@ -1,6 +1,5 @@
 import { join } from 'node:path';
-import pino from 'pino';
-import { type Logger } from 'pino';
+import pino, { type Logger } from 'pino';
 import { loadDotEnv } from './env-loader.js';
 import { ConfigSchema, type ConfigValues } from './schema.js';
 
@@ -21,7 +20,7 @@ export class EnvironmentConfig {
       string,
       string | undefined
     >,
-    private readonly logger: Logger = pino({ level: 'silent' }) as Logger,
+    private readonly logger: Logger = pino({ level: 'silent' }),
   ) {}
 
   /**
@@ -146,7 +145,13 @@ export class EnvironmentConfig {
   }
 
   getAIServiceApiKey(): string {
-    return this.get().AI_SERVICE_API_KEY;
+    const key = this.get().AI_SERVICE_API_KEY;
+    if (!key) {
+      throw new Error(
+        'AI_SERVICE_API_KEY is required when AI features are enabled',
+      );
+    }
+    return key;
   }
 
   getAIServiceModel(): string {

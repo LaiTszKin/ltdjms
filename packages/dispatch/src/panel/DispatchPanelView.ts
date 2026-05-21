@@ -16,6 +16,8 @@ export const BUTTON_CONFIRM_COMPLETION = 'dispatch_confirm_completion';
 export const BUTTON_REQUEST_AFTER_SALES = 'dispatch_request_after_sales';
 export const BUTTON_CLAIM_AFTER_SALES = 'dispatch_claim_after_sales';
 export const BUTTON_CLOSE_AFTER_SALES = 'dispatch_close_after_sales';
+export const BUTTON_CREATE_CONFIRM = 'dispatch_create_confirm';
+export const BUTTON_ASSIGN_CONFIRM = 'dispatch_assign_confirm';
 export const SELECT_ESCORT_OPTION = 'dispatch_select_escort_option';
 export const SELECT_ESCORT_OPTION_EXTRA = 'dispatch_select_escort_option_extra';
 export const SELECT_PENDING_ORDER = 'dispatch_select_pending_order';
@@ -51,7 +53,7 @@ export function buildModeSelectEmbed(): EmbedView {
 export function buildCreateModeEmbed(): EmbedView {
   return {
     title: '建立派單',
-    description: '請填寫以下資訊來建立新的護航派單：\n1. 選擇護航品類\n2. 選擇護航者\n3. 確認送出',
+    description: '請填寫以下資訊來建立新的護航派單：\n1. 選擇護航品類\n2. 輸入客戶 ID\n3. 確認送出',
     color: COLOR_INFO,
     footer: '選擇下方選項開始建立派單',
   };
@@ -267,28 +269,6 @@ export function buttonsToComponents(buttons: ButtonView[]): unknown[] {
 // ============================================================
 // Format Utilities
 // ============================================================
-
-/**
- * Formats an EmbedView with buttons into plain text representation.
- * Used as fallback when embeds cannot be displayed.
- */
-export function formatPanelText(
-  view: EmbedView,
-  buttons: ButtonView[],
-): string {
-  const lines: string[] = [];
-  if (view.title) lines.push(`**${view.title}**`);
-  if (view.description) lines.push(view.description);
-  lines.push('');
-  for (const field of view.fields ?? []) {
-    lines.push(`**${field.name}：** ${field.value}`);
-  }
-  lines.push('');
-  lines.push('---');
-  lines.push(buttons.map((b) => `\`/${b.label}\``).join(' | '));
-  if (view.footer) lines.push(`_${view.footer}_`);
-  return lines.join('\n');
-}
 
 export function buildPanelReplyPayload(
   embedView: EmbedView,

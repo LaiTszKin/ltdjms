@@ -9,6 +9,7 @@ import { z } from 'zod';
 // ===== Repository Interface =====
 
 export interface AIChannelRestrictionRepository {
+  findChannel(guildId: string, channelId: string): Promise<AllowedChannel | null>;
   findByGuildId(guildId: string): Promise<AllowedChannel[]>;
   findRestrictionByGuildId(guildId: string): Promise<AIChannelRestriction>;
   findAllowedCategories(guildId: string): Promise<AllowedCategory[]>;
@@ -62,6 +63,10 @@ export class InMemoryAIChannelRestrictionRepository
 
   private categoryKey(guildId: string, categoryId: string): string {
     return `${guildId}:${categoryId}`;
+  }
+
+  async findChannel(guildId: string, channelId: string): Promise<AllowedChannel | null> {
+    return this.channels.get(this.channelKey(guildId, channelId)) ?? null;
   }
 
   async findByGuildId(guildId: string): Promise<AllowedChannel[]> {
@@ -253,10 +258,9 @@ export class DefaultAIChannelRestrictionService
     const now = Date.now();
     const ttl = this.cacheTtlMs;
 
-    // Check channel-level allowlist first
-    const channels = await this.repository.findByGuildId(guildId);
-    const channelMatch = channels.some((c) => c.channelId === channelId);
-    if (channelMatch) {
+    // Check channel-level allowlist first (P2-16: direct query instead of loading all channels)
+    const channelEntry = await this.repository.findChannel(guildId, channelId);
+    if (channelEntry) {
       this.cache.set(cacheKey, { value: true, expiresAt: now + ttl });
       return 'channel';
     }

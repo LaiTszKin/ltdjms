@@ -4,7 +4,7 @@ import {
   DomainErrorCategory,
 } from '@ltdjms/shared';
 import { type DiceGame2Service } from '../dice/services/dice-game-2-service.js';
-import { type DiceConfigRepository } from '../dice/repositories/dice-config-repo.js';
+import { type DiceConfigService } from '../dice/services/dice-config-service.js';
 import { type GameTokenService } from '../token/services/game-token-service.js';
 import { type CurrencyConfigRepository } from '../currency/repositories/currency-config-repo.js';
 import { DiceGameMessages } from '../localization/dice-game-messages.js';
@@ -30,7 +30,7 @@ export class DiceGame2Handler {
 
   constructor(
     private readonly diceGame2Service: DiceGame2Service,
-    private readonly diceConfigRepository: DiceConfigRepository,
+    private readonly diceConfigService: DiceConfigService,
     private readonly gameTokenService: GameTokenService,
     private readonly currencyConfigRepository: CurrencyConfigRepository,
   ) {}
@@ -55,7 +55,7 @@ export class DiceGame2Handler {
     }
 
     // Look up config with default fallback (findOrCreateDefault)
-    const config = await this.diceConfigRepository.findOrCreateDefaultDice2(guildId);
+    const config = await this.diceConfigService.findOrCreateDefaultDice2(guildId);
 
     // Validate token count against config
     if (tokenCount < config.minTokensPerPlay) {
@@ -111,13 +111,13 @@ export class DiceGame2Handler {
     const straightDisplay =
       gameResult.straightSegments.length > 0
         ? gameResult.straightSegments
-            .map((seg) => `[${[...seg].join('、')}]`)
+            .map((seg: readonly number[]) => `[${[...seg].join('、')}]`)
             .join(' ')
         : '無';
     const tripleDisplay =
       gameResult.tripleSegments.length > 0
         ? gameResult.tripleSegments
-            .map((seg) => `[${[...seg].join('、')}]`)
+            .map((seg: readonly number[]) => `[${[...seg].join('、')}]`)
             .join(' ')
         : '無';
 
@@ -135,9 +135,8 @@ export class DiceGame2Handler {
         .replace('{previousBalance}', String(gameResult.previousBalance))
         .replace('{newBalance}', String(gameResult.newBalance)),
       `
-貨幣：${currencyIcon}${currencyName}`,
-    ].join('
-');
+	貨幣：${currencyIcon}${currencyName}`,
+    ].join('\n');
 
     await interaction.reply(message);
   }

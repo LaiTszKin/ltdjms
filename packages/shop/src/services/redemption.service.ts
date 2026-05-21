@@ -118,6 +118,7 @@ export class RedemptionService {
     try {
       const savedCodes = await this.codeRepository.saveAll(codes);
       this.eventPublisher.publish({
+        eventType: 'redemption_codes_generated',
         guildId: product.guildId,
         productId: product.id,
         count: savedCodes.length,
@@ -235,6 +236,7 @@ export class RedemptionService {
       );
 
       this.eventPublisher.publish({
+        eventType: 'product_redemption_completed',
         guildId,
         userId,
         transaction,

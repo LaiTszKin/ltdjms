@@ -95,7 +95,8 @@ export function configureDispatchContainer(): void {
   const logger = container.resolve<TokenMap['Logger']>(TOKENS.Logger);
 
   // ============================================================
-  // Services (singleton instances)
+  // Notification (singleton instance, depends on DiscordRuntimeGateway)
+  // Must be created before EscortDispatchOrderService (P2-2).
   // ============================================================
 
   const afterSalesStaffService = new DispatchAfterSalesStaffService(afterSalesStaffRepo);
@@ -103,26 +104,6 @@ export function configureDispatchContainer(): void {
     DISPATCH_TOKENS.DispatchAfterSalesStaffService,
     afterSalesStaffService,
   );
-
-  const dispatchOrderService = new EscortDispatchOrderService(
-    dispatchOrderRepo,
-    orderNumberGenerator,
-    undefined, // clock — use default Date.now
-    catalogRepo,
-    afterSalesStaffService,
-    logger,
-  );
-  container.registerInstance(DISPATCH_TOKENS.EscortDispatchOrderService, dispatchOrderService);
-
-  const handoffService = new EscortDispatchHandoffService(dispatchOrderRepo);
-  container.registerInstance(DISPATCH_TOKENS.EscortDispatchHandoffService, handoffService);
-
-  const optionPricingService = new EscortOptionPricingService(optionPriceRepo, catalogRepo);
-  container.registerInstance(DISPATCH_TOKENS.EscortOptionPricingService, optionPricingService);
-
-  // ============================================================
-  // Notification (singleton instance, depends on DiscordRuntimeGateway)
-  // ============================================================
 
   const notificationService = new DispatchNotificationService(
     discordRuntimeGateway,
@@ -132,6 +113,24 @@ export function configureDispatchContainer(): void {
     DISPATCH_TOKENS.DispatchNotificationService,
     notificationService,
   );
+
+  const dispatchOrderService = new EscortDispatchOrderService(
+    dispatchOrderRepo,
+    orderNumberGenerator,
+    undefined, // clock — use default Date.now
+    catalogRepo,
+    afterSalesStaffService,
+    logger,
+    notificationService,
+    discordRuntimeGateway,
+  );
+  container.registerInstance(DISPATCH_TOKENS.EscortDispatchOrderService, dispatchOrderService);
+
+  const handoffService = new EscortDispatchHandoffService(dispatchOrderRepo);
+  container.registerInstance(DISPATCH_TOKENS.EscortDispatchHandoffService, handoffService);
+
+  const optionPricingService = new EscortOptionPricingService(optionPriceRepo, catalogRepo);
+  container.registerInstance(DISPATCH_TOKENS.EscortOptionPricingService, optionPricingService);
 
   // ============================================================
   // Panel handlers (singleton instances)
@@ -155,6 +154,7 @@ export function configureDispatchContainer(): void {
     afterSalesStaffService,
     notificationService,
     sessionManager,
+    discordRuntimeGateway,
   );
   container.registerInstance(
     DISPATCH_TOKENS.DispatchPanelInteractionHandler,

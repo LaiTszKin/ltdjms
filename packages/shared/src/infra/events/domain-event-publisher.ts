@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events';
 import { type DomainEvent } from '../../types/events/domain-event.js';
-import pino from 'pino';
+import pino, { type Logger } from 'pino';
 
 const EVENT_CHANNEL = 'domain-event';
 
@@ -14,12 +14,12 @@ export class DomainEventPublisher {
   private readonly emitter = new EventEmitter();
   /** Captured for testing — tracks the last published event. */
   private _lastEvent: DomainEvent | null = null;
-  private readonly logger: pino.Logger;
+  private readonly logger: Logger;
   /** Maps original listener → wrapped function for unregister support. */
   private readonly wrapperMap = new WeakMap<(event: DomainEvent) => void | Promise<void>, (event: DomainEvent) => void>();
 
-  constructor(logger?: pino.Logger) {
-    this.logger = logger ?? pino({ level: 'warn' });
+  constructor(logger?: Logger) {
+    this.logger = logger ?? pino({ level: 'silent' });
   }
 
   /**
@@ -64,8 +64,9 @@ export class DomainEventPublisher {
 
   /**
    * Publishes an event to all registered listeners synchronously.
-   * Listeners are invoked in registration order.
-   * Exceptions from individual listeners are caught and logged but do not propagate.
+   * Listeners are invoked in registration order. Exceptions from individual
+   * listeners are caught and logged but do not propagate to subsequent listeners.
+   * Matches spec R6.1 "同步分發，所有已註冊的 listener 依序被呼叫".
    * @param event - the domain event to publish
    */
   publish(event: DomainEvent): void {
@@ -80,7 +81,6 @@ export class DomainEventPublisher {
       try {
         listener(event);
       } catch (err) {
-        // Log but don't propagate — sync error from wrapped listener
         this.logger.error(
           { eventName: typeof event, err },
           '[DomainEventPublisher] Error handling event',

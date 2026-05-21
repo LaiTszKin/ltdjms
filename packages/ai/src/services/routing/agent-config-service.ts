@@ -189,7 +189,7 @@ export class DefaultAIAgentChannelConfigService
       // Fallback to DB
       const result = await this.repository.findByGuildAndChannel(
         guildId,
-        channelId,
+        effectiveChannelId,
       );
       if (result.isOk()) {
         const config = result.getValue();

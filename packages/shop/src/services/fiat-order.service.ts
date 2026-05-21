@@ -1,6 +1,6 @@
 import { Result, ok, err, DomainError } from '@ltdjms/shared';
 import type { FiatOrderRepository } from '../domain/fiat-order-repository.js';
-import { type FiatOrder, createPending } from '../domain/fiat-order.js';
+import { type FiatOrder, createPending, toFulfillmentProduct } from '../domain/fiat-order.js';
 import { EcpayCvsPaymentService, type CvsPaymentCode } from './ecpay-cvs-payment.service.js';
 import {
   type Product,
@@ -17,6 +17,11 @@ export interface FiatOrderResult {
   paymentNo: string;
   expireDate: string | null;
   paymentUrl: string | null;
+  /**
+   * Reserved for future use: when fulfillment encounters non-blocking warnings
+   * (e.g., reward grant failed but order was already marked paid), this field
+   * will carry the warning message. Currently always null.
+   */
   fulfillmentWarning: string | null;
 }
 
@@ -107,20 +112,7 @@ export class FiatOrderService {
         paymentCode.expireAt,
       );
       const savedOrder = await this.fiatOrderRepository.save(order);
-      const fulfillmentSnapshot: Product = {
-        id: savedOrder.productId,
-        guildId: savedOrder.guildId,
-        name: savedOrder.productName,
-        description: null,
-        rewardType: savedOrder.fulfillmentRewardType as any,
-        rewardAmount: savedOrder.fulfillmentRewardAmount,
-        currencyPrice: null,
-        fiatPriceTwd: savedOrder.amountTwd,
-        autoCreateEscortOrder: savedOrder.fulfillmentAutoCreateEscortOrder,
-        escortOptionCode: savedOrder.fulfillmentEscortOptionCode,
-        createdAt: savedOrder.createdAt,
-        updatedAt: savedOrder.updatedAt,
-      };
+      const fulfillmentSnapshot = toFulfillmentProduct(savedOrder);
 
       return ok({
         product: fulfillmentSnapshot,

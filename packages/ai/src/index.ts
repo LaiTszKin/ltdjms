@@ -34,7 +34,6 @@ export type {
   ModifyPermissionSetting,
   RoleCreateInfo,
   ToolExecutionContext,
-  AgentConfigUpdatedEvent,
   AIMessagePublishedEvent,
 } from './services/ai-chat-service.js';
 
@@ -61,7 +60,6 @@ export type {
 // Chat Services
 export { LangChainAIChatService } from './services/LangChainAIChatService.js';
 export { MessageSplitter } from './services/MessageSplitter.js';
-export { MessageChunkAccumulator } from './services/MessageChunkAccumulator.js';
 export { LangChainExceptionMapper } from './services/LangChainExceptionMapper.js';
 
 // Memory

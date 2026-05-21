@@ -1,4 +1,4 @@
-import { lexer, type Tokens } from 'marked';
+import { lexer, type Token, type Tokens } from 'marked';
 import { MarkdownValidator } from './MarkdownValidator.js';
 import {
   ErrorType,
@@ -33,7 +33,7 @@ export class CommonMarkValidator implements MarkdownValidator {
     const lines = markdown.split('\n');
 
     // Parse using marked.lexer() to get AST tokens
-    let tokens: Tokens.Token[];
+    let tokens: Token[];
     try {
       tokens = lexer(markdown);
     } catch {
@@ -47,6 +47,16 @@ export class CommonMarkValidator implements MarkdownValidator {
     // Additional regex-based pass for heading/list format issues that the AST may miss.
     // The CommonMark spec requires space after #/list markers, but we flag it proactively.
     this.regexFormatPass(lines, errors);
+
+    // Deduplicate errors by (line, errorType) to avoid AST + regex double-reporting
+    const seen = new Set<string>();
+    for (let i = errors.length - 1; i >= 0; i--) {
+      const key = `${errors[i].line}:${errors[i].errorType}`;
+      if (seen.has(key)) {
+        errors.splice(i, 1);
+      }
+      seen.add(key);
+    }
 
     // Detect unclosed fenced code blocks by checking if the last code token
     // starts with a fence marker (``` or ~~~) but does not end with one.
@@ -82,7 +92,7 @@ export class CommonMarkValidator implements MarkdownValidator {
   }
 
   private walkTokens(
-    tokens: Tokens.Token[],
+    tokens: Token[],
     lines: string[],
     markdown: string,
     errors: MarkdownError[],
@@ -135,7 +145,7 @@ export class CommonMarkValidator implements MarkdownValidator {
       }
 
       // Recurse into nested tokens (e.g. list items)
-      const tok = token as Tokens.Token & { tokens?: Tokens.Token[] };
+      const tok = token as Token & { tokens?: Token[] };
       if (tok.tokens && tok.tokens.length > 0) {
         this.walkTokens(tok.tokens, lines, markdown, errors, token.raw, pos >= 0 ? pos : 0);
       }
@@ -322,6 +332,13 @@ export class CommonMarkValidator implements MarkdownValidator {
    * Additional regex-based format pass for heading/list syntax issues
    * that the AST parser may not flag (since marked normalizes some syntax).
    * Uses its own code fence tracking rather than the AST-based line set.
+   */
+  /**
+   * NOTE(P3-9): 每行會執行多次 regex 匹配（heading、inline heading、list 等）。
+   * 若在大量行數的大型 Markdown 上遇到效能瓶頸，可考慮：
+   * - 合併 regex 成單一複合表達式
+   * - 提前 break（遇到第一個 error 即停止該行後續檢查）
+   * 目前單次驗證的行數規模較小（< 2000 lines），暫無優化必要。
    */
   private regexFormatPass(
     lines: string[],

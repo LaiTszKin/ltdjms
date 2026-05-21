@@ -101,6 +101,13 @@ export class EscortCatalogHandler extends BaseAdminHandler {
       return;
     }
 
+    // Handle back to catalog list
+    if (fullCustomId === 'admin_escortcatalog_back') {
+      this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.ESCORT_CATALOG);
+      await this.showCatalog(interaction);
+      return;
+    }
+
     await this.showCatalog(interaction);
   }
 
@@ -130,8 +137,7 @@ export class EscortCatalogHandler extends BaseAdminHandler {
       );
     }
 
-    const raw = interaction.getHook() as { showModal: (m: ModalBuilder) => Promise<void> };
-    await raw.showModal(modal);
+    await interaction.showModal(modal);
   }
 
   private async showEditModal(
@@ -166,19 +172,14 @@ export class EscortCatalogHandler extends BaseAdminHandler {
       );
     }
 
-    const raw = interaction.getHook() as { showModal: (m: ModalBuilder) => Promise<void> };
-    await raw.showModal(modal);
+    await interaction.showModal(modal);
   }
 
   private async handleCreateSave(interaction: DiscordInteraction): Promise<void> {
-    const raw = interaction.getHook() as {
-      fields: { getTextInputValue: (id: string) => string };
-    };
-
-    const code = raw.fields.getTextInputValue(ZhTwStrings.escortCatalogModalName).trim();
-    const mapScope = raw.fields.getTextInputValue(ZhTwStrings.escortCatalogModalDesc).trim();
-    const priceStr = raw.fields.getTextInputValue(ZhTwStrings.escortCatalogModalPrice).trim();
-    const type = raw.fields.getTextInputValue(ZhTwStrings.escortCatalogModalCategory).trim();
+    const code = interaction.getTextInputValue(ZhTwStrings.escortCatalogModalName).trim();
+    const mapScope = interaction.getTextInputValue(ZhTwStrings.escortCatalogModalDesc).trim();
+    const priceStr = interaction.getTextInputValue(ZhTwStrings.escortCatalogModalPrice).trim();
+    const type = interaction.getTextInputValue(ZhTwStrings.escortCatalogModalCategory).trim();
 
     if (!code || !type || !priceStr) {
       const embed = new EmbedBuilder()
@@ -235,13 +236,9 @@ export class EscortCatalogHandler extends BaseAdminHandler {
     interaction: DiscordInteraction,
     entryCode: string,
   ): Promise<void> {
-    const raw = interaction.getHook() as {
-      fields: { getTextInputValue: (id: string) => string };
-    };
-
-    const mapScope = raw.fields.getTextInputValue(ZhTwStrings.escortCatalogModalDesc).trim();
-    const priceStr = raw.fields.getTextInputValue(ZhTwStrings.escortCatalogModalPrice).trim();
-    const type = raw.fields.getTextInputValue(ZhTwStrings.escortCatalogModalCategory).trim();
+    const mapScope = interaction.getTextInputValue(ZhTwStrings.escortCatalogModalDesc).trim();
+    const priceStr = interaction.getTextInputValue(ZhTwStrings.escortCatalogModalPrice).trim();
+    const type = interaction.getTextInputValue(ZhTwStrings.escortCatalogModalCategory).trim();
 
     if (!type || !priceStr) {
       const embed = new EmbedBuilder()
@@ -301,12 +298,18 @@ export class EscortCatalogHandler extends BaseAdminHandler {
     const refCountResult = await this.facade.checkCatalogRefCount(entryCode);
     const refCount = refCountResult.isOk() ? refCountResult.getValue() : 0;
     if (refCount > 0) {
+      // Query guild names for the referencing guilds
+      const guildIdsResult = await this.facade.findCatalogRefGuildIds(entryCode);
+      const guildList = guildIdsResult.isOk() && guildIdsResult.getValue().length > 0
+        ? guildIdsResult.getValue().map((id) => `Guild ${id}`).join('\n')
+        : `${refCount} 個 guild`;
+
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.escortCatalogTitle)
         .setDescription(
           ZhTwStrings.escortCatalogDeleteBlocked
             .replace('{name}', name)
-            .replace('{guilds}', `${refCount} 個 guild`),
+            .replace('{guilds}', guildList),
         )
         .setColor(Colors.WARNING);
       await interaction.editEmbed(embed);
@@ -332,10 +335,7 @@ export class EscortCatalogHandler extends BaseAdminHandler {
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(confirmBtn, cancelBtn);
 
-    const raw = interaction.getHook() as {
-      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }) => Promise<void>;
-    };
-    await raw.editReply({ embeds: [embed], components: [row] });
+    await interaction.editWithComponents(embed, [row]);
   }
 
   private async handleDelete(
@@ -388,7 +388,39 @@ export class EscortCatalogHandler extends BaseAdminHandler {
         .setTitle(ZhTwStrings.escortCatalogTitle)
         .setDescription(description)
         .setColor(Colors.PRIMARY);
-      await interaction.editEmbed(embed);
+
+      // Build action row with "add item" button
+      const rows: ActionRowBuilder<ButtonBuilder>[] = [];
+
+      const addBtn = new ButtonBuilder()
+        .setCustomId('admin_escortcatalog_create')
+        .setLabel(ZhTwStrings.escortCatalogCreateBtn)
+        .setStyle(ButtonStyle.Success);
+
+      rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(addBtn));
+
+      // Per-item edit/delete buttons
+      if (entries.length > 0) {
+        const entryButtons = entries.flatMap((entry) => {
+          const editBtn = new ButtonBuilder()
+            .setCustomId('admin_escortcatalog_edit_' + entry.code)
+            .setLabel(`${ZhTwStrings.escortCatalogEditBtn} ${entry.code}`)
+            .setStyle(ButtonStyle.Primary);
+          const deleteBtn = new ButtonBuilder()
+            .setCustomId('admin_escortcatalog_delete_' + entry.code)
+            .setLabel(`${ZhTwStrings.escortCatalogDeleteBtn} ${entry.code}`)
+            .setStyle(ButtonStyle.Danger);
+          return [editBtn, deleteBtn];
+        });
+
+        // Group into rows of 2 (one edit + delete pair per row)
+        for (let i = 0; i < entryButtons.length; i += 2) {
+          const chunk = entryButtons.slice(i, i + 2);
+          rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(chunk));
+        }
+      }
+
+      await interaction.editWithComponents(embed, rows);
     } else {
       await this.errorHandler.handle(result.getError(), interaction);
     }

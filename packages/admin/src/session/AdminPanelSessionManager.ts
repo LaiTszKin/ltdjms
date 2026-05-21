@@ -21,10 +21,17 @@ const DEFAULT_TTL_MS = DEFAULT_TTL_S * 1000;
  * Optionally backed by a CacheService (Redis) for distributed session support.
  * Each guild+user can have at most one active session.
  * Matches Java AdminPanelSessionManager.
+ *
+ * NOTE(P2-2): 與 PanelSessionManager 有大量重複程式碼（createSession、getSession、
+ * removeSession、getAllForGuild、cleanupExpired 等）。兩者的差異在於：
+ * - 本類別使用 AdminPanelSessionData（含 viewState、context）
+ * - PanelSessionManager 使用 PanelSessionData（僅 context，無 viewState）
+ * 若要抽取公用基底類別，需注意建構子和 session 類型的泛型化。
  */
 export class AdminPanelSessionManager {
   /** In-memory session store (fallback when cache is unavailable). guildId:userId → session data. */
   private readonly sessions = new Map<string, AdminPanelSessionData>();
+  private cleanupIntervalId: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private readonly cacheService?: CacheService,
@@ -195,6 +202,7 @@ export class AdminPanelSessionManager {
    * Cleans up all expired sessions.
    */
   cleanupExpired(): number {
+    if (this.sessions.size === 0) return 0;
     let removed = 0;
     for (const [key, session] of this.sessions) {
       if (this.isExpired(session)) {
@@ -209,12 +217,22 @@ export class AdminPanelSessionManager {
    * Starts an interval-based cleanup of expired sessions.
    * Should be called during DI setup (e.g., in configureAdminContainer).
    * @param intervalMs - cleanup interval in milliseconds (default 60 seconds)
-   * @returns the interval ID for manual cancellation
    */
-  startCleanupInterval(intervalMs: number = 60_000): ReturnType<typeof setInterval> {
-    return setInterval(() => {
+  startCleanupInterval(intervalMs: number = 60_000): void {
+    if (this.cleanupIntervalId !== null) return;
+    this.cleanupIntervalId = setInterval(() => {
       this.cleanupExpired();
     }, intervalMs);
+  }
+
+  /**
+   * Stops the cleanup interval. Should be called during application shutdown.
+   */
+  stopCleanupInterval(): void {
+    if (this.cleanupIntervalId !== null) {
+      clearInterval(this.cleanupIntervalId);
+      this.cleanupIntervalId = null;
+    }
   }
 
   /**

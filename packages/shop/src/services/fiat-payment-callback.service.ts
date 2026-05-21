@@ -38,16 +38,29 @@ export class FiatPaymentCallbackService {
   }
 
   async handleCallback(
-    requestBody: string | null,
+    requestBody: any,
     contentType: string | null,
   ): Promise<CallbackResult> {
-    if (!requestBody || requestBody.trim().length === 0) {
+    if (!requestBody) {
       return CallbackResult.fail(400);
     }
 
     try {
-      const { node: callbackNode, rawDecrypted } = this.parseCallbackNode(requestBody, contentType);
-      const callbackPayload = this.truncateTo(requestBody, 4000);
+      // Normalize to a parsed object: if requestBody is already an object
+      // (parsed by express body parser), use it directly to avoid the unnecessary
+      // JSON.stringify → JSON.parse round-trip (P1-16).
+      const bodyObj = typeof requestBody === 'object' && requestBody !== null
+        ? requestBody
+        : this.parseBodyString(requestBody, contentType);
+
+      const callbackPayload = this.truncateTo(
+        typeof requestBody === 'object' && requestBody !== null
+          ? JSON.stringify(requestBody)
+          : requestBody,
+        4000,
+      );
+
+      const { node: callbackNode, rawDecrypted } = this.parseCallbackNode(bodyObj, contentType);
       const orderNumber = this.extractOrderNumber(callbackNode);
       if (!orderNumber || orderNumber.trim().length === 0) {
         this.log.warn({ payload: callbackPayload }, 'ECPay callback missing order number');
@@ -151,33 +164,29 @@ export class FiatPaymentCallbackService {
     return CallbackResult.ok();
   }
 
-  private isExpiredStatus(order: FiatOrder): boolean {
-    return order.status === 'EXPIRED';
+  /**
+   * Parse a raw string body (JSON or form-encoded) into a parsed object.
+   * This is used when the body arrives as a string rather than pre-parsed by express.
+   */
+  private parseBodyString(body: string, contentType: string | null): any {
+    if (this.isJson(contentType, body)) {
+      return JSON.parse(body);
+    }
+    const formData = this.parseFormBody(body);
+    if (formData && formData.size > 0) {
+      const obj: Record<string, string> = {};
+      for (const [key, value] of formData) {
+        obj[key] = value;
+      }
+      return obj;
+    }
+    return JSON.parse(body);
   }
 
-  private parseCallbackNode(requestBody: string, contentType: string | null): { node: any; rawDecrypted: string } {
-    let parsedJson: any = null;
-    let formData: Map<string, string> | null = null;
-
-    try {
-      if (this.isJson(contentType, requestBody)) {
-        parsedJson = JSON.parse(requestBody);
-      } else {
-        formData = this.parseFormBody(requestBody);
-        if (!formData || formData.size === 0) {
-          parsedJson = JSON.parse(requestBody);
-        }
-      }
-    } catch (e) {
-      throw new InvalidCallbackPayloadException('callback payload parsing failed', e as Error);
-    }
-
+  private parseCallbackNode(bodyObj: any, contentType: string | null): { node: any; rawDecrypted: string } {
     let encryptedData: string | null = null;
-    if (parsedJson && parsedJson.Data !== null && parsedJson.Data !== undefined) {
-      encryptedData = String(parsedJson.Data);
-    }
-    if ((!encryptedData || encryptedData.trim().length === 0) && formData && formData.has('Data')) {
-      encryptedData = formData.get('Data') ?? null;
+    if (bodyObj && bodyObj.Data !== null && bodyObj.Data !== undefined) {
+      encryptedData = String(bodyObj.Data);
     }
     if (!encryptedData || encryptedData.trim().length === 0) {
       throw new InvalidCallbackPayloadException('callback payload missing encrypted Data');

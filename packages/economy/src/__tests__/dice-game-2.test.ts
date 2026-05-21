@@ -11,6 +11,7 @@ const defaultConfig: DiceGame2Config = {
   baseMultiplier: 20000,
   tripleLowBonus: 1500000,
   tripleHighBonus: 2500000,
+  faceMultipliers: [1, 1, 1, 1, 1, 1],
   createdAt: new Date(),
   updatedAt: new Date(),
 };
@@ -52,22 +53,25 @@ describe('DiceGame2Service - analyzeRolls', () => {
       expect(analysis.straightSegments).toHaveLength(0);
     });
 
-    it('should detect a straight in unsorted input', () => {
-      // [3, 5, 1, 2, 4, 6] sorted -> [1, 2, 3, 4, 5, 6] is a straight of length 6
+    it('should not detect a straight in unsorted input (position-based)', () => {
+      // [3, 5, 1, 2, 4, 6] has consecutive values but not at adjacent positions,
+      // so position-based detection finds no straight of length >= 3.
       const rolls = [3, 5, 1, 2, 4, 6];
       const analysis = service.analyzeRolls(rolls, defaultConfig);
 
-      expect(analysis.straightSegments).toHaveLength(1);
-      expect(analysis.straightSegments[0]).toEqual([1, 2, 3, 4, 5, 6]);
+      expect(analysis.straightSegments).toHaveLength(0);
     });
 
-    it('should detect straight in input with duplicates', () => {
-      // [1, 2, 3, 2, 4, 5, 6] sorted -> [1, 2, 2, 3, 4, 5, 6], unique -> [1, 2, 3, 4, 5, 6]
+    it('should detect multiple straights in input with duplicates', () => {
+      // [1, 2, 3, 2, 4, 5, 6] position-based:
+      // Positions 0-2: [1, 2, 3] -> straight
+      // Positions 4-6: [4, 5, 6] -> straight (index 3 is 2, breaks the sequence)
       const rolls = [1, 2, 3, 2, 4, 5, 6];
       const analysis = service.analyzeRolls(rolls, defaultConfig);
 
-      expect(analysis.straightSegments).toHaveLength(1);
-      expect(analysis.straightSegments[0]).toEqual([1, 2, 3, 4, 5, 6]);
+      expect(analysis.straightSegments).toHaveLength(2);
+      expect(analysis.straightSegments[0]).toEqual([1, 2, 3]);
+      expect(analysis.straightSegments[1]).toEqual([4, 5, 6]);
     });
   });
 
@@ -171,17 +175,17 @@ describe('DiceGame2Service - analyzeRolls', () => {
     });
 
     it('should calculate base reward for non-straight/non-triple dice', () => {
-      // Dice: [1, 2, 4, 6, 8]
-      // Sorted: [1, 2, 4, 6, 8] - max consecutive length is 2 ([1,2])
+      // Dice: [1, 2, 4, 6, 2]
+      // Sorted: [1, 2, 2, 4, 6] - max consecutive length is 2 ([1,2])
       // No triples (no 3 same values)
-      // Non-straight sum = 1+2+4+6+8 = 21, reward = 21 * 20000 = 420000
-      const rolls = [1, 2, 4, 6, 8];
+      // Non-straight sum = 1+2+2+4+6 = 15, reward = 15 * 20000 = 300000
+      const rolls = [1, 2, 4, 6, 2];
       const analysis = service.analyzeRolls(rolls, defaultConfig);
 
       expect(analysis.straightSegments).toHaveLength(0);
       expect(analysis.tripleSegments).toHaveLength(0);
-      expect(analysis.nonStraightReward).toBe(420000);
-      expect(analysis.totalReward).toBe(420000);
+      expect(analysis.nonStraightReward).toBe(300000);
+      expect(analysis.totalReward).toBe(300000);
     });
 
     it('should calculate combined reward correctly', () => {

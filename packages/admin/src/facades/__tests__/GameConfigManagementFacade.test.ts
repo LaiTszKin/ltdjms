@@ -99,6 +99,7 @@ describe('GameConfigManagementFacade', () => {
         baseMultiplier: 1.0,
         tripleLowBonus: 3.0,
         tripleHighBonus: 5.0,
+        faceMultipliers: [1, 1, 1, 1, 1, 1],
         createdAt: new Date(),
         updatedAt: new Date(),
       };

@@ -69,6 +69,10 @@ export class ShopAdminNotificationService {
         return;
       }
 
+      // NOTE: This iterates all cached guild members to find admins via permission check.
+      // This is a fire-and-forget notification and is acceptable for typical guild sizes.
+      // If a large guild experiences performance issues, consider using Discord's
+      // permission-based member search API instead of iterating the entire cache.
       const members = guild.members.cache;
       if (members && members.size > 0) {
         for (const [, member] of members) {

@@ -30,9 +30,6 @@ import { LangChainAIChatService } from '../services/LangChainAIChatService.js';
 import { MarkdownValidatingAIChatService } from '../markdown/services/MarkdownValidatingAIChatService.js';
 import { AgentConfigCacheInvalidationListener } from '../services/routing/agent-config-cache-invalidation-listener.js';
 
-// Agent Service Factory
-import { AgentServiceFactory } from '../services/AgentServiceFactory.js';
-
 // Tools
 import { ToolCallerAuthorizationGuard } from '../tools/ToolCallerAuthorizationGuard.js';
 import { PermissionParser } from '../tools/PermissionParser.js';
@@ -85,7 +82,6 @@ export const AI_TOKENS = {
   LangChainAIChatService: Symbol('LangChainAIChatService'),
   AIChatMentionRoutingDecision: Symbol('AIChatMentionRoutingDecision'),
   AIChatMentionListener: Symbol('AIChatMentionListener'),
-  AgentServiceFactory: Symbol('AgentServiceFactory'),
   InMemoryToolCallHistory: Symbol('InMemoryToolCallHistory'),
   DiscordThreadHistoryProvider: Symbol('DiscordThreadHistoryProvider'),
   SimplifiedChatMemoryProvider: Symbol('SimplifiedChatMemoryProvider'),
@@ -289,16 +285,39 @@ export function initializeAIModule(): void {
   const toolCallHistory = new InMemoryToolCallHistory();
   container.registerInstance(AI_TOKENS.InMemoryToolCallHistory, toolCallHistory);
 
+  // ===== Shared ChatOpenAI Singleton =====
+  // Single shared instance to avoid multiple HTTP agents/connection pools (P1-30, P2-11)
+  const sharedChatModel = new ChatOpenAI({
+    configuration: {
+      baseURL: aiConfig.baseUrl,
+      apiKey: aiConfig.apiKey,
+    },
+    modelName: aiConfig.model,
+    temperature: aiConfig.temperature,
+    timeout: aiConfig.timeoutSeconds * 1000,
+    streaming: true,
+  });
+  container.registerInstance(AI_TOKENS.ChatOpenAI, sharedChatModel);
+
   const langChainService = new LangChainAIChatService(
     aiConfig,
     promptLoader,
+    sharedChatModel,
     toolMap,
     authGuard,
     toolExecutionInterceptor,
     toolCallHistory,
     runtimeGateway,
+    eventPublisher,
   );
   container.registerInstance(AI_TOKENS.LangChainAIChatService, langChainService);
+
+  // ===== Markdown Pipeline =====
+  // Register Markdown services before they are resolved by MarkdownValidatingAIChatService (P1-1)
+  container.registerInstance(AI_TOKENS.CommonMarkValidator, new CommonMarkValidator());
+  container.registerInstance(AI_TOKENS.RegexBasedAutoFixer, new RegexBasedAutoFixer());
+  container.registerInstance(AI_TOKENS.DiscordMarkdownSanitizer, new DiscordMarkdownSanitizer());
+  container.registerInstance(AI_TOKENS.DiscordMarkdownPaginator, new DiscordMarkdownPaginator());
 
   // Wrap with Markdown validation decorator if enabled
   let aiChatService: AIChatService;
@@ -331,37 +350,6 @@ export function initializeAIModule(): void {
     tokenEstimator,
   );
   container.registerInstance(AI_TOKENS.SimplifiedChatMemoryProvider, memoryProvider);
-
-  // ===== Shared ChatOpenAI Singleton =====
-  // Single shared instance to avoid multiple HTTP agents/connection pools (P1-30)
-  const sharedChatModel = new ChatOpenAI({
-    configuration: {
-      baseURL: aiConfig.baseUrl,
-      apiKey: aiConfig.apiKey,
-    },
-    modelName: aiConfig.model,
-    temperature: aiConfig.temperature,
-    timeout: aiConfig.timeoutSeconds * 1000,
-    streaming: true,
-  });
-  container.registerInstance(AI_TOKENS.ChatOpenAI, sharedChatModel);
-
-  // ===== Agent Service Factory =====
-  const agentServiceFactory = new AgentServiceFactory(
-    aiConfig,
-    allTools,
-    memoryProvider,
-    toolCallHistory,
-    authGuard,
-    sharedChatModel,
-  );
-  container.registerInstance(AI_TOKENS.AgentServiceFactory, agentServiceFactory);
-
-  // ===== Markdown Pipeline =====
-  container.registerInstance(AI_TOKENS.CommonMarkValidator, new CommonMarkValidator());
-  container.registerInstance(AI_TOKENS.RegexBasedAutoFixer, new RegexBasedAutoFixer());
-  container.registerInstance(AI_TOKENS.DiscordMarkdownSanitizer, new DiscordMarkdownSanitizer());
-  container.registerInstance(AI_TOKENS.DiscordMarkdownPaginator, new DiscordMarkdownPaginator());
 
   // ===== Agent Config Cache Invalidation Listener =====
   // Subscribes to AIAgentChannelConfigChangedEvent and invalidates cache entries

@@ -50,6 +50,8 @@ export const ZhTwStrings = {
   balanceModalReasonLabel: '原因',
   balanceModalAmountPlaceholder: '請輸入金額（正整數）',
   balanceModalReasonPlaceholder: '請輸入調整原因（1-256字）',
+  balanceSuccessAdjust: '調整成功！\n調整前：{before}\n調整後：{after}',
+  balanceErrorPrefix: '調整失敗：',
   balanceSuccessAdd: '成功增加 {amount} {currencyIcon}\n調整前：{before} → 調整後：{after}\n原因：{reason}',
   balanceSuccessDeduct: '成功扣除 {amount} {currencyIcon}\n調整前：{before} → 調整後：{after}\n原因：{reason}',
   balanceSuccessSet: '成功設定為 {amount} {currencyIcon}\n調整前：{before} → 調整後：{after}\n原因：{reason}',
@@ -68,6 +70,8 @@ export const ZhTwStrings = {
   tokenModalReasonLabel: '原因',
   tokenModalAmountPlaceholder: '請輸入數量（非負整數）',
   tokenModalReasonPlaceholder: '請輸入調整原因（1-256字）',
+  tokenSuccessAdjust: '調整成功！\n調整前：{before}\n調整後：{after}',
+  tokenErrorPrefix: '調整失敗：',
   tokenSuccessAdd: '成功增加 {amount} 個代幣\n調整前：{before} → 調整後：{after}\n原因：{reason}',
   tokenSuccessDeduct: '成功扣除 {amount} 個代幣\n調整前：{before} → 調整後：{after}\n原因：{reason}',
   tokenSuccessSet: '成功設定為 {amount} 個代幣\n調整前：{before} → 調整後：{after}\n原因：{reason}',
@@ -319,6 +323,9 @@ export const ZhTwStrings = {
     [DomainErrorCategory.CHANNEL_NOT_FOUND]: '找不到指定的頻道',
     [DomainErrorCategory.DUPLICATE_CATEGORY]: '該分類已在白名單中',
     [DomainErrorCategory.CATEGORY_NOT_FOUND]: '找不到指定的分類',
+    [DomainErrorCategory.REDEEM_CODE_USED]: '此兌換碼已被使用',
+    [DomainErrorCategory.REDEEM_CODE_EXPIRED]: '此兌換碼已過期',
+    [DomainErrorCategory.REDEEM_CODE_INVALID]: '兌換碼無效',
   },
 
   // ============================================================

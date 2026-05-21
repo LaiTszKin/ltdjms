@@ -126,8 +126,8 @@ describe('Cross-language Java compatibility (P0-6)', () => {
       expect(javaUrlEncode('test (1)')).toBe('test+%281%29');
     });
 
-    it('should encode asterisk as %2A', () => {
-      expect(javaUrlEncode('test *A*')).toBe('test+%2AA%2A');
+    it('should NOT encode asterisk (Java URLEncoder behavior)', () => {
+      expect(javaUrlEncode('test *A*')).toBe('test+*A*');
     });
 
     it('should encode exclamation as %21', () => {
@@ -140,8 +140,8 @@ describe('Cross-language Java compatibility (P0-6)', () => {
 
     it('should encode mixed special characters', () => {
       // Java: URLEncoder.encode("test (1) !star* ~")
-      // produces "test+%281%29+%21star%2A+%7E"
-      expect(javaUrlEncode('test (1) !star* ~')).toBe('test+%281%29+%21star%2A+%7E');
+      // produces "test+%281%29+%21star*+%7E" (asterisk is NOT encoded)
+      expect(javaUrlEncode('test (1) !star* ~')).toBe('test+%281%29+%21star*+%7E');
     });
   });
 

@@ -1,6 +1,7 @@
 import {
   type DiscordInteraction,
   type DiscordContext,
+  DomainErrorCategory,
 } from '@ltdjms/shared';
 import {
   EmbedBuilder,
@@ -121,10 +122,7 @@ export class RedemptionCodeHandler implements InteractionHandler {
       new ActionRowBuilder<TextInputBuilder>().addComponents(codeInput),
     );
 
-    const raw = interaction.getHook() as {
-      showModal: (modal: ModalBuilder) => Promise<void>;
-    };
-    await raw.showModal(modal);
+    await interaction.showModal(modal);
   }
 
   private async processRedemption(
@@ -132,11 +130,7 @@ export class RedemptionCodeHandler implements InteractionHandler {
     guildId: string,
     userId: string,
   ): Promise<void> {
-    const raw = interaction.getHook() as {
-      fields: { getTextInputValue: (customId: string) => string };
-    };
-
-    const codeStr = raw.fields.getTextInputValue('redeem_code');
+    const codeStr = interaction.getTextInputValue('redeem_code');
     if (!codeStr || codeStr.trim().length === 0) {
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.redeemCodeModalTitle)
@@ -162,16 +156,16 @@ export class RedemptionCodeHandler implements InteractionHandler {
         .setColor(0x57F287);
       await interaction.editEmbed(embed);
     } else {
-      const errorMsg = result.getError().message;
+      const error = result.getError();
       let friendlyMsg: string;
-      if (errorMsg.includes('used') || errorMsg.includes('已使用')) {
+      if (error.category === DomainErrorCategory.REDEEM_CODE_USED) {
         friendlyMsg = ZhTwStrings.redeemAlreadyUsed;
-      } else if (errorMsg.includes('expired') || errorMsg.includes('已過期')) {
+      } else if (error.category === DomainErrorCategory.REDEEM_CODE_EXPIRED) {
         friendlyMsg = ZhTwStrings.redeemExpired;
-      } else if (errorMsg.includes('invalid') || errorMsg.includes('無效')) {
+      } else if (error.category === DomainErrorCategory.REDEEM_CODE_INVALID) {
         friendlyMsg = ZhTwStrings.redeemInvalid;
       } else {
-        friendlyMsg = '兌換失敗：' + errorMsg;
+        friendlyMsg = '兌換失敗：' + error.message;
       }
 
       const embed = new EmbedBuilder()

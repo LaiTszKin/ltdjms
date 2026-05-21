@@ -50,6 +50,9 @@ export class GameTokenManagementFacade {
    *
    * TODO(P1-34): Pass reason and actorId to service layer when tryAdjustTokens
    * signature accepts audit metadata (e.g., reason, actorId).
+   *
+   * TODO(P2-6): 在 service 支援前可先將 reason 拼接到 description 參數傳遞：
+   * this.tokenService.tryAdjustTokens(Number(guildId), Number(userId), amount, { reason, actorId })
    */
   async adjustTokens(
     guildId: string,

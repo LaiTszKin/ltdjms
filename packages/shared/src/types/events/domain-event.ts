@@ -72,8 +72,11 @@ export interface RedemptionCodesGeneratedEvent extends DomainEvent {
   readonly count: number;
 }
 
-/** Transaction type placeholder — will be replaced by the actual domain type. */
-// TODO: fill fields once the corresponding module is ported
+/**
+ * Transaction type placeholder — will be replaced by the actual domain type.
+ * TODO: fill fields once the economy/shop module is fully ported from Java.
+ * Current fields reflect the minimal shape needed by ProductRedemptionCompletedEvent.
+ */
 export interface ProductRedemptionTransaction {
   readonly id: string;
   readonly userId: number;
@@ -111,8 +114,11 @@ export interface AIAgentChannelConfigChangedEvent extends DomainEvent {
   readonly changedAt: Date;
 }
 
-/** Conversation message placeholder — will be replaced by the actual domain type. */
-// TODO: fill fields once the corresponding module is ported
+/**
+ * Conversation message placeholder — will be replaced by the actual domain type.
+ * TODO: fill fields once the AI chat module is fully ported from Java.
+ * Current fields reflect the minimal shape needed by AgentCompletedEvent.
+ */
 export interface ConversationMessage {
   readonly role: string;
   readonly content: string;

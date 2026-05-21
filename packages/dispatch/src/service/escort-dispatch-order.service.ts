@@ -1,10 +1,11 @@
-import type { Result, TokenMap } from '@ltdjms/shared';
+import type { Result, TokenMap, DiscordRuntimeGateway } from '@ltdjms/shared';
 import { Ok, Err, DomainError } from '@ltdjms/shared';
 
 import type { EscortDispatchOrderRepo } from '../repo/escort-dispatch-order.repo.js';
 import { EscortDispatchOrderNumberGenerator, generateUniqueOrderNumber } from '../domain/order-number-generator.js';
 import type { EscortOptionCatalogRepository } from './escort-option-pricing.service.js';
 import { type DispatchAfterSalesStaffService } from './dispatch-after-sales-staff.service.js';
+import type { DispatchNotificationService } from '../notification/DispatchNotificationService.js';
 import {
   type EscortDispatchOrder,
   EscortDispatchOrderStatus,
@@ -40,13 +41,18 @@ const MAX_PENDING_ASSIGNMENT_LIMIT = 25;
  * Matches Java EscortDispatchOrderService exactly.
  */
 export class EscortDispatchOrderService {
+  private readonly orderNumberGenerator: EscortDispatchOrderNumberGenerator;
+  private readonly clock: () => number;
+
   constructor(
     private readonly repository: EscortDispatchOrderRepo,
-    private readonly orderNumberGenerator?: EscortDispatchOrderNumberGenerator,
-    private readonly clock?: () => number,
+    orderNumberGenerator?: EscortDispatchOrderNumberGenerator,
+    clock?: () => number,
     private readonly catalogRepository?: EscortOptionCatalogRepository,
     private readonly afterSalesStaffService?: DispatchAfterSalesStaffService,
     private readonly logger?: TokenMap['Logger'],
+    private readonly notificationService?: DispatchNotificationService,
+    private readonly gateway?: DiscordRuntimeGateway,
   ) {
     this.orderNumberGenerator = orderNumberGenerator ?? new EscortDispatchOrderNumberGenerator();
     this.clock = clock ?? (() => Date.now());
@@ -61,6 +67,14 @@ export class EscortDispatchOrderService {
   ): Promise<Result<EscortDispatchOrder, DomainError>> {
     if (escortUserId === customerUserId) {
       return new Err(DomainError.invalidInput('護航者與客戶不能是同一人'));
+    }
+
+    // P1-13: 驗證客戶存在於伺服器中
+    if (this.gateway) {
+      const memberExists = await this.gateway.retrieveMemberById(String(guildId), String(customerUserId));
+      if (!memberExists) {
+        return new Err(DomainError.invalidInput('找不到指定客戶'));
+      }
     }
 
     try {
@@ -83,6 +97,14 @@ export class EscortDispatchOrderService {
   ): Promise<Result<EscortDispatchOrder, DomainError>> {
     if (customerUserId <= 0) {
       return new Err(DomainError.invalidInput('請選擇客戶'));
+    }
+
+    // P1-13: 驗證客戶存在於伺服器中
+    if (this.gateway) {
+      const memberExists = await this.gateway.retrieveMemberById(String(guildId), String(customerUserId));
+      if (!memberExists) {
+        return new Err(DomainError.invalidInput('找不到指定客戶'));
+      }
     }
 
     if (!escortOptionCode || escortOptionCode.trim().length === 0) {
@@ -177,9 +199,16 @@ export class EscortDispatchOrderService {
     }
 
     try {
-      const confirmed = withConfirmed(order, new Date(this.clock!()));
-      const updated = await this.repository.update(confirmed, EscortDispatchOrderStatus.PENDING_CONFIRMATION);
-      return new Ok(updated);
+      const confirmedAt = new Date(this.clock!());
+      const updated = await this.repository.confirmOrder(
+        order.orderNumber,
+        confirmerUserId,
+        confirmedAt,
+      );
+      if (updated != null) {
+        return new Ok(updated);
+      }
+      return new Err(DomainError.invalidInput('此訂單已被確認或目前不可確認'));
     } catch (e) {
       const err = e instanceof Error ? e : new Error(String(e));
       return new Err(DomainError.persistenceFailure('確認訂單失敗', err));
@@ -401,14 +430,10 @@ export class EscortDispatchOrderService {
   ): Promise<Result<EscortDispatchOrder[], DomainError>> {
     const safeLimit = this.normalizeLimit(limit ?? DEFAULT_HISTORY_LIMIT, MAX_HISTORY_LIMIT);
     try {
+      // P2-21: 批次處理所有逾時訂單，避免 N 次獨立 UPDATE
+      await this.repository.batchTimeoutCompletion();
       const orders = await this.repository.findRecentByGuildId(guildId, safeLimit);
-      const normalizedOrders = await Promise.all(
-        orders.map(async (o) => {
-          if (!isPendingCustomerConfirmation(o)) return o;
-          return this.ensureTimeoutCompletion(o);
-        }),
-      );
-      return new Ok(normalizedOrders);
+      return new Ok(orders);
     } catch (e) {
       const err = e instanceof Error ? e : new Error(String(e));
       return new Err(DomainError.persistenceFailure('查詢歷史訂單失敗', err));
@@ -434,6 +459,17 @@ export class EscortDispatchOrderService {
     } catch (e) {
       const err = e instanceof Error ? e : new Error(String(e));
       return new Err(DomainError.persistenceFailure('查詢待派單訂單失敗', err));
+    }
+  }
+
+  /** Counts non-terminal orders for a guild. */
+  async countActiveOrders(guildId: number): Promise<Result<number, DomainError>> {
+    try {
+      const count = await this.repository.countActiveByGuildId(guildId);
+      return new Ok(count);
+    } catch (e) {
+      const err = e instanceof Error ? e : new Error(String(e));
+      return new Err(DomainError.persistenceFailure('Failed to count active orders', err));
     }
   }
 
@@ -472,6 +508,12 @@ export class EscortDispatchOrderService {
     try {
       const completed = withCompleted(order, new Date(this.clock!()));
       const updated = await this.repository.update(completed, EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION);
+
+      // Spec R10: timeout auto-completion only logs a warning, does NOT send notifications
+      this.logWarn('Order auto-completed due to customer confirmation timeout', {
+        orderNumber: order.orderNumber,
+      });
+
       return updated;
     } catch (e) {
       // If auto-complete persist fails, log warning and return original order (non-blocking)

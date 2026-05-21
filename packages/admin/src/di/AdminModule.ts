@@ -22,6 +22,7 @@ import type {
   EscortOptionPricingService,
   EscortOptionCatalogRepository,
   EscortOptionPriceRepo,
+  EscortDispatchOrderService,
 } from '@ltdjms/dispatch';
 import type { DispatchPanelCommandHandler } from '@ltdjms/dispatch';
 import { DISPATCH_TOKENS } from '@ltdjms/dispatch';
@@ -205,7 +206,6 @@ export function configureAdminContainer(): void {
     balanceService,
     balanceAdjustmentService,
     currencyConfigService,
-    eventPublisher,
   );
   container.registerInstance(ADMIN_TOKENS.CurrencyManagementFacade, currencyFacade);
 
@@ -215,7 +215,6 @@ export function configureAdminContainer(): void {
   const tokenFacade = new GameTokenManagementFacade(
     gameTokenService,
     gameTokenTxService,
-    eventPublisher,
   );
   container.registerInstance(ADMIN_TOKENS.GameTokenManagementFacade, tokenFacade);
 
@@ -262,6 +261,7 @@ export function configureAdminContainer(): void {
     container.resolve<EscortOptionCatalogRepository>(DISPATCH_TOKENS.EscortOptionCatalogRepository),
     container.resolve<EscortOptionPriceRepo>(DISPATCH_TOKENS.EscortOptionPriceRepo),
     eventPublisher,
+    container.resolve<EscortDispatchOrderService>(DISPATCH_TOKENS.EscortDispatchOrderService),
   );
   container.registerInstance(ADMIN_TOKENS.DispatchManagementFacade, dispatchManagementFacade);
 
@@ -287,6 +287,7 @@ export function configureAdminContainer(): void {
     adminSessionManager,
     adminPanelViewFactory,
     currencyFacade,
+    dispatchManagementFacade,
   );
   container.registerInstance(ADMIN_TOKENS.AdminPanelCommand, adminPanelCommand);
   slashCommandListener.registerCommand(adminPanelCommand);
@@ -319,6 +320,7 @@ export function configureAdminContainer(): void {
 
   const gameHandler = new GameSettingsHandler(
     gameConfigFacade,
+    adminPanelViewFactory,
     adminSessionManager,
     errorHandler,
   );
@@ -435,6 +437,7 @@ export function configureAdminContainer(): void {
     adminSessionManager,
     discordGateway,
     currencyFacade,
+    dispatchManagementFacade,
     adminPanelViewFactory,
   );
   container.registerInstance(ADMIN_TOKENS.AdminPanelUpdateListener, adminUpdateListener);
@@ -456,4 +459,25 @@ export function configureAdminContainer(): void {
       console.error('[UserPanelUpdateListener] Error:', err);
     });
   });
+
+}
+
+/**
+ * Disposes admin module resources. Should be called during application shutdown.
+ * Stops session cleanup intervals to prevent memory leaks.
+ */
+export function disposeAdminContainer(): void {
+  try {
+    const mgr = container.resolve<AdminPanelSessionManager>(ADMIN_TOKENS.AdminPanelSessionManager);
+    mgr.stopCleanupInterval();
+  } catch {
+    // Session manager not registered; nothing to dispose
+  }
+
+  try {
+    const mgr = container.resolve<PanelSessionManager>(ADMIN_TOKENS.PanelSessionManager);
+    mgr.stopCleanupInterval();
+  } catch {
+    // Session manager not registered; nothing to dispose
+  }
 }

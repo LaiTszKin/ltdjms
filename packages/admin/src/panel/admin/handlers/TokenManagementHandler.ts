@@ -10,6 +10,7 @@ import {
   TextInputBuilder,
   TextInputStyle,
   ButtonBuilder,
+  ButtonStyle,
 } from 'discord.js';
 import { GameTokenManagementFacade } from '../../../facades/GameTokenManagementFacade.js';
 import { AdminPanelSessionManager } from '../../../session/AdminPanelSessionManager.js';
@@ -76,8 +77,8 @@ export class TokenManagementHandler extends BaseAdminHandler {
 
     // Handle member selection from user select menu
     if (fullCustomId === 'admin_token_select_member') {
-      const rawHook = interaction.getHook() as { values?: string[] };
-      const selectedUserId = rawHook.values?.[0];
+      const selectedValues = interaction.getSelectedValues();
+      const selectedUserId = selectedValues[0];
       if (selectedUserId) {
         this.sessionManager.setContext(guildId, userId, 'selectedUserId', selectedUserId);
         await this.showTokenView(interaction, guildId, selectedUserId);
@@ -99,10 +100,6 @@ export class TokenManagementHandler extends BaseAdminHandler {
   private async showMemberSelect(
     interaction: DiscordInteraction,
   ): Promise<void> {
-    const raw = interaction.getHook() as {
-      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<UserSelectMenuBuilder>[] }) => Promise<void>;
-    };
-
     const embed = new EmbedBuilder()
       .setTitle(ZhTwStrings.tokenTitle)
       .setDescription(ZhTwStrings.tokenSelectMember)
@@ -114,7 +111,7 @@ export class TokenManagementHandler extends BaseAdminHandler {
       .setPlaceholder('請選擇成員');
 
     const row = new ActionRowBuilder<UserSelectMenuBuilder>().addComponents(select);
-    await raw.editReply({ embeds: [embed], components: [row] });
+    await interaction.editWithComponents(embed, [row]);
   }
 
   private async showTokenView(
@@ -123,10 +120,6 @@ export class TokenManagementHandler extends BaseAdminHandler {
     targetUserId: string,
   ): Promise<void> {
     const result = await this.facade.getTokens(guildId, targetUserId);
-
-    const raw = interaction.getHook() as {
-      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }) => Promise<void>;
-    };
 
     if (result.isOk()) {
       const embed = new EmbedBuilder()
@@ -139,24 +132,24 @@ export class TokenManagementHandler extends BaseAdminHandler {
       const addBtn = new ButtonBuilder()
         .setCustomId('admin_token_modal_add')
         .setLabel(ZhTwStrings.balanceAdjustAdd)
-        .setStyle(3 as any);
+        .setStyle(ButtonStyle.Success);
       const deductBtn = new ButtonBuilder()
         .setCustomId('admin_token_modal_deduct')
         .setLabel(ZhTwStrings.balanceAdjustDeduct)
-        .setStyle(4 as any);
+        .setStyle(ButtonStyle.Danger);
       const setBtn = new ButtonBuilder()
         .setCustomId('admin_token_modal_set')
         .setLabel(ZhTwStrings.balanceAdjustSet)
-        .setStyle(1 as any);
+        .setStyle(ButtonStyle.Primary);
 
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(addBtn, deductBtn, setBtn);
-      await raw.editReply({ embeds: [embed], components: [row] });
+      await interaction.editWithComponents(embed, [row]);
     } else {
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.tokenTitle)
         .setDescription('無法取得該成員的代幣資訊')
         .setColor(Colors.PRIMARY);
-      await raw.editReply({ embeds: [embed], components: [] });
+      await interaction.editWithComponents(embed, []);
     }
   }
 
@@ -186,10 +179,7 @@ export class TokenManagementHandler extends BaseAdminHandler {
       );
     }
 
-    const raw = interaction.getHook() as {
-      showModal: (modal: ModalBuilder) => Promise<void>;
-    };
-    await raw.showModal(modal);
+    await interaction.showModal(modal);
   }
 
   private async handleModalSubmit(
@@ -210,12 +200,8 @@ export class TokenManagementHandler extends BaseAdminHandler {
       return;
     }
 
-    const raw = interaction.getHook() as {
-      fields: { getTextInputValue: (customId: string) => string };
-    };
-
-    const amountStr = raw.fields.getTextInputValue('數量');
-    const reason = raw.fields.getTextInputValue('原因');
+    const amountStr = interaction.getTextInputValue('數量');
+    const reason = interaction.getTextInputValue('原因');
     const amount = parseInt(amountStr, 10);
 
     if (isNaN(amount) || amount <= 0) {
@@ -241,14 +227,16 @@ export class TokenManagementHandler extends BaseAdminHandler {
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.tokenTitle)
         .setDescription(
-          `調整成功！\n調整前：${adjustResult.previousTokens}\n調整後：${adjustResult.newTokens}`,
+          ZhTwStrings.tokenSuccessAdjust
+            .replace('{before}', String(adjustResult.previousTokens))
+            .replace('{after}', String(adjustResult.newTokens)),
         )
         .setColor(Colors.PRIMARY);
       await interaction.editEmbed(embed);
     } else {
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.tokenTitle)
-        .setDescription('調整失敗：' + result.getError().message)
+        .setDescription(ZhTwStrings.tokenErrorPrefix + result.getError().message)
         .setColor(Colors.PRIMARY);
       await interaction.editEmbed(embed);
     }

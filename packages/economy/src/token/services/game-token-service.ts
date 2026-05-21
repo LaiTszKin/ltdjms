@@ -56,13 +56,7 @@ export class GameTokenService {
   /**
    * Gets the current token balance for a member.
    * Uses cache (TTL 300s) - cache miss falls through to DB query.
-   * Returns 0 if no account exists (no auto-create, matching Java behavior).
-   *
-   * Design decision: does NOT auto-create a token account on balance query,
-   * mirroring the Java GameTokenService behaviour. Spec R4.1 originally
-   * required symmetry with the currency system, but the Java reference
-   * implementation also omits auto-create in getBalance, so this is kept
-   * as-is. Callers that need an account should use findOrCreate explicitly.
+   * Auto-creates the token account if it does not exist (P3-16).
    */
   async getBalance(guildId: number, userId: number): Promise<number> {
     const cacheKey = this.cacheKeyGenerator.gameTokenKey(String(guildId), String(userId));
@@ -72,24 +66,36 @@ export class GameTokenService {
       return cachedBalance;
     }
 
-    // Cache miss or no cache - query DB without auto-create
-    const account = await this.accountRepository.findByGuildIdAndUserId(guildId, userId);
-    const balance = account?.tokens ?? 0;
+    // Cache miss or no cache - query DB with auto-create (P3-16)
+    const account = await this.accountRepository.findOrCreate(guildId, userId);
+    const balance = account.tokens;
     await this.cacheService.put(cacheKey, balance, GameTokenService.TOKEN_TTL_SECONDS);
     return balance;
   }
 
   /**
    * Adjusts tokens with Result-based error handling.
+   * Records a transaction after the adjustment, cache update, and event publishing (P1-5).
+   *
+   * @param source - transaction source for recording (default ADMIN_ADJUSTMENT)
+   * @param description - optional description for the transaction record
    */
   async tryAdjustTokens(
     guildId: number,
     userId: number,
     amount: number,
+    source: GameTokenTransactionSource = GameTokenTransactionSource.ADMIN_ADJUSTMENT,
+    description: string | null = null,
   ): Promise<Result<TokenAdjustmentResult, DomainError>> {
     if (!Number.isFinite(amount)) {
       return new Err(
         DomainError.invalidInput(`Invalid adjustment amount: ${amount}`),
+      );
+    }
+
+    if (amount === 0) {
+      return new Err(
+        DomainError.invalidInput('調整金額不可為零'),
       );
     }
 
@@ -111,6 +117,16 @@ export class GameTokenService {
 
       // Update cache and publish event
       await this.updateCacheAndPublishEvent(guildId, userId, updated.tokens);
+
+      // Record transaction atomically with the token adjustment (P1-5)
+      await this.transactionService.recordTransaction(
+        guildId,
+        userId,
+        amount,
+        updated.tokens,
+        source,
+        description,
+      );
 
       return new Ok({
         guildId,
@@ -166,22 +182,8 @@ export class GameTokenService {
     }
 
     // Delegate to tryAdjustTokens which handles findOrCreate, adjustment,
-    // cache update, and event publishing (P2-16)
-    const result = await this.tryAdjustTokens(guildId, userId, -tokens);
-
-    if (result.isOk()) {
-      const adjustResult = result.getValue();
-
-      // Record transaction immediately after successful deduction (P1-10)
-      await this.transactionService.recordTransaction(
-        guildId,
-        userId,
-        -tokens,
-        adjustResult.newTokens,
-        source,
-        null,
-      );
-    }
+    // cache update, event publishing, and transaction recording (P1-5, P2-16)
+    const result = await this.tryAdjustTokens(guildId, userId, -tokens, source, null);
 
     return result;
   }
@@ -189,6 +191,7 @@ export class GameTokenService {
   /**
    * Adjusts tokens (deducts if negative, adds if positive).
    * Deduct path that throws on insufficient - use tryAdjustTokens for Result-based.
+   * Records a transaction after successful deduction (P1-9).
    */
   async deductTokens(
     guildId: number,
@@ -208,35 +211,17 @@ export class GameTokenService {
     // Update cache and publish event
     await this.updateCacheAndPublishEvent(guildId, userId, updated.tokens);
 
-    return updated;
-  }
-
-  /**
-   * Adjusts tokens (throws on error).
-   */
-  async adjustTokens(
-    guildId: number,
-    userId: number,
-    amount: number,
-  ): Promise<TokenAdjustmentResult> {
-    const current = await this.accountRepository.findOrCreate(guildId, userId);
-    const previousTokens = current.tokens;
-
-    const updated = await this.accountRepository.adjustTokens(
+    // Record transaction after successful deduction (P1-9), matching
+    // the pattern used by tryDeductTokens (P1-10).
+    await this.transactionService.recordTransaction(
       guildId,
       userId,
-      amount,
+      -tokens,
+      updated.tokens,
+      GameTokenTransactionSource.GAME_PLAY,
+      null,
     );
 
-    // Update cache and publish event
-    await this.updateCacheAndPublishEvent(guildId, userId, updated.tokens);
-
-    return {
-      guildId,
-      userId,
-      previousTokens,
-      newTokens: updated.tokens,
-      adjustment: amount,
-    };
+    return updated;
   }
 }

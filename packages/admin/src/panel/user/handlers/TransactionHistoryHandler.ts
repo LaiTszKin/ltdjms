@@ -46,13 +46,13 @@ export class TransactionHistoryHandler implements InteractionHandler {
 
     const fullCustomId = interaction.getCustomId();
 
-    // Parse: user_{type}_history, user_{type}_history_prev_{page}, user_{type}_history_next_{page}
-    if (fullCustomId.startsWith('user_token_history')) {
+    // Parse: user_history_{type}, user_history_{type}_prev_{page}, user_history_{type}_next_{page}
+    if (fullCustomId.startsWith('user_history_token')) {
       await this.showTokenHistory(interaction, guildId, userId, fullCustomId);
-    } else if (fullCustomId.startsWith('user_redemption_history')) {
+    } else if (fullCustomId.startsWith('user_history_redemption')) {
       await this.showRedemptionHistory(interaction, guildId, userId, fullCustomId);
     } else {
-      // Default and currency navigation: user_currency_history*
+      // Default and currency navigation: user_history_currency*
       await this.showCurrencyHistory(interaction, guildId, userId, fullCustomId);
     }
   }
@@ -114,7 +114,7 @@ export class TransactionHistoryHandler implements InteractionHandler {
     userId: string,
     fullCustomId: string,
   ): Promise<void> {
-    const { page } = this.parseNavCustomId(fullCustomId, 'user_currency');
+    const { page } = this.parseNavCustomId(fullCustomId, 'user_history_currency');
     this.sessionManager.setContext(guildId, userId, 'page_currency', String(page));
 
     const result = await this.memberInfoFacade.getCurrencyTransactionPage(
@@ -155,11 +155,8 @@ export class TransactionHistoryHandler implements InteractionHandler {
       .setDescription(description)
       .setColor(Colors.HISTORY_CURRENCY);
 
-    const row = this.buildNavRow(page, totalPages, 'user_currency');
-    const raw = interaction.getHook() as {
-      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }) => Promise<void>;
-    };
-    await raw.editReply({ embeds: [embed], components: [row] });
+    const row = this.buildNavRow(page, totalPages, 'user_history_currency');
+    await interaction.editWithComponents(embed, [row]);
   }
 
   private async showTokenHistory(
@@ -168,7 +165,7 @@ export class TransactionHistoryHandler implements InteractionHandler {
     userId: string,
     fullCustomId: string,
   ): Promise<void> {
-    const { page } = this.parseNavCustomId(fullCustomId, 'user_token');
+    const { page } = this.parseNavCustomId(fullCustomId, 'user_history_token');
     this.sessionManager.setContext(guildId, userId, 'page_token', String(page));
 
     const result = await this.memberInfoFacade.getTokenTransactionPage(
@@ -208,11 +205,8 @@ export class TransactionHistoryHandler implements InteractionHandler {
       .setDescription(description)
       .setColor(Colors.HISTORY_TOKEN);
 
-    const row = this.buildNavRow(page, totalPages, 'user_token');
-    const raw = interaction.getHook() as {
-      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }) => Promise<void>;
-    };
-    await raw.editReply({ embeds: [embed], components: [row] });
+    const row = this.buildNavRow(page, totalPages, 'user_history_token');
+    await interaction.editWithComponents(embed, [row]);
   }
 
   private async showRedemptionHistory(
@@ -221,7 +215,7 @@ export class TransactionHistoryHandler implements InteractionHandler {
     userId: string,
     fullCustomId: string,
   ): Promise<void> {
-    const { page } = this.parseNavCustomId(fullCustomId, 'user_redemption');
+    const { page } = this.parseNavCustomId(fullCustomId, 'user_history_redemption');
     this.sessionManager.setContext(guildId, userId, 'page_redemption', String(page));
 
     const result = await this.memberInfoFacade.getProductRedemptionTransactionPage(
@@ -258,10 +252,7 @@ export class TransactionHistoryHandler implements InteractionHandler {
       .setDescription(description)
       .setColor(Colors.HISTORY_REDEMPTION);
 
-    const row = this.buildNavRow(page, totalPages, 'user_redemption');
-    const raw = interaction.getHook() as {
-      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }) => Promise<void>;
-    };
-    await raw.editReply({ embeds: [embed], components: [row] });
+    const row = this.buildNavRow(page, totalPages, 'user_history_redemption');
+    await interaction.editWithComponents(embed, [row]);
   }
 }

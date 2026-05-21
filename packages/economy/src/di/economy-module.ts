@@ -18,6 +18,7 @@ import { GameTokenTransactionService } from '../token/services/game-token-tx-ser
 import { DiceGame1Service } from '../dice/services/dice-game-1-service.js';
 import { DiceGame2Service } from '../dice/services/dice-game-2-service.js';
 import { GameRewardService } from '../dice/services/game-reward-service.js';
+import { DiceConfigService } from '../dice/services/dice-config-service.js';
 
 // Command Handlers
 import { BalanceHandler } from '../commands/balance-handler.js';
@@ -49,6 +50,7 @@ export const ECONOMY_TOKENS = {
   DiceGame1Service: Symbol('DiceGame1Service'),
   DiceGame2Service: Symbol('DiceGame2Service'),
   GameRewardService: Symbol('GameRewardService'),
+  DiceConfigService: Symbol('DiceConfigService'),
 
   // Command Handlers
   BalanceHandler: Symbol('BalanceHandler'),
@@ -134,9 +136,12 @@ export function configureEconomyContainer(): void {
   container.registerInstance(ECONOMY_TOKENS.GameTokenService, gameTokenService);
 
   const gameRewardService = new GameRewardService(
-    currencyAccountRepo,
+    balanceAdjustmentService,
+    balanceService,
     currencyTxService,
     eventPublisher,
+    cacheService,
+    cacheKeyGenerator,
   );
   container.registerInstance(ECONOMY_TOKENS.GameRewardService, gameRewardService);
 
@@ -149,6 +154,9 @@ export function configureEconomyContainer(): void {
     gameRewardService,
   );
   container.registerInstance(ECONOMY_TOKENS.DiceGame2Service, diceGame2Service);
+
+  const diceConfigService = new DiceConfigService(diceConfigRepo, eventPublisher);
+  container.registerInstance(ECONOMY_TOKENS.DiceConfigService, diceConfigService);
 
   // ============================================================
   // Command Handlers (singleton instances)
@@ -166,7 +174,7 @@ export function configureEconomyContainer(): void {
 
   const diceGame1Handler = new DiceGame1Handler(
     diceGame1Service,
-    diceConfigRepo,
+    diceConfigService,
     gameTokenService,
     currencyConfigRepo,
   );
@@ -174,18 +182,18 @@ export function configureEconomyContainer(): void {
 
   const diceGame2Handler = new DiceGame2Handler(
     diceGame2Service,
-    diceConfigRepo,
+    diceConfigService,
     gameTokenService,
     currencyConfigRepo,
   );
   container.registerInstance(ECONOMY_TOKENS.DiceGame2Handler, diceGame2Handler);
 
-  const diceGame1ConfigHandler = new DiceGame1ConfigHandler(diceConfigRepo, eventPublisher);
+  const diceGame1ConfigHandler = new DiceGame1ConfigHandler(diceConfigService);
   container.registerInstance(ECONOMY_TOKENS.DiceGame1ConfigHandler, diceGame1ConfigHandler);
 
-  const diceGame2ConfigHandler = new DiceGame2ConfigHandler(diceConfigRepo, eventPublisher);
+  const diceGame2ConfigHandler = new DiceGame2ConfigHandler(diceConfigService);
   container.registerInstance(ECONOMY_TOKENS.DiceGame2ConfigHandler, diceGame2ConfigHandler);
 
-  const gameTokenAdjustHandler = new GameTokenAdjustHandler(gameTokenService, gameTokenTxService);
+  const gameTokenAdjustHandler = new GameTokenAdjustHandler(gameTokenService);
   container.registerInstance(ECONOMY_TOKENS.GameTokenAdjustHandler, gameTokenAdjustHandler);
 }

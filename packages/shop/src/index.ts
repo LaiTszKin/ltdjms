@@ -53,7 +53,7 @@ export {
   shouldAutoCreateEscortOrder as shouldProductAutoCreateEscortOrder,
   createProduct,
 } from './domain/product-types.js';
-export type { Product } from './domain/product-types.js';
+export type { Product, ProductRepository } from './domain/product-types.js';
 
 // Persistence
 export {
@@ -112,7 +112,7 @@ export {
   BUTTON_SEARCH_PREV,
   BUTTON_SEARCH_NEXT,
   MODAL_SEARCH,
-} from './services/shop-view.js';
+} from './view/shop-view.js';
 
 export { RedemptionCodeGenerator } from './services/redemption-code-generator.js';
 
@@ -123,7 +123,7 @@ export { FiatOrderBuyerNotificationService } from './services/fiat-order-buyer-n
 export { EscortOrderBuyerNotificationService } from './services/escort-order-buyer-notification.service.js';
 export { ShopAdminNotificationService } from './services/shop-admin-notification.service.js';
 
-export { ShopCommandHandler } from './commands/index.js';
+export { ShopCommandHandler } from './commands/shop-handler.js';
 
 // Web
 export { EcpayCallbackHttpServer } from './web/ecpay-callback-server.js';
@@ -132,7 +132,6 @@ export { EcpayCallbackHttpServer } from './web/ecpay-callback-server.js';
 export {
   configureContainer,
   SHOP_TOKENS,
-  type ProductRepository,
   type ProductRewardService,
   type BalanceService,
   type BalanceAdjustmentService,
@@ -141,7 +140,8 @@ export {
   type ShopModuleOptions,
 } from './di/shop-module.js';
 
-export type { EscortDispatchHandoffService } from './services/fiat-order-post-payment-worker.js';
+export type { DispatchOrderSnapshot, EscortDispatchHandoffService } from './domain/escort-dispatch-handoff-service.js';
+export type { EscortOrderBuyerNotifier, AdminOrderNotifier, GrantRewardRequest, ProductRewardGranter } from './domain/notification-interfaces.js';
 
 // Persistence (additional)
 export { DrizzleRedemptionTransactionService } from './persistence/drizzle-redemption-transaction-service.js';

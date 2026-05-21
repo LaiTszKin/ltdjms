@@ -115,6 +115,12 @@ importers:
       '@types/node':
         specifier: ^20.0.0
         version: 20.19.41
+      drizzle-orm:
+        specifier: ^0.42.0
+        version: 0.42.0(@types/pg@8.20.0)(gel@2.2.0)(pg@8.21.0)
+      pg:
+        specifier: ^8.21.0
+        version: 8.21.0
       typescript:
         specifier: ^5.5.0
         version: 5.9.3
@@ -299,6 +305,9 @@ importers:
       tsyringe:
         specifier: ^4.8.0
         version: 4.10.0
+      undici:
+        specifier: ^8.3.0
+        version: 8.3.0
       zod:
         specifier: ^3.24.0
         version: 3.25.76
@@ -2473,6 +2482,10 @@ packages:
     resolution: {integrity: sha512-sC+b0tB1whOCzbtlx20fx3WgCXwkW627p4EA9uM+/tNNPkSS+eSEld6pAs9nDv7WbY1UUljBMYPtu9BCOrCWKA==}
     engines: {node: '>=18.17'}
 
+  undici@8.3.0:
+    resolution: {integrity: sha512-TkUDgb6tl7KOGZ+7e8E3d2FYgUQgF6z5YypqjWmixVQSQERFcVrVg0ySADm2LVLRh5ljAaHTCR5Fmz3Q34rB7Q==}
+    engines: {node: '>=22.19.0'}
+
   unpipe@1.0.0:
     resolution: {integrity: sha512-pjy2bYhSsufwWlKwPc+l3cN7+wuJlK6uz0YdJEOlQDbl6jo/YlPi4mb8agUkVC8BF7V8NuzeyPNqRksA3hztKQ==}
     engines: {node: '>= 0.8'}
@@ -4519,6 +4532,8 @@ snapshots:
   undici-types@6.21.0: {}
 
   undici@6.24.1: {}
+
+  undici@8.3.0: {}
 
   unpipe@1.0.0: {}
 

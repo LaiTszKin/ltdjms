@@ -6,10 +6,11 @@ import {
 } from '../../services/ai-chat-service.js';
 import { AIServiceConfig } from '../../config/ai-service-config.js';
 import { DiscordMarkdownSanitizer } from './DiscordMarkdownSanitizer.js';
-import { RegexBasedAutoFixer } from '../autofix/RegexBasedAutoFixer.js';
+import { MarkdownAutoFixer } from '../autofix/MarkdownAutoFixer.js';
 import { CommonMarkValidator } from '../validation/CommonMarkValidator.js';
 import { DiscordMarkdownPaginator } from './DiscordMarkdownPaginator.js';
-import { isValid } from '../types.js';
+import { applyMarkdownPipeline } from './markdown-pipeline.js';
+import { MessageChunkAccumulator } from '../../services/message-chunk-accumulator.js';
 
 /**
  * Decorator that wraps an AIChatService with Markdown validation pipeline.
@@ -24,7 +25,7 @@ export class MarkdownValidatingAIChatService implements AIChatService {
   constructor(
     private readonly delegate: AIChatService,
     private readonly sanitizer: DiscordMarkdownSanitizer,
-    private readonly autoFixer: RegexBasedAutoFixer,
+    private readonly autoFixer: MarkdownAutoFixer,
     private readonly validator: CommonMarkValidator,
     private readonly paginator: DiscordMarkdownPaginator,
   ) {
@@ -154,84 +155,62 @@ export class MarkdownValidatingAIChatService implements AIChatService {
     handler: StreamingResponseHandler,
   ): StreamingResponseHandler {
     // Buffer for accumulating CONTENT chunks
-    let contentBuffer: string[] = [];
+    const contentBuffer = new MessageChunkAccumulator();
 
     /**
-     * Flushes accumulated content through the validation pipeline.
+     * Flushes accumulated CONTENT chunks through the validation pipeline
+     * and forwards validated pages via onChunk.
      */
-    const flushContent = (isComplete: boolean, error: DomainError | null): void => {
-      if (contentBuffer.length === 0) return;
+    const flushContent = (
+      isComplete: boolean,
+      error: DomainError | null,
+    ): void => {
+      if (contentBuffer.isEmpty()) return;
 
-      const fullContent = contentBuffer.join('');
-      contentBuffer = [];
+      const fullContent = contentBuffer.getContent();
+      contentBuffer.clear();
 
       if (!fullContent) return;
 
       if (this.config.streamingBypassValidation) {
-        handler.onChunk(fullContent, isComplete, null);
+        handler.onChunk(fullContent, isComplete, null, StreamChunkType.CONTENT);
         return;
       }
 
       const validated = this.applyPipeline(fullContent);
       for (let i = 0; i < validated.length; i++) {
         const pageIsComplete = i === validated.length - 1;
-        handler.onChunk(validated[i], pageIsComplete, null);
+        handler.onChunk(validated[i], pageIsComplete, null, StreamChunkType.CONTENT);
       }
     };
 
     return {
-      onChunk: (chunk: string, isComplete: boolean, error: DomainError | null) => {
+      onChunk: (chunk: string, isComplete: boolean, error: DomainError | null, chunkType?: StreamChunkType) => {
         if (error) {
-          handler.onChunk(chunk, isComplete, error);
+          handler.onChunk(chunk, isComplete, error, chunkType);
           return;
         }
 
-        if (chunk) {
-          contentBuffer.push(chunk);
-        }
-
-        if (isComplete) {
-          flushContent(true, null);
-        }
-      },
-      onChunkWithType: (
-        chunk: string,
-        isComplete: boolean,
-        error: DomainError | null,
-        type: StreamChunkType,
-      ) => {
-        if (error) {
-          handler.onChunkWithType(chunk, isComplete, error, type);
-          return;
-        }
+        const type = chunkType ?? StreamChunkType.CONTENT;
 
         // REASONING and TOOL_INTENT pass through unmodified
         if (type !== StreamChunkType.CONTENT) {
-          handler.onChunkWithType(chunk, isComplete, null, type);
+          handler.onChunk(chunk, isComplete, null, type);
           return;
         }
 
         if (this.config.streamingBypassValidation) {
-          handler.onChunkWithType(chunk, isComplete, null, StreamChunkType.CONTENT);
+          handler.onChunk(chunk, isComplete, null, StreamChunkType.CONTENT);
           return;
         }
 
         // Accumulate CONTENT chunks; validate full content on completion
         if (chunk) {
-          contentBuffer.push(chunk);
+          contentBuffer.add(chunk);
         }
 
         if (isComplete) {
-          const fullContent = contentBuffer.join('');
-          contentBuffer = [];
-
-          if (fullContent) {
-            const validated = this.applyPipeline(fullContent);
-            for (let i = 0; i < validated.length; i++) {
-              const isLastPage = i === validated.length - 1;
-              handler.onChunkWithType(validated[i], isLastPage, null, StreamChunkType.CONTENT);
-            }
-          }
+          flushContent(true, null);
         }
       },
     };
@@ -240,25 +219,9 @@ export class MarkdownValidatingAIChatService implements AIChatService {
   /**
    * Applies the full pipeline to a markdown string.
    * Pipeline: Sanitize → AutoFix → Validate → Paginate
+   * 委派給共用工具函數 applyMarkdownPipeline（P2-4）。
    */
   private applyPipeline(markdown: string): string[] {
-    if (!markdown) return [markdown];
-
-    let result = markdown;
-
-    // 1. Sanitize
-    result = this.sanitizer.sanitize(result);
-
-    // 2. AutoFix
-    result = this.autoFixer.autoFix(result);
-
-    // 3. Validate → if invalid, retry fix once
-    const validationResult = this.validator.validate(result);
-    if (!isValid(validationResult)) {
-      result = this.autoFixer.autoFix(result);
-    }
-
-    // 4. Paginate
-    return this.paginator.paginate(result);
+    return applyMarkdownPipeline(markdown, this.sanitizer, this.autoFixer, this.validator, this.paginator);
   }
 }
