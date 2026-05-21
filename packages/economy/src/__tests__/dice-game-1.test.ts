@@ -13,8 +13,8 @@ describe('DiceGame1Service', () => {
   } as unknown as GameRewardService;
 
   const mockBalanceService = {
-    tryGetBalance: vi.fn().mockResolvedValue(new Ok({
-      guildId: 1, userId: 1, balance: 0, currencyName: 'Coins', currencyIcon: '🪙',
+    getBalance: vi.fn().mockResolvedValue(new Ok({
+      guildId: 1, userId: '1', balance: 0, currencyName: 'Coins', currencyIcon: '🪙',
     } as BalanceView)),
   } as unknown as BalanceService;
 
@@ -105,8 +105,8 @@ describe('DiceGame1Service', () => {
       } as unknown as GameRewardService;
 
       const mockBalService = {
-        tryGetBalance: vi.fn().mockResolvedValue(new Ok({
-          guildId: 1, userId: 1, balance: 0, currencyName: 'Coins', currencyIcon: '🪙',
+        getBalance: vi.fn().mockResolvedValue(new Ok({
+          guildId: 1, userId: '1', balance: 0, currencyName: 'Coins', currencyIcon: '🪙',
         } as BalanceView)),
       } as unknown as BalanceService;
 
@@ -121,7 +121,7 @@ describe('DiceGame1Service', () => {
         updatedAt: new Date(),
       };
 
-      const result = await service.play(1, 1, 2, config);
+      const result = await service.play(1, '1', 2, config);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -137,7 +137,7 @@ describe('DiceGame1Service', () => {
         1, 1, 1500000, CurrencyTransactionSource.DICE_GAME_1_WIN,
       );
       // Verify previous balance was fetched from BalanceService instead of creditReward(0)
-      expect(mockBalService.tryGetBalance).toHaveBeenCalledWith(1, 1);
+      expect(mockBalService.getBalance).toHaveBeenCalledWith(1, '1');
     });
 
     it('should complete play successfully with valid inputs', async () => {
@@ -156,7 +156,7 @@ describe('DiceGame1Service', () => {
         updatedAt: new Date(),
       };
 
-      const result = await service.play(1, 1, 3, config);
+      const result = await service.play(1, '1', 3, config);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -180,7 +180,7 @@ describe('DiceGame1Service', () => {
         updatedAt: new Date(),
       };
 
-      const result = await service.play(1, 1, 1, config);
+      const result = await service.play(1, '1', 1, config);
       expect(result.isErr()).toBe(true);
     });
 
@@ -200,7 +200,7 @@ describe('DiceGame1Service', () => {
         updatedAt: new Date(),
       };
 
-      const result = await service.play(1, 1, 10, config);
+      const result = await service.play(1, '1', 10, config);
       expect(result.isErr()).toBe(true);
     });
   });

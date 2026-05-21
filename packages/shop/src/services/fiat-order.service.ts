@@ -68,7 +68,7 @@ export class FiatOrderService {
    */
   async createFiatOnlyOrder(
     guildId: number,
-    userId: number,
+    userId: string,
     productId: number,
     tradeDesc?: string,
   ): Promise<Result<FiatOrderResult, DomainError>> {
@@ -99,7 +99,7 @@ export class FiatOrderService {
     try {
       const order = createPending(
         guildId,
-        userId,
+        Number(userId),
         product.id,
         product.name,
         product.rewardType as RewardType | null,

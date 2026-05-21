@@ -1,6 +1,8 @@
 import { ChatOpenAI } from '@langchain/openai';
-import { container, TOKENS } from '@ltdjms/shared';
+import { container, TOKENS, type TokenMap } from '@ltdjms/shared';
 import type { EnvironmentConfig, CacheService, DomainEventPublisher, DiscordRuntimeGateway } from '@ltdjms/shared';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { type Pool } from 'pg';
 
 import { AIServiceConfig } from '../config/ai-service-config.js';
 import { DefaultPromptLoader, type PromptLoader } from '../prompts/prompt-loader.js';
@@ -134,7 +136,8 @@ export function initializeAIModule(): void {
   container.registerInstance<PromptLoader>(AI_TOKENS.PromptLoader, promptLoader);
 
   // ===== Channel Restriction =====
-  const db = container.resolve<any>(TOKENS.DatabasePool);
+  const rawPool = container.resolve<Pool>(TOKENS.DatabasePool);
+  const db = drizzle(rawPool);
   const restrictionRepo = db
     ? new DrizzleAIChannelRestrictionRepository(db)
     : new InMemoryAIChannelRestrictionRepository();
@@ -177,7 +180,8 @@ export function initializeAIModule(): void {
   container.registerInstance(AI_TOKENS.AIChatMentionRoutingDecision, routingDecision);
 
   // ===== Tools =====
-  const authGuard = new ToolCallerAuthorizationGuard();
+  const logger = container.resolve<TokenMap['Logger']>(TOKENS.Logger);
+  const authGuard = new ToolCallerAuthorizationGuard(logger);
   container.registerInstance(AI_TOKENS.ToolCallerAuthorizationGuard, authGuard);
 
   const permissionParser = new PermissionParser();

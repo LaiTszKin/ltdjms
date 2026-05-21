@@ -17,6 +17,19 @@ export const DefaultRandom: Random = {
 };
 
 /**
+ * Rolls `count` dice using the given Random instance.
+ * Each die produces values 1-6 (nextInt(6) + 1).
+ * Shared between DiceGame1Service and DiceGame2Service.
+ */
+export function rollDice(count: number, rng: Random): number[] {
+  const rolls: number[] = [];
+  for (let i = 0; i < count; i++) {
+    rolls.push(rng.nextInt(6) + 1);
+  }
+  return rolls;
+}
+
+/**
  * Seeded random implementation for deterministic testing.
  */
 export class SeededRandom implements Random {

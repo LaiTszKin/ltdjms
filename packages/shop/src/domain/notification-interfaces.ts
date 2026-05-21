@@ -15,7 +15,7 @@ export type AdminOrderNotifier = {
 /** Reward grant request shape. */
 export interface GrantRewardRequest {
   guildId: number;
-  userId: number;
+  userId: string;
   product: Product;
   amount: number;
   description: string;

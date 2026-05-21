@@ -31,6 +31,9 @@ export class UserPanelUpdateListener {
   private readonly lastUpdateTimestamps = new Map<string, number>();
   private cleanupCounter = 0;
 
+  /** Max entries in the throttle map before evicting oldest entries. */
+  private static readonly MAX_THROTTLE_ENTRIES = 500;
+
   constructor(
     private readonly sessionManager: PanelSessionManager,
     private readonly memberInfoFacade: MemberInfoFacade,
@@ -64,15 +67,17 @@ export class UserPanelUpdateListener {
     }
 
     // Determine affected user IDs based on event type
-    let affectedUserIds: string[] = [];
+    let affectedUserIds: Set<string>;
 
     if (event.eventType === EVENT_TYPES.BALANCE_CHANGED) {
-      affectedUserIds = [String((event as BalanceChangedEvent).userId)];
+      affectedUserIds = new Set([String((event as BalanceChangedEvent).userId)]);
     } else if (event.eventType === EVENT_TYPES.GAME_TOKEN_CHANGED) {
-      affectedUserIds = [String((event as GameTokenChangedEvent).userId)];
+      affectedUserIds = new Set([String((event as GameTokenChangedEvent).userId)]);
     } else if (event.eventType === EVENT_TYPES.CURRENCY_CONFIG_CHANGED) {
       // Currency config change affects all users in guild
-      affectedUserIds = sessions.map((s) => s.userId);
+      affectedUserIds = new Set(sessions.map((s) => s.userId));
+    } else {
+      affectedUserIds = new Set();
     }
 
     // Update each affected session
@@ -80,7 +85,7 @@ export class UserPanelUpdateListener {
     const toRemove: Array<{ guildId: string; userId: string }> = [];
 
     for (const session of sessions) {
-      if (!affectedUserIds.includes(session.userId)) continue;
+      if (!affectedUserIds.has(session.userId)) continue;
 
       try {
         // Refresh data
@@ -168,12 +173,21 @@ export class UserPanelUpdateListener {
     if (now - last < minIntervalMs) return true;
     this.lastUpdateTimestamps.set(key, now);
 
-    // Periodic cleanup: evict entries older than 60s every 50 calls
+    // Periodic cleanup: evict entries older than 60s every 50 calls;
+    // if still over capacity after time-based eviction, trim oldest entries.
     this.cleanupCounter++;
     if (this.cleanupCounter % 50 === 0) {
       const cutoff = now - 60_000;
       for (const [k, v] of this.lastUpdateTimestamps) {
         if (v < cutoff) this.lastUpdateTimestamps.delete(k);
+      }
+      if (this.lastUpdateTimestamps.size >= UserPanelUpdateListener.MAX_THROTTLE_ENTRIES) {
+        const sorted = [...this.lastUpdateTimestamps.entries()]
+          .sort((a, b) => a[1] - b[1]);
+        const evictCount = sorted.length - UserPanelUpdateListener.MAX_THROTTLE_ENTRIES;
+        for (let i = 0; i < evictCount; i++) {
+          this.lastUpdateTimestamps.delete(sorted[i][0]);
+        }
       }
     }
 

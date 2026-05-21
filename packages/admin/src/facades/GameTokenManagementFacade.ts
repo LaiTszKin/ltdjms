@@ -28,7 +28,7 @@ export class GameTokenManagementFacade {
    */
   async getTokens(guildId: string, userId: string): Promise<Result<number, DomainError>> {
     try {
-      const balance = await this.tokenService.getBalance(Number(guildId), Number(userId));
+      const balance = await this.tokenService.getBalance(Number(guildId), userId);
       return ok(balance);
     } catch (e) {
       return err(
@@ -59,7 +59,7 @@ export class GameTokenManagementFacade {
     if (validation) return validation;
 
     return this.tokenService.tryAdjustTokens(
-      Number(guildId), Number(userId), amount,
+      Number(guildId), userId, amount,
       GameTokenTransactionSource.ADMIN_ADJUSTMENT,
       reason,
     );
@@ -80,21 +80,21 @@ export class GameTokenManagementFacade {
     }
 
     try {
-      const currentBalance = await this.tokenService.getBalance(Number(guildId), Number(userId));
+      const currentBalance = await this.tokenService.getBalance(Number(guildId), userId);
       const delta = amount - currentBalance;
 
       if (delta === 0) {
         // No change needed
         return ok({
           guildId: Number(guildId),
-          userId: Number(userId),
+          userId: String(userId),
           previousTokens: currentBalance,
           newTokens: currentBalance,
           adjustment: 0,
         });
       }
 
-      return this.tokenService.tryAdjustTokens(Number(guildId), Number(userId), delta);
+      return this.tokenService.tryAdjustTokens(Number(guildId), userId, delta);
     } catch (e) {
       return err(
         DomainError.persistenceFailure(
@@ -117,7 +117,7 @@ export class GameTokenManagementFacade {
     try {
       const txPage = await this.tokenTransactionService.getTransactionPage(
         Number(guildId),
-        Number(userId),
+        userId,
         page,
         pageSize,
       );

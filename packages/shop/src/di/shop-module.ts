@@ -50,7 +50,7 @@ import {
 export interface ProductRewardService {
   grantReward(request: {
     guildId: number;
-    userId: number;
+    userId: string;
     product: Product;
     amount: number;
     description: string;
@@ -59,20 +59,20 @@ export interface ProductRewardService {
 
 /** Balance service interface as used by shop services. */
 export interface BalanceService {
-  tryGetBalance(guildId: number, userId: number): Promise<Result<{ balance: number }, DomainError>>;
+  tryGetBalance(guildId: number, userId: string): Promise<Result<{ balance: number }, DomainError>>;
 }
 
 /** Balance adjustment service interface as used by shop services. */
 export interface BalanceAdjustmentService {
-  tryAdjustBalance(guildId: number, userId: number, amount: number): Promise<Result<{ newBalance: number }, DomainError>>;
+  tryAdjustBalance(guildId: number, userId: string, amount: number): Promise<Result<{ newBalance: number }, DomainError>>;
 }
 
 /** Redemption transaction service interface as used by shop services. */
 export interface RedemptionTransactionService {
-  recordTransaction(guildId: number, userId: number, product: Product, code: { code: string }): Promise<unknown>;
+  recordTransaction(guildId: number, userId: string, product: Product, code: { code: string }): Promise<unknown>;
 
   /** Gets a paginated page of redemption transactions for a user. */
-  getUserRedemptionPage(guildId: number, userId: number, page: number, pageSize: number): Promise<{
+  getUserRedemptionPage(guildId: number, userId: string, page: number, pageSize: number): Promise<{
     items: Array<{ id: number; productName: string; code: string; rewardedAmount: number | null; createdAt: Date }>;
     hasNext: boolean;
     totalPages: number;

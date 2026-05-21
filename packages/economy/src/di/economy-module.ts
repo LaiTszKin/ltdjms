@@ -1,4 +1,6 @@
 import { container, TOKENS, type CacheService, type CacheKeyGenerator, type DomainEventPublisher } from '@ltdjms/shared';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { type Pool } from 'pg';
 
 // Repositories
 import { CurrencyAccountRepository } from '../currency/repositories/currency-account-repo.js';
@@ -74,7 +76,8 @@ export const ECONOMY_TOKENS = {
  */
 export function configureEconomyContainer(): void {
   // Shared dependencies resolved from container
-  const db = container.resolve<any>(TOKENS.DatabasePool);
+  const rawPool = container.resolve<Pool>(TOKENS.DatabasePool);
+  const db = drizzle(rawPool);
   const cacheService = container.resolve<CacheService>(TOKENS.CacheService);
   const cacheKeyGenerator = container.resolve<CacheKeyGenerator>(TOKENS.CacheKeyGenerator);
   const eventPublisher = container.resolve<DomainEventPublisher>(TOKENS.DomainEventPublisher);

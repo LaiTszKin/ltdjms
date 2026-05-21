@@ -100,10 +100,10 @@ export class BalanceService {
    * Uses cache (TTL 300s) - cache miss falls through to DB.
    * Auto-creates account if none exists.
    *
-   * This is the non-Result variant, matching Java's getBalance().
-   * For the Result-based variant referenced in spec R1.1, see {@link tryGetBalance}.
+   * This is the raw-Promise variant (unchecked). For the Result-based variant
+   * referenced in spec R1.1, see {@link getBalance}.
    */
-  async getBalance(guildId: number, userId: number): Promise<BalanceView> {
+  async getBalanceUnchecked(guildId: number, userId: string): Promise<BalanceView> {
     const cacheKey = this.cacheKeyGenerator.balanceKey(String(guildId), String(userId));
     const cachedBalance = await this.cacheService.get<number>(cacheKey);
 
@@ -141,15 +141,14 @@ export class BalanceService {
 
   /**
    * Gets the balance view with Result-based error handling.
-   * This is the Result-based variant referenced in spec R1.1,
-   * matching Java's tryGetBalance().
+   * This is the Result-based variant referenced in spec R1.1.
    */
-  async tryGetBalance(
+  async getBalance(
     guildId: number,
-    userId: number,
+    userId: string,
   ): Promise<Result<BalanceView, DomainError>> {
     try {
-      const view = await this.getBalance(guildId, userId);
+      const view = await this.getBalanceUnchecked(guildId, userId);
       return new Ok(view);
     } catch (err) {
       return new Err(

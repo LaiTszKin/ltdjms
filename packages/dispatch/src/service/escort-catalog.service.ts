@@ -1,7 +1,7 @@
 import type {
   EscortOptionCatalogRepository,
   EscortOptionCatalogEntry,
-} from './escort-option-pricing.service.js';
+} from '../repo/escort-option-catalog.repo.js';
 import type { EscortOptionPriceRepo } from '../repo/escort-option-price.repo.js';
 
 /**

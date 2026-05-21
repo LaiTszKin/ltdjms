@@ -64,7 +64,7 @@ describe('GameTokenManagementFacade', () => {
     it('should adjust tokens successfully', async () => {
       const adjustResult: TokenAdjustmentResult = {
         guildId: Number(guildId),
-        userId: Number(userId),
+        userId,
         previousTokens: 100,
         newTokens: 200,
         adjustment: 100,

@@ -25,7 +25,7 @@ export interface GuildCurrencyConfig {
 /** Member currency account domain type. */
 export interface MemberCurrencyAccount {
   readonly guildId: number;
-  readonly userId: number;
+  readonly userId: string;
   readonly balance: number;
   readonly createdAt: Date;
   readonly updatedAt: Date;
@@ -35,7 +35,7 @@ export interface MemberCurrencyAccount {
 export interface CurrencyTransaction {
   readonly id: number;
   readonly guildId: number;
-  readonly userId: number;
+  readonly userId: string;
   readonly amount: number;
   readonly balanceAfter: number;
   readonly source: CurrencyTransactionSource;
@@ -46,7 +46,7 @@ export interface CurrencyTransaction {
 /** Balance view combining balance with currency display info. */
 export interface BalanceView {
   readonly guildId: number;
-  readonly userId: number;
+  readonly userId: string;
   readonly balance: number;
   readonly currencyName: string;
   readonly currencyIcon: string;
@@ -73,7 +73,7 @@ export enum GameTokenTransactionSource {
 /** Game token account domain type. */
 export interface GameTokenAccount {
   readonly guildId: number;
-  readonly userId: number;
+  readonly userId: string;
   readonly tokens: number;
   readonly createdAt: Date;
   readonly updatedAt: Date;
@@ -83,7 +83,7 @@ export interface GameTokenAccount {
 export interface GameTokenTransaction {
   readonly id: number;
   readonly guildId: number;
-  readonly userId: number;
+  readonly userId: string;
   readonly amount: number;
   readonly balanceAfter: number;
   readonly source: GameTokenTransactionSource;
@@ -121,7 +121,7 @@ export interface DiceGame2Config {
 /** Result of a dice game 1 play (currency display info is resolved by the handler). */
 export interface DiceGame1Result {
   readonly guildId: number;
-  readonly userId: number;
+  readonly userId: string;
   readonly diceRolls: readonly number[];
   readonly totalReward: number;
   readonly previousBalance: number;
@@ -131,7 +131,7 @@ export interface DiceGame1Result {
 /** Result of a dice game 2 play (currency display info is resolved by the handler). */
 export interface DiceGame2Result {
   readonly guildId: number;
-  readonly userId: number;
+  readonly userId: string;
   readonly diceRolls: readonly number[];
   readonly totalReward: number;
   readonly previousBalance: number;
@@ -163,7 +163,7 @@ export interface TransactionPage<T> {
 /** Result of a balance adjustment operation. */
 export interface BalanceAdjustmentResult {
   readonly guildId: number;
-  readonly userId: number;
+  readonly userId: string;
   readonly previousBalance: number;
   readonly newBalance: number;
   readonly adjustment: number;
@@ -174,7 +174,7 @@ export interface BalanceAdjustmentResult {
 /** Result of a token adjustment operation. */
 export interface TokenAdjustmentResult {
   readonly guildId: number;
-  readonly userId: number;
+  readonly userId: string;
   readonly previousTokens: number;
   readonly newTokens: number;
   readonly adjustment: number;

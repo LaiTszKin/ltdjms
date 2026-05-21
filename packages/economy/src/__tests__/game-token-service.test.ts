@@ -55,7 +55,7 @@ describe('GameTokenService', () => {
         createMockTxService() as any,
       );
 
-      const balance = await service.getBalance(1, 1);
+      const balance = await service.getBalance(1, '1');
 
       expect(balance).toBe(100);
       expect(mockAccountRepo.findByGuildIdAndUserId).not.toHaveBeenCalled();
@@ -87,7 +87,7 @@ describe('GameTokenService', () => {
         createMockTxService() as any,
       );
 
-      const balance = await service.getBalance(1, 1);
+      const balance = await service.getBalance(1, '1');
 
       expect(balance).toBe(50);
       expect(mockAccountRepo.findOrCreate).toHaveBeenCalledWith(1, 1);
@@ -123,7 +123,7 @@ describe('GameTokenService', () => {
         createMockTxService() as any,
       );
 
-      const balance = await service.getBalance(1, 1);
+      const balance = await service.getBalance(1, '1');
 
       expect(balance).toBe(0);
       expect(mockAccountRepo.findOrCreate).toHaveBeenCalledWith(1, 1);
@@ -151,7 +151,7 @@ describe('GameTokenService', () => {
           isErr: () => false,
           getValue: () => ({
             guildId: 1,
-            userId: 1,
+            userId: '1',
             tokens: 7,
             createdAt: new Date(),
             updatedAt: new Date(),
@@ -169,13 +169,13 @@ describe('GameTokenService', () => {
         mockTxService as any,
       );
 
-      const result = await service.tryDeductTokens(1, 1, 3);
+      const result = await service.tryDeductTokens(1, '1', 3);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
         expect(result.getValue().newTokens).toBe(7);
       }
-      expect(mockAccountRepo.tryAdjustTokens).toHaveBeenCalledWith(1, 1, -3);
+      expect(mockAccountRepo.tryAdjustTokens).toHaveBeenCalledWith(1, '1', -3);
       expect(eventPublisher.publish).toHaveBeenCalledTimes(1);
       expect(mockTxService.recordTransaction).toHaveBeenCalledTimes(1);
     });
@@ -189,7 +189,7 @@ describe('GameTokenService', () => {
         createMockTxService() as any,
       );
 
-      const result = await service.tryDeductTokens(1, 1, 0);
+      const result = await service.tryDeductTokens(1, '1', 0);
       expect(result.isErr()).toBe(true);
     });
 
@@ -202,7 +202,7 @@ describe('GameTokenService', () => {
         createMockTxService() as any,
       );
 
-      const result = await service.tryDeductTokens(1, 1, -5);
+      const result = await service.tryDeductTokens(1, '1', -5);
       expect(result.isErr()).toBe(true);
     });
 
@@ -231,7 +231,7 @@ describe('GameTokenService', () => {
         createMockTxService() as any,
       );
 
-      const result = await service.tryDeductTokens(1, 1, 999);
+      const result = await service.tryDeductTokens(1, '1', 999);
       expect(result.isErr()).toBe(true);
     });
   });
@@ -252,7 +252,7 @@ describe('GameTokenService', () => {
         createMockTxService() as any,
       );
 
-      const hasEnough = await service.hasEnoughTokens(1, 1, 50);
+      const hasEnough = await service.hasEnoughTokens(1, '1', 50);
       expect(hasEnough).toBe(true);
     });
 
@@ -271,7 +271,7 @@ describe('GameTokenService', () => {
         createMockTxService() as any,
       );
 
-      const hasEnough = await service.hasEnoughTokens(1, 1, 50);
+      const hasEnough = await service.hasEnoughTokens(1, '1', 50);
       expect(hasEnough).toBe(false);
     });
   });

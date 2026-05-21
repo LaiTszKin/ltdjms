@@ -28,16 +28,16 @@ export interface RedemptionResult {
 }
 
 export function formatRedemptionSuccessMessage(result: RedemptionResult): string {
-  const lines: string[] = [];
-  lines.push(`你已成功兌換「${result.product.name}」`);
+  const parts: string[] = [];
+  parts.push(`你已成功兌換「${result.product.name}」`);
   if (result.product.description) {
-    lines.push(`\n${result.product.description}`);
+    parts.push(result.product.description);
   }
   if (result.rewardedAmount !== null && hasReward(result.product)) {
     const formatted = formatReward(result.product);
-    lines.push(`\n\n已發放獎勵：${formatted}`);
+    parts.push(`已發放獎勵：${formatted}`);
   }
-  return lines.join('\n');
+  return parts.join('\n');
 }
 
 export interface CodePage {
@@ -60,7 +60,7 @@ export class RedemptionService {
     private readonly productRewardService: {
       grantReward(request: {
         guildId: number;
-        userId: number;
+        userId: string;
         product: Product;
         amount: number;
         description: string;
@@ -69,7 +69,7 @@ export class RedemptionService {
     private readonly transactionService: {
       recordTransaction(
         guildId: number,
-        userId: number,
+        userId: string,
         product: Product,
         code: RedemptionCode,
       ): Promise<any>;
@@ -137,7 +137,7 @@ export class RedemptionService {
   async redeemCode(
     codeStr: string,
     guildId: number,
-    userId: number,
+    userId: string,
   ): Promise<Result<RedemptionResult, DomainError>> {
     if (!codeStr || codeStr.trim().length === 0) {
       return err(DomainError.invalidInput('兌換碼無效'));
@@ -295,7 +295,7 @@ export class RedemptionService {
 
   private async rollbackRedeemedCodeAfterRewardFailure(
     redeemedCode: RedemptionCode,
-    userId: number,
+    userId: string,
     rewardError: DomainError,
     productName: string,
   ): Promise<DomainError> {

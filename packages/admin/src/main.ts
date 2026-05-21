@@ -24,6 +24,7 @@ import type { ProductRewardService } from '@ltdjms/shop';
 import { initializeAIModule, AI_TOKENS, AIChatMentionListener } from '@ltdjms/ai';
 import {
   configureAdminContainer,
+  disposeAdminContainer,
 } from './di/AdminModule.js';
 import type {
   EscortDispatchHandoffService,
@@ -158,6 +159,7 @@ async function main(): Promise<void> {
     logger.info('Received SIGTERM — shutting down...');
     scheduler.stop();
     await callbackServer.stop();
+    disposeAdminContainer();
     await cacheService.shutdown();
     client.destroy();
     await pool.end();

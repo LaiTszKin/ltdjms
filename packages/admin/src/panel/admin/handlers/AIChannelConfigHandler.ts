@@ -84,11 +84,11 @@ export class AIChannelConfigHandler extends BaseAdminHandler {
       return;
     }
     if (fullCustomId === 'admin_aichannel_add_category') {
-      await this.showCategoryConfig(interaction, guildId);
+      await this.showChannelConfig(interaction, guildId);
       return;
     }
     if (fullCustomId === 'admin_aichannel_remove_category') {
-      await this.showCategoryConfig(interaction, guildId);
+      await this.showChannelConfig(interaction, guildId);
       return;
     }
 
@@ -215,39 +215,6 @@ export class AIChannelConfigHandler extends BaseAdminHandler {
     } else {
       await this.errorHandler.handle(result.getError(), interaction);
     }
-  }
-
-  private async showCategoryConfig(
-    interaction: DiscordInteraction,
-    guildId: string,
-  ): Promise<void> {
-    // For categories, use the raw interaction to show a simple text-input approach
-    // since Discord does not provide a dedicated category select menu for interactions.
-    // We show the current channel config and prompt the admin to use the category ID.
-    const [channelsResult, categoriesResult] = await Promise.all([
-      this.facade.getAllowedChannels(guildId),
-      this.facade.getAllowedCategories(guildId),
-    ]);
-
-    const channelList = channelsResult.isOk() && channelsResult.getValue().length > 0
-      ? channelsResult.getValue().map((c) => `<#${c.channelId}>`).join('\n')
-      : '無';
-    const categoryList = categoriesResult.isOk() && categoriesResult.getValue().length > 0
-      ? categoriesResult.getValue().map((c) => c.categoryName).join('\n')
-      : '無';
-
-    const description = (channelsResult.isOk() && channelsResult.getValue().length === 0 &&
-      categoriesResult.isOk() && categoriesResult.getValue().length === 0)
-      ? ZhTwStrings.aiChannelEmpty
-      : ZhTwStrings.aiChannelList
-          .replace('{channels}', channelList)
-          .replace('{categories}', categoryList);
-
-    const embed = new EmbedBuilder()
-      .setTitle(ZhTwStrings.aiChannelTitle)
-      .setDescription(description)
-      .setColor(Colors.PRIMARY);
-    await interaction.editEmbed(embed);
   }
 
   private async showChannelConfig(

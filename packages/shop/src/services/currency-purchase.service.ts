@@ -37,20 +37,20 @@ export class CurrencyPurchaseService {
     private readonly balanceService: {
       tryGetBalance(
         guildId: number,
-        userId: number,
+        userId: string,
       ): Promise<Result<{ balance: number }, DomainError>>;
     },
     private readonly balanceAdjustmentService: {
       tryAdjustBalance(
         guildId: number,
-        userId: number,
+        userId: string,
         amount: number,
       ): Promise<Result<{ newBalance: number }, DomainError>>;
     },
     private readonly productRewardService: {
       grantReward(request: {
         guildId: number;
-        userId: number;
+        userId: string;
         product: Product;
         amount: number;
         description: string;
@@ -68,7 +68,7 @@ export class CurrencyPurchaseService {
 
   async purchaseProduct(
     guildId: number,
-    userId: number,
+    userId: string,
     productId: number,
   ): Promise<Result<PurchaseResult, DomainError>> {
     const product = await this.productService.findById(productId);
@@ -152,7 +152,7 @@ export class CurrencyPurchaseService {
 
   private async refundPurchaseAfterRewardFailure(
     guildId: number,
-    userId: number,
+    userId: string,
     product: Product,
     price: number,
     rewardError: DomainError,

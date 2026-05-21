@@ -36,7 +36,7 @@ export class CurrencyManagementFacade {
    * Gets the balance view for a member in a guild.
    */
   async getBalance(guildId: string, userId: string): Promise<Result<BalanceView, DomainError>> {
-    return this.balanceService.tryGetBalance(Number(guildId), Number(userId));
+    return this.balanceService.getBalance(Number(guildId), userId);
   }
 
   /**
@@ -54,7 +54,7 @@ export class CurrencyManagementFacade {
 
     return this.balanceAdjustmentService.tryAdjustBalance(
       Number(guildId),
-      Number(userId),
+      userId,
       amount,
       CurrencyTransactionSource.ADMIN_ADJUSTMENT,
       `管理員 ${actorId}：${reason}`,
@@ -78,13 +78,29 @@ export class CurrencyManagementFacade {
     const validation = this.validateAdjustmentAmount(amount, '扣除');
     if (validation) return validation;
 
-    return this.balanceAdjustmentService.tryAdjustBalance(
+    const result = await this.balanceAdjustmentService.tryAdjustBalance(
       Number(guildId),
-      Number(userId),
+      userId,
       -amount,
       CurrencyTransactionSource.ADMIN_ADJUSTMENT,
       `管理員 ${actorId}：${reason}`,
     );
+
+    if (result.isOk()) return result;
+
+    // Enhance insufficient balance errors with current balance info
+    if (result.getError().category === 'INSUFFICIENT_BALANCE') {
+      const balanceResult = await this.balanceService.getBalance(Number(guildId), userId);
+      if (balanceResult.isOk()) {
+        return err(
+          DomainError.insufficientBalance(
+            `目標用戶餘額不足，當前餘額：${balanceResult.getValue().balance}`,
+          ),
+        );
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -103,7 +119,7 @@ export class CurrencyManagementFacade {
 
     return this.balanceAdjustmentService.tryAdjustBalanceTo(
       Number(guildId),
-      Number(userId),
+      userId,
       amount,
       CurrencyTransactionSource.ADMIN_ADJUSTMENT,
       `管理員 ${actorId}：${reason}`,

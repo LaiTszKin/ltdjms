@@ -85,8 +85,8 @@ export class MemberInfoFacade {
   ): Promise<Result<MemberPanelView, DomainError>> {
     try {
       const [balanceView, tokenBalance] = await Promise.all([
-        this.balanceService.getBalance(Number(guildId), Number(userId)),
-        this.tokenService.getBalance(Number(guildId), Number(userId)),
+        this.balanceService.getBalanceUnchecked(Number(guildId), userId),
+        this.tokenService.getBalance(Number(guildId), userId),
       ]);
 
       return ok({
@@ -119,7 +119,7 @@ export class MemberInfoFacade {
     try {
       const txPage = await this.currencyTxService.getTransactionPage(
         Number(guildId),
-        Number(userId),
+        userId,
         page,
         pageSize,
       );
@@ -146,7 +146,7 @@ export class MemberInfoFacade {
     try {
       const txPage = await this.tokenTxService.getTransactionPage(
         Number(guildId),
-        Number(userId),
+        userId,
         page,
         pageSize,
       );
@@ -169,7 +169,7 @@ export class MemberInfoFacade {
     userId: string,
     codeStr: string,
   ): Promise<Result<RedemptionResult, DomainError>> {
-    return this.redemptionService.redeemCode(codeStr, Number(guildId), Number(userId));
+    return this.redemptionService.redeemCode(codeStr, Number(guildId), userId);
   }
 
   /**
@@ -194,7 +194,7 @@ export class MemberInfoFacade {
 
       const txPage = await this.redemptionTxService.getUserRedemptionPage(
         Number(guildId),
-        Number(userId),
+        userId,
         page,
         pageSize,
       );

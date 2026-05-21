@@ -8,6 +8,15 @@ import type {
 import type { AIChannelConfigChangedEvent } from '../../events/index.js';
 import { z } from 'zod';
 
+/** Factory for AIChannelConfigChangedEvent to avoid `as` type assertions. */
+function channelConfigEvent(params: {
+  guildId: string;
+  changeType: AIChannelConfigChangedEvent['changeType'];
+  targetId: string;
+}): AIChannelConfigChangedEvent {
+  return { eventType: 'ai_channel_config_changed', ...params };
+}
+
 // ===== Repository Interface =====
 
 export interface AIChannelRestrictionRepository {
@@ -323,12 +332,11 @@ export class DefaultAIChannelRestrictionService
     const result = await this.repository.addChannel(guildId, channel);
     if (result.isOk()) {
       this.cache.delete(`${guildId}:${channel.channelId}`);
-      this.eventPublisher?.publish({
-        eventType: 'ai_channel_config_changed',
+      this.eventPublisher?.publish(channelConfigEvent({
         guildId,
         changeType: 'channel_added',
         targetId: channel.channelId,
-      } as AIChannelConfigChangedEvent);
+      }));
     }
     return result;
   }
@@ -341,12 +349,11 @@ export class DefaultAIChannelRestrictionService
     if (result.isOk()) {
       // Invalidate all channel caches for this guild since category allowlist changed
       this.invalidateGuildCache(guildId);
-      this.eventPublisher?.publish({
-        eventType: 'ai_channel_config_changed',
+      this.eventPublisher?.publish(channelConfigEvent({
         guildId,
         changeType: 'category_added',
         targetId: category.categoryId,
-      } as AIChannelConfigChangedEvent);
+      }));
     }
     return result;
   }
@@ -358,12 +365,11 @@ export class DefaultAIChannelRestrictionService
     const result = await this.repository.removeChannel(guildId, channelId);
     if (result.isOk()) {
       this.cache.delete(`${guildId}:${channelId}`);
-      this.eventPublisher?.publish({
-        eventType: 'ai_channel_config_changed',
+      this.eventPublisher?.publish(channelConfigEvent({
         guildId,
         changeType: 'channel_removed',
         targetId: channelId,
-      } as AIChannelConfigChangedEvent);
+      }));
     }
     return result;
   }
@@ -375,12 +381,11 @@ export class DefaultAIChannelRestrictionService
     const result = await this.repository.removeCategory(guildId, categoryId);
     if (result.isOk()) {
       this.invalidateGuildCache(guildId);
-      this.eventPublisher?.publish({
-        eventType: 'ai_channel_config_changed',
+      this.eventPublisher?.publish(channelConfigEvent({
         guildId,
         changeType: 'category_removed',
         targetId: categoryId,
-      } as AIChannelConfigChangedEvent);
+      }));
     }
     return result;
   }

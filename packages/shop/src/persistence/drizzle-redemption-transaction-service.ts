@@ -13,13 +13,13 @@ export class DrizzleRedemptionTransactionService implements RedemptionTransactio
 
   async recordTransaction(
     guildId: number,
-    userId: number,
+    userId: string,
     product: Product,
     code: { code: string; id?: number | null },
   ): Promise<unknown> {
     return await this.db.insert(txTable).values({
       guildId: guildId,
-      userId: userId,
+      userId: Number(userId),
       productId: product.id as number,
       productName: product.name,
       redemptionCodeId: code.id ?? 0,
@@ -29,7 +29,7 @@ export class DrizzleRedemptionTransactionService implements RedemptionTransactio
 
   async getUserRedemptionPage(
     guildId: number,
-    userId: number,
+    userId: string,
     page: number,
     pageSize: number,
   ): Promise<{
@@ -44,7 +44,7 @@ export class DrizzleRedemptionTransactionService implements RedemptionTransactio
     const countResult = await this.db
       .select({ total: count() })
       .from(txTable)
-      .where(and(eq(txTable.guildId, guildId), eq(txTable.userId, userId)));
+      .where(and(eq(txTable.guildId, guildId), eq(txTable.userId, Number(userId))));
 
     const totalCount = Number(countResult[0]?.total ?? 0);
     const totalPages = Math.max(1, Math.ceil(totalCount / safePageSize));
@@ -53,7 +53,7 @@ export class DrizzleRedemptionTransactionService implements RedemptionTransactio
     const rows = await this.db
       .select()
       .from(txTable)
-      .where(and(eq(txTable.guildId, guildId), eq(txTable.userId, userId)))
+      .where(and(eq(txTable.guildId, guildId), eq(txTable.userId, Number(userId))))
       .orderBy(desc(txTable.createdAt))
       .limit(safePageSize)
       .offset(offset);

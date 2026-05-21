@@ -155,7 +155,7 @@ export function buildSearchModal(): {
         type: 'actionRow',
         components: [
           {
-            type: 4,
+            type: 4 as const,
             customId: 'shop_search_keyword',
             label: '關鍵字',
             style: 1,
@@ -379,30 +379,40 @@ export function buildSearchComponents(
     });
   }
 
+  // Split products into chunks of 25 to comply with Discord select menu limits
+  const MAX_OPTIONS = 25;
+  const buildOption = (p: Product) => ({
+    label: p.name.length > 100 ? p.name.substring(0, 97) + '...' : p.name,
+    value: String(p.id),
+    description: p.fiatPriceTwd
+      ? `NT$${p.fiatPriceTwd}`
+      : p.currencyPrice
+        ? `${p.currencyPrice} 貨幣`
+        : '可購買',
+  });
+
+  const selectRows: Array<{ type: string; components: unknown[] }> = [];
+  for (let i = 0; i < products.length; i += MAX_OPTIONS) {
+    const chunk = products.slice(i, i + MAX_OPTIONS);
+    selectRows.push({
+      type: 'actionRow',
+      components: [
+        {
+          type: 3,
+          customId: i === 0 ? SELECT_SEARCH_BUY : `${SELECT_SEARCH_BUY}_${i / MAX_OPTIONS}`,
+          placeholder: '選擇要購買的商品',
+          maxValues: 1,
+          options: chunk.map(buildOption),
+        },
+      ],
+    });
+  }
+
   return [
     {
       type: 'actionRow',
       components: buttons,
     },
-    {
-      type: 'actionRow',
-      components: [
-        {
-          type: 3,
-          customId: SELECT_SEARCH_BUY,
-          placeholder: '選擇要購買的商品',
-          maxValues: 1,
-          options: products.slice(0, 25).map((p) => ({
-            label: p.name.length > 100 ? p.name.substring(0, 97) + '...' : p.name,
-            value: String(p.id),
-            description: p.fiatPriceTwd
-              ? `NT$${p.fiatPriceTwd}`
-              : p.currencyPrice
-                ? `${p.currencyPrice} 貨幣`
-                : '可購買',
-          })),
-        },
-      ],
-    },
+    ...selectRows,
   ];
 }

@@ -20,7 +20,7 @@ export class DispatchAfterSalesStaffService {
     }
   }
 
-  async addStaff(guildId: number, userId: number): Promise<Result<Unit, DomainError>> {
+  async addStaff(guildId: number, userId: string): Promise<Result<Unit, DomainError>> {
     try {
       const inserted = await this.repository.addStaff(guildId, userId);
       if (!inserted) {
@@ -33,7 +33,7 @@ export class DispatchAfterSalesStaffService {
     }
   }
 
-  async removeStaff(guildId: number, userId: number): Promise<Result<Unit, DomainError>> {
+  async removeStaff(guildId: number, userId: string): Promise<Result<Unit, DomainError>> {
     try {
       const removed = await this.repository.removeStaff(guildId, userId);
       if (!removed) {
@@ -46,10 +46,10 @@ export class DispatchAfterSalesStaffService {
     }
   }
 
-  async isAfterSalesStaff(guildId: number, userId: number): Promise<boolean> {
+  async isAfterSalesStaff(guildId: number, userId: string): Promise<boolean> {
     try {
       const staff = await this.repository.findStaffUserIds(guildId);
-      return staff.has(userId);
+      return staff.has(Number(userId));
     } catch {
       return false;
     }

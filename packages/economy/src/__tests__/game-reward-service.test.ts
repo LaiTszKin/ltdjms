@@ -17,9 +17,9 @@ describe('GameRewardService', () => {
     it('should return current balance when reward is 0 instead of returning 0 (P0-3)', async () => {
       const mockAdjustmentService = createMockBalanceAdjustmentService();
       const mockBalanceService = {
-        tryGetBalance: vi.fn().mockResolvedValue(new Ok({
+        getBalance: vi.fn().mockResolvedValue(new Ok({
           guildId: 1,
-          userId: 1,
+          userId: '1',
           balance: 5000,
           currencyName: 'LTD',
           currencyIcon: 'L',
@@ -31,16 +31,16 @@ describe('GameRewardService', () => {
         mockBalanceService as any,
       );
 
-      const balance = await service.creditReward(1, 1, 0, 'DICE_GAME_1_WIN' as CurrencyTransactionSource);
+      const balance = await service.creditReward(1, '1', 0, 'DICE_GAME_1_WIN' as CurrencyTransactionSource);
 
       expect(balance).toBe(5000);
-      expect(mockBalanceService.tryGetBalance).toHaveBeenCalledWith(1, 1);
+      expect(mockBalanceService.getBalance).toHaveBeenCalledWith(1, '1');
       expect(mockAdjustmentService.tryBatchAdjust).not.toHaveBeenCalled();
     });
 
     it('should throw on negative reward', async () => {
       const mockBalanceService = {
-        tryGetBalance: vi.fn(),
+        getBalance: vi.fn(),
       };
       const service = new GameRewardService(
         createMockBalanceAdjustmentService() as any,
@@ -48,7 +48,7 @@ describe('GameRewardService', () => {
       );
 
       await expect(
-        service.creditReward(1, 1, -100, 'DICE_GAME_1_WIN' as CurrencyTransactionSource),
+        service.creditReward(1, '1', -100, 'DICE_GAME_1_WIN' as CurrencyTransactionSource),
       ).rejects.toThrow('Reward amount cannot be negative');
     });
 
@@ -56,7 +56,7 @@ describe('GameRewardService', () => {
       const mockAdjustmentService = createMockBalanceAdjustmentService();
       const expectedResult: BalanceAdjustmentResult = {
         guildId: 1,
-        userId: 1,
+        userId: '1',
         previousBalance: 1000,
         newBalance: 3500,
         adjustment: 2500,
@@ -66,7 +66,7 @@ describe('GameRewardService', () => {
       mockAdjustmentService.tryBatchAdjust.mockResolvedValue(new Ok(expectedResult));
 
       const mockBalanceService = {
-        tryGetBalance: vi.fn(),
+        getBalance: vi.fn(),
       };
 
       const service = new GameRewardService(
@@ -74,7 +74,7 @@ describe('GameRewardService', () => {
         mockBalanceService as any,
       );
 
-      const balance = await service.creditReward(1, 1, 2500, 'DICE_GAME_1_WIN' as CurrencyTransactionSource);
+      const balance = await service.creditReward(1, '1', 2500, 'DICE_GAME_1_WIN' as CurrencyTransactionSource);
 
       expect(balance).toBe(3500);
       expect(mockAdjustmentService.tryBatchAdjust).toHaveBeenCalledTimes(1);
@@ -90,7 +90,7 @@ describe('GameRewardService', () => {
       );
 
       const mockBalanceService = {
-        tryGetBalance: vi.fn(),
+        getBalance: vi.fn(),
       };
       const service = new GameRewardService(
         mockAdjustmentService as any,
@@ -98,7 +98,7 @@ describe('GameRewardService', () => {
       );
 
       await expect(
-        service.creditReward(1, 1, 500, 'DICE_GAME_1_WIN' as CurrencyTransactionSource),
+        service.creditReward(1, '1', 500, 'DICE_GAME_1_WIN' as CurrencyTransactionSource),
       ).rejects.toThrow('Failed to credit reward');
     });
   });
