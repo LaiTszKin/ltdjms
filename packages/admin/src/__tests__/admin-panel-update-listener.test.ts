@@ -34,6 +34,7 @@ describe('AdminPanelUpdateListener', () => {
   const guildId = '1';
 
   beforeEach(() => {
+    AdminPanelUpdateListener.DEBOUNCE_MS = 0; // disable debounce in tests
     mockSessionManager = {
       getAllForGuild: vi.fn(),
       removeSession: vi.fn(),

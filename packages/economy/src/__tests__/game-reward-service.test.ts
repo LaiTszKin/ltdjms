@@ -79,7 +79,7 @@ describe('GameRewardService', () => {
       expect(balance).toBe(3500);
       expect(mockAdjustmentService.tryBatchAdjust).toHaveBeenCalledTimes(1);
       expect(mockAdjustmentService.tryBatchAdjust).toHaveBeenCalledWith(
-        1, 1, 2500, 'DICE_GAME_1_WIN', null, MAX_ADJUSTMENT_AMOUNT,
+        1, "1", 2500, 'DICE_GAME_1_WIN', null, MAX_ADJUSTMENT_AMOUNT,
       );
     });
 
