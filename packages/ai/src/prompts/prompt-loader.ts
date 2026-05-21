@@ -54,15 +54,23 @@ export interface PromptLoader {
 /**
  * Default PromptLoader implementation.
  * Reads .md files from the filesystem, sorted alphabetically.
+ * Caches loaded prompts in memory to avoid filesystem reads on every call.
+ * Call invalidateCache() to force reload (e.g., after admin panel prompt update).
  * Matches Java DefaultPromptLoader.
  */
 export class DefaultPromptLoader implements PromptLoader {
   private readonly promptsDirPath: string;
   private readonly maxFileSizeBytes: number;
+  private cache: Map<string, { prompt: SystemPrompt; cachedAt: number }> = new Map();
+  private static readonly CACHE_TTL_MS = 300_000; // 5 minutes
 
   constructor(promptsDirPath: string, maxFileSizeBytes: number = 1_048_576) {
     this.promptsDirPath = promptsDirPath;
     this.maxFileSizeBytes = maxFileSizeBytes;
+  }
+
+  invalidateCache(): void {
+    this.cache.clear();
   }
 
   /**
@@ -74,6 +82,12 @@ export class DefaultPromptLoader implements PromptLoader {
    * - File too large or read failure: logs warning and skips the file
    */
   async loadPrompts(agentEnabled: boolean): Promise<Result<SystemPrompt, DomainError>> {
+    const cacheKey = agentEnabled ? 'agent' : 'base';
+    const cached = this.cache.get(cacheKey);
+    if (cached && Date.now() - cached.cachedAt < DefaultPromptLoader.CACHE_TTL_MS) {
+      return ok(cached.prompt);
+    }
+
     const sections: PromptSection[] = [];
 
     // Load base prompts
@@ -95,7 +109,9 @@ export class DefaultPromptLoader implements PromptLoader {
       }
     }
 
-    return ok(SystemPrompt.fromSections(sections));
+    const prompt = SystemPrompt.fromSections(sections);
+    this.cache.set(cacheKey, { prompt, cachedAt: Date.now() });
+    return ok(prompt);
   }
 
   private async loadDirectory(dirPath: string): Promise<Result<PromptSection[], DomainError>> {

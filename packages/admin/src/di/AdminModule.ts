@@ -377,7 +377,7 @@ export function configureAdminContainer(): void {
   container.registerInstance(ADMIN_TOKENS.EscortCatalogHandler, escortCatalogHandler);
   slashCommandListener.registerInteractionHandler(escortCatalogHandler);
 
-  const dispatchPanelCommandHandler = container.resolve<any>(
+  const dispatchPanelCommandHandler = container.resolve(
     DISPATCH_TOKENS.DispatchPanelCommandHandler,
   );
   slashCommandListener.registerCommand(dispatchPanelCommandHandler);

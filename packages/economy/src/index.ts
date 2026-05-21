@@ -41,6 +41,12 @@ export type { CurrencyConfigService } from './currency/services/currency-config-
 export type { CurrencyTransactionService } from './currency/services/currency-tx-service.js';
 
 // ============================================================
+// Currency Repositories
+// ============================================================
+
+export type { CurrencyConfigRepository } from './currency/repositories/currency-config-repo.js';
+
+// ============================================================
 // Token Services
 // ============================================================
 
