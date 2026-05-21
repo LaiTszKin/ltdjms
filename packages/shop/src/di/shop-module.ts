@@ -21,6 +21,7 @@ import { FiatOrderPostPaymentWorker } from '../services/fiat-order-post-payment-
 import { FiatPaymentReconciliationService } from '../services/fiat-payment-reconciliation.service.js';
 import { FiatOrderProcessingScheduler } from '../services/fiat-order-processing-scheduler.js';
 import { CurrencyPurchaseService } from '../services/currency-purchase.service.js';
+import { ProductService } from '../services/product-service.js';
 import { ShopService } from '../services/shop.service.js';
 import { ShopCommandHandler } from '../commands/shop-handler.js';
 import { RedemptionCodeGenerator } from '../services/redemption-code-generator.js';
@@ -66,11 +67,6 @@ export interface BalanceAdjustmentService {
   tryAdjustBalance(guildId: number, userId: number, amount: number): Promise<Result<{ newBalance: number }, DomainError>>;
 }
 
-/** Currency transaction service interface as used by shop services. */
-export interface CurrencyTransactionService {
-  recordTransaction(guildId: number, userId: number, amount: number, balance: number, source: string, description: string): Promise<void>;
-}
-
 /** Redemption transaction service interface as used by shop services. */
 export interface RedemptionTransactionService {
   recordTransaction(guildId: number, userId: number, product: Product, code: { code: string }): Promise<unknown>;
@@ -91,7 +87,6 @@ export interface ShopModuleOptions {
   escortDispatchHandoffService: EscortDispatchHandoffService;
   balanceService: BalanceService;
   balanceAdjustmentService: BalanceAdjustmentService;
-  currencyTransactionService: CurrencyTransactionService;
   logger?: pino.Logger;
 }
 
@@ -107,6 +102,7 @@ export const SHOP_TOKENS = {
   FiatOrderPostPaymentWorker: Symbol('FiatOrderPostPaymentWorker'),
   FiatPaymentReconciliationService: Symbol('FiatPaymentReconciliationService'),
   FiatOrderProcessingScheduler: Symbol('FiatOrderProcessingScheduler'),
+  ProductService: Symbol('ProductService'),
   CurrencyPurchaseService: Symbol('CurrencyPurchaseService'),
   ShopService: Symbol('ShopService'),
   ShopCommandHandler: Symbol('ShopCommandHandler'),
@@ -123,7 +119,7 @@ export function configureContainer(options: ShopModuleOptions): void {
   const config: EnvironmentConfig = container.resolve(EnvironmentConfig);
   const discordRuntimeGateway: DiscordRuntimeGateway = container.resolve(TOKENS.DiscordRuntimeGateway);
   const eventPublisher: DomainEventPublisher = container.resolve(TOKENS.DomainEventPublisher);
-  const log = options.logger ?? container.resolve<any>('Logger');
+  const log = options.logger ?? container.resolve<pino.Logger>(TOKENS.Logger);
 
   // ---- Repositories ----
   const fiatOrderRepo = new DrizzleFiatOrderRepository(options.db, log);
@@ -213,11 +209,14 @@ export function configureContainer(options: ShopModuleOptions): void {
     productRepo,
     options.balanceService,
     options.balanceAdjustmentService,
-    options.currencyTransactionService,
     options.productRewardService,
     log,
   );
   container.registerInstance(SHOP_TOKENS.CurrencyPurchaseService, currencyPurchase);
+
+  // ---- Product Service ----
+  const productService = new ProductService(productRepo, eventPublisher, log);
+  container.registerInstance(SHOP_TOKENS.ProductService, productService);
 
   // ---- Shop Service ----
   const shopService = new ShopService(productRepo, log);

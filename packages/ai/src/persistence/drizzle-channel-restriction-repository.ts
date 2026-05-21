@@ -1,6 +1,6 @@
 import { eq, and, notInArray } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { DomainError, ok, okVoid, err, type Result } from '@ltdjms/shared';
+import { DomainError, ok, okVoid, err, type Result, type Unit } from '@ltdjms/shared';
 import type {
   AllowedChannel,
   AllowedCategory,
@@ -127,7 +127,7 @@ export class DrizzleAIChannelRestrictionRepository implements AIChannelRestricti
   async removeChannel(
     guildId: string,
     channelId: string,
-  ): Promise<Result<void, DomainError>> {
+  ): Promise<Result<Unit, DomainError>> {
     try {
       const result = await this.db
         .delete(aiAllowedChannel)
@@ -140,7 +140,7 @@ export class DrizzleAIChannelRestrictionRepository implements AIChannelRestricti
       if (result.rowCount === 0) {
         return err(DomainError.invalidInput(`Channel ${channelId} not found in allowlist`));
       }
-      return okVoid<DomainError>() as unknown as Result<void, DomainError>;
+      return okVoid<DomainError>();
     } catch (cause) {
       return err(
         DomainError.persistenceFailure(
@@ -154,7 +154,7 @@ export class DrizzleAIChannelRestrictionRepository implements AIChannelRestricti
   async removeCategory(
     guildId: string,
     categoryId: string,
-  ): Promise<Result<void, DomainError>> {
+  ): Promise<Result<Unit, DomainError>> {
     try {
       const result = await this.db
         .delete(aiAllowedCategory)
@@ -167,7 +167,7 @@ export class DrizzleAIChannelRestrictionRepository implements AIChannelRestricti
       if (result.rowCount === 0) {
         return err(DomainError.invalidInput(`Category ${categoryId} not found in allowlist`));
       }
-      return okVoid<DomainError>() as unknown as Result<void, DomainError>;
+      return okVoid<DomainError>();
     } catch (cause) {
       return err(
         DomainError.persistenceFailure(

@@ -50,6 +50,11 @@ export class RegexBasedAutoFixer implements MarkdownAutoFixer {
 
       // Restore code blocks
       result = this.restoreCodeBlocks(result, codeBlocks);
+
+      // Early exit: if no changes were made in this cycle, skip remaining retries
+      if (result === previous) {
+        break;
+      }
     }
 
     return result;

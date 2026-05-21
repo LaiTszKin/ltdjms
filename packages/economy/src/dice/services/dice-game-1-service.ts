@@ -5,6 +5,7 @@ import {
   DomainError,
 } from '@ltdjms/shared';
 import { GameRewardService } from './game-reward-service.js';
+import { BalanceService } from '../../currency/services/balance-service.js';
 import type { DiceGame1Config, DiceGame1Result } from '../../domain/types.js';
 import {
   CurrencyTransactionSource,
@@ -65,6 +66,7 @@ export class SeededRandom implements Random {
 export class DiceGame1Service {
   constructor(
     private readonly gameRewardService: GameRewardService,
+    private readonly balanceService: BalanceService,
     private readonly random: Random = DefaultRandom,
   ) {}
 
@@ -106,15 +108,10 @@ export class DiceGame1Service {
     const sum = diceRolls.reduce((acc, val) => acc + val, 0);
     const totalReward = sum * config.rewardPerDiceValue;
 
-    // Get previous balance (0 amount call).
-    // creditReward(0) triggers a DB read even though no reward is applied.
-    // This is deliberate to match Java GameRewardService behavior exactly (fidelity to original).
-    const previousBalance = await this.gameRewardService.creditReward(
-      guildId,
-      userId,
-      0,
-      CurrencyTransactionSource.DICE_GAME_1_WIN,
-    );
+    // Get previous balance directly from BalanceService instead of calling
+    // creditReward(0) which would trigger a full DB read with config lookup for no reward.
+    const previousBalanceResult = await this.balanceService.tryGetBalance(guildId, userId);
+    const previousBalance = previousBalanceResult.isOk() ? previousBalanceResult.getValue().balance : 0;
 
     // Apply reward via GameRewardService
     const newBalance = await this.gameRewardService.creditReward(

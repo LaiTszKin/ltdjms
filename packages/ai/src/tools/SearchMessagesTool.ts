@@ -43,11 +43,14 @@ export class SearchMessagesTool {
       const maxChannelsToSearch = 10;
       const hasChannelFilter = params.channelIds && params.channelIds.length > 0;
 
+      // Collect eligible text-based channels
       let channels = guild.channels.cache;
       if (hasChannelFilter) {
         channels = channels.filter((c) => params.channelIds!.includes(c.id));
       }
-      let searchedChannelCount = 0;
+      const eligibleChannels = Array.from(channels.values())
+        .filter((c) => c.isTextBased() && c.isSendable())
+        .slice(0, hasChannelFilter ? undefined : maxChannelsToSearch);
 
       const results: Array<{
         channelId: string;
@@ -60,35 +63,38 @@ export class SearchMessagesTool {
         }>;
       }> = [];
 
-      for (const [, channel] of channels) {
-        if (!hasChannelFilter && searchedChannelCount >= maxChannelsToSearch) break;
-        searchedChannelCount++;
-        if (!channel.isTextBased()) continue;
-        if (!channel.isSendable()) continue;
+      // P3-12: Parallel fetch with concurrency limit
+      const CONCURRENCY = 5;
+      const worker = async (channelList: typeof eligibleChannels): Promise<void> => {
+        while (channelList.length > 0) {
+          const channel = channelList.pop()!;
+          try {
+            const fetched = await channel.messages.fetch({ limit: Math.min(maxScan, 100) });
+            const matching = fetched
+              .filter((msg) => msg.content.toLowerCase().includes(keywords))
+              .first(maxResults);
 
-        try {
-          const fetched = await channel.messages.fetch({ limit: Math.min(maxScan, 100) });
-          const matching = fetched
-            .filter((msg) => msg.content.toLowerCase().includes(keywords))
-            .first(maxResults);
-
-          if (matching.length > 0) {
-            results.push({
-              channelId: channel.id,
-              channelName: channel.name,
-              messages: matching.map((msg) => ({
-                id: msg.id,
-                author: msg.author.tag,
-                content: msg.content.slice(0, 200), // Truncate for memory safety
-                timestamp: msg.createdAt.toISOString(),
-              })),
-            });
+            if (matching.length > 0) {
+              results.push({
+                channelId: channel.id,
+                channelName: channel.name,
+                messages: matching.map((msg) => ({
+                  id: msg.id,
+                  author: msg.author.tag,
+                  content: msg.content.slice(0, 200), // Truncate for memory safety
+                  timestamp: msg.createdAt.toISOString(),
+                })),
+              });
+            }
+          } catch {
+            // Skip channels that can't be read
           }
-        } catch {
-          // Skip channels that can't be read
-          continue;
         }
-      }
+      };
+
+      const effectiveConcurrency = Math.min(CONCURRENCY, eligibleChannels.length);
+      const workers = Array.from({ length: effectiveConcurrency }, () => worker(eligibleChannels));
+      await Promise.all(workers);
 
       if (results.length === 0) {
         return `未找到包含「${params.keywords}」的訊息。`;

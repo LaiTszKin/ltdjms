@@ -2,7 +2,7 @@ import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { memberCurrencyAccount } from '../../domain/schema.js';
 import type { MemberCurrencyAccount } from '../../domain/types.js';
 import { DomainError } from '@ltdjms/shared';
-import { BaseAccountRepository } from '../../shared/base-account-repo.js';
+import { BaseAccountRepository } from '../../common/base-account-repo.js';
 
 /**
  * Repository for member currency account operations using Drizzle ORM.

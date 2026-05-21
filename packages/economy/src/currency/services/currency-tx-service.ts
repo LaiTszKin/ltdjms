@@ -1,7 +1,7 @@
 import { CurrencyTransactionRepository } from '../repositories/currency-tx-repo.js';
 import type { CurrencyTransaction } from '../../domain/types.js';
 import { CurrencyTransactionSource } from '../../domain/types.js';
-import { BaseTransactionService } from '../../shared/base-tx-service.js';
+import { BaseTransactionService } from '../../common/base-tx-service.js';
 
 /**
  * Service for querying and recording currency transaction history.

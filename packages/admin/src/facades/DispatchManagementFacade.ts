@@ -1,40 +1,26 @@
 import {
   type Result,
-  Ok,
-  Err,
+  ok,
+  err,
   DomainError,
   type DomainEventPublisher,
+} from '@ltdjms/shared';
+import {
   type DispatchAfterSalesConfigChangedEvent,
   type EscortPricingChangedEvent,
   type EscortCatalogChangedEvent,
-  OperationType,
-} from '@ltdjms/shared';
+} from '@ltdjms/dispatch';
+import { OperationType } from '@ltdjms/shop';
 import {
   type DispatchAfterSalesStaffService,
   type EscortOptionPricingService,
-  type EscortOptionCatalogRepository,
+  type EscortCatalogService,
+  type CreateCatalogData,
+  type UpdateCatalogData,
   type EscortOptionCatalogEntry,
-  type EscortOptionPriceRepo,
   type OptionPriceView,
   type EscortDispatchOrderService,
 } from '@ltdjms/dispatch';
-
-/**
- * Data required to create a new catalog entry.
- */
-export interface CreateCatalogData {
-  code: string;
-  type: string;
-  level: string;
-  mapScope: string;
-  target: string;
-  priceTwd: number;
-}
-
-/**
- * Partial update data for a catalog entry (code is immutable).
- */
-export type UpdateCatalogData = Partial<Omit<EscortOptionCatalogEntry, 'code'>>;
 
 /**
  * Facade that aggregates dispatch module operations from four domains:
@@ -54,8 +40,7 @@ export class DispatchManagementFacade {
   constructor(
     private readonly staffService: DispatchAfterSalesStaffService,
     private readonly pricingService: EscortOptionPricingService,
-    private readonly catalogRepository: EscortOptionCatalogRepository,
-    private readonly priceRepo: EscortOptionPriceRepo,
+    private readonly catalogService: EscortCatalogService,
     private readonly eventPublisher: DomainEventPublisher,
     private readonly dispatchOrderService: EscortDispatchOrderService,
   ) {}
@@ -82,9 +67,9 @@ export class DispatchManagementFacade {
         eventType: 'dispatch_after_sales_config_changed',
         guildId,
       } as DispatchAfterSalesConfigChangedEvent);
-      return new Ok(true);
+      return ok(true);
     }
-    return new Err(result.getError());
+    return err(result.getError());
   }
 
   /**
@@ -98,9 +83,9 @@ export class DispatchManagementFacade {
         eventType: 'dispatch_after_sales_config_changed',
         guildId,
       } as DispatchAfterSalesConfigChangedEvent);
-      return new Ok(true);
+      return ok(true);
     }
-    return new Err(result.getError());
+    return err(result.getError());
   }
 
   // ================================================================
@@ -149,9 +134,9 @@ export class DispatchManagementFacade {
         optionCode,
         newPrice: price,
       } as EscortPricingChangedEvent);
-      return new Ok(updated);
+      return ok(updated);
     }
-    return new Err(result.getError());
+    return err(result.getError());
   }
 
   /**
@@ -167,9 +152,9 @@ export class DispatchManagementFacade {
         optionCode,
         newPrice: 0,
       } as EscortPricingChangedEvent);
-      return new Ok(undefined);
+      return ok(undefined);
     }
-    return new Err(result.getError());
+    return err(result.getError());
   }
 
   // ================================================================
@@ -181,13 +166,13 @@ export class DispatchManagementFacade {
    */
   async listCatalog(): Promise<Result<EscortOptionCatalogEntry[], DomainError>> {
     try {
-      const entries = await this.catalogRepository.findAll();
-      return new Ok(entries);
-    } catch (err) {
-      return new Err(
+      const entries = await this.catalogService.findAll();
+      return ok(entries);
+    } catch (e) {
+      return err(
         DomainError.persistenceFailure(
           'Failed to list escort catalog entries',
-          err instanceof Error ? err : undefined,
+          e instanceof Error ? e : undefined,
         ),
       );
     }
@@ -198,13 +183,13 @@ export class DispatchManagementFacade {
    */
   async findCatalogEntry(code: string): Promise<Result<EscortOptionCatalogEntry | null, DomainError>> {
     try {
-      const entry = await this.catalogRepository.findByCode(code);
-      return new Ok(entry);
-    } catch (err) {
-      return new Err(
+      const entry = await this.catalogService.findByCode(code);
+      return ok(entry);
+    } catch (e) {
+      return err(
         DomainError.persistenceFailure(
           `Failed to find catalog entry: ${code}`,
-          err instanceof Error ? err : undefined,
+          e instanceof Error ? e : undefined,
         ),
       );
     }
@@ -219,19 +204,19 @@ export class DispatchManagementFacade {
     data: CreateCatalogData,
   ): Promise<Result<EscortOptionCatalogEntry, DomainError>> {
     try {
-      const entry = await this.catalogRepository.create(data);
+      const entry = await this.catalogService.create(data);
       this.eventPublisher.publish({
         eventType: 'escort_catalog_changed',
         guildId,
         entryCode: data.code,
         operationType: OperationType.CREATED,
       } as EscortCatalogChangedEvent);
-      return new Ok(entry);
-    } catch (err) {
-      return new Err(
+      return ok(entry);
+    } catch (e) {
+      return err(
         DomainError.persistenceFailure(
           `Failed to create catalog entry: ${data.code}`,
-          err instanceof Error ? err : undefined,
+          e instanceof Error ? e : undefined,
         ),
       );
     }
@@ -247,7 +232,7 @@ export class DispatchManagementFacade {
     data: UpdateCatalogData,
   ): Promise<Result<EscortOptionCatalogEntry | null, DomainError>> {
     try {
-      const updated = await this.catalogRepository.update(code, data);
+      const updated = await this.catalogService.update(code, data);
       if (updated) {
         this.eventPublisher.publish({
           eventType: 'escort_catalog_changed',
@@ -256,12 +241,12 @@ export class DispatchManagementFacade {
           operationType: OperationType.UPDATED,
         } as EscortCatalogChangedEvent);
       }
-      return new Ok(updated);
-    } catch (err) {
-      return new Err(
+      return ok(updated);
+    } catch (e) {
+      return err(
         DomainError.persistenceFailure(
           `Failed to update catalog entry: ${code}`,
-          err instanceof Error ? err : undefined,
+          e instanceof Error ? e : undefined,
         ),
       );
     }
@@ -273,7 +258,7 @@ export class DispatchManagementFacade {
    */
   async deleteCatalogEntry(guildId: string, code: string): Promise<Result<boolean, DomainError>> {
     try {
-      const deleted = await this.catalogRepository.delete(code);
+      const deleted = await this.catalogService.delete(code);
       if (deleted) {
         this.eventPublisher.publish({
           eventType: 'escort_catalog_changed',
@@ -282,12 +267,12 @@ export class DispatchManagementFacade {
           operationType: OperationType.DELETED,
         } as EscortCatalogChangedEvent);
       }
-      return new Ok(deleted);
-    } catch (err) {
-      return new Err(
+      return ok(deleted);
+    } catch (e) {
+      return err(
         DomainError.persistenceFailure(
           `Failed to delete catalog entry: ${code}`,
-          err instanceof Error ? err : undefined,
+          e instanceof Error ? e : undefined,
         ),
       );
     }
@@ -299,13 +284,13 @@ export class DispatchManagementFacade {
    */
   async checkCatalogRefCount(code: string): Promise<Result<number, DomainError>> {
     try {
-      const count = await this.priceRepo.countByOptionCode(code);
-      return new Ok(count);
-    } catch (err) {
-      return new Err(
+      const count = await this.catalogService.countByOptionCode(code);
+      return ok(count);
+    } catch (e) {
+      return err(
         DomainError.persistenceFailure(
           `Failed to count price references for: ${code}`,
-          err instanceof Error ? err : undefined,
+          e instanceof Error ? e : undefined,
         ),
       );
     }
@@ -317,13 +302,13 @@ export class DispatchManagementFacade {
    */
   async findCatalogRefGuildIds(code: string): Promise<Result<number[], DomainError>> {
     try {
-      const ids = await this.priceRepo.findGuildIdsByOptionCode(code);
-      return new Ok(ids);
-    } catch (err) {
-      return new Err(
+      const ids = await this.catalogService.findGuildIdsByOptionCode(code);
+      return ok(ids);
+    } catch (e) {
+      return err(
         DomainError.persistenceFailure(
           `Failed to find guild IDs for option code: ${code}`,
-          err instanceof Error ? err : undefined,
+          e instanceof Error ? e : undefined,
         ),
       );
     }

@@ -9,3 +9,8 @@ export {
   type EscortOptionCatalogEntry,
   type EscortOptionCatalogRepository,
 } from './escort-option-pricing.service.js';
+export {
+  EscortCatalogService,
+  type CreateCatalogData,
+  type UpdateCatalogData,
+} from './escort-catalog.service.js';

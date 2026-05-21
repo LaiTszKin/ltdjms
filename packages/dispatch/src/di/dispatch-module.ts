@@ -14,6 +14,7 @@ import { EscortDispatchOrderNumberGenerator } from '../domain/order-number-gener
 import { EscortDispatchOrderService } from '../service/escort-dispatch-order.service.js';
 import { EscortDispatchHandoffService } from '../service/escort-dispatch-handoff.service.js';
 import { DispatchAfterSalesStaffService } from '../service/dispatch-after-sales-staff.service.js';
+import { EscortCatalogService } from '../service/escort-catalog.service.js';
 import {
   EscortOptionPricingService,
   type EscortOptionCatalogRepository,
@@ -38,6 +39,7 @@ export const DISPATCH_TOKENS = {
   EscortDispatchHandoffService: Symbol('EscortDispatchHandoffService'),
   DispatchAfterSalesStaffService: Symbol('DispatchAfterSalesStaffService'),
   EscortOptionPricingService: Symbol('EscortOptionPricingService'),
+  EscortCatalogService: Symbol('EscortCatalogService'),
   EscortDispatchOrderNumberGenerator: Symbol('EscortDispatchOrderNumberGenerator'),
   EscortOptionCatalogRepository: Symbol('EscortOptionCatalogRepository'),
   DispatchNotificationService: Symbol('DispatchNotificationService'),
@@ -83,6 +85,12 @@ export function configureDispatchContainer(): void {
   container.registerInstance<EscortOptionCatalogRepository>(
     DISPATCH_TOKENS.EscortOptionCatalogRepository,
     catalogRepo,
+  );
+
+  const escortCatalogService = new EscortCatalogService(catalogRepo, optionPriceRepo);
+  container.registerInstance(
+    DISPATCH_TOKENS.EscortCatalogService,
+    escortCatalogService,
   );
 
   // ============================================================

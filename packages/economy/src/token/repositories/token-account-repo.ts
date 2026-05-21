@@ -2,7 +2,7 @@ import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { gameTokenAccount } from '../../domain/schema.js';
 import type { GameTokenAccount } from '../../domain/types.js';
 import { DomainError } from '@ltdjms/shared';
-import { BaseAccountRepository } from '../../shared/base-account-repo.js';
+import { BaseAccountRepository } from '../../common/base-account-repo.js';
 
 /**
  * Repository for game token account operations using Drizzle ORM.

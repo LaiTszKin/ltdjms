@@ -6,8 +6,8 @@ import {
   type CacheService,
   type CacheKeyGenerator,
   type DomainEventPublisher,
-  type GameTokenChangedEvent,
 } from '@ltdjms/shared';
+import type { GameTokenChangedEvent } from '@ltdjms/economy';
 import { TokenAccountRepository } from '../repositories/token-account-repo.js';
 import { GameTokenTransactionService } from './game-token-tx-service.js';
 import type { GameTokenAccount, TokenAdjustmentResult } from '../../domain/types.js';
@@ -19,6 +19,9 @@ import { TOKEN_CACHE_TTL, GameTokenTransactionSource } from '../../domain/types.
  */
 export class GameTokenService {
   private static readonly TOKEN_TTL_SECONDS = TOKEN_CACHE_TTL;
+
+  /** Per-key in-flight promises to prevent cache stampede on token reads. */
+  private readonly pendingFetches = new Map<string, Promise<number>>();
 
   /**
    * Updates the cache and publishes a GameTokenChangedEvent after a token adjustment.
@@ -66,11 +69,22 @@ export class GameTokenService {
       return cachedBalance;
     }
 
-    // Cache miss or no cache - query DB with auto-create (P3-16)
-    const account = await this.accountRepository.findOrCreate(guildId, userId);
-    const balance = account.tokens;
-    await this.cacheService.put(cacheKey, balance, GameTokenService.TOKEN_TTL_SECONDS);
-    return balance;
+    // Prevent cache stampede: coalesce concurrent requests for the same key
+    const pending = this.pendingFetches.get(cacheKey);
+    if (pending) {
+      return await pending;
+    }
+
+    const fetchPromise = this.accountRepository.findOrCreate(guildId, userId)
+      .then(account => account.tokens);
+    this.pendingFetches.set(cacheKey, fetchPromise);
+    try {
+      const balance = await fetchPromise;
+      await this.cacheService.put(cacheKey, balance, GameTokenService.TOKEN_TTL_SECONDS);
+      return balance;
+    } finally {
+      this.pendingFetches.delete(cacheKey);
+    }
   }
 
   /**

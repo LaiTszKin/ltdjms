@@ -180,8 +180,8 @@ Out of scope: 業務模組的 DI 註冊
 
 Purpose: 實現 `main.ts`——應用程式的進入點，對應 Java `DiscordCurrencyBot.java` 的啟動序列。
 Requirements: R3, R4, R8, R9（跨需求整合）
-Scope: `packages/shared/src/main.ts`
+Scope: `packages/admin/src/main.ts`（實際實作位置；T9.1 原定義於 shared，但啟動程式依賴所有模組的 DI 初始化，故放於 admin 套件）
 Out of scope: 具體的 command handler 註冊（各模組自行註冊）
 
-- T9.1 [ ] **`packages/shared/src/main.ts`** — 實現 `main()` 非同步函數。啟動序列: 1) 載入 Config (`EnvironmentConfig.parse()`)、2) 建立 Logger、3) 建立 Database pool + 執行 migration、4) 建立 Redis client、5) 建立 DomainEventPublisher、6) 建立 discord.js Client、7) 設定 DiscordRuntimeGateway (`publishReady`)、8) `client.login(token)`、9) 註冊 shutdown hook（SIGTERM → 優雅關閉: stop HTTP server、close DB pool、close Redis、destroy discord client）
+- T9.1 [ ] **`packages/admin/src/main.ts`** — 實現 `main()` 非同步函數。啟動序列: 1) 載入 Config (`EnvironmentConfig.parse()`)、2) 建立 Logger、3) 建立 Database pool + 執行 migration、4) 建立 Redis client、5) 建立 DomainEventPublisher、6) 建立 discord.js Client、7) 設定 DiscordRuntimeGateway (`publishReady`)、8) `client.login(token)`、9) 註冊 shutdown hook（SIGTERM → 優雅關閉: stop HTTP server、close DB pool、close Redis、destroy discord client）
   - Verify: 整合測試：給定完整 .env + 可連線 DB/Redis → `main()` 成功啟動，`client.user.tag` 非空

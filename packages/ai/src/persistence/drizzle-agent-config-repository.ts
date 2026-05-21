@@ -1,6 +1,6 @@
 import { eq, and } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { DomainError, ok, okVoid, err, type Result } from '@ltdjms/shared';
+import { DomainError, ok, okVoid, err, type Result, type Unit } from '@ltdjms/shared';
 import type { AIAgentChannelConfig } from '../services/ai-chat-service.js';
 import type { AIAgentChannelConfigRepository } from '../services/routing/agent-config-service.js';
 import { aiAgentChannelConfig } from './schema.js';
@@ -108,7 +108,7 @@ export class DrizzleAIAgentChannelConfigRepository implements AIAgentChannelConf
   async remove(
     guildId: string,
     channelId: string,
-  ): Promise<Result<void, DomainError>> {
+  ): Promise<Result<Unit, DomainError>> {
     try {
       const result = await this.db
         .delete(aiAgentChannelConfig)
@@ -121,7 +121,7 @@ export class DrizzleAIAgentChannelConfigRepository implements AIAgentChannelConf
       if (result.rowCount === 0) {
         return err(DomainError.invalidInput('找不到指定的頻道設定'));
       }
-      return okVoid<DomainError>() as unknown as Result<void, DomainError>;
+      return okVoid<DomainError>();
     } catch (cause) {
       return err(
         DomainError.persistenceFailure(

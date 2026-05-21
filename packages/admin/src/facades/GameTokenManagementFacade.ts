@@ -1,4 +1,4 @@
-import { type Result, Ok, Err, DomainError } from '@ltdjms/shared';
+import { type Result, ok, err, DomainError } from '@ltdjms/shared';
 import {
   GameTokenService,
   GameTokenTransactionService,
@@ -29,12 +29,12 @@ export class GameTokenManagementFacade {
   async getTokens(guildId: string, userId: string): Promise<Result<number, DomainError>> {
     try {
       const balance = await this.tokenService.getBalance(Number(guildId), Number(userId));
-      return new Ok(balance);
-    } catch (err) {
-      return new Err(
+      return ok(balance);
+    } catch (e) {
+      return err(
         DomainError.persistenceFailure(
           `Failed to get token balance for guildId=${guildId}, userId=${userId}`,
-          err instanceof Error ? err : undefined,
+          e instanceof Error ? e : undefined,
         ),
       );
     }
@@ -78,7 +78,7 @@ export class GameTokenManagementFacade {
     actorId: string,
   ): Promise<Result<TokenAdjustmentResult, DomainError>> {
     if (!Number.isFinite(amount) || amount < 0) {
-      return new Err(DomainError.invalidInput('設定代幣數量必須為非負整數'));
+      return err(DomainError.invalidInput('設定代幣數量必須為非負整數'));
     }
 
     try {
@@ -87,7 +87,7 @@ export class GameTokenManagementFacade {
 
       if (delta === 0) {
         // No change needed
-        return new Ok({
+        return ok({
           guildId: Number(guildId),
           userId: Number(userId),
           previousTokens: currentBalance,
@@ -97,11 +97,11 @@ export class GameTokenManagementFacade {
       }
 
       return this.tokenService.tryAdjustTokens(Number(guildId), Number(userId), delta);
-    } catch (err) {
-      return new Err(
+    } catch (e) {
+      return err(
         DomainError.persistenceFailure(
           `Failed to set tokens for guildId=${guildId}, userId=${userId}`,
-          err instanceof Error ? err : undefined,
+          e instanceof Error ? e : undefined,
         ),
       );
     }
@@ -123,12 +123,12 @@ export class GameTokenManagementFacade {
         page,
         pageSize,
       );
-      return new Ok(txPage);
-    } catch (err) {
-      return new Err(
+      return ok(txPage);
+    } catch (e) {
+      return err(
         DomainError.persistenceFailure(
           `Failed to get token transactions for guildId=${guildId}, userId=${userId}`,
-          err instanceof Error ? err : undefined,
+          e instanceof Error ? e : undefined,
         ),
       );
     }
@@ -139,10 +139,10 @@ export class GameTokenManagementFacade {
     _allowZero: boolean,
   ): Result<never, DomainError> | null {
     if (!Number.isFinite(amount)) {
-      return new Err(DomainError.invalidInput('代幣數量無效'));
+      return err(DomainError.invalidInput('代幣數量無效'));
     }
     if (Math.abs(amount) > Number.MAX_SAFE_INTEGER) {
-      return new Err(DomainError.invalidInput('代幣數量超出允許範圍'));
+      return err(DomainError.invalidInput('代幣數量超出允許範圍'));
     }
     return null;
   }

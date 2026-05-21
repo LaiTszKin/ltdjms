@@ -1,4 +1,18 @@
 // ============================================================
+// Events
+// ============================================================
+
+export type {
+  BalanceChangedEvent,
+  GameTokenChangedEvent,
+  CurrencyConfigChangedEvent,
+  DiceGameConfigChangedEvent,
+} from './events/index.js';
+export {
+  GameType,
+} from './events/index.js';
+
+// ============================================================
 // Domain
 // ============================================================
 
@@ -7,8 +21,6 @@ export {
   CurrencyTransactionSource,
   GameTokenTransactionSource,
   // Constants
-  CURRENCY_SOURCE_DISPLAY_NAMES,
-  TOKEN_SOURCE_DISPLAY_NAMES,
   MAX_CURRENCY_NAME_LENGTH,
   MAX_CURRENCY_ICON_LENGTH,
   DEFAULT_CURRENCY_NAME,

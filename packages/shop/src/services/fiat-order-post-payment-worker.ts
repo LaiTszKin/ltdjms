@@ -1,3 +1,4 @@
+import { processWithConcurrencyLimit } from '@ltdjms/shared';
 import type { FiatOrderRepository } from '../domain/fiat-order-repository.js';
 import type { FiatOrder } from '../domain/fiat-order.js';
 import {
@@ -31,28 +32,7 @@ export class FiatOrderPostPaymentWorker {
 
   async processPendingOrders(): Promise<void> {
     const orders = await this.fiatOrderRepository.findOrdersPendingPostPayment(DEFAULT_BATCH_SIZE);
-    await this.processWithConcurrencyLimit(orders, order => this.processSingleOrder(order), 5);
-  }
-
-  private async processWithConcurrencyLimit<T>(
-    items: T[],
-    processor: (item: T) => Promise<void>,
-    concurrency: number,
-  ): Promise<void> {
-    const results: Promise<void>[] = [];
-    const executing = new Set<Promise<void>>();
-
-    for (const item of items) {
-      const promise = processor(item).finally(() => executing.delete(promise));
-      executing.add(promise);
-      results.push(promise);
-
-      if (executing.size >= concurrency) {
-        await Promise.race(executing);
-      }
-    }
-
-    await Promise.allSettled(results);
+    await processWithConcurrencyLimit(orders, order => this.processSingleOrder(order), 5);
   }
 
   async processSingleOrder(order: FiatOrder): Promise<void> {

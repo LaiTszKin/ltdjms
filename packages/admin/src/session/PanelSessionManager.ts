@@ -23,6 +23,9 @@ const DEFAULT_TTL_MS = DEFAULT_TTL_S * 1000;
  * Matches Java PanelSessionManager.
  */
 export class PanelSessionManager {
+  /** Maximum number of in-memory sessions before evicting oldest. */
+  private static readonly MAX_SESSIONS = 1000;
+
   /** In-memory session store (fallback when cache is unavailable). guildId:userId → session data. */
   private readonly sessions = new Map<string, PanelSessionData>();
   private cleanupIntervalId: ReturnType<typeof setInterval> | null = null;
@@ -42,6 +45,15 @@ export class PanelSessionManager {
    */
   createSession(guildId: string, userId: string): PanelSessionData {
     const key = this.buildKey(guildId, userId);
+
+    // Evict oldest session if at capacity before creating a new one
+    if (this.sessions.size >= PanelSessionManager.MAX_SESSIONS) {
+      const oldestKey = this.sessions.keys().next().value;
+      if (oldestKey) {
+        this.sessions.delete(oldestKey);
+      }
+    }
+
     this.sessions.delete(key);
 
     const now = Date.now();

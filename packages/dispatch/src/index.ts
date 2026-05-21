@@ -84,8 +84,11 @@ export {
   type HandoffProductSnapshot,
   DispatchAfterSalesStaffService,
   EscortOptionPricingService,
+  EscortCatalogService,
   type EscortOptionCatalogEntry,
   type EscortOptionCatalogRepository,
+  type CreateCatalogData,
+  type UpdateCatalogData,
 } from './service/index.js';
 
 // ============================================================
@@ -171,5 +174,13 @@ export {
 // ============================================================
 
 export { DISPATCH_TOKENS, configureDispatchContainer } from './di/index.js';
-// Events (re-exported from shared for convenience)
-// (reserved for future shared event types)
+
+// ============================================================
+// Events
+// ============================================================
+
+export type {
+  DispatchAfterSalesConfigChangedEvent,
+  EscortPricingChangedEvent,
+  EscortCatalogChangedEvent,
+} from './events/index.js';

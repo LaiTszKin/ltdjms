@@ -112,7 +112,7 @@ export function configureEconomyContainer(): void {
 
   const balanceAdjustmentService = new BalanceAdjustmentService(
     currencyAccountRepo,
-    currencyConfigRepo,
+    balanceService,
     currencyTxService,
     eventPublisher,
     cacheService,
@@ -147,11 +147,13 @@ export function configureEconomyContainer(): void {
 
   const diceGame1Service = new DiceGame1Service(
     gameRewardService,
+    balanceService,
   );
   container.registerInstance(ECONOMY_TOKENS.DiceGame1Service, diceGame1Service);
 
   const diceGame2Service = new DiceGame2Service(
     gameRewardService,
+    balanceService,
   );
   container.registerInstance(ECONOMY_TOKENS.DiceGame2Service, diceGame2Service);
 

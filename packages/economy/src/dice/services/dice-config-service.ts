@@ -1,8 +1,8 @@
+import { type DomainEventPublisher } from '@ltdjms/shared';
 import {
-  type DomainEventPublisher,
   type DiceGameConfigChangedEvent,
   GameType,
-} from '@ltdjms/shared';
+} from '@ltdjms/economy';
 import { DiceConfigRepository } from '../repositories/dice-config-repo.js';
 import type { DiceGame1Config, DiceGame2Config } from '../../domain/types.js';
 

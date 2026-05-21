@@ -1,4 +1,4 @@
-import { DomainError, ok, okVoid, err, type Result } from '@ltdjms/shared';
+import { DomainError, ok, okVoid, err, type Result, type Unit } from '@ltdjms/shared';
 import type {
   AllowedChannel,
   AllowedCategory,
@@ -24,11 +24,11 @@ export interface AIChannelRestrictionRepository {
   removeChannel(
     guildId: string,
     channelId: string,
-  ): Promise<Result<void, DomainError>>;
+  ): Promise<Result<Unit, DomainError>>;
   removeCategory(
     guildId: string,
     categoryId: string,
-  ): Promise<Result<void, DomainError>>;
+  ): Promise<Result<Unit, DomainError>>;
   deleteRemovedChannels(
     guildId: string,
     validChannelIds: string[],
@@ -126,7 +126,7 @@ export class InMemoryAIChannelRestrictionRepository
   async removeChannel(
     guildId: string,
     channelId: string,
-  ): Promise<Result<void, DomainError>> {
+  ): Promise<Result<Unit, DomainError>> {
     const key = this.channelKey(guildId, channelId);
     if (!this.channels.has(key)) {
       return err(
@@ -136,13 +136,13 @@ export class InMemoryAIChannelRestrictionRepository
       );
     }
     this.channels.delete(key);
-    return okVoid<DomainError>() as unknown as Result<void, DomainError>;
+    return okVoid<DomainError>();
   }
 
   async removeCategory(
     guildId: string,
     categoryId: string,
-  ): Promise<Result<void, DomainError>> {
+  ): Promise<Result<Unit, DomainError>> {
     const key = this.categoryKey(guildId, categoryId);
     if (!this.categories.has(key)) {
       return err(
@@ -152,7 +152,7 @@ export class InMemoryAIChannelRestrictionRepository
       );
     }
     this.categories.delete(key);
-    return okVoid<DomainError>() as unknown as Result<void, DomainError>;
+    return okVoid<DomainError>();
   }
 
   async deleteRemovedChannels(
@@ -206,11 +206,11 @@ export interface AIChannelRestrictionService {
   removeAllowedChannel(
     guildId: string,
     channelId: string,
-  ): Promise<Result<void, DomainError>>;
+  ): Promise<Result<Unit, DomainError>>;
   removeAllowedCategory(
     guildId: string,
     categoryId: string,
-  ): Promise<Result<void, DomainError>>;
+  ): Promise<Result<Unit, DomainError>>;
   deleteRemovedChannels(
     guildId: string,
     validChannelIds: string[],
@@ -338,7 +338,7 @@ export class DefaultAIChannelRestrictionService
   async removeAllowedChannel(
     guildId: string,
     channelId: string,
-  ): Promise<Result<void, DomainError>> {
+  ): Promise<Result<Unit, DomainError>> {
     const result = await this.repository.removeChannel(guildId, channelId);
     if (result.isOk()) {
       this.cache.delete(`${guildId}:${channelId}`);
@@ -349,7 +349,7 @@ export class DefaultAIChannelRestrictionService
   async removeAllowedCategory(
     guildId: string,
     categoryId: string,
-  ): Promise<Result<void, DomainError>> {
+  ): Promise<Result<Unit, DomainError>> {
     const result = await this.repository.removeCategory(guildId, categoryId);
     if (result.isOk()) {
       this.invalidateGuildCache(guildId);

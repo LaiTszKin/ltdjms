@@ -1,4 +1,4 @@
-import { type Result, Ok, Err, DomainError } from '@ltdjms/shared';
+import { type Result, ok, err, DomainError } from '@ltdjms/shared';
 import {
   BalanceService,
   BalanceAdjustmentService,
@@ -98,7 +98,7 @@ export class CurrencyManagementFacade {
     actorId: string,
   ): Promise<Result<BalanceAdjustmentResult, DomainError>> {
     if (!Number.isFinite(amount) || amount < 0) {
-      return new Err(DomainError.invalidInput('設定金額必須為非負整數'));
+      return err(DomainError.invalidInput('設定金額必須為非負整數'));
     }
 
     return this.balanceAdjustmentService.tryAdjustBalanceTo(
@@ -115,10 +115,10 @@ export class CurrencyManagementFacade {
     _operationName: string,
   ): Result<never, DomainError> | null {
     if (!Number.isFinite(amount) || !Number.isInteger(amount) || amount <= 0) {
-      return new Err(DomainError.invalidInput('調整金額必須為正整數'));
+      return err(DomainError.invalidInput('調整金額必須為正整數'));
     }
     if (amount > Number.MAX_SAFE_INTEGER) {
-      return new Err(DomainError.invalidInput('金額超出允許範圍'));
+      return err(DomainError.invalidInput('金額超出允許範圍'));
     }
     return null;
   }

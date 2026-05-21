@@ -2,10 +2,12 @@ import {
   type DiscordInteraction,
   type DiscordContext,
   type DomainEventPublisher,
+} from '@ltdjms/shared';
+import {
   type ProductChangedEvent,
   type RedemptionCodesGeneratedEvent,
   OperationType,
-} from '@ltdjms/shared';
+} from '@ltdjms/shop';
 import {
   EmbedBuilder,
   ActionRowBuilder,

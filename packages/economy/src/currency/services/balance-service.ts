@@ -23,8 +23,13 @@ export class BalanceService {
   private static readonly BALANCE_TTL_SECONDS = BALANCE_CACHE_TTL;
   private static readonly CONFIG_CACHE_TTL_SECONDS = 600;
 
+  private static readonly MAX_CACHE_SIZE = 1000;
+
   /** In-memory cache for currency config to avoid repeated DB queries. */
   private readonly configCache = new Map<string, { config: GuildCurrencyConfig | null; expiresAt: number }>();
+
+  /** Per-key in-flight promises to prevent cache stampede on balance reads. */
+  private readonly pendingFetches = new Map<string, Promise<number>>();
 
   constructor(
     private readonly accountRepository: CurrencyAccountRepository,
@@ -36,7 +41,7 @@ export class BalanceService {
   /**
    * Gets the currency config from in-memory cache, falling through to DB on miss.
    */
-  private async getCachedConfig(guildId: number): Promise<{ currencyName: string; currencyIcon: string }> {
+  async getCachedConfig(guildId: number): Promise<{ currencyName: string; currencyIcon: string }> {
     const cacheKey = `currency_config:${guildId}`;
     const now = Date.now();
 
@@ -54,6 +59,14 @@ export class BalanceService {
       config: config ?? null,
       expiresAt: now + BalanceService.CONFIG_CACHE_TTL_SECONDS * 1000,
     });
+
+    // Evict oldest entry when cache exceeds max capacity
+    if (this.configCache.size > BalanceService.MAX_CACHE_SIZE) {
+      const firstKey = this.configCache.keys().next();
+      if (firstKey.value !== undefined) {
+        this.configCache.delete(firstKey.value);
+      }
+    }
 
     return {
       currencyName: config?.currencyName ?? DEFAULT_CURRENCY_NAME,
@@ -77,9 +90,21 @@ export class BalanceService {
     if (cachedBalance !== null) {
       balance = cachedBalance;
     } else {
-      const account = await this.accountRepository.findOrCreate(guildId, userId);
-      balance = account.balance;
-      await this.cacheService.put(cacheKey, balance, BalanceService.BALANCE_TTL_SECONDS);
+      // Prevent cache stampede: coalesce concurrent requests for the same key
+      const pending = this.pendingFetches.get(cacheKey);
+      if (pending) {
+        balance = await pending;
+      } else {
+        const fetchPromise = this.accountRepository.findOrCreate(guildId, userId)
+          .then(account => account.balance);
+        this.pendingFetches.set(cacheKey, fetchPromise);
+        try {
+          balance = await fetchPromise;
+          await this.cacheService.put(cacheKey, balance, BalanceService.BALANCE_TTL_SECONDS);
+        } finally {
+          this.pendingFetches.delete(cacheKey);
+        }
+      }
     }
 
     const { currencyName, currencyIcon } = await this.getCachedConfig(guildId);

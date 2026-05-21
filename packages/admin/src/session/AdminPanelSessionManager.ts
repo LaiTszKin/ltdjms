@@ -29,6 +29,9 @@ const DEFAULT_TTL_MS = DEFAULT_TTL_S * 1000;
  * 若要抽取公用基底類別，需注意建構子和 session 類型的泛型化。
  */
 export class AdminPanelSessionManager {
+  /** Maximum number of in-memory sessions before evicting oldest. */
+  private static readonly MAX_SESSIONS = 1000;
+
   /** In-memory session store (fallback when cache is unavailable). guildId:userId → session data. */
   private readonly sessions = new Map<string, AdminPanelSessionData>();
   private cleanupIntervalId: ReturnType<typeof setInterval> | null = null;
@@ -51,6 +54,15 @@ export class AdminPanelSessionManager {
     userId: string,
   ): AdminPanelSessionData {
     const key = this.buildKey(guildId, userId);
+
+    // Evict oldest session if at capacity before creating a new one
+    if (this.sessions.size >= AdminPanelSessionManager.MAX_SESSIONS) {
+      const oldestKey = this.sessions.keys().next().value;
+      if (oldestKey) {
+        this.sessions.delete(oldestKey);
+      }
+    }
+
     this.sessions.delete(key);
 
     const now = Date.now();

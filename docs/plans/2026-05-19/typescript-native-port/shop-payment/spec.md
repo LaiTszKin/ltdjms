@@ -304,6 +304,7 @@
 - [ ] ECPay callback 在訂單逾期後才到達 → HTTP 200，markPaidIfPending 回傳 empty（status 不再是 PENDING_PAYMENT）
 - [ ] post-payment worker claim 競爭 → 跳過（另一 worker instance 處理中）
 - [ ] post-payment worker 中途失敗 → release lock，下次排程重試
+- [ ] **Claim 方法含 5 分鐘 crash recovery timeout**：`claimFulfillmentProcessing`、`claimAdminNotificationProcessing`、`claimReconciliationProcessing` 的 WHERE 條件皆包含 `OR processing_at < now() - 5 minutes`，用於自動釋放因 worker crash 而僵死的鎖定。5 分鐘時間為 post-payment pipeline 最長執行時間（< 30 秒）的寬裕值，足以區分僵死鎖定與正常慢查詢。
 - [ ] 對帳查單 API 失敗 → scheduleRetry（指數退避）
 - [ ] 對帳查單時訂單已逾期 → markExpiredIfPending
 - [ ] 兌換碼重複生成（10 次重試耗盡）→ `IllegalStateException`

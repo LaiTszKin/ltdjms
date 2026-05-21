@@ -4,11 +4,12 @@ import {
   okVoid,
   err,
   type Result,
+  type Unit,
   type CacheService,
   type DomainEventPublisher,
   type DiscordRuntimeGateway,
-  type AIAgentChannelConfigChangedEvent,
 } from '@ltdjms/shared';
+import type { AIAgentChannelConfigChangedEvent } from '@ltdjms/ai';
 import type { AIAgentChannelConfig } from '../ai-chat-service.js';
 
 // ===== Agent Config Repository Interface =====
@@ -27,7 +28,7 @@ export interface AIAgentChannelConfigRepository {
   remove(
     guildId: string,
     channelId: string,
-  ): Promise<Result<void, DomainError>>;
+  ): Promise<Result<Unit, DomainError>>;
 }
 
 // ===== In-Memory Repository (for testing) =====
@@ -78,7 +79,7 @@ export class InMemoryAIAgentChannelConfigRepository
     channelId: string,
   ): Promise<Result<void, DomainError>> {
     this.store.delete(this.key(guildId, channelId));
-    return okVoid<DomainError>() as unknown as Result<void, DomainError>;
+    return okVoid<DomainError>();
   }
 }
 
@@ -91,7 +92,7 @@ export interface AIAgentChannelConfigService {
     guildId: string,
     channelId: string,
     enabled: boolean,
-  ): Promise<Result<void, DomainError>>;
+  ): Promise<Result<Unit, DomainError>>;
   toggleAgentMode(
     guildId: string,
     channelId: string,
@@ -102,7 +103,7 @@ export interface AIAgentChannelConfigService {
   removeChannel(
     guildId: string,
     channelId: string,
-  ): Promise<Result<void, DomainError>>;
+  ): Promise<Result<Unit, DomainError>>;
 }
 
 // ===== Default Implementation with Redis Cache =====
@@ -221,7 +222,7 @@ export class DefaultAIAgentChannelConfigService
     guildId: string,
     channelId: string,
     enabled: boolean,
-  ): Promise<Result<void, DomainError>> {
+  ): Promise<Result<Unit, DomainError>> {
     try {
       const result = await this.repository.upsert(guildId, channelId, enabled);
       if (result.isErr()) {
@@ -247,7 +248,7 @@ export class DefaultAIAgentChannelConfigService
         }
       }
 
-      return okVoid<DomainError>() as unknown as Result<void, DomainError>;
+      return okVoid<DomainError>();
     } catch (cause) {
       return err(
         DomainError.persistenceFailure(
@@ -284,7 +285,7 @@ export class DefaultAIAgentChannelConfigService
   async removeChannel(
     guildId: string,
     channelId: string,
-  ): Promise<Result<void, DomainError>> {
+  ): Promise<Result<Unit, DomainError>> {
     const result = await this.repository.remove(guildId, channelId);
     if (result.isOk()) {
       await this.invalidateCache(guildId, channelId);

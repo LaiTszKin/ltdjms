@@ -20,8 +20,7 @@ import { AI_TOKENS } from '@ltdjms/ai';
 import type {
   DispatchAfterSalesStaffService,
   EscortOptionPricingService,
-  EscortOptionCatalogRepository,
-  EscortOptionPriceRepo,
+  EscortCatalogService,
   EscortDispatchOrderService,
 } from '@ltdjms/dispatch';
 import type { DispatchPanelCommandHandler } from '@ltdjms/dispatch';
@@ -256,8 +255,7 @@ export function configureAdminContainer(): void {
   const dispatchManagementFacade = new DispatchManagementFacade(
     container.resolve<DispatchAfterSalesStaffService>(DISPATCH_TOKENS.DispatchAfterSalesStaffService),
     container.resolve<EscortOptionPricingService>(DISPATCH_TOKENS.EscortOptionPricingService),
-    container.resolve<EscortOptionCatalogRepository>(DISPATCH_TOKENS.EscortOptionCatalogRepository),
-    container.resolve<EscortOptionPriceRepo>(DISPATCH_TOKENS.EscortOptionPriceRepo),
+    container.resolve<EscortCatalogService>(DISPATCH_TOKENS.EscortCatalogService),
     eventPublisher,
     container.resolve<EscortDispatchOrderService>(DISPATCH_TOKENS.EscortDispatchOrderService),
   );

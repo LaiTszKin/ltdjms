@@ -1,5 +1,3 @@
-import { EmbedBuilder, ButtonBuilder } from 'discord.js';
-
 /**
  * Immutable data structure for Embed view data.
  * Provides decoupling from discord.js MessageEmbed.
@@ -63,34 +61,3 @@ export function createButtonView(
   return { id, label, style, disabled } as ButtonView;
 }
 
-/**
- * Converts an EmbedView to a discord.js EmbedBuilder.
- * Pure data transformation — no side effects.
- * Matches spec R8.5 requirement for paginated embed construction support.
- */
-export function toDiscordJsEmbed(view: EmbedView): EmbedBuilder {
-  const embed = new EmbedBuilder();
-  if (view.title) embed.setTitle(view.title);
-  if (view.description) embed.setDescription(view.description);
-  if (view.color !== undefined) embed.setColor(view.color);
-  if (view.footer) embed.setFooter({ text: view.footer });
-  if (view.fields) {
-    embed.addFields(
-      view.fields.map((f) => ({ name: f.name, value: f.value, inline: f.inline })),
-    );
-  }
-  return embed;
-}
-
-/**
- * Converts a ButtonView to a discord.js ButtonBuilder.
- * Pure data transformation — no side effects.
- * Matches spec R8.5 requirement for paginated embed construction support.
- */
-export function toDiscordJsButton(view: ButtonView): ButtonBuilder {
-  return new ButtonBuilder()
-    .setCustomId(view.id)
-    .setLabel(view.label)
-    .setStyle(view.style as unknown as number)
-    .setDisabled(view.disabled);
-}
