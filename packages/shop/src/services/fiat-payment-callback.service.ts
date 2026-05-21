@@ -2,6 +2,7 @@ import { decryptAES } from '../crypto/ecpay-aes.js';
 import type { EnvironmentConfig } from '@ltdjms/shared';
 import type { FiatOrderRepository } from '../domain/fiat-order-repository.js';
 import type { FiatOrder } from '../domain/fiat-order.js';
+import type { EcpayCallbackPayload } from '../domain/ecpay-callback-payload.js';
 import pino from 'pino';
 
 export interface CallbackResult {
@@ -38,7 +39,7 @@ export class FiatPaymentCallbackService {
   }
 
   async handleCallback(
-    requestBody: any,
+    requestBody: unknown,
     contentType: string | null,
   ): Promise<CallbackResult> {
     if (!requestBody) {
@@ -49,14 +50,14 @@ export class FiatPaymentCallbackService {
       // Normalize to a parsed object: if requestBody is already an object
       // (parsed by express body parser), use it directly to avoid the unnecessary
       // JSON.stringify → JSON.parse round-trip (P1-16).
-      const bodyObj = typeof requestBody === 'object' && requestBody !== null
-        ? requestBody
-        : this.parseBodyString(requestBody, contentType);
+      const bodyObj: Record<string, unknown> = typeof requestBody === 'object' && requestBody !== null
+        ? (requestBody as Record<string, unknown>)
+        : this.parseBodyString(String(requestBody), contentType);
 
       const callbackPayload = this.truncateTo(
         typeof requestBody === 'object' && requestBody !== null
           ? JSON.stringify(requestBody)
-          : requestBody,
+          : String(requestBody),
         4000,
       );
 
@@ -95,7 +96,7 @@ export class FiatPaymentCallbackService {
     paymentMessage: string | null,
     paid: boolean,
     callbackPayload: string,
-    callbackNode: any,
+    callbackNode: EcpayCallbackPayload,
   ): Promise<CallbackResult> {
     const order = await this.fiatOrderRepository.findByOrderNumber(orderNumber);
     if (!order) {
@@ -168,7 +169,7 @@ export class FiatPaymentCallbackService {
    * Parse a raw string body (JSON or form-encoded) into a parsed object.
    * This is used when the body arrives as a string rather than pre-parsed by express.
    */
-  private parseBodyString(body: string, contentType: string | null): any {
+  private parseBodyString(body: string, contentType: string | null): Record<string, unknown> {
     if (this.isJson(contentType, body)) {
       return JSON.parse(body);
     }
@@ -183,7 +184,7 @@ export class FiatPaymentCallbackService {
     return JSON.parse(body);
   }
 
-  private parseCallbackNode(bodyObj: any, contentType: string | null): { node: any; rawDecrypted: string } {
+  private parseCallbackNode(bodyObj: Record<string, unknown>, contentType: string | null): { node: EcpayCallbackPayload; rawDecrypted: string } {
     let encryptedData: string | null = null;
     if (bodyObj && bodyObj.Data !== null && bodyObj.Data !== undefined) {
       encryptedData = String(bodyObj.Data);
@@ -195,7 +196,7 @@ export class FiatPaymentCallbackService {
     return this.parseDecryptedData(encryptedData);
   }
 
-  private parseDecryptedData(encryptedData: string): { node: any; rawDecrypted: string } {
+  private parseDecryptedData(encryptedData: string): { node: EcpayCallbackPayload; rawDecrypted: string } {
     const hashKey = this.config.getEcpayHashKey();
     const hashIv = this.config.getEcpayHashIv();
     if (!hashKey || hashKey.trim().length === 0 || !hashIv || hashIv.trim().length === 0) {
@@ -238,31 +239,31 @@ export class FiatPaymentCallbackService {
     return trimmed.startsWith('{') && trimmed.endsWith('}');
   }
 
-  private extractOrderNumber(callbackNode: any): string | null {
+  private extractOrderNumber(callbackNode: EcpayCallbackPayload): string | null {
     const direct = this.textOrNull(callbackNode.MerchantTradeNo ?? null);
     if (direct) return direct;
     return this.textOrNull(callbackNode.OrderInfo?.MerchantTradeNo ?? null);
   }
 
-  private extractTradeStatus(callbackNode: any): string | null {
+  private extractTradeStatus(callbackNode: EcpayCallbackPayload): string | null {
     const direct = this.textOrNull(callbackNode.TradeStatus ?? null);
     if (direct) return direct;
     return this.textOrNull(callbackNode.OrderInfo?.TradeStatus ?? null);
   }
 
-  private extractPaymentMessage(callbackNode: any): string | null {
+  private extractPaymentMessage(callbackNode: EcpayCallbackPayload): string | null {
     const rtnMsg = this.textOrNull(callbackNode.RtnMsg ?? null);
     if (rtnMsg) return rtnMsg;
     return this.textOrNull(callbackNode.TradeMsg ?? null);
   }
 
-  private extractMerchantId(callbackNode: any): string | null {
+  private extractMerchantId(callbackNode: EcpayCallbackPayload): string | null {
     const direct = this.textOrNull(callbackNode.MerchantID ?? null);
     if (direct) return direct;
     return this.textOrNull(callbackNode.OrderInfo?.MerchantID ?? null);
   }
 
-  private extractTradeAmount(callbackNode: any): number | null {
+  private extractTradeAmount(callbackNode: EcpayCallbackPayload): number | null {
     const direct = this.parsePositiveLong(callbackNode.TradeAmt ?? null);
     if (direct !== null) return direct;
     const nestedTradeAmt = this.parsePositiveLong(callbackNode.OrderInfo?.TradeAmt ?? null);
@@ -270,7 +271,7 @@ export class FiatPaymentCallbackService {
     return this.parsePositiveLong(callbackNode.OrderInfo?.TotalAmount ?? null);
   }
 
-  private isValidPaidCallback(callbackNode: any, order: FiatOrder, orderNumber: string): boolean {
+  private isValidPaidCallback(callbackNode: EcpayCallbackPayload, order: FiatOrder, orderNumber: string): boolean {
     const expectedMerchantId = this.textOrNull(this.config.getEcpayMerchantId());
     if (expectedMerchantId) {
       const callbackMerchantId = this.extractMerchantId(callbackNode);
@@ -314,7 +315,7 @@ export class FiatPaymentCallbackService {
     return value.trim();
   }
 
-  private parsePositiveLong(value: any): number | null {
+  private parsePositiveLong(value: unknown): number | null {
     const text = this.textOrNull(value !== null && value !== undefined ? String(value) : null);
     if (!text) return null;
     try {
