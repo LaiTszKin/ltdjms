@@ -8,13 +8,10 @@ import { AdminPanelViewState } from '../../session/types.js';
 import { ZhTwStrings } from '../../i18n/zh-TW.js';
 
 /**
- * Routes admin panel button/select/modal interactions to the appropriate sub-handler
- * based on the customId prefix.
+ * Catch-all fallback handler for admin panel button/select/modal interactions.
+ * Routes unmatched admin_* prefix interactions (after longer-prefix sub-handlers
+ * have been tried) and returns an error message to the user.
  * Matches Java AdminPanelRouter.
- *
- * @deprecated P3-7: 此 router 不再承擔實際路由功能。路由由 SlashCommandListener 透過
- * customId prefix 比對完成。此類別保留僅為維持 DI 相容性，後續版本將移除。
- * 移除前請確認 AdminModule 中對此類別的註冊已被移除，且無任何 handler 依賴此路由。
  */
 export class AdminPanelRouter implements InteractionHandler {
   readonly customIdPrefix = 'admin_';

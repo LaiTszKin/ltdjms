@@ -1,5 +1,5 @@
 import { type Product, hasCurrencyPrice, hasFiatPriceTwd, hasReward, formatCurrencyPrice, formatFiatPriceTwd, formatReward } from '../domain/product-types.js';
-import { PAGE_SIZE } from './shop.service.js';
+import { PAGE_SIZE } from '../services/shop.service.js';
 
 // Theme color constants (P3-12)
 const EMBED_COLOR_PRIMARY = 0x5865F2;
@@ -32,7 +32,7 @@ export function buildShopEmbed(
   products: Product[],
   currentPage: number,
   totalPages: number,
-): { title: string; description: string; color: number; footer: string } {
+): { title: string; description: string; color: number; footer: { text: string } } {
   const sb: string[] = [];
   const startNumber = (currentPage - 1) * PAGE_SIZE + 1;
 
@@ -61,10 +61,10 @@ export function buildShopEmbed(
     sb.push('\n');
   }
 
-  const footer =
+  const footer: { text: string } =
     totalPages > 1
-      ? `第 ${currentPage} / ${totalPages} 頁`
-      : `共 ${products.length} 個商品`;
+      ? { text: `第 ${currentPage} / ${totalPages} 頁` }
+      : { text: `共 ${products.length} 個商品` };
 
   return {
     title: '🏪 商店',
@@ -217,7 +217,7 @@ export function buildSearchResultEmbed(
   currentPage: number,
   totalPages: number,
   keyword: string,
-): { title: string; description: string; color: number; footer: string } {
+): { title: string; description: string; color: number; footer: { text: string } } {
   const embed = buildShopEmbed(products, currentPage, totalPages);
   return {
     ...embed,

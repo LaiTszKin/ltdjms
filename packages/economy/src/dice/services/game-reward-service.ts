@@ -5,6 +5,7 @@ import {
   type CacheKeyGenerator,
 } from '@ltdjms/shared';
 import { BalanceAdjustmentService } from '../../currency/services/balance-adjustment-service.js';
+import { BalanceService } from '../../currency/services/balance-service.js';
 import { CurrencyTransactionService } from '../../currency/services/currency-tx-service.js';
 import type { CurrencyTransactionSource } from '../../domain/types.js';
 import { MAX_ADJUSTMENT_AMOUNT } from '../../domain/types.js';
@@ -23,6 +24,7 @@ export class GameRewardService {
 
   constructor(
     private readonly balanceAdjustmentService: BalanceAdjustmentService,
+    private readonly balanceService: BalanceService,
     private readonly transactionService: CurrencyTransactionService,
     private readonly eventPublisher: DomainEventPublisher,
     private readonly cacheService: CacheService,
@@ -52,8 +54,10 @@ export class GameRewardService {
     }
 
     if (rewardAmount === 0) {
-      // No reward to credit — tryBatchAdjust also rejects zero, so return early
-      return 0;
+      // No reward to credit — query the actual balance instead of returning 0,
+      // so callers (e.g. DiceGame1Service) can get the current balance as previousBalance.
+      const balanceResult = await this.balanceService.tryGetBalance(guildId, userId);
+      return balanceResult.isOk() ? balanceResult.getValue().balance : 0;
     }
 
     const result = await this.balanceAdjustmentService.tryBatchAdjust(

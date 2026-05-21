@@ -3,6 +3,7 @@ import { MarkdownAutoFixer } from '../autofix/MarkdownAutoFixer.js';
 import { CommonMarkValidator } from '../validation/CommonMarkValidator.js';
 import { DiscordMarkdownPaginator } from './DiscordMarkdownPaginator.js';
 import { applyMarkdownPipeline } from './markdown-pipeline.js';
+import { MarkdownHeadingSegmenter } from './markdown-heading-segmenter.js';
 
 /**
  * Processes streaming Markdown content through the sanitize → fix → validate → paginate pipeline.
@@ -16,6 +17,7 @@ export class DiscordMarkdownStreamProcessor {
     private readonly autoFixer: MarkdownAutoFixer,
     private readonly validator: CommonMarkValidator,
     private readonly paginator: DiscordMarkdownPaginator,
+    private readonly segmenter: MarkdownHeadingSegmenter = new MarkdownHeadingSegmenter(),
   ) {}
 
   /**
@@ -25,7 +27,7 @@ export class DiscordMarkdownStreamProcessor {
     this.buffer += chunk;
 
     // Try to find a heading boundary as segment point
-    const segmentIndex = this.findSegmentPoint(this.buffer);
+    const segmentIndex = this.segmenter.findSegmentPoint(this.buffer);
     if (segmentIndex === -1) {
       return []; // Not enough content to segment yet
     }
@@ -54,25 +56,4 @@ export class DiscordMarkdownStreamProcessor {
     return applyMarkdownPipeline(segment, this.sanitizer, this.autoFixer, this.validator, this.paginator);
   }
 
-  /**
-   * Finds a segment point at heading boundaries.
-   */
-  private findSegmentPoint(content: string): number {
-    if (content.length < 500) return -1; // Minimum threshold
-
-    // Find the last heading line
-    const lines = content.split('\n');
-    for (let i = lines.length - 2; i >= 0; i--) {
-      if (/^#{1,6}\s+\S/.test(lines[i])) {
-        // Found a heading — segment at previous heading boundary
-        // Find the previous heading or use beginning
-        const lineStart = lines.slice(0, i).join('\n').length + 1;
-        if (lineStart > content.length * 0.3) {
-          return lineStart;
-        }
-      }
-    }
-
-    return -1;
-  }
 }

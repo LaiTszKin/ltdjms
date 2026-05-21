@@ -48,6 +48,16 @@ export class CommonMarkValidator implements MarkdownValidator {
     // The CommonMark spec requires space after #/list markers, but we flag it proactively.
     this.regexFormatPass(lines, errors);
 
+    // Deduplicate errors by (line, errorType) to avoid AST + regex double-reporting
+    const seen = new Set<string>();
+    for (let i = errors.length - 1; i >= 0; i--) {
+      const key = `${errors[i].line}:${errors[i].errorType}`;
+      if (seen.has(key)) {
+        errors.splice(i, 1);
+      }
+      seen.add(key);
+    }
+
     // Detect unclosed fenced code blocks by checking if the last code token
     // starts with a fence marker (``` or ~~~) but does not end with one.
     // Indented code blocks (4-space indent) are always closed by definition.

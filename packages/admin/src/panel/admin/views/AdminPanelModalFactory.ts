@@ -1,5 +1,4 @@
 import { ZhTwStrings } from '../../../i18n/zh-TW.js';
-import type { DiceGame1Config, DiceGame2Config } from '@ltdjms/economy';
 import type { EscortOptionCatalogEntry } from '@ltdjms/dispatch';
 
 /**
@@ -8,11 +7,16 @@ import type { EscortOptionCatalogEntry } from '@ltdjms/dispatch';
  * Matches Java AdminPanelModalFactory.
  *
  * RESPONSIBILITY: This factory handles shared/generic admin panel modals
- * (balance, tokens, games, escort pricing/catalog).
+ * (balance, tokens, escort pricing/catalog).
  * Product-specific modals (create/edit product, generate codes) are in
  * AdminProductPanelModalFactory under panel/admin/product/.
  *
+ * NOTE: Dice game settings modals (DiceGame1, DiceGame2) are built inline
+ * by GameSettingsHandler since they require direct discord.js ModalBuilder
+ * types and need access to live config data from the facade.
+ *
  * @see AdminProductPanelModalFactory — product-specific modals
+ * @see GameSettingsHandler — dice game modal building
  */
 export class AdminPanelModalFactory {
   /**
@@ -79,106 +83,6 @@ export class AdminPanelModalFactory {
           maxLength: 256,
           required: true,
         },
-      ],
-    };
-  }
-
-  /**
-   * Builds a dice game 1 settings modal.
-   */
-  buildDiceGame1SettingsModal(currentConfig: DiceGame1Config): {
-    title: string;
-    fields: { label: string; value: string; minLength: number; maxLength: number; required: boolean }[];
-  } {
-    return {
-      title: ZhTwStrings.gameModalTitleDice1,
-      fields: [
-        {
-          label: ZhTwStrings.gameModalMin,
-          value: String(currentConfig.minTokensPerPlay),
-          minLength: 1,
-          maxLength: 20,
-          required: true,
-        },
-        {
-          label: ZhTwStrings.gameModalMax,
-          value: String(currentConfig.maxTokensPerPlay),
-          minLength: 1,
-          maxLength: 20,
-          required: true,
-        },
-        {
-          label: ZhTwStrings.gameModalReward,
-          value: String(currentConfig.rewardPerDiceValue),
-          minLength: 1,
-          maxLength: 20,
-          required: true,
-        },
-      ],
-    };
-  }
-
-  /**
-   * Builds a dice game 2 settings modal with all multipliers.
-   * Includes six individual dice face multipliers (face_1 through face_6),
-   * plus straightMultiplier, baseMultiplier, tripleLowBonus, tripleHighBonus.
-   */
-  buildDiceGame2SettingsModal(currentConfig: DiceGame2Config): {
-    title: string;
-    fields: { label: string; value: string; minLength: number; maxLength: number; required: boolean }[];
-  } {
-    return {
-      title: ZhTwStrings.gameModalTitleDice2,
-      fields: [
-        {
-          label: ZhTwStrings.gameModalMin,
-          value: String(currentConfig.minTokensPerPlay),
-          minLength: 1,
-          maxLength: 20,
-          required: true,
-        },
-        {
-          label: ZhTwStrings.gameModalMax,
-          value: String(currentConfig.maxTokensPerPlay),
-          minLength: 1,
-          maxLength: 20,
-          required: true,
-        },
-        {
-          label: ZhTwStrings.gameModalStraightMul,
-          value: String(currentConfig.straightMultiplier),
-          minLength: 1,
-          maxLength: 10,
-          required: true,
-        },
-        {
-          label: ZhTwStrings.gameModalBaseMul,
-          value: String(currentConfig.baseMultiplier),
-          minLength: 1,
-          maxLength: 10,
-          required: true,
-        },
-        {
-          label: ZhTwStrings.gameModalTripleLow,
-          value: String(currentConfig.tripleLowBonus),
-          minLength: 1,
-          maxLength: 10,
-          required: true,
-        },
-        {
-          label: ZhTwStrings.gameModalTripleHigh,
-          value: String(currentConfig.tripleHighBonus),
-          minLength: 1,
-          maxLength: 10,
-          required: true,
-        },
-        ...(currentConfig.faceMultipliers.map((multiplier, i) => ({
-          label: `骰面 ${i + 1} 倍率`,
-          value: String(multiplier),
-          minLength: 1,
-          maxLength: 10,
-          required: true,
-        }))),
       ],
     };
   }

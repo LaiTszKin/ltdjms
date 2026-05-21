@@ -122,10 +122,7 @@ export class RedemptionCodeHandler implements InteractionHandler {
       new ActionRowBuilder<TextInputBuilder>().addComponents(codeInput),
     );
 
-    const raw = interaction.getHook() as {
-      showModal: (modal: ModalBuilder) => Promise<void>;
-    };
-    await raw.showModal(modal);
+    await interaction.showModal(modal);
   }
 
   private async processRedemption(
@@ -133,11 +130,7 @@ export class RedemptionCodeHandler implements InteractionHandler {
     guildId: string,
     userId: string,
   ): Promise<void> {
-    const raw = interaction.getHook() as {
-      fields: { getTextInputValue: (customId: string) => string };
-    };
-
-    const codeStr = raw.fields.getTextInputValue('redeem_code');
+    const codeStr = interaction.getTextInputValue('redeem_code');
     if (!codeStr || codeStr.trim().length === 0) {
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.redeemCodeModalTitle)

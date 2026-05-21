@@ -113,6 +113,7 @@ export { DiceConfigRepository } from './dice/repositories/dice-config-repo.js';
 export { GameRewardService } from './dice/services/game-reward-service.js';
 export { DiceGame1Service, type Random, DefaultRandom, SeededRandom } from './dice/services/dice-game-1-service.js';
 export { DiceGame2Service } from './dice/services/dice-game-2-service.js';
+export { DiceConfigService } from './dice/services/dice-config-service.js';
 
 // ============================================================
 // Command Handlers

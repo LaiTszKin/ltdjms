@@ -28,11 +28,11 @@ export class FiatOrderProcessingScheduler {
     this.started = true;
 
     setTimeout(() => {
-      this.schedulePostPayment();
+      this.runPostPayment();
     }, POST_PAYMENT_INITIAL_DELAY_MS);
 
     setTimeout(() => {
-      this.scheduleReconciliation();
+      this.runReconciliation();
     }, RECONCILIATION_INITIAL_DELAY_MS);
 
     this.log.info('Started fiat order processing scheduler');
@@ -63,9 +63,9 @@ export class FiatOrderProcessingScheduler {
       this.log.warn({ error: e }, 'Fiat post-payment worker tick failed');
     } finally {
       this.postPaymentRunning = false;
-      // Schedule next run only after the previous one completes
+      // Schedule next run directly (no intermediate schedulePostPayment)
       if (this.started) {
-        this.postPaymentTimer = setTimeout(() => this.schedulePostPayment(), POST_PAYMENT_INTERVAL_MS);
+        this.postPaymentTimer = setTimeout(() => this.runPostPayment(), POST_PAYMENT_INTERVAL_MS);
       }
     }
   }
@@ -82,22 +82,10 @@ export class FiatOrderProcessingScheduler {
       this.log.warn({ error: e }, 'Fiat reconciliation worker tick failed');
     } finally {
       this.reconciliationRunning = false;
-      // Schedule next run only after the previous one completes
+      // Schedule next run directly (no intermediate scheduleReconciliation)
       if (this.started) {
-        this.reconciliationTimer = setTimeout(() => this.scheduleReconciliation(), RECONCILIATION_INTERVAL_MS);
+        this.reconciliationTimer = setTimeout(() => this.runReconciliation(), RECONCILIATION_INTERVAL_MS);
       }
     }
-  }
-
-  private schedulePostPayment(): void {
-    this.postPaymentTimer = setTimeout(() => {
-      this.runPostPayment();
-    }, POST_PAYMENT_INTERVAL_MS);
-  }
-
-  private scheduleReconciliation(): void {
-    this.reconciliationTimer = setTimeout(() => {
-      this.runReconciliation();
-    }, RECONCILIATION_INTERVAL_MS);
   }
 }

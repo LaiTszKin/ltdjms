@@ -320,6 +320,7 @@ export function configureAdminContainer(): void {
 
   const gameHandler = new GameSettingsHandler(
     gameConfigFacade,
+    adminPanelViewFactory,
     adminSessionManager,
     errorHandler,
   );

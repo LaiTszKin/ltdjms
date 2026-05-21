@@ -107,8 +107,11 @@ export class SlashCommandListener {
       type = 'button';
       commandNameOrCustomId = String(interaction.customId ?? '');
     } else if (
-      (typeof interaction.isStringSelectMenu === 'function' && interaction.isStringSelectMenu()) ||
-      (typeof interaction.isAnySelectMenu === 'function' && interaction.isAnySelectMenu())
+      typeof interaction.isStringSelectMenu === 'function' && interaction.isStringSelectMenu() ||
+      typeof interaction.isUserSelect === 'function' && interaction.isUserSelect() ||
+      typeof interaction.isRoleSelect === 'function' && interaction.isRoleSelect() ||
+      typeof interaction.isMentionableSelect === 'function' && interaction.isMentionableSelect() ||
+      typeof interaction.isChannelSelect === 'function' && interaction.isChannelSelect()
     ) {
       type = 'stringSelect';
       commandNameOrCustomId = String(interaction.customId ?? '');
@@ -151,6 +154,11 @@ export class SlashCommandListener {
     type: InteractionType,
     commandNameOrCustomId: string,
   ): Promise<void> {
+    // Auto-defer if not already acknowledged, to prevent Discord 3-second timeout.
+    if (!interaction.isAcknowledged()) {
+      await interaction.deferReply();
+    }
+
     const startTime = this.metrics.recordStart(commandNameOrCustomId);
 
     try {

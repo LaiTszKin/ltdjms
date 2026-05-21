@@ -51,12 +51,12 @@
 **GIVEN** 業務邏輯中發生錯誤
 **WHEN** 建立 `DomainError` 實例
 **THEN** 必須包含 `category`（enum）、`message`（string）、`cause`（optional Error）
-**AND** 提供 28 個分類的靜態工廠方法
+**AND** 提供 31 個分類的靜態工廠方法
 
 **Requirements**:
-- [ ] R2.1 DomainError 包含 Category enum（28 個值，與 Java 版本完全一致）
+- [ ] R2.1 DomainError 包含 Category enum（31 個值，與 Java 版本完全一致）
 - [ ] R2.2 提供 `DomainError.invalidInput(msg)`、`DomainError.persistenceFailure(msg, cause)` 等工廠方法
-- [ ] R2.3 Category 涵蓋: INVALID_INPUT、INSUFFICIENT_BALANCE、INSUFFICIENT_TOKENS、PERSISTENCE_FAILURE、UNEXPECTED_FAILURE、DISCORD_*（6 項）、AI_SERVICE_*（6 項）、PROMPT_*（5 項）、CHANNEL_NOT_ALLOWED、DUPLICATE_CHANNEL、INSUFFICIENT_PERMISSIONS、CHANNEL_NOT_FOUND、DUPLICATE_CATEGORY、CATEGORY_NOT_FOUND
+- [ ] R2.3 Category 涵蓋: INVALID_INPUT、INSUFFICIENT_BALANCE、INSUFFICIENT_TOKENS、PERSISTENCE_FAILURE、UNEXPECTED_FAILURE、DISCORD_*（6 項）、AI_SERVICE_*（6 項）、PROMPT_*（5 項）、CHANNEL_NOT_ALLOWED、DUPLICATE_CHANNEL、INSUFFICIENT_PERMISSIONS、CHANNEL_NOT_FOUND、DUPLICATE_CATEGORY、CATEGORY_NOT_FOUND、REDEEM_CODE_USED、REDEEM_CODE_EXPIRED、REDEEM_CODE_INVALID
 
 ### Requirement 3: Config 管理
 **GIVEN** 應用程式啟動

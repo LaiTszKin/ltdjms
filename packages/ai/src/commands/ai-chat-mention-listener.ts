@@ -186,7 +186,7 @@ export class AIChatMentionListener {
     tracker.setInitialMessage(thinkingMsg);
 
     const handler: StreamingResponseHandler = {
-      onChunk: (chunk: string, isComplete: boolean, error: DomainError | null, chunkType?: StreamChunkType) => {
+      onChunk: async (chunk: string, isComplete: boolean, error: DomainError | null, chunkType?: StreamChunkType) => {
         if (error) {
           const errorMsg = this.mapErrorToUserMessage(error);
           thinkingMsg.edit(errorMsg).catch(() => {});
@@ -199,16 +199,15 @@ export class AIChatMentionListener {
           case StreamChunkType.REASONING:
             if (this.showReasoning && chunk) {
               // Send reasoning as spoiler
-              this.sendToChannel(message, `-# ||${chunk}||`).then((msg) => {
-                if (msg) tracker.addReasoningMessage(msg);
-              });
+              const msg = await this.sendToChannel(message, `-# ||${chunk}||`);
+              if (msg) tracker.addReasoningMessage(msg);
             }
             break;
 
           case StreamChunkType.TOOL_INTENT:
             // Show tool execution status to the user as a compact note
             if (chunk) {
-              this.sendToChannel(message, `-# ${chunk}`);
+              await this.sendToChannel(message, `-# ${chunk}`);
             }
             break;
 
@@ -223,33 +222,32 @@ export class AIChatMentionListener {
           completionProcessed = true;
 
           // Delete reasoning messages first, then edit thinking message with final content
-          tracker.deleteReasoningMessages().then(() => {
-            if (pendingContent.length === 0) {
-              thinkingMsg.edit(':question: AI 沒有產生回應').catch(() => {});
-              return;
-            }
+          await tracker.deleteReasoningMessages();
+          if (pendingContent.length === 0) {
+            thinkingMsg.edit(':question: AI 沒有產生回應').catch(() => {});
+            return;
+          }
 
-            if (this.streamingBypassValidation) {
-              // Content was not pre-paginated — split with MessageSplitter
-              const fullContent = pendingContent.join('');
-              const pages = this.splitter.split(fullContent);
-              // P2-41: Fallback for empty split result with non-empty content
-              if (pages.length === 0 && fullContent) {
-                thinkingMsg.edit(fullContent).catch(() => {});
-              } else {
-                thinkingMsg.edit(pages[0]).catch(() => {});
-                for (let i = 1; i < pages.length; i++) {
-                  this.sendToChannel(message, pages[i]);
-                }
-              }
+          if (this.streamingBypassValidation) {
+            // Content was not pre-paginated — split with MessageSplitter
+            const fullContent = pendingContent.join('');
+            const pages = this.splitter.split(fullContent);
+            // P2-41: Fallback for empty split result with non-empty content
+            if (pages.length === 0 && fullContent) {
+              thinkingMsg.edit(fullContent).catch(() => {});
             } else {
-              // Content already paginated by markdown validation pipeline
-              thinkingMsg.edit(pendingContent[0]).catch(() => {});
-              for (let i = 1; i < pendingContent.length; i++) {
-                this.sendToChannel(message, pendingContent[i]);
+              thinkingMsg.edit(pages[0]).catch(() => {});
+              for (let i = 1; i < pages.length; i++) {
+                await this.sendToChannel(message, pages[i]);
               }
             }
-          });
+          } else {
+            // Content already paginated by markdown validation pipeline
+            thinkingMsg.edit(pendingContent[0]).catch(() => {});
+            for (let i = 1; i < pendingContent.length; i++) {
+              await this.sendToChannel(message, pendingContent[i]);
+            }
+          }
         }
       },
     };
@@ -280,9 +278,10 @@ export class AIChatMentionListener {
     );
     const tracker = new ReasoningMessageTracker();
     tracker.setInitialMessage(thinkingMsg);
+    let hasSentFirstContent = false;
 
     const handler: StreamingResponseHandler = {
-      onChunk: (chunk: string, isComplete: boolean, error: DomainError | null, chunkType?: StreamChunkType) => {
+      onChunk: async (chunk: string, isComplete: boolean, error: DomainError | null, chunkType?: StreamChunkType) => {
         if (error) {
           const errorMsg = this.mapErrorToUserMessage(error);
           thinkingMsg.edit(errorMsg).catch(() => {});
@@ -294,19 +293,18 @@ export class AIChatMentionListener {
         // Handle REASONING chunks (P2-12)
         if (type === StreamChunkType.REASONING) {
           if (this.showReasoning && chunk) {
-            this.sendToChannel(message, `-# ||${chunk}||`).then((msg) => {
-              if (msg) tracker.addReasoningMessage(msg);
-            });
+            const msg = await this.sendToChannel(message, `-# ||${chunk}||`);
+            if (msg) tracker.addReasoningMessage(msg);
           }
           if (isComplete) {
-            tracker.deleteReasoningMessages();
+            await tracker.deleteReasoningMessages();
           }
           return;
         }
 
         if (type !== StreamChunkType.CONTENT || !chunk) {
           if (isComplete) {
-            tracker.deleteReasoningMessages();
+            await tracker.deleteReasoningMessages();
           }
           return;
         }
@@ -314,25 +312,29 @@ export class AIChatMentionListener {
         if (this.streamingBypassValidation) {
           // Buffer mode: collect all chunks
           if (isComplete) {
-            tracker.deleteReasoningMessages().then(() => {
-              // Replace thinking message with final content (split if needed)
-              const pages = this.splitter.split(chunk);
-              // P2-41: Fallback for empty split result with non-empty content
-              if (pages.length === 0 && chunk) {
-                thinkingMsg.edit(chunk).catch(() => {});
-              } else if (pages.length > 0) {
-                thinkingMsg.edit(pages[0]).catch(() => {});
-                for (let i = 1; i < pages.length; i++) {
-                  this.sendToChannel(message, pages[i]);
-                }
+            await tracker.deleteReasoningMessages();
+            // Replace thinking message with final content (split if needed)
+            const pages = this.splitter.split(chunk);
+            // P2-41: Fallback for empty split result with non-empty content
+            if (pages.length === 0 && chunk) {
+              thinkingMsg.edit(chunk).catch(() => {});
+            } else if (pages.length > 0) {
+              thinkingMsg.edit(pages[0]).catch(() => {});
+              for (let i = 1; i < pages.length; i++) {
+                await this.sendToChannel(message, pages[i]);
               }
-            });
+            }
           }
         } else {
           // Real-time mode: edit thinking message with content
-          thinkingMsg.edit(chunk).catch(() => {});
+          if (!hasSentFirstContent) {
+            thinkingMsg.edit(chunk).catch(() => {});
+            hasSentFirstContent = true;
+          } else {
+            await this.sendToChannel(message, chunk);
+          }
           if (isComplete) {
-            tracker.deleteReasoningMessages();
+            await tracker.deleteReasoningMessages();
           }
         }
       },

@@ -32,7 +32,7 @@ import {
   BUTTON_SEARCH_NEXT,
   MODAL_SEARCH,
   SELECT_SEARCH_BUY,
-} from '../services/shop-view.js';
+} from '../view/shop-view.js';
 
 /**
  * Handler for the /shop slash command and its associated component interactions.

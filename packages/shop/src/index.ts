@@ -112,7 +112,7 @@ export {
   BUTTON_SEARCH_PREV,
   BUTTON_SEARCH_NEXT,
   MODAL_SEARCH,
-} from './services/shop-view.js';
+} from './view/shop-view.js';
 
 export { RedemptionCodeGenerator } from './services/redemption-code-generator.js';
 

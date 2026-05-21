@@ -156,10 +156,7 @@ export class TransactionHistoryHandler implements InteractionHandler {
       .setColor(Colors.HISTORY_CURRENCY);
 
     const row = this.buildNavRow(page, totalPages, 'user_history_currency');
-    const raw = interaction.getHook() as {
-      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }) => Promise<void>;
-    };
-    await raw.editReply({ embeds: [embed], components: [row] });
+    await interaction.editWithComponents(embed, [row]);
   }
 
   private async showTokenHistory(
@@ -209,10 +206,7 @@ export class TransactionHistoryHandler implements InteractionHandler {
       .setColor(Colors.HISTORY_TOKEN);
 
     const row = this.buildNavRow(page, totalPages, 'user_history_token');
-    const raw = interaction.getHook() as {
-      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }) => Promise<void>;
-    };
-    await raw.editReply({ embeds: [embed], components: [row] });
+    await interaction.editWithComponents(embed, [row]);
   }
 
   private async showRedemptionHistory(
@@ -259,9 +253,6 @@ export class TransactionHistoryHandler implements InteractionHandler {
       .setColor(Colors.HISTORY_REDEMPTION);
 
     const row = this.buildNavRow(page, totalPages, 'user_history_redemption');
-    const raw = interaction.getHook() as {
-      editReply: (opts: { embeds: EmbedBuilder[]; components: ActionRowBuilder<ButtonBuilder>[] }) => Promise<void>;
-    };
-    await raw.editReply({ embeds: [embed], components: [row] });
+    await interaction.editWithComponents(embed, [row]);
   }
 }

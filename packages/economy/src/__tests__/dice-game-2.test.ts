@@ -175,17 +175,17 @@ describe('DiceGame2Service - analyzeRolls', () => {
     });
 
     it('should calculate base reward for non-straight/non-triple dice', () => {
-      // Dice: [1, 2, 4, 6, 8]
-      // Sorted: [1, 2, 4, 6, 8] - max consecutive length is 2 ([1,2])
+      // Dice: [1, 2, 4, 6, 2]
+      // Sorted: [1, 2, 2, 4, 6] - max consecutive length is 2 ([1,2])
       // No triples (no 3 same values)
-      // Non-straight sum = 1+2+4+6+8 = 21, reward = 21 * 20000 = 420000
-      const rolls = [1, 2, 4, 6, 8];
+      // Non-straight sum = 1+2+2+4+6 = 15, reward = 15 * 20000 = 300000
+      const rolls = [1, 2, 4, 6, 2];
       const analysis = service.analyzeRolls(rolls, defaultConfig);
 
       expect(analysis.straightSegments).toHaveLength(0);
       expect(analysis.tripleSegments).toHaveLength(0);
-      expect(analysis.nonStraightReward).toBe(420000);
-      expect(analysis.totalReward).toBe(420000);
+      expect(analysis.nonStraightReward).toBe(300000);
+      expect(analysis.totalReward).toBe(300000);
     });
 
     it('should calculate combined reward correctly', () => {

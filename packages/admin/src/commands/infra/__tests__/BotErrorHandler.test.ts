@@ -5,6 +5,7 @@ import {
   MockDiscordInteraction,
 } from '@ltdjms/shared';
 import { BotErrorHandler } from '../BotErrorHandler.js';
+import { ZhTwStrings } from '../../../i18n/zh-TW.js';
 
 describe('BotErrorHandler', () => {
   let handler: BotErrorHandler;
@@ -88,6 +89,30 @@ describe('BotErrorHandler', () => {
       const error = DomainError.insufficientBalance('Not enough');
       await handler.handle(error, mockInteraction);
       expect(mockInteraction.hasReplies()).toBe(true);
+    });
+
+    it('should edit embed when already acknowledged', async () => {
+      await mockInteraction.deferReply();
+      const error = DomainError.insufficientBalance('Not enough');
+      await handler.handle(error, mockInteraction);
+      expect(mockInteraction.getEditEmbedCount()).toBeGreaterThan(0);
+    });
+  });
+
+  describe('exhaustiveness check', () => {
+    it('should have exactly one errorMapping entry per DomainErrorCategory', () => {
+      const categoryCount = Object.values(DomainErrorCategory).length;
+      const mappingCount = Object.keys(ZhTwStrings.errorMapping).length;
+      expect(mappingCount).toBe(categoryCount);
+    });
+
+    it('should have non-empty zh-TW message for every DomainErrorCategory', () => {
+      const categories = Object.values(DomainErrorCategory);
+      for (const category of categories) {
+        const message = ZhTwStrings.errorMapping[category];
+        expect(message).toBeTruthy();
+        expect(message.length).toBeGreaterThan(0);
+      }
     });
   });
 });
