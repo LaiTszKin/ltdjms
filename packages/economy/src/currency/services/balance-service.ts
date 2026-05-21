@@ -31,6 +31,9 @@ export class BalanceService {
   /** Per-key in-flight promises to prevent cache stampede on balance reads. */
   private readonly pendingFetches = new Map<string, Promise<number>>();
 
+  /** Per-guild in-flight config fetches to coalesce concurrent cache misses (P1-11). */
+  private readonly pendingConfigFetches = new Map<number, Promise<GuildCurrencyConfig | null>>();
+
   constructor(
     private readonly accountRepository: CurrencyAccountRepository,
     private readonly configRepository: CurrencyConfigRepository,
@@ -40,6 +43,8 @@ export class BalanceService {
 
   /**
    * Gets the currency config from in-memory cache, falling through to DB on miss.
+   * Coalesces concurrent cache misses for the same guildId to prevent
+   * redundant DB queries (P1-11).
    */
   async getCachedConfig(guildId: number): Promise<{ currencyName: string; currencyIcon: string }> {
     const cacheKey = `currency_config:${guildId}`;
@@ -54,24 +59,40 @@ export class BalanceService {
       };
     }
 
-    const config = await this.configRepository.findByGuildId(guildId);
-    this.configCache.set(cacheKey, {
-      config: config ?? null,
-      expiresAt: now + BalanceService.CONFIG_CACHE_TTL_SECONDS * 1000,
-    });
-
-    // Evict oldest entry when cache exceeds max capacity
-    if (this.configCache.size > BalanceService.MAX_CACHE_SIZE) {
-      const firstKey = this.configCache.keys().next();
-      if (firstKey.value !== undefined) {
-        this.configCache.delete(firstKey.value);
-      }
+    // Coalesce concurrent requests for the same guildId
+    const pending = this.pendingConfigFetches.get(guildId);
+    if (pending) {
+      const config = await pending;
+      return {
+        currencyName: config?.currencyName ?? DEFAULT_CURRENCY_NAME,
+        currencyIcon: config?.currencyIcon ?? DEFAULT_CURRENCY_ICON,
+      };
     }
 
-    return {
-      currencyName: config?.currencyName ?? DEFAULT_CURRENCY_NAME,
-      currencyIcon: config?.currencyIcon ?? DEFAULT_CURRENCY_ICON,
-    };
+    const fetch = this.configRepository.findByGuildId(guildId);
+    this.pendingConfigFetches.set(guildId, fetch);
+    try {
+      const config = await fetch;
+      this.configCache.set(cacheKey, {
+        config: config ?? null,
+        expiresAt: now + BalanceService.CONFIG_CACHE_TTL_SECONDS * 1000,
+      });
+
+      // Evict oldest entry when cache exceeds max capacity
+      if (this.configCache.size > BalanceService.MAX_CACHE_SIZE) {
+        const firstKey = this.configCache.keys().next();
+        if (firstKey.value !== undefined) {
+          this.configCache.delete(firstKey.value);
+        }
+      }
+
+      return {
+        currencyName: config?.currencyName ?? DEFAULT_CURRENCY_NAME,
+        currencyIcon: config?.currencyIcon ?? DEFAULT_CURRENCY_ICON,
+      };
+    } finally {
+      this.pendingConfigFetches.delete(guildId);
+    }
   }
 
   /**

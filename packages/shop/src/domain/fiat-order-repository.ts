@@ -49,6 +49,13 @@ export interface FiatOrderRepository {
     terminalReason: string,
   ): Promise<FiatOrder | null>;
 
+  /** Batch expires all pending orders whose orderNumber is in the list. */
+  batchMarkExpired(
+    orderNumbers: string[],
+    expiredAt: Date,
+    terminalReason: string,
+  ): Promise<number>;
+
   claimFulfillmentProcessing(orderNumber: string, claimedAt: Date): Promise<boolean>;
 
   releaseFulfillmentProcessing(orderNumber: string): Promise<void>;

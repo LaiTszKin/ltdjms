@@ -12,6 +12,7 @@ export {
   DomainErrorCategory,
   DomainError,
   type DomainEvent,
+  OperationType,
 } from './types/index.js';
 
 // Config
@@ -64,7 +65,6 @@ export {
   type DiscordEmbedBuilder,
   type DiscordRuntimeGateway,
   type EmbedView,
-  type FieldView,
   type ButtonView,
   ButtonStyle,
   DiscordJsInteraction,
@@ -73,11 +73,8 @@ export {
   DiscordJsRuntimeGateway,
   DiscordRuntimeNotReadyError,
   splitSelectMenus,
-  buildSelectRows,
   splitSelectMenusGeneric,
   type EmbedLimits,
   createButtonView,
   MockDiscordInteraction,
-  MockDiscordContext,
-  MockDiscordEmbedBuilder,
 } from './discord/index.js';

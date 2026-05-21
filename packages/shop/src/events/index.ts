@@ -1,10 +1,5 @@
-import type { DomainEvent } from '@ltdjms/shared';
-
-export enum OperationType {
-  CREATED = 'CREATED',
-  UPDATED = 'UPDATED',
-  DELETED = 'DELETED',
-}
+import { OperationType, type DomainEvent } from '@ltdjms/shared';
+export { OperationType };
 
 export interface ProductChangedEvent extends DomainEvent {
   readonly eventType: 'product_changed';

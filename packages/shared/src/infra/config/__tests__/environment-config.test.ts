@@ -94,6 +94,6 @@ describe('EnvironmentConfig', () => {
     config.parse();
     expect(config.getEcpayCallbackBindPort()).toBe(8085);
     expect(config.getEcpayCvsExpireMinutes()).toBe(10080);
-    expect(config.getPoolMaxSize()).toBe(5);
+    expect(config.getPoolMaxSize()).toBe(20);
   });
 });

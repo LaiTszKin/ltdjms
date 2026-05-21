@@ -1,8 +1,9 @@
 import {
   type DiscordInteraction,
   type DiscordContext,
+  type DiscordEmbedBuilder,
 } from '@ltdjms/shared';
-import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { type CommandHandler } from '../../commands/infra/CommandHandler.js';
 import { AdminPanelSessionManager } from '../../session/AdminPanelSessionManager.js';
 import { AdminPanelViewFactory } from './views/AdminPanelViewFactory.js';
@@ -23,6 +24,7 @@ export class AdminPanelCommand implements CommandHandler {
     private readonly viewFactory: AdminPanelViewFactory,
     private readonly currencyFacade: CurrencyManagementFacade,
     private readonly dispatchFacade: DispatchManagementFacade,
+    private readonly embedBuilder: DiscordEmbedBuilder,
   ) {}
 
   async execute(
@@ -58,15 +60,18 @@ export class AdminPanelCommand implements CommandHandler {
       dispatchCount,
     );
 
-    const embed = new EmbedBuilder()
+    // Build embed with fields before calling build()
+    this.embedBuilder
       .setTitle(mainPanel.title)
       .setDescription(mainPanel.description)
       .setColor(mainPanel.color)
-      .setFooter({ text: mainPanel.footer });
+      .setFooter(mainPanel.footer);
 
     for (const field of mainPanel.fields) {
-      embed.addFields({ name: field.name, value: field.value, inline: field.inline });
+      this.embedBuilder.addField(field.name, field.value, field.inline);
     }
+
+    const embed = this.embedBuilder.build();
 
     // Convert button data to discord.js ActionRow components
     const rows: ActionRowBuilder<ButtonBuilder>[] = [];

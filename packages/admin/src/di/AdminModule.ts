@@ -34,6 +34,7 @@ import { GameConfigManagementFacade } from '../facades/GameConfigManagementFacad
 import { AIConfigManagementFacade } from '../facades/AIConfigManagementFacade.js';
 import { MemberInfoFacade } from '../facades/MemberInfoFacade.js';
 import { DispatchManagementFacade } from '../facades/DispatchManagementFacade.js';
+import { ProductManagementFacade } from '../facades/ProductManagementFacade.js';
 
 // Session
 import { AdminPanelSessionManager } from '../session/AdminPanelSessionManager.js';
@@ -84,6 +85,9 @@ export const ADMIN_TOKENS = {
   AIConfigManagementFacade: Symbol('AIConfigManagementFacade'),
   MemberInfoFacade: Symbol('MemberInfoFacade'),
   DispatchManagementFacade: Symbol('DispatchManagementFacade'),
+
+  // Shop / Product facades
+  ProductManagementFacade: Symbol('ProductManagementFacade'),
 
   // Session
   AdminPanelSessionManager: Symbol('AdminPanelSessionManager'),
@@ -279,11 +283,16 @@ export function configureAdminContainer(): void {
   // Admin Panel Commands
   // ============================================================
 
+  const discordEmbedBuilder = container.resolve<import('@ltdjms/shared').DiscordEmbedBuilder>(
+    TOKENS.DiscordEmbedBuilder,
+  );
+
   const adminPanelCommand = new AdminPanelCommand(
     adminSessionManager,
     adminPanelViewFactory,
     currencyFacade,
     dispatchManagementFacade,
+    discordEmbedBuilder,
   );
   container.registerInstance(ADMIN_TOKENS.AdminPanelCommand, adminPanelCommand);
   slashCommandListener.registerCommand(adminPanelCommand);
@@ -378,13 +387,18 @@ export function configureAdminContainer(): void {
     SHOP_TOKENS.ProductRepository as symbol,
   );
 
-  const adminProductPanelHandler = new AdminProductPanelHandler(
-    adminSessionManager,
+  const productManagementFacade = new ProductManagementFacade(
     shopService,
+    productRepository,
     redemptionCodeRepo,
     redemptionCodeGenerator,
-    productRepository,
     eventPublisher,
+  );
+  container.registerInstance(ADMIN_TOKENS.ProductManagementFacade, productManagementFacade);
+
+  const adminProductPanelHandler = new AdminProductPanelHandler(
+    adminSessionManager,
+    productManagementFacade,
     adminProductPanelViewFactory,
     adminProductPanelModalFactory,
     errorHandler,

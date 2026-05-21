@@ -10,7 +10,7 @@ import {
   type EscortPricingChangedEvent,
   type EscortCatalogChangedEvent,
 } from '@ltdjms/dispatch';
-import { OperationType } from '@ltdjms/shop';
+import { OperationType } from '@ltdjms/shared';
 import {
   type DispatchAfterSalesStaffService,
   type EscortOptionPricingService,

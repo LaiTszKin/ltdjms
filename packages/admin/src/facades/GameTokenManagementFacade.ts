@@ -42,17 +42,11 @@ export class GameTokenManagementFacade {
 
   /**
    * Adjusts tokens by the specified amount (positive = add, negative = deduct).
+   * Passes `reason` as the transaction description for audit trail purposes.
    *
-   * NOTE: `reason` and `actorId` are received but currently discarded because
-   * GameTokenService.tryAdjustTokens(guildId, userId, amount) does not yet accept
-   * audit metadata. Once the service layer adds audit trail support, pass these
-   * through to the service call.
-   *
-   * TODO(P1-34): Pass reason and actorId to service layer when tryAdjustTokens
-   * signature accepts audit metadata (e.g., reason, actorId).
-   *
-   * TODO(P2-6): 在 service 支援前可先將 reason 拼接到 description 參數傳遞：
-   * this.tokenService.tryAdjustTokens(Number(guildId), Number(userId), amount, { reason, actorId })
+   * NOTE: `actorId` is received but currently not persisted — the service layer
+   * does not yet accept an actor identifier. Once the service adds actor audit
+   * support, pass `actorId` through as well.
    */
   async adjustTokens(
     guildId: string,
@@ -64,7 +58,11 @@ export class GameTokenManagementFacade {
     const validation = this.validateTokenAmount(amount, false);
     if (validation) return validation;
 
-    return this.tokenService.tryAdjustTokens(Number(guildId), Number(userId), amount);
+    return this.tokenService.tryAdjustTokens(
+      Number(guildId), Number(userId), amount,
+      GameTokenTransactionSource.ADMIN_ADJUSTMENT,
+      reason,
+    );
   }
 
   /**

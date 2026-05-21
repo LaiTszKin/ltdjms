@@ -12,6 +12,13 @@ export interface AIMessageEvent extends DomainEvent {
   readonly messageId: number;
 }
 
+export interface AIChannelConfigChangedEvent extends DomainEvent {
+  readonly eventType: 'ai_channel_config_changed';
+  readonly guildId: string;
+  readonly changeType: 'channel_added' | 'channel_removed' | 'category_added' | 'category_removed';
+  readonly targetId: string;
+}
+
 export interface AIAgentChannelConfigChangedEvent extends DomainEvent {
   readonly eventType: 'ai_agent_channel_config_changed';
   readonly guildId: string;

@@ -39,13 +39,10 @@ export class FiatPaymentReconciliationService {
 
   private async expirePendingOrders(now: Date): Promise<void> {
     const orders = await this.fiatOrderRepository.findOrdersPendingExpiry(now, DEFAULT_BATCH_SIZE);
-    for (const order of orders) {
-      await this.fiatOrderRepository.markExpiredIfPending(
-        order.orderNumber,
-        now,
-        EXPIRED_TERMINAL_REASON,
-      );
-    }
+    if (orders.length === 0) return;
+    const orderNumbers = orders.map(o => o.orderNumber);
+    await this.fiatOrderRepository.batchMarkExpired(orderNumbers, now, EXPIRED_TERMINAL_REASON);
+    this.log.info({ count: orderNumbers.length }, 'Batch expired pending fiat orders');
   }
 
   private async reconcileSingleOrder(order: FiatOrder, now: Date): Promise<void> {

@@ -61,6 +61,8 @@ const EVENT_TYPES = {
  * 見 buildMainPanelEmbed() 下方 else 分支。
  */
 export class AdminPanelUpdateListener {
+  /** Tracks last update timestamp per guildId:eventType for rate-limit protection. */
+  private readonly lastUpdateTimestamps = new Map<string, number>();
   constructor(
     private readonly sessionManager: AdminPanelSessionManager,
     private readonly discordGateway: DiscordRuntimeGateway,
@@ -78,6 +80,11 @@ export class AdminPanelUpdateListener {
 
     const guildId = event.guildId;
     const eventType = event.eventType;
+
+    // Rate-limit protection: skip if less than 200ms since last same-type update
+    const throttleKey = `${guildId}:${eventType}`;
+    if (this.shouldThrottle(throttleKey)) return;
+
     const sessions = this.sessionManager.getAllForGuild(String(guildId));
 
     if (sessions.length === 0) {
@@ -309,5 +316,14 @@ export class AdminPanelUpdateListener {
       default:
         return false;
     }
+  }
+
+  /** Rate-limit: skip if less than minIntervalMs (default 200ms) since last update for same key. */
+  private shouldThrottle(key: string, minIntervalMs = 200): boolean {
+    const now = Date.now();
+    const last = this.lastUpdateTimestamps.get(key) ?? 0;
+    if (now - last < minIntervalMs) return true;
+    this.lastUpdateTimestamps.set(key, now);
+    return false;
   }
 }

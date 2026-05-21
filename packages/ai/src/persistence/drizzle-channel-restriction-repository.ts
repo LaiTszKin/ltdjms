@@ -54,7 +54,8 @@ export class DrizzleAIChannelRestrictionRepository implements AIChannelRestricti
     const rows = await this.db
       .select()
       .from(aiAllowedChannel)
-      .where(eq(aiAllowedChannel.guildId, Number(guildId)));
+      .where(eq(aiAllowedChannel.guildId, Number(guildId)))
+      .limit(500);
     return rows.map(mapChannelRow);
   }
 
@@ -70,7 +71,8 @@ export class DrizzleAIChannelRestrictionRepository implements AIChannelRestricti
     const rows = await this.db
       .select()
       .from(aiAllowedCategory)
-      .where(eq(aiAllowedCategory.guildId, Number(guildId)));
+      .where(eq(aiAllowedCategory.guildId, Number(guildId)))
+      .limit(500);
     return rows.map(mapCategoryRow);
   }
 

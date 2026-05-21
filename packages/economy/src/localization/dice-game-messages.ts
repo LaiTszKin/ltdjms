@@ -60,7 +60,7 @@ export const DiceGameMessages = {
   DICE_CONFIG_1_DISPLAY:
     '代幣範圍：{min} ~ {max}\n每骰獎勵：{reward}',
   DICE_CONFIG_2_DISPLAY:
-    '代幣範圍：{min} ~ {max}\n順子倍率：{straightMul}\n基本倍率：{baseMul}\n三條低獎：{tripleLow}\n三條高獎：{tripleHigh}\n面值倍率：1點×{face1}、2點×{face2}、3點×{face3}、4點×{face4}、5點×{face5}、6點×{face6}',
+    '代幣範圍：{min} ~ {max}\n順子倍率：{straightMul}\n基本倍率：{baseMul}\n三條低獎：{tripleLow}\n三條高獎：{tripleHigh}',
 
   // ============================================================
   // Common / Errors

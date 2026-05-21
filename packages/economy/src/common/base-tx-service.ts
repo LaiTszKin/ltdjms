@@ -1,4 +1,10 @@
 /**
+ * NOTE: This is a TypeScript-specific abstraction not present in the Java original.
+ * Kept for code reuse between currency and game token implementations.
+ * If this abstraction causes maintenance burden, inline into the concrete classes.
+ */
+
+/**
  * Base service for transaction history querying and recording.
  * Extracts the common pattern shared by CurrencyTransactionService
  * and GameTokenTransactionService.

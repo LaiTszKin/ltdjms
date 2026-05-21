@@ -46,7 +46,10 @@ export class BalanceAdjustmentService {
     source: CurrencyTransactionSource,
     description: string | null,
   ): Promise<Result<BalanceAdjustmentResult, DomainError>> {
-    // Check for overflow: previousBalance + amount must not exceed MAX_SAFE_INTEGER
+    // Overflow check: JavaScript Number.MAX_SAFE_INTEGER (2^53-1) is used instead of
+    // Java Long.MAX_VALUE (2^63-1) because JS lacks 64-bit integer overflow semantics.
+    // This is a platform adaptation — the effective range is ~9e15 vs ~9e18 in Java.
+    // If >MAX_SAFE_INTEGER precision is needed, migrate to BigInt. (P1-3)
     if (amount > 0 && previousBalance > Number.MAX_SAFE_INTEGER - amount) {
       return new Err(
         DomainError.invalidInput(
@@ -249,9 +252,10 @@ export class BalanceAdjustmentService {
 
           const result = await this.accountRepository.tryAdjustBalance(guildId, userId, chunk);
           if (result.isErr()) {
-            // Rollback applied chunks on expected error (P2-1)
-            for (let i = appliedChunks.length - 1; i >= 0; i--) {
-              await this.accountRepository.tryAdjustBalance(guildId, userId, -appliedChunks[i]);
+            // Rollback all applied chunks with a single adjustment (P2-16)
+            const totalApplied = appliedChunks.reduce((sum, c) => sum + c, 0);
+            if (totalApplied !== 0) {
+              await this.accountRepository.tryAdjustBalance(guildId, userId, -totalApplied);
             }
             return new Err(result.getError());
           }
@@ -260,9 +264,10 @@ export class BalanceAdjustmentService {
           remaining -= chunk;
         }
       } catch (txErr) {
-        // Rollback applied chunks on unexpected error and re-throw (P2-1)
-        for (let i = appliedChunks.length - 1; i >= 0; i--) {
-          await this.accountRepository.tryAdjustBalance(guildId, userId, -appliedChunks[i]);
+        // Rollback all applied chunks with a single adjustment (P2-16)
+        const totalApplied = appliedChunks.reduce((sum, c) => sum + c, 0);
+        if (totalApplied !== 0) {
+          await this.accountRepository.tryAdjustBalance(guildId, userId, -totalApplied);
         }
         throw txErr;
       }

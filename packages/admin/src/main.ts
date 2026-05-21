@@ -90,8 +90,7 @@ async function main(): Promise<void> {
 
   // ProductRewardService adapter wrapping GameRewardService.creditReward
   // into the grantReward interface expected by the shop module.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const gameRewardService = container.resolve<any>(ECONOMY_TOKENS.GameRewardService);
+  const gameRewardService = container.resolve<import('@ltdjms/economy').GameRewardService>(ECONOMY_TOKENS.GameRewardService);
   const productRewardService: ProductRewardService = {
     async grantReward(request: Parameters<ProductRewardService['grantReward']>[0]) {
       try {

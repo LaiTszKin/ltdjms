@@ -1,4 +1,4 @@
-import { eq, and, isNull, lte, gte, or, asc, gt, lt, sql } from 'drizzle-orm';
+import { eq, and, isNull, lte, gte, or, asc, gt, lt, sql, inArray } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { type FiatOrderRepository } from '../domain/fiat-order-repository.js';
 import { type FiatOrder, FiatOrderStatus } from '../domain/fiat-order.js';
@@ -322,6 +322,36 @@ export class DrizzleFiatOrderRepository implements FiatOrderRepository {
       )
       .returning();
     return row ? mapRow(row) : null;
+  }
+
+  /**
+   * Batch expires all pending orders matching the given order numbers.
+   * Returns the number of rows updated.
+   */
+  async batchMarkExpired(
+    orderNumbers: string[],
+    expiredAt: Date,
+    terminalReason: string,
+  ): Promise<number> {
+    if (orderNumbers.length === 0) return 0;
+    const result = await this.db
+      .update(fiatOrderTable)
+      .set({
+        status: FiatOrderStatus.EXPIRED,
+        expiredAt,
+        terminalReason,
+        reconciliationProcessingAt: null,
+        updatedAt: now(),
+      })
+      .where(
+        and(
+          inArray(fiatOrderTable.orderNumber, orderNumbers),
+          eq(fiatOrderTable.status, FiatOrderStatus.PENDING_PAYMENT),
+          isNull(fiatOrderTable.paidAt),
+          isNull(fiatOrderTable.expiredAt),
+        ),
+      );
+    return result.rowCount ?? 0;
   }
 
   async claimFulfillmentProcessing(orderNumber: string, claimedAt: Date): Promise<boolean> {

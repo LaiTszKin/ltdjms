@@ -5,6 +5,7 @@ import type {
   AllowedChannel,
   AllowedCategory,
 } from '@ltdjms/ai';
+import { AgentMode } from './agent-mode.js';
 
 /**
  * Facade for AI channel and agent configuration management.
@@ -105,10 +106,16 @@ export class AIConfigManagementFacade {
 
   /**
    * Enables agent mode for a channel.
+   *
+   * @param mode - The agent mode to enable (CHAT, AGENT, or HYBRID).
+   *   Currently accepted but the underlying service layer only supports
+   *   enabled/disabled boolean. TODO: pass mode through to service when
+   *   AIAgentChannelConfigService supports it.
    */
   async enableAgent(
     guildId: string,
     channelId: string,
+    _mode: AgentMode,
   ): Promise<Result<void, DomainError>> {
     return this.agentConfigService.setAgentEnabled(guildId, channelId, true);
   }
@@ -126,6 +133,7 @@ export class AIConfigManagementFacade {
   /**
    * Enables or disables agent mode for a channel.
    * Convenience method that delegates to enableAgent/disableAgent.
+   * Defaults to AGENT mode when enabling.
    */
   async setAgentEnabled(
     guildId: string,
@@ -133,7 +141,7 @@ export class AIConfigManagementFacade {
     enabled: boolean,
   ): Promise<Result<void, DomainError>> {
     if (enabled) {
-      return this.enableAgent(guildId, channelId);
+      return this.enableAgent(guildId, channelId, AgentMode.AGENT);
     }
     return this.disableAgent(guildId, channelId);
   }
