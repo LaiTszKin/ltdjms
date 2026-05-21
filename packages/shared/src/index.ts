@@ -65,6 +65,7 @@ export {
   type DiscordEmbedBuilder,
   type DiscordRuntimeGateway,
   type EmbedView,
+  type FieldView,
   type ButtonView,
   ButtonStyle,
   DiscordJsInteraction,
@@ -74,7 +75,6 @@ export {
   DiscordRuntimeNotReadyError,
   splitSelectMenus,
   splitSelectMenusGeneric,
-  type EmbedLimits,
   createButtonView,
   MockDiscordInteraction,
 } from './discord/index.js';

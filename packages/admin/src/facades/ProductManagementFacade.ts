@@ -1,4 +1,5 @@
 import { type DomainEventPublisher, OperationType } from '@ltdjms/shared';
+import { createRedemptionCode } from '@ltdjms/shop';
 import type {
   ShopService,
   ProductRepository,
@@ -10,7 +11,6 @@ import type {
   ShopPage,
   ProductChangedEvent,
   RedemptionCodesGeneratedEvent,
-  createRedemptionCode,
 } from '@ltdjms/shop';
 
 /**
@@ -123,6 +123,35 @@ export class ProductManagementFacade {
       codes.push(this.codeGenerator.generate());
     }
     return codes;
+  }
+
+  /**
+   * Generates redemption codes and saves them in a single operation.
+   * Encapsulates codeGenerator.generate() + createRedemptionCode() + repository.saveAll()
+   * and publishes RedemptionCodesGeneratedEvent.
+   * This method does NOT call saveCodes() to prevent double event publishing.
+   */
+  async generateAndSaveCodes(
+    productId: number,
+    count: number,
+    guildId: number,
+    expiresAt: Date | null,
+  ): Promise<RedemptionCode[]> {
+    const codes: RedemptionCode[] = [];
+    for (let i = 0; i < count; i++) {
+      const codeStr = this.codeGenerator.generate();
+      codes.push(createRedemptionCode(codeStr, productId, guildId, expiresAt));
+    }
+    const saved = await this.redemptionCodeRepo.saveAll(codes);
+
+    this.eventPublisher.publish({
+      eventType: 'redemption_codes_generated',
+      guildId: String(guildId),
+      productId,
+      count,
+    } as RedemptionCodesGeneratedEvent);
+
+    return saved;
   }
 
   /**

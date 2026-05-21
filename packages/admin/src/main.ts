@@ -29,7 +29,6 @@ import type {
   EscortDispatchHandoffService,
   BalanceService,
   BalanceAdjustmentService,
-  CurrencyTransactionService,
 } from '@ltdjms/shop';
 import { Client, GatewayIntentBits } from 'discord.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -85,7 +84,6 @@ async function main(): Promise<void> {
   // 9. Shop module prerequisites
   const balanceService = container.resolve<BalanceService>(ECONOMY_TOKENS.BalanceService);
   const balanceAdjustmentService = container.resolve<BalanceAdjustmentService>(ECONOMY_TOKENS.BalanceAdjustmentService);
-  const currencyTransactionService = container.resolve<CurrencyTransactionService>(ECONOMY_TOKENS.CurrencyTransactionService);
   const escortDispatchHandoffService = container.resolve<EscortDispatchHandoffService>(DISPATCH_TOKENS.EscortDispatchHandoffService);
 
   // ProductRewardService adapter wrapping GameRewardService.creditReward
@@ -115,7 +113,6 @@ async function main(): Promise<void> {
     escortDispatchHandoffService,
     balanceService,
     balanceAdjustmentService,
-    currencyTransactionService,
     logger,
   });
 

@@ -198,12 +198,12 @@ export const DEFAULT_CURRENCY_ICON = '🪙';
 
 /**
  * Maximum amount that can be adjusted in a single operation.
- * Uses Number.MAX_SAFE_INTEGER (9,007,199,254,740,991) rather than Java's
- * Long.MAX_VALUE (9,223,372,036,854,775,807) because JS number cannot precisely
- * represent values beyond MAX_SAFE_INTEGER. Adjustments exceeding this limit
- * are split into multiple operations by the caller.
+ * Set to 10,000,000 as a reasonable business threshold. The game reward values
+ * (e.g., rewardPerDiceValue = 250,000) are well within this range. Adjustments
+ * exceeding this limit are split into multiple operations by the caller via
+ * tryBatchAdjust's maxChunkSize parameter.
  */
-export const MAX_ADJUSTMENT_AMOUNT = Number.MAX_SAFE_INTEGER;
+export const MAX_ADJUSTMENT_AMOUNT = 10_000_000;
 
 /**
  * Validates that an adjustment amount does not exceed the maximum allowed value.

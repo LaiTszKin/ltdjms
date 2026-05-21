@@ -1,5 +1,4 @@
 import { OperationType, type DomainEvent } from '@ltdjms/shared';
-export { OperationType };
 
 export interface ProductChangedEvent extends DomainEvent {
   readonly eventType: 'product_changed';

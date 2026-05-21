@@ -15,7 +15,7 @@ export {
 } from './prompts/prompt-loader.js';
 export type { PromptLoader, PromptSection } from './prompts/prompt-loader.js';
 
-// AI Chat Service Types
+// AI Chat Service Interfaces and Types
 export {
   StreamChunkType,
   Route,
@@ -39,19 +39,10 @@ export type {
   PermissionSetting,
   ModifyPermissionSetting,
   RoleCreateInfo,
-  ToolExecutionContext,
 } from './services/ai-chat-service.js';
 
 // Routing
 export { AIChatMentionRoutingDecision, resolveRestrictionChannelId, resolveCategoryId } from './services/routing/routing-decision.js';
-export {
-  DefaultAIChannelRestrictionService,
-  InMemoryAIChannelRestrictionRepository,
-} from './services/routing/channel-restriction-service.js';
-export {
-  DefaultAIAgentChannelConfigService,
-  InMemoryAIAgentChannelConfigRepository,
-} from './services/routing/agent-config-service.js';
 export type {
   AIChannelRestrictionService,
   AIChannelRestrictionRepository,
@@ -65,40 +56,6 @@ export type {
 // Chat Services
 export { LangChainAIChatService } from './services/LangChainAIChatService.js';
 export { LangChainExceptionMapper } from './services/LangChainExceptionMapper.js';
-
-// Memory
-export {
-  ConversationIdBuilder,
-  InMemoryToolCallHistory,
-} from './services/memory/tool-call-history.js';
-export {
-  DiscordThreadHistoryProvider,
-  SimplifiedChatMemoryProvider,
-} from './services/memory/chat-memory-provider.js';
-
-// Tools
-export {
-  ToolCallerAuthorizationGuard,
-  PermissionParser,
-  CreateChannelTool,
-  CreateCategoryTool,
-  CreateRoleTool,
-  ListChannelsTool,
-  ListCategoriesTool,
-  ListRolesTool,
-  GetChannelPermissionsTool,
-  GetCategoryPermissionsTool,
-  GetRolePermissionsTool,
-  ModifyChannelPermissionsTool,
-  ModifyCategoryPermissionsTool,
-  ModifyRolePermissionsTool,
-  SendMessagesTool,
-  SearchMessagesTool,
-  ManageMessageTool,
-  MoveChannelTool,
-  DeleteDiscordResourceTool,
-} from './tools/index.js';
-export { ToolExecutionContext as AsyncToolExecutionContext } from './tools/ToolExecutionContext.js';
 
 // Markdown Types
 export {
@@ -115,19 +72,9 @@ export type {
   Invalid,
 } from './markdown/types.js';
 
-// Markdown Validation
-export { CommonMarkValidator, MarkdownErrorFormatter } from './markdown/validation/CommonMarkValidator.js';
+// Markdown Interfaces (not concrete implementations)
 export type { MarkdownValidator } from './markdown/validation/MarkdownValidator.js';
-
-// Markdown AutoFix
-export { RegexBasedAutoFixer } from './markdown/autofix/RegexBasedAutoFixer.js';
 export type { MarkdownAutoFixer } from './markdown/autofix/MarkdownAutoFixer.js';
-
-// Markdown Services
-export { DiscordMarkdownSanitizer } from './markdown/services/DiscordMarkdownSanitizer.js';
-export { DiscordMarkdownPaginator } from './markdown/services/DiscordMarkdownPaginator.js';
-export { DiscordMarkdownStreamProcessor } from './markdown/services/DiscordMarkdownStreamProcessor.js';
-export { MarkdownValidatingAIChatService } from './markdown/services/MarkdownValidatingAIChatService.js';
 
 // Commands
 export { AIChatMentionListener } from './commands/ai-chat-mention-listener.js';

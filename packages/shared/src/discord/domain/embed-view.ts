@@ -38,7 +38,6 @@ export enum ButtonStyle {
   SECONDARY = 2,
   SUCCESS = 3,
   DANGER = 4,
-  LINK = 5,
 }
 
 /**

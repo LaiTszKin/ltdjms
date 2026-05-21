@@ -16,10 +16,6 @@ import { AdminPanelViewState } from '../../../session/types.js';
 import { BotErrorHandler } from '../../../commands/infra/BotErrorHandler.js';
 import { ZhTwStrings } from '../../../i18n/zh-TW.js';
 import { BaseAdminHandler } from '../BaseAdminHandler.js';
-import {
-  createRedemptionCode,
-  type RedemptionCode,
-} from '@ltdjms/shop';
 import { ProductManagementFacade } from '../../../facades/ProductManagementFacade.js';
 import { AdminProductPanelViewFactory } from './AdminProductPanelViewFactory.js';
 import { AdminProductPanelModalFactory } from './AdminProductPanelModalFactory.js';
@@ -483,19 +479,14 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     }
 
     try {
-      const codeStrings = this.productFacade.generateCodes(count);
-
-      const redemptionCodes: RedemptionCode[] = codeStrings.map((codeStr) =>
-        createRedemptionCode(codeStr, productId, Number(guildId), expiresAt),
-      );
-      const savedCodes = await this.productFacade.saveCodes(redemptionCodes, guildId, productId, count);
+      const savedCodes = await this.productFacade.generateAndSaveCodes(productId, count, Number(guildId), expiresAt);
 
       this.sessionManager.setViewState(guildId, interaction.getUserId(), AdminPanelViewState.PRODUCT_CODE_LIST);
 
       const product = await this.productFacade.findProductById(productId);
       const productName = product?.name ?? String(productId);
 
-      const displayCodes = savedCodes.map((c: RedemptionCode) => ({ code: c.code, redeemed: c.redeemedBy !== null }));
+      const displayCodes = savedCodes.map((c) => ({ code: c.code, redeemed: c.redeemedBy !== null }));
       const embedData = this.viewFactory.buildProductCodeListEmbed(displayCodes, productName, 1);
       const embed = new EmbedBuilder()
         .setTitle(embedData.title)

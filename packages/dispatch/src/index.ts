@@ -41,17 +41,6 @@ export {
 } from './service/index.js';
 
 // ============================================================
-// Panel
-// ============================================================
-
-export {
-  DispatchPanelCommandHandler,
-  DispatchPanelInteractionHandler,
-  DispatchPanelSessionManager,
-  type DispatchSessionState,
-} from './panel/index.js';
-
-// ============================================================
 // DI
 // ============================================================
 

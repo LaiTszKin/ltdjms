@@ -50,6 +50,7 @@ export class DiscordJsEmbedBuilder implements DiscordEmbedBuilder {
 
   addField(name: string, value: string, inline: boolean): DiscordEmbedBuilder {
     if (this.fieldCount >= this.MAX_FIELDS) {
+      this.logger.warn('Embed field limit exceeded, field will be ignored');
       return this;
     }
     this.embed.addFields({

@@ -1,12 +1,5 @@
-import {
-  type DomainEventPublisher,
-  type CacheService,
-  type CacheKeyGenerator,
-} from '@ltdjms/shared';
-import type { BalanceChangedEvent } from '@ltdjms/economy';
 import { BalanceAdjustmentService } from '../../currency/services/balance-adjustment-service.js';
 import { BalanceService } from '../../currency/services/balance-service.js';
-import { CurrencyTransactionService } from '../../currency/services/currency-tx-service.js';
 import type { CurrencyTransactionSource } from '../../domain/types.js';
 import { MAX_ADJUSTMENT_AMOUNT } from '../../domain/types.js';
 
@@ -28,10 +21,6 @@ export class GameRewardService {
   constructor(
     private readonly balanceAdjustmentService: BalanceAdjustmentService,
     private readonly balanceService: BalanceService,
-    private readonly transactionService: CurrencyTransactionService,
-    private readonly eventPublisher: DomainEventPublisher,
-    private readonly cacheService: CacheService,
-    private readonly cacheKeyGenerator: CacheKeyGenerator,
     private readonly maxAdjustmentAmount: number = MAX_ADJUSTMENT_AMOUNT,
   ) {}
 

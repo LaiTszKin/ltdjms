@@ -25,7 +25,7 @@ export class ToolExecutionInterceptor {
     const correlationId = randomUUID();
     const timer = setTimeout(() => {
       this.durations.delete(correlationId);
-    }, 60000);
+    }, 60000).unref();
     this.durations.set(correlationId, { startTime: Date.now(), timer });
 
     this.logger.info({

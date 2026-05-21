@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, existsSync, statSync } from 'node:fs';
+import { readdir, readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { DomainError, ok, err, type Result } from '@ltdjms/shared';
 
@@ -48,7 +48,7 @@ export class SystemPrompt {
  * or `getError()`. Calling `getValue()` on an Err result will throw.
  */
 export interface PromptLoader {
-  loadPrompts(agentEnabled: boolean): Result<SystemPrompt, DomainError>;
+  loadPrompts(agentEnabled: boolean): Promise<Result<SystemPrompt, DomainError>>;
 }
 
 /**
@@ -73,11 +73,11 @@ export class DefaultPromptLoader implements PromptLoader {
    * - Directory not found: returns empty SystemPrompt with warning
    * - File too large: returns DomainError PROMPT_FILE_TOO_LARGE
    */
-  loadPrompts(agentEnabled: boolean): Result<SystemPrompt, DomainError> {
+  async loadPrompts(agentEnabled: boolean): Promise<Result<SystemPrompt, DomainError>> {
     const sections: PromptSection[] = [];
 
     // Load base prompts
-    const baseSections = this.loadDirectory(this.promptsDirPath);
+    const baseSections = await this.loadDirectory(this.promptsDirPath);
     if (baseSections.isOk()) {
       sections.push(...baseSections.getValue());
     } else if (baseSections.getError().category !== 'PROMPT_DIR_NOT_FOUND') {
@@ -87,7 +87,7 @@ export class DefaultPromptLoader implements PromptLoader {
     // Load agent prompts if enabled
     if (agentEnabled) {
       const agentDir = join(this.promptsDirPath, 'agent');
-      const agentSections = this.loadDirectory(agentDir);
+      const agentSections = await this.loadDirectory(agentDir);
       if (agentSections.isOk()) {
         sections.push(...agentSections.getValue());
       } else if (agentSections.getError().category !== 'PROMPT_DIR_NOT_FOUND') {
@@ -98,14 +98,16 @@ export class DefaultPromptLoader implements PromptLoader {
     return ok(SystemPrompt.fromSections(sections));
   }
 
-  private loadDirectory(dirPath: string): Result<PromptSection[], DomainError> {
-    if (!existsSync(dirPath)) {
+  private async loadDirectory(dirPath: string): Promise<Result<PromptSection[], DomainError>> {
+    try {
+      await stat(dirPath);
+    } catch {
       return err(DomainError.promptDirNotFound(
         `Prompt directory not found: ${dirPath}`,
       ));
     }
 
-    const entries = readdirSync(dirPath, { withFileTypes: true });
+    const entries = await readdir(dirPath, { withFileTypes: true });
     const mdFiles = entries
       .filter((e) => e.isFile() && e.name.endsWith('.md'))
       .map((e) => e.name)
@@ -120,14 +122,14 @@ export class DefaultPromptLoader implements PromptLoader {
       const filePath = join(dirPath, fileName);
 
       try {
-        const stats = statSync(filePath);
+        const stats = await stat(filePath);
         if (stats.size > this.maxFileSizeBytes) {
           return err(DomainError.promptFileTooLarge(
             `Prompt file too large: ${fileName} (${stats.size} bytes, max ${this.maxFileSizeBytes})`,
           ));
         }
 
-        const content = readFileSync(filePath, 'utf-8');
+        const content = await readFile(filePath, 'utf-8');
         const name = fileName.replace(/\.md$/, '');
         sections.push({ name, content });
       } catch (cause) {
