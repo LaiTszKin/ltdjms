@@ -7,6 +7,7 @@ export type {
 
 // Domain
 export type { FiatOrder } from './domain/fiat-order.js';
+export type { EcpayCallbackPayload } from './domain/ecpay-callback-payload.js';
 
 export { createRedemptionCode } from './domain/redemption-code.js';
 export type { RedemptionCode } from './domain/redemption-code.js';
