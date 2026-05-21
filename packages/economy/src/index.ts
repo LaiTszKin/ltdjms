@@ -35,30 +35,30 @@ export type {
 // Currency Services
 // ============================================================
 
-export { BalanceService } from './currency/services/balance-service.js';
-export { BalanceAdjustmentService } from './currency/services/balance-adjustment-service.js';
-export { CurrencyConfigService } from './currency/services/currency-config-service.js';
-export { CurrencyTransactionService } from './currency/services/currency-tx-service.js';
+export type { BalanceService } from './currency/services/balance-service.js';
+export type { BalanceAdjustmentService } from './currency/services/balance-adjustment-service.js';
+export type { CurrencyConfigService } from './currency/services/currency-config-service.js';
+export type { CurrencyTransactionService } from './currency/services/currency-tx-service.js';
 
 // ============================================================
 // Token Services
 // ============================================================
 
-export { GameTokenService } from './token/services/game-token-service.js';
-export { GameTokenTransactionService } from './token/services/game-token-tx-service.js';
+export type { GameTokenService } from './token/services/game-token-service.js';
+export type { GameTokenTransactionService } from './token/services/game-token-tx-service.js';
 
 // ============================================================
 // Dice Services
 // ============================================================
 
-export { GameRewardService } from './dice/services/game-reward-service.js';
-export { DiceConfigService } from './dice/services/dice-config-service.js';
+export type { GameRewardService } from './dice/services/game-reward-service.js';
+export type { DiceConfigService } from './dice/services/dice-config-service.js';
 
 // ============================================================
 // Command Handlers
 // ============================================================
 
-export {
+export type {
   BalanceHandler,
   CurrencyConfigHandler,
   DiceGame1Handler,

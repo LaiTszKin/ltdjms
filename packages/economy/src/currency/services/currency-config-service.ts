@@ -6,7 +6,7 @@ import {
   DomainError,
   type DomainEventPublisher,
 } from '@ltdjms/shared';
-import type { CurrencyConfigChangedEvent } from '@ltdjms/economy';
+import type { CurrencyConfigChangedEvent } from '../../events/index.js';
 import { CurrencyConfigRepository } from '../repositories/currency-config-repo.js';
 import type { GuildCurrencyConfig } from '../../domain/types.js';
 import {

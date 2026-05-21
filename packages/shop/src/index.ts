@@ -16,15 +16,14 @@ export type { Product, ProductRepository } from './domain/product-types.js';
 // Services
 export { FiatOrderProcessingScheduler } from './services/fiat-order-processing-scheduler.js';
 
-export { ShopService } from './services/shop.service.js';
-export type { ShopPage } from './services/shop.service.js';
+export type { ShopService, ShopPage } from './services/shop.service.js';
 
-export { RedemptionCodeGenerator } from './services/redemption-code-generator.js';
+export type { RedemptionCodeGenerator } from './services/redemption-code-generator.js';
 
-export { RedemptionService } from './services/redemption.service.js';
+export type { RedemptionService } from './services/redemption.service.js';
 export type { RedemptionResult } from './services/redemption.service.js';
 
-export { ShopCommandHandler } from './commands/shop-handler.js';
+export type { ShopCommandHandler } from './commands/shop-handler.js';
 
 // Web
 export { EcpayCallbackHttpServer } from './web/ecpay-callback-server.js';

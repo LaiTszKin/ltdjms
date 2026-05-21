@@ -4,7 +4,7 @@ import {
   DomainError,
 } from '@ltdjms/shared';
 import { GameConfigManagementFacade } from '../GameConfigManagementFacade.js';
-import { DiceConfigService } from '@ltdjms/economy';
+import type { DiceConfigService } from '@ltdjms/economy';
 import type { DiceGame1Config, DiceGame2Config } from '@ltdjms/economy';
 
 describe('GameConfigManagementFacade', () => {

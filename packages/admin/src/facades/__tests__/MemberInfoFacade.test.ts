@@ -11,7 +11,7 @@ import type {
   GameTokenTransaction,
   TransactionPage,
 } from '@ltdjms/economy';
-import { RedemptionService } from '@ltdjms/shop';
+import type { RedemptionService } from '@ltdjms/shop';
 
 describe('MemberInfoFacade', () => {
   let facade: MemberInfoFacade;

@@ -127,7 +127,6 @@ export class EscortPricingHandler extends BaseAdminHandler {
 
     const modalData = this.modalFactory.buildEscortPricingEditModal(
       optionName,
-      0,
       currentOverride,
     );
 

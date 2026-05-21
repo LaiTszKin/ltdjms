@@ -1,7 +1,7 @@
 import { type Result, ok, err, DomainError } from '@ltdjms/shared';
 import {
-  GameTokenService,
-  GameTokenTransactionService,
+  type GameTokenService,
+  type GameTokenTransactionService,
   GameTokenTransactionSource,
   type TokenAdjustmentResult,
   type GameTokenTransaction,

@@ -97,7 +97,28 @@ export class ConversationIdBuilder {
 export class InMemoryToolCallHistory {
   private static readonly MAX_HISTORY_PER_CONVERSATION = 50;
   private static readonly MAX_CONVERSATIONS = 10_000;
+  private static readonly TTL_MS = 60 * 60 * 1000; // 1 hour
   private store: Map<string, ToolCallEntry[]> = new Map();
+
+  constructor() {
+    setInterval(() => this.evictExpiredEntries(), InMemoryToolCallHistory.TTL_MS).unref();
+  }
+
+  /**
+   * Evicts conversation entries older than TTL_MS from the store.
+   */
+  private evictExpiredEntries(): void {
+    const now = Date.now();
+    const expiry = InMemoryToolCallHistory.TTL_MS;
+    for (const [key, entries] of this.store.entries()) {
+      const valid = entries.filter(e => now - e.timestamp.getTime() < expiry);
+      if (valid.length === 0) {
+        this.store.delete(key);
+      } else {
+        this.store.set(key, valid);
+      }
+    }
+  }
 
   /**
    * Adds a tool call entry to history.

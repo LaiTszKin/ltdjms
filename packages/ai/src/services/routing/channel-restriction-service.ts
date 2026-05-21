@@ -1,4 +1,5 @@
-import { DomainError, ok, okVoid, err, type Result, type Unit, DomainEventPublisher, type DomainEvent } from '@ltdjms/shared';
+import { DomainError, ok, okVoid, err, type Result, type Unit, type DomainEvent } from '@ltdjms/shared';
+import type { DomainEventPublisher } from '@ltdjms/shared';
 import type {
   AllowedChannel,
   AllowedCategory,

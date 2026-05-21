@@ -9,7 +9,7 @@ import {
   type DomainEventPublisher,
   type DiscordRuntimeGateway,
 } from '@ltdjms/shared';
-import type { AIAgentChannelConfigChangedEvent } from '@ltdjms/ai';
+import type { AIAgentChannelConfigChangedEvent } from '../../events/index.js';
 import type { AIAgentChannelConfig } from '../ai-chat-service.js';
 
 // ===== Agent Config Repository Interface =====

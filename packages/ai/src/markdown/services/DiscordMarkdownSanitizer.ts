@@ -3,10 +3,9 @@
  * Matches Java DiscordMarkdownSanitizer.
  *
  * Operations:
- * 1. Remove HTML comments (<!-- ... -->)
- * 2. Remove HTML tags (<...>)
- * 3. Flatten nested blockquotes (>> → >)
- * 4. Convert tables to ```text code blocks
+ * 1. Remove HTML comments and HTML tags (single pass)
+ * 2. Flatten nested blockquotes (>> → >)
+ * 3. Convert tables to ```text code blocks
  */
 export class DiscordMarkdownSanitizer {
   /**
@@ -21,18 +20,17 @@ export class DiscordMarkdownSanitizer {
     const codeBlocks: string[] = [];
     result = this.protectCodeBlocks(result, codeBlocks);
 
-    // 1. Remove HTML comments
-    result = result.replace(/<!--[\s\S]*?-->/g, '');
-
-    // 2. Remove HTML tags (but keep self-closing br and hr simple)
-    result = result.replace(/<[^>]*>/g, '');
+    // 1. Remove HTML comments and HTML tags in a single pass (P2-7)
+    result = result.replace(/<!--[\s\S]*?-->|<[^>]*>/g, '');
 
     // 3. Flatten nested blockquotes (e.g. ">> > text" → "> text")
     // Regex matches leading blockquote prefix only; the rest of the line is preserved.
     result = result.replace(/^(?:\s*>\s*)+/gm, '> ');
 
-    // 4. Convert tables to ```text code blocks
-    result = this.convertTablesToCodeBlocks(result);
+    // 4. Convert tables to ```text code blocks (skip if input is too large to avoid pathological backtracking)
+    if (result.length <= 50000) {
+      result = this.convertTablesToCodeBlocks(result);
+    }
 
     // 5. Remove trailing whitespace on each line（P3-10：移至 pipeline 前端，僅執行一次）
     result = result.replace(/[ \t]+$/gm, '');

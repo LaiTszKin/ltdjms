@@ -24,6 +24,38 @@ import {
  * - INLINE_HEADING: ## not at start of line
  */
 export class CommonMarkValidator implements MarkdownValidator {
+  /**
+   * Builds an array of line start offsets for the given text.
+   */
+  private buildLineStarts(text: string): number[] {
+    const lineStarts: number[] = [0];
+    for (let i = 0; i < text.length; i++) {
+      if (text[i] === '\n') {
+        lineStarts.push(i + 1);
+      }
+    }
+    return lineStarts;
+  }
+
+  /**
+   * Finds the 1-based line number for a given character offset
+   * using binary search on the lineStarts array.
+   */
+  private getLineNumber(offset: number, lineStarts: number[]): number {
+    let lo = 0;
+    let hi = lineStarts.length - 1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (lineStarts[mid] <= offset) {
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
+    }
+    // hi is the index of the last line start <= offset; line number is hi + 1
+    return hi + 1;
+  }
+
   validate(markdown: string): ValidationResult {
     if (!markdown || markdown.trim().length === 0) {
       return valid(markdown);
@@ -31,6 +63,7 @@ export class CommonMarkValidator implements MarkdownValidator {
 
     const errors: MarkdownError[] = [];
     const lines = markdown.split('\n');
+    const lineStarts = this.buildLineStarts(markdown);
 
     // Parse using marked.lexer() to get AST tokens
     let tokens: Token[];
@@ -42,7 +75,7 @@ export class CommonMarkValidator implements MarkdownValidator {
     }
 
     // Walk the token tree recursively for AST-based validation
-    this.walkTokens(tokens, lines, markdown, errors);
+    this.walkTokens(tokens, lines, markdown, errors, lineStarts);
 
     // Additional regex-based pass for heading/list format issues that the AST may miss.
     // The CommonMark spec requires space after #/list markers, but we flag it proactively.
@@ -96,6 +129,7 @@ export class CommonMarkValidator implements MarkdownValidator {
     lines: string[],
     markdown: string,
     errors: MarkdownError[],
+    lineStarts: number[],
     parentRaw?: string,
     parentPos?: number,
   ): void {
@@ -115,9 +149,9 @@ export class CommonMarkValidator implements MarkdownValidator {
         cursor = pos + token.raw.length;
       }
 
-      // Compute 1-based line number from character position
+      // Compute 1-based line number from character position using binary search
       const lineNum = pos >= 0
-        ? markdown.slice(0, pos).split('\n').length
+        ? this.getLineNumber(pos, lineStarts)
         : 1;
 
       switch (token.type) {
@@ -128,7 +162,7 @@ export class CommonMarkValidator implements MarkdownValidator {
           // Code block is properly closed — nothing to validate inside
           break;
         case 'list':
-          this.validateListToken(token as Tokens.List, errors, markdown, pos >= 0 ? pos : 0);
+          this.validateListToken(token as Tokens.List, errors, markdown, pos >= 0 ? pos : 0, lineStarts);
           break;
         case 'hr':
           this.validateHrToken(token as Tokens.Hr, errors, lineNum);
@@ -147,7 +181,7 @@ export class CommonMarkValidator implements MarkdownValidator {
       // Recurse into nested tokens (e.g. list items)
       const tok = token as Token & { tokens?: Token[] };
       if (tok.tokens && tok.tokens.length > 0) {
-        this.walkTokens(tok.tokens, lines, markdown, errors, token.raw, pos >= 0 ? pos : 0);
+        this.walkTokens(tok.tokens, lines, markdown, errors, lineStarts, token.raw, pos >= 0 ? pos : 0);
       }
     }
   }
@@ -247,6 +281,7 @@ export class CommonMarkValidator implements MarkdownValidator {
     errors: MarkdownError[],
     markdown: string,
     listPos: number,
+    lineStarts: number[],
   ): void {
     const items = token.items;
     let itemCursor = 0;
@@ -259,7 +294,7 @@ export class CommonMarkValidator implements MarkdownValidator {
       }
       const absolutePos = relativePos >= 0 ? listPos + relativePos : -1;
       const itemLineNum = absolutePos >= 0
-        ? markdown.slice(0, absolutePos).split('\n').length
+        ? this.getLineNumber(absolutePos, lineStarts)
         : 1;
       const rawFirstLine = item.raw.split('\n')[0];
       const trimmed = rawFirstLine.trimStart();

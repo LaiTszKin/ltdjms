@@ -102,7 +102,11 @@ export class EcpayCallbackHttpServer {
     this.server.on('connection', (socket) => {
       this.connections.add(socket);
       socket.on('close', () => this.connections.delete(socket));
-      socket.on('error', () => this.connections.delete(socket));
+      socket.on('error', () => {
+        this.connections.delete(socket);
+        // P3-6: Defensive delayed cleanup in case close never fires
+        setTimeout(() => this.connections.delete(socket), 30000).unref();
+      });
     });
 
     // Handle server-level errors (P1-8)
