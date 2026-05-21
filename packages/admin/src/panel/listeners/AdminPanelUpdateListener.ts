@@ -68,6 +68,7 @@ export class AdminPanelUpdateListener {
   private readonly debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   /** Coalescing window in ms: events within this interval reset the timer. */
+  /** @internal accessible for tests (set DEBOUNCE_MS = 1 in vitest beforeEach). */
   static readonly DEBOUNCE_MS = 500;
 
   /** Max concurrent Discord API calls when processing batched updates. */
