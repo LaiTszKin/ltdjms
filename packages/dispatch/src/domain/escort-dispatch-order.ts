@@ -11,6 +11,8 @@
  *                                                         AFTER_SALES_CLOSED
  */
 
+import { ok, err, DomainError, type Result } from '@ltdjms/shared';
+
 /** 客戶確認超時門檻：24 小時（毫秒）。 */
 export const CUSTOMER_CONFIRM_TIMEOUT_MS = 24 * 60 * 60 * 1000;
 
@@ -67,82 +69,105 @@ export interface EscortDispatchOrder {
 
 // ---- Validation ----
 
-function validateOrder(order: EscortDispatchOrder): void {
+function validateOrder(order: EscortDispatchOrder): string | null {
   if (!order.orderNumber || order.orderNumber.trim().length === 0) {
-    throw new Error('orderNumber must not be blank');
+    return 'orderNumber must not be blank';
   }
   if (order.orderNumber.length > 32) {
-    throw new Error('orderNumber must not exceed 32 characters');
+    return 'orderNumber must not exceed 32 characters';
   }
   if (order.escortUserId === order.customerUserId) {
-    throw new Error('escortUserId and customerUserId must be different');
+    return 'escortUserId and customerUserId must be different';
   }
-  validateSourceSnapshot(order);
-  validateRequiredTimestamps(order);
+  const snapshotErr = validateSourceSnapshot(order);
+  if (snapshotErr != null) {
+    return snapshotErr;
+  }
+  return validateRequiredTimestamps(order);
 }
 
-function validateSourceSnapshot(order: EscortDispatchOrder): void {
+function validateSourceSnapshot(order: EscortDispatchOrder): string | null {
   if (order.sourceType === SourceType.MANUAL) {
     if (order.sourceReference != null || order.sourceProductId != null ||
         order.sourceProductName != null || order.sourceCurrencyPrice != null ||
         order.sourceFiatPriceTwd != null) {
-      throw new Error('manual dispatch order must not carry source snapshot');
+      return 'manual dispatch order must not carry source snapshot';
     }
-    return;
+    return null;
   }
   // Auto-sourced orders require source snapshot
   if (!order.sourceReference || order.sourceReference.trim().length === 0) {
-    throw new Error('sourceReference must not be blank');
+    return 'sourceReference must not be blank';
   }
   if (order.sourceProductId == null) {
-    throw new Error('sourceProductId must not be null');
+    return 'sourceProductId must not be null';
   }
   if (!order.sourceProductName || order.sourceProductName.trim().length === 0) {
-    throw new Error('sourceProductName must not be blank');
+    return 'sourceProductName must not be blank';
   }
   if (!order.sourceEscortOptionCode || order.sourceEscortOptionCode.trim().length === 0) {
-    throw new Error('sourceEscortOptionCode must not be blank');
+    return 'sourceEscortOptionCode must not be blank';
   }
   if (order.sourceCurrencyPrice == null && order.sourceFiatPriceTwd == null) {
-    throw new Error('source price snapshot must not be empty');
+    return 'source price snapshot must not be empty';
   }
+  return null;
 }
 
-function validateRequiredTimestamps(order: EscortDispatchOrder): void {
+function validateRequiredTimestamps(order: EscortDispatchOrder): string | null {
   const s = order.status;
   switch (s) {
     case EscortDispatchOrderStatus.PENDING_CONFIRMATION:
       break;
-    case EscortDispatchOrderStatus.CONFIRMED:
-      requireField('confirmedAt', order.confirmedAt, s);
+    case EscortDispatchOrderStatus.CONFIRMED: {
+      const errMsg = requireField('confirmedAt', order.confirmedAt, s);
+      if (errMsg != null) return errMsg;
       break;
-    case EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION:
-      requireField('confirmedAt', order.confirmedAt, s);
-      requireField('completionRequestedAt', order.completionRequestedAt, s);
+    }
+    case EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION: {
+      let errMsg = requireField('confirmedAt', order.confirmedAt, s);
+      if (errMsg != null) return errMsg;
+      errMsg = requireField('completionRequestedAt', order.completionRequestedAt, s);
+      if (errMsg != null) return errMsg;
       break;
-    case EscortDispatchOrderStatus.COMPLETED:
-      requireField('completedAt', order.completedAt, s);
+    }
+    case EscortDispatchOrderStatus.COMPLETED: {
+      const errMsg = requireField('completedAt', order.completedAt, s);
+      if (errMsg != null) return errMsg;
       break;
-    case EscortDispatchOrderStatus.AFTER_SALES_REQUESTED:
-      requireField('afterSalesRequestedAt', order.afterSalesRequestedAt, s);
+    }
+    case EscortDispatchOrderStatus.AFTER_SALES_REQUESTED: {
+      const errMsg = requireField('afterSalesRequestedAt', order.afterSalesRequestedAt, s);
+      if (errMsg != null) return errMsg;
       break;
-    case EscortDispatchOrderStatus.AFTER_SALES_IN_PROGRESS:
-      requireField('afterSalesRequestedAt', order.afterSalesRequestedAt, s);
-      requireField('afterSalesAssigneeUserId', order.afterSalesAssigneeUserId, s);
-      requireField('afterSalesAssignedAt', order.afterSalesAssignedAt, s);
+    }
+    case EscortDispatchOrderStatus.AFTER_SALES_IN_PROGRESS: {
+      let errMsg = requireField('afterSalesRequestedAt', order.afterSalesRequestedAt, s);
+      if (errMsg != null) return errMsg;
+      errMsg = requireField('afterSalesAssigneeUserId', order.afterSalesAssigneeUserId, s);
+      if (errMsg != null) return errMsg;
+      errMsg = requireField('afterSalesAssignedAt', order.afterSalesAssignedAt, s);
+      if (errMsg != null) return errMsg;
       break;
-    case EscortDispatchOrderStatus.AFTER_SALES_CLOSED:
-      requireField('afterSalesRequestedAt', order.afterSalesRequestedAt, s);
-      requireField('afterSalesAssigneeUserId', order.afterSalesAssigneeUserId, s);
-      requireField('afterSalesClosedAt', order.afterSalesClosedAt, s);
+    }
+    case EscortDispatchOrderStatus.AFTER_SALES_CLOSED: {
+      let errMsg = requireField('afterSalesRequestedAt', order.afterSalesRequestedAt, s);
+      if (errMsg != null) return errMsg;
+      errMsg = requireField('afterSalesAssigneeUserId', order.afterSalesAssigneeUserId, s);
+      if (errMsg != null) return errMsg;
+      errMsg = requireField('afterSalesClosedAt', order.afterSalesClosedAt, s);
+      if (errMsg != null) return errMsg;
       break;
+    }
   }
+  return null;
 }
 
-function requireField(name: string, value: unknown, status?: EscortDispatchOrderStatus): void {
+function requireField(name: string, value: unknown, status?: EscortDispatchOrderStatus): string | null {
   if (value == null) {
-    throw new Error(`${name} must not be null for status ${status ?? 'unknown'}`);
+    return `${name} must not be null for status ${status ?? 'unknown'}`;
   }
+  return null;
 }
 
 function now(): Date {
@@ -174,7 +199,7 @@ function createOrder(params: {
   sourceFiatPriceTwd?: number | null;
   sourceEscortOptionCode?: string | null;
   status: EscortDispatchOrderStatus;
-}): EscortDispatchOrder {
+}): Result<EscortDispatchOrder, DomainError> {
   const ts = now();
   const order: EscortDispatchOrder = {
     id: params.id ?? null,
@@ -201,8 +226,11 @@ function createOrder(params: {
     sourceEscortOptionCode: params.sourceEscortOptionCode ?? null,
     status: params.status,
   };
-  validateOrder(order);
-  return order;
+  const validationError = validateOrder(order);
+  if (validationError != null) {
+    return err(DomainError.invalidInput(validationError));
+  }
+  return ok(order);
 }
 
 // ---- Factory Functions ----
@@ -214,9 +242,9 @@ export function createPending(
   assignedByUserId: number,
   escortUserId: number,
   customerUserId: number,
-): EscortDispatchOrder {
+): Result<EscortDispatchOrder, DomainError> {
   if (customerUserId <= 0) {
-    throw new Error('customerUserId must be greater than 0');
+    return err(DomainError.invalidInput('customerUserId must be greater than 0'));
   }
   return createOrder({
     orderNumber,
@@ -241,9 +269,9 @@ export function createManualOpenOrder(
   assignedByUserId: number,
   customerUserId: number,
   sourceEscortOptionCode: string,
-): EscortDispatchOrder {
+): Result<EscortDispatchOrder, DomainError> {
   if (customerUserId <= 0) {
-    throw new Error('customerUserId must be greater than 0');
+    return err(DomainError.invalidInput('customerUserId must be greater than 0'));
   }
   return createOrder({
     orderNumber,
@@ -282,7 +310,7 @@ export function fromDbRow(params: {
   sourceCurrencyPrice: number | null;
   sourceFiatPriceTwd: number | null;
   sourceEscortOptionCode: string | null;
-}): EscortDispatchOrder {
+}): Result<EscortDispatchOrder, DomainError> {
   return createOrder({
     id: params.id,
     orderNumber: params.orderNumber,
@@ -324,7 +352,7 @@ export function createAutoHandoff(
   sourceCurrencyPrice: number | null,
   sourceFiatPriceTwd: number | null,
   sourceEscortOptionCode: string,
-): EscortDispatchOrder {
+): Result<EscortDispatchOrder, DomainError> {
   return createOrder({
     orderNumber,
     guildId,
@@ -348,7 +376,7 @@ export function createAutoHandoff(
 export function withConfirmed(
   order: EscortDispatchOrder,
   confirmedAt: Date,
-): EscortDispatchOrder {
+): Result<EscortDispatchOrder, DomainError> {
   return createOrder({
     ...order,
     id: order.id,
@@ -367,7 +395,7 @@ export function withConfirmed(
 export function withCompletionRequested(
   order: EscortDispatchOrder,
   requestedAt: Date,
-): EscortDispatchOrder {
+): Result<EscortDispatchOrder, DomainError> {
   return createOrder({
     ...order,
     id: order.id,
@@ -385,7 +413,7 @@ export function withCompletionRequested(
 export function withCompleted(
   order: EscortDispatchOrder,
   completedAt: Date,
-): EscortDispatchOrder {
+): Result<EscortDispatchOrder, DomainError> {
   return createOrder({
     ...order,
     id: order.id,
@@ -398,7 +426,7 @@ export function withCompleted(
 export function withAfterSalesRequested(
   order: EscortDispatchOrder,
   requestedAt: Date,
-): EscortDispatchOrder {
+): Result<EscortDispatchOrder, DomainError> {
   return createOrder({
     ...order,
     id: order.id,
@@ -415,7 +443,7 @@ export function withAfterSalesInProgress(
   order: EscortDispatchOrder,
   assigneeUserId: number,
   assignedAt: Date,
-): EscortDispatchOrder {
+): Result<EscortDispatchOrder, DomainError> {
   return createOrder({
     ...order,
     id: order.id,
@@ -432,7 +460,7 @@ export function withAssignedEscort(
   assignedBy: number,
   escortUserIdValue: number,
   assignedAt: Date,
-): EscortDispatchOrder {
+): Result<EscortDispatchOrder, DomainError> {
   return createOrder({
     ...order,
     id: order.id,
@@ -446,7 +474,7 @@ export function withAssignedEscort(
 export function withAfterSalesClosed(
   order: EscortDispatchOrder,
   closedAt: Date,
-): EscortDispatchOrder {
+): Result<EscortDispatchOrder, DomainError> {
   return createOrder({
     ...order,
     id: order.id,

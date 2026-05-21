@@ -77,10 +77,13 @@ export class EscortDispatchOrderService {
       }
     }
 
+    const orderNumber = await this.generateUniqueOrderNumber();
+    const pendingResult = createPending(orderNumber, guildId, assignedByUserId, escortUserId, customerUserId);
+    if (pendingResult.isErr()) {
+      return pendingResult;
+    }
     try {
-      const orderNumber = await this.generateUniqueOrderNumber();
-      const order = createPending(orderNumber, guildId, assignedByUserId, escortUserId, customerUserId);
-      const saved = await this.repository.save(order);
+      const saved = await this.repository.save(pendingResult.getValue());
       return new Ok(saved);
     } catch (e) {
       const err = e instanceof Error ? e : new Error(String(e));
@@ -123,14 +126,17 @@ export class EscortDispatchOrderService {
 
     try {
       const orderNumber = await this.generateUniqueOrderNumber();
-      const order = createManualOpenOrder(
+      const orderResult = createManualOpenOrder(
         orderNumber,
         guildId,
         assignedByUserId,
         customerUserId,
         escortOptionCode,
       );
-      const saved = await this.repository.save(order);
+      if (orderResult.isErr()) {
+        return orderResult;
+      }
+      const saved = await this.repository.save(orderResult.getValue());
       return new Ok(saved);
     } catch (e) {
       const err = e instanceof Error ? e : new Error(String(e));
@@ -233,9 +239,13 @@ export class EscortDispatchOrderService {
       return new Err(DomainError.invalidInput('此訂單目前不可送出完成'));
     }
 
+    const completionRequestedResult = withCompletionRequested(order, new Date(this.clock!()));
+    if (completionRequestedResult.isErr()) {
+      return completionRequestedResult;
+    }
     try {
       const updated = await this.repository.update(
-        withCompletionRequested(order, new Date(this.clock!())),
+        completionRequestedResult.getValue(),
         EscortDispatchOrderStatus.CONFIRMED,
       );
       return new Ok(updated);
@@ -272,8 +282,12 @@ export class EscortDispatchOrderService {
         return new Ok(normalized);
       }
 
+      const completedResult = withCompleted(normalized, new Date(this.clock!()));
+      if (completedResult.isErr()) {
+        return completedResult;
+      }
       const updated = await this.repository.update(
-        withCompleted(normalized, new Date(this.clock!())),
+        completedResult.getValue(),
         EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION,
       );
       return new Ok(updated);
@@ -320,8 +334,12 @@ export class EscortDispatchOrderService {
         normalized.status === EscortDispatchOrderStatus.COMPLETED
           ? EscortDispatchOrderStatus.COMPLETED
           : EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION;
+      const afterSalesResult = withAfterSalesRequested(normalized, new Date(this.clock!()));
+      if (afterSalesResult.isErr()) {
+        return afterSalesResult;
+      }
       const updated = await this.repository.update(
-        withAfterSalesRequested(normalized, new Date(this.clock!())),
+        afterSalesResult.getValue(),
         expectedStatus,
       );
       return new Ok(updated);
@@ -505,9 +523,12 @@ export class EscortDispatchOrderService {
       return order;
     }
 
+    const completedResult = withCompleted(order, new Date(this.clock!()));
+    if (completedResult.isErr()) {
+      return order;
+    }
     try {
-      const completed = withCompleted(order, new Date(this.clock!()));
-      const updated = await this.repository.update(completed, EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION);
+      const updated = await this.repository.update(completedResult.getValue(), EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION);
 
       // Spec R10: timeout auto-completion only logs a warning, does NOT send notifications
       this.logWarn('Order auto-completed due to customer confirmation timeout', {

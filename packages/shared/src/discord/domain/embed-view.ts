@@ -1,3 +1,5 @@
+import { type Result, ok, err, DomainError } from '../../types/index.js';
+
 /**
  * Immutable data structure for Embed view data.
  * Provides decoupling from discord.js MessageEmbed.
@@ -43,20 +45,20 @@ export enum ButtonStyle {
 /**
  * Creates a ButtonView with length validation on id and label.
  * Discord limits: id max 100 chars, label max 80 chars.
- * Throws if either exceeds the limit.
+ * Returns an error if either exceeds the limit.
  */
 export function createButtonView(
   id: string,
   label: string,
   style: ButtonStyle = ButtonStyle.PRIMARY,
   disabled = false,
-): ButtonView {
+): Result<ButtonView, DomainError> {
   if (id.length > 100) {
-    throw new Error(`ButtonView id exceeds 100 character limit: ${id.length} chars`);
+    return err(DomainError.invalidInput(`ButtonView id exceeds 100 character limit: ${id.length} chars`));
   }
   if (label.length > 80) {
-    throw new Error(`ButtonView label exceeds 80 character limit: ${label.length} chars`);
+    return err(DomainError.invalidInput(`ButtonView label exceeds 80 character limit: ${label.length} chars`));
   }
-  return { id, label, style, disabled } as ButtonView;
+  return ok({ id, label, style, disabled } as ButtonView);
 }
 

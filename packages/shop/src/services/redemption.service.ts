@@ -193,7 +193,11 @@ export class RedemptionService {
         return err(DomainError.unexpectedFailure('兌換碼資料異常'));
       }
 
-      const redeemedCode = withRedeemed(code, userId);
+      const redeemedResult = withRedeemed(code, userId);
+      if (redeemedResult.isErr()) {
+        return err(redeemedResult.getError());
+      }
+      const redeemedCode = redeemedResult.getValue();
       const marked = await this.codeRepository.markAsRedeemedIfAvailable(
         redeemedCode.id!,
         userId,

@@ -28,8 +28,8 @@ const ORDER_NUMBER = 'ESC-20260521-ABC123';
 const ANOTHER_NUMBER = 'ESC-20260521-DEF456';
 
 function makeOrder(overrides?: Partial<EscortDispatchOrder>): EscortDispatchOrder {
-  const base = createPending(ORDER_NUMBER, GUILD_ID, ASSIGNED_BY, ESCORT_USER_ID, CUSTOMER_USER_ID);
-  return { ...base, id: 1, ...overrides };
+  const result = createPending(ORDER_NUMBER, GUILD_ID, ASSIGNED_BY, ESCORT_USER_ID, CUSTOMER_USER_ID);
+  return { ...result.getValue(), id: 1, ...overrides };
 }
 
 function makeOrderWithCompletionRequestedAt(status: EscortDispatchOrderStatus, completionRequestedAt: Date): EscortDispatchOrder {

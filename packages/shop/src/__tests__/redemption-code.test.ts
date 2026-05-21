@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { isErr } from '@ltdjms/shared';
 import {
   createRedemptionCode,
   withRedeemed,
@@ -30,16 +31,28 @@ describe('RedemptionCode', () => {
 
   it('should mark as redeemed', () => {
     const code = createRedemptionCode('TESTCODE', 1, 123, null);
-    const redeemed = withRedeemed(code, '456');
-    expect(isRedeemed(redeemed)).toBe(true);
-    expect(redeemed.redeemedBy).toBe('456');
-    expect(redeemed.redeemedAt).toBeInstanceOf(Date);
+    const redeemedResult = withRedeemed(code, '456');
+    expect(redeemedResult.isOk()).toBe(true);
+    if (redeemedResult.isOk()) {
+      const redeemed = redeemedResult.getValue();
+      expect(isRedeemed(redeemed)).toBe(true);
+      expect(redeemed.redeemedBy).toBe('456');
+      expect(redeemed.redeemedAt).toBeInstanceOf(Date);
+    }
   });
 
-  it('should throw when redeeming already redeemed code', () => {
+  it('should return error when redeeming already redeemed code', () => {
     const code = createRedemptionCode('TESTCODE', 1, 123, null);
-    const redeemed = withRedeemed(code, '456');
-    expect(() => withRedeemed(redeemed, '789')).toThrow('already been redeemed');
+    const redeemedResult = withRedeemed(code, '456');
+    expect(redeemedResult.isOk()).toBe(true);
+    if (redeemedResult.isOk()) {
+      const redeemed = redeemedResult.getValue();
+      const result = withRedeemed(redeemed, '789');
+      expect(isErr(result)).toBe(true);
+      if (isErr(result)) {
+        expect(result.getError().message).toContain('already been redeemed');
+      }
+    }
   });
 
   it('should detect expired code', () => {
@@ -63,21 +76,36 @@ describe('RedemptionCode', () => {
     const code = createRedemptionCode('TESTCODE', 1, 123, null);
     expect(isValid(code)).toBe(true);
 
-    const redeemed = withRedeemed(code, '456');
-    expect(isValid(redeemed)).toBe(false);
+    const redeemedResult = withRedeemed(code, '456');
+    expect(redeemedResult.isOk()).toBe(true);
+    if (redeemedResult.isOk()) {
+      expect(isValid(redeemedResult.getValue())).toBe(false);
+    }
   });
 
   it('should invalidate code', () => {
     const code = createRedemptionCode('TESTCODE', 1, 123, null);
-    const invalidated = withInvalidated(code);
-    expect(isInvalidated(invalidated)).toBe(true);
-    expect(invalidated.productId).toBeNull(); // productId set to null on invalidation
+    const invalidatedResult = withInvalidated(code);
+    expect(invalidatedResult.isOk()).toBe(true);
+    if (invalidatedResult.isOk()) {
+      const invalidated = invalidatedResult.getValue();
+      expect(isInvalidated(invalidated)).toBe(true);
+      expect(invalidated.productId).toBeNull(); // productId set to null on invalidation
+    }
   });
 
-  it('should throw when invalidating already invalidated code', () => {
+  it('should return error when invalidating already invalidated code', () => {
     const code = createRedemptionCode('TESTCODE', 1, 123, null);
-    const invalidated = withInvalidated(code);
-    expect(() => withInvalidated(invalidated)).toThrow('already been invalidated');
+    const invalidatedResult = withInvalidated(code);
+    expect(invalidatedResult.isOk()).toBe(true);
+    if (invalidatedResult.isOk()) {
+      const invalidated = invalidatedResult.getValue();
+      const result = withInvalidated(invalidated);
+      expect(isErr(result)).toBe(true);
+      if (isErr(result)) {
+        expect(result.getError().message).toContain('already been invalidated');
+      }
+    }
   });
 
   it('should check guild ownership', () => {
