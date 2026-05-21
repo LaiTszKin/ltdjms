@@ -185,6 +185,8 @@ export abstract class BaseSessionManager<T extends BaseSessionData> {
 
   /**
    * Starts an interval-based cleanup of expired sessions.
+   * This is a memory optimization rather than a correctness mechanism,
+   * since {@link getSession} already checks TTL and discards expired sessions.
    * Should be called during DI setup.
    * @param intervalMs - cleanup interval in milliseconds (default 60 seconds)
    */

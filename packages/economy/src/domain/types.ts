@@ -123,6 +123,7 @@ export interface DiceGame1Result {
   readonly guildId: number;
   readonly userId: string;
   readonly diceRolls: readonly number[];
+  readonly diceSum: number;
   readonly totalReward: number;
   readonly previousBalance: number;
   readonly newBalance: number;

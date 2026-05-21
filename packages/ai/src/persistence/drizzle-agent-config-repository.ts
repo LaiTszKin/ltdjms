@@ -40,7 +40,11 @@ export class DrizzleAIAgentChannelConfigRepository implements AIAgentChannelConf
           ),
         )
         .limit(1);
-      return ok(row ? mapRow(row) : null);
+      if (!row) {
+        // Ok rejects null/undefined values, so use err for not-found.
+        return err(DomainError.channelNotFound(`Agent config not found for ${guildId}:${channelId}`));
+      }
+      return ok(mapRow(row));
     } catch (cause) {
       return err(
         DomainError.persistenceFailure(

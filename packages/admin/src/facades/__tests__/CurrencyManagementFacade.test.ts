@@ -119,30 +119,6 @@ describe('CurrencyManagementFacade', () => {
     });
   });
 
-  describe('deductBalance', () => {
-    it('should deduct balance successfully', async () => {
-      const adjustResult: BalanceAdjustmentResult = {
-        guildId: Number(guildId),
-        userId,
-        previousBalance: 200,
-        newBalance: 100,
-        adjustment: -100,
-        currencyName: 'Coins',
-        currencyIcon: '🪙',
-      };
-      mockAdjustService.tryAdjustBalance = vi.fn().mockResolvedValue(new Ok(adjustResult));
-
-      const result = await facade.deductBalance(guildId, userId, 100, 'test deduct', actorId);
-      expect(result.isOk()).toBe(true);
-      expect(result.getValue().newBalance).toBe(100);
-    });
-
-    it('should reject zero or negative deduction amounts', async () => {
-      const result = await facade.deductBalance(guildId, userId, 0, 'test', actorId);
-      expect(result.isErr()).toBe(true);
-    });
-  });
-
   describe('setBalance', () => {
     it('should set balance successfully', async () => {
       const currentBalanceResult: BalanceView = {

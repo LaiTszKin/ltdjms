@@ -13,15 +13,7 @@ describe('DomainError', () => {
       expect(error.cause).toBeUndefined();
     });
 
-    it('rejects null category', () => {
-      expect(
-        () =>
-          new DomainError(
-            null as unknown as DomainErrorCategory,
-            'message',
-          ),
-      ).toThrow('category must not be null');
-    });
+    // P3-2: Runtime null checks removed — strict TypeScript ensures category is never null at compile time.
   });
 
   describe('static factory methods', () => {

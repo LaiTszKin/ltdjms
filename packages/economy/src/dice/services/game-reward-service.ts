@@ -44,7 +44,7 @@ export class GameRewardService {
     userId: string,
     rewardAmount: number,
     transactionSource: CurrencyTransactionSource,
-  ): Promise<Result<number, DomainError>> {
+  ): Promise<Result<{ previousBalance: number; newBalance: number }, DomainError>> {
     if (rewardAmount < 0) {
       return new Err(
         DomainError.invalidInput(`Reward amount cannot be negative: ${rewardAmount}`),
@@ -52,10 +52,10 @@ export class GameRewardService {
     }
 
     if (rewardAmount === 0) {
-      // No reward to credit — query the actual balance instead of returning 0,
-      // so callers (e.g. DiceGame1Service) can get the current balance as previousBalance.
+      // No reward to credit — return current balance as both previous and new.
       const balanceResult = await this.balanceService.getBalance(guildId, userId);
-      return new Ok(balanceResult.isOk() ? balanceResult.getValue().balance : 0);
+      const balance = balanceResult.isOk() ? balanceResult.getValue().balance : 0;
+      return new Ok({ previousBalance: balance, newBalance: balance });
     }
 
     const result = await this.balanceAdjustmentService.tryBatchAdjust(
@@ -68,13 +68,12 @@ export class GameRewardService {
     );
 
     if (result.isErr()) {
-      return new Err(
-        DomainError.persistenceFailure(
-          `Failed to credit reward for guildId=${guildId}, userId=${userId}`,
-        ),
-      );
+      return new Err(result.getError());
     }
 
-    return new Ok(result.getValue().newBalance);
+    return new Ok({
+      previousBalance: result.getValue().previousBalance,
+      newBalance: result.getValue().newBalance,
+    });
   }
 }

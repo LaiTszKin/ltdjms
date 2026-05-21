@@ -612,12 +612,15 @@ describe('EscortDispatchOrderService', () => {
       expect(repo.findRecentByGuildId).toHaveBeenCalledWith(GUILD_ID, 10);
     });
 
-    it('should return persistence error on DB failure', async () => {
+    it('should return empty array on DB failure with warning', async () => {
       vi.spyOn(repo, 'batchTimeoutCompletion').mockRejectedValue(new Error('DB error'));
 
       const result = await service.findRecentOrders(GUILD_ID);
 
-      expect(result.isErr()).toBe(true);
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.getValue()).toEqual([]);
+      }
     });
   });
 

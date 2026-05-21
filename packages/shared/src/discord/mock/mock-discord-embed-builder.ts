@@ -34,7 +34,7 @@ export class MockDiscordEmbedBuilder implements DiscordEmbedBuilder {
   setDescription(description: string): DiscordEmbedBuilder {
     this._description =
       description.length > this.MAX_DESCRIPTION_LENGTH
-        ? description.slice(0, this.MAX_DESCRIPTION_LENGTH)
+        ? this.truncate(description, this.MAX_DESCRIPTION_LENGTH)
         : description;
     return this;
   }

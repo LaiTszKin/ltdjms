@@ -82,14 +82,15 @@ export class CommonMarkValidator implements MarkdownValidator {
     this.regexFormatPass(lines, errors);
 
     // Deduplicate errors by (line, errorType) to avoid AST + regex double-reporting
-    const seen = new Set<string>();
-    for (let i = errors.length - 1; i >= 0; i--) {
-      const key = `${errors[i].line}:${errors[i].errorType}`;
-      if (seen.has(key)) {
-        errors.splice(i, 1);
+    const errorMap = new Map<string, MarkdownError>();
+    for (const error of errors) {
+      const key = `${error.line}:${error.errorType}`;
+      if (!errorMap.has(key)) {
+        errorMap.set(key, error);
       }
-      seen.add(key);
     }
+    errors.length = 0;
+    errors.push(...errorMap.values());
 
     // Detect unclosed fenced code blocks by checking ALL code tokens, not just the last one.
     // An unclosed fence anywhere in the token stream will appear as a 'code' token

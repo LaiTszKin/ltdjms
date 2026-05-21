@@ -112,22 +112,43 @@ export class EnvironmentConfig {
     return cfg.DB_PASSWORD ?? cfg.DATABASE_PASSWORD;
   }
 
+  /**
+   * Returns the configured maximum pool size.
+   * Used by createDatabasePool().
+   */
   getPoolMaxSize(): number {
     return this.get().DB_POOL_MAX_SIZE;
   }
 
+  /**
+   * @deprecated Maintained for reference only. Not currently consumed by
+   * createDatabasePool() — min idle is handled via the DatabaseConfig interface.
+   */
   getPoolMinIdle(): number {
     return this.get().DB_POOL_MIN_IDLE;
   }
 
+  /**
+   * Returns the pool connection timeout in milliseconds.
+   * Used by createDatabasePool().
+   */
   getPoolConnectionTimeout(): number {
     return this.get().DB_POOL_CONNECTION_TIMEOUT;
   }
 
+  /**
+   * Returns the pool idle timeout in milliseconds.
+   * Used by createDatabasePool().
+   */
   getPoolIdleTimeout(): number {
     return this.get().DB_POOL_IDLE_TIMEOUT;
   }
 
+  /**
+   * @deprecated Maintained for reference only. Not currently consumed by
+   * createDatabasePool() — node-postgres Pool does not expose a maxLifetime
+   * configuration option. Kept in case a future wrapper layer needs it.
+   */
   getPoolMaxLifetime(): number {
     return this.get().DB_POOL_MAX_LIFETIME;
   }

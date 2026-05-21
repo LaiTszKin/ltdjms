@@ -10,7 +10,7 @@ import {
   isAfterSalesRequested,
   isAfterSalesInProgress,
 } from '../domain/index.js';
-import { COLOR_INFO, COLOR_WARNING, COLOR_ERROR } from './DispatchPanelView.js';
+import { COLOR_INFO, COLOR_WARNING, COLOR_ERROR } from '../constants.js';
 
 // ============================================================
 // Embed Builders — 12+ variants using INFO / WARNING / ERROR
@@ -18,13 +18,14 @@ import { COLOR_INFO, COLOR_WARNING, COLOR_ERROR } from './DispatchPanelView.js';
 
 /** 訂單建立成功通知。 */
 export function buildOrderCreatedEmbed(order: EscortDispatchOrder): EmbedView {
+  const escortDisplay = order.escortUserId > 0 ? `<@${order.escortUserId}>` : '尚未指派';
   return {
     title: `📋 派單已建立 #${order.orderNumber}`,
-    description: `護航者 <@${order.escortUserId}> 請確認接單。`,
+    description: `護航者 ${escortDisplay} 請確認接單。`,
     color: COLOR_INFO,
     fields: [
       { name: '訂單編號', value: order.orderNumber, inline: true },
-      { name: '護航者', value: `<@${order.escortUserId}>`, inline: true },
+      { name: '護航者', value: escortDisplay, inline: true },
       { name: '客戶', value: `<@${order.customerUserId}>`, inline: true },
       { name: '建立時間', value: order.createdAt.toLocaleString('zh-TW'), inline: false },
     ],

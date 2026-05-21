@@ -47,15 +47,11 @@ export class DomainError extends Error {
     message: string,
     readonly cause?: Error,
   ) {
+    // super() MUST be called before any class-level 'this' access in TS strict mode;
+    // null checks on constructor parameters are unnecessary because strict TS
+    // compilation already prevents null/undefined assignment for typed parameters.
     super(message);
     this.name = 'DomainError';
-
-    if (category === null || category === undefined) {
-      throw new Error('category must not be null');
-    }
-    if (message === null || message === undefined) {
-      throw new Error('message must not be null');
-    }
   }
 
   // ---- Static factory methods ----

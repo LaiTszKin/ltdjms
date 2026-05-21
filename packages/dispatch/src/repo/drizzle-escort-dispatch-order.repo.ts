@@ -270,6 +270,13 @@ export class DrizzleEscortDispatchOrderRepo implements EscortDispatchOrderRepo {
       )
       .returning();
 
+    // P2-34: 記錄逾時自動完成的訂單
+    if (rows.length > 0) {
+      console.log(
+        `[batchTimeoutCompletion] Auto-completed ${rows.length} order(s): ${rows.map((r) => r.orderNumber).join(', ')}`,
+      );
+    }
+
     return rows.map(mapRowToDomain);
   }
 

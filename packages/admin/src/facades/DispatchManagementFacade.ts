@@ -4,6 +4,7 @@ import {
   err,
   DomainError,
   type DomainEventPublisher,
+  safeSnowflakeToNumber,
 } from '@ltdjms/shared';
 import {
   type DispatchAfterSalesConfigChangedEvent,
@@ -122,7 +123,7 @@ export class DispatchManagementFacade {
   ): Promise<Result<OptionPriceView, DomainError>> {
     const result = await this.pricingService.updateOptionPrice(
       Number(guildId),
-      Number(actorId),
+      safeSnowflakeToNumber(actorId),
       optionCode,
       price,
     );

@@ -69,7 +69,11 @@ describe('AIConfigManagementFacade', () => {
 
       const result = await facade.getAgentConfigs(guildId);
       expect(result.isOk()).toBe(true);
-      expect(result.getValue()).toEqual(['456']);
+      expect(result.getValue()).toHaveLength(1);
+      const config = result.getValue()[0];
+      expect(config.channelId).toBe('456');
+      expect(config.mode).toBe('agent');
+      expect(config.activatedAt).toBeNull();
     });
   });
 });

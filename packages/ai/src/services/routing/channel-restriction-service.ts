@@ -186,7 +186,7 @@ export interface AIChannelRestrictionService {
     guildId: string,
     channelId: string,
     categoryId?: string,
-  ): boolean | Promise<boolean>;
+  ): Promise<boolean>;
 
   /**
    * Same as isChannelAllowed but returns the matched source type:

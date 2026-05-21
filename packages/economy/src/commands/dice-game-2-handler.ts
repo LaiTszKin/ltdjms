@@ -98,14 +98,7 @@ export class DiceGame2Handler {
       const result = await this.diceGame2Service.play(guildId, userId, tokenCount, config);
 
       if (result.isErr()) {
-        // Refund tokens since they were already deducted (P0-2)
-        await this.gameTokenService.tryAdjustTokens(
-          guildId,
-          userId,
-          tokenCount,
-          GameTokenTransactionSource.DICE_GAME_2_REFUND,
-        );
-
+        // Spec says tokens are NOT refunded on game error/loss. (P1-4)
         const error = result.getError();
         if (error.category === DomainErrorCategory.INVALID_INPUT) {
           await interaction.reply(error.message);
@@ -150,13 +143,7 @@ export class DiceGame2Handler {
 
       await interaction.reply(message);
     } catch (error) {
-      // Refund tokens on unexpected throw (P0-2)
-      await this.gameTokenService.tryAdjustTokens(
-        guildId,
-        userId,
-        tokenCount,
-        GameTokenTransactionSource.DICE_GAME_2_REFUND,
-      );
+      // Spec says tokens are NOT refunded on game error/loss. (P1-4)
       await interaction.reply(DiceGameMessages.UNEXPECTED_ERROR);
     }
   }

@@ -5,13 +5,20 @@ import {
   DomainError,
 } from '@ltdjms/shared';
 import { GameRewardService } from './game-reward-service.js';
-import { BalanceService } from '../../currency/services/balance-service.js';
 import type { DiceGame2Config, DiceGame2Result } from '../../domain/types.js';
 import {
   CurrencyTransactionSource,
   DICE_GAME_2_DICE_PER_TOKEN,
 } from '../../domain/types.js';
-import { type Random, DefaultRandom, rollDice } from './random.js';
+import { type Random, DefaultRandom, rollDice as randomRollDice } from './random.js';
+
+/**
+ * Rolls the specified number of dice.
+ * @internal Exposed for test use only; not part of the public API.
+ */
+export function rollDice(count: number, random: Random): number[] {
+  return randomRollDice(count, random);
+}
 
 /**
  * Dice Game 2 service implementation.
@@ -29,7 +36,6 @@ import { type Random, DefaultRandom, rollDice } from './random.js';
 export class DiceGame2Service {
   constructor(
     private readonly gameRewardService: GameRewardService,
-    private readonly balanceService: BalanceService,
     private readonly random: Random = DefaultRandom,
   ) {}
 
@@ -61,17 +67,12 @@ export class DiceGame2Service {
 
     // Roll dice: 3 dice per token
     const diceCount = tokenCount * DICE_GAME_2_DICE_PER_TOKEN;
-    const diceRolls = this.rollDice(diceCount);
+    const diceRolls = rollDice(diceCount, this.random);
 
     // Analyze rolls
     const analysis = this.analyzeRolls(diceRolls, config);
 
-    // Get previous balance directly from BalanceService instead of calling
-    // creditReward(0) which would trigger a full DB read with config lookup for no reward.
-    const previousBalanceResult = await this.balanceService.getBalance(guildId, userId);
-    const previousBalance = previousBalanceResult.isOk() ? previousBalanceResult.getValue().balance : 0;
-
-    // Apply reward
+    // Apply reward via GameRewardService — returns both previous and new balance (P1-25)
     const rewardResult = await this.gameRewardService.creditReward(
       guildId,
       userId,
@@ -82,7 +83,7 @@ export class DiceGame2Service {
     if (rewardResult.isErr()) {
       return new Err(rewardResult.getError());
     }
-    const newBalance = rewardResult.getValue();
+    const { previousBalance, newBalance } = rewardResult.getValue();
 
     return new Ok({
       guildId,
@@ -97,14 +98,6 @@ export class DiceGame2Service {
       nonStraightReward: analysis.nonStraightReward,
       tripleReward: analysis.tripleReward,
     });
-  }
-
-  /**
-   * Rolls the specified number of dice.
-   * @internal Exposed for test use only; not part of the public API.
-   */
-  rollDice(count: number): number[] {
-    return rollDice(count, this.random);
   }
 
   /**

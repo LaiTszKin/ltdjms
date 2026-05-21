@@ -78,11 +78,24 @@ export class BalanceService {
         expiresAt: now + BalanceService.CONFIG_CACHE_TTL_SECONDS * 1000,
       });
 
-      // Evict oldest entry when cache exceeds max capacity
+      // Evict stale entries when cache exceeds max capacity.
+      // First try to evict expired entries; if still oversized, evict oldest (FIFO).
       if (this.configCache.size > BalanceService.MAX_CACHE_SIZE) {
-        const firstKey = this.configCache.keys().next();
-        if (firstKey.value !== undefined) {
-          this.configCache.delete(firstKey.value);
+        const expiredKeys: string[] = [];
+        for (const [key, entry] of this.configCache.entries()) {
+          if (entry.expiresAt <= now) {
+            expiredKeys.push(key);
+          }
+        }
+        for (const key of expiredKeys) {
+          this.configCache.delete(key);
+        }
+        // If still oversized, evict the oldest (FIFO)
+        while (this.configCache.size > BalanceService.MAX_CACHE_SIZE) {
+          const firstKey = this.configCache.keys().next();
+          if (firstKey.value !== undefined) {
+            this.configCache.delete(firstKey.value);
+          }
         }
       }
 
@@ -96,6 +109,24 @@ export class BalanceService {
   }
 
   /**
+   * Invalidates the cached currency config for a guild.
+   *
+   * Design decision (Option B — explicit invalidation):
+   * Rather than making BalanceService a listener for CurrencyConfigChangedEvent
+   * (which would create bidirectional coupling since BalanceService is consumed
+   * by the same callers that update currency config), this method is exposed
+   * publicly for explicit invalidation by calling code after a config update.
+   *
+   * The CurrencyConfigService.updateConfig() caller should invoke this after
+   * publishing the CurrencyConfigChangedEvent to ensure subsequent balance
+   * queries see the updated currency name/icon.
+   */
+  invalidateConfigCache(guildId: number): void {
+    const cacheKey = `currency_config:${guildId}`;
+    this.configCache.delete(cacheKey);
+  }
+
+  /**
    * Gets the balance view for a member in a guild.
    * Uses cache (TTL 300s) - cache miss falls through to DB.
    * Auto-creates account if none exists.
@@ -105,6 +136,10 @@ export class BalanceService {
    */
   async getBalanceUnchecked(guildId: number, userId: string): Promise<BalanceView> {
     const cacheKey = this.cacheKeyGenerator.balanceKey(String(guildId), String(userId));
+
+    // Start config fetch in parallel with balance fetch (P2-9)
+    const configPromise = this.getCachedConfig(guildId);
+
     const cachedBalance = await this.cacheService.get<number>(cacheKey);
 
     let balance: number;
@@ -128,7 +163,7 @@ export class BalanceService {
       }
     }
 
-    const { currencyName, currencyIcon } = await this.getCachedConfig(guildId);
+    const { currencyName, currencyIcon } = await configPromise;
 
     return {
       guildId,

@@ -255,7 +255,7 @@ export class AIChannelConfigHandler extends BaseAdminHandler {
       ? channelsResult.getValue().map((c) => `<#${c.channelId}>`).join('\n')
       : '無';
     const categoryList = categoriesResult.isOk() && categoriesResult.getValue().length > 0
-      ? categoriesResult.getValue().map((c) => c.categoryName).join('\n')
+      ? categoriesResult.getValue().map((c) => `<#${c.categoryId}>`).join('\n')
       : '無';
 
     const description = (channelsResult.isOk() && channelsResult.getValue().length === 0 &&

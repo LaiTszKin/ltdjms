@@ -80,6 +80,16 @@ export class DrizzleAIChannelRestrictionRepository implements AIChannelRestricti
     guildId: string,
     channel: Omit<AllowedChannel, 'guildId'>,
   ): Promise<Result<AllowedChannel, DomainError>> {
+    // Check for duplicate before inserting
+    const existing = await this.findChannel(guildId, channel.channelId);
+    if (existing) {
+      return err(
+        DomainError.duplicateChannel(
+          `Channel ${channel.channelId} is already in the allowlist`,
+        ),
+      );
+    }
+
     try {
       const [row] = await this.db
         .insert(aiAllowedChannel)
@@ -91,6 +101,14 @@ export class DrizzleAIChannelRestrictionRepository implements AIChannelRestricti
         .returning();
       return ok(mapChannelRow(row));
     } catch (cause) {
+      // Handle unique violation (error code 23505)
+      if (cause instanceof Error && 'code' in cause && (cause as Record<string, unknown>).code === '23505') {
+        return err(
+          DomainError.duplicateChannel(
+            `Channel ${channel.channelId} is already in the allowlist`,
+          ),
+        );
+      }
       this.log.warn({ guildId, channelId: channel.channelId, error: cause }, 'Failed to add allowed channel');
       return err(
         DomainError.persistenceFailure(
@@ -105,6 +123,16 @@ export class DrizzleAIChannelRestrictionRepository implements AIChannelRestricti
     guildId: string,
     category: Omit<AllowedCategory, 'guildId'>,
   ): Promise<Result<AllowedCategory, DomainError>> {
+    // Check for duplicate before inserting
+    const existingCategories = await this.findAllowedCategories(guildId);
+    if (existingCategories.some((c) => c.categoryId === category.categoryId)) {
+      return err(
+        DomainError.duplicateCategory(
+          `Category ${category.categoryId} is already in the allowlist`,
+        ),
+      );
+    }
+
     try {
       const [row] = await this.db
         .insert(aiAllowedCategory)
@@ -116,6 +144,14 @@ export class DrizzleAIChannelRestrictionRepository implements AIChannelRestricti
         .returning();
       return ok(mapCategoryRow(row));
     } catch (cause) {
+      // Handle unique violation (error code 23505)
+      if (cause instanceof Error && 'code' in cause && (cause as Record<string, unknown>).code === '23505') {
+        return err(
+          DomainError.duplicateCategory(
+            `Category ${category.categoryId} is already in the allowlist`,
+          ),
+        );
+      }
       this.log.warn({ guildId, categoryId: category.categoryId, error: cause }, 'Failed to add allowed category');
       return err(
         DomainError.persistenceFailure(

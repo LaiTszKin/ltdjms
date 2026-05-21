@@ -6,7 +6,7 @@ import {
   Route,
   type Decision,
 } from '../services/ai-chat-service.js';
-import { type AIChatMentionRoutingDecision, resolveCategoryId } from '../services/routing/routing-decision.js';
+import { type AIChatMentionRoutingDecision, resolveCategoryId, resolveRestrictionChannelId } from '../services/routing/routing-decision.js';
 import { DomainError } from '@ltdjms/shared';
 import { MessageSplitter } from '../services/MessageSplitter.js';
 
@@ -101,7 +101,7 @@ export class AIChatMentionListener {
       // Get routing parameters
       const guildId = message.guild.id;
       const channelId = message.channel.id;
-      const restrictionChannelId = this.resolveRestrictionChannelId(message);
+      const restrictionChannelId = resolveRestrictionChannelId(message.channel);
 
       // Resolve category ID (thread -> parent channel -> category)
       const categoryId = resolveCategoryId(message.channel);
@@ -362,16 +362,6 @@ export class AIChatMentionListener {
     }
 
     return content;
-  }
-
-  /**
-   * Resolves restriction channel ID for threads.
-   */
-  private resolveRestrictionChannelId(message: Message): string {
-    if (message.channel.isThread()) {
-      return message.channel.parentId ?? message.channel.id;
-    }
-    return message.channel.id;
   }
 
   /**

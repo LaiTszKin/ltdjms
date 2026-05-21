@@ -285,12 +285,12 @@ export class GameSettingsHandler extends BaseAdminHandler {
 
     const editBtn1 = new ButtonBuilder()
       .setCustomId('admin_game_edit_1')
-      .setLabel('編輯骰子遊戲 1')
+      .setLabel(`編輯 ${ZhTwStrings.gameDiceGame1}`)
       .setStyle(ButtonStyle.Primary);
 
     const editBtn2 = new ButtonBuilder()
       .setCustomId('admin_game_edit_2')
-      .setLabel('編輯骰子遊戲 2')
+      .setLabel(`編輯 ${ZhTwStrings.gameDiceGame2}`)
       .setStyle(ButtonStyle.Primary);
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(editBtn1, editBtn2);

@@ -83,10 +83,7 @@ export class EscortDispatchOrderService {
     }
     try {
       const saved = await this.repository.save(pendingResult.getValue());
-      // Notify escort when order is created with an assigned escort
-      if (this.notificationService && saved.escortUserId > 0) {
-        await this.notificationService.notifyEscortAssigned(saved);
-      }
+      // P1-14: Notification is handled by the caller (handler/panel layer)
       return new Ok(saved);
     } catch (e) {
       const err = e instanceof Error ? e : new Error(String(e));
@@ -168,6 +165,8 @@ export class EscortDispatchOrderService {
     if (escortUserId <= 0) {
       return new Err(DomainError.invalidInput('請選擇護航者'));
     }
+    // P3-12: 衝突檢查同時存在於 service 層與 repo 層的 WHERE clause（drizzle-escort-dispatch-order.repo.ts line 159）。
+    // 修改任一方時須同步更新另一方。
     if (escortUserId === order.customerUserId) {
       return new Err(DomainError.invalidInput('護航者與客戶不能是同一人'));
     }
@@ -275,7 +274,7 @@ export class EscortDispatchOrderService {
     if (!canBeConfirmedByCustomer(order, customerUserId)) {
       return new Err(DomainError.invalidInput('只有訂單客戶可以確認完成'));
     }
-    if (isCompleted(order)) {
+    if (order.status === EscortDispatchOrderStatus.COMPLETED) {
       return new Ok(order);
     }
     if (!isPendingCustomerConfirmation(order)) {
@@ -465,8 +464,9 @@ export class EscortDispatchOrderService {
       const orders = await this.repository.findRecentByGuildId(guildId, safeLimit);
       return new Ok(orders);
     } catch (e) {
-      const err = e instanceof Error ? e : new Error(String(e));
-      return new Err(DomainError.persistenceFailure('查詢歷史訂單失敗', err));
+      const errMsg = e instanceof Error ? e.message : String(e);
+      this.logWarn('查詢歷史訂單失敗，返回空列表', { error: errMsg });
+      return new Ok([]);
     }
   }
 

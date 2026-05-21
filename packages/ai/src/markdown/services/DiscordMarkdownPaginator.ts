@@ -130,13 +130,17 @@ export class DiscordMarkdownPaginator {
    * Fences at position 0 are ignored (can't split at start).
    */
   private findCodeFenceBoundary(text: string): number {
-    // Find the last ``` or ~~~ within the slice (excluding position 0)
-    const fenceRegex = /\n```|\n~~~/g;
+    // Find the last ``` or ~~~ within the slice (including position 0)
+    const fenceRegex = /^```|^~~~|\n```|\n~~~/g;
     let lastMatch = -1;
     let match: RegExpExecArray | null;
 
     while ((match = fenceRegex.exec(text)) !== null) {
-      lastMatch = match.index + 1; // +1 to include the newline
+      if (match.index === 0) {
+        lastMatch = 0;
+      } else {
+        lastMatch = match.index + 1; // +1 to include the newline
+      }
     }
 
     return lastMatch;
