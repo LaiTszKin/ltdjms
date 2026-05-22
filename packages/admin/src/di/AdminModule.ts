@@ -40,7 +40,7 @@ import { AdminPanelSessionManager } from '../session/AdminPanelSessionManager.js
 import { PanelSessionManager } from '../session/PanelSessionManager.js';
 
 // Infra
-import type { CommandHandler } from '../commands/infra/CommandHandler.js';
+import type { CommandHandler, InteractionHandler } from '../commands/infra/CommandHandler.js';
 import { SlashCommandListener } from '../commands/infra/SlashCommandListener.js';
 import { SlashCommandMetrics } from '../commands/infra/SlashCommandMetrics.js';
 import { BotErrorHandler } from '../commands/infra/BotErrorHandler.js';
@@ -387,6 +387,9 @@ export function configureAdminContainer(): void {
     DISPATCH_TOKENS.DispatchPanelCommandHandler,
   );
   slashCommandListener.registerCommand(dispatchPanelCommandHandler);
+  slashCommandListener.registerInteractionHandler(
+    container.resolve<InteractionHandler>(DISPATCH_TOKENS.DispatchPanelInteractionHandler),
+  );
 
   const shopService = container.resolve<ShopService>(SHOP_TOKENS.ShopService);
   const redemptionCodeRepo = container.resolve<RedemptionCodeRepository>(SHOP_TOKENS.RedemptionCodeRepository);
@@ -417,6 +420,11 @@ export function configureAdminContainer(): void {
 
   const shopCommandHandler = container.resolve<ShopCommandHandler>(SHOP_TOKENS.ShopCommandHandler);
   slashCommandListener.registerCommand(shopCommandHandler);
+  slashCommandListener.registerInteractionHandler({
+    customIdPrefix: 'shop_',
+    execute: (interaction, context) =>
+      shopCommandHandler.handleInteraction(interaction, context, interaction.getCustomId()),
+  });
 
   // ============================================================
   // User Panel Commands

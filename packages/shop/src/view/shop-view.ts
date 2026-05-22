@@ -134,9 +134,9 @@ export function buildSearchModal(): {
   customId: string;
   title: string;
   components: Array<{
-    type: string;
+    type: number;
     components: Array<{
-      type: string;
+      type: number;
       customId: string;
       label: string;
       style: number;
@@ -151,10 +151,10 @@ export function buildSearchModal(): {
     title: '搜尋商品',
     components: [
       {
-        type: 'actionRow',
+        type: 1,
         components: [
           {
-            type: 4 as unknown as 'text',
+            type: 4,
             customId: 'shop_search_keyword',
             label: '關鍵字',
             style: 1,
@@ -173,9 +173,9 @@ export function buildSearchModal(): {
  * Used when a product supports both payment types (spec R1.6 extension).
  */
 export function buildPaymentMethodChoiceComponents(product: Product): Array<{
-  type: string;
+  type: number;
   components: Array<{
-    type: string;
+    type: number;
     customId: string;
     label: string;
     style: number;
@@ -183,7 +183,7 @@ export function buildPaymentMethodChoiceComponents(product: Product): Array<{
   }>;
 }> {
   const buttons: Array<{
-    type: string;
+    type: number;
     customId: string;
     label: string;
     style: number;
@@ -192,7 +192,7 @@ export function buildPaymentMethodChoiceComponents(product: Product): Array<{
 
   if (hasCurrencyPrice(product)) {
     buttons.push({
-      type: 'button',
+      type: 2,
       customId: `${BUTTON_PAY_WITH_CURRENCY}${product.id}`,
       label: `💰 貨幣支付 (${formatCurrencyPrice(product)})`,
       style: 3,
@@ -201,7 +201,7 @@ export function buildPaymentMethodChoiceComponents(product: Product): Array<{
 
   if (isFiatOnly(product)) {
     buttons.push({
-      type: 'button',
+      type: 2,
       customId: `${BUTTON_PAY_WITH_FIAT}${product.id}`,
       label: `💳 法幣下單 (${formatFiatPriceTwd(product)})`,
       style: 4,
@@ -209,7 +209,7 @@ export function buildPaymentMethodChoiceComponents(product: Product): Array<{
   }
 
   buttons.push({
-    type: 'button',
+    type: 2,
     customId: BUTTON_BACK_TO_SHOP,
     label: '🏪 回商店',
     style: 2,
@@ -217,7 +217,7 @@ export function buildPaymentMethodChoiceComponents(product: Product): Array<{
 
   return [
     {
-      type: 'actionRow',
+      type: 1,
       components: buttons,
     },
   ];
@@ -227,17 +227,17 @@ export function buildShopComponents(
   currentPage: number,
   totalPages: number,
 ): Array<{
-  type: string;
-  components: Array<{ type: string; customId: string; label: string; style: number; disabled?: boolean }>;
+  type: number;
+  components: Array<{ type: number; customId: string; label: string; style: number; disabled?: boolean }>;
 }> {
   const hasPrev = currentPage > 1;
   const hasNext = currentPage < totalPages;
 
-  const buttons: Array<{ type: string; customId: string; label: string; style: number; disabled?: boolean }> = [];
+  const buttons: Array<{ type: number; customId: string; label: string; style: number; disabled?: boolean }> = [];
 
   if (hasPrev) {
     buttons.push({
-      type: 'button',
+      type: 2,
       customId: `${BUTTON_PREV_PAGE}${currentPage - 1}`,
       label: '◀ 上一頁',
       style: 1,
@@ -245,14 +245,14 @@ export function buildShopComponents(
   }
 
   buttons.push({
-    type: 'button',
+    type: 2,
     customId: `${BUTTON_BUY}`,
     label: '🛒 購買',
     style: 3,
   });
 
   buttons.push({
-    type: 'button',
+    type: 2,
     customId: `${BUTTON_SEARCH}`,
     label: '🔍 搜尋',
     style: 2,
@@ -260,7 +260,7 @@ export function buildShopComponents(
 
   if (hasNext) {
     buttons.push({
-      type: 'button',
+      type: 2,
       customId: `${BUTTON_NEXT_PAGE}${currentPage + 1}`,
       label: '下一頁 ▶',
       style: 1,
@@ -269,7 +269,7 @@ export function buildShopComponents(
 
   return [
     {
-      type: 'actionRow',
+      type: 1,
       components: buttons,
     },
   ];
@@ -344,18 +344,18 @@ export function buildSearchComponents(
   keyword: string,
   products: Product[],
 ): Array<{
-  type: string;
+  type: number;
   components: unknown[];
 }> {
   const encodedKeyword = encodeKeyword(keyword);
   const hasPrev = currentPage > 1;
   const hasNext = currentPage < totalPages;
 
-  const buttons: Array<{ type: string; customId: string; label: string; style: number; disabled?: boolean }> = [];
+  const buttons: Array<{ type: number; customId: string; label: string; style: number; disabled?: boolean }> = [];
 
   if (hasPrev) {
     buttons.push({
-      type: 'button',
+      type: 2,
       customId: `${BUTTON_SEARCH_PREV}${encodedKeyword}_${currentPage - 1}`,
       label: '◀ 上一頁',
       style: 1,
@@ -363,7 +363,7 @@ export function buildSearchComponents(
   }
 
   buttons.push({
-    type: 'button',
+    type: 2,
     customId: `${BUTTON_BACK_TO_SHOP}`,
     label: '🏪 回商店',
     style: 2,
@@ -371,7 +371,7 @@ export function buildSearchComponents(
 
   if (hasNext) {
     buttons.push({
-      type: 'button',
+      type: 2,
       customId: `${BUTTON_SEARCH_NEXT}${encodedKeyword}_${currentPage + 1}`,
       label: '下一頁 ▶',
       style: 1,
@@ -390,11 +390,11 @@ export function buildSearchComponents(
         : '可購買',
   });
 
-  const selectRows: Array<{ type: string; components: unknown[] }> = [];
+  const selectRows: Array<{ type: number; components: unknown[] }> = [];
   for (let i = 0; i < products.length; i += MAX_OPTIONS) {
     const chunk = products.slice(i, i + MAX_OPTIONS);
     selectRows.push({
-      type: 'actionRow',
+      type: 1,
       components: [
         {
           type: 3,
@@ -409,7 +409,7 @@ export function buildSearchComponents(
 
   return [
     {
-      type: 'actionRow',
+      type: 1,
       components: buttons,
     },
     ...selectRows,

@@ -85,21 +85,21 @@ describe('Currency Purchase PBT', () => {
   it('purchase with reward grants correct reward amount', async () => {
     await fc.assert(
       fc.asyncProperty(
-        fc.integer({ min: 1, max: 1000000 }),
-        fc.integer({ min: 1, max: 1000000 }),
         fc.integer({ min: 1000, max: 100000 }),
         fc.integer({ min: 100, max: 5000 }),
         fc.integer({ min: 50, max: 2000 }),
-        async (gid, uid, balance, price, rewardAmount) => {
-          // Ensure balance is sufficient to cover the price
+        async (balance, price, rewardAmount) => {
           fc.pre(balance >= price);
           seq++;
+          // Use unique gid/uid per iteration to prevent state collision between PBT runs
+          const gid = seq;
+          const uid = seq + 1000000;
 
           await seedGuild(db, { guildId: gid });
           await seedUserAccount(db, { guildId: gid, userId: uid, balance });
           const product = await seedProduct(db, {
             guildId: gid,
-            name: `Reward-${gid}-${seq}`,
+            name: `Reward-${gid}`,
             currencyPrice: price,
             rewardType: 'CURRENCY',
             rewardAmount,
@@ -126,19 +126,19 @@ describe('Currency Purchase PBT', () => {
   it('purchase without reward does not add extra balance', async () => {
     await fc.assert(
       fc.asyncProperty(
-        fc.integer({ min: 1, max: 1000000 }),
-        fc.integer({ min: 1, max: 1000000 }),
         fc.integer({ min: 1000, max: 100000 }),
         fc.integer({ min: 100, max: 5000 }),
-        async (gid, uid, balance, price) => {
+        async (balance, price) => {
           fc.pre(balance >= price);
           seq++;
+          const gid = seq + 2000000;
+          const uid = seq + 3000000;
 
           await seedGuild(db, { guildId: gid });
           await seedUserAccount(db, { guildId: gid, userId: uid, balance });
           const product = await seedProduct(db, {
             guildId: gid,
-            name: `NoReward-${gid}-${seq}`,
+            name: `NoReward-${gid}`,
             currencyPrice: price,
             rewardType: null,
             rewardAmount: null,
@@ -163,20 +163,20 @@ describe('Currency Purchase PBT', () => {
   it('purchase with reward updates DB balance correctly', async () => {
     await fc.assert(
       fc.asyncProperty(
-        fc.integer({ min: 1, max: 1000000 }),
-        fc.integer({ min: 1, max: 1000000 }),
         fc.integer({ min: 2000, max: 100000 }),
         fc.integer({ min: 100, max: 3000 }),
         fc.integer({ min: 100, max: 1500 }),
-        async (gid, uid, balance, price, rewardAmount) => {
+        async (balance, price, rewardAmount) => {
           fc.pre(balance >= price);
           seq++;
+          const gid = seq + 4000000;
+          const uid = seq + 5000000;
 
           await seedGuild(db, { guildId: gid });
           await seedUserAccount(db, { guildId: gid, userId: uid, balance });
           const product = await seedProduct(db, {
             guildId: gid,
-            name: `DBReward-${gid}-${seq}`,
+            name: `DBReward-${gid}`,
             currencyPrice: price,
             rewardType: 'CURRENCY',
             rewardAmount,

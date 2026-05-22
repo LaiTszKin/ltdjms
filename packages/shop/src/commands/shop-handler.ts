@@ -101,6 +101,30 @@ export class ShopCommandHandler {
     const guildId = this.parseGuildId(interaction.getGuildId());
     if (guildId == null) return;
 
+    // Search modal MUST be shown before deferral — showModal requires non-deferred state
+    if (customId === BUTTON_SEARCH) {
+      const raw = this.getRaw(interaction);
+      const modal = new ModalBuilder()
+        .setCustomId(MODAL_SEARCH)
+        .setTitle('搜尋商品')
+        .addComponents(
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId('shop_search_input')
+              .setLabel('關鍵字')
+              .setStyle(TextInputStyle.Short)
+              .setMinLength(1)
+              .setMaxLength(100)
+              .setRequired(true),
+          ),
+        );
+      await raw.showModal(modal);
+      return;
+    }
+
+    // Acknowledge interaction to allow editReply calls (P0-7)
+    await interaction.deferReply();
+
     // Pagination: previous page
     if (customId.startsWith(BUTTON_PREV_PAGE)) {
       const pageNum = parseInt(customId.replace(BUTTON_PREV_PAGE, ''), 10);
@@ -190,27 +214,6 @@ export class ShopCommandHandler {
         const components = buildShopComponents(page.currentPage, page.totalPages);
         await this.editWithComponents(interaction, embed, components);
       }
-      return;
-    }
-
-    // Search: opening the search modal (P2-13)
-    if (customId === BUTTON_SEARCH) {
-      const raw = this.getRaw(interaction);
-      const modal = new ModalBuilder()
-        .setCustomId(MODAL_SEARCH)
-        .setTitle('搜尋商品')
-        .addComponents(
-          new ActionRowBuilder<TextInputBuilder>().addComponents(
-            new TextInputBuilder()
-              .setCustomId('shop_search_input')
-              .setLabel('關鍵字')
-              .setStyle(TextInputStyle.Short)
-              .setMinLength(1)
-              .setMaxLength(100)
-              .setRequired(true),
-          ),
-        );
-      await raw.showModal(modal);
       return;
     }
 

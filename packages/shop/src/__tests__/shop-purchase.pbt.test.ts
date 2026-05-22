@@ -86,19 +86,19 @@ describe('Shop Purchase PBT', () => {
   it('purchase with sufficient balance deducts price', async () => {
     await fc.assert(
       fc.asyncProperty(
-        fc.integer({ min: 1, max: 1000000 }),
-        fc.integer({ min: 1, max: 1000000 }),
         fc.integer({ min: 500, max: 100000 }),
         fc.integer({ min: 1, max: 500 }),
-        async (gid, uid, balance, price) => {
+        async (balance, price) => {
           fc.pre(balance >= price);
           pbtSeq++;
+          const gid = pbtSeq + 12000000;
+          const uid = pbtSeq + 13000000;
 
           await seedGuild(db, { guildId: gid });
           await seedUserAccount(db, { guildId: gid, userId: uid, balance });
           const product = await seedProduct(db, {
             guildId: gid,
-            name: `Prod-${gid}-${pbtSeq}`,
+            name: `PbtProd-${gid}`,
             currencyPrice: price,
             rewardType: null,
             rewardAmount: null,
@@ -122,19 +122,19 @@ describe('Shop Purchase PBT', () => {
   it('purchase with insufficient balance returns DomainError', async () => {
     await fc.assert(
       fc.asyncProperty(
-        fc.integer({ min: 1, max: 1000000 }),
-        fc.integer({ min: 1, max: 1000000 }),
         fc.integer({ min: 0, max: 500 }),
         fc.integer({ min: 1000, max: 100000 }),
-        async (gid, uid, balance, price) => {
+        async (balance, price) => {
           fc.pre(balance < price);
           pbtSeq++;
+          const gid = pbtSeq + 14000000;
+          const uid = pbtSeq + 15000000;
 
           await seedGuild(db, { guildId: gid });
           await seedUserAccount(db, { guildId: gid, userId: uid, balance });
           const product = await seedProduct(db, {
             guildId: gid,
-            name: `Prod-${gid}-${pbtSeq}`,
+            name: `PbtFail-${gid}`,
             currencyPrice: price,
             rewardType: null,
             rewardAmount: null,
@@ -153,19 +153,19 @@ describe('Shop Purchase PBT', () => {
   it('successful purchase records a balance transaction', async () => {
     await fc.assert(
       fc.asyncProperty(
-        fc.integer({ min: 1, max: 1000000 }),
-        fc.integer({ min: 1, max: 1000000 }),
         fc.integer({ min: 500, max: 100000 }),
         fc.integer({ min: 1, max: 500 }),
-        async (gid, uid, balance, price) => {
+        async (balance, price) => {
           fc.pre(balance >= price);
           pbtSeq++;
+          const gid = pbtSeq + 16000000;
+          const uid = pbtSeq + 17000000;
 
           await seedGuild(db, { guildId: gid });
           await seedUserAccount(db, { guildId: gid, userId: uid, balance });
           const product = await seedProduct(db, {
             guildId: gid,
-            name: `Prod-${gid}-${pbtSeq}`,
+            name: `PbtTx-${gid}`,
             currencyPrice: price,
             rewardType: null,
             rewardAmount: null,

@@ -90,15 +90,15 @@ describe('Redemption Service PBT', () => {
   it('each code can only be redeemed once', async () => {
     const testData = fc.sample(
       fc.record({
-        guildId: fc.integer({ min: 1, max: 1000000 }),
-        userId: fc.integer({ min: 1, max: 1000000 }),
         codeStr: codeArbitrary(),
       }),
       { numRuns: 5 },
     );
 
     for (let i = 0; i < testData.length; i++) {
-      const { guildId, userId, codeStr } = testData[i];
+      const { codeStr } = testData[i];
+      const guildId = i + 6000000;
+      const userId = i + 7000000;
       const suffix = `${Date.now()}-${i}`;
 
       await seedGuild(db, { guildId });
@@ -131,15 +131,15 @@ describe('Redemption Service PBT', () => {
   it('non-existent code returns DomainError', async () => {
     const testData = fc.sample(
       fc.record({
-        guildId: fc.integer({ min: 1, max: 1000000 }),
-        userId: fc.integer({ min: 1, max: 1000000 }),
         codeStr: codeArbitrary(),
       }),
       { numRuns: 5 },
     );
 
     for (let i = 0; i < testData.length; i++) {
-      const { guildId, userId, codeStr } = testData[i];
+      const { codeStr } = testData[i];
+      const guildId = i + 8000000;
+      const userId = i + 9000000;
       const suffix = `${Date.now()}-${i}`;
 
       await seedGuild(db, { guildId });
@@ -160,15 +160,15 @@ describe('Redemption Service PBT', () => {
   it('batch redemption marks all codes as used', async () => {
     const testData = fc.sample(
       fc.record({
-        guildId: fc.integer({ min: 1, max: 1000000 }),
-        userId: fc.integer({ min: 1, max: 1000000 }),
         codes: fc.array(codeArbitrary(), { minLength: 2, maxLength: 3 }),
       }),
       { numRuns: 3 },
     );
 
     for (let i = 0; i < testData.length; i++) {
-      const { guildId, userId, codes } = testData[i];
+      const { codes } = testData[i];
+      const guildId = i + 10000000;
+      const userId = i + 11000000;
       const suffix = `${Date.now()}-${i}`;
 
       await seedGuild(db, { guildId });

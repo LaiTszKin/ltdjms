@@ -207,7 +207,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
         .setTitle(ZhTwStrings.productListTitle)
         .setDescription('找不到該產品')
         .setColor(Colors.PRODUCT_DEFAULT);
-      await interaction.editEmbed(embed);
+      await interaction.replyEmbed(embed);
       return;
     }
 
