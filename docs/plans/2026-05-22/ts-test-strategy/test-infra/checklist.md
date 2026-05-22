@@ -17,12 +17,12 @@
 
 ## Behavior-to-Test Checklist
 
-- [ ] CL-01: Testcontainer 啟動並執行 migration → R1.1, R1.2, R1.3 → infra-smoke.test.ts — Result: `NOT RUN`
-- [ ] CL-02: Template DB reset 100 次無洩漏 → R2.1, R2.2, R2.3 → infra-smoke.test.ts — Result: `NOT RUN`
-- [ ] CL-03: Seed factory 建立 guild + user → R3.1, R3.2 → infra-smoke.test.ts — Result: `NOT RUN`
-- [ ] CL-04: Arbitrary 產生合法值 → R4.1-R4.6 → infra-smoke.test.ts — Result: `NOT RUN`
-- [ ] CL-05: Test DI container resolve 所有 token → R5.1-R5.4 → infra-smoke.test.ts — Result: `NOT RUN`
-- [ ] CL-06: Assertion helper 正確運作 → R6.1-R6.3 → infra-smoke.test.ts — Result: `NOT RUN`
+- [x] CL-01: Testcontainer 啟動並執行 migration → R1.1, R1.2, R1.3 → infra-smoke.test.ts — Result: `PASS`
+- [x] CL-02: Template DB reset 100 次無洩漏 → R2.1, R2.2, R2.3 → infra-smoke.test.ts — Result: `PASS`
+- [x] CL-03: Seed factory 建立 guild + user → R3.1, R3.2 → infra-smoke.test.ts — Result: `PASS`
+- [x] CL-04: Arbitrary 產生合法值 → R4.1-R4.6 → infra-smoke.test.ts — Result: `PASS`
+- [x] CL-05: Test DI container resolve 所有 token → R5.1-R5.4 → infra-smoke.test.ts — Result: `PASS`
+- [x] CL-06: Assertion helper 正確運作 → R6.1-R6.3 → infra-smoke.test.ts — Result: `PASS`
 
 ## Hardening Checklist
 
@@ -42,20 +42,20 @@
 
 ## Execution Summary
 
-- [ ] Unit: `NOT RUN`
-- [ ] Regression: `N/A`
-- [ ] Property-based: `N/A`
-- [ ] Integration: `NOT RUN`
-- [ ] E2E: `N/A`
-- [ ] Mock scenarios: `N/A`
-- [ ] Adversarial: `N/A`
+- [x] Unit: `N/A`
+- [x] Regression: `N/A`
+- [x] Property-based: `N/A`
+- [x] Integration: `PASS`
+- [x] E2E: `N/A`
+- [x] Mock scenarios: `N/A`
+- [x] Adversarial: `N/A`
 
 ## Completion Records
 
-- [ ] Task 1 (Dependencies & vitest config): pending — Remaining: 全部
-- [ ] Task 2 (Template DB reset): pending — Remaining: 全部
-- [ ] Task 3 (Seed data factory): pending — Remaining: 全部
-- [ ] Task 4 (fast-check arbitrary): pending — Remaining: 全部
-- [ ] Task 5 (Test DI container): pending — Remaining: 全部
-- [ ] Task 6 (Assertion helper): pending — Remaining: 全部
-- [ ] Task 7 (Integration smoke test): pending — Remaining: 全部
+- [x] Task 1 (Dependencies & vitest config): completed
+- [x] Task 2 (Template DB reset): completed
+- [x] Task 3 (Seed data factory): completed
+- [x] Task 4 (fast-check arbitrary): completed
+- [x] Task 5 (Test DI container): completed
+- [x] Task 6 (Assertion helper): completed
+- [x] Task 7 (Integration smoke test): completed
