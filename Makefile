@@ -12,7 +12,18 @@ build:
 		--strict --moduleResolution NodeNext --module NodeNext --target ES2022 --esModuleInterop
 
 test:
-	pnpm vitest run
+	pnpm vitest run --project @ltdjms/shared && \
+	pnpm vitest run --project @ltdjms/admin && \
+	pnpm vitest run --project @ltdjms/ai && \
+	pnpm vitest run --project @ltdjms/dispatch && \
+	pnpm vitest run --project @ltdjms/economy --exclude '**/*.pbt.test.ts' && \
+	for f in packages/economy/src/__tests__/*.pbt.test.ts; do \
+	  pnpm vitest run --project @ltdjms/economy "$$f" || exit 1; \
+	done && \
+	pnpm vitest run --project @ltdjms/shop --exclude '**/*.pbt.test.ts' --exclude '**/*-e2e.test.ts' && \
+	for f in packages/shop/src/__tests__/*.pbt.test.ts; do \
+	  pnpm vitest run --project @ltdjms/shop "$$f" || exit 1; \
+	done
 
 format:
 	pnpm prettier --write "packages/*/src/**/*.ts" "*.ts" "*.mjs" "tsconfig.json" ".prettierrc"

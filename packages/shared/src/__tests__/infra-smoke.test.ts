@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Pool } from 'pg';
-import { getTestPool, resetDatabase, createTemplateDatabase } from '../infra/database/test-db-reset.js';
+import { getTestPool, cleanAllTestTables } from '../infra/database/test-db-reset.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { sql } from 'drizzle-orm';
 import {
@@ -18,9 +18,8 @@ describe('Integration PBT Infrastructure Smoke Test', () => {
   let testPool: Pool;
 
   beforeAll(async () => {
-    // Ensure the template_clean DB has been created by global setup
-    // createTemplateDatabase is idempotent — safe to call even if already exists
-    await createTemplateDatabase(CONNECTION_URL!);
+    // cleanAllTestTables handles test isolation without terminating
+    // other workspace projects' connections
 
     // Create a test pool for data operations on the target database
     testPool = getTestPool(CONNECTION_URL!);
@@ -31,7 +30,7 @@ describe('Integration PBT Infrastructure Smoke Test', () => {
   });
 
   it('should reset database from template', async () => {
-    await resetDatabase(CONNECTION_URL!);
+    await cleanAllTestTables(CONNECTION_URL!);
 
     // Connect to freshly reset database
     const pool = new Pool({ connectionString: CONNECTION_URL, max: 1 });
@@ -49,7 +48,7 @@ describe('Integration PBT Infrastructure Smoke Test', () => {
   });
 
   it('should seed guild config', async () => {
-    await resetDatabase(CONNECTION_URL!);
+    await cleanAllTestTables(CONNECTION_URL!);
     const pool = new Pool({ connectionString: CONNECTION_URL, max: 1 });
     try {
       const db = drizzle(pool);
@@ -73,7 +72,7 @@ describe('Integration PBT Infrastructure Smoke Test', () => {
   });
 
   it('should seed user account', async () => {
-    await resetDatabase(CONNECTION_URL!);
+    await cleanAllTestTables(CONNECTION_URL!);
     const pool = new Pool({ connectionString: CONNECTION_URL, max: 1 });
     try {
       const db = drizzle(pool);
@@ -104,7 +103,7 @@ describe('Integration PBT Infrastructure Smoke Test', () => {
   });
 
   it('should seed product and redemption code', async () => {
-    await resetDatabase(CONNECTION_URL!);
+    await cleanAllTestTables(CONNECTION_URL!);
     const pool = new Pool({ connectionString: CONNECTION_URL, max: 1 });
     try {
       const db = drizzle(pool);
@@ -134,7 +133,7 @@ describe('Integration PBT Infrastructure Smoke Test', () => {
   });
 
   it('should seed dice game config', async () => {
-    await resetDatabase(CONNECTION_URL!);
+    await cleanAllTestTables(CONNECTION_URL!);
     const pool = new Pool({ connectionString: CONNECTION_URL, max: 1 });
     try {
       const db = drizzle(pool);
@@ -158,7 +157,7 @@ describe('Integration PBT Infrastructure Smoke Test', () => {
   });
 
   it('should seed fiat order', async () => {
-    await resetDatabase(CONNECTION_URL!);
+    await cleanAllTestTables(CONNECTION_URL!);
     const pool = new Pool({ connectionString: CONNECTION_URL, max: 1 });
     try {
       const db = drizzle(pool);
@@ -189,7 +188,7 @@ describe('Integration PBT Infrastructure Smoke Test', () => {
 
   it('should fully reset DB between tests', async () => {
     // Start with a clean database
-    await resetDatabase(CONNECTION_URL!);
+    await cleanAllTestTables(CONNECTION_URL!);
 
     // Seed some data
     const seedPool = new Pool({ connectionString: CONNECTION_URL, max: 1 });
@@ -205,7 +204,7 @@ describe('Integration PBT Infrastructure Smoke Test', () => {
     }
 
     // Reset
-    await resetDatabase(CONNECTION_URL!);
+    await cleanAllTestTables(CONNECTION_URL!);
 
     // Verify it's clean (no custom data)
     const cleanPool = new Pool({ connectionString: CONNECTION_URL, max: 1 });

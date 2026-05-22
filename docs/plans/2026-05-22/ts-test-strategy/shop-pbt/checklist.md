@@ -17,11 +17,11 @@
 
 ## Behavior-to-Test Checklist
 
-- [ ] CL-01: 兌換碼僅能被兌換一次、第二次回傳 DomainError → R1.1–R1.4 → redemption.pbt.test.ts — Result: `NOT RUN`
-- [ ] CL-02: 批量兌換碼全部兌換後狀態為 used、reward 正確 → R2.1–R2.3 → redemption.pbt.test.ts — Result: `NOT RUN`
-- [ ] CL-03: 購買後餘額正確扣減、餘額不足回傳錯誤 → R3.1–R3.4 → shop-purchase.pbt.test.ts — Result: `NOT RUN`
-- [ ] CL-04: 法幣訂單 orderNumber 唯一、狀態初始化 PENDING_PAYMENT → R4.1–R4.5 → fiat-order-creation.pbt.test.ts — Result: `NOT RUN`
-- [ ] CL-05: 貨幣購買 reward 計算正確 → R5.1–R5.2 → currency-purchase.pbt.test.ts — Result: `NOT RUN`
+- [x] CL-01: 兌換碼僅能被兌換一次、第二次回傳 DomainError → R1.1–R1.4 → redemption.pbt.test.ts — Result: `PASS`
+- [x] CL-02: 批量兌換碼全部兌換後狀態為 used、reward 正確 → R2.1–R2.3 → redemption.pbt.test.ts — Result: `PASS`
+- [x] CL-03: 購買後餘額正確扣減、餘額不足回傳錯誤 → R3.1–R3.4 → shop-purchase.pbt.test.ts — Result: `PASS`
+- [x] CL-04: 法幣訂單 orderNumber 唯一、狀態初始化 PENDING_PAYMENT → R4.1–R4.5 → fiat-order-creation.pbt.test.ts — Result: `PASS`
+- [x] CL-05: 貨幣購買 reward 計算正確 → R5.1–R5.2 → currency-purchase.pbt.test.ts — Result: `PASS`
 
 ## Hardening Checklist
 
@@ -39,15 +39,15 @@
 
 ## Execution Summary
 
-- [ ] Unit: `N/A`
-- [ ] Regression: `NOT RUN`
-- [ ] Property-based: `NOT RUN`
-- [ ] Integration: `NOT RUN`
-- [ ] E2E: `N/A`
+- [x] Unit: `N/A`
+- [x] Regression: `PASS`
+- [x] Property-based: `PASS`
+- [x] Integration: `PASS`
+- [x] E2E: `N/A`
 
 ## Completion Records
 
-- [ ] Task 1 (Redemption PBT): pending
-- [ ] Task 2 (Shop Purchase PBT): pending
-- [ ] Task 3 (Fiat Order Creation PBT): pending
-- [ ] Task 4 (Currency Purchase PBT): pending
+- [x] Task 1 (Redemption PBT): completed
+- [x] Task 2 (Shop Purchase PBT): completed
+- [x] Task 3 (Fiat Order Creation PBT): completed
+- [x] Task 4 (Currency Purchase PBT): completed

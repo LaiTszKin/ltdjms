@@ -159,7 +159,7 @@ describe('DiceGame2 PBT', () => {
           guildId(),
           userId(),
           fc.integer({ min: 5, max: 20 }),
-          positiveAmount(1000, 100000),
+          positiveAmount(100000, 1000000), // enough to cover any reward
           async (gId, uId, tokenCount, initialBalance) => {
             await cleanTestTables(pool);
             const db = drizzle(pool);

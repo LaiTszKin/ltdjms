@@ -9,24 +9,16 @@ import { container, TOKENS, initializeContainer, EnvironmentConfig, ok, isOk, is
 import { configureEconomyContainer, ECONOMY_TOKENS } from '@ltdjms/economy';
 import { configureContainer, SHOP_TOKENS, type ProductRewardService } from '../di/shop-module.js';
 import type { EscortDispatchHandoffService } from '../domain/escort-dispatch-handoff-service.js';
-import { getTestPool, resetDatabase, createTemplateDatabase } from '../../../shared/src/infra/database/test-db-reset.js';
+import { getTestPool, cleanAllTestTables } from '../../../shared/src/infra/database/test-db-reset.js';
 import { seedGuild, seedProduct, seedUserAccount } from '../../../shared/src/__tests__/seed-factory.js';
 
 const CONNECTION_URL = process.env.__TEST_CONTAINER_URL!;
 let db: NodePgDatabase;
 let currentPool: Pool | null = null;
 
-beforeAll(async () => {
-  await createTemplateDatabase(CONNECTION_URL);
-});
-
-afterAll(async () => {
-  await currentPool?.end().catch(() => {});
-});
-
 beforeEach(async () => {
   await currentPool?.end().catch(() => {});
-  await resetDatabase(CONNECTION_URL);
+  await cleanAllTestTables(CONNECTION_URL);
 
   currentPool = getTestPool(CONNECTION_URL);
   const pool = currentPool;

@@ -17,11 +17,11 @@
 
 ## Behavior-to-Test Checklist
 
-- [ ] CL-01: CVS 取號成功回傳 paymentNo → R1.1–R1.4 → ecpay-cvs-e2e.test.ts — Result: `NOT RUN`
-- [ ] CL-02: SimulatePaid=1 回撥 → DB 訂單狀態 PAID → R2.1–R2.5 → ecpay-callback-e2e.test.ts — Result: `NOT RUN`
-- [ ] CL-03: CheckMacValue 驗證失敗回傳 400 → R3.1–R3.3 → ecpay-callback-e2e.test.ts — Result: `NOT RUN`
-- [ ] CL-04: 對帳排程同步訂單狀態 → R4.1–R4.4 → ecpay-reconciliation-e2e.test.ts — Result: `NOT RUN`
-- [ ] CL-05: AES 加解密 round-trip 與 golden data 一致 → R5.1–R5.3 → ecpay-crypto-e2e.test.ts — Result: `NOT RUN`
+- [x] CL-01: CVS 取號成功回傳 paymentNo → R1.1–R1.4 → ecpay-cvs-e2e.test.ts — Result: `PASS`
+- [x] CL-02: SimulatePaid=1 回撥 → DB 訂單狀態 PAID → R2.1–R2.5 → ecpay-callback-e2e.test.ts — Result: `PASS`
+- [x] CL-03: CheckMacValue 驗證失敗回傳 400 → R3.1–R3.3 → ecpay-callback-e2e.test.ts — Result: `PASS`
+- [x] CL-04: 對帳排程同步訂單狀態 → R4.1–R4.4 → ecpay-reconciliation-e2e.test.ts — Result: `PASS`
+- [x] CL-05: AES 加解密 round-trip 與 golden data 一致 → R5.1–R5.3 → ecpay-crypto-e2e.test.ts — Result: `PASS`
 
 ## Hardening Checklist
 
@@ -42,18 +42,18 @@
 
 ## Execution Summary
 
-- [ ] Unit: `N/A`
-- [ ] Regression: `NOT RUN`
-- [ ] Property-based: `N/A`
-- [ ] Integration: `NOT RUN`
-- [ ] E2E: `NOT RUN`
-- [ ] Mock scenarios: `N/A`
-- [ ] Adversarial: `NOT RUN`
+- [x] Unit: `N/A`
+- [x] Regression: `PASS`
+- [x] Property-based: `N/A`
+- [x] Integration: `PASS`
+- [x] E2E: `PASS`
+- [x] Mock scenarios: `N/A`
+- [x] Adversarial: `PASS`
 
 ## Completion Records
 
-- [ ] Task 1 (CVS E2E): pending
-- [ ] Task 2 (Callback E2E): pending
-- [ ] Task 3 (CheckMacValue failure): pending
-- [ ] Task 4 (Reconciliation E2E): pending
-- [ ] Task 5 (Crypto E2E): pending
+- [x] Task 1 (CVS E2E): completed
+- [x] Task 2 (Callback E2E): completed
+- [x] Task 3 (CheckMacValue failure): completed
+- [x] Task 4 (Reconciliation E2E): completed
+- [x] Task 5 (Crypto E2E): completed

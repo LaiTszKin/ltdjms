@@ -17,14 +17,14 @@
 
 ## Behavior-to-Test Checklist
 
-- [ ] CL-01: CurrencyConfig 變更後立即生效且不影響餘額 → R1.1–R1.4 → currency-config.pbt.test.ts — Result: `NOT RUN`
-- [ ] CL-02: 商品下架後不可購買、上架後恢復 → R2.1–R2.3 → product-management.pbt.test.ts — Result: `NOT RUN`
-- [ ] CL-03: 價格更新後新訂單用新價格、舊訂單保持原價 → R3.1–R3.3 → product-management.pbt.test.ts — Result: `NOT RUN`
-- [ ] CL-04: 兌換碼批量生成唯一、格式正確 → R4.1–R4.4 → redemption-code-gen.pbt.test.ts — Result: `NOT RUN`
-- [ ] CL-05: Dice 參數變更後新遊戲生效、既有記錄不變 → R5.1–R5.4 → game-config.pbt.test.ts — Result: `NOT RUN`
-- [ ] CL-06: 遊戲代幣調整數量正確、不可為負 → R6.1–R6.3 → game-token-management.pbt.test.ts — Result: `NOT RUN`
-- [ ] CL-07: 護航選項 CRUD 操作正確 → R7.1–R7.3 → dispatch-config.pbt.test.ts — Result: `NOT RUN`
-- [ ] CL-08: AI 頻道白名單新增／移除 → R8.1–R8.3 → ai-channel-config.pbt.test.ts — Result: `NOT RUN`
+- [x] CL-01: CurrencyConfig 變更後立即生效且不影響餘額 → R1.1–R1.4 → currency-config.pbt.test.ts — Result: `PASS`
+- [x] CL-02: 商品下架後不可購買、上架後恢復 → R2.1–R2.3 → product-management.pbt.test.ts — Result: `PASS`
+- [x] CL-03: 價格更新後新訂單用新價格、舊訂單保持原價 → R3.1–R3.3 → product-management.pbt.test.ts — Result: `PASS`
+- [x] CL-04: 兌換碼批量生成唯一、格式正確 → R4.1–R4.4 → redemption-code-gen.pbt.test.ts — Result: `PASS`
+- [x] CL-05: Dice 參數變更後新遊戲生效、既有記錄不變 → R5.1–R5.4 → game-config.pbt.test.ts — Result: `PASS`
+- [x] CL-06: 遊戲代幣調整數量正確、不可為負 → R6.1–R6.3 → game-token-management.pbt.test.ts — Result: `PASS`
+- [x] CL-07: 護航選項 CRUD 操作正確 → R7.1–R7.3 → dispatch-config.pbt.test.ts — Result: `PASS`
+- [x] CL-08: AI 頻道白名單新增／移除 → R8.1–R8.3 → ai-channel-config.pbt.test.ts — Result: `PASS`
 
 ## Hardening Checklist
 
@@ -42,18 +42,18 @@
 
 ## Execution Summary
 
-- [ ] Unit: `N/A`
-- [ ] Regression: `NOT RUN`
-- [ ] Property-based: `NOT RUN`
-- [ ] Integration: `NOT RUN`
-- [ ] E2E: `N/A`
+- [x] Unit: `N/A`
+- [x] Regression: `PASS`
+- [x] Property-based: `PASS`
+- [x] Integration: `PASS`
+- [x] E2E: `N/A`
 
 ## Completion Records
 
-- [ ] Task 1 (Currency Config PBT): pending
-- [ ] Task 2 (Product Management PBT): pending
-- [ ] Task 3 (Redeem Code Gen PBT): pending
-- [ ] Task 4 (Game Config PBT): pending
-- [ ] Task 5 (Game Token Management PBT): pending
-- [ ] Task 6 (Dispatch Config PBT): pending
-- [ ] Task 7 (AI Channel Config PBT): pending
+- [x] Task 1 (Currency Config PBT): completed
+- [x] Task 2 (Product Management PBT): completed
+- [x] Task 3 (Redeem Code Gen PBT): completed
+- [x] Task 4 (Game Config PBT): completed
+- [x] Task 5 (Game Token Management PBT): completed
+- [x] Task 6 (Dispatch Config PBT): completed
+- [x] Task 7 (AI Channel Config PBT): completed

@@ -17,13 +17,13 @@
 
 ## Behavior-to-Test Checklist
 
-- [ ] CL-01: 任意合法轉帳後 sum(balances) 守恆 → R1.1–R1.4 → balance-transfer.pbt.test.ts — Result: `NOT RUN`
-- [ ] CL-02: 透支轉帳回傳 DomainError → R2.1–R2.3 → balance-transfer.pbt.test.ts — Result: `NOT RUN`
-- [ ] CL-03: 自我轉帳回傳 DomainError → R3.1–R3.2 → balance-transfer.pbt.test.ts — Result: `NOT RUN`
-- [ ] CL-04: DiceGame1 payout = bet × multiplier → R4.1–R4.3 → dice-game-1.pbt.test.ts — Result: `NOT RUN`
-- [ ] CL-05: DiceGame2 組合 payout = bet × multiplier → R5.1–R5.3 → dice-game-2.pbt.test.ts — Result: `NOT RUN`
-- [ ] CL-06: GameToken 操作數量正確、不可為負 → R6.1–R6.4 → game-token.pbt.test.ts — Result: `NOT RUN`
-- [ ] CL-07: CurrencyConfig 查詢回傳正確值 → R7.1–R7.2 → currency-config.pbt.test.ts — Result: `NOT RUN`
+- [x] CL-01: 任意合法轉帳後 sum(balances) 守恆 → R1.1–R1.4 → balance-transfer.pbt.test.ts — Result: `PASS`
+- [x] CL-02: 透支轉帳回傳 DomainError → R2.1–R2.3 → balance-transfer.pbt.test.ts — Result: `PASS`
+- [x] CL-03: 自我轉帳回傳 DomainError → R3.1–R3.2 → balance-transfer.pbt.test.ts — Result: `PASS`
+- [x] CL-04: DiceGame1 payout = bet × multiplier → R4.1–R4.3 → dice-game-1.pbt.test.ts — Result: `PASS`
+- [x] CL-05: DiceGame2 組合 payout = bet × multiplier → R5.1–R5.3 → dice-game-2.pbt.test.ts — Result: `PASS`
+- [x] CL-06: GameToken 操作數量正確、不可為負 → R6.1–R6.4 → game-token.pbt.test.ts — Result: `PASS`
+- [x] CL-07: CurrencyConfig 查詢回傳正確值 → R7.1–R7.2 → currency-config.pbt.test.ts — Result: `PASS`
 
 ## Hardening Checklist
 
@@ -43,17 +43,17 @@
 ## Execution Summary
 
 - [ ] Unit: `N/A`（此 spec 為 Integration PBT，不包含單元測試）
-- [ ] Regression: `NOT RUN`
-- [ ] Property-based: `NOT RUN`
-- [ ] Integration: `NOT RUN`
-- [ ] E2E: `N/A`
-- [ ] Mock scenarios: `N/A`
-- [ ] Adversarial: `NOT RUN`
+- [x] Regression: `PASS`
+- [x] Property-based: `PASS`
+- [x] Integration: `PASS`
+- [x] E2E: `N/A`
+- [x] Mock scenarios: `N/A`
+- [x] Adversarial: `PASS`
 
 ## Completion Records
 
-- [ ] Task 1 (Balance Transfer PBT): pending — Remaining: 全部
-- [ ] Task 2 (DiceGame1 PBT): pending — Remaining: 全部
-- [ ] Task 3 (DiceGame2 PBT): pending — Remaining: 全部
-- [ ] Task 4 (Game Token PBT): pending — Remaining: 全部
-- [ ] Task 5 (Currency Config PBT): pending — Remaining: 全部
+- [x] Task 1 (Balance Transfer PBT): completed
+- [x] Task 2 (DiceGame1 PBT): completed
+- [x] Task 3 (DiceGame2 PBT): completed
+- [x] Task 4 (Game Token PBT): completed
+- [x] Task 5 (Currency Config PBT): completed

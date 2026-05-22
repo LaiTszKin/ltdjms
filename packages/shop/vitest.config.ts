@@ -1,12 +1,25 @@
 import { defineConfig } from 'vitest/config';
+import path from 'path';
+
+const sharedSrc = path.resolve(__dirname, '../shared/src');
 
 export default defineConfig({
+  resolve: {
+    alias: [
+      { find: /^@ltdjms\/shared\/(.+)$/, replacement: sharedSrc + '/$1' },
+      { find: /^@ltdjms\/shared$/, replacement: sharedSrc },
+    ],
+  },
   test: {
     include: ['src/**/*.test.ts'],
     testTimeout: 30000,
     setupFiles: ['./vitest.setup.ts'],
-    globalSetup: ['../shared/src/__tests__/vitest.globalSetup.ts'],
-    globalTeardown: ['../shared/src/__tests__/vitest.globalTeardown.ts'],
     fileParallelism: false,
+    globalSetup: [
+      path.resolve(__dirname, '../shared/src/__tests__/vitest.globalSetup.ts'),
+    ],
+    globalTeardown: [
+      path.resolve(__dirname, '../shared/src/__tests__/vitest.globalTeardown.ts'),
+    ],
   },
 });
