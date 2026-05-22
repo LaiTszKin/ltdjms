@@ -43,7 +43,6 @@ export class BalanceManagementHandler extends BaseAdminHandler {
   ): Promise<void> {
     const guildId = interaction.getGuildId();
     const userId = interaction.getUserId();
-    const fullCustomId = interaction.getCustomId();
 
     // Permission check
     if (!this.checkAdminPermission(interaction)) {
@@ -57,6 +56,16 @@ export class BalanceManagementHandler extends BaseAdminHandler {
       return;
     }
 
+    const fullCustomId = interaction.getCustomId();
+
+    // Sub-action: show modal for add/deduct/set — must NOT defer before showModal
+    if (fullCustomId.startsWith('admin_balance_modal_')) {
+      this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.BALANCE);
+      const mode = fullCustomId.replace('admin_balance_modal_', '') as 'add' | 'deduct' | 'set';
+      await this.showAdjustModal(interaction, mode);
+      return;
+    }
+
     await this.ensureDeferred(interaction);
 
     this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.BALANCE);
@@ -64,13 +73,6 @@ export class BalanceManagementHandler extends BaseAdminHandler {
     // Modal submit handling
     if (fullCustomId === 'admin_balance_add' || fullCustomId === 'admin_balance_deduct' || fullCustomId === 'admin_balance_set') {
       await this.handleModalSubmit(interaction, guildId, userId, fullCustomId);
-      return;
-    }
-
-    // Sub-action: show modal for add/deduct/set
-    if (fullCustomId.startsWith('admin_balance_modal_')) {
-      const mode = fullCustomId.replace('admin_balance_modal_', '') as 'add' | 'deduct' | 'set';
-      await this.showAdjustModal(interaction, mode);
       return;
     }
 

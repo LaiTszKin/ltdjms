@@ -57,11 +57,26 @@ export class EscortCatalogHandler extends BaseAdminHandler {
       return;
     }
 
+    const fullCustomId = interaction.getCustomId();
+
+    // Show create/edit modals — must NOT defer before showModal
+    if (fullCustomId === 'admin_escortcatalog_create') {
+      this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.ESCORT_CATALOG);
+      await this.showCreateModal(interaction);
+      return;
+    }
+    if (fullCustomId.startsWith('admin_escortcatalog_edit_')) {
+      this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.ESCORT_CATALOG);
+      const entryCode = fullCustomId.replace('admin_escortcatalog_edit_', '');
+      if (entryCode) {
+        await this.showEditModal(interaction, entryCode);
+      }
+      return;
+    }
+
     await this.ensureDeferred(interaction);
 
     this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.ESCORT_CATALOG);
-
-    const fullCustomId = interaction.getCustomId();
 
     // Pagination navigation
     if (fullCustomId === 'admin_escortcatalog_page_prev') {
@@ -101,19 +116,6 @@ export class EscortCatalogHandler extends BaseAdminHandler {
       const entryCode = fullCustomId.replace('admin_escortcatalog_confirm_delete_', '');
       if (entryCode) {
         await this.handleDelete(interaction, guildId, entryCode);
-      }
-      return;
-    }
-
-    if (fullCustomId === 'admin_escortcatalog_create') {
-      await this.showCreateModal(interaction);
-      return;
-    }
-
-    if (fullCustomId.startsWith('admin_escortcatalog_edit_')) {
-      const entryCode = fullCustomId.replace('admin_escortcatalog_edit_', '');
-      if (entryCode) {
-        await this.showEditModal(interaction, entryCode);
       }
       return;
     }

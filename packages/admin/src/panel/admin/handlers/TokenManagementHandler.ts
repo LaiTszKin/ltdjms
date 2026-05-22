@@ -56,22 +56,23 @@ export class TokenManagementHandler extends BaseAdminHandler {
       return;
     }
 
+    const fullCustomId = interaction.getCustomId();
+
+    // Sub-action: show modal for add/deduct/set — must NOT defer before showModal
+    if (fullCustomId.startsWith('admin_token_modal_')) {
+      this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.TOKEN);
+      const mode = fullCustomId.replace('admin_token_modal_', '') as 'add' | 'deduct' | 'set';
+      await this.showAdjustModal(interaction, mode);
+      return;
+    }
+
     await this.ensureDeferred(interaction);
 
     this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.TOKEN);
 
-    const fullCustomId = interaction.getCustomId();
-
     // Modal submit handling
     if (fullCustomId === 'admin_token_add' || fullCustomId === 'admin_token_deduct' || fullCustomId === 'admin_token_set') {
       await this.handleModalSubmit(interaction, guildId, userId, fullCustomId);
-      return;
-    }
-
-    // Sub-action: show modal for add/deduct/set
-    if (fullCustomId.startsWith('admin_token_modal_')) {
-      const mode = fullCustomId.replace('admin_token_modal_', '') as 'add' | 'deduct' | 'set';
-      await this.showAdjustModal(interaction, mode);
       return;
     }
 

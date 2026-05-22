@@ -55,21 +55,25 @@ export class GameSettingsHandler extends BaseAdminHandler {
       return;
     }
 
-    await this.ensureDeferred(interaction);
-
-    this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.GAME_CONFIG);
-
     const fullCustomId = interaction.getCustomId();
 
-    // Branch on sub-action
+    // Show dice game edit modals — must NOT defer before showModal
     if (fullCustomId === 'admin_game_edit_1') {
+      this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.GAME_CONFIG);
       await this.showDiceGameModal(interaction, guildId, '1');
       return;
     }
     if (fullCustomId === 'admin_game_edit_2') {
+      this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.GAME_CONFIG);
       await this.showDiceGameModal(interaction, guildId, '2');
       return;
     }
+
+    await this.ensureDeferred(interaction);
+
+    this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.GAME_CONFIG);
+
+    // Branch on sub-action (needs deferral)
     if (fullCustomId === 'admin_game_save_1') {
       await this.saveDiceGameConfig(interaction, guildId, '1');
       return;

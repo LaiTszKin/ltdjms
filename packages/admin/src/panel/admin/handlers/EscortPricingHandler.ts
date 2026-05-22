@@ -55,11 +55,21 @@ export class EscortPricingHandler extends BaseAdminHandler {
       return;
     }
 
+    const fullCustomId = interaction.getCustomId();
+
+    // Show edit modal — must NOT defer before showModal
+    if (fullCustomId.startsWith('admin_escortprice_edit_')) {
+      this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.ESCORT_PRICING);
+      const optionCode = fullCustomId.replace('admin_escortprice_edit_', '');
+      if (optionCode) {
+        await this.showEditModal(interaction, guildId, optionCode);
+      }
+      return;
+    }
+
     await this.ensureDeferred(interaction);
 
     this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.ESCORT_PRICING);
-
-    const fullCustomId = interaction.getCustomId();
 
     // Handle modal submit for editing price
     if (fullCustomId.startsWith('admin_escortprice_save_')) {
@@ -82,15 +92,6 @@ export class EscortPricingHandler extends BaseAdminHandler {
       const optionCode = fullCustomId.replace('admin_escortprice_confirm_reset_', '');
       if (optionCode) {
         await this.handleResetPrice(interaction, guildId, userId, optionCode);
-      }
-      return;
-    }
-
-    // Show edit modal
-    if (fullCustomId.startsWith('admin_escortprice_edit_')) {
-      const optionCode = fullCustomId.replace('admin_escortprice_edit_', '');
-      if (optionCode) {
-        await this.showEditModal(interaction, guildId, optionCode);
       }
       return;
     }

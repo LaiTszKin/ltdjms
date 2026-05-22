@@ -57,11 +57,38 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
       return;
     }
 
-    await this.ensureDeferred(interaction);
-
     this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.PRODUCT_LIST);
 
     const fullCustomId = interaction.getCustomId();
+
+    // Show modals — must NOT defer before showModal
+    if (fullCustomId.startsWith('admin_product_codes_')) {
+      const productId = parseInt(fullCustomId.replace('admin_product_codes_', ''), 10);
+      if (!isNaN(productId)) {
+        await this.showGenerateCodesModal(interaction, productId);
+      }
+      return;
+    }
+    if (fullCustomId === 'admin_product_create') {
+      await this.showCreateProductModal(interaction);
+      return;
+    }
+    if (fullCustomId.startsWith('admin_product_fiat_')) {
+      const productId = parseInt(fullCustomId.replace('admin_product_fiat_', ''), 10);
+      if (!isNaN(productId)) {
+        await this.showSetFiatPriceModal(interaction, productId);
+      }
+      return;
+    }
+    if (fullCustomId.startsWith('admin_product_edit_')) {
+      const productId = parseInt(fullCustomId.replace('admin_product_edit_', ''), 10);
+      if (!isNaN(productId)) {
+        await this.showEditProductModal(interaction, guildId, productId);
+      }
+      return;
+    }
+
+    await this.ensureDeferred(interaction);
 
     if (fullCustomId.startsWith('admin_product_generate_codes_')) {
       const productId = parseInt(fullCustomId.replace('admin_product_generate_codes_', ''), 10);
@@ -84,14 +111,6 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
       return;
     }
 
-    if (fullCustomId.startsWith('admin_product_codes_')) {
-      const productId = parseInt(fullCustomId.replace('admin_product_codes_', ''), 10);
-      if (!isNaN(productId)) {
-        await this.showGenerateCodesModal(interaction, productId);
-      }
-      return;
-    }
-
     if (fullCustomId.startsWith('admin_product_detail_')) {
       const productId = parseInt(fullCustomId.replace('admin_product_detail_', ''), 10);
       if (!isNaN(productId)) {
@@ -100,31 +119,10 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
       return;
     }
 
-    if (fullCustomId === 'admin_product_create') {
-      await this.showCreateProductModal(interaction);
-      return;
-    }
-
-    if (fullCustomId.startsWith('admin_product_fiat_')) {
-      const productId = parseInt(fullCustomId.replace('admin_product_fiat_', ''), 10);
-      if (!isNaN(productId)) {
-        await this.showSetFiatPriceModal(interaction, productId);
-      }
-      return;
-    }
-
     if (fullCustomId.startsWith('admin_product_fiat_save_')) {
       const productId = parseInt(fullCustomId.replace('admin_product_fiat_save_', ''), 10);
       if (!isNaN(productId)) {
         await this.handleSetFiatPrice(interaction, guildId, productId);
-      }
-      return;
-    }
-
-    if (fullCustomId.startsWith('admin_product_edit_')) {
-      const productId = parseInt(fullCustomId.replace('admin_product_edit_', ''), 10);
-      if (!isNaN(productId)) {
-        await this.showEditProductModal(interaction, guildId, productId);
       }
       return;
     }
