@@ -2,7 +2,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -b",
+    "build": "tsc -b && tsc -p apps/bot",
     "test": "vitest run",
     "format": "prettier --write \"packages/*/src/**/*.ts\" \"*.{ts,mjs,js,json}\"",
     "format:check": "prettier --check \"packages/*/src/**/*.ts\" \"*.{ts,mjs,js,json}\"",

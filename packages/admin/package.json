@@ -5,32 +5,6 @@
   "private": true,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    },
-    "./i18n": {
-      "types": "./dist/i18n/index.d.ts",
-      "import": "./dist/i18n/index.js"
-    },
-    "./facades": {
-      "types": "./dist/facades/index.d.ts",
-      "import": "./dist/facades/index.js"
-    },
-    "./session": {
-      "types": "./dist/session/index.d.ts",
-      "import": "./dist/session/index.js"
-    },
-    "./di": {
-      "types": "./dist/di/index.d.ts",
-      "import": "./dist/di/index.js"
-    },
-    "./commands/infra": {
-      "types": "./dist/commands/infra/index.d.ts",
-      "import": "./dist/commands/infra/index.js"
-    }
-  },
   "scripts": {
     "build": "tsc",
     "test": "vitest run",

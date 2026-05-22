@@ -13,7 +13,12 @@ import {
   Err,
   DomainError,
 } from '@ltdjms/shared';
-import { configureEconomyContainer, ECONOMY_TOKENS, CurrencyTransactionSource } from '@ltdjms/economy';
+import {
+  configureEconomyContainer,
+  ECONOMY_TOKENS,
+  CurrencyTransactionSource,
+  type GameRewardService,
+} from '@ltdjms/economy';
 import { configureDispatchContainer, DISPATCH_TOKENS } from '@ltdjms/dispatch';
 import {
   configureContainer as configureShopContainer,
@@ -21,9 +26,21 @@ import {
   FiatOrderProcessingScheduler,
   EcpayCallbackHttpServer,
   type ProductRewardService,
+  type BalanceService,
+  type BalanceAdjustmentService,
+  type EscortDispatchHandoffService,
 } from '@ltdjms/shop';
-import { initializeAIModule, AI_TOKENS, type AIChatMentionListener } from '@ltdjms/ai';
-import { configureAdminContainer, disposeAdminContainer, ADMIN_TOKENS, SlashCommandRegistrar } from '@ltdjms/admin';
+import {
+  initializeAIModule,
+  AI_TOKENS,
+  type AIChatMentionListener,
+} from '@ltdjms/ai';
+import {
+  configureAdminContainer,
+  ADMIN_TOKENS,
+  SlashCommandRegistrar,
+  disposeAdminContainer,
+} from '@ltdjms/admin';
 import { Client, GatewayIntentBits } from 'discord.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -113,19 +130,19 @@ export async function main(): Promise<void> {
   // 9. Shop module — resolves economy/dispatch services via DI,
   //    wraps GameRewardService into ProductRewardService adapter,
   //    then configures the shop container with drizzle-wrapped db.
-  const balanceService = container.resolve<import('@ltdjms/shop').BalanceService>(
+  const balanceService = container.resolve<BalanceService>(
     ECONOMY_TOKENS.BalanceService,
   );
-  const balanceAdjustmentService = container.resolve<import('@ltdjms/shop').BalanceAdjustmentService>(
+  const balanceAdjustmentService = container.resolve<BalanceAdjustmentService>(
     ECONOMY_TOKENS.BalanceAdjustmentService,
   );
-  const escortDispatchHandoffService = container.resolve<import('@ltdjms/shop').EscortDispatchHandoffService>(
+  const escortDispatchHandoffService = container.resolve<EscortDispatchHandoffService>(
     DISPATCH_TOKENS.EscortDispatchHandoffService,
   );
 
   // ProductRewardService adapter wrapping GameRewardService.creditReward
   // into the grantReward interface expected by the shop module.
-  const gameRewardService = container.resolve<import('@ltdjms/economy').GameRewardService>(
+  const gameRewardService = container.resolve<GameRewardService>(
     ECONOMY_TOKENS.GameRewardService,
   );
   const productRewardService: ProductRewardService = {
