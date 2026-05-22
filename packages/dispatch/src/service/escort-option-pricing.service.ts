@@ -21,6 +21,7 @@ export class EscortOptionPricingService {
    */
   private catalogCache: { data: EscortOptionCatalogEntry[]; expiry: number } | null = null;
   private static readonly CATALOG_CACHE_TTL_MS = 5 * 60 * 1000;
+  private pendingCatalogFetch: Promise<EscortOptionCatalogEntry[]> | null = null;
 
   /** Clears the in-memory catalog cache so the next listOptionPrices call re-fetches from DB. */
   clearCatalogCache(): void {
@@ -32,9 +33,20 @@ export class EscortOptionPricingService {
     if (this.catalogCache != null && now < this.catalogCache.expiry) {
       return this.catalogCache.data;
     }
-    const data = await this.catalogRepository.findAll();
-    this.catalogCache = { data, expiry: now + EscortOptionPricingService.CATALOG_CACHE_TTL_MS };
-    return data;
+
+    // Coalesce concurrent cache misses
+    if (this.pendingCatalogFetch) {
+      return this.pendingCatalogFetch;
+    }
+
+    this.pendingCatalogFetch = this.catalogRepository.findAll();
+    try {
+      const data = await this.pendingCatalogFetch;
+      this.catalogCache = { data, expiry: now + EscortOptionPricingService.CATALOG_CACHE_TTL_MS };
+      return data;
+    } finally {
+      this.pendingCatalogFetch = null;
+    }
   }
 
   async listOptionPrices(guildId: number): Promise<Result<OptionPriceView[], DomainError>> {

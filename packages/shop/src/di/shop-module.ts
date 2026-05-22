@@ -114,8 +114,6 @@ export const SHOP_TOKENS = {
   ShopCommandHandler: Symbol('ShopCommandHandler'),
   RedemptionCodeGenerator: Symbol('RedemptionCodeGenerator'),
   RedemptionService: Symbol('RedemptionService'),
-  FiatOrderBuyerNotificationService: Symbol('FiatOrderBuyerNotificationService'),
-  EscortOrderBuyerNotificationService: Symbol('EscortOrderBuyerNotificationService'),
   ShopAdminNotificationService: Symbol('ShopAdminNotificationService'),
   RedemptionTransactionService: Symbol('RedemptionTransactionService'),
   EcpayCallbackHttpServer: Symbol('EcpayCallbackHttpServer'),
@@ -148,8 +146,6 @@ export function configureContainer(options: ShopModuleOptions): void {
   const escortBuyerNotification = new EscortOrderBuyerNotificationService(discordRuntimeGateway, log);
   const adminNotification = new ShopAdminNotificationService(discordRuntimeGateway, log);
 
-  container.registerInstance(SHOP_TOKENS.FiatOrderBuyerNotificationService, buyerNotification);
-  container.registerInstance(SHOP_TOKENS.EscortOrderBuyerNotificationService, escortBuyerNotification);
   container.registerInstance(SHOP_TOKENS.ShopAdminNotificationService, adminNotification);
 
   // ---- ECPay Services ----

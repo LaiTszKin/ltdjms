@@ -8,6 +8,9 @@ import type { DispatchAfterSalesStaffRepo } from '../repo/dispatch-after-sales-s
  * Matches Java DispatchAfterSalesStaffService exactly.
  */
 export class DispatchAfterSalesStaffService {
+  private static readonly STAFF_CACHE_TTL_MS = 5 * 60 * 1000;
+  private readonly staffCache = new Map<number, { staff: Set<number>; expiresAt: number }>();
+
   constructor(private readonly repository: DispatchAfterSalesStaffRepo) {}
 
   async getStaffUserIds(guildId: number): Promise<Result<Set<number>, DomainError>> {
@@ -26,6 +29,7 @@ export class DispatchAfterSalesStaffService {
       if (!inserted) {
         return new Err(DomainError.invalidInput('該成員已在售後名單中'));
       }
+      this.staffCache.delete(guildId);
       return okVoid();
     } catch (e) {
       const err = e instanceof Error ? e : new Error(String(e));
@@ -39,6 +43,7 @@ export class DispatchAfterSalesStaffService {
       if (!removed) {
         return new Err(DomainError.invalidInput('該成員不在售後名單中'));
       }
+      this.staffCache.delete(guildId);
       return okVoid();
     } catch (e) {
       const err = e instanceof Error ? e : new Error(String(e));
@@ -47,8 +52,14 @@ export class DispatchAfterSalesStaffService {
   }
 
   async isAfterSalesStaff(guildId: number, userId: string): Promise<boolean> {
+    const now = Date.now();
+    const cached = this.staffCache.get(guildId);
+    if (cached && cached.expiresAt > now) {
+      return cached.staff.has(Number(userId));
+    }
     try {
       const staff = await this.repository.findStaffUserIds(guildId);
+      this.staffCache.set(guildId, { staff, expiresAt: now + DispatchAfterSalesStaffService.STAFF_CACHE_TTL_MS });
       return staff.has(Number(userId));
     } catch {
       return false;

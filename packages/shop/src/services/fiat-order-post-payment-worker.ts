@@ -64,11 +64,11 @@ export class FiatOrderPostPaymentWorker {
     try {
       const fulfillmentProduct = toFulfillmentProduct(order);
 
-      // Step 1: Buyer notification (idempotent, mark before notify to prevent
-      // duplicate sends on crash recovery — P3-7)
+      // Step 1: Buyer notification (notify before mark to ensure at-least-once
+      // delivery — spec requires at-least-once, not at-most-once)
       if (!isBuyerNotified(order)) {
-        await this.fiatOrderRepository.markBuyerNotifiedIfNeeded(order.orderNumber, new Date());
         this.buyerNotificationService.notifyPaymentSucceeded(order);
+        await this.fiatOrderRepository.markBuyerNotifiedIfNeeded(order.orderNumber, new Date());
       }
 
       // Step 2: Admin notification (always, independent of escort — P2-13)
