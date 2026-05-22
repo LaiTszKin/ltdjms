@@ -129,8 +129,8 @@ export class MockDiscordInteraction implements DiscordInteraction {
     return null;
   }
 
-  async editWithComponents(_embed: unknown, _components: unknown[]): Promise<void> {
-    // No-op in mock
+  async editWithComponents(embed: unknown, _components: unknown[]): Promise<void> {
+    this._editedEmbeds.push(embed);
   }
 
   /** Sets the admin flag for testing. */

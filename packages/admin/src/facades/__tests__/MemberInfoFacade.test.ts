@@ -26,8 +26,8 @@ describe('MemberInfoFacade', () => {
 
   beforeEach(() => {
     mockBalanceService = {
-      getBalance: vi.fn(),
-    };
+      getBalanceUnchecked: vi.fn(),
+    } as Partial<BalanceService>;
     mockTokenService = {
       getBalance: vi.fn(),
     };
@@ -59,7 +59,7 @@ describe('MemberInfoFacade', () => {
         currencyName: 'Coins',
         currencyIcon: '🪙',
       };
-      mockBalanceService.getBalance = vi.fn().mockResolvedValue(balanceView);
+      mockBalanceService.getBalanceUnchecked = vi.fn().mockResolvedValue(balanceView);
       mockTokenService.getBalance = vi.fn().mockResolvedValue(250);
 
       const result = await facade.getUserPanelView(guildId, userId);
@@ -71,7 +71,7 @@ describe('MemberInfoFacade', () => {
     });
 
     it('should return error on failure', async () => {
-      mockBalanceService.getBalance = vi.fn().mockRejectedValue(new Error('DB error'));
+      mockBalanceService.getBalanceUnchecked = vi.fn().mockRejectedValue(new Error('DB error'));
 
       const result = await facade.getUserPanelView(guildId, userId);
       expect(result.isErr()).toBe(true);
@@ -88,7 +88,7 @@ describe('MemberInfoFacade', () => {
       expect(mockRedemptionService.redeemCode).toHaveBeenCalledWith(
         'TESTCODE12345678',
         1,
-        100,
+        '100',
       );
     });
   });
