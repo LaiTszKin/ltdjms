@@ -48,6 +48,19 @@ const EVENT_TYPES = {
  *   若要支援，需注入 ProductManagementFacade / AIConfigManagementFacade。
  */
 export class AdminPanelUpdateListener {
+  private static readonly RELEVANT_EVENT_TYPES: ReadonlySet<string> = new Set([
+    EVENT_TYPES.CURRENCY_CONFIG_CHANGED,
+    EVENT_TYPES.DICE_GAME_CONFIG_CHANGED,
+    EVENT_TYPES.PRODUCT_CHANGED,
+    EVENT_TYPES.REDEMPTION_CODES_GENERATED,
+    EVENT_TYPES.AI_AGENT_CHANNEL_CONFIG_CHANGED,
+    EVENT_TYPES.PRODUCT_REDEMPTION_COMPLETED,
+    EVENT_TYPES.AI_CHANNEL_CONFIG_CHANGED,
+    EVENT_TYPES.DISPATCH_AFTER_SALES_CONFIG_CHANGED,
+    EVENT_TYPES.ESCORT_PRICING_CHANGED,
+    EVENT_TYPES.ESCORT_CATALOG_CHANGED,
+  ]);
+
   /** Tracks last update timestamp per guildId:eventType for rate-limit protection. */
   private readonly lastUpdateTimestamps = new Map<string, number>();
   private cleanupCounter = 0;
@@ -404,19 +417,7 @@ export class AdminPanelUpdateListener {
   }
 
   private isAdminRelevantEvent(event: DomainEvent): boolean {
-    const relevantTypes: ReadonlySet<string> = new Set([
-      EVENT_TYPES.CURRENCY_CONFIG_CHANGED,
-      EVENT_TYPES.DICE_GAME_CONFIG_CHANGED,
-      EVENT_TYPES.PRODUCT_CHANGED,
-      EVENT_TYPES.REDEMPTION_CODES_GENERATED,
-      EVENT_TYPES.AI_AGENT_CHANNEL_CONFIG_CHANGED,
-      EVENT_TYPES.PRODUCT_REDEMPTION_COMPLETED,
-      EVENT_TYPES.AI_CHANNEL_CONFIG_CHANGED,
-      EVENT_TYPES.DISPATCH_AFTER_SALES_CONFIG_CHANGED,
-      EVENT_TYPES.ESCORT_PRICING_CHANGED,
-      EVENT_TYPES.ESCORT_CATALOG_CHANGED,
-    ]);
-    return relevantTypes.has(event.eventType);
+    return AdminPanelUpdateListener.RELEVANT_EVENT_TYPES.has(event.eventType);
   }
 
   private shouldUpdateForViewState(

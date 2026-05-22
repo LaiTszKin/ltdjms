@@ -17,13 +17,6 @@ const DISCORD_ERROR_CODE_MAP: Record<number, string> = {
 };
 
 /**
- * Checks if an error code has a known mapping.
- */
-function getDiscordErrorMessage(code: number): string | null {
-  return DISCORD_ERROR_CODE_MAP[code] ?? null;
-}
-
-/**
  * Centralized error handler for bot interactions.
  * Converts DomainError, DiscordAPIError, and unexpected errors
  * to user-friendly zh-TW messages.
@@ -68,7 +61,7 @@ export class BotErrorHandler {
     // 合併 DiscordAPIError 與 DiscordAPIError-like 物件的錯誤碼查找（P3-19）
     const discordCode = extractDiscordErrorCode(error);
     if (discordCode != null) {
-      const discordMsg = getDiscordErrorMessage(discordCode);
+      const discordMsg = DISCORD_ERROR_CODE_MAP[discordCode] ?? null;
       if (discordMsg) {
         return discordMsg;
       }

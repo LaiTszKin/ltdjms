@@ -2,6 +2,7 @@ import type { Result } from '@ltdjms/shared';
 import { Ok, Err, DomainError } from '@ltdjms/shared';
 
 import type { EscortDispatchOrderRepo } from '../repo/escort-dispatch-order.repo.js';
+import type { EscortOptionCatalogRepository } from '../repo/escort-option-catalog.repo.js';
 import { EscortDispatchOrderNumberGenerator, generateUniqueOrderNumber } from '../domain/order-number-generator.js';
 import { type EscortDispatchOrder, SourceType, createAutoHandoff } from '../domain/index.js';
 
@@ -26,6 +27,7 @@ export class EscortDispatchHandoffService {
   constructor(
     private readonly repository: EscortDispatchOrderRepo,
     private readonly orderNumberGenerator?: EscortDispatchOrderNumberGenerator,
+    private readonly catalogRepository?: EscortOptionCatalogRepository,
   ) {
     this.orderNumberGenerator = orderNumberGenerator ?? new EscortDispatchOrderNumberGenerator();
   }
@@ -71,6 +73,14 @@ export class EscortDispatchHandoffService {
       // but we verify here to prevent creating an order without a valid option code.
       if (!product.escortOptionCode || product.escortOptionCode.trim().length === 0) {
         return new Err(DomainError.invalidInput('護航選項代碼無效'));
+      }
+
+      // Verify the option code exists in the catalog (P2-5)
+      if (this.catalogRepository) {
+        const catalogEntry = await this.catalogRepository.findByCode(product.escortOptionCode.trim());
+        if (!catalogEntry) {
+          return new Err(DomainError.invalidInput(`護航選項代碼 ${product.escortOptionCode} 不存在於目錄中`));
+        }
       }
 
       // Defensive check: product.name must not be blank for auto-sourced orders.

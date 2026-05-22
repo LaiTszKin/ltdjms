@@ -16,12 +16,6 @@ declare module '@ltdjms/dispatch' {
 
 declare module '@ltdjms/shop' {
   export function configureContainer(options: Record<string, unknown>): void;
-  export class DrizzleProductRepository {
-    constructor(db: unknown);
-  }
-  export class DrizzleRedemptionTransactionService {
-    constructor(db: unknown);
-  }
 }
 
 declare module '@ltdjms/ai' {
@@ -32,7 +26,6 @@ declare module '@ltdjms/ai' {
 declare module '@ltdjms/admin' {
   export function configureAdminContainer(): void;
   export const ADMIN_TOKENS: Record<string, symbol>;
-  export const SlashCommandListener: unknown;
   export const SlashCommandRegistrar: {
     registerAll(
       applicationId: string,

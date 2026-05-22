@@ -34,6 +34,9 @@ export class BalanceService {
   /** Per-guild in-flight config fetches to coalesce concurrent cache misses (P1-11). */
   private readonly pendingConfigFetches = new Map<number, Promise<GuildCurrencyConfig | null>>();
 
+  private static readonly CLEANUP_INTERVAL = 100;
+  private configCacheCleanupCounter = 0;
+
   constructor(
     private readonly accountRepository: CurrencyAccountRepository,
     private readonly configRepository: CurrencyConfigRepository,
@@ -78,9 +81,9 @@ export class BalanceService {
         expiresAt: now + BalanceService.CONFIG_CACHE_TTL_SECONDS * 1000,
       });
 
-      // Evict stale entries when cache exceeds max capacity.
-      // First try to evict expired entries; if still oversized, evict oldest (FIFO).
-      if (this.configCache.size > BalanceService.MAX_CACHE_SIZE) {
+      // Lazy eviction: only scan for expired entries every 100 cache misses (P3-3)
+      this.configCacheCleanupCounter++;
+      if (this.configCacheCleanupCounter % BalanceService.CLEANUP_INTERVAL === 0) {
         const expiredKeys: string[] = [];
         for (const [key, entry] of this.configCache.entries()) {
           if (entry.expiresAt <= now) {
@@ -89,13 +92,6 @@ export class BalanceService {
         }
         for (const key of expiredKeys) {
           this.configCache.delete(key);
-        }
-        // If still oversized, evict the oldest (FIFO)
-        while (this.configCache.size > BalanceService.MAX_CACHE_SIZE) {
-          const firstKey = this.configCache.keys().next();
-          if (firstKey.value !== undefined) {
-            this.configCache.delete(firstKey.value);
-          }
         }
       }
 

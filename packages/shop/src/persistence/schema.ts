@@ -112,7 +112,7 @@ export const productRedemptionTransaction = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    userGuildCreatedIdx: index('idx_user_guild_created').on(table.userId, table.guildId, table.createdAt),
+    userGuildCreatedIdx: index('idx_user_guild_created').on(table.guildId, table.userId, table.createdAt),
     productIdx: index('idx_product').on(table.productId),
   }),
 );

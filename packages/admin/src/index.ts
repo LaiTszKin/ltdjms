@@ -19,6 +19,8 @@ export {
   ProductManagementFacade,
 } from './facades/index.js';
 
+export { AgentMode } from './facades/agent-mode.js';
+
 // ============================================================
 // Session
 // ============================================================

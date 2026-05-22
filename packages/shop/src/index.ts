@@ -34,8 +34,6 @@ export {
   configureContainer,
   SHOP_TOKENS,
   type ProductRewardService,
-  type BalanceService,
-  type BalanceAdjustmentService,
   type RedemptionTransactionService,
 } from './di/shop-module.js';
 
