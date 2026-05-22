@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en" data-atlas="diff-viewer">
+<head>
+  <meta charset="utf-8">
+  <title>Architecture diff — ltdjms</title>
+  <style>
+    :root { color-scheme: light dark; --bg: #0f172a; --panel: #1e293b; --text: #e2e8f0; --muted: #94a3b8; --accent: #38bdf8; --added: #4ade80; --removed: #f87171; --modified: #facc15; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; font-family: ui-sans-serif, system-ui, sans-serif; background: var(--bg); color: var(--text); }
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+    header { padding: 12px 20px; background: var(--panel); border-bottom: 1px solid #334155; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+    header .title { font-size: 14px; color: var(--muted); }
+    header .title strong { color: var(--text); }
+    header .summary { display: flex; gap: 12px; font-size: 12px; color: var(--muted); }
+    header .summary span.count { font-weight: 600; }
+    header .summary .modified { color: var(--modified); }
+    header .summary .added { color: var(--added); }
+    header .summary .removed { color: var(--removed); }
+    main { flex: 1; display: flex; flex-direction: column; }
+    .meta { padding: 10px 20px; background: var(--bg); border-bottom: 1px solid #334155; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; font-size: 13px; }
+    .meta .left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; border: 1px solid currentColor; }
+    .badge.modified { color: var(--modified); } .badge.added { color: var(--added); } .badge.removed { color: var(--removed); }
+    .path { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text); }
+    .spec { color: var(--muted); font-size: 12px; }
+    .nav { display: flex; align-items: center; gap: 8px; }
+    .nav button { background: transparent; color: var(--text); border: 1px solid #475569; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+    .nav button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    .nav button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .nav .counter { font-variant-numeric: tabular-nums; color: var(--muted); min-width: 72px; text-align: center; }
+    .frames { flex: 1; display: grid; gap: 1px; background: #334155; padding: 1px; min-height: 0; }
+    .frames.split { grid-template-columns: 1fr 1fr; }
+    .frames.single { grid-template-columns: 1fr; }
+    .pane { background: #ffffff; display: flex; flex-direction: column; min-height: 0; }
+    .pane h2 { margin: 0; padding: 8px 14px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; background: #f1f5f9; color: #1e293b; border-bottom: 1px solid #cbd5f5; display: flex; align-items: center; gap: 8px; }
+    .pane h2 .side-badge { font-size: 10px; padding: 1px 6px; border-radius: 4px; background: #cbd5f5; color: #1e293b; }
+    .pane h2.before .side-badge { background: #fee2e2; color: #991b1b; }
+    .pane h2.after .side-badge { background: #dcfce7; color: #166534; }
+    .pane iframe { flex: 1; width: 100%; border: 0; background: #ffffff; }
+    .empty { display: flex; align-items: center; justify-content: center; padding: 32px; font-size: 14px; color: var(--muted); }
+    footer { padding: 8px 20px; background: var(--panel); border-top: 1px solid #334155; font-size: 12px; color: var(--muted); }
+    footer kbd { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: #0f172a; padding: 1px 6px; border-radius: 4px; border: 1px solid #475569; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title">Apollo Toolkit · <strong>architecture diff</strong> · ltdjms</div>
+    <div class="summary">
+      <span><span class="count">8</span> change<span>s</span></span>
+      <span class="modified"><span class="count">3</span> modified</span>
+      <span class="added"><span class="count">5</span> added</span>
+      <span class="removed"><span class="count">0</span> removed</span>
+    </div>
+  </header>
+  <main>
+    <div class="meta">
+      <div class="left">
+        <span id="badge" class="badge modified">modified</span>
+        <span class="path" id="path">—</span>
+        <span class="spec" id="spec">—</span>
+      </div>
+      <div class="nav">
+        <button id="prev" type="button" aria-label="Previous change">← Prev</button>
+        <span class="counter" id="counter">0 / 0</span>
+        <button id="next" type="button" aria-label="Next change">Next →</button>
+      </div>
+    </div>
+    <div class="frames" id="frames">
+      <div class="empty" id="empty">No architecture diffs found under docs/plans/**/architecture_diff/.</div>
+    </div>
+  </main>
+  <footer>
+    Navigate with <kbd>←</kbd> / <kbd>→</kbd> or the buttons above. Each page pairs the current atlas (left) with the proposed-after HTML (right).
+  </footer>
+  <script id="__diff_payload" type="application/json">{"pages":[{"kind":"added","rel":"features/shared-infrastructure/config-layer.html","spec":"docs/plans/2026-05-22/infra-java-to-typescript","beforeSrc":null,"afterSrc":"features/shared-infrastructure/config-layer.html"},{"kind":"added","rel":"features/shared-infrastructure/database-layer.html","spec":"docs/plans/2026-05-22/infra-java-to-typescript","beforeSrc":null,"afterSrc":"features/shared-infrastructure/database-layer.html"},{"kind":"added","rel":"features/shared-infrastructure/localization.html","spec":"docs/plans/2026-05-22/infra-java-to-typescript","beforeSrc":null,"afterSrc":"features/shared-infrastructure/localization.html"},{"kind":"added","rel":"features/shared-infrastructure/logger.html","spec":"docs/plans/2026-05-22/infra-java-to-typescript","beforeSrc":null,"afterSrc":"features/shared-infrastructure/logger.html"},{"kind":"added","rel":"features/shared-infrastructure/types.html","spec":"docs/plans/2026-05-22/infra-java-to-typescript","beforeSrc":null,"afterSrc":"features/shared-infrastructure/types.html"},{"kind":"modified","rel":"features/shared-infrastructure/cache-layer.html","spec":"docs/plans/2026-05-22/infra-java-to-typescript","beforeSrc":"../../../../../resources/project-architecture/features/shared-infrastructure/cache-layer.html","afterSrc":"features/shared-infrastructure/cache-layer.html"},{"kind":"modified","rel":"features/shared-infrastructure/index.html","spec":"docs/plans/2026-05-22/infra-java-to-typescript","beforeSrc":"../../../../../resources/project-architecture/features/shared-infrastructure/index.html","afterSrc":"features/shared-infrastructure/index.html"},{"kind":"modified","rel":"index.html","spec":"docs/plans/2026-05-22/infra-java-to-typescript","beforeSrc":"../../../../../resources/project-architecture/index.html","afterSrc":"index.html"}],"summary":{"total":8,"modified":3,"added":5,"removed":0,"projectRoot":"/Users/tszkinlai/Coding/ltdj/ltdjms"}}</script>
+  <script>
+    (function () {
+      const data = JSON.parse(document.getElementById('__diff_payload').textContent);
+      const pages = data.pages || [];
+      const framesEl = document.getElementById('frames');
+      const emptyEl = document.getElementById('empty');
+      const badgeEl = document.getElementById('badge');
+      const pathEl = document.getElementById('path');
+      const specEl = document.getElementById('spec');
+      const counterEl = document.getElementById('counter');
+      const prevBtn = document.getElementById('prev');
+      const nextBtn = document.getElementById('next');
+      if (pages.length === 0) { counterEl.textContent = '0 / 0'; prevBtn.disabled = true; nextBtn.disabled = true; return; }
+      let index = 0;
+      function render() {
+        const page = pages[index];
+        badgeEl.className = 'badge ' + page.kind;
+        badgeEl.textContent = page.kind;
+        pathEl.textContent = page.rel;
+        specEl.textContent = page.spec;
+        counterEl.textContent = (index + 1) + ' / ' + pages.length;
+        prevBtn.disabled = index === 0;
+        nextBtn.disabled = index === pages.length - 1;
+        framesEl.innerHTML = '';
+        if (page.kind === 'modified') {
+          framesEl.className = 'frames split';
+          framesEl.appendChild(buildPane('Before', page.beforeSrc, 'before'));
+          framesEl.appendChild(buildPane('After', page.afterSrc, 'after'));
+        } else if (page.kind === 'added') {
+          framesEl.className = 'frames single';
+          framesEl.appendChild(buildPane('After (new)', page.afterSrc, 'after'));
+        } else if (page.kind === 'removed') {
+          framesEl.className = 'frames single';
+          framesEl.appendChild(buildPane('Before (removed)', page.beforeSrc, 'before'));
+        }
+      }
+      function buildPane(label, src, side) {
+        const pane = document.createElement('div');
+        pane.className = 'pane';
+        const heading = document.createElement('h2');
+        heading.className = side;
+        const sideBadge = document.createElement('span');
+        sideBadge.className = 'side-badge';
+        sideBadge.textContent = side;
+        heading.appendChild(sideBadge);
+        heading.appendChild(document.createTextNode(' ' + label));
+        pane.appendChild(heading);
+        const frame = document.createElement('iframe');
+        frame.src = src;
+        frame.loading = 'lazy';
+        frame.title = label;
+        pane.appendChild(frame);
+        return pane;
+      }
+      prevBtn.addEventListener('click', () => { if (index > 0) { index--; render(); } });
+      nextBtn.addEventListener('click', () => { if (index < pages.length - 1) { index++; render(); } });
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowLeft') prevBtn.click();
+        else if (event.key === 'ArrowRight') nextBtn.click();
+      });
+      emptyEl.remove();
+      render();
+    })();
+  </script>
+</body>
+</html>
