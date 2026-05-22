@@ -3,17 +3,18 @@
 ## Common Development Commands
 
 - `make build` — 打包專案並驗證可編譯（跳過測試）。
-- `make test` — 執行單元測試。
-- `make test-integration` — 執行 `mvn verify` 等級的整合驗證。
-- `make verify` — clean 後跑完整驗證流程。
-- `make format` — 用 Spotless 格式化程式碼。
+- `make test` — 執行全部 TypeScript 測試（unit + PBT 逐檔執行，跳過 ECPay E2E）。
+- `make verify` — 完整建置與測試驗證。
+- `make format` — 用 Prettier 格式化程式碼。
 - `make format-check` — 檢查格式是否符合規範。
+- `make lint` — 用 ESLint 檢查程式碼。
 - `make start-dev` — 建置並啟動 bot、PostgreSQL、Redis。
 - `make logs` — 追蹤 Docker Compose 日誌。
-- `make db-up` — 只啟動 PostgreSQL 供本機 JVM 使用。
+- `make db-up` — 只啟動 PostgreSQL。
 - `make setup-env` — 互動式建立或更新部署用 `.env`。
 - `make update-env` — 以 `.env.example` 非互動同步缺漏欄位並保留既有值。
-- `java -jar target/ltdjms-*.jar` — 在完成 build 後本機直接啟動 bot。
+- `RUN_ECPAY_E2E=true make test` — 含 ECPay Stage API E2E 測試。
+- `pnpm vitest run --project @ltdjms/economy -t "should conserve"` — 執行單一測試名稱。
 
 ## Project Business Goals
 

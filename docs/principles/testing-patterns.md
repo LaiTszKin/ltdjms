@@ -2,78 +2,146 @@
 
 ## Test Organization
 
-Tests mirror the source package structure under `src/test/java/ltdjms/discord/`. Each module has corresponding test classes.
+Tests live alongside source code in `packages/*/src/__tests__/`. Each package has its own `vitest.config.ts`. The root `Makefile` orchestrates cross-package test runs.
+
+- `*.test.ts` — standard unit tests (no external dependencies)
+- `*.pbt.test.ts` — property-based tests using fast-check (uses Testcontainers PostgreSQL)
+- `*-e2e.test.ts` — end-to-end tests (ECPay Stage API, controlled by `RUN_ECPAY_E2E`)
 
 ## Test Categories
 
 ### Pure Unit Tests
-- Use JUnit 5 with `@Nested` + `@DisplayName` grouping
-- AssertJ for fluent assertions (`.isPresent()`, `.contains()`, `.isEqualTo()`)
-- Test both `Ok` and `Err` paths
-- Test `DomainError` factory methods
+- Use vitest' `describe`/`it`/`expect` with `vi.fn()` mocks
+- Test both `Ok` and `Err` paths of `Result<T, DomainError>`
+- Test `DomainError` factory methods and error categories
 
-**Evidence**: `ResultTest.java`, `CacheKeyGeneratorTest.java`
+### Property-Based Tests (PBT)
+- Use `fast-check` (`fc.assert`, `fc.asyncProperty`, `fc.integer`, `fc.record`, etc.)
+- Generate random inputs within business constraints using shared arbitraries
+- Each PBT file runs in an isolated vitest process via the Makefile to avoid tsyringe DI container contamination
+- DB state is reset per-test via `cleanAllTestTables()` (DELETE-based, connection-safe)
+- DI container is re-initialized per-test via `resetRootContainer()`
 
-### Contract Tests
-Define a private static test implementation of an interface, then verify the interface contract without mocking.
+**Pattern**:
+```typescript
+import * as fc from 'fast-check';
+import { guildId, userId, positiveAmount } from '@ltdjms/shared/__tests__/arbitrary';
 
-**Evidence**: `DiscordContextTest.java`, `DiscordEmbedBuilderTest.java`, `DiscordSessionManagerTest.java`
+it('should conserve total balance', async () => {
+  await fc.assert(
+    fc.asyncProperty(
+      guildId(),
+      fc.array(userId(), { minLength: 2, maxLength: 5 }),
+      positiveAmount(100, 10000),
+      async (gId, users, initialBalance) => {
+        // Seed data, execute operation, verify invariants
+      },
+    ),
+    { numRuns: 50 },
+  );
+});
+```
 
-### Mockito Tests
-- `@ExtendWith(MockitoExtension.class)` and `@Mock` fields
-- `@BeforeEach setUp()` constructs the SUT
-- `Mockito.when(...).thenReturn(...)` for stubbing
-- `verify(mock).method(args)` for interaction verification
-- `verify(mock, never()).method(...)` for negative tests
+### Integration PBT Tests
+- Use Testcontainers PostgreSQL via `@testcontainers/postgresql`
+- Container lifecycle: `vitest.globalSetup.ts` starts a container, runs migrations, creates a `template_clean` database
+- Container is reused across sequential `vitest run` processes via `/tmp/ltdjms-testcontainers.json`
+- Ryuk is disabled for cross-process reuse; container is shared until `make test` completes
+- Seed data factory (`seedGuild`, `seedUserAccount`, `seedProduct`, `seedRedemptionCode`, etc.) provides sensible defaults with partial override support
+- All modules resolve real services from tsyringe DI container
 
-**Evidence**: `CacheInvalidationListenerTest.java`, `InteractionSessionManagerTest.java`
+**Pattern**:
+```typescript
+beforeEach(async () => {
+  currentPool = getTestPool(CONNECTION_URL);
+  container.clearInstances();
+  initializeContainer({ databasePool: currentPool, logger: pino({ level: 'silent' }) });
+  configureEconomyContainer();
+  db = drizzle(currentPool);
+  testService = container.resolve(TOKENS.SomeService);
+});
 
-### Dagger Wiring Tests
-Define test-specific `@Component` interfaces including only the modules under test. Verify Dagger can construct the object graph and `@IntoSet` multibindings work.
+it('should persist entity correctly', async () => {
+  await fc.assert(fc.asyncProperty(guildId(), async (gId) => {
+    await cleanAllTestTables(CONNECTION_URL);
+    const result = await testService.someOperation(gId);
+    expect(isOk(result)).toBe(true);
+  }));
+});
+```
 
-**Evidence**: `DomainEventPublisherDaggerWiringTest.java`, `AppComponentLoadTest.java`
+### E2E Tests (ECPay)
+- Controlled by `RUN_ECPAY_E2E=true` environment variable; skipped by default
+- Use real ECPay Stage API (MerchantID `2000132`) for CVS payment code generation
+- Build callback payloads manually with AES-256-CBC encryption + CheckMacValue
+- Verify full round-trip: seed DB order → call ECPay API → process callback → assert DB state
+- `retryOnTimeout` helper with linear backoff (3 retries) for transient network issues
 
-### Integration Tests
-- Suffixed `*IntegrationTest`, run during `verify` phase
-- Use Testcontainers (PostgreSQL, Redis)
-- Test full persistence and cache behavior
+### Mock-Based Tests (Admin Facade)
+Admin facade tests use `vi.fn()` mocks to verify delegation, event publishing, and input validation without real DB.
 
-**Evidence**: `CacheInfrastructureIntegrationTest.java`, `RedisCacheServiceIntegrationTest.java`, `DatabaseMigrationRunnerIntegrationTest.java`
+**Pattern**:
+```typescript
+beforeEach(() => {
+  mockBalanceService = { getBalance: vi.fn() };
+  facade = new CurrencyManagementFacade(
+    mockBalanceService as BalanceService,
+    mockAdjustService as BalanceAdjustmentService,
+    mockConfigService as CurrencyConfigService,
+  );
+});
+
+it('should reject invalid input', async () => {
+  await fc.assert(fc.asyncProperty(guildId(), userId(), fc.integer({ max: 0 }),
+    async (gId, uId, amount) => {
+      const result = await facade.adjustBalance(String(gId), String(uId), amount);
+      expect(result.isErr()).toBe(true);
+      expect(result.getError().category).toBe(DomainErrorCategory.INVALID_INPUT);
+    },
+  ));
+});
+```
+
+## Shared Test Infrastructure
+
+Located in `packages/shared/src/__tests__/`:
+
+| File | Exports | Purpose |
+|------|---------|---------|
+| `arbitrary.ts` | `guildId()`, `userId()`, `positiveAmount()`, `betAmount()`, `multiplier()`, `transferRequest()`, `diceGamePlay()`, etc. | Domain-specific fast-check generators |
+| `seed-factory.ts` | `seedGuild()`, `seedUserAccount()`, `seedProduct()`, `seedRedemptionCode()`, `seedDiceGame1Config()`, `seedFiatOrder()` | DB seed helpers with sensible defaults |
+| `test-container.ts` | `createTestContainer()`, `resetRootContainer()` | tsyringe DI container helpers |
+| `assertion-helper.ts` | `assertBalanceConserved()`, `assertStateTransition()`, `measureResponseTime()` | Common test assertions |
+| `vitest.globalSetup.ts` | `setup()` | Testcontainer lifecycle, migration runner |
+| `vitest.globalTeardown.ts` | `teardown()` | No-op (Ryuk disabled, container reused) |
+
+Database utilities in `packages/shared/src/infra/database/`:
+
+| Function | Purpose |
+|----------|---------|
+| `getTestPool(connectionUrl)` | Creates a single-connection pg Pool for testing |
+| `cleanAllTestTables(connectionUrl)` | DELETE all public tables with FK bypass for safe per-test cleanup |
+| `resetDatabase(connectionUrl)` | DROP/CREATE DATABASE FROM TEMPLATE for full isolation (terminates connections) |
+| `initProjectDatabase(projectName)` | Creates a dedicated database per workspace project |
+
+## Running Tests
+
+```bash
+make test          # Full suite: unit + PBT (sequential), skips ECPay E2E
+RUN_ECPAY_E2E=true make test   # Includes ECPay Stage API tests (requires network)
+pnpm vitest run --project @ltdjms/economy packages/economy/src/__tests__/balance-transfer.pbt.test.ts  # Single PBT file
+```
 
 ## Mock/Fake Strategy
 
-Mock implementations live in the main source tree (`discord/mock/`), not in test sources:
-- `MockDiscordContext` — testable Discord context with `ConcurrentHashMap` for options
-- `MockDiscordInteraction` — records all calls in `ArrayList`s for verification
-- `MockDiscordEmbedBuilder` — records builder state, produces real JDA `MessageEmbed`
+- Discord runtime gateway is mocked via `runtimeGateway` object in test DI container initialization (all methods return no-op/default values)
+- Redis is replaced by `NoOpCacheService` (no test uses real Redis)
+- ECPay external API is real in E2E tests, not mocked
+- Admin facade tests use `vi.fn()` mocks at the service boundary
 
-This allows both unit tests and integration tests to use the same test doubles.
+## Assertion Style
 
-**Evidence**: See `src/main/java/ltdjms/discord/discord/mock/`
-
-## Given-When-Then Structure
-
-Tests consistently use Given-When-Then structure via comments:
-
-```java
-@Test
-void shouldInvalidateBalanceCache() {
-    // Given
-    BalanceChangedEvent event = new BalanceChangedEvent(guildId, userId, 1000L);
-
-    // When
-    listener.accept(event);
-
-    // Then
-    verify(cacheService).invalidate(expectedKey);
-}
-```
-
-## Build Verification
-
-- JaCoCo enforces 80% line coverage at `verify` phase
-- Dagger-generated classes, Jdbc/Jooq repositories, command handlers, and AI agent infrastructure are excluded from coverage targets
-- Spotless checks Google Java Format compliance
-- Four test profiles: `unit-tests`, `integration-tests`, `performance-tests`, `property-based-tests`
-
-**Evidence**: See `pom.xml`
+- `expect(isOk(result)).toBe(true)` / `expect(isErr(result)).toBe(true)` for Result type
+- `result.getValue()` to access success value; `result.getError()` for error
+- DB state verification (query tables after operation) for integration tests
+- `expect(purchaseResult.newBalance).toBe(expectedNewBalance)` for balance calculations
