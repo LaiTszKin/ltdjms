@@ -34,6 +34,7 @@ export class CacheInvalidationListener {
         case 'balance_changed': {
           const evt = event as unknown as { guildId: string; userId: string };
           if (!evt.guildId || !evt.userId) {
+            this.logger.warn({ eventType: event.eventType }, 'Event missing required fields guildId or userId, skipping cache invalidation');
             return;
           }
           const key = this.cacheKeyGenerator.balanceKey(evt.guildId, evt.userId);
@@ -45,6 +46,7 @@ export class CacheInvalidationListener {
         case 'game_token_changed': {
           const evt = event as unknown as { guildId: string; userId: string };
           if (!evt.guildId || !evt.userId) {
+            this.logger.warn({ eventType: event.eventType }, 'Event missing required fields guildId or userId, skipping cache invalidation');
             return;
           }
           const key = this.cacheKeyGenerator.gameTokenKey(evt.guildId, evt.userId);

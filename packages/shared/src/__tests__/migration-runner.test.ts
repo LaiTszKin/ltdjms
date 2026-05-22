@@ -40,10 +40,6 @@ import { runMigrations } from '../infra/database/migration-runner.js';
 describe('runMigrations', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockPoolQuery.mockReset();
-    mockDbExecute.mockReset();
-    mockReaddir.mockReset();
-    mockReadFile.mockReset();
   });
 
   describe('fresh database (no tracking table, no existing tables)', () => {

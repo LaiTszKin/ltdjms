@@ -7,6 +7,7 @@ import type { DomainEvent } from '../types/events/domain-event.js';
 describe('CacheInvalidationListener', () => {
   let mockCacheService: Record<string, ReturnType<typeof vi.fn>>;
   let mockCacheKeyGenerator: Record<string, ReturnType<typeof vi.fn>>;
+  let mockLogger: { warn: ReturnType<typeof vi.fn> };
   let listener: CacheInvalidationListener;
 
   const guildId = 'guild-1';
@@ -14,8 +15,6 @@ describe('CacheInvalidationListener', () => {
 
   beforeEach(() => {
     mockCacheService = {
-      get: vi.fn(),
-      put: vi.fn(),
       invalidate: vi.fn().mockResolvedValue(undefined),
     };
     mockCacheKeyGenerator = {
@@ -23,9 +22,11 @@ describe('CacheInvalidationListener', () => {
       balanceKey: vi.fn((g: string, u: string) => `cache:balance:${g}:${u}`),
       gameTokenKey: vi.fn((g: string, u: string) => `cache:gametoken:${g}:${u}`),
     };
+    mockLogger = { warn: vi.fn() };
     listener = new CacheInvalidationListener(
       mockCacheService as unknown as CacheService,
       mockCacheKeyGenerator as unknown as CacheKeyGenerator,
+      mockLogger as unknown as Parameters<typeof import('pino')>[0],
     );
   });
 
@@ -99,6 +100,7 @@ describe('CacheInvalidationListener', () => {
     listener.onEvent(event);
 
     expect(mockCacheService.invalidate).not.toHaveBeenCalled();
+    expect(mockLogger.warn).toHaveBeenCalled();
   });
 
   it('should not invalidate cache when event is missing guildId', () => {
@@ -110,5 +112,6 @@ describe('CacheInvalidationListener', () => {
     listener.onEvent(event);
 
     expect(mockCacheService.invalidate).not.toHaveBeenCalled();
+    expect(mockLogger.warn).toHaveBeenCalled();
   });
 });

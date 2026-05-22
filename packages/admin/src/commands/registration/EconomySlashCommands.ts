@@ -37,7 +37,16 @@ export const DiceGame1SlashCommand: SlashCommandDefinition = {
   defaultMemberPermissions: null,
   nameLocalizations: CommandLocalizations.COMMAND_NAME_LOCALIZATIONS['dice-game-1'],
   descriptionLocalizations: CommandLocalizations.COMMAND_DESCRIPTION_LOCALIZATIONS['dice-game-1'],
-  options: [{ name: 'tokens', description: '要使用的代幣數量', type: 4, required: true }],
+  options: [
+    {
+      name: 'tokens',
+      description: '要使用的代幣數量',
+      descriptionLocalizations:
+        CommandLocalizations.OPTION_DESCRIPTION_LOCALIZATIONS['tokens'],
+      type: 4,
+      required: true,
+    },
+  ],
 };
 
 /** /dice-game-2 — play Dice Game 2 (available to all members). */
@@ -47,7 +56,16 @@ export const DiceGame2SlashCommand: SlashCommandDefinition = {
   defaultMemberPermissions: null,
   nameLocalizations: CommandLocalizations.COMMAND_NAME_LOCALIZATIONS['dice-game-2'],
   descriptionLocalizations: CommandLocalizations.COMMAND_DESCRIPTION_LOCALIZATIONS['dice-game-2'],
-  options: [{ name: 'tokens', description: '要使用的代幣數量', type: 4, required: true }],
+  options: [
+    {
+      name: 'tokens',
+      description: '要使用的代幣數量',
+      descriptionLocalizations:
+        CommandLocalizations.OPTION_DESCRIPTION_LOCALIZATIONS['tokens'],
+      type: 4,
+      required: true,
+    },
+  ],
 };
 
 /** /dice-game-1-config — configure Dice Game 1 parameters. */

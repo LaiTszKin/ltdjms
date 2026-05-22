@@ -102,17 +102,17 @@ export class DiceGame2Handler {
 
       const gameResult = result.getValue();
 
-      const diceDisplay = [...gameResult.diceRolls].join('、');
+      const diceDisplay = gameResult.diceRolls.join('、');
       const straightDisplay =
         gameResult.straightSegments.length > 0
           ? gameResult.straightSegments
-              .map((seg: readonly number[]) => `[${[...seg].join('、')}]`)
+              .map((seg: readonly number[]) => `[${seg.join('、')}]`)
               .join(' ')
           : '無';
       const tripleDisplay =
         gameResult.tripleSegments.length > 0
           ? gameResult.tripleSegments
-              .map((seg: readonly number[]) => `[${[...seg].join('、')}]`)
+              .map((seg: readonly number[]) => `[${seg.join('、')}]`)
               .join(' ')
           : '無';
 

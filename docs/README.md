@@ -74,7 +74,7 @@ docs/
 - `docs/modules/`：模組級說明與設計背景
 - `docs/development/`：開發細節、IDE 設定、測試補充、除錯、工作流程
 - `docs/operations/`：維運、監控、效能與故障排查
-- `docs/plans/archive/`：已歸檔的實作計劃
+- `docs/archive/`：已歸檔的實作計劃
 
 ## 閱讀原則
 
