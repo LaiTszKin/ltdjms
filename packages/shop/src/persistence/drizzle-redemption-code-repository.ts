@@ -7,7 +7,7 @@ import pino from 'pino';
 
 function mapRow(row: any): RedemptionCode {
   return {
-    id: row.id,
+    id: row.id != null ? Number(row.id) : null,
     code: row.code,
     productId: row.productId ?? null,
     guildId: Number(row.guildId),
