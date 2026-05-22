@@ -1,5 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
-import { FiatPaymentCallbackService, CallbackResult } from '../services/fiat-payment-callback.service.js';
+import {
+  FiatPaymentCallbackService,
+  CallbackResult,
+} from '../services/fiat-payment-callback.service.js';
 import type { EnvironmentConfig } from '@ltdjms/shared';
 import type { FiatOrderRepository } from '../domain/fiat-order-repository.js';
 
@@ -57,10 +60,7 @@ describe('FiatPaymentCallbackService', () => {
 
     // This requires a valid encrypted payload, so we test the callback node parsing
     // with a mock that returns null after not finding the merchant trade no
-    const result = await service.handleCallback(
-      '{"Data":"dGVzdA=="}',
-      'application/json',
-    );
+    const result = await service.handleCallback('{"Data":"dGVzdA=="}', 'application/json');
     // Without valid encrypted data, it will return 400 due to decryption failure
     // This is expected since we're not providing real encrypted data
     expect([400, 500]).toContain(result.httpStatus);

@@ -6,7 +6,11 @@ import {
   Route,
   type Decision,
 } from '../services/ai-chat-service.js';
-import { type AIChatMentionRoutingDecision, resolveCategoryId, resolveRestrictionChannelId } from '../services/routing/routing-decision.js';
+import {
+  type AIChatMentionRoutingDecision,
+  resolveCategoryId,
+  resolveRestrictionChannelId,
+} from '../services/routing/routing-decision.js';
 import { DomainError } from '@ltdjms/shared';
 import { MessageSplitter } from '../services/MessageSplitter.js';
 
@@ -120,19 +124,9 @@ export class AIChatMentionListener {
 
       // Route to appropriate handler
       if (decision.route === Route.AGENT_ROUTE) {
-        await this.handleAgentStreamingResponse(
-          message,
-          guildId,
-          channelId,
-          userMessage,
-        );
+        await this.handleAgentStreamingResponse(message, guildId, channelId, userMessage);
       } else {
-        await this.handleChatStreamingResponse(
-          message,
-          guildId,
-          channelId,
-          userMessage,
-        );
+        await this.handleChatStreamingResponse(message, guildId, channelId, userMessage);
       }
     } catch (error) {
       console.error(
@@ -151,13 +145,12 @@ export class AIChatMentionListener {
    * Safely sends a message to the channel if it's text-based.
    * Returns null if the channel cannot be sent to.
    */
-  private async sendToChannel(
-    message: Message,
-    content: string,
-  ): Promise<Message | null> {
+  private async sendToChannel(message: Message, content: string): Promise<Message | null> {
     try {
       if (message.channel.isTextBased()) {
-        return await (message.channel as { send: (c: string) => Promise<Message> }).send(content) as Message;
+        return (await (message.channel as { send: (c: string) => Promise<Message> }).send(
+          content,
+        )) as Message;
       }
     } catch {
       // Ignore send failures
@@ -185,7 +178,12 @@ export class AIChatMentionListener {
     tracker.setInitialMessage(thinkingMsg);
 
     const handler: StreamingResponseHandler = {
-      onChunk: async (chunk: string, isComplete: boolean, error: DomainError | null, chunkType?: StreamChunkType) => {
+      onChunk: async (
+        chunk: string,
+        isComplete: boolean,
+        error: DomainError | null,
+        chunkType?: StreamChunkType,
+      ) => {
         if (error) {
           const errorMsg = this.mapErrorToUserMessage(error);
           thinkingMsg.edit(errorMsg).catch(() => {});
@@ -272,15 +270,18 @@ export class AIChatMentionListener {
     userMessage: string,
   ): Promise<void> {
     // Send initial thinking message
-    const thinkingMsg = await message.reply(
-      ':thought_balloon: AI 正在思考...',
-    );
+    const thinkingMsg = await message.reply(':thought_balloon: AI 正在思考...');
     const tracker = new ReasoningMessageTracker();
     tracker.setInitialMessage(thinkingMsg);
     let hasSentFirstContent = false;
 
     const handler: StreamingResponseHandler = {
-      onChunk: async (chunk: string, isComplete: boolean, error: DomainError | null, chunkType?: StreamChunkType) => {
+      onChunk: async (
+        chunk: string,
+        isComplete: boolean,
+        error: DomainError | null,
+        chunkType?: StreamChunkType,
+      ) => {
         if (error) {
           const errorMsg = this.mapErrorToUserMessage(error);
           thinkingMsg.edit(errorMsg).catch(() => {});

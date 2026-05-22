@@ -24,17 +24,12 @@ export interface AIAgentChannelConfigRepository {
     enabled: boolean,
   ): Promise<Result<AIAgentChannelConfig, DomainError>>;
   findEnabledByGuild(guildId: string): Promise<Result<string[], DomainError>>;
-  remove(
-    guildId: string,
-    channelId: string,
-  ): Promise<Result<Unit, DomainError>>;
+  remove(guildId: string, channelId: string): Promise<Result<Unit, DomainError>>;
 }
 
 // ===== In-Memory Repository (for testing) =====
 
-export class InMemoryAIAgentChannelConfigRepository
-  implements AIAgentChannelConfigRepository
-{
+export class InMemoryAIAgentChannelConfigRepository implements AIAgentChannelConfigRepository {
   private store: Map<string, AIAgentChannelConfig> = new Map();
 
   private key(guildId: string, channelId: string): string {
@@ -69,19 +64,14 @@ export class InMemoryAIAgentChannelConfigRepository
     return ok(config);
   }
 
-  async findEnabledByGuild(
-    guildId: string,
-  ): Promise<Result<string[], DomainError>> {
+  async findEnabledByGuild(guildId: string): Promise<Result<string[], DomainError>> {
     const entries = Array.from(this.store.values()).filter(
       (c) => c.guildId === guildId && c.enabled,
     );
     return ok(entries.map((c) => c.channelId));
   }
 
-  async remove(
-    guildId: string,
-    channelId: string,
-  ): Promise<Result<Unit, DomainError>> {
+  async remove(guildId: string, channelId: string): Promise<Result<Unit, DomainError>> {
     this.store.delete(this.key(guildId, channelId));
     return okVoid<DomainError>();
   }
@@ -97,17 +87,9 @@ export interface AIAgentChannelConfigService {
     channelId: string,
     enabled: boolean,
   ): Promise<Result<Unit, DomainError>>;
-  toggleAgentMode(
-    guildId: string,
-    channelId: string,
-  ): Promise<Result<boolean, DomainError>>;
-  getEnabledChannels(
-    guildId: string,
-  ): Promise<Result<string[], DomainError>>;
-  removeChannel(
-    guildId: string,
-    channelId: string,
-  ): Promise<Result<Unit, DomainError>>;
+  toggleAgentMode(guildId: string, channelId: string): Promise<Result<boolean, DomainError>>;
+  getEnabledChannels(guildId: string): Promise<Result<string[], DomainError>>;
+  removeChannel(guildId: string, channelId: string): Promise<Result<Unit, DomainError>>;
 }
 
 // ===== Default Implementation with Redis Cache =====
@@ -115,9 +97,7 @@ export interface AIAgentChannelConfigService {
 const CACHE_TTL_SECONDS = 3600; // 1 hour
 const CACHE_KEY_PREFIX = 'agent:config:';
 
-export class DefaultAIAgentChannelConfigService
-  implements AIAgentChannelConfigService
-{
+export class DefaultAIAgentChannelConfigService implements AIAgentChannelConfigService {
   /**
    * Local in-memory cache for the sync isAgentEnabled() fallback.
    */
@@ -159,10 +139,7 @@ export class DefaultAIAgentChannelConfigService
    * Thread channels inherit their parent channel's agent configuration (Spec R7.6);
    * callers must resolve threads to parent channels before calling this method.
    */
-  async isAgentEnabledAsync(
-    guildId: string,
-    channelId: string,
-  ): Promise<boolean> {
+  async isAgentEnabledAsync(guildId: string, channelId: string): Promise<boolean> {
     const cacheKey = this.buildCacheKey(guildId, channelId);
 
     // Cache stampede protection: deduplicate concurrent lookups for the same key
@@ -203,21 +180,14 @@ export class DefaultAIAgentChannelConfigService
     cacheKey: string,
   ): Promise<boolean> {
     try {
-      const result = await this.repository.findByGuildAndChannel(
-        guildId,
-        effectiveChannelId,
-      );
+      const result = await this.repository.findByGuildAndChannel(guildId, effectiveChannelId);
       if (result.isOk()) {
         const config = result.getValue();
         const enabled = config?.enabled ?? false;
 
         // Write back to cache
         try {
-          await this.cacheService.put(
-            cacheKey,
-            enabled ? 'true' : 'false',
-            CACHE_TTL_SECONDS,
-          );
+          await this.cacheService.put(cacheKey, enabled ? 'true' : 'false', CACHE_TTL_SECONDS);
         } catch {
           // Cache write failure is non-fatal
         }
@@ -239,8 +209,8 @@ export class DefaultAIAgentChannelConfigService
    */
   private setLocalSyncCache(cacheKey: string, enabled: boolean): void {
     if (
-      this.localSyncCache.size >= DefaultAIAgentChannelConfigService.MAX_SYNC_CACHE_SIZE
-      && !this.localSyncCache.has(cacheKey)
+      this.localSyncCache.size >= DefaultAIAgentChannelConfigService.MAX_SYNC_CACHE_SIZE &&
+      !this.localSyncCache.has(cacheKey)
     ) {
       const oldest = this.localSyncCache.keys().next().value;
       if (oldest !== undefined) {
@@ -291,33 +261,21 @@ export class DefaultAIAgentChannelConfigService
     }
   }
 
-  async toggleAgentMode(
-    guildId: string,
-    channelId: string,
-  ): Promise<Result<boolean, DomainError>> {
+  async toggleAgentMode(guildId: string, channelId: string): Promise<Result<boolean, DomainError>> {
     const current = await this.isAgentEnabledAsync(guildId, channelId);
     const newEnabled = !current;
-    const result = await this.setAgentEnabled(
-      guildId,
-      channelId,
-      newEnabled,
-    );
+    const result = await this.setAgentEnabled(guildId, channelId, newEnabled);
     if (result.isErr()) {
       return err(result.getError());
     }
     return ok(newEnabled);
   }
 
-  async getEnabledChannels(
-    guildId: string,
-  ): Promise<Result<string[], DomainError>> {
+  async getEnabledChannels(guildId: string): Promise<Result<string[], DomainError>> {
     return this.repository.findEnabledByGuild(guildId);
   }
 
-  async removeChannel(
-    guildId: string,
-    channelId: string,
-  ): Promise<Result<Unit, DomainError>> {
+  async removeChannel(guildId: string, channelId: string): Promise<Result<Unit, DomainError>> {
     const result = await this.repository.remove(guildId, channelId);
     if (result.isOk()) {
       await this.invalidateCache(guildId, channelId);
@@ -325,10 +283,7 @@ export class DefaultAIAgentChannelConfigService
     return result;
   }
 
-  private async invalidateCache(
-    guildId: string,
-    channelId: string,
-  ): Promise<void> {
+  private async invalidateCache(guildId: string, channelId: string): Promise<void> {
     const cacheKey = this.buildCacheKey(guildId, channelId);
     this.localSyncCache.delete(cacheKey);
     try {

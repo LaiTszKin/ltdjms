@@ -18,9 +18,7 @@ export function resolveRestrictionChannelId(channel: Channel): string {
  * Resolves the category ID for a channel.
  * Threads resolve through their parent channel.
  */
-export function resolveCategoryId(
-  channel: Channel,
-): string | null {
+export function resolveCategoryId(channel: Channel): string | null {
   let targetChannel = channel;
 
   // If thread, use parent channel

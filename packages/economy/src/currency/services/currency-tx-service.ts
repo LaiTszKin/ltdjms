@@ -7,7 +7,10 @@ import { BaseTransactionService } from '../../common/base-tx-service.js';
  * Service for querying and recording currency transaction history.
  * Matches Java CurrencyTransactionService behavior.
  */
-export class CurrencyTransactionService extends BaseTransactionService<CurrencyTransaction, CurrencyTransactionSource> {
+export class CurrencyTransactionService extends BaseTransactionService<
+  CurrencyTransaction,
+  CurrencyTransactionSource
+> {
   constructor(transactionRepository: CurrencyTransactionRepository) {
     super(transactionRepository);
   }

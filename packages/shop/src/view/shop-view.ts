@@ -1,9 +1,18 @@
-import { type Product, hasCurrencyPrice, hasFiatPriceTwd, isFiatOnly, hasReward, formatCurrencyPrice, formatFiatPriceTwd, formatReward } from '../domain/product-types.js';
+import {
+  type Product,
+  hasCurrencyPrice,
+  hasFiatPriceTwd,
+  isFiatOnly,
+  hasReward,
+  formatCurrencyPrice,
+  formatFiatPriceTwd,
+  formatReward,
+} from '../domain/product-types.js';
 import { PAGE_SIZE } from '../services/shop.service.js';
 
 // Theme color constants (P3-12)
-const EMBED_COLOR_PRIMARY = 0x5865F2;
-const EMBED_COLOR_DANGER = 0xED4245;
+const EMBED_COLOR_PRIMARY = 0x5865f2;
+const EMBED_COLOR_DANGER = 0xed4245;
 const DIVIDER = '────────────────────────────────────';
 
 export const BUTTON_PREV_PAGE = 'shop_prev_';
@@ -118,7 +127,10 @@ export function buildPaymentMethodChoiceEmbed(product: Product): {
  * Builds a buy menu embed for selecting a product to purchase.
  * Displays the product name, price, and confirmation prompt.
  */
-export function buildBuyMenu(product: Product, userBalance: number): {
+export function buildBuyMenu(
+  product: Product,
+  userBalance: number,
+): {
   title: string;
   description: string;
   color: number;
@@ -228,12 +240,24 @@ export function buildShopComponents(
   totalPages: number,
 ): Array<{
   type: number;
-  components: Array<{ type: number; customId: string; label: string; style: number; disabled?: boolean }>;
+  components: Array<{
+    type: number;
+    customId: string;
+    label: string;
+    style: number;
+    disabled?: boolean;
+  }>;
 }> {
   const hasPrev = currentPage > 1;
   const hasNext = currentPage < totalPages;
 
-  const buttons: Array<{ type: number; customId: string; label: string; style: number; disabled?: boolean }> = [];
+  const buttons: Array<{
+    type: number;
+    customId: string;
+    label: string;
+    style: number;
+    disabled?: boolean;
+  }> = [];
 
   if (hasPrev) {
     buttons.push({
@@ -292,10 +316,7 @@ export function buildPurchaseConfirmEmbed(
   sb.push(`**價格：** ${formatCurrencyPrice(product)}\n`);
   sb.push(`**您的餘額：** ${userBalance.toLocaleString()} 貨幣\n`);
 
-  const color =
-    userBalance < currencyPrice
-      ? EMBED_COLOR_DANGER
-      : EMBED_COLOR_PRIMARY;
+  const color = userBalance < currencyPrice ? EMBED_COLOR_DANGER : EMBED_COLOR_PRIMARY;
 
   if (userBalance < currencyPrice) {
     sb.push('\n⚠️ **餘額不足！**');
@@ -351,7 +372,13 @@ export function buildSearchComponents(
   const hasPrev = currentPage > 1;
   const hasNext = currentPage < totalPages;
 
-  const buttons: Array<{ type: number; customId: string; label: string; style: number; disabled?: boolean }> = [];
+  const buttons: Array<{
+    type: number;
+    customId: string;
+    label: string;
+    style: number;
+    disabled?: boolean;
+  }> = [];
 
   if (hasPrev) {
     buttons.push({

@@ -3,9 +3,7 @@ import { z } from 'zod';
 import { ToolCallerAuthorizationGuard } from './ToolCallerAuthorizationGuard.js';
 
 export const ListChannelsParamsSchema = z.object({
-  type: z
-    .enum(['text', 'voice', 'category', 'forum', 'media', 'stage'])
-    .optional(),
+  type: z.enum(['text', 'voice', 'category', 'forum', 'media', 'stage']).optional(),
 });
 
 export type ListChannelsParams = z.infer<typeof ListChannelsParamsSchema>;
@@ -28,9 +26,7 @@ export class ListChannelsTool {
   readonly description = '列出伺服器中的所有頻道，可按類型篩選';
   readonly schema = ListChannelsParamsSchema;
 
-  constructor(
-    private readonly authGuard: ToolCallerAuthorizationGuard,
-  ) {}
+  constructor(private readonly authGuard: ToolCallerAuthorizationGuard) {}
 
   async execute(params: ListChannelsParams, guild: Guild): Promise<string> {
     const authError = await this.authGuard.validateAdministrator(guild, this.name);

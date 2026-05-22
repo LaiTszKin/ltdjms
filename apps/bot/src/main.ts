@@ -11,6 +11,8 @@ import {
   container,
   DiscordJsRuntimeGateway,
   DiscordJsEmbedBuilder,
+  CacheInvalidationListener,
+  DefaultCacheKeyGenerator,
   Ok,
   Err,
   DomainError,
@@ -110,6 +112,13 @@ export async function main(): Promise<void> {
   const runtimeGateway = new DiscordJsRuntimeGateway();
   const discordEmbedBuilder = new DiscordJsEmbedBuilder(logger);
 
+  // Cache invalidation listener
+  const cacheInvalidationListener = new CacheInvalidationListener(
+    cacheService,
+    new DefaultCacheKeyGenerator(),
+    logger,
+  );
+
   // 6. Initialize shared DI container
   initializeContainer({
     config,
@@ -119,6 +128,7 @@ export async function main(): Promise<void> {
     embedBuilder: discordEmbedBuilder,
     logger,
     databasePool: pool,
+    eventListeners: [(event) => cacheInvalidationListener.onEvent(event)],
   });
 
   // 7. Economy module

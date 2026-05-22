@@ -34,7 +34,13 @@ export class DrizzleRedemptionTransactionService implements RedemptionTransactio
     page: number,
     pageSize: number,
   ): Promise<{
-    items: Array<{ id: number; productName: string; code: string; rewardAmount: number | null; createdAt: Date }>;
+    items: Array<{
+      id: number;
+      productName: string;
+      code: string;
+      rewardAmount: number | null;
+      createdAt: Date;
+    }>;
     hasNext: boolean;
     totalPages: number;
     currentPage: number;

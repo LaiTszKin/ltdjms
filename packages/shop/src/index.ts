@@ -40,4 +40,3 @@ export {
 } from './di/shop-module.js';
 
 export type { EscortDispatchHandoffService } from './domain/escort-dispatch-handoff-service.js';
-

@@ -1,6 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { Ok } from '@ltdjms/shared';
-import { DiceGame1Service, calculateTotalReward, rollDice } from '../dice/services/dice-game-1-service.js';
+import {
+  DiceGame1Service,
+  calculateTotalReward,
+  rollDice,
+} from '../dice/services/dice-game-1-service.js';
 import { DefaultRandom } from '../dice/services/random.js';
 import { GameRewardService } from '../dice/services/game-reward-service.js';
 import type { DiceGame1Config } from '../domain/types.js';
@@ -76,7 +80,9 @@ describe('DiceGame1Service', () => {
       };
 
       const mockRewardService = {
-        creditReward: vi.fn().mockResolvedValue(new Ok({ previousBalance: 0, newBalance: 1500000 })),
+        creditReward: vi
+          .fn()
+          .mockResolvedValue(new Ok({ previousBalance: 0, newBalance: 1500000 })),
       } as unknown as GameRewardService;
 
       const service = new DiceGame1Service(mockRewardService, random);
@@ -103,7 +109,10 @@ describe('DiceGame1Service', () => {
       // Verify creditReward was called once (only for the actual reward, not for balance query)
       expect(mockRewardService.creditReward).toHaveBeenCalledTimes(1);
       expect(mockRewardService.creditReward).toHaveBeenCalledWith(
-        1, "1", 1500000, CurrencyTransactionSource.DICE_GAME_1_WIN,
+        1,
+        '1',
+        1500000,
+        CurrencyTransactionSource.DICE_GAME_1_WIN,
       );
     });
 
@@ -132,10 +141,7 @@ describe('DiceGame1Service', () => {
     });
 
     it('should fail when token count is below minimum', async () => {
-      const service = new DiceGame1Service(
-        mockGameRewardService,
-        DefaultRandom,
-      );
+      const service = new DiceGame1Service(mockGameRewardService, DefaultRandom);
 
       const config: DiceGame1Config = {
         guildId: 1,
@@ -151,10 +157,7 @@ describe('DiceGame1Service', () => {
     });
 
     it('should fail when token count exceeds maximum', async () => {
-      const service = new DiceGame1Service(
-        mockGameRewardService,
-        DefaultRandom,
-      );
+      const service = new DiceGame1Service(mockGameRewardService, DefaultRandom);
 
       const config: DiceGame1Config = {
         guildId: 1,

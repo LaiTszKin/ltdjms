@@ -88,9 +88,13 @@ function validateOrder(order: EscortDispatchOrder): string | null {
 
 function validateSourceSnapshot(order: EscortDispatchOrder): string | null {
   if (order.sourceType === SourceType.MANUAL) {
-    if (order.sourceReference != null || order.sourceProductId != null ||
-        order.sourceProductName != null || order.sourceCurrencyPrice != null ||
-        order.sourceFiatPriceTwd != null) {
+    if (
+      order.sourceReference != null ||
+      order.sourceProductId != null ||
+      order.sourceProductName != null ||
+      order.sourceCurrencyPrice != null ||
+      order.sourceFiatPriceTwd != null
+    ) {
       return 'manual dispatch order must not carry source snapshot';
     }
     return null;
@@ -163,7 +167,11 @@ function validateRequiredTimestamps(order: EscortDispatchOrder): string | null {
   return null;
 }
 
-function requireField(name: string, value: unknown, status?: EscortDispatchOrderStatus): string | null {
+function requireField(
+  name: string,
+  value: unknown,
+  status?: EscortDispatchOrderStatus,
+): string | null {
   if (value == null) {
     return `${name} must not be null for status ${status ?? 'unknown'}`;
   }
@@ -529,7 +537,9 @@ export function canBeConfirmedByCustomer(order: EscortDispatchOrder, userId: num
 
 /** 是否為售後案件的接手人。 */
 export function isAfterSalesAssignee(order: EscortDispatchOrder, userId: number): boolean {
-  return order.afterSalesAssigneeUserId != null && order.afterSalesAssigneeUserId === Number(userId);
+  return (
+    order.afterSalesAssigneeUserId != null && order.afterSalesAssigneeUserId === Number(userId)
+  );
 }
 
 // ---- Source Type Helpers ----

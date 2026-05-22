@@ -1,6 +1,14 @@
 import { eq, and } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { DomainError, ok, okVoid, err, safeSnowflakeToNumber, type Result, type Unit } from '@ltdjms/shared';
+import {
+  DomainError,
+  ok,
+  okVoid,
+  err,
+  safeSnowflakeToNumber,
+  type Result,
+  type Unit,
+} from '@ltdjms/shared';
 import type { AIAgentChannelConfig } from '../services/ai-chat-service.js';
 import type { AIAgentChannelConfigRepository } from '../services/routing/agent-config-service.js';
 import { aiAgentChannelConfig } from './schema.js';
@@ -42,7 +50,9 @@ export class DrizzleAIAgentChannelConfigRepository implements AIAgentChannelConf
         .limit(1);
       if (!row) {
         // Ok rejects null/undefined values, so use err for not-found.
-        return err(DomainError.channelNotFound(`Agent config not found for ${guildId}:${channelId}`));
+        return err(
+          DomainError.channelNotFound(`Agent config not found for ${guildId}:${channelId}`),
+        );
       }
       return ok(mapRow(row));
     } catch (cause) {
@@ -109,10 +119,7 @@ export class DrizzleAIAgentChannelConfigRepository implements AIAgentChannelConf
     }
   }
 
-  async remove(
-    guildId: string,
-    channelId: string,
-  ): Promise<Result<Unit, DomainError>> {
+  async remove(guildId: string, channelId: string): Promise<Result<Unit, DomainError>> {
     try {
       const result = await this.db
         .delete(aiAgentChannelConfig)

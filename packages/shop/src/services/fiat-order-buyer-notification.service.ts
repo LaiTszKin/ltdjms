@@ -34,13 +34,14 @@ export class FiatOrderBuyerNotificationService {
 
       client.users.fetch(order.buyerUserId.toString()).then(
         (buyerUser) => {
-          buyerUser.send(message).catch(
-            (err: unknown) =>
+          buyerUser
+            .send(message)
+            .catch((err: unknown) =>
               this.log.warn(
                 { orderNumber: order.orderNumber, buyerUserId: order.buyerUserId, error: err },
                 'Failed to DM buyer paid notification',
               ),
-          );
+            );
         },
         (err: unknown) =>
           this.log.warn(

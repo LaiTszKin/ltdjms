@@ -26,7 +26,10 @@ export class BalanceService {
   private static readonly MAX_CACHE_SIZE = 1000;
 
   /** In-memory cache for currency config to avoid repeated DB queries. */
-  private readonly configCache = new Map<string, { config: GuildCurrencyConfig | null; expiresAt: number }>();
+  private readonly configCache = new Map<
+    string,
+    { config: GuildCurrencyConfig | null; expiresAt: number }
+  >();
 
   /** Per-key in-flight promises to prevent cache stampede on balance reads. */
   private readonly pendingFetches = new Map<string, Promise<number>>();
@@ -147,8 +150,9 @@ export class BalanceService {
       if (pending) {
         balance = await pending;
       } else {
-        const fetchPromise = this.accountRepository.findOrCreate(guildId, userId)
-          .then(account => account.balance);
+        const fetchPromise = this.accountRepository
+          .findOrCreate(guildId, userId)
+          .then((account) => account.balance);
         this.pendingFetches.set(cacheKey, fetchPromise);
         try {
           balance = await fetchPromise;
@@ -174,10 +178,7 @@ export class BalanceService {
    * Gets the balance view with Result-based error handling.
    * This is the Result-based variant referenced in spec R1.1.
    */
-  async getBalance(
-    guildId: number,
-    userId: string,
-  ): Promise<Result<BalanceView, DomainError>> {
+  async getBalance(guildId: number, userId: string): Promise<Result<BalanceView, DomainError>> {
     try {
       const view = await this.getBalanceUnchecked(guildId, userId);
       return new Ok(view);

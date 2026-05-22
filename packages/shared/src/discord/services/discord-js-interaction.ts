@@ -18,15 +18,14 @@ export class DiscordJsInteraction implements DiscordInteraction {
   private _makeEphemeral = false;
 
   constructor(
-    private readonly interaction:
-      | CommandInteraction
-      | ButtonInteraction
-      | ModalSubmitInteraction,
+    private readonly interaction: CommandInteraction | ButtonInteraction | ModalSubmitInteraction,
     ephemeral?: boolean,
   ) {
     this.acknowledged = interaction.replied || interaction.deferred;
     // CommandInteraction has an ephemeral property; others default to false
-    this._ephemeral = ephemeral ?? (interaction instanceof CommandInteraction ? (interaction.ephemeral ?? false) : false);
+    this._ephemeral =
+      ephemeral ??
+      (interaction instanceof CommandInteraction ? (interaction.ephemeral ?? false) : false);
   }
 
   getGuildId(): string {
@@ -137,7 +136,9 @@ export class DiscordJsInteraction implements DiscordInteraction {
 
   getTextInputValue(customId: string): string {
     if ('fields' in this.interaction) {
-      return (this.interaction as { fields: { getTextInputValue: (id: string) => string } }).fields.getTextInputValue(customId);
+      return (
+        this.interaction as { fields: { getTextInputValue: (id: string) => string } }
+      ).fields.getTextInputValue(customId);
     }
     return '';
   }

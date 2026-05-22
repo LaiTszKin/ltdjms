@@ -64,20 +64,14 @@ export class RegexBasedAutoFixer implements MarkdownAutoFixer {
   // ===== Code Block Protection =====
 
   private protectCodeBlocks(text: string, store: string[]): string {
-    return text.replace(
-      /(```[\s\S]*?```|~~~[\s\S]*?~~~)/g,
-      (match) => {
-        store.push(match);
-        return CODE_BLOCK_PLACEHOLDER(store.length - 1);
-      },
-    );
+    return text.replace(/(```[\s\S]*?```|~~~[\s\S]*?~~~)/g, (match) => {
+      store.push(match);
+      return CODE_BLOCK_PLACEHOLDER(store.length - 1);
+    });
   }
 
   private restoreCodeBlocks(text: string, store: string[]): string {
-    return text.replace(
-      /\x00CODEBLOCK(\d+)\x00/g,
-      (_, index) => store[Number(index)] ?? '',
-    );
+    return text.replace(/\x00CODEBLOCK(\d+)\x00/g, (_, index) => store[Number(index)] ?? '');
   }
 
   // ===== Fix 1: Unclosed Code Blocks =====
@@ -101,9 +95,7 @@ export class RegexBasedAutoFixer implements MarkdownAutoFixer {
         result.push(line);
       } else if (inCodeBlock) {
         // Check if line looks like a non-code sentence (heuristic)
-        if (
-          /^[A-Z][a-z]+(?:\s+[a-z]+)+[.!?]?$/.test(line.trim())
-        ) {
+        if (/^[A-Z][a-z]+(?:\s+[a-z]+)+[.!?]?$/.test(line.trim())) {
           // This looks like a plain sentence, close code block before it
           result.push(fenceChar);
           inCodeBlock = false;
@@ -163,17 +155,14 @@ export class RegexBasedAutoFixer implements MarkdownAutoFixer {
   private fixEmbeddedLists(text: string): string {
     // Convert list markers embedded in paragraph text: "text-item" → "text\n- item"
     // Protected: **bold**, *italic*, horizontal rules, and headings
-    return text.replace(
-      /([^\n\s])([-*+])(\s+\S)/g,
-      (match, before, marker, after) => {
-        // Skip if part of **bold** or *italic* or if it's a heading
-        const lookBehind = before.slice(-10);
-        if (/^#{1,6}\s/.test(lookBehind)) return match;
-        // Skip if marker is part of ** pattern (bold/italic)
-        if (before.endsWith('*') || before.endsWith('-') || before.endsWith('+')) return match;
-        return `${before}\n${marker}${after}`;
-      },
-    );
+    return text.replace(/([^\n\s])([-*+])(\s+\S)/g, (match, before, marker, after) => {
+      // Skip if part of **bold** or *italic* or if it's a heading
+      const lookBehind = before.slice(-10);
+      if (/^#{1,6}\s/.test(lookBehind)) return match;
+      // Skip if marker is part of ** pattern (bold/italic)
+      if (before.endsWith('*') || before.endsWith('-') || before.endsWith('+')) return match;
+      return `${before}\n${marker}${after}`;
+    });
   }
 
   // ===== Fix 8: Inline List Markers in List Lines =====
@@ -270,5 +259,4 @@ export class RegexBasedAutoFixer implements MarkdownAutoFixer {
     // - [ ] item → - item
     return text.replace(/^(\s*[-*+])\s*\[[ x]\]\s*/gim, '$1 ');
   }
-
 }

@@ -110,9 +110,7 @@ describe('EscortCatalogHandler — ActionRow limit', () => {
   }
 
   function makeInteraction(customId = 'admin_escortcatalog') {
-    return new MockDiscordInteraction(
-      GUILD_ID, USER_ID, undefined, false, customId, true,
-    );
+    return new MockDiscordInteraction(GUILD_ID, USER_ID, undefined, false, customId, true);
   }
 
   it.each([
@@ -175,9 +173,7 @@ describe('EscortPricingHandler — ActionRow limit', () => {
   }
 
   function makeInteraction(customId = 'admin_escortprice') {
-    return new MockDiscordInteraction(
-      GUILD_ID, USER_ID, undefined, false, customId, true,
-    );
+    return new MockDiscordInteraction(GUILD_ID, USER_ID, undefined, false, customId, true);
   }
 
   it.each([

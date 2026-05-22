@@ -1,10 +1,6 @@
 import { DomainError, ok, okVoid, err, type Result, type Unit } from '@ltdjms/shared';
 import type { DomainEventPublisher } from '@ltdjms/shared';
-import type {
-  AllowedChannel,
-  AllowedCategory,
-  AIChannelRestriction,
-} from '../ai-chat-service.js';
+import type { AllowedChannel, AllowedCategory, AIChannelRestriction } from '../ai-chat-service.js';
 import type { AIChannelConfigChangedEvent } from '../../events/index.js';
 import { z } from 'zod';
 
@@ -32,18 +28,9 @@ export interface AIChannelRestrictionRepository {
     guildId: string,
     category: Omit<AllowedCategory, 'guildId'>,
   ): Promise<Result<AllowedCategory, DomainError>>;
-  removeChannel(
-    guildId: string,
-    channelId: string,
-  ): Promise<Result<Unit, DomainError>>;
-  removeCategory(
-    guildId: string,
-    categoryId: string,
-  ): Promise<Result<Unit, DomainError>>;
-  deleteRemovedChannels(
-    guildId: string,
-    validChannelIds: string[],
-  ): Promise<void>;
+  removeChannel(guildId: string, channelId: string): Promise<Result<Unit, DomainError>>;
+  removeCategory(guildId: string, categoryId: string): Promise<Result<Unit, DomainError>>;
+  deleteRemovedChannels(guildId: string, validChannelIds: string[]): Promise<void>;
 }
 
 // ===== Repository Schema =====
@@ -62,9 +49,7 @@ export const aiAllowedCategoriesSchema = z.object({
 
 // ===== In-Memory Repository Implementation (for testing) =====
 
-export class InMemoryAIChannelRestrictionRepository
-  implements AIChannelRestrictionRepository
-{
+export class InMemoryAIChannelRestrictionRepository implements AIChannelRestrictionRepository {
   private channels: Map<string, AllowedChannel> = new Map();
   private categories: Map<string, AllowedCategory> = new Map();
 
@@ -81,23 +66,17 @@ export class InMemoryAIChannelRestrictionRepository
   }
 
   async findByGuildId(guildId: string): Promise<AllowedChannel[]> {
-    return Array.from(this.channels.values()).filter(
-      (c) => c.guildId === guildId,
-    );
+    return Array.from(this.channels.values()).filter((c) => c.guildId === guildId);
   }
 
-  async findRestrictionByGuildId(
-    guildId: string,
-  ): Promise<AIChannelRestriction> {
+  async findRestrictionByGuildId(guildId: string): Promise<AIChannelRestriction> {
     const channels = await this.findByGuildId(guildId);
     const categories = await this.findAllowedCategories(guildId);
     return { channels, categories };
   }
 
   async findAllowedCategories(guildId: string): Promise<AllowedCategory[]> {
-    return Array.from(this.categories.values()).filter(
-      (c) => c.guildId === guildId,
-    );
+    return Array.from(this.categories.values()).filter((c) => c.guildId === guildId);
   }
 
   async addChannel(
@@ -107,9 +86,7 @@ export class InMemoryAIChannelRestrictionRepository
     const key = this.channelKey(guildId, channel.channelId);
     if (this.channels.has(key)) {
       return err(
-        DomainError.duplicateChannel(
-          `Channel ${channel.channelId} is already in the allowlist`,
-        ),
+        DomainError.duplicateChannel(`Channel ${channel.channelId} is already in the allowlist`),
       );
     }
     const entry: AllowedChannel = { ...channel, guildId };
@@ -134,42 +111,25 @@ export class InMemoryAIChannelRestrictionRepository
     return ok(entry);
   }
 
-  async removeChannel(
-    guildId: string,
-    channelId: string,
-  ): Promise<Result<Unit, DomainError>> {
+  async removeChannel(guildId: string, channelId: string): Promise<Result<Unit, DomainError>> {
     const key = this.channelKey(guildId, channelId);
     if (!this.channels.has(key)) {
-      return err(
-        DomainError.channelNotFound(
-          `Channel ${channelId} is not in the allowlist`,
-        ),
-      );
+      return err(DomainError.channelNotFound(`Channel ${channelId} is not in the allowlist`));
     }
     this.channels.delete(key);
     return okVoid<DomainError>();
   }
 
-  async removeCategory(
-    guildId: string,
-    categoryId: string,
-  ): Promise<Result<Unit, DomainError>> {
+  async removeCategory(guildId: string, categoryId: string): Promise<Result<Unit, DomainError>> {
     const key = this.categoryKey(guildId, categoryId);
     if (!this.categories.has(key)) {
-      return err(
-        DomainError.categoryNotFound(
-          `Category ${categoryId} is not in the allowlist`,
-        ),
-      );
+      return err(DomainError.categoryNotFound(`Category ${categoryId} is not in the allowlist`));
     }
     this.categories.delete(key);
     return okVoid<DomainError>();
   }
 
-  async deleteRemovedChannels(
-    _guildId: string,
-    _validChannelIds: string[],
-  ): Promise<void> {
+  async deleteRemovedChannels(_guildId: string, _validChannelIds: string[]): Promise<void> {
     // No-op for in-memory; real impl would query DB
   }
 }
@@ -182,11 +142,7 @@ export class InMemoryAIChannelRestrictionRepository
 export type ChannelAllowResult = boolean | 'channel' | 'category';
 
 export interface AIChannelRestrictionService {
-  isChannelAllowed(
-    guildId: string,
-    channelId: string,
-    categoryId?: string,
-  ): Promise<boolean>;
+  isChannelAllowed(guildId: string, channelId: string, categoryId?: string): Promise<boolean>;
 
   /**
    * Same as isChannelAllowed but returns the matched source type:
@@ -200,12 +156,8 @@ export interface AIChannelRestrictionService {
     categoryId?: string,
   ): Promise<ChannelAllowResult>;
 
-  getAllowedChannels(
-    guildId: string,
-  ): Promise<Result<AllowedChannel[], DomainError>>;
-  getAllowedCategories(
-    guildId: string,
-  ): Promise<Result<AllowedCategory[], DomainError>>;
+  getAllowedChannels(guildId: string): Promise<Result<AllowedChannel[], DomainError>>;
+  getAllowedCategories(guildId: string): Promise<Result<AllowedCategory[], DomainError>>;
   addAllowedChannel(
     guildId: string,
     channel: Omit<AllowedChannel, 'guildId'>,
@@ -214,25 +166,14 @@ export interface AIChannelRestrictionService {
     guildId: string,
     category: Omit<AllowedCategory, 'guildId'>,
   ): Promise<Result<AllowedCategory, DomainError>>;
-  removeAllowedChannel(
-    guildId: string,
-    channelId: string,
-  ): Promise<Result<Unit, DomainError>>;
-  removeAllowedCategory(
-    guildId: string,
-    categoryId: string,
-  ): Promise<Result<Unit, DomainError>>;
-  deleteRemovedChannels(
-    guildId: string,
-    validChannelIds: string[],
-  ): Promise<void>;
+  removeAllowedChannel(guildId: string, channelId: string): Promise<Result<Unit, DomainError>>;
+  removeAllowedCategory(guildId: string, categoryId: string): Promise<Result<Unit, DomainError>>;
+  deleteRemovedChannels(guildId: string, validChannelIds: string[]): Promise<void>;
 }
 
 // ===== Default Implementation =====
 
-export class DefaultAIChannelRestrictionService
-  implements AIChannelRestrictionService
-{
+export class DefaultAIChannelRestrictionService implements AIChannelRestrictionService {
   private static readonly DEFAULT_TTL_MS = 5 * 60 * 1000; // 5 minutes
   private static readonly MAX_CACHE_SIZE = 10_000;
 
@@ -258,7 +199,9 @@ export class DefaultAIChannelRestrictionService
     channelId: string,
     categoryId?: string,
   ): Promise<ChannelAllowResult> {
-    const cacheKey = categoryId ? `${guildId}:${channelId}:${categoryId}` : `${guildId}:${channelId}`;
+    const cacheKey = categoryId
+      ? `${guildId}:${channelId}:${categoryId}`
+      : `${guildId}:${channelId}`;
     const cached = this.cache.get(cacheKey);
     if (cached !== undefined) {
       if (Date.now() < cached.expiresAt) {
@@ -281,10 +224,11 @@ export class DefaultAIChannelRestrictionService
     // Check category-level allowlist if categoryId provided
     if (categoryId) {
       const categories = await this.repository.findAllowedCategories(guildId);
-      const categoryMatch = categories.some(
-        (c) => c.categoryId === categoryId,
-      );
-      this.setCache(cacheKey, { value: categoryMatch ? 'category' as const : false as const, expiresAt: now + ttl });
+      const categoryMatch = categories.some((c) => c.categoryId === categoryId);
+      this.setCache(cacheKey, {
+        value: categoryMatch ? ('category' as const) : (false as const),
+        expiresAt: now + ttl,
+      });
       return categoryMatch ? 'category' : false;
     }
 
@@ -293,9 +237,7 @@ export class DefaultAIChannelRestrictionService
     return false;
   }
 
-  async getAllowedChannels(
-    guildId: string,
-  ): Promise<Result<AllowedChannel[], DomainError>> {
+  async getAllowedChannels(guildId: string): Promise<Result<AllowedChannel[], DomainError>> {
     try {
       const channels = await this.repository.findByGuildId(guildId);
       return ok(channels);
@@ -309,9 +251,7 @@ export class DefaultAIChannelRestrictionService
     }
   }
 
-  async getAllowedCategories(
-    guildId: string,
-  ): Promise<Result<AllowedCategory[], DomainError>> {
+  async getAllowedCategories(guildId: string): Promise<Result<AllowedCategory[], DomainError>> {
     try {
       const categories = await this.repository.findAllowedCategories(guildId);
       return ok(categories);
@@ -332,11 +272,13 @@ export class DefaultAIChannelRestrictionService
     const result = await this.repository.addChannel(guildId, channel);
     if (result.isOk()) {
       this.cache.delete(`${guildId}:${channel.channelId}`);
-      this.eventPublisher?.publish(channelConfigEvent({
-        guildId,
-        changeType: 'channel_added',
-        targetId: channel.channelId,
-      }));
+      this.eventPublisher?.publish(
+        channelConfigEvent({
+          guildId,
+          changeType: 'channel_added',
+          targetId: channel.channelId,
+        }),
+      );
     }
     return result;
   }
@@ -349,11 +291,13 @@ export class DefaultAIChannelRestrictionService
     if (result.isOk()) {
       // Invalidate all channel caches for this guild since category allowlist changed
       this.invalidateGuildCache(guildId);
-      this.eventPublisher?.publish(channelConfigEvent({
-        guildId,
-        changeType: 'category_added',
-        targetId: category.categoryId,
-      }));
+      this.eventPublisher?.publish(
+        channelConfigEvent({
+          guildId,
+          changeType: 'category_added',
+          targetId: category.categoryId,
+        }),
+      );
     }
     return result;
   }
@@ -365,11 +309,13 @@ export class DefaultAIChannelRestrictionService
     const result = await this.repository.removeChannel(guildId, channelId);
     if (result.isOk()) {
       this.cache.delete(`${guildId}:${channelId}`);
-      this.eventPublisher?.publish(channelConfigEvent({
-        guildId,
-        changeType: 'channel_removed',
-        targetId: channelId,
-      }));
+      this.eventPublisher?.publish(
+        channelConfigEvent({
+          guildId,
+          changeType: 'channel_removed',
+          targetId: channelId,
+        }),
+      );
     }
     return result;
   }
@@ -381,19 +327,24 @@ export class DefaultAIChannelRestrictionService
     const result = await this.repository.removeCategory(guildId, categoryId);
     if (result.isOk()) {
       this.invalidateGuildCache(guildId);
-      this.eventPublisher?.publish(channelConfigEvent({
-        guildId,
-        changeType: 'category_removed',
-        targetId: categoryId,
-      }));
+      this.eventPublisher?.publish(
+        channelConfigEvent({
+          guildId,
+          changeType: 'category_removed',
+          targetId: categoryId,
+        }),
+      );
     }
     return result;
   }
 
-  private setCache(cacheKey: string, value: { value: ChannelAllowResult; expiresAt: number }): void {
+  private setCache(
+    cacheKey: string,
+    value: { value: ChannelAllowResult; expiresAt: number },
+  ): void {
     if (
-      this.cache.size >= DefaultAIChannelRestrictionService.MAX_CACHE_SIZE
-      && !this.cache.has(cacheKey)
+      this.cache.size >= DefaultAIChannelRestrictionService.MAX_CACHE_SIZE &&
+      !this.cache.has(cacheKey)
     ) {
       const oldest = this.cache.keys().next().value;
       if (oldest !== undefined) {
@@ -411,10 +362,7 @@ export class DefaultAIChannelRestrictionService
     }
   }
 
-  async deleteRemovedChannels(
-    guildId: string,
-    validChannelIds: string[],
-  ): Promise<void> {
+  async deleteRemovedChannels(guildId: string, validChannelIds: string[]): Promise<void> {
     await this.repository.deleteRemovedChannels(guildId, validChannelIds);
     this.invalidateGuildCache(guildId);
   }

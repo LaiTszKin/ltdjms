@@ -15,9 +15,7 @@ function getCipherName(key: string): string {
   if (keyLen === 16) return 'aes-128-cbc';
   if (keyLen === 24) return 'aes-192-cbc';
   if (keyLen === 32) return 'aes-256-cbc';
-  throw new Error(
-    `Invalid AES key length: ${keyLen} bytes. Expected 16, 24, or 32 bytes.`,
-  );
+  throw new Error(`Invalid AES key length: ${keyLen} bytes. Expected 16, 24, or 32 bytes.`);
 }
 
 /**
@@ -36,10 +34,7 @@ export function encryptAES(plainJson: string, hashKey: string, hashIv: string): 
     Buffer.from(hashKey, 'utf-8'),
     Buffer.from(hashIv, 'utf-8'),
   );
-  const encrypted = Buffer.concat([
-    cipher.update(urlEncoded, 'utf-8'),
-    cipher.final(),
-  ]);
+  const encrypted = Buffer.concat([cipher.update(urlEncoded, 'utf-8'), cipher.final()]);
   return encrypted.toString('base64');
 }
 

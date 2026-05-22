@@ -6,9 +6,7 @@ export const GetRolePermissionsParamsSchema = z.object({
   roleId: z.string(),
 });
 
-export type GetRolePermissionsParams = z.infer<
-  typeof GetRolePermissionsParamsSchema
->;
+export type GetRolePermissionsParams = z.infer<typeof GetRolePermissionsParamsSchema>;
 
 /**
  * Gets permissions for a specific role.
@@ -19,18 +17,10 @@ export class GetRolePermissionsTool {
   readonly description = '獲取指定身分組的權限設定';
   readonly schema = GetRolePermissionsParamsSchema;
 
-  constructor(
-    private readonly authGuard: ToolCallerAuthorizationGuard,
-  ) {}
+  constructor(private readonly authGuard: ToolCallerAuthorizationGuard) {}
 
-  async execute(
-    params: GetRolePermissionsParams,
-    guild: Guild,
-  ): Promise<string> {
-    const authError = await this.authGuard.validateAdministrator(
-      guild,
-      this.name,
-    );
+  async execute(params: GetRolePermissionsParams, guild: Guild): Promise<string> {
+    const authError = await this.authGuard.validateAdministrator(guild, this.name);
     if (authError) return authError;
 
     try {

@@ -30,17 +30,13 @@ export class FiatPaymentReconciliationService {
       createdAfter,
       DEFAULT_BATCH_SIZE,
     );
-    await processWithConcurrencyLimit(
-      orders,
-      order => this.reconcileSingleOrder(order, now),
-      5,
-    );
+    await processWithConcurrencyLimit(orders, (order) => this.reconcileSingleOrder(order, now), 5);
   }
 
   private async expirePendingOrders(now: Date): Promise<void> {
     const orders = await this.fiatOrderRepository.findOrdersPendingExpiry(now, DEFAULT_BATCH_SIZE);
     if (orders.length === 0) return;
-    const orderNumbers = orders.map(o => o.orderNumber);
+    const orderNumbers = orders.map((o) => o.orderNumber);
     await this.fiatOrderRepository.batchMarkExpired(orderNumbers, now, EXPIRED_TERMINAL_REASON);
     this.log.info({ count: orderNumbers.length }, 'Batch expired pending fiat orders');
   }

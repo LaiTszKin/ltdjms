@@ -7,9 +7,7 @@ export const DeleteDiscordResourceParamsSchema = z.object({
   resourceId: z.string(),
 });
 
-export type DeleteDiscordResourceParams = z.infer<
-  typeof DeleteDiscordResourceParamsSchema
->;
+export type DeleteDiscordResourceParams = z.infer<typeof DeleteDiscordResourceParamsSchema>;
 
 /**
  * Deletes a Discord resource (channel, category, or role).
@@ -20,18 +18,10 @@ export class DeleteDiscordResourceTool {
   readonly description = '刪除 Discord 資源（頻道/分類/身分組）';
   readonly schema = DeleteDiscordResourceParamsSchema;
 
-  constructor(
-    private readonly authGuard: ToolCallerAuthorizationGuard,
-  ) {}
+  constructor(private readonly authGuard: ToolCallerAuthorizationGuard) {}
 
-  async execute(
-    params: DeleteDiscordResourceParams,
-    guild: Guild,
-  ): Promise<string> {
-    const authError = await this.authGuard.validateAdministrator(
-      guild,
-      this.name,
-    );
+  async execute(params: DeleteDiscordResourceParams, guild: Guild): Promise<string> {
+    const authError = await this.authGuard.validateAdministrator(guild, this.name);
     if (authError) return authError;
 
     try {
@@ -40,8 +30,7 @@ export class DeleteDiscordResourceTool {
       switch (resourceType) {
         case 'channel': {
           const channel = guild.channels.cache.get(resourceId);
-          if (!channel)
-            return `找不到頻道 ${resourceId}`;
+          if (!channel) return `找不到頻道 ${resourceId}`;
           if (channel.type === ChannelType.GuildCategory) {
             return '請使用 category 類型來刪除分類。';
           }
@@ -51,8 +40,7 @@ export class DeleteDiscordResourceTool {
 
         case 'category': {
           const category = guild.channels.cache.get(resourceId);
-          if (!category)
-            return `找不到分類 ${resourceId}`;
+          if (!category) return `找不到分類 ${resourceId}`;
           if (category.type !== ChannelType.GuildCategory) {
             return '指定的資源不是分類。';
           }
@@ -62,8 +50,7 @@ export class DeleteDiscordResourceTool {
 
         case 'role': {
           const role = guild.roles.cache.get(resourceId);
-          if (!role)
-            return `找不到身分組 ${resourceId}`;
+          if (!role) return `找不到身分組 ${resourceId}`;
           await role.delete('透過 AI Agent 刪除身分組');
           return `已成功刪除身分組 ${role.name}`;
         }

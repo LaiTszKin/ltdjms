@@ -41,7 +41,9 @@ export class ProductService {
     return this.repository.findByGuildIdAndNameContaining(guildId, keyword, page, size);
   }
 
-  async create(data: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Promise<Result<Product, DomainError>> {
+  async create(
+    data: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>,
+  ): Promise<Result<Product, DomainError>> {
     if (!data.name || data.name.trim().length === 0) {
       return err(DomainError.invalidInput('商品名稱不可為空'));
     }
@@ -90,10 +92,7 @@ export class ProductService {
 
       const deleted = await this.repository.delete(id);
       if (deleted) {
-        this.publishProductChanged(
-          { ...existing, id },
-          OperationType.DELETED,
-        );
+        this.publishProductChanged({ ...existing, id }, OperationType.DELETED);
         this.log.info({ productId: id }, 'Product deleted');
       }
       return ok(deleted);

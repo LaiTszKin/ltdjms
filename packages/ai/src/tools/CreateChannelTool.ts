@@ -42,9 +42,7 @@ export class CreateChannelTool {
 
     try {
       const permissionOverwrites = params.permissions
-        ? this.permissionParser.parse(
-            params.permissions as PermissionSetting[],
-          )
+        ? this.permissionParser.parse(params.permissions as PermissionSetting[])
         : undefined;
 
       const channel = await guild.channels.create({

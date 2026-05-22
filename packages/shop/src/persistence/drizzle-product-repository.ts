@@ -11,11 +11,7 @@ export class DrizzleProductRepository implements ProductRepository {
   constructor(private readonly db: NodePgDatabase) {}
 
   async findById(id: number): Promise<Product | null> {
-    const rows = await this.db
-      .select()
-      .from(productTable)
-      .where(eq(productTable.id, id))
-      .limit(1);
+    const rows = await this.db.select().from(productTable).where(eq(productTable.id, id)).limit(1);
     if (rows.length === 0) return null;
     return this.mapRow(rows[0]);
   }
@@ -28,11 +24,7 @@ export class DrizzleProductRepository implements ProductRepository {
     return result[0]?.count ?? 0;
   }
 
-  async findByGuildIdPaginated(
-    guildId: number,
-    page: number,
-    size: number,
-  ): Promise<Product[]> {
+  async findByGuildIdPaginated(guildId: number, page: number, size: number): Promise<Product[]> {
     const rows = await this.db
       .select()
       .from(productTable)
@@ -43,19 +35,11 @@ export class DrizzleProductRepository implements ProductRepository {
     return rows.map((r) => this.mapRow(r));
   }
 
-  async countByGuildIdAndNameContaining(
-    guildId: number,
-    keyword: string,
-  ): Promise<number> {
+  async countByGuildIdAndNameContaining(guildId: number, keyword: string): Promise<number> {
     const result = await this.db
       .select({ count: count() })
       .from(productTable)
-      .where(
-        and(
-          eq(productTable.guildId, guildId),
-          ilike(productTable.name, `%${keyword}%`),
-        ),
-      );
+      .where(and(eq(productTable.guildId, guildId), ilike(productTable.name, `%${keyword}%`)));
     return result[0]?.count ?? 0;
   }
 
@@ -68,12 +52,7 @@ export class DrizzleProductRepository implements ProductRepository {
     const rows = await this.db
       .select()
       .from(productTable)
-      .where(
-        and(
-          eq(productTable.guildId, guildId),
-          ilike(productTable.name, `%${keyword}%`),
-        ),
-      )
+      .where(and(eq(productTable.guildId, guildId), ilike(productTable.name, `%${keyword}%`)))
       .orderBy(asc(productTable.id))
       .offset(page * size)
       .limit(size);
@@ -99,16 +78,23 @@ export class DrizzleProductRepository implements ProductRepository {
     return this.mapRow(rows[0] as Record<string, unknown>);
   }
 
-  async update(id: number, data: Partial<Omit<Product, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Product | null> {
+  async update(
+    id: number,
+    data: Partial<Omit<Product, 'id' | 'createdAt' | 'updatedAt'>>,
+  ): Promise<Product | null> {
     const values: Record<string, unknown> = {};
     if (data.guildId !== undefined) values.guildId = BigInt(data.guildId);
     if (data.name !== undefined) values.name = data.name;
     if (data.description !== undefined) values.description = data.description;
     if (data.rewardType !== undefined) values.rewardType = data.rewardType;
-    if (data.rewardAmount !== undefined) values.rewardAmount = data.rewardAmount != null ? BigInt(data.rewardAmount) : null;
-    if (data.currencyPrice !== undefined) values.currencyPrice = data.currencyPrice != null ? BigInt(data.currencyPrice) : null;
-    if (data.fiatPriceTwd !== undefined) values.fiatPriceTwd = data.fiatPriceTwd != null ? BigInt(data.fiatPriceTwd) : null;
-    if (data.autoCreateEscortOrder !== undefined) values.autoCreateEscortOrder = data.autoCreateEscortOrder;
+    if (data.rewardAmount !== undefined)
+      values.rewardAmount = data.rewardAmount != null ? BigInt(data.rewardAmount) : null;
+    if (data.currencyPrice !== undefined)
+      values.currencyPrice = data.currencyPrice != null ? BigInt(data.currencyPrice) : null;
+    if (data.fiatPriceTwd !== undefined)
+      values.fiatPriceTwd = data.fiatPriceTwd != null ? BigInt(data.fiatPriceTwd) : null;
+    if (data.autoCreateEscortOrder !== undefined)
+      values.autoCreateEscortOrder = data.autoCreateEscortOrder;
     if (data.escortOptionCode !== undefined) values.escortOptionCode = data.escortOptionCode;
 
     const rows = await this.db

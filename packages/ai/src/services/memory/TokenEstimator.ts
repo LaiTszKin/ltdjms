@@ -39,10 +39,7 @@ export class TokenEstimator {
    * @param messages - Array of messages already in context
    * @returns Remaining tokens available
    */
-  estimateRemainingTokens(
-    contextWindow: number,
-    messages: { content: string }[],
-  ): number {
+  estimateRemainingTokens(contextWindow: number, messages: { content: string }[]): number {
     const used = this.estimateMessageTokens(messages);
     return Math.max(0, contextWindow - used);
   }

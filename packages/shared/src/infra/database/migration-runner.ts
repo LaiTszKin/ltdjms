@@ -46,9 +46,7 @@ export async function runMigrations(
 
       // Read all migration files sorted by name
       const files = await readdir(migrationsDir);
-      const sqlFiles = files
-        .filter((f) => f.endsWith('.sql'))
-        .sort();
+      const sqlFiles = files.filter((f) => f.endsWith('.sql')).sort();
 
       // Check if tracking table has entries
       const trackingResult = await db.execute<{ count: number }>(

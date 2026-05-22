@@ -7,7 +7,10 @@ import { BaseTransactionService } from '../../common/base-tx-service.js';
  * Service for querying and recording game token transaction history.
  * Matches Java GameTokenTransactionService behavior.
  */
-export class GameTokenTransactionService extends BaseTransactionService<GameTokenTransaction, GameTokenTransactionSource> {
+export class GameTokenTransactionService extends BaseTransactionService<
+  GameTokenTransaction,
+  GameTokenTransactionSource
+> {
   constructor(transactionRepository: TokenTransactionRepository) {
     super(transactionRepository);
   }

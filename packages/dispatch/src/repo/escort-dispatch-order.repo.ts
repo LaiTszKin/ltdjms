@@ -1,4 +1,8 @@
-import type { EscortDispatchOrder, EscortDispatchOrderStatus, SourceType } from '../domain/index.js';
+import type {
+  EscortDispatchOrder,
+  EscortDispatchOrderStatus,
+  SourceType,
+} from '../domain/index.js';
 
 /**
  * 派單護航訂單的持久化介面。
@@ -8,7 +12,10 @@ export interface EscortDispatchOrderRepo {
   save(order: EscortDispatchOrder): Promise<EscortDispatchOrder>;
 
   /** 更新既有訂單並回傳最新狀態。若無符合條件的列則回傳 null。 */
-  update(order: EscortDispatchOrder, expectedStatus?: EscortDispatchOrderStatus): Promise<EscortDispatchOrder | null>;
+  update(
+    order: EscortDispatchOrder,
+    expectedStatus?: EscortDispatchOrderStatus,
+  ): Promise<EscortDispatchOrder | null>;
 
   /** 依訂單編號查詢。 */
   findByOrderNumber(orderNumber: string): Promise<EscortDispatchOrder | null>;

@@ -154,15 +154,15 @@ export class DrizzleFiatOrderRepository implements FiatOrderRepository {
     return row ? mapRow(row) : null;
   }
 
-  async markBuyerNotifiedIfNeeded(orderNumber: string, notifiedAt: Date): Promise<FiatOrder | null> {
+  async markBuyerNotifiedIfNeeded(
+    orderNumber: string,
+    notifiedAt: Date,
+  ): Promise<FiatOrder | null> {
     const [row] = await this.db
       .update(fiatOrderTable)
       .set({ buyerNotifiedAt: notifiedAt, updatedAt: now() })
       .where(
-        and(
-          eq(fiatOrderTable.orderNumber, orderNumber),
-          isNull(fiatOrderTable.buyerNotifiedAt),
-        ),
+        and(eq(fiatOrderTable.orderNumber, orderNumber), isNull(fiatOrderTable.buyerNotifiedAt)),
       )
       .returning();
     return row ? mapRow(row) : null;
@@ -173,10 +173,7 @@ export class DrizzleFiatOrderRepository implements FiatOrderRepository {
       .update(fiatOrderTable)
       .set({ rewardGrantedAt: grantedAt, updatedAt: now() })
       .where(
-        and(
-          eq(fiatOrderTable.orderNumber, orderNumber),
-          isNull(fiatOrderTable.rewardGrantedAt),
-        ),
+        and(eq(fiatOrderTable.orderNumber, orderNumber), isNull(fiatOrderTable.rewardGrantedAt)),
       )
       .returning();
     return row ? mapRow(row) : null;
@@ -190,17 +187,15 @@ export class DrizzleFiatOrderRepository implements FiatOrderRepository {
         fulfillmentProcessingAt: null,
         updatedAt: now(),
       })
-      .where(
-        and(
-          eq(fiatOrderTable.orderNumber, orderNumber),
-          isNull(fiatOrderTable.fulfilledAt),
-        ),
-      )
+      .where(and(eq(fiatOrderTable.orderNumber, orderNumber), isNull(fiatOrderTable.fulfilledAt)))
       .returning();
     return row ? mapRow(row) : null;
   }
 
-  async markAdminNotifiedIfNeeded(orderNumber: string, notifiedAt: Date): Promise<FiatOrder | null> {
+  async markAdminNotifiedIfNeeded(
+    orderNumber: string,
+    notifiedAt: Date,
+  ): Promise<FiatOrder | null> {
     const [row] = await this.db
       .update(fiatOrderTable)
       .set({
@@ -209,10 +204,7 @@ export class DrizzleFiatOrderRepository implements FiatOrderRepository {
         updatedAt: now(),
       })
       .where(
-        and(
-          eq(fiatOrderTable.orderNumber, orderNumber),
-          isNull(fiatOrderTable.adminNotifiedAt),
-        ),
+        and(eq(fiatOrderTable.orderNumber, orderNumber), isNull(fiatOrderTable.adminNotifiedAt)),
       )
       .returning();
     return row ? mapRow(row) : null;
@@ -375,12 +367,7 @@ export class DrizzleFiatOrderRepository implements FiatOrderRepository {
     await this.db
       .update(fiatOrderTable)
       .set({ fulfillmentProcessingAt: null, updatedAt: now() })
-      .where(
-        and(
-          eq(fiatOrderTable.orderNumber, orderNumber),
-          isNull(fiatOrderTable.fulfilledAt),
-        ),
-      );
+      .where(and(eq(fiatOrderTable.orderNumber, orderNumber), isNull(fiatOrderTable.fulfilledAt)));
   }
 
   async claimAdminNotificationProcessing(orderNumber: string, claimedAt: Date): Promise<boolean> {
@@ -405,10 +392,7 @@ export class DrizzleFiatOrderRepository implements FiatOrderRepository {
       .update(fiatOrderTable)
       .set({ adminNotificationProcessingAt: null, updatedAt: now() })
       .where(
-        and(
-          eq(fiatOrderTable.orderNumber, orderNumber),
-          isNull(fiatOrderTable.adminNotifiedAt),
-        ),
+        and(eq(fiatOrderTable.orderNumber, orderNumber), isNull(fiatOrderTable.adminNotifiedAt)),
       );
   }
 
@@ -438,12 +422,7 @@ export class DrizzleFiatOrderRepository implements FiatOrderRepository {
     await this.db
       .update(fiatOrderTable)
       .set({ reconciliationProcessingAt: null, updatedAt: now() })
-      .where(
-        and(
-          eq(fiatOrderTable.orderNumber, orderNumber),
-          isNull(fiatOrderTable.paidAt),
-        ),
-      );
+      .where(and(eq(fiatOrderTable.orderNumber, orderNumber), isNull(fiatOrderTable.paidAt)));
   }
 
   async markReconciliationAttempted(
@@ -459,12 +438,7 @@ export class DrizzleFiatOrderRepository implements FiatOrderRepository {
         reconciliationNextAttemptAt: nextAttemptAt,
         updatedAt: now(),
       })
-      .where(
-        and(
-          eq(fiatOrderTable.orderNumber, orderNumber),
-          isNull(fiatOrderTable.paidAt),
-        ),
-      )
+      .where(and(eq(fiatOrderTable.orderNumber, orderNumber), isNull(fiatOrderTable.paidAt)))
       .returning();
     return row ? mapRow(row) : null;
   }

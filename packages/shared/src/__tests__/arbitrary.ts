@@ -8,11 +8,9 @@ import * as fc from 'fast-check';
 // within safe JS integer range (< 2^53) to avoid precision loss.
 // ============================================================
 
-export const guildId = (): fc.Arbitrary<number> =>
-  fc.integer({ min: 1, max: 2147483647 });
+export const guildId = (): fc.Arbitrary<number> => fc.integer({ min: 1, max: 2147483647 });
 
-export const userId = (): fc.Arbitrary<number> =>
-  fc.integer({ min: 1, max: 2147483647 });
+export const userId = (): fc.Arbitrary<number> => fc.integer({ min: 1, max: 2147483647 });
 
 // ============================================================
 // Amount generators
@@ -21,8 +19,7 @@ export const userId = (): fc.Arbitrary<number> =>
 export const positiveAmount = (min = 1, max = 100000): fc.Arbitrary<number> =>
   fc.integer({ min, max });
 
-export const betAmount = (): fc.Arbitrary<number> =>
-  fc.integer({ min: 1, max: 1000000 });
+export const betAmount = (): fc.Arbitrary<number> => fc.integer({ min: 1, max: 1000000 });
 
 export const multiplier = (): fc.Arbitrary<number> =>
   fc.constantFrom(0.1, 0.5, 1.0, 1.5, 2.0, 3.0, 5.0, 10.0);
@@ -31,18 +28,20 @@ export const multiplier = (): fc.Arbitrary<number> =>
 // String generators
 // ============================================================
 
-export const currencyName = (): fc.Arbitrary<string> =>
-  fc.string({ minLength: 1, maxLength: 20 });
+export const currencyName = (): fc.Arbitrary<string> => fc.string({ minLength: 1, maxLength: 20 });
 
 export const currencyIcon = (): fc.Arbitrary<string> =>
   fc.constantFrom('\u{1FA99}', '💰', '💎', '⭐', '🏆');
 
-export const productName = (): fc.Arbitrary<string> =>
-  fc.string({ minLength: 1, maxLength: 50 });
+export const productName = (): fc.Arbitrary<string> => fc.string({ minLength: 1, maxLength: 50 });
 
 export const redemptionCode = (): fc.Arbitrary<string> =>
   fc.string({ minLength: 8, maxLength: 32 }).map(
-    (s) => s.replace(/[^A-Z0-9]/gi, 'X').toUpperCase().slice(0, 32) || 'DEFAULT-CODE',
+    (s) =>
+      s
+        .replace(/[^A-Z0-9]/gi, 'X')
+        .toUpperCase()
+        .slice(0, 32) || 'DEFAULT-CODE',
   );
 
 // ============================================================

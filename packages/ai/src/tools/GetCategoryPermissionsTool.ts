@@ -6,9 +6,7 @@ export const GetCategoryPermissionsParamsSchema = z.object({
   categoryId: z.string(),
 });
 
-export type GetCategoryPermissionsParams = z.infer<
-  typeof GetCategoryPermissionsParamsSchema
->;
+export type GetCategoryPermissionsParams = z.infer<typeof GetCategoryPermissionsParamsSchema>;
 
 /**
  * Gets permission overwrites for a specific category.
@@ -19,18 +17,10 @@ export class GetCategoryPermissionsTool {
   readonly description = '獲取指定分類的權限設定';
   readonly schema = GetCategoryPermissionsParamsSchema;
 
-  constructor(
-    private readonly authGuard: ToolCallerAuthorizationGuard,
-  ) {}
+  constructor(private readonly authGuard: ToolCallerAuthorizationGuard) {}
 
-  async execute(
-    params: GetCategoryPermissionsParams,
-    guild: Guild,
-  ): Promise<string> {
-    const authError = await this.authGuard.validateAdministrator(
-      guild,
-      this.name,
-    );
+  async execute(params: GetCategoryPermissionsParams, guild: Guild): Promise<string> {
+    const authError = await this.authGuard.validateAdministrator(guild, this.name);
     if (authError) return authError;
 
     try {
@@ -39,14 +29,12 @@ export class GetCategoryPermissionsTool {
         return `找不到分類 ${params.categoryId}`;
       }
 
-      const permissionOverwrites = category.permissionOverwrites.cache.map(
-        (ow) => ({
-          id: ow.id,
-          type: ow.type === 0 ? 'role' : 'member',
-          allow: ow.allow.toArray(),
-          deny: ow.deny.toArray(),
-        }),
-      );
+      const permissionOverwrites = category.permissionOverwrites.cache.map((ow) => ({
+        id: ow.id,
+        type: ow.type === 0 ? 'role' : 'member',
+        allow: ow.allow.toArray(),
+        deny: ow.deny.toArray(),
+      }));
 
       return JSON.stringify(
         {

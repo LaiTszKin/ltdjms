@@ -1,16 +1,10 @@
-import {
-  type DiscordInteraction,
-  type DiscordContext,
-  DomainErrorCategory,
-} from '@ltdjms/shared';
+import { type DiscordInteraction, type DiscordContext, DomainErrorCategory } from '@ltdjms/shared';
 import { type DiceGame2Service } from '../dice/services/dice-game-2-service.js';
 import { type DiceConfigService } from '../dice/services/dice-config-service.js';
 import { type GameTokenService } from '../token/services/game-token-service.js';
 import { type CurrencyConfigService } from '../currency/services/currency-config-service.js';
-import { DiceGameMessages } from '../localization/dice-game-messages.js';
-import {
-  GameTokenTransactionSource,
-} from '../domain/types.js';
+import { DiceGameMessages } from '@ltdjms/shared';
+import { GameTokenTransactionSource } from '../domain/types.js';
 
 /**
  * /dice-game-2 slash command handler.
@@ -34,10 +28,7 @@ export class DiceGame2Handler {
     private readonly currencyConfigService: CurrencyConfigService,
   ) {}
 
-  async execute(
-    interaction: DiscordInteraction,
-    context: DiscordContext,
-  ): Promise<void> {
+  async execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void> {
     interaction.makeEphemeral();
     const guildId = Number(interaction.getGuildId());
     const userId = interaction.getUserId();
@@ -128,8 +119,7 @@ export class DiceGame2Handler {
       const message = [
         `**${DiceGameMessages.GAME_2_TITLE}**`,
         '',
-        DiceGameMessages.GAME_2_RESULT
-          .replace('{dice}', diceDisplay)
+        DiceGameMessages.GAME_2_RESULT.replace('{dice}', diceDisplay)
           .replace('{straightSegments}', straightDisplay)
           .replace('{tripleSegments}', tripleDisplay)
           .replace('{straightReward}', String(gameResult.straightReward))

@@ -1,11 +1,4 @@
-import {
-  pgTable,
-  bigint,
-  varchar,
-  timestamp,
-  bigserial,
-  uniqueIndex,
-} from 'drizzle-orm/pg-core';
+import { pgTable, bigint, varchar, timestamp, bigserial, uniqueIndex } from 'drizzle-orm/pg-core';
 
 /**
  * 全域護航選項目錄，取代原本硬編碼的 EscortOrderOptionCatalog。

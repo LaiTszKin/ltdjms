@@ -48,7 +48,9 @@ describe('CommonMarkValidator', () => {
       const result = validator.validate('### - title');
       expect(isInvalid(result)).toBe(true);
       if (isInvalid(result)) {
-        expect(result.errors.some(e => e.errorType === ErrorType.HEADING_CONTAINS_LIST_MARKER)).toBe(true);
+        expect(
+          result.errors.some((e) => e.errorType === ErrorType.HEADING_CONTAINS_LIST_MARKER),
+        ).toBe(true);
       }
     });
 
@@ -86,7 +88,9 @@ describe('CommonMarkValidator', () => {
       const result = validator.validate('  - item');
       expect(isInvalid(result)).toBe(true);
       if (isInvalid(result)) {
-        expect(result.errors.some(e => e.errorType === ErrorType.MALFORMED_NESTED_LIST)).toBe(true);
+        expect(result.errors.some((e) => e.errorType === ErrorType.MALFORMED_NESTED_LIST)).toBe(
+          true,
+        );
       }
     });
 
@@ -101,7 +105,7 @@ describe('CommonMarkValidator', () => {
       const result = validator.validate('```\ncode\n');
       expect(isInvalid(result)).toBe(true);
       if (isInvalid(result)) {
-        expect(result.errors.some(e => e.errorType === ErrorType.UNCLOSED_CODE_BLOCK)).toBe(true);
+        expect(result.errors.some((e) => e.errorType === ErrorType.UNCLOSED_CODE_BLOCK)).toBe(true);
       }
     });
 
@@ -116,7 +120,9 @@ describe('CommonMarkValidator', () => {
       const result = validator.validate('---');
       expect(isInvalid(result)).toBe(true);
       if (isInvalid(result)) {
-        expect(result.errors.some(e => e.errorType === ErrorType.DISCORD_RENDER_ISSUE)).toBe(true);
+        expect(result.errors.some((e) => e.errorType === ErrorType.DISCORD_RENDER_ISSUE)).toBe(
+          true,
+        );
       }
     });
 
@@ -124,7 +130,9 @@ describe('CommonMarkValidator', () => {
       const result = validator.validate('this is __bold__ text');
       expect(isInvalid(result)).toBe(true);
       if (isInvalid(result)) {
-        expect(result.errors.some(e => e.errorType === ErrorType.DISCORD_RENDER_ISSUE)).toBe(true);
+        expect(result.errors.some((e) => e.errorType === ErrorType.DISCORD_RENDER_ISSUE)).toBe(
+          true,
+        );
       }
     });
 
@@ -132,7 +140,9 @@ describe('CommonMarkValidator', () => {
       const result = validator.validate('- [x] done');
       expect(isInvalid(result)).toBe(true);
       if (isInvalid(result)) {
-        expect(result.errors.some(e => e.errorType === ErrorType.DISCORD_RENDER_ISSUE)).toBe(true);
+        expect(result.errors.some((e) => e.errorType === ErrorType.DISCORD_RENDER_ISSUE)).toBe(
+          true,
+        );
       }
     });
   });
@@ -142,7 +152,7 @@ describe('CommonMarkValidator', () => {
       const result = validator.validate('some text ## heading');
       expect(isInvalid(result)).toBe(true);
       if (isInvalid(result)) {
-        expect(result.errors.some(e => e.errorType === ErrorType.INLINE_HEADING)).toBe(true);
+        expect(result.errors.some((e) => e.errorType === ErrorType.INLINE_HEADING)).toBe(true);
       }
     });
   });

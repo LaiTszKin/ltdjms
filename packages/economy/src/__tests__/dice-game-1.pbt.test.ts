@@ -82,9 +82,7 @@ describe('DiceGame1 PBT', () => {
           }
 
           // diceSum must equal sum of all dice
-          expect(playResult.diceSum).toBe(
-            playResult.diceRolls.reduce((sum, d) => sum + d, 0),
-          );
+          expect(playResult.diceSum).toBe(playResult.diceRolls.reduce((sum, d) => sum + d, 0));
 
           // totalReward must equal diceSum * rewardPerDiceValue
           expect(playResult.totalReward).toBe(playResult.diceSum * rewardPerDiceValue);

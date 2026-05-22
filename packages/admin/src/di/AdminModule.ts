@@ -1,7 +1,15 @@
 import { container, TOKENS } from '@ltdjms/shared';
 import type { DomainEventPublisher, DiscordRuntimeGateway } from '@ltdjms/shared';
-import type { BalanceService, BalanceAdjustmentService, CurrencyConfigService } from '@ltdjms/economy';
-import type { CurrencyTransactionService, GameTokenService, GameTokenTransactionService } from '@ltdjms/economy';
+import type {
+  BalanceService,
+  BalanceAdjustmentService,
+  CurrencyConfigService,
+} from '@ltdjms/economy';
+import type {
+  CurrencyTransactionService,
+  GameTokenService,
+  GameTokenTransactionService,
+} from '@ltdjms/economy';
 import type { DiceConfigService } from '@ltdjms/economy';
 import type {
   BalanceHandler,
@@ -13,7 +21,13 @@ import type {
   GameTokenAdjustHandler,
 } from '@ltdjms/economy';
 import { ECONOMY_TOKENS } from '@ltdjms/economy';
-import type { RedemptionService, ShopService, RedemptionCodeRepository, RedemptionCodeGenerator, RedemptionTransactionService } from '@ltdjms/shop';
+import type {
+  RedemptionService,
+  ShopService,
+  RedemptionCodeRepository,
+  RedemptionCodeGenerator,
+  RedemptionTransactionService,
+} from '@ltdjms/shop';
 import { SHOP_TOKENS } from '@ltdjms/shop';
 import type { AIChannelRestrictionService, AIAgentChannelConfigService } from '@ltdjms/ai';
 import { AI_TOKENS } from '@ltdjms/ai';
@@ -136,9 +150,7 @@ export const ADMIN_TOKENS = {
 };
 
 export function configureAdminContainer(): void {
-  const eventPublisher = container.resolve<DomainEventPublisher>(
-    TOKENS.DomainEventPublisher,
-  );
+  const eventPublisher = container.resolve<DomainEventPublisher>(TOKENS.DomainEventPublisher);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const logger: any = container.resolve<any>(TOKENS.Logger);
 
@@ -153,10 +165,7 @@ export function configureAdminContainer(): void {
   container.registerInstance(ADMIN_TOKENS.BotErrorHandler, errorHandler);
 
   const slashCommandListener = new SlashCommandListener(metrics, errorHandler, logger);
-  container.registerInstance(
-    ADMIN_TOKENS.SlashCommandListener,
-    slashCommandListener,
-  );
+  container.registerInstance(ADMIN_TOKENS.SlashCommandListener, slashCommandListener);
 
   // ============================================================
   // Session
@@ -170,16 +179,10 @@ export function configureAdminContainer(): void {
   }
 
   const adminSessionManager = new AdminPanelSessionManager();
-  container.registerInstance(
-    ADMIN_TOKENS.AdminPanelSessionManager,
-    adminSessionManager,
-  );
+  container.registerInstance(ADMIN_TOKENS.AdminPanelSessionManager, adminSessionManager);
 
   const panelSessionManager = new PanelSessionManager(cacheService);
-  container.registerInstance(
-    ADMIN_TOKENS.PanelSessionManager,
-    panelSessionManager,
-  );
+  container.registerInstance(ADMIN_TOKENS.PanelSessionManager, panelSessionManager);
 
   adminSessionManager.startCleanupInterval();
   panelSessionManager.startCleanupInterval();
@@ -195,10 +198,16 @@ export function configureAdminContainer(): void {
   container.registerInstance(ADMIN_TOKENS.AdminPanelModalFactory, adminPanelModalFactory);
 
   const adminProductPanelViewFactory = new AdminProductPanelViewFactory();
-  container.registerInstance(ADMIN_TOKENS.AdminProductPanelViewFactory, adminProductPanelViewFactory);
+  container.registerInstance(
+    ADMIN_TOKENS.AdminProductPanelViewFactory,
+    adminProductPanelViewFactory,
+  );
 
   const adminProductPanelModalFactory = new AdminProductPanelModalFactory();
-  container.registerInstance(ADMIN_TOKENS.AdminProductPanelModalFactory, adminProductPanelModalFactory);
+  container.registerInstance(
+    ADMIN_TOKENS.AdminProductPanelModalFactory,
+    adminProductPanelModalFactory,
+  );
 
   const userPanelEmbedBuilder = new UserPanelEmbedBuilder();
   container.registerInstance(ADMIN_TOKENS.UserPanelEmbedBuilder, userPanelEmbedBuilder);
@@ -208,8 +217,12 @@ export function configureAdminContainer(): void {
   // ============================================================
 
   const balanceService = container.resolve<BalanceService>(ECONOMY_TOKENS.BalanceService);
-  const balanceAdjustmentService = container.resolve<BalanceAdjustmentService>(ECONOMY_TOKENS.BalanceAdjustmentService);
-  const currencyConfigService = container.resolve<CurrencyConfigService>(ECONOMY_TOKENS.CurrencyConfigService);
+  const balanceAdjustmentService = container.resolve<BalanceAdjustmentService>(
+    ECONOMY_TOKENS.BalanceAdjustmentService,
+  );
+  const currencyConfigService = container.resolve<CurrencyConfigService>(
+    ECONOMY_TOKENS.CurrencyConfigService,
+  );
 
   const currencyFacade = new CurrencyManagementFacade(
     balanceService,
@@ -219,24 +232,24 @@ export function configureAdminContainer(): void {
   container.registerInstance(ADMIN_TOKENS.CurrencyManagementFacade, currencyFacade);
 
   const gameTokenService = container.resolve<GameTokenService>(ECONOMY_TOKENS.GameTokenService);
-  const gameTokenTxService = container.resolve<GameTokenTransactionService>(ECONOMY_TOKENS.GameTokenTransactionService);
-
-  const tokenFacade = new GameTokenManagementFacade(
-    gameTokenService,
-    gameTokenTxService,
+  const gameTokenTxService = container.resolve<GameTokenTransactionService>(
+    ECONOMY_TOKENS.GameTokenTransactionService,
   );
+
+  const tokenFacade = new GameTokenManagementFacade(gameTokenService, gameTokenTxService);
   container.registerInstance(ADMIN_TOKENS.GameTokenManagementFacade, tokenFacade);
 
   const diceConfigService = container.resolve<DiceConfigService>(ECONOMY_TOKENS.DiceConfigService);
 
-  const gameConfigFacade = new GameConfigManagementFacade(
-    diceConfigService,
-    eventPublisher,
-  );
+  const gameConfigFacade = new GameConfigManagementFacade(diceConfigService, eventPublisher);
   container.registerInstance(ADMIN_TOKENS.GameConfigManagementFacade, gameConfigFacade);
 
-  const channelRestrictionService = container.resolve<AIChannelRestrictionService>(AI_TOKENS.AIChannelRestrictionService);
-  const agentConfigService = container.resolve<AIAgentChannelConfigService>(AI_TOKENS.AIAgentChannelConfigService);
+  const channelRestrictionService = container.resolve<AIChannelRestrictionService>(
+    AI_TOKENS.AIChannelRestrictionService,
+  );
+  const agentConfigService = container.resolve<AIAgentChannelConfigService>(
+    AI_TOKENS.AIAgentChannelConfigService,
+  );
 
   const aiConfigFacade = new AIConfigManagementFacade(
     channelRestrictionService,
@@ -245,12 +258,16 @@ export function configureAdminContainer(): void {
   );
   container.registerInstance(ADMIN_TOKENS.AIConfigManagementFacade, aiConfigFacade);
 
-  const currencyTxService = container.resolve<CurrencyTransactionService>(ECONOMY_TOKENS.CurrencyTransactionService);
+  const currencyTxService = container.resolve<CurrencyTransactionService>(
+    ECONOMY_TOKENS.CurrencyTransactionService,
+  );
   const redemptionService = container.resolve<RedemptionService>(SHOP_TOKENS.RedemptionService);
 
   let redemptionTxService: RedemptionTransactionService | undefined;
   try {
-    redemptionTxService = container.resolve<RedemptionTransactionService>(SHOP_TOKENS.RedemptionTransactionService);
+    redemptionTxService = container.resolve<RedemptionTransactionService>(
+      SHOP_TOKENS.RedemptionTransactionService,
+    );
   } catch {
     // RedemptionTransactionService not available
   }
@@ -266,7 +283,9 @@ export function configureAdminContainer(): void {
   container.registerInstance(ADMIN_TOKENS.MemberInfoFacade, memberInfoFacade);
 
   const dispatchManagementFacade = new DispatchManagementFacade(
-    container.resolve<DispatchAfterSalesStaffService>(DISPATCH_TOKENS.DispatchAfterSalesStaffService),
+    container.resolve<DispatchAfterSalesStaffService>(
+      DISPATCH_TOKENS.DispatchAfterSalesStaffService,
+    ),
     container.resolve<EscortOptionPricingService>(DISPATCH_TOKENS.EscortOptionPricingService),
     container.resolve<EscortCatalogService>(DISPATCH_TOKENS.EscortCatalogService),
     eventPublisher,
@@ -392,8 +411,12 @@ export function configureAdminContainer(): void {
   );
 
   const shopService = container.resolve<ShopService>(SHOP_TOKENS.ShopService);
-  const redemptionCodeRepo = container.resolve<RedemptionCodeRepository>(SHOP_TOKENS.RedemptionCodeRepository);
-  const redemptionCodeGenerator = container.resolve<RedemptionCodeGenerator>(SHOP_TOKENS.RedemptionCodeGenerator);
+  const redemptionCodeRepo = container.resolve<RedemptionCodeRepository>(
+    SHOP_TOKENS.RedemptionCodeRepository,
+  );
+  const redemptionCodeGenerator = container.resolve<RedemptionCodeGenerator>(
+    SHOP_TOKENS.RedemptionCodeGenerator,
+  );
 
   const productRepository = container.resolve<import('@ltdjms/shop').ProductRepository>(
     SHOP_TOKENS.ProductRepository as symbol,
@@ -438,17 +461,11 @@ export function configureAdminContainer(): void {
   container.registerInstance(ADMIN_TOKENS.UserPanelCommand, userPanelCommand);
   slashCommandListener.registerCommand(userPanelCommand);
 
-  const txHistoryHandler = new TransactionHistoryHandler(
-    memberInfoFacade,
-    panelSessionManager,
-  );
+  const txHistoryHandler = new TransactionHistoryHandler(memberInfoFacade, panelSessionManager);
   container.registerInstance(ADMIN_TOKENS.TransactionHistoryHandler, txHistoryHandler);
   slashCommandListener.registerInteractionHandler(txHistoryHandler);
 
-  const redeemHandler = new RedemptionCodeHandler(
-    memberInfoFacade,
-    panelSessionManager,
-  );
+  const redeemHandler = new RedemptionCodeHandler(memberInfoFacade, panelSessionManager);
   container.registerInstance(ADMIN_TOKENS.RedemptionCodeHandler, redeemHandler);
   slashCommandListener.registerInteractionHandler(redeemHandler);
 
@@ -491,7 +508,6 @@ export function configureAdminContainer(): void {
     });
   };
   eventPublisher.register(_userUpdateHandler);
-
 }
 
 /**
@@ -516,9 +532,7 @@ export function disposeAdminContainer(): void {
 
   // Unregister domain event listeners
   try {
-    const publisher = container.resolve<DomainEventPublisher>(
-      TOKENS.DomainEventPublisher,
-    );
+    const publisher = container.resolve<DomainEventPublisher>(TOKENS.DomainEventPublisher);
     if (_adminUpdateHandler) {
       publisher.unregister(_adminUpdateHandler);
       _adminUpdateHandler = null;

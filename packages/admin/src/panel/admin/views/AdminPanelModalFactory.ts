@@ -24,7 +24,14 @@ export class AdminPanelModalFactory {
    */
   buildBalanceAdjustModal(mode: 'add' | 'deduct' | 'set'): {
     title: string;
-    fields: { label: string; placeholder: string; value?: string; minLength: number; maxLength: number; required: boolean }[];
+    fields: {
+      label: string;
+      placeholder: string;
+      value?: string;
+      minLength: number;
+      maxLength: number;
+      required: boolean;
+    }[];
   } {
     const titles: Record<string, string> = {
       add: ZhTwStrings.balanceModalTitleAdd,
@@ -58,7 +65,13 @@ export class AdminPanelModalFactory {
    */
   buildTokenAdjustModal(mode: 'add' | 'deduct' | 'set'): {
     title: string;
-    fields: { label: string; placeholder: string; minLength: number; maxLength: number; required: boolean }[];
+    fields: {
+      label: string;
+      placeholder: string;
+      minLength: number;
+      maxLength: number;
+      required: boolean;
+    }[];
   } {
     const titles: Record<string, string> = {
       add: ZhTwStrings.tokenModalTitleAdd,
@@ -95,7 +108,14 @@ export class AdminPanelModalFactory {
     currentOverride: number | null,
   ): {
     title: string;
-    fields: { label: string; value: string; placeholder: string; minLength: number; maxLength: number; required: boolean }[];
+    fields: {
+      label: string;
+      value: string;
+      placeholder: string;
+      minLength: number;
+      maxLength: number;
+      required: boolean;
+    }[];
   } {
     return {
       title: `${ZhTwStrings.escortPricingEditTitle} - ${optionName}`,
@@ -115,14 +135,21 @@ export class AdminPanelModalFactory {
   /**
    * Builds an escort catalog create/edit modal.
    */
-  buildEscortCatalogModal(
-    currentEntry?: Partial<EscortOptionCatalogEntry> | null,
-  ): {
+  buildEscortCatalogModal(currentEntry?: Partial<EscortOptionCatalogEntry> | null): {
     title: string;
-    fields: { label: string; value?: string; placeholder: string; minLength: number; maxLength: number; required: boolean }[];
+    fields: {
+      label: string;
+      value?: string;
+      placeholder: string;
+      minLength: number;
+      maxLength: number;
+      required: boolean;
+    }[];
   } {
     return {
-      title: currentEntry ? ZhTwStrings.escortCatalogEditTitle : ZhTwStrings.escortCatalogCreateTitle,
+      title: currentEntry
+        ? ZhTwStrings.escortCatalogEditTitle
+        : ZhTwStrings.escortCatalogCreateTitle,
       fields: [
         {
           label: ZhTwStrings.escortCatalogModalName,

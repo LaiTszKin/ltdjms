@@ -10,12 +10,7 @@ import {
   isExpired,
   getMaskedCode,
 } from '../domain/redemption-code.js';
-import {
-  type Product,
-  type RewardType,
-  hasReward,
-  formatReward,
-} from '../domain/product-types.js';
+import { type Product, type RewardType, hasReward, formatReward } from '../domain/product-types.js';
 import { RedemptionCodeGenerator } from './redemption-code-generator.js';
 import pino from 'pino';
 
@@ -90,9 +85,7 @@ export class RedemptionService {
       return err(DomainError.invalidInput('生成數量必須大於 0'));
     }
     if (count > MAX_BATCH_SIZE) {
-      return err(
-        DomainError.invalidInput(`單次最多生成 ${MAX_BATCH_SIZE} 個兌換碼`),
-      );
+      return err(DomainError.invalidInput(`單次最多生成 ${MAX_BATCH_SIZE} 個兌換碼`));
     }
     if (quantity <= 0) {
       return err(DomainError.invalidInput('兌換數量必須大於 0'));
@@ -123,10 +116,7 @@ export class RedemptionService {
         productId: product.id,
         count: savedCodes.length,
       });
-      this.log.info(
-        { count: savedCodes.length, productId },
-        'Generated redemption codes',
-      );
+      this.log.info({ count: savedCodes.length, productId }, 'Generated redemption codes');
       return ok(savedCodes);
     } catch (e) {
       this.log.error({ productId, error: e }, 'Failed to generate codes');
@@ -292,9 +282,7 @@ export class RedemptionService {
       }
       this.log.debug({ code, attempt: i + 1 }, 'Duplicate code generated, retrying');
     }
-    throw new Error(
-      `Failed to generate unique code after ${maxAttempts} attempts`,
-    );
+    throw new Error(`Failed to generate unique code after ${maxAttempts} attempts`);
   }
 
   private async rollbackRedeemedCodeAfterRewardFailure(

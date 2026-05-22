@@ -11,9 +11,7 @@ export class ListRolesTool {
   readonly description = '列出伺服器中的所有身分組';
   readonly schema = z.object({});
 
-  constructor(
-    private readonly authGuard: ToolCallerAuthorizationGuard,
-  ) {}
+  constructor(private readonly authGuard: ToolCallerAuthorizationGuard) {}
 
   async execute(_params: unknown, guild: Guild): Promise<string> {
     const authError = await this.authGuard.validateAdministrator(guild, this.name);

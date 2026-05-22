@@ -44,11 +44,31 @@ export class AdminPanelViewFactory {
         { id: 'admin_token', label: ZhTwStrings.adminPanelBtnToken, style: 1, disabled: false },
         { id: 'admin_game', label: ZhTwStrings.adminPanelBtnGame, style: 1, disabled: false },
         { id: 'admin_product', label: ZhTwStrings.adminPanelBtnProduct, style: 1, disabled: false },
-        { id: 'admin_aichannel', label: ZhTwStrings.adminPanelBtnAIChannel, style: 1, disabled: false },
+        {
+          id: 'admin_aichannel',
+          label: ZhTwStrings.adminPanelBtnAIChannel,
+          style: 1,
+          disabled: false,
+        },
         { id: 'admin_aiagent', label: ZhTwStrings.adminPanelBtnAIAgent, style: 1, disabled: false },
-        { id: 'admin_dispatch', label: ZhTwStrings.adminPanelBtnDispatch, style: 1, disabled: false },
-        { id: 'admin_escortprice', label: ZhTwStrings.adminPanelBtnEscortPrice, style: 1, disabled: false },
-        { id: 'admin_escortcatalog', label: ZhTwStrings.adminPanelBtnEscortCatalog, style: 1, disabled: false },
+        {
+          id: 'admin_dispatch',
+          label: ZhTwStrings.adminPanelBtnDispatch,
+          style: 1,
+          disabled: false,
+        },
+        {
+          id: 'admin_escortprice',
+          label: ZhTwStrings.adminPanelBtnEscortPrice,
+          style: 1,
+          disabled: false,
+        },
+        {
+          id: 'admin_escortcatalog',
+          label: ZhTwStrings.adminPanelBtnEscortCatalog,
+          style: 1,
+          disabled: false,
+        },
       ],
     };
   }

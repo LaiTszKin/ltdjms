@@ -1,6 +1,9 @@
 import {
-  type DiscordInteraction, type DiscordContext, type DiscordRuntimeGateway,
-  type EmbedView, type ButtonView,
+  type DiscordInteraction,
+  type DiscordContext,
+  type DiscordRuntimeGateway,
+  type EmbedView,
+  type ButtonView,
   ButtonStyle,
   safeSnowflakeToNumber,
 } from '@ltdjms/shared';
@@ -65,7 +68,10 @@ import {
   buildAfterSalesClaimedEmbed,
   buildAfterSalesClosedEmbed,
 } from './DispatchPanelMessageFactory.js';
-import { DispatchPanelSessionManager, type DispatchSessionState } from './DispatchPanelSessionManager.js';
+import {
+  DispatchPanelSessionManager,
+  type DispatchSessionState,
+} from './DispatchPanelSessionManager.js';
 
 // ============================================================
 // Interaction Handler
@@ -246,9 +252,7 @@ export class DispatchPanelInteractionHandler {
       '請選擇護航品類',
     );
 
-    const components: unknown[] = [
-      { type: 1, components: [{ ...primary, type: 3 }] },
-    ];
+    const components: unknown[] = [{ type: 1, components: [{ ...primary, type: 3 }] }];
     if (extra != null) {
       components.push({ type: 1, components: [{ ...extra, type: 3 }] });
     }
@@ -291,9 +295,7 @@ export class DispatchPanelInteractionHandler {
     const selectOptions: SelectOptionView[] = orders.map((o) => ({
       value: o.orderNumber,
       label: `#${o.orderNumber} - 客戶 ${o.customerUserId}`,
-      description: o.sourceEscortOptionCode
-        ? `品類: ${o.sourceEscortOptionCode}`
-        : '一般',
+      description: o.sourceEscortOptionCode ? `品類: ${o.sourceEscortOptionCode}` : '一般',
     }));
 
     const { primary, extra } = splitSelectMenuOptions(
@@ -303,9 +305,7 @@ export class DispatchPanelInteractionHandler {
       '請選擇待派發訂單',
     );
 
-    const components: unknown[] = [
-      { type: 1, components: [{ ...primary, type: 3 }] },
-    ];
+    const components: unknown[] = [{ type: 1, components: [{ ...primary, type: 3 }] }];
     if (extra != null) {
       components.push({ type: 1, components: [{ ...extra, type: 3 }] });
     }
@@ -642,13 +642,17 @@ export class DispatchPanelInteractionHandler {
     const canConfirm = isPendingEscortConfirmation(order) && order.escortUserId > 0;
     const canComplete = isConfirmed(order);
     const canRequestAfterSales =
-      isPendingCustomerConfirmation(order) ||
-      order.status === EscortDispatchOrderStatus.COMPLETED;
+      isPendingCustomerConfirmation(order) || order.status === EscortDispatchOrderStatus.COMPLETED;
     const canClaimAfterSales = isAfterSalesRequested(order);
     const canCloseAfterSales =
-      isAfterSalesInProgress(order) &&
-      isAfterSalesAssignee(order, safeSnowflakeToNumber(userId));
-    const buttons = buildOrderDetailActionRow(canConfirm, canComplete, canRequestAfterSales, canClaimAfterSales, canCloseAfterSales);
+      isAfterSalesInProgress(order) && isAfterSalesAssignee(order, safeSnowflakeToNumber(userId));
+    const buttons = buildOrderDetailActionRow(
+      canConfirm,
+      canComplete,
+      canRequestAfterSales,
+      canClaimAfterSales,
+      canCloseAfterSales,
+    );
 
     // P0-2: 在 Assign Mode 中顯示 member select menu + 派發訂單按鈕
     if (session.mode === 'assign' && isPendingEscortConfirmation(order)) {
@@ -660,7 +664,12 @@ export class DispatchPanelInteractionHandler {
       const assignActionRow = {
         type: 1 as const,
         components: [
-          { type: 2 as const, style: ButtonStyle.PRIMARY, custom_id: BUTTON_ASSIGN_CONFIRM, label: '派發訂單' },
+          {
+            type: 2 as const,
+            style: ButtonStyle.PRIMARY,
+            custom_id: BUTTON_ASSIGN_CONFIRM,
+            label: '派發訂單',
+          },
         ],
       };
       const payload = buildPanelReplyPayload(detailView, buttons);
@@ -920,7 +929,10 @@ export class DispatchPanelInteractionHandler {
     orderNumber: string,
     userId: string,
   ): Promise<void> {
-    const result = await this.dispatchOrderService.confirmOrder(orderNumber, safeSnowflakeToNumber(userId));
+    const result = await this.dispatchOrderService.confirmOrder(
+      orderNumber,
+      safeSnowflakeToNumber(userId),
+    );
     if (result.isErr()) {
       const errorView = buildErrorEmbed(result.getError().message);
       await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
@@ -939,7 +951,10 @@ export class DispatchPanelInteractionHandler {
     orderNumber: string,
     userId: string,
   ): Promise<void> {
-    const result = await this.dispatchOrderService.requestCompletion(orderNumber, safeSnowflakeToNumber(userId));
+    const result = await this.dispatchOrderService.requestCompletion(
+      orderNumber,
+      safeSnowflakeToNumber(userId),
+    );
     if (result.isErr()) {
       const errorView = buildErrorEmbed(result.getError().message);
       await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
@@ -958,7 +973,10 @@ export class DispatchPanelInteractionHandler {
     orderNumber: string,
     userId: string,
   ): Promise<void> {
-    const result = await this.dispatchOrderService.customerConfirmCompletion(orderNumber, safeSnowflakeToNumber(userId));
+    const result = await this.dispatchOrderService.customerConfirmCompletion(
+      orderNumber,
+      safeSnowflakeToNumber(userId),
+    );
     if (result.isErr()) {
       const errorView = buildErrorEmbed(result.getError().message);
       await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
@@ -977,7 +995,10 @@ export class DispatchPanelInteractionHandler {
     orderNumber: string,
     userId: string,
   ): Promise<void> {
-    const result = await this.dispatchOrderService.requestAfterSales(orderNumber, safeSnowflakeToNumber(userId));
+    const result = await this.dispatchOrderService.requestAfterSales(
+      orderNumber,
+      safeSnowflakeToNumber(userId),
+    );
     if (result.isErr()) {
       const errorView = buildErrorEmbed(result.getError().message);
       await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
@@ -996,7 +1017,10 @@ export class DispatchPanelInteractionHandler {
     orderNumber: string,
     userId: string,
   ): Promise<void> {
-    const result = await this.dispatchOrderService.claimAfterSales(orderNumber, safeSnowflakeToNumber(userId));
+    const result = await this.dispatchOrderService.claimAfterSales(
+      orderNumber,
+      safeSnowflakeToNumber(userId),
+    );
     if (result.isErr()) {
       const errorView = buildErrorEmbed(result.getError().message);
       await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
@@ -1015,7 +1039,10 @@ export class DispatchPanelInteractionHandler {
     orderNumber: string,
     userId: string,
   ): Promise<void> {
-    const result = await this.dispatchOrderService.closeAfterSales(orderNumber, safeSnowflakeToNumber(userId));
+    const result = await this.dispatchOrderService.closeAfterSales(
+      orderNumber,
+      safeSnowflakeToNumber(userId),
+    );
     if (result.isErr()) {
       const errorView = buildErrorEmbed(result.getError().message);
       await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
@@ -1032,9 +1059,7 @@ export class DispatchPanelInteractionHandler {
   // Permission Check
   // ============================================================
 
-  private async checkAdminPermission(
-    interaction: DiscordInteraction,
-  ): Promise<boolean> {
+  private async checkAdminPermission(interaction: DiscordInteraction): Promise<boolean> {
     // isAdministrator() 同時檢查 ADMINISTRATOR 權限與 guild owner（ownerId）
     return interaction.isAdministrator();
   }
@@ -1066,8 +1091,11 @@ export class DispatchPanelInteractionHandler {
     if (interaction.isAcknowledged()) {
       await hook.editReply({ embeds: [payload.embed], components: payload.components });
     } else {
-      await hook.reply({ embeds: [payload.embed], components: payload.components, ephemeral: payload.ephemeral });
+      await hook.reply({
+        embeds: [payload.embed],
+        components: payload.components,
+        ephemeral: payload.ephemeral,
+      });
     }
   }
-
 }

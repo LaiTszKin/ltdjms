@@ -12,7 +12,12 @@ import { CurrencyAccountRepository } from '../repositories/currency-account-repo
 import { CurrencyTransactionService } from './currency-tx-service.js';
 import { BalanceService } from './balance-service.js';
 import type { BalanceAdjustmentResult } from '../../domain/types.js';
-import { CurrencyTransactionSource, BALANCE_CACHE_TTL, isValidAdjustmentAmount, MAX_ADJUSTMENT_AMOUNT } from '../../domain/types.js';
+import {
+  CurrencyTransactionSource,
+  BALANCE_CACHE_TTL,
+  isValidAdjustmentAmount,
+  MAX_ADJUSTMENT_AMOUNT,
+} from '../../domain/types.js';
 
 /**
  * Service for adjusting member currency balances with validation.
@@ -68,11 +73,7 @@ export class BalanceAdjustmentService {
     }
 
     try {
-      const adjustResult = await this.accountRepository.tryAdjustBalance(
-        guildId,
-        userId,
-        amount,
-      );
+      const adjustResult = await this.accountRepository.tryAdjustBalance(guildId, userId, amount);
 
       if (adjustResult.isErr()) {
         return new Err(adjustResult.getError());
@@ -105,7 +106,11 @@ export class BalanceAdjustmentService {
       const cacheKey = this.cacheKeyGenerator.balanceKey(String(guildId), String(userId));
       const [cachedConfig] = await Promise.all([
         this.balanceService.getCachedConfig(guildId),
-        this.cacheService.put(cacheKey, updated.balance, BalanceAdjustmentService.BALANCE_TTL_SECONDS),
+        this.cacheService.put(
+          cacheKey,
+          updated.balance,
+          BalanceAdjustmentService.BALANCE_TTL_SECONDS,
+        ),
       ]);
 
       return new Ok({
@@ -138,9 +143,16 @@ export class BalanceAdjustmentService {
   ): Promise<void> {
     const totalApplied = appliedChunks.reduce((sum, c) => sum + c, 0);
     if (totalApplied !== 0) {
-      const rollbackResult = await this.accountRepository.tryAdjustBalance(guildId, userId, -totalApplied);
+      const rollbackResult = await this.accountRepository.tryAdjustBalance(
+        guildId,
+        userId,
+        -totalApplied,
+      );
       if (rollbackResult.isErr()) {
-        console.error('[BalanceAdjustmentService] Rollback failed after batch error:', rollbackResult.getError());
+        console.error(
+          '[BalanceAdjustmentService] Rollback failed after batch error:',
+          rollbackResult.getError(),
+        );
       }
     }
   }
@@ -158,15 +170,11 @@ export class BalanceAdjustmentService {
     description: string | null = null,
   ): Promise<Result<BalanceAdjustmentResult, DomainError>> {
     if (!Number.isFinite(amount)) {
-      return new Err(
-        DomainError.invalidInput(`Invalid adjustment amount: ${amount}`),
-      );
+      return new Err(DomainError.invalidInput(`Invalid adjustment amount: ${amount}`));
     }
 
     if (amount === 0) {
-      return new Err(
-        DomainError.invalidInput('調整金額不可為零'),
-      );
+      return new Err(DomainError.invalidInput('調整金額不可為零'));
     }
 
     // Overflow check using safe integer boundaries (spec R1.4)
@@ -178,7 +186,14 @@ export class BalanceAdjustmentService {
 
     try {
       const current = await this.accountRepository.findOrCreate(guildId, userId);
-      return await this.processAdjustment(guildId, userId, amount, current.balance, source, description);
+      return await this.processAdjustment(
+        guildId,
+        userId,
+        amount,
+        current.balance,
+        source,
+        description,
+      );
     } catch (err) {
       return new Err(
         DomainError.persistenceFailure(
@@ -219,15 +234,11 @@ export class BalanceAdjustmentService {
     maxChunkSize?: number,
   ): Promise<Result<BalanceAdjustmentResult, DomainError>> {
     if (!Number.isFinite(totalAmount)) {
-      return new Err(
-        DomainError.invalidInput(`Invalid total adjustment amount: ${totalAmount}`),
-      );
+      return new Err(DomainError.invalidInput(`Invalid total adjustment amount: ${totalAmount}`));
     }
 
     if (totalAmount === 0) {
-      return new Err(
-        DomainError.invalidInput('調整金額不可為零'),
-      );
+      return new Err(DomainError.invalidInput('調整金額不可為零'));
     }
 
     try {
@@ -252,9 +263,10 @@ export class BalanceAdjustmentService {
       let remaining = totalAmount;
       try {
         while (remaining !== 0) {
-          const chunk = maxChunkSize !== undefined
-            ? Math.min(Math.abs(remaining), maxChunkSize) * Math.sign(remaining)
-            : remaining;
+          const chunk =
+            maxChunkSize !== undefined
+              ? Math.min(Math.abs(remaining), maxChunkSize) * Math.sign(remaining)
+              : remaining;
 
           const result = await this.accountRepository.tryAdjustBalance(guildId, userId, chunk);
           if (result.isErr()) {

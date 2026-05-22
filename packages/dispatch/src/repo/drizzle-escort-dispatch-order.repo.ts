@@ -1,6 +1,9 @@
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { eq, and, ne, isNull, notInArray, sql } from 'drizzle-orm';
-import { escortDispatchOrder, type EscortDispatchOrderSelect } from '../schema/escort-dispatch-order.sql.js';
+import {
+  escortDispatchOrder,
+  type EscortDispatchOrderSelect,
+} from '../schema/escort-dispatch-order.sql.js';
 import {
   type EscortDispatchOrder,
   EscortDispatchOrderStatus,
@@ -46,7 +49,10 @@ export class DrizzleEscortDispatchOrderRepo implements EscortDispatchOrderRepo {
     return mapRowToDomain(rows[0]);
   }
 
-  async update(order: EscortDispatchOrder, expectedStatus?: EscortDispatchOrderStatus): Promise<EscortDispatchOrder | null> {
+  async update(
+    order: EscortDispatchOrder,
+    expectedStatus?: EscortDispatchOrderStatus,
+  ): Promise<EscortDispatchOrder | null> {
     if (order.id == null) {
       throw new Error('Cannot update order without ID');
     }
@@ -328,6 +334,8 @@ function mapRowToDomain(row: EscortDispatchOrderSelect): EscortDispatchOrder {
     // DB data should always pass validation; throw on corruption to fail fast
     return result.getValue();
   } catch (err) {
-    throw DomainError.persistenceFailure(`Failed to map DB row to domain: ${err instanceof Error ? err.message : String(err)}`);
+    throw DomainError.persistenceFailure(
+      `Failed to map DB row to domain: ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
 }

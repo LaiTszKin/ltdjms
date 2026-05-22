@@ -1,15 +1,7 @@
-import {
-  type Result,
-  Ok,
-  Err,
-  DomainError,
-} from '@ltdjms/shared';
+import { type Result, Ok, Err, DomainError } from '@ltdjms/shared';
 import { GameRewardService } from './game-reward-service.js';
 import type { DiceGame2Config, DiceGame2Result } from '../../domain/types.js';
-import {
-  CurrencyTransactionSource,
-  DICE_GAME_2_DICE_PER_TOKEN,
-} from '../../domain/types.js';
+import { CurrencyTransactionSource, DICE_GAME_2_DICE_PER_TOKEN } from '../../domain/types.js';
 import { type Random, DefaultRandom, rollDice as randomRollDice } from './random.js';
 
 /**
@@ -140,11 +132,7 @@ export class DiceGame2Service {
       config.tripleLowBonus,
       config.tripleHighBonus,
     );
-    const nonStraightSum = this.calculateNonStraightSum(
-      diceRolls,
-      usedInStraight,
-      usedInTriple,
-    );
+    const nonStraightSum = this.calculateNonStraightSum(diceRolls, usedInStraight, usedInTriple);
     const nonStraightReward = nonStraightSum * config.baseMultiplier;
 
     const totalReward = straightReward + nonStraightReward + tripleReward;
@@ -165,10 +153,7 @@ export class DiceGame2Service {
    * consecutive increasing dice values. Matches Java
    * DefaultDiceGame2Service.findStraights() exactly.
    */
-  private findStraights(
-    diceRolls: readonly number[],
-    usedInStraight: boolean[],
-  ): number[][] {
+  private findStraights(diceRolls: readonly number[], usedInStraight: boolean[]): number[][] {
     const straights: number[][] = [];
 
     // Position-based straight detection: scan the original diceRolls array
@@ -186,10 +171,7 @@ export class DiceGame2Service {
       const start = i;
 
       // Check for consecutive increasing values in the original positions
-      while (
-        i + 1 < diceRolls.length &&
-        diceRolls[i + 1] === diceRolls[i] + 1
-      ) {
+      while (i + 1 < diceRolls.length && diceRolls[i + 1] === diceRolls[i] + 1) {
         i++;
       }
 
@@ -235,11 +217,7 @@ export class DiceGame2Service {
       const value = diceRolls[i];
 
       // Count consecutive same values (skipping those used in straights)
-      while (
-        i + 1 < diceRolls.length &&
-        diceRolls[i + 1] === value &&
-        !usedInStraight[i + 1]
-      ) {
+      while (i + 1 < diceRolls.length && diceRolls[i + 1] === value && !usedInStraight[i + 1]) {
         i++;
       }
 

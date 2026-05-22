@@ -200,9 +200,7 @@ export class MemberInfoFacade {
       if (pageSize < 1) pageSize = 10;
 
       if (!this.redemptionTxService) {
-        return err(
-          DomainError.unexpectedFailure('兌換記錄服務不可用'),
-        );
+        return err(DomainError.unexpectedFailure('兌換記錄服務不可用'));
       }
 
       const txPage = await this.redemptionTxService.getUserRedemptionPage(

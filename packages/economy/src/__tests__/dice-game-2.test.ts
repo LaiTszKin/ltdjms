@@ -23,10 +23,7 @@ describe('DiceGame2Service - analyzeRolls', () => {
     creditReward: vi.fn(),
   } as unknown as GameRewardService;
 
-  const service = new DiceGame2Service(
-    mockGameRewardService,
-    noopRandom,
-  );
+  const service = new DiceGame2Service(mockGameRewardService, noopRandom);
 
   describe('straight detection', () => {
     it('should detect a straight of length 3', () => {

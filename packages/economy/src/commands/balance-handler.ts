@@ -1,9 +1,6 @@
-import {
-  type DiscordInteraction,
-  type DiscordContext,
-} from '@ltdjms/shared';
+import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
 import { type BalanceService } from '../currency/services/balance-service.js';
-import { DiceGameMessages } from '../localization/dice-game-messages.js';
+import { DiceGameMessages } from '@ltdjms/shared';
 
 /**
  * /balance slash command handler.
@@ -14,10 +11,7 @@ export class BalanceHandler {
 
   constructor(private readonly balanceService: BalanceService) {}
 
-  async execute(
-    interaction: DiscordInteraction,
-    context: DiscordContext,
-  ): Promise<void> {
+  async execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void> {
     interaction.makeEphemeral();
     const guildId = Number(interaction.getGuildId());
     const userId = interaction.getUserId();
@@ -34,8 +28,7 @@ export class BalanceHandler {
     const message = [
       `**${DiceGameMessages.BALANCE_TITLE}**`,
       '',
-      DiceGameMessages.BALANCE_DISPLAY
-        .replace('{balance}', String(view.balance))
+      DiceGameMessages.BALANCE_DISPLAY.replace('{balance}', String(view.balance))
         .replace('{currencyIcon}', view.currencyIcon)
         .replace('{currencyName}', view.currencyName),
     ].join('\n');

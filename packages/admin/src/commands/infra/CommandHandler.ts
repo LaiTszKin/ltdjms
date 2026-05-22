@@ -1,7 +1,4 @@
-import {
-  type DiscordInteraction,
-  type DiscordContext,
-} from '@ltdjms/shared';
+import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
 
 /**
  * Interface for slash command handlers.
@@ -16,10 +13,7 @@ export interface CommandHandler {
    * @param interaction - The Discord interaction to respond to
    * @param context - The Discord context with extracted options
    */
-  execute(
-    interaction: DiscordInteraction,
-    context: DiscordContext,
-  ): Promise<void>;
+  execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void>;
 }
 
 /**
@@ -35,8 +29,5 @@ export interface InteractionHandler {
    * @param interaction - The Discord interaction to respond to
    * @param context - The Discord context
    */
-  execute(
-    interaction: DiscordInteraction,
-    context: DiscordContext,
-  ): Promise<void>;
+  execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void>;
 }

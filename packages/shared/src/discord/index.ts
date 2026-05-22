@@ -25,7 +25,6 @@ export {
   type SelectMenuDefinition,
 } from './services/select-menu-util.js';
 
-
 // Mocks
 export { MockDiscordInteraction } from './mock/mock-discord-interaction.js';
 export { MockDiscordContext } from './mock/mock-discord-context.js';

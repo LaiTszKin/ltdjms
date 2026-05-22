@@ -14,10 +14,7 @@ export class LangChainExceptionMapper {
     }
 
     const message = error instanceof Error ? error.message : String(error);
-    const cause =
-      error instanceof Error && error.cause
-        ? error.cause
-        : error;
+    const cause = error instanceof Error && error.cause ? error.cause : error;
 
     // Check for specific error patterns
     if (this.isAuthError(error, message)) {
@@ -33,9 +30,7 @@ export class LangChainExceptionMapper {
     }
 
     if (this.isTimeoutError(error, message)) {
-      return DomainError.aiServiceTimeout(
-        'AI service request timed out. Please try again.',
-      );
+      return DomainError.aiServiceTimeout('AI service request timed out. Please try again.');
     }
 
     if (this.isServerError(error, message)) {
@@ -45,15 +40,11 @@ export class LangChainExceptionMapper {
     }
 
     if (this.isEmptyResponse(error, message)) {
-      return DomainError.aiResponseEmpty(
-        'AI did not generate a response.',
-      );
+      return DomainError.aiResponseEmpty('AI did not generate a response.');
     }
 
     if (this.isInvalidResponse(error, message)) {
-      return DomainError.aiResponseInvalid(
-        'AI response format was invalid.',
-      );
+      return DomainError.aiResponseInvalid('AI response format was invalid.');
     }
 
     return DomainError.unexpectedFailure(
@@ -114,25 +105,17 @@ export class LangChainExceptionMapper {
         return true;
       }
     }
-    return /5\d{2}|server error|service unavailable|bad gateway/i.test(
-      message,
-    );
+    return /5\d{2}|server error|service unavailable|bad gateway/i.test(message);
   }
 
   private isEmptyResponse(error: unknown, message: string): boolean {
-    return /empty|null|undefined|no content|no response|empty response/i.test(
-      message,
-    );
+    return /empty|null|undefined|no content|no response|empty response/i.test(message);
   }
 
   private isInvalidResponse(error: unknown, message: string): boolean {
     if (error && typeof error === 'object') {
       const err = error as Record<string, unknown>;
-      if (
-        err.name === 'SyntaxError' ||
-        err.name === 'JSONError' ||
-        err.name === 'ParseError'
-      ) {
+      if (err.name === 'SyntaxError' || err.name === 'JSONError' || err.name === 'ParseError') {
         return true;
       }
     }

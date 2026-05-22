@@ -24,17 +24,9 @@ export interface RedemptionCodeRepository {
   // ADMIN: used by admin panel
   update(code: RedemptionCode): Promise<RedemptionCode>;
 
-  markAsRedeemedIfAvailable(
-    codeId: number,
-    userId: string,
-    redeemedAt: Date,
-  ): Promise<boolean>;
+  markAsRedeemedIfAvailable(codeId: number, userId: string, redeemedAt: Date): Promise<boolean>;
 
-  clearRedeemedIfMatches(
-    codeId: number,
-    userId: string,
-    redeemedAt: Date,
-  ): Promise<boolean>;
+  clearRedeemedIfMatches(codeId: number, userId: string, redeemedAt: Date): Promise<boolean>;
 
   findByCode(code: string): Promise<RedemptionCode | null>;
 

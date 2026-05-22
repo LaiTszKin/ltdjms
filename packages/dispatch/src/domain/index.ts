@@ -30,7 +30,10 @@ export {
 
 export type { EscortDispatchOrder } from './escort-dispatch-order.js';
 
-export { EscortDispatchOrderNumberGenerator, generateUniqueOrderNumber } from './order-number-generator.js';
+export {
+  EscortDispatchOrderNumberGenerator,
+  generateUniqueOrderNumber,
+} from './order-number-generator.js';
 
 export { optionPriceToDisplayLine } from './option-price-view.js';
 

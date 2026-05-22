@@ -1,7 +1,4 @@
-import {
-  type DiscordInteraction,
-  type DiscordContext,
-} from '@ltdjms/shared';
+import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
 import {
   EmbedBuilder,
   ModalBuilder,
@@ -36,10 +33,7 @@ export class GameSettingsHandler extends BaseAdminHandler {
     super(sessionManager, errorHandler);
   }
 
-  async execute(
-    interaction: DiscordInteraction,
-    context: DiscordContext,
-  ): Promise<void> {
+  async execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void> {
     const guildId = interaction.getGuildId();
     const userId = interaction.getUserId();
 
@@ -111,7 +105,9 @@ export class GameSettingsHandler extends BaseAdminHandler {
             .setLabel(ZhTwStrings.gameModalMin)
             .setStyle(TextInputStyle.Short)
             .setValue(String(cfg.minTokensPerPlay))
-            .setMinLength(1).setMaxLength(20).setRequired(true),
+            .setMinLength(1)
+            .setMaxLength(20)
+            .setRequired(true),
         ),
         new ActionRowBuilder<TextInputBuilder>().addComponents(
           new TextInputBuilder()
@@ -119,7 +115,9 @@ export class GameSettingsHandler extends BaseAdminHandler {
             .setLabel(ZhTwStrings.gameModalMax)
             .setStyle(TextInputStyle.Short)
             .setValue(String(cfg.maxTokensPerPlay))
-            .setMinLength(1).setMaxLength(20).setRequired(true),
+            .setMinLength(1)
+            .setMaxLength(20)
+            .setRequired(true),
         ),
         new ActionRowBuilder<TextInputBuilder>().addComponents(
           new TextInputBuilder()
@@ -127,7 +125,9 @@ export class GameSettingsHandler extends BaseAdminHandler {
             .setLabel(ZhTwStrings.gameModalReward)
             .setStyle(TextInputStyle.Short)
             .setValue(String(cfg.rewardPerDiceValue))
-            .setMinLength(1).setMaxLength(20).setRequired(true),
+            .setMinLength(1)
+            .setMaxLength(20)
+            .setRequired(true),
         ),
       );
 
@@ -151,7 +151,9 @@ export class GameSettingsHandler extends BaseAdminHandler {
             .setLabel(ZhTwStrings.gameModalMin)
             .setStyle(TextInputStyle.Short)
             .setValue(String(cfg.minTokensPerPlay))
-            .setMinLength(1).setMaxLength(20).setRequired(true),
+            .setMinLength(1)
+            .setMaxLength(20)
+            .setRequired(true),
         ),
         new ActionRowBuilder<TextInputBuilder>().addComponents(
           new TextInputBuilder()
@@ -159,7 +161,9 @@ export class GameSettingsHandler extends BaseAdminHandler {
             .setLabel(ZhTwStrings.gameModalMax)
             .setStyle(TextInputStyle.Short)
             .setValue(String(cfg.maxTokensPerPlay))
-            .setMinLength(1).setMaxLength(20).setRequired(true),
+            .setMinLength(1)
+            .setMaxLength(20)
+            .setRequired(true),
         ),
         new ActionRowBuilder<TextInputBuilder>().addComponents(
           new TextInputBuilder()
@@ -167,7 +171,9 @@ export class GameSettingsHandler extends BaseAdminHandler {
             .setLabel(ZhTwStrings.gameModalStraightMul)
             .setStyle(TextInputStyle.Short)
             .setValue(String(cfg.straightMultiplier))
-            .setMinLength(1).setMaxLength(10).setRequired(true),
+            .setMinLength(1)
+            .setMaxLength(10)
+            .setRequired(true),
         ),
         new ActionRowBuilder<TextInputBuilder>().addComponents(
           new TextInputBuilder()
@@ -175,7 +181,9 @@ export class GameSettingsHandler extends BaseAdminHandler {
             .setLabel(ZhTwStrings.gameModalBaseMul)
             .setStyle(TextInputStyle.Short)
             .setValue(String(cfg.baseMultiplier))
-            .setMinLength(1).setMaxLength(10).setRequired(true),
+            .setMinLength(1)
+            .setMaxLength(10)
+            .setRequired(true),
         ),
         new ActionRowBuilder<TextInputBuilder>().addComponents(
           new TextInputBuilder()
@@ -183,7 +191,9 @@ export class GameSettingsHandler extends BaseAdminHandler {
             .setLabel(ZhTwStrings.gameModalTripleLow)
             .setStyle(TextInputStyle.Short)
             .setValue(String(cfg.tripleLowBonus))
-            .setMinLength(1).setMaxLength(10).setRequired(true),
+            .setMinLength(1)
+            .setMaxLength(10)
+            .setRequired(true),
         ),
         new ActionRowBuilder<TextInputBuilder>().addComponents(
           new TextInputBuilder()
@@ -191,7 +201,9 @@ export class GameSettingsHandler extends BaseAdminHandler {
             .setLabel(ZhTwStrings.gameModalTripleHigh)
             .setStyle(TextInputStyle.Short)
             .setValue(String(cfg.tripleHighBonus))
-            .setMinLength(1).setMaxLength(10).setRequired(true),
+            .setMinLength(1)
+            .setMaxLength(10)
+            .setRequired(true),
         ),
       );
 
@@ -241,7 +253,14 @@ export class GameSettingsHandler extends BaseAdminHandler {
       const tripleLow = parseFloat(interaction.getTextInputValue('tripleLowBonus'));
       const tripleHigh = parseFloat(interaction.getTextInputValue('tripleHighBonus'));
 
-      if (isNaN(min) || isNaN(max) || isNaN(straight) || isNaN(base) || isNaN(tripleLow) || isNaN(tripleHigh)) {
+      if (
+        isNaN(min) ||
+        isNaN(max) ||
+        isNaN(straight) ||
+        isNaN(base) ||
+        isNaN(tripleLow) ||
+        isNaN(tripleHigh)
+      ) {
         const embed = new EmbedBuilder()
           .setTitle(ZhTwStrings.gameDice2Title)
           .setDescription(ZhTwStrings.gameValidationPositive)
@@ -271,10 +290,7 @@ export class GameSettingsHandler extends BaseAdminHandler {
     }
   }
 
-  private async showGameOverview(
-    interaction: DiscordInteraction,
-    guildId: string,
-  ): Promise<void> {
+  private async showGameOverview(interaction: DiscordInteraction, guildId: string): Promise<void> {
     const dice1Result = await this.facade.getDiceGame1Config(guildId);
     const dice2Result = await this.facade.getDiceGame2Config(guildId);
 

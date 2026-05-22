@@ -1,16 +1,10 @@
-import {
-  type DiscordInteraction,
-  type DiscordContext,
-  DomainErrorCategory,
-} from '@ltdjms/shared';
+import { type DiscordInteraction, type DiscordContext, DomainErrorCategory } from '@ltdjms/shared';
 import { type DiceGame1Service } from '../dice/services/dice-game-1-service.js';
 import { type DiceConfigService } from '../dice/services/dice-config-service.js';
 import { type GameTokenService } from '../token/services/game-token-service.js';
 import { type CurrencyConfigService } from '../currency/services/currency-config-service.js';
-import { DiceGameMessages } from '../localization/dice-game-messages.js';
-import {
-  GameTokenTransactionSource,
-} from '../domain/types.js';
+import { DiceGameMessages } from '@ltdjms/shared';
+import { GameTokenTransactionSource } from '../domain/types.js';
 
 /**
  * /dice-game-1 slash command handler.
@@ -43,10 +37,7 @@ export class DiceGame1Handler {
     private readonly currencyConfigService: CurrencyConfigService,
   ) {}
 
-  async execute(
-    interaction: DiscordInteraction,
-    context: DiscordContext,
-  ): Promise<void> {
+  async execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void> {
     interaction.makeEphemeral();
     const guildId = Number(interaction.getGuildId());
     const userId = interaction.getUserId();
@@ -128,16 +119,16 @@ export class DiceGame1Handler {
       const message = [
         `**${DiceGameMessages.GAME_1_TITLE}**`,
         '',
-        DiceGameMessages.GAME_1_RESULT
-          .replace('{dice}', diceDisplay)
+        DiceGameMessages.GAME_1_RESULT.replace('{dice}', diceDisplay)
           .replace('{sum}', String(gameResult.diceSum))
           .replace('{reward}', rewardDisplay),
         '',
         `餘額變動：${String(gameResult.previousBalance)} → ${String(gameResult.newBalance)} ${currencyIcon}${currencyName}`,
         '',
-        `_${DiceGameMessages.GAME_1_DESCRIPTION
-          .replace('{count}', String(tokenCount))
-          .replace('{reward}', String(gameResult.totalReward))}_`,
+        `_${DiceGameMessages.GAME_1_DESCRIPTION.replace('{count}', String(tokenCount)).replace(
+          '{reward}',
+          String(gameResult.totalReward),
+        )}_`,
       ].join('\n');
 
       await interaction.reply(message);

@@ -36,9 +36,7 @@ export interface TransactionRepository<TTransaction, TSource> {
 export class BaseTransactionService<TTransaction, TSource> {
   static readonly DEFAULT_PAGE_SIZE = DEFAULT_PAGE_SIZE;
 
-  constructor(
-    protected readonly repository: TransactionRepository<TTransaction, TSource>,
-  ) {}
+  constructor(protected readonly repository: TransactionRepository<TTransaction, TSource>) {}
 
   /**
    * Gets a page of transactions for a user.

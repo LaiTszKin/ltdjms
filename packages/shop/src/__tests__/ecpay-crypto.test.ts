@@ -159,7 +159,8 @@ describe('Cross-language Java compatibility (P0-6)', () => {
     });
 
     it('should roundtrip encode/decode', () => {
-      const original = '{"MerchantTradeNo":"TEST 123","ItemName":"測試商品 *A*","TradeDesc":"test (1)"}';
+      const original =
+        '{"MerchantTradeNo":"TEST 123","ItemName":"測試商品 *A*","TradeDesc":"test (1)"}';
       const encoded = javaUrlEncode(original);
       const decoded = javaUrlDecode(encoded);
       expect(decoded).toBe(original);
@@ -191,7 +192,8 @@ describe('Cross-language Java compatibility (P0-6)', () => {
     });
 
     it('should produce decryptable ciphertext that round-trips', () => {
-      const plain = '{"MerchantTradeNo":"TEST 123","ItemName":"測試商品 *A*","TradeDesc":"test (1)"}';
+      const plain =
+        '{"MerchantTradeNo":"TEST 123","ItemName":"測試商品 *A*","TradeDesc":"test (1)"}';
       const encrypted = encryptAES(plain, hashKey, hashIv);
       const decrypted = decryptAES(encrypted, hashKey, hashIv);
       expect(decrypted).toBe(plain);

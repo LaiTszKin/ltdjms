@@ -7,7 +7,11 @@ import { FiatPaymentCallbackService } from '../services/fiat-payment-callback.se
 import { DrizzleFiatOrderRepository } from '../persistence/drizzle-fiat-order-repository.js';
 import { encryptAES } from '../crypto/ecpay-aes.js';
 import { buildCheckMacValue } from '../crypto/ecpay-checkmac.js';
-import { seedGuild, seedProduct, seedFiatOrder } from '../../../shared/src/__tests__/seed-factory.js';
+import {
+  seedGuild,
+  seedProduct,
+  seedFiatOrder,
+} from '../../../shared/src/__tests__/seed-factory.js';
 import type { EnvironmentConfig } from '@ltdjms/shared';
 
 const itE2E = process.env.RUN_ECPAY_E2E === 'true' ? it : it.skip;

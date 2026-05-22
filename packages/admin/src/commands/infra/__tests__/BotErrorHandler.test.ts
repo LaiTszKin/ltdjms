@@ -1,9 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import {
-  DomainError,
-  DomainErrorCategory,
-  MockDiscordInteraction,
-} from '@ltdjms/shared';
+import { DomainError, DomainErrorCategory, MockDiscordInteraction } from '@ltdjms/shared';
 import { BotErrorHandler } from '../BotErrorHandler.js';
 import { ZhTwStrings } from '../../../i18n/zh-TW.js';
 
@@ -51,8 +47,7 @@ describe('BotErrorHandler', () => {
     it('should handle DUPLICATE_CHANNEL', () => {
       const error = DomainError.duplicateChannel('Already in list');
       const message = handler.toUserMessage(error);
-      const hasDuplicateOrExists =
-        message.includes('重複') || message.includes('已在');
+      const hasDuplicateOrExists = message.includes('重複') || message.includes('已在');
       expect(hasDuplicateOrExists).toBe(true);
     });
   });

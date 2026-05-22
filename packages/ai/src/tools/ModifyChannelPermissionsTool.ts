@@ -18,9 +18,7 @@ export const ModifyChannelPermissionsParamsSchema = z.object({
   ),
 });
 
-export type ModifyChannelPermissionsParams = z.infer<
-  typeof ModifyChannelPermissionsParamsSchema
->;
+export type ModifyChannelPermissionsParams = z.infer<typeof ModifyChannelPermissionsParamsSchema>;
 
 /**
  * Modifies permission overwrites for a specific channel.
@@ -36,14 +34,8 @@ export class ModifyChannelPermissionsTool {
     private readonly permissionParser: PermissionParser,
   ) {}
 
-  async execute(
-    params: ModifyChannelPermissionsParams,
-    guild: Guild,
-  ): Promise<string> {
-    const authError = await this.authGuard.validateAdministrator(
-      guild,
-      this.name,
-    );
+  async execute(params: ModifyChannelPermissionsParams, guild: Guild): Promise<string> {
+    const authError = await this.authGuard.validateAdministrator(guild, this.name);
     if (authError) return authError;
 
     try {
@@ -52,19 +44,34 @@ export class ModifyChannelPermissionsTool {
         return `找不到頻道 ${params.channelId}`;
       }
 
-      const overwrites = this.permissionParser.parse(
-        params.permissions as PermissionSetting[],
-      );
+      const overwrites = this.permissionParser.parse(params.permissions as PermissionSetting[]);
 
-      const permChannel = channel as unknown as { permissionOverwrites: { create(id: string, options: { allow?: bigint; deny?: bigint; type?: number }, reason?: string): unknown } };
+      const permChannel = channel as unknown as {
+        permissionOverwrites: {
+          create(
+            id: string,
+            options: { allow?: bigint; deny?: bigint; type?: number },
+            reason?: string,
+          ): unknown;
+        };
+      };
 
       for (const ow of overwrites) {
-        const owData = ow as unknown as { id: string; allow?: bigint; deny?: bigint; type?: number };
-        await permChannel.permissionOverwrites.create(owData.id, {
-          allow: owData.allow,
-          deny: owData.deny,
-          type: owData.type,
-        }, '透過 AI Agent 修改頻道權限');
+        const owData = ow as unknown as {
+          id: string;
+          allow?: bigint;
+          deny?: bigint;
+          type?: number;
+        };
+        await permChannel.permissionOverwrites.create(
+          owData.id,
+          {
+            allow: owData.allow,
+            deny: owData.deny,
+            type: owData.type,
+          },
+          '透過 AI Agent 修改頻道權限',
+        );
       }
 
       return `已成功修改頻道 ${channel.name} 的權限設定`;

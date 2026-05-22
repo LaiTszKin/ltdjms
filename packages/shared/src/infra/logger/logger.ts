@@ -7,7 +7,9 @@ import pino, { type Logger } from 'pino';
  * Uses pino/file in non-production for readability.
  * TODO: replace with pino-pretty transport for improved dev ergonomics.
  */
-export function createRootLogger(level: string = process.env.NODE_ENV === 'production' ? 'info' : 'debug'): Logger {
+export function createRootLogger(
+  level: string = process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+): Logger {
   return pino({
     level,
     transport:
@@ -31,9 +33,6 @@ export function createRootLogger(level: string = process.env.NODE_ENV === 'produ
  * @param parent - parent pino logger
  * @param bindings - context bindings (module, etc.)
  */
-export function createChildLogger(
-  parent: Logger,
-  bindings: Record<string, unknown>,
-): Logger {
+export function createChildLogger(parent: Logger, bindings: Record<string, unknown>): Logger {
   return parent.child(bindings);
 }

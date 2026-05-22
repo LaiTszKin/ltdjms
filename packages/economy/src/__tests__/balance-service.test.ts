@@ -81,11 +81,7 @@ describe('BalanceService', () => {
     expect(view.currencyName).toBe(DEFAULT_CURRENCY_NAME);
     expect(view.currencyIcon).toBe(DEFAULT_CURRENCY_ICON);
     expect(mockAccountRepo.findOrCreate).toHaveBeenCalledWith(1, '1');
-    expect(mockCacheService.put).toHaveBeenCalledWith(
-      'cache:balance:1:1',
-      1000,
-      300,
-    );
+    expect(mockCacheService.put).toHaveBeenCalledWith('cache:balance:1:1', 1000, 300);
   });
 
   it('should auto-create account when it does not exist', async () => {

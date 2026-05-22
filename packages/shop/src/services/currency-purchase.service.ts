@@ -56,12 +56,7 @@ export class CurrencyPurchaseService {
         product: Product;
         amount: number;
         description: string;
-      }): Promise<
-        Result<
-          { amount: number; currencyBalanceAfter: number | null },
-          DomainError
-        >
-      >;
+      }): Promise<Result<{ amount: number; currencyBalanceAfter: number | null }, DomainError>>;
     },
     logger?: pino.Logger,
   ) {

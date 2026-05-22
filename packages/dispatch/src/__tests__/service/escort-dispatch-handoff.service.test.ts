@@ -84,7 +84,10 @@ describe('EscortDispatchHandoffService', () => {
       vi.spyOn(repo, 'save').mockResolvedValue(makeOrder());
 
       const result = await service.handoffFromCurrencyPurchase(
-        GUILD_ID, BUYER_USER_ID, BASE_PRODUCT, SOURCE_REFERENCE,
+        GUILD_ID,
+        BUYER_USER_ID,
+        BASE_PRODUCT,
+        SOURCE_REFERENCE,
       );
 
       expect(result.isOk()).toBe(true);
@@ -103,7 +106,10 @@ describe('EscortDispatchHandoffService', () => {
       vi.spyOn(repo, 'findBySourceIdentity').mockResolvedValue(existingOrder);
 
       const result = await service.handoffFromCurrencyPurchase(
-        GUILD_ID, BUYER_USER_ID, BASE_PRODUCT, SOURCE_REFERENCE,
+        GUILD_ID,
+        BUYER_USER_ID,
+        BASE_PRODUCT,
+        SOURCE_REFERENCE,
       );
 
       expect(result.isOk()).toBe(true);
@@ -115,7 +121,10 @@ describe('EscortDispatchHandoffService', () => {
 
     it('should fail when product is null', async () => {
       const result = await service.handoffFromCurrencyPurchase(
-        GUILD_ID, BUYER_USER_ID, null, SOURCE_REFERENCE,
+        GUILD_ID,
+        BUYER_USER_ID,
+        null,
+        SOURCE_REFERENCE,
       );
 
       expect(result.isErr()).toBe(true);
@@ -125,10 +134,16 @@ describe('EscortDispatchHandoffService', () => {
     });
 
     it('should fail when auto-create is disabled', async () => {
-      const disabledProduct: HandoffProductSnapshot = { ...BASE_PRODUCT, shouldAutoCreateEscortOrder: false };
+      const disabledProduct: HandoffProductSnapshot = {
+        ...BASE_PRODUCT,
+        shouldAutoCreateEscortOrder: false,
+      };
 
       const result = await service.handoffFromCurrencyPurchase(
-        GUILD_ID, BUYER_USER_ID, disabledProduct, SOURCE_REFERENCE,
+        GUILD_ID,
+        BUYER_USER_ID,
+        disabledProduct,
+        SOURCE_REFERENCE,
       );
 
       expect(result.isErr()).toBe(true);
@@ -139,7 +154,10 @@ describe('EscortDispatchHandoffService', () => {
 
     it('should fail when sourceReference is empty', async () => {
       const result = await service.handoffFromCurrencyPurchase(
-        GUILD_ID, BUYER_USER_ID, BASE_PRODUCT, '',
+        GUILD_ID,
+        BUYER_USER_ID,
+        BASE_PRODUCT,
+        '',
       );
 
       expect(result.isErr()).toBe(true);
@@ -149,7 +167,10 @@ describe('EscortDispatchHandoffService', () => {
       const badProduct: HandoffProductSnapshot = { ...BASE_PRODUCT, escortOptionCode: '' };
 
       const result = await service.handoffFromCurrencyPurchase(
-        GUILD_ID, BUYER_USER_ID, badProduct, SOURCE_REFERENCE,
+        GUILD_ID,
+        BUYER_USER_ID,
+        badProduct,
+        SOURCE_REFERENCE,
       );
 
       expect(result.isErr()).toBe(true);
@@ -161,7 +182,10 @@ describe('EscortDispatchHandoffService', () => {
       vi.spyOn(repo, 'save').mockRejectedValue(new Error('DB deadlock'));
 
       const result = await service.handoffFromCurrencyPurchase(
-        GUILD_ID, BUYER_USER_ID, BASE_PRODUCT, SOURCE_REFERENCE,
+        GUILD_ID,
+        BUYER_USER_ID,
+        BASE_PRODUCT,
+        SOURCE_REFERENCE,
       );
 
       expect(result.isErr()).toBe(true);
@@ -172,7 +196,7 @@ describe('EscortDispatchHandoffService', () => {
 
     it('should recover from race condition via fallback query', async () => {
       vi.spyOn(repo, 'findBySourceIdentity')
-        .mockResolvedValueOnce(null)  // first check: nothing
+        .mockResolvedValueOnce(null) // first check: nothing
         .mockResolvedValueOnce(makeOrder()); // fallback query: found
       vi.spyOn(repo, 'existsByOrderNumber').mockResolvedValue(false);
       vi.spyOn(repo, 'save').mockImplementation(async () => {
@@ -180,7 +204,10 @@ describe('EscortDispatchHandoffService', () => {
       });
 
       const result = await service.handoffFromCurrencyPurchase(
-        GUILD_ID, BUYER_USER_ID, BASE_PRODUCT, SOURCE_REFERENCE,
+        GUILD_ID,
+        BUYER_USER_ID,
+        BASE_PRODUCT,
+        SOURCE_REFERENCE,
       );
 
       // Fallback recovers and returns the existing order
@@ -207,7 +234,10 @@ describe('EscortDispatchHandoffService', () => {
       vi.spyOn(repo, 'save').mockResolvedValue(makeOrder({ sourceType: SourceType.FIAT_PAYMENT }));
 
       const result = await service.handoffFromFiatPayment(
-        GUILD_ID, BUYER_USER_ID, fiatProduct, SOURCE_REFERENCE,
+        GUILD_ID,
+        BUYER_USER_ID,
+        fiatProduct,
+        SOURCE_REFERENCE,
       );
 
       expect(result.isOk()).toBe(true);
@@ -218,7 +248,10 @@ describe('EscortDispatchHandoffService', () => {
 
     it('should fail when product is null', async () => {
       const result = await service.handoffFromFiatPayment(
-        GUILD_ID, BUYER_USER_ID, null, SOURCE_REFERENCE,
+        GUILD_ID,
+        BUYER_USER_ID,
+        null,
+        SOURCE_REFERENCE,
       );
 
       expect(result.isErr()).toBe(true);

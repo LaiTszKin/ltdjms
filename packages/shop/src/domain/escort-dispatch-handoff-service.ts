@@ -18,5 +18,9 @@ export interface EscortDispatchHandoffService {
     buyerUserId: number,
     product: import('./product-types.js').Product | null,
     sourceReference: string,
-  ): Promise<{ isOk: () => boolean; getError: () => { message: string }; getValue: () => DispatchOrderSnapshot }>;
+  ): Promise<{
+    isOk: () => boolean;
+    getError: () => { message: string };
+    getValue: () => DispatchOrderSnapshot;
+  }>;
 }

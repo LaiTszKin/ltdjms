@@ -168,9 +168,7 @@ export class EnvironmentConfig {
   getAIServiceApiKey(): string {
     const key = this.get().AI_SERVICE_API_KEY;
     if (!key) {
-      throw new Error(
-        'AI_SERVICE_API_KEY is required when AI features are enabled',
-      );
+      throw new Error('AI_SERVICE_API_KEY is required when AI features are enabled');
     }
     return key;
   }

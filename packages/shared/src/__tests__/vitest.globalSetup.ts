@@ -23,7 +23,11 @@ export async function setup(): Promise<void> {
     const info = JSON.parse(fs.readFileSync(INFO_FILE, 'utf-8'));
     for (let attempt = 1; attempt <= 5; attempt++) {
       try {
-        const testPool = new Pool({ connectionString: `postgresql://test:test@${info.host}:${info.port}/postgres`, max: 1, connectionTimeoutMillis: 3000 });
+        const testPool = new Pool({
+          connectionString: `postgresql://test:test@${info.host}:${info.port}/postgres`,
+          max: 1,
+          connectionTimeoutMillis: 3000,
+        });
         await testPool.query('SELECT 1');
         await testPool.end();
         const connectionUrl = `postgresql://test:test@${info.host}:${info.port}/ltdjms_test`;
@@ -34,7 +38,9 @@ export async function setup(): Promise<void> {
       } catch (err) {
         if (attempt === 5) {
           // eslint-disable-next-line no-console
-          console.warn(`[testcontainer] Container at ${info.host}:${info.port} unreachable after 5 attempts — starting fresh`);
+          console.warn(
+            `[testcontainer] Container at ${info.host}:${info.port} unreachable after 5 attempts — starting fresh`,
+          );
           fs.rmSync(INFO_FILE, { force: true });
         } else {
           await new Promise((r) => setTimeout(r, 1000));

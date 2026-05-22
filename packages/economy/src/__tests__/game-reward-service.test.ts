@@ -17,13 +17,15 @@ describe('GameRewardService', () => {
     it('should return current balance when reward is 0 instead of returning 0 (P0-3)', async () => {
       const mockAdjustmentService = createMockBalanceAdjustmentService();
       const mockBalanceService = {
-        getBalance: vi.fn().mockResolvedValue(new Ok({
-          guildId: 1,
-          userId: '1',
-          balance: 5000,
-          currencyName: 'LTD',
-          currencyIcon: 'L',
-        } as BalanceView)),
+        getBalance: vi.fn().mockResolvedValue(
+          new Ok({
+            guildId: 1,
+            userId: '1',
+            balance: 5000,
+            currencyName: 'LTD',
+            currencyIcon: 'L',
+          } as BalanceView),
+        ),
       };
 
       const service = new GameRewardService(
@@ -31,7 +33,12 @@ describe('GameRewardService', () => {
         mockBalanceService as any,
       );
 
-      const result = await service.creditReward(1, '1', 0, 'DICE_GAME_1_WIN' as CurrencyTransactionSource);
+      const result = await service.creditReward(
+        1,
+        '1',
+        0,
+        'DICE_GAME_1_WIN' as CurrencyTransactionSource,
+      );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -51,7 +58,12 @@ describe('GameRewardService', () => {
         mockBalanceService as any,
       );
 
-      const result = await service.creditReward(1, '1', -100, 'DICE_GAME_1_WIN' as CurrencyTransactionSource);
+      const result = await service.creditReward(
+        1,
+        '1',
+        -100,
+        'DICE_GAME_1_WIN' as CurrencyTransactionSource,
+      );
 
       expect(result.isErr()).toBe(true);
     });
@@ -78,7 +90,12 @@ describe('GameRewardService', () => {
         mockBalanceService as any,
       );
 
-      const result = await service.creditReward(1, '1', 2500, 'DICE_GAME_1_WIN' as CurrencyTransactionSource);
+      const result = await service.creditReward(
+        1,
+        '1',
+        2500,
+        'DICE_GAME_1_WIN' as CurrencyTransactionSource,
+      );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -86,7 +103,12 @@ describe('GameRewardService', () => {
       }
       expect(mockAdjustmentService.tryBatchAdjust).toHaveBeenCalledTimes(1);
       expect(mockAdjustmentService.tryBatchAdjust).toHaveBeenCalledWith(
-        1, "1", 2500, 'DICE_GAME_1_WIN', null, MAX_ADJUSTMENT_AMOUNT,
+        1,
+        '1',
+        2500,
+        'DICE_GAME_1_WIN',
+        null,
+        MAX_ADJUSTMENT_AMOUNT,
       );
     });
 
@@ -104,7 +126,12 @@ describe('GameRewardService', () => {
         mockBalanceService as any,
       );
 
-      const result = await service.creditReward(1, '1', 500, 'DICE_GAME_1_WIN' as CurrencyTransactionSource);
+      const result = await service.creditReward(
+        1,
+        '1',
+        500,
+        'DICE_GAME_1_WIN' as CurrencyTransactionSource,
+      );
 
       expect(result.isErr()).toBe(true);
     });

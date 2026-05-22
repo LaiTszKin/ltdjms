@@ -1,9 +1,6 @@
-import {
-  type DiscordInteraction,
-  type DiscordContext,
-} from '@ltdjms/shared';
+import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
 import { type CurrencyConfigService } from '../currency/services/currency-config-service.js';
-import { DiceGameMessages } from '../localization/dice-game-messages.js';
+import { DiceGameMessages } from '@ltdjms/shared';
 
 /**
  * /currency-config slash command handler (admin only).
@@ -12,14 +9,9 @@ import { DiceGameMessages } from '../localization/dice-game-messages.js';
 export class CurrencyConfigHandler {
   readonly commandName = 'currency-config';
 
-  constructor(
-    private readonly currencyConfigService: CurrencyConfigService,
-  ) {}
+  constructor(private readonly currencyConfigService: CurrencyConfigService) {}
 
-  async execute(
-    interaction: DiscordInteraction,
-    context: DiscordContext,
-  ): Promise<void> {
+  async execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void> {
     interaction.makeEphemeral();
     if (!interaction.isAdministrator()) {
       await interaction.reply('此操作需要管理員權限');
@@ -36,17 +28,12 @@ export class CurrencyConfigHandler {
       return;
     }
 
-    const result = await this.currencyConfigService.tryUpdateConfig(
-      guildId,
-      name,
-      icon,
-    );
+    const result = await this.currencyConfigService.tryUpdateConfig(guildId, name, icon);
 
     if (result.isErr()) {
       const error = result.getError();
       await interaction.reply(
-        DiceGameMessages.CURRENCY_CONFIG_FAILED
-          .replace('{reason}', error.message),
+        DiceGameMessages.CURRENCY_CONFIG_FAILED.replace('{reason}', error.message),
       );
       return;
     }
@@ -54,9 +41,10 @@ export class CurrencyConfigHandler {
     const config = result.getValue();
 
     await interaction.reply(
-      DiceGameMessages.CURRENCY_CONFIG_SUCCESS
-        .replace('{name}', config.currencyName)
-        .replace('{icon}', config.currencyIcon),
+      DiceGameMessages.CURRENCY_CONFIG_SUCCESS.replace('{name}', config.currencyName).replace(
+        '{icon}',
+        config.currencyIcon,
+      ),
     );
   }
 }

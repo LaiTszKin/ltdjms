@@ -137,24 +137,22 @@ describe('InMemoryToolCallHistory', () => {
   });
 
   it('should create REDACTED memory summary for search operations', () => {
-    const { memorySummary, redactionMode } =
-      InMemoryToolCallHistory.createMemorySummary(
-        'search_messages',
-        { keywords: 'important' },
-        'Found some results',
-      );
+    const { memorySummary, redactionMode } = InMemoryToolCallHistory.createMemorySummary(
+      'search_messages',
+      { keywords: 'important' },
+      'Found some results',
+    );
 
     expect(redactionMode).toBe(RedactionMode.REDACTED);
     expect(memorySummary).toContain('[REDACTED]');
   });
 
   it('should redact Discord URLs in memory summaries', () => {
-    const { memorySummary, redactionMode } =
-      InMemoryToolCallHistory.createMemorySummary(
-        'send_messages',
-        {},
-        'Sent message to https://discord.com/channels/123/456',
-      );
+    const { memorySummary, redactionMode } = InMemoryToolCallHistory.createMemorySummary(
+      'send_messages',
+      {},
+      'Sent message to https://discord.com/channels/123/456',
+    );
 
     expect(redactionMode).toBe(RedactionMode.REDACTED);
     expect(memorySummary).toContain('[Discord URL 已隱藏]');
@@ -163,24 +161,12 @@ describe('InMemoryToolCallHistory', () => {
 
 describe('ConversationIdBuilder', () => {
   it('should build thread-level ID', () => {
-    const id = ConversationIdBuilder.build(
-      'guild-1',
-      'channel-1',
-      'thread-1',
-      'user-1',
-      null,
-    );
+    const id = ConversationIdBuilder.build('guild-1', 'channel-1', 'thread-1', 'user-1', null);
     expect(id).toBe('guild-1:thread-1:user-1');
   });
 
   it('should build message-level ID', () => {
-    const id = ConversationIdBuilder.build(
-      'guild-1',
-      'channel-1',
-      null,
-      'user-1',
-      'msg-1',
-    );
+    const id = ConversationIdBuilder.build('guild-1', 'channel-1', null, 'user-1', 'msg-1');
     expect(id).toBe('guild-1:channel-1:user-1:msg-1');
   });
 
@@ -191,9 +177,9 @@ describe('ConversationIdBuilder', () => {
   });
 
   it('should detect message-level strategy', () => {
-    expect(
-      ConversationIdBuilder.parseStrategy('guild-1:channel-1:user-1:msg-1'),
-    ).toBe(ConversationIdStrategy.MESSAGE_LEVEL);
+    expect(ConversationIdBuilder.parseStrategy('guild-1:channel-1:user-1:msg-1')).toBe(
+      ConversationIdStrategy.MESSAGE_LEVEL,
+    );
   });
 
   it('should extract components correctly', () => {
@@ -203,8 +189,6 @@ describe('ConversationIdBuilder', () => {
   });
 
   it('should build tool call key', () => {
-    expect(ConversationIdBuilder.buildToolCallKey('thread-1', 'user-1')).toBe(
-      'thread-1:user-1',
-    );
+    expect(ConversationIdBuilder.buildToolCallKey('thread-1', 'user-1')).toBe('thread-1:user-1');
   });
 });

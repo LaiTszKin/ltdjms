@@ -18,9 +18,7 @@ export const ModifyCategoryPermissionsParamsSchema = z.object({
   ),
 });
 
-export type ModifyCategoryPermissionsParams = z.infer<
-  typeof ModifyCategoryPermissionsParamsSchema
->;
+export type ModifyCategoryPermissionsParams = z.infer<typeof ModifyCategoryPermissionsParamsSchema>;
 
 /**
  * Modifies permission overwrites for a specific category.
@@ -36,14 +34,8 @@ export class ModifyCategoryPermissionsTool {
     private readonly permissionParser: PermissionParser,
   ) {}
 
-  async execute(
-    params: ModifyCategoryPermissionsParams,
-    guild: Guild,
-  ): Promise<string> {
-    const authError = await this.authGuard.validateAdministrator(
-      guild,
-      this.name,
-    );
+  async execute(params: ModifyCategoryPermissionsParams, guild: Guild): Promise<string> {
+    const authError = await this.authGuard.validateAdministrator(guild, this.name);
     if (authError) return authError;
 
     try {
@@ -52,19 +44,34 @@ export class ModifyCategoryPermissionsTool {
         return `找不到分類 ${params.categoryId}`;
       }
 
-      const overwrites = this.permissionParser.parse(
-        params.permissions as PermissionSetting[],
-      );
+      const overwrites = this.permissionParser.parse(params.permissions as PermissionSetting[]);
 
-      const permChannel = category as unknown as { permissionOverwrites: { create(id: string, options: { allow?: bigint; deny?: bigint; type?: number }, reason?: string): unknown } };
+      const permChannel = category as unknown as {
+        permissionOverwrites: {
+          create(
+            id: string,
+            options: { allow?: bigint; deny?: bigint; type?: number },
+            reason?: string,
+          ): unknown;
+        };
+      };
 
       for (const ow of overwrites) {
-        const owData = ow as unknown as { id: string; allow?: bigint; deny?: bigint; type?: number };
-        await permChannel.permissionOverwrites.create(owData.id, {
-          allow: owData.allow,
-          deny: owData.deny,
-          type: owData.type,
-        }, '透過 AI Agent 修改分類權限');
+        const owData = ow as unknown as {
+          id: string;
+          allow?: bigint;
+          deny?: bigint;
+          type?: number;
+        };
+        await permChannel.permissionOverwrites.create(
+          owData.id,
+          {
+            allow: owData.allow,
+            deny: owData.deny,
+            type: owData.type,
+          },
+          '透過 AI Agent 修改分類權限',
+        );
       }
 
       return `已成功修改分類 ${category.name} 的權限設定`;

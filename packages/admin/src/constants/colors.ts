@@ -8,31 +8,31 @@
  */
 export const Colors = {
   /** Discord blurple — used for primary/admin panels. */
-  PRIMARY: 0x5865F2,
+  PRIMARY: 0x5865f2,
   /** Discord green — used for success states and balance displays. */
-  SUCCESS: 0x57F287,
+  SUCCESS: 0x57f287,
   /** Discord red — used for danger/error states. */
-  DANGER: 0xED4245,
+  DANGER: 0xed4245,
   /** Discord yellow — used for warning states and game settings. */
-  WARNING: 0xFEE75C,
+  WARNING: 0xfee75c,
 
   // ============================================================
   // Product panel colors
   // ============================================================
   /** Dark blue-gray for product list embeds. */
-  PRODUCT_DEFAULT: 0x2C3E50,
+  PRODUCT_DEFAULT: 0x2c3e50,
   /** Purple for product code list embeds. */
-  PRODUCT_CODES: 0x8E44AD,
+  PRODUCT_CODES: 0x8e44ad,
 
   // ============================================================
   // User panel colors
   // ============================================================
   /** Blurple for user panel. */
-  USER_PANEL: 0x5865F2,
+  USER_PANEL: 0x5865f2,
   /** Green for currency transaction history. */
-  HISTORY_CURRENCY: 0x2ECC71,
+  HISTORY_CURRENCY: 0x2ecc71,
   /** Purple for token transaction history. */
-  HISTORY_TOKEN: 0x9B59B6,
+  HISTORY_TOKEN: 0x9b59b6,
   /** Orange for redemption history. */
-  HISTORY_REDEMPTION: 0xE67E22,
+  HISTORY_REDEMPTION: 0xe67e22,
 } as const;

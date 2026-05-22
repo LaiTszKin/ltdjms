@@ -31,7 +31,11 @@ export class DispatchPanelCommandHandler {
       const buttons = buildModeSelectActionRow();
       const payload = buildPanelReplyPayload(view, buttons);
       const hook = interaction.getHook() as any;
-      await hook.reply({ embeds: [payload.embed], components: payload.components, ephemeral: true });
+      await hook.reply({
+        embeds: [payload.embed],
+        components: payload.components,
+        ephemeral: true,
+      });
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       const errorView = buildErrorEmbed(`無法開啟派單面板：${message}`);

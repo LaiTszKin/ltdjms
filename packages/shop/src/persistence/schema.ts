@@ -1,4 +1,16 @@
-import { pgTable, serial, bigserial, bigint, varchar, boolean, integer, timestamp, text, uniqueIndex, index } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  serial,
+  bigserial,
+  bigint,
+  varchar,
+  boolean,
+  integer,
+  timestamp,
+  text,
+  uniqueIndex,
+  index,
+} from 'drizzle-orm/pg-core';
 
 /**
  * fiat_order table — matches Flyway V021-V026 exactly.
@@ -34,16 +46,14 @@ export const fiatOrder = pgTable(
     adminNotifiedAt: timestamp('admin_notified_at', { withTimezone: true }),
     lastCallbackPayload: text('last_callback_payload'),
     fulfillmentProcessingAt: timestamp('fulfillment_processing_at', { withTimezone: true }),
-    adminNotificationProcessingAt: timestamp(
-      'admin_notification_processing_at',
-      { withTimezone: true },
-    ),
-    reconciliationProcessingAt: timestamp(
-      'reconciliation_processing_at',
-      { withTimezone: true },
-    ),
+    adminNotificationProcessingAt: timestamp('admin_notification_processing_at', {
+      withTimezone: true,
+    }),
+    reconciliationProcessingAt: timestamp('reconciliation_processing_at', { withTimezone: true }),
     reconciliationAttemptCount: integer('reconciliation_attempt_count').notNull().default(0),
-    reconciliationNextAttemptAt: timestamp('reconciliation_next_attempt_at', { withTimezone: true }),
+    reconciliationNextAttemptAt: timestamp('reconciliation_next_attempt_at', {
+      withTimezone: true,
+    }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -112,7 +122,11 @@ export const productRedemptionTransaction = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    userGuildCreatedIdx: index('idx_user_guild_created').on(table.guildId, table.userId, table.createdAt),
+    userGuildCreatedIdx: index('idx_user_guild_created').on(
+      table.guildId,
+      table.userId,
+      table.createdAt,
+    ),
     productIdx: index('idx_product').on(table.productId),
   }),
 );

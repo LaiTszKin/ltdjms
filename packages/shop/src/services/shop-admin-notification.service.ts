@@ -27,7 +27,9 @@ interface DiscordJsGuild {
   name: string;
   ownerId: string;
   roles: {
-    cache: Map<string, DiscordJsRole> & { find(predicate: (role: DiscordJsRole) => boolean): DiscordJsRole | undefined };
+    cache: Map<string, DiscordJsRole> & {
+      find(predicate: (role: DiscordJsRole) => boolean): DiscordJsRole | undefined;
+    };
   };
   members: {
     fetch(userId: string): Promise<DiscordJsGuildMember>;
@@ -58,10 +60,19 @@ export class ShopAdminNotificationService {
    * Adapter for the AdminOrderNotifier interface used by FiatOrderPostPaymentWorker (P1-10).
    * Delegates to the existing escort notification builder.
    */
-  notifyAdminsOrderCreated(guildId: number, buyerUserId: number, dispatchOrder: DispatchOrderSnapshot): void {
+  notifyAdminsOrderCreated(
+    guildId: number,
+    buyerUserId: number,
+    dispatchOrder: DispatchOrderSnapshot,
+  ): void {
     if (!dispatchOrder) return;
     const guildName = this.getGuildName(guildId);
-    const message = this.buildAdminEscortNotification(guildId, buyerUserId, dispatchOrder, guildName ?? undefined);
+    const message = this.buildAdminEscortNotification(
+      guildId,
+      buyerUserId,
+      dispatchOrder,
+      guildName ?? undefined,
+    );
     this.notifyGuildAdmins(guildId, message);
   }
 
@@ -91,11 +102,20 @@ export class ShopAdminNotificationService {
     this.notifyGuildAdmins(guildId, message);
   }
 
-  notifyAdminsEscortOrderCreated(guildId: number, buyerUserId: number, dispatchOrder: DispatchOrderSnapshot): void {
+  notifyAdminsEscortOrderCreated(
+    guildId: number,
+    buyerUserId: number,
+    dispatchOrder: DispatchOrderSnapshot,
+  ): void {
     if (!dispatchOrder) return;
 
     const guildName = this.getGuildName(guildId);
-    const message = this.buildAdminEscortNotification(guildId, buyerUserId, dispatchOrder, guildName ?? undefined);
+    const message = this.buildAdminEscortNotification(
+      guildId,
+      buyerUserId,
+      dispatchOrder,
+      guildName ?? undefined,
+    );
     this.notifyGuildAdmins(guildId, message);
   }
 
@@ -133,11 +153,7 @@ export class ShopAdminNotificationService {
 
       // Also notify guild owner if not already notified
       const ownerId = guild.ownerId;
-      if (
-        ownerId &&
-        (!selfUserId || ownerId !== selfUserId) &&
-        !notified.has(ownerId)
-      ) {
+      if (ownerId && (!selfUserId || ownerId !== selfUserId) && !notified.has(ownerId)) {
         guild.members.fetch(ownerId).then(
           (ownerMember) => {
             if (ownerMember && ownerMember.user) {

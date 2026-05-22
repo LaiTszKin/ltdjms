@@ -3,8 +3,7 @@ import { DiscordMarkdownPaginator } from '../../markdown/services/DiscordMarkdow
 
 describe('DiscordMarkdownPaginator', () => {
   // Create paginator with a small max length for testing
-  const createPaginator = (maxLength: number = 1900) =>
-    new DiscordMarkdownPaginator(maxLength);
+  const createPaginator = (maxLength: number = 1900) => new DiscordMarkdownPaginator(maxLength);
 
   it('should return empty array for null content', () => {
     const paginator = createPaginator();
@@ -30,11 +29,7 @@ describe('DiscordMarkdownPaginator', () => {
     const paginator = createPaginator(100);
     // Create content with two sections that exceeds 100 chars
     const content =
-      '# Section 1\n\n' +
-      'A'.repeat(80) +
-      '\n\n' +
-      '## Section 2\n\n' +
-      'B'.repeat(80);
+      '# Section 1\n\n' + 'A'.repeat(80) + '\n\n' + '## Section 2\n\n' + 'B'.repeat(80);
     const result = paginator.paginate(content);
     expect(result.length).toBeGreaterThan(1);
     // First page should contain the first heading
@@ -46,12 +41,7 @@ describe('DiscordMarkdownPaginator', () => {
 
   it('should handle code fence boundaries across pages', () => {
     const paginator = createPaginator(100);
-    const content =
-      '# Section\n\n' +
-      '```\n' +
-      'L'.repeat(200) +
-      '\n```\n\n' +
-      '## Next Section';
+    const content = '# Section\n\n' + '```\n' + 'L'.repeat(200) + '\n```\n\n' + '## Next Section';
     const result = paginator.paginate(content);
     expect(result.length).toBeGreaterThan(1);
     // Combined content across all pages should preserve original code fence balance
@@ -81,11 +71,7 @@ describe('DiscordMarkdownPaginator', () => {
   it('should trim trailing whitespace from each page', () => {
     const paginator = createPaginator(50);
     const content =
-      '# Section 1\n\n' +
-      'A'.repeat(40) +
-      '\n\n' +
-      '## Section 2\n\n' +
-      'B'.repeat(40);
+      '# Section 1\n\n' + 'A'.repeat(40) + '\n\n' + '## Section 2\n\n' + 'B'.repeat(40);
     const result = paginator.paginate(content);
     result.forEach((page) => {
       expect(page).toBe(page.trimEnd());

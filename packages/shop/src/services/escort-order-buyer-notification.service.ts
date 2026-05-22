@@ -41,13 +41,14 @@ export class EscortOrderBuyerNotificationService {
 
       client.users.fetch(order.customerUserId.toString()).then(
         (buyerUser) => {
-          buyerUser.send(message).catch(
-            (err: unknown) =>
+          buyerUser
+            .send(message)
+            .catch((err: unknown) =>
               this.log.warn(
                 { orderNumber: order.orderNumber, buyerUserId: order.customerUserId, error: err },
                 'Failed to DM buyer escort order created',
               ),
-          );
+            );
         },
         (err: unknown) =>
           this.log.warn(

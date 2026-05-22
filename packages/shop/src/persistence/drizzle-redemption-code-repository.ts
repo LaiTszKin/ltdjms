@@ -1,7 +1,11 @@
 import { eq, and, isNull, or, sql, gt, gte, lte } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { safeSnowflakeToNumber } from '@ltdjms/shared';
-import { type RedemptionCodeRepository, type CodeStats, createCodeStatsZero } from '../domain/redemption-code-repository.js';
+import {
+  type RedemptionCodeRepository,
+  type CodeStats,
+  createCodeStatsZero,
+} from '../domain/redemption-code-repository.js';
 import { type RedemptionCode } from '../domain/redemption-code.js';
 import { redemptionCode as redemptionCodeTable } from './schema.js';
 import pino from 'pino';
@@ -105,20 +109,13 @@ export class DrizzleRedemptionCodeRepository implements RedemptionCodeRepository
           eq(redemptionCodeTable.id, codeId),
           isNull(redemptionCodeTable.redeemedBy),
           isNull(redemptionCodeTable.invalidatedAt),
-          or(
-            isNull(redemptionCodeTable.expiresAt),
-            gte(redemptionCodeTable.expiresAt, redeemedAt),
-          ),
+          or(isNull(redemptionCodeTable.expiresAt), gte(redemptionCodeTable.expiresAt, redeemedAt)),
         ),
       );
     return result.rowCount !== null && result.rowCount > 0;
   }
 
-  async clearRedeemedIfMatches(
-    codeId: number,
-    userId: string,
-    redeemedAt: Date,
-  ): Promise<boolean> {
+  async clearRedeemedIfMatches(codeId: number, userId: string, redeemedAt: Date): Promise<boolean> {
     const result = await this.db
       .update(redemptionCodeTable)
       .set({
@@ -203,10 +200,7 @@ export class DrizzleRedemptionCodeRepository implements RedemptionCodeRepository
       .select({ count: sql<number>`count(*)` })
       .from(redemptionCodeTable)
       .where(
-        and(
-          eq(redemptionCodeTable.productId, productId),
-          isNull(redemptionCodeTable.redeemedBy),
-        ),
+        and(eq(redemptionCodeTable.productId, productId), isNull(redemptionCodeTable.redeemedBy)),
       );
     return row ? Number(row.count) : 0;
   }
@@ -215,10 +209,7 @@ export class DrizzleRedemptionCodeRepository implements RedemptionCodeRepository
     const result = await this.db
       .delete(redemptionCodeTable)
       .where(
-        and(
-          eq(redemptionCodeTable.productId, productId),
-          isNull(redemptionCodeTable.redeemedBy),
-        ),
+        and(eq(redemptionCodeTable.productId, productId), isNull(redemptionCodeTable.redeemedBy)),
       );
     return result.rowCount ?? 0;
   }

@@ -1,6 +1,11 @@
 import { fetch, type RequestInit, type Response } from 'undici';
 
-const RETRYABLE_CODES = new Set(['ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'UND_ERR_CONNECT_TIMEOUT']);
+const RETRYABLE_CODES = new Set([
+  'ECONNRESET',
+  'ETIMEDOUT',
+  'ENOTFOUND',
+  'UND_ERR_CONNECT_TIMEOUT',
+]);
 
 /**
  * Wraps undici.fetch with retry logic for transient network errors.
@@ -17,7 +22,7 @@ export async function fetchWithRetry(
       return await fetch(url, init);
     } catch (err: any) {
       const isRetryable =
-        err?.cause?.code && RETRYABLE_CODES.has(err.cause.code) ||
+        (err?.cause?.code && RETRYABLE_CODES.has(err.cause.code)) ||
         err?.name === 'TimeoutError' ||
         err?.name === 'AbortError';
 

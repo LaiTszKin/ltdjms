@@ -1,8 +1,4 @@
-import {
-  type DiscordInteraction,
-  type DiscordContext,
-  DomainErrorCategory,
-} from '@ltdjms/shared';
+import { type DiscordInteraction, type DiscordContext, DomainErrorCategory } from '@ltdjms/shared';
 import {
   EmbedBuilder,
   ModalBuilder,
@@ -30,10 +26,7 @@ export class RedemptionCodeHandler implements InteractionHandler {
     private readonly sessionManager: PanelSessionManager,
   ) {}
 
-  async execute(
-    interaction: DiscordInteraction,
-    context: DiscordContext,
-  ): Promise<void> {
+  async execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void> {
     const guildId = interaction.getGuildId();
     const userId = interaction.getUserId();
 
@@ -75,9 +68,8 @@ export class RedemptionCodeHandler implements InteractionHandler {
         description = '輸入兌換碼來兌換產品\n\n尚未有任何兌換記錄';
       } else {
         const lines = history.items.map((item) => {
-          const maskedCode = item.code.length > 8
-            ? `${item.code.slice(0, 4)}****${item.code.slice(-4)}`
-            : item.code;
+          const maskedCode =
+            item.code.length > 8 ? `${item.code.slice(0, 4)}****${item.code.slice(-4)}` : item.code;
           const time = new Date(item.createdAt).toLocaleString('zh-TW');
           return `${time}\n${item.productName} - ${maskedCode}`;
         });
@@ -90,7 +82,7 @@ export class RedemptionCodeHandler implements InteractionHandler {
     const embed = new EmbedBuilder()
       .setTitle(ZhTwStrings.redeemCodeModalTitle)
       .setDescription(description)
-      .setColor(0xE67E22);
+      .setColor(0xe67e22);
     await interaction.editEmbed(embed);
   }
 
@@ -112,16 +104,12 @@ export class RedemptionCodeHandler implements InteractionHandler {
       .setMaxLength(32)
       .setRequired(true);
 
-    modal.addComponents(
-      new ActionRowBuilder<TextInputBuilder>().addComponents(codeInput),
-    );
+    modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(codeInput));
 
     return modal;
   }
 
-  private async showRedeemModal(
-    interaction: DiscordInteraction,
-  ): Promise<void> {
+  private async showRedeemModal(interaction: DiscordInteraction): Promise<void> {
     await interaction.showModal(RedemptionCodeHandler.buildRedeemModal());
   }
 
@@ -135,16 +123,12 @@ export class RedemptionCodeHandler implements InteractionHandler {
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.redeemCodeModalTitle)
         .setDescription('請輸入有效的兌換碼')
-        .setColor(0xE67E22);
+        .setColor(0xe67e22);
       await interaction.editEmbed(embed);
       return;
     }
 
-    const result = await this.memberInfoFacade.redeemCode(
-      guildId,
-      userId,
-      codeStr.trim(),
-    );
+    const result = await this.memberInfoFacade.redeemCode(guildId, userId, codeStr.trim());
 
     if (result.isOk()) {
       const redemption = result.getValue();
@@ -161,7 +145,7 @@ export class RedemptionCodeHandler implements InteractionHandler {
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.redeemCodeModalTitle)
         .setDescription(description)
-        .setColor(0x57F287);
+        .setColor(0x57f287);
       await interaction.editEmbed(embed);
     } else {
       const error = result.getError();
@@ -179,7 +163,7 @@ export class RedemptionCodeHandler implements InteractionHandler {
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.redeemCodeModalTitle)
         .setDescription(friendlyMsg)
-        .setColor(0xED4245);
+        .setColor(0xed4245);
       await interaction.editEmbed(embed);
     }
   }

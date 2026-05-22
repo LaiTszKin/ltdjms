@@ -10,9 +10,7 @@ export function assertBalanceConserved(
   const afterSum = after.reduce((sum, a) => sum + a.balance, 0);
 
   if (beforeSum !== afterSum) {
-    throw new Error(
-      `Balance not conserved: before=${beforeSum}, after=${afterSum}`,
-    );
+    throw new Error(`Balance not conserved: before=${beforeSum}, after=${afterSum}`);
   }
 }
 
@@ -62,9 +60,7 @@ export async function measureResponseTime<T>(
   const durationMs = Date.now() - start;
 
   if (maxMs !== undefined && durationMs > maxMs) {
-    throw new Error(
-      `Response time ${durationMs}ms exceeded max ${maxMs}ms`,
-    );
+    throw new Error(`Response time ${durationMs}ms exceeded max ${maxMs}ms`);
   }
 
   return { result, durationMs };

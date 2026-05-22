@@ -63,9 +63,11 @@ export function isFiatOnly(product: Product): boolean {
 }
 
 export function shouldAutoCreateEscortOrder(product: Product): boolean {
-  return product.autoCreateEscortOrder
-    && product.escortOptionCode !== null
-    && product.escortOptionCode.trim().length > 0;
+  return (
+    product.autoCreateEscortOrder &&
+    product.escortOptionCode !== null &&
+    product.escortOptionCode.trim().length > 0
+  );
 }
 
 /**
@@ -78,9 +80,17 @@ export interface ProductRepository {
   countByGuildId(guildId: number): Promise<number>;
   findByGuildIdPaginated(guildId: number, page: number, size: number): Promise<Product[]>;
   countByGuildIdAndNameContaining(guildId: number, keyword: string): Promise<number>;
-  findByGuildIdAndNameContaining(guildId: number, keyword: string, page: number, size: number): Promise<Product[]>;
+  findByGuildIdAndNameContaining(
+    guildId: number,
+    keyword: string,
+    page: number,
+    size: number,
+  ): Promise<Product[]>;
   create(data: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Promise<Product>;
-  update(id: number, data: Partial<Omit<Product, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Product | null>;
+  update(
+    id: number,
+    data: Partial<Omit<Product, 'id' | 'createdAt' | 'updatedAt'>>,
+  ): Promise<Product | null>;
   delete(id: number): Promise<boolean>;
 }
 

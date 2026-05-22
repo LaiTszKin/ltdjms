@@ -94,5 +94,4 @@ export class ShopService {
 
     return { products, currentPage: validPage + 1, totalPages };
   }
-
 }

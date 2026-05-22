@@ -57,10 +57,7 @@ export class DiscordMarkdownPaginator {
       if (headingMatch !== -1 && headingMatch > this.maxLength * 0.3) {
         // Found a heading boundary
         const pageContent = remaining.slice(0, headingMatch);
-        const { closed, fence } = this.handleCodeFenceBoundary(
-          pageContent,
-          openCodeFence,
-        );
+        const { closed, fence } = this.handleCodeFenceBoundary(pageContent, openCodeFence);
         pages.push(closed);
         openCodeFence = fence;
 
@@ -75,10 +72,7 @@ export class DiscordMarkdownPaginator {
       const fenceBoundary = this.findCodeFenceBoundary(slice);
       if (fenceBoundary !== -1 && fenceBoundary > 0) {
         const pageContent = remaining.slice(0, fenceBoundary);
-        const { closed, fence } = this.handleCodeFenceBoundary(
-          pageContent,
-          openCodeFence,
-        );
+        const { closed, fence } = this.handleCodeFenceBoundary(pageContent, openCodeFence);
         pages.push(closed);
         openCodeFence = fence;
 
@@ -91,10 +85,7 @@ export class DiscordMarkdownPaginator {
 
       // Priority 3: Hard split
       const pageContent = remaining.slice(0, this.maxLength);
-      const { closed, fence } = this.handleCodeFenceBoundary(
-        pageContent,
-        openCodeFence,
-      );
+      const { closed, fence } = this.handleCodeFenceBoundary(pageContent, openCodeFence);
       pages.push(closed);
       openCodeFence = fence;
 

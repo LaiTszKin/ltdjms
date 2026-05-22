@@ -1,6 +1,11 @@
 import { ChatOpenAI } from '@langchain/openai';
 import { container, TOKENS, type TokenMap } from '@ltdjms/shared';
-import type { EnvironmentConfig, CacheService, DomainEventPublisher, DiscordRuntimeGateway } from '@ltdjms/shared';
+import type {
+  EnvironmentConfig,
+  CacheService,
+  DomainEventPublisher,
+  DiscordRuntimeGateway,
+} from '@ltdjms/shared';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { type Pool } from 'pg';
 
@@ -172,10 +177,7 @@ export function initializeAIModule(): void {
   );
 
   // ===== Routing Decision =====
-  const routingDecision = new AIChatMentionRoutingDecision(
-    agentConfigService,
-    restrictionService,
-  );
+  const routingDecision = new AIChatMentionRoutingDecision(agentConfigService, restrictionService);
   container.registerInstance(AI_TOKENS.AIChatMentionRoutingDecision, routingDecision);
 
   // ===== Tools =====
@@ -195,22 +197,10 @@ export function initializeAIModule(): void {
     AI_TOKENS.CreateCategoryTool,
     new CreateCategoryTool(authGuard, permissionParser),
   );
-  container.registerInstance(
-    AI_TOKENS.CreateRoleTool,
-    new CreateRoleTool(authGuard),
-  );
-  container.registerInstance(
-    AI_TOKENS.ListChannelsTool,
-    new ListChannelsTool(authGuard),
-  );
-  container.registerInstance(
-    AI_TOKENS.ListCategoriesTool,
-    new ListCategoriesTool(authGuard),
-  );
-  container.registerInstance(
-    AI_TOKENS.ListRolesTool,
-    new ListRolesTool(authGuard),
-  );
+  container.registerInstance(AI_TOKENS.CreateRoleTool, new CreateRoleTool(authGuard));
+  container.registerInstance(AI_TOKENS.ListChannelsTool, new ListChannelsTool(authGuard));
+  container.registerInstance(AI_TOKENS.ListCategoriesTool, new ListCategoriesTool(authGuard));
+  container.registerInstance(AI_TOKENS.ListRolesTool, new ListRolesTool(authGuard));
   container.registerInstance(
     AI_TOKENS.GetChannelPermissionsTool,
     new GetChannelPermissionsTool(authGuard),
@@ -235,22 +225,10 @@ export function initializeAIModule(): void {
     AI_TOKENS.ModifyRolePermissionsTool,
     new ModifyRolePermissionsTool(authGuard),
   );
-  container.registerInstance(
-    AI_TOKENS.SendMessagesTool,
-    new SendMessagesTool(authGuard),
-  );
-  container.registerInstance(
-    AI_TOKENS.SearchMessagesTool,
-    new SearchMessagesTool(authGuard),
-  );
-  container.registerInstance(
-    AI_TOKENS.ManageMessageTool,
-    new ManageMessageTool(authGuard),
-  );
-  container.registerInstance(
-    AI_TOKENS.MoveChannelTool,
-    new MoveChannelTool(authGuard),
-  );
+  container.registerInstance(AI_TOKENS.SendMessagesTool, new SendMessagesTool(authGuard));
+  container.registerInstance(AI_TOKENS.SearchMessagesTool, new SearchMessagesTool(authGuard));
+  container.registerInstance(AI_TOKENS.ManageMessageTool, new ManageMessageTool(authGuard));
+  container.registerInstance(AI_TOKENS.MoveChannelTool, new MoveChannelTool(authGuard));
   container.registerInstance(
     AI_TOKENS.DeleteDiscordResourceTool,
     new DeleteDiscordResourceTool(authGuard),
@@ -276,9 +254,28 @@ export function initializeAIModule(): void {
     container.resolve(AI_TOKENS.MoveChannelTool),
     container.resolve(AI_TOKENS.DeleteDiscordResourceTool),
   ];
-  const toolMap = new Map<string, { name: string; description: string; schema: import('zod').ZodType<any>; execute: (params: Record<string, unknown>, guild: import('discord.js').Guild) => Promise<string> }>();
+  const toolMap = new Map<
+    string,
+    {
+      name: string;
+      description: string;
+      schema: import('zod').ZodType<any>;
+      execute: (
+        params: Record<string, unknown>,
+        guild: import('discord.js').Guild,
+      ) => Promise<string>;
+    }
+  >();
   for (const tool of allTools) {
-    const registeredTool = tool as { name: string; description: string; schema: import('zod').ZodType<any>; execute: (params: Record<string, unknown>, guild: import('discord.js').Guild) => Promise<string> };
+    const registeredTool = tool as {
+      name: string;
+      description: string;
+      schema: import('zod').ZodType<any>;
+      execute: (
+        params: Record<string, unknown>,
+        guild: import('discord.js').Guild,
+      ) => Promise<string>;
+    };
     toolMap.set(registeredTool.name, registeredTool);
   }
 
@@ -356,10 +353,7 @@ export function initializeAIModule(): void {
 
   // ===== Agent Config Cache Invalidation Listener =====
   // Subscribes to AIAgentChannelConfigChangedEvent and invalidates cache entries
-  new AgentConfigCacheInvalidationListener(
-    cacheService,
-    eventPublisher,
-  );
+  new AgentConfigCacheInvalidationListener(cacheService, eventPublisher);
 
   // ===== AIChatMentionListener =====
   const listener = new AIChatMentionListener(

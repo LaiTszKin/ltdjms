@@ -58,9 +58,7 @@ export class DiceConfigRepository {
    * Deletes dice game 1 configuration.
    */
   async deleteDice1Config(guildId: number): Promise<void> {
-    await this.db
-      .delete(diceGame1Config)
-      .where(eq(diceGame1Config.guildId, guildId));
+    await this.db.delete(diceGame1Config).where(eq(diceGame1Config.guildId, guildId));
   }
 
   // ============================================================
@@ -117,9 +115,7 @@ export class DiceConfigRepository {
    * Deletes dice game 2 configuration.
    */
   async deleteDice2Config(guildId: number): Promise<void> {
-    await this.db
-      .delete(diceGame2Config)
-      .where(eq(diceGame2Config.guildId, guildId));
+    await this.db.delete(diceGame2Config).where(eq(diceGame2Config.guildId, guildId));
   }
 
   /**

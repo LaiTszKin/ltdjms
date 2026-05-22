@@ -18,15 +18,10 @@ export class MoveChannelTool {
   readonly description = '移動頻道至指定分類';
   readonly schema = MoveChannelParamsSchema;
 
-  constructor(
-    private readonly authGuard: ToolCallerAuthorizationGuard,
-  ) {}
+  constructor(private readonly authGuard: ToolCallerAuthorizationGuard) {}
 
   async execute(params: MoveChannelParams, guild: Guild): Promise<string> {
-    const authError = await this.authGuard.validateAdministrator(
-      guild,
-      this.name,
-    );
+    const authError = await this.authGuard.validateAdministrator(guild, this.name);
     if (authError) return authError;
 
     try {
@@ -35,9 +30,7 @@ export class MoveChannelTool {
         return `找不到頻道 ${params.channelId}`;
       }
 
-      const targetCategory = guild.channels.cache.get(
-        params.targetCategoryId,
-      );
+      const targetCategory = guild.channels.cache.get(params.targetCategoryId);
       if (!targetCategory) {
         return `找不到目標分類 ${params.targetCategoryId}`;
       }

@@ -84,8 +84,8 @@ describe('EscortDispatchOrderNumberGenerator', () => {
 
 describe('generateUniqueOrderNumber', () => {
   it('should return a unique order number when no collision', async () => {
-    const generator = new EscortDispatchOrderNumberGenerator(
-      () => new Date('2026-05-21T12:00:00Z').getTime(),
+    const generator = new EscortDispatchOrderNumberGenerator(() =>
+      new Date('2026-05-21T12:00:00Z').getTime(),
     );
     // No collision: always returns false
     const existsFn = vi.fn().mockResolvedValue(false);
@@ -96,13 +96,11 @@ describe('generateUniqueOrderNumber', () => {
   });
 
   it('should retry on collision and succeed', async () => {
-    const generator = new EscortDispatchOrderNumberGenerator(
-      () => new Date('2026-05-21T12:00:00Z').getTime(),
+    const generator = new EscortDispatchOrderNumberGenerator(() =>
+      new Date('2026-05-21T12:00:00Z').getTime(),
     );
     // First call returns true (collision), second returns false (success)
-    const existsFn = vi.fn()
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(false);
+    const existsFn = vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(false);
 
     const number = await generateUniqueOrderNumber(generator, existsFn);
     expect(number).toMatch(/^ESC-20260521-[A-Z0-9]{6}$/);
@@ -110,36 +108,37 @@ describe('generateUniqueOrderNumber', () => {
   });
 
   it('should throw when max retries exhausted', async () => {
-    const generator = new EscortDispatchOrderNumberGenerator(
-      () => new Date('2026-05-21T12:00:00Z').getTime(),
+    const generator = new EscortDispatchOrderNumberGenerator(() =>
+      new Date('2026-05-21T12:00:00Z').getTime(),
     );
     // Always collides
     const existsFn = vi.fn().mockResolvedValue(true);
 
-    await expect(generateUniqueOrderNumber(generator, existsFn, 3))
-      .rejects.toThrow('Unable to generate unique order number after retries');
+    await expect(generateUniqueOrderNumber(generator, existsFn, 3)).rejects.toThrow(
+      'Unable to generate unique order number after retries',
+    );
     expect(existsFn).toHaveBeenCalledTimes(3);
   });
 
   it('should handle custom max retries', async () => {
-    const generator = new EscortDispatchOrderNumberGenerator(
-      () => new Date('2026-05-21T12:00:00Z').getTime(),
+    const generator = new EscortDispatchOrderNumberGenerator(() =>
+      new Date('2026-05-21T12:00:00Z').getTime(),
     );
     const existsFn = vi.fn().mockResolvedValue(true);
 
     // With 5 retries, should fail after 5 attempts
-    await expect(generateUniqueOrderNumber(generator, existsFn, 5))
-      .rejects.toThrow('Unable to generate unique order number');
+    await expect(generateUniqueOrderNumber(generator, existsFn, 5)).rejects.toThrow(
+      'Unable to generate unique order number',
+    );
     expect(existsFn).toHaveBeenCalledTimes(5);
   });
 
   it('should propagate exceptions from existsFn', async () => {
-    const generator = new EscortDispatchOrderNumberGenerator(
-      () => new Date('2026-05-21T12:00:00Z').getTime(),
+    const generator = new EscortDispatchOrderNumberGenerator(() =>
+      new Date('2026-05-21T12:00:00Z').getTime(),
     );
     const existsFn = vi.fn().mockRejectedValue(new Error('DB error'));
 
-    await expect(generateUniqueOrderNumber(generator, existsFn))
-      .rejects.toThrow('DB error');
+    await expect(generateUniqueOrderNumber(generator, existsFn)).rejects.toThrow('DB error');
   });
 });

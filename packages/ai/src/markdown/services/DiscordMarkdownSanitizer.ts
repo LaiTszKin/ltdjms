@@ -42,20 +42,14 @@ export class DiscordMarkdownSanitizer {
   }
 
   private protectCodeBlocks(text: string, store: string[]): string {
-    return text.replace(
-      /(```[\s\S]*?```|~~~[\s\S]*?~~~)/g,
-      (match) => {
-        store.push(match);
-        return `\x00CODEBLOCK${store.length - 1}\x00`;
-      },
-    );
+    return text.replace(/(```[\s\S]*?```|~~~[\s\S]*?~~~)/g, (match) => {
+      store.push(match);
+      return `\x00CODEBLOCK${store.length - 1}\x00`;
+    });
   }
 
   private restoreCodeBlocks(text: string, store: string[]): string {
-    return text.replace(
-      /\x00CODEBLOCK(\d+)\x00/g,
-      (_, index) => store[Number(index)] ?? '',
-    );
+    return text.replace(/\x00CODEBLOCK(\d+)\x00/g, (_, index) => store[Number(index)] ?? '');
   }
 
   /**
@@ -66,7 +60,8 @@ export class DiscordMarkdownSanitizer {
   private convertTablesToCodeBlocks(text: string): string {
     // Match table blocks: header row (contains |), separator row (|---| pattern), optional data rows (contain |)
     // Single regex pass instead of two-phase scanning
-    const TABLE_BLOCK = /^[^\n]*\|[^\n]*\n\s*\|?\s*[:\-]+(?:\s*\|\s*[:\-]+)+\s*\|?\s*(?:\n[^\n]*\|[^\n]*)*/gm;
+    const TABLE_BLOCK =
+      /^[^\n]*\|[^\n]*\n\s*\|?\s*[:\-]+(?:\s*\|\s*[:\-]+)+\s*\|?\s*(?:\n[^\n]*\|[^\n]*)*/gm;
 
     return text.replace(TABLE_BLOCK, (match) => {
       return '```text\n' + match + '\n```';

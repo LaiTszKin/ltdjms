@@ -98,9 +98,8 @@ export class UserPanelEmbedBuilder {
     color: number;
   } {
     const fields = redemptions.map((r) => {
-      const maskedCode = r.code.length > 8
-        ? `${r.code.slice(0, 4)}****${r.code.slice(-4)}`
-        : r.code;
+      const maskedCode =
+        r.code.length > 8 ? `${r.code.slice(0, 4)}****${r.code.slice(-4)}` : r.code;
       return {
         name: new Date(r.createdAt).toLocaleString('zh-TW'),
         value: `${r.productName}\n兌換碼：${maskedCode}`,

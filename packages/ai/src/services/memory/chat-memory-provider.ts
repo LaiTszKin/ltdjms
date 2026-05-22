@@ -19,9 +19,7 @@ export interface ChatMemoryProvider {
  * Matches Java DiscordThreadHistoryProvider.
  */
 export class DiscordThreadHistoryProvider {
-  constructor(
-    private readonly runtimeGateway: DiscordRuntimeGateway,
-  ) {}
+  constructor(private readonly runtimeGateway: DiscordRuntimeGateway) {}
 
   /**
    * Gets thread history for a specific user.
@@ -41,7 +39,9 @@ export class DiscordThreadHistoryProvider {
   ): Promise<Array<{ role: string; content: string }>> {
     try {
       const client = this.runtimeGateway.requireReadyClient() as Client;
-      const channel = client.channels.cache.get(threadId) ?? await client.channels.fetch(threadId).catch(() => null);
+      const channel =
+        client.channels.cache.get(threadId) ??
+        (await client.channels.fetch(threadId).catch(() => null));
       if (!channel || !channel.isTextBased()) {
         return [];
       }
@@ -91,9 +91,7 @@ export class SimplifiedChatMemoryProvider implements ChatMemoryProvider {
    * @param memoryId - The conversation ID
    * @returns Promise resolving to an array of chat messages
    */
-  async getMemory(
-    memoryId: string,
-  ): Promise<Array<{ role: string; content: string }>> {
+  async getMemory(memoryId: string): Promise<Array<{ role: string; content: string }>> {
     const strategy = ConversationIdBuilder.parseStrategy(memoryId);
 
     if (strategy === ConversationIdStrategy.THREAD_LEVEL) {
@@ -131,10 +129,7 @@ export class SimplifiedChatMemoryProvider implements ChatMemoryProvider {
       messages.push(...threadMessages.slice(-this.maxMessages));
 
       // Append tool call history as system messages
-      const toolEntries = this.toolCallHistory.getToolCallMessages(
-        threadId,
-        userId,
-      );
+      const toolEntries = this.toolCallHistory.getToolCallMessages(threadId, userId);
       for (const entry of toolEntries) {
         messages.push({
           role: 'system',
@@ -166,7 +161,9 @@ export class SimplifiedChatMemoryProvider implements ChatMemoryProvider {
 
     try {
       const client = this.runtimeGateway.requireReadyClient() as import('discord.js').Client;
-      const channel = client.channels.cache.get(channelId) ?? await client.channels.fetch(channelId).catch(() => null);
+      const channel =
+        client.channels.cache.get(channelId) ??
+        (await client.channels.fetch(channelId).catch(() => null));
       if (!channel || !channel.isTextBased()) {
         return [];
       }

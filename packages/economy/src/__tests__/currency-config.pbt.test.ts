@@ -34,25 +34,20 @@ describe('CurrencyConfig PBT', () => {
   // Querying the config after seeding returns the exact values that were seeded.
   it('should return the seeded currency config', async () => {
     await fc.assert(
-      fc.asyncProperty(
-        guildId(),
-        currencyName(),
-        currencyIcon(),
-        async (gId, name, icon) => {
-          await cleanTestTables(pool);
-          const db = drizzle(pool);
-          await seedGuild(db, { guildId: gId, currencyName: name, currencyIcon: icon });
+      fc.asyncProperty(guildId(), currencyName(), currencyIcon(), async (gId, name, icon) => {
+        await cleanTestTables(pool);
+        const db = drizzle(pool);
+        await seedGuild(db, { guildId: gId, currencyName: name, currencyIcon: icon });
 
-          const result = await configService.tryGetConfig(gId);
-          expect(isOk(result)).toBe(true);
-          if (isOk(result)) {
-            const config = result.getValue();
-            expect(config.guildId).toBe(gId);
-            expect(config.currencyName).toBe(name);
-            expect(config.currencyIcon).toBe(icon);
-          }
-        },
-      ),
+        const result = await configService.tryGetConfig(gId);
+        expect(isOk(result)).toBe(true);
+        if (isOk(result)) {
+          const config = result.getValue();
+          expect(config.guildId).toBe(gId);
+          expect(config.currencyName).toBe(name);
+          expect(config.currencyIcon).toBe(icon);
+        }
+      }),
       { numRuns: 50 },
     );
   });

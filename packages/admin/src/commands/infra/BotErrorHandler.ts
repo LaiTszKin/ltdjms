@@ -1,8 +1,4 @@
-import {
-  type DiscordInteraction,
-  DomainError,
-  DomainErrorCategory,
-} from '@ltdjms/shared';
+import { type DiscordInteraction, DomainError, DomainErrorCategory } from '@ltdjms/shared';
 import { EmbedBuilder } from 'discord.js';
 import { ZhTwStrings } from '../../i18n/zh-TW.js';
 
@@ -28,10 +24,7 @@ export class BotErrorHandler {
    * @param error - The error to handle
    * @param interaction - The Discord interaction to reply to
    */
-  async handle(
-    error: unknown,
-    interaction: DiscordInteraction,
-  ): Promise<void> {
+  async handle(error: unknown, interaction: DiscordInteraction): Promise<void> {
     const message = this.toUserMessage(error);
 
     try {
@@ -39,7 +32,7 @@ export class BotErrorHandler {
         const errorEmbed = new EmbedBuilder()
           .setTitle('錯誤')
           .setDescription(message)
-          .setColor(0xED4245);
+          .setColor(0xed4245);
         await interaction.editEmbed(errorEmbed);
       } else {
         await interaction.reply(message);
@@ -70,7 +63,7 @@ export class BotErrorHandler {
     // Log unexpected errors
     console.error(
       '[BotErrorHandler] Unexpected error:',
-      error instanceof Error ? error.stack ?? error.message : String(error),
+      error instanceof Error ? (error.stack ?? error.message) : String(error),
     );
 
     return ZhTwStrings.unexpectedError;

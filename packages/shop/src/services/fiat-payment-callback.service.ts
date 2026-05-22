@@ -39,10 +39,7 @@ export class FiatPaymentCallbackService {
     this.log = logger ?? pino({ level: 'warn' });
   }
 
-  async handleCallback(
-    requestBody: unknown,
-    contentType: string | null,
-  ): Promise<CallbackResult> {
+  async handleCallback(requestBody: unknown, contentType: string | null): Promise<CallbackResult> {
     if (!requestBody) {
       return CallbackResult.fail(400);
     }
@@ -51,9 +48,10 @@ export class FiatPaymentCallbackService {
       // Normalize to a parsed object: if requestBody is already an object
       // (parsed by express body parser), use it directly to avoid the unnecessary
       // JSON.stringify → JSON.parse round-trip (P1-16).
-      const bodyObj: Record<string, unknown> = typeof requestBody === 'object' && requestBody !== null
-        ? (requestBody as Record<string, unknown>)
-        : this.parseBodyString(String(requestBody), contentType);
+      const bodyObj: Record<string, unknown> =
+        typeof requestBody === 'object' && requestBody !== null
+          ? (requestBody as Record<string, unknown>)
+          : this.parseBodyString(String(requestBody), contentType);
 
       // Validate CheckMacValue before processing — prevents payload tampering
       if (!this.validateCheckMacValue(bodyObj)) {
@@ -72,9 +70,10 @@ export class FiatPaymentCallbackService {
 
       const tradeStatus = this.extractTradeStatus(callbackNode);
       const paymentMessage = this.extractPaymentMessage(callbackNode);
-      const truncatedPaymentMessage = paymentMessage !== null && paymentMessage.length > 512
-        ? paymentMessage.substring(0, 512)
-        : paymentMessage;
+      const truncatedPaymentMessage =
+        paymentMessage !== null && paymentMessage.length > 512
+          ? paymentMessage.substring(0, 512)
+          : paymentMessage;
       const paid = this.isPaidStatus(tradeStatus);
 
       return await this.processWithOrderAsync(
@@ -130,7 +129,10 @@ export class FiatPaymentCallbackService {
         paymentMessage,
         callbackPayload,
       );
-      this.log.warn({ orderNumber }, 'ECPay callback rejected paid transition due to validation failure');
+      this.log.warn(
+        { orderNumber },
+        'ECPay callback rejected paid transition due to validation failure',
+      );
       return CallbackResult.ok();
     }
 
@@ -189,7 +191,10 @@ export class FiatPaymentCallbackService {
     return JSON.parse(body);
   }
 
-  private parseCallbackNode(bodyObj: Record<string, unknown>, contentType: string | null): { node: EcpayCallbackPayload; rawDecrypted: string } {
+  private parseCallbackNode(
+    bodyObj: Record<string, unknown>,
+    contentType: string | null,
+  ): { node: EcpayCallbackPayload; rawDecrypted: string } {
     let encryptedData: string | null = null;
     if (bodyObj && bodyObj.Data !== null && bodyObj.Data !== undefined) {
       encryptedData = String(bodyObj.Data);
@@ -201,11 +206,16 @@ export class FiatPaymentCallbackService {
     return this.parseDecryptedData(encryptedData);
   }
 
-  private parseDecryptedData(encryptedData: string): { node: EcpayCallbackPayload; rawDecrypted: string } {
+  private parseDecryptedData(encryptedData: string): {
+    node: EcpayCallbackPayload;
+    rawDecrypted: string;
+  } {
     const hashKey = this.config.getEcpayHashKey();
     const hashIv = this.config.getEcpayHashIv();
     if (!hashKey || hashKey.trim().length === 0 || !hashIv || hashIv.trim().length === 0) {
-      throw new InvalidCallbackPayloadException('ECPAY_HASH_KEY / ECPAY_HASH_IV are required for callback');
+      throw new InvalidCallbackPayloadException(
+        'ECPAY_HASH_KEY / ECPAY_HASH_IV are required for callback',
+      );
     }
     try {
       const decryptedJson = decryptAES(encryptedData, hashKey, hashIv);
@@ -286,7 +296,9 @@ export class FiatPaymentCallbackService {
     const hashKey = this.config.getEcpayHashKey();
     const hashIv = this.config.getEcpayHashIv();
     if (!hashKey || !hashIv) {
-      this.log.warn('ECPAY_HASH_KEY / ECPAY_HASH_IV not configured — skipping CheckMacValue validation');
+      this.log.warn(
+        'ECPAY_HASH_KEY / ECPAY_HASH_IV not configured — skipping CheckMacValue validation',
+      );
       return true;
     }
 
@@ -309,17 +321,18 @@ export class FiatPaymentCallbackService {
     const actualHash = String(providedCheckMacValue).trim();
 
     if (expectedHash !== actualHash) {
-      this.log.warn(
-        { expectedHash, actualHash },
-        'ECPay callback CheckMacValue mismatch',
-      );
+      this.log.warn({ expectedHash, actualHash }, 'ECPay callback CheckMacValue mismatch');
       return false;
     }
 
     return true;
   }
 
-  private isValidPaidCallback(callbackNode: EcpayCallbackPayload, order: FiatOrder, orderNumber: string): boolean {
+  private isValidPaidCallback(
+    callbackNode: EcpayCallbackPayload,
+    order: FiatOrder,
+    orderNumber: string,
+  ): boolean {
     const expectedMerchantId = this.textOrNull(this.config.getEcpayMerchantId());
     if (expectedMerchantId) {
       const callbackMerchantId = this.extractMerchantId(callbackNode);

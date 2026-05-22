@@ -1,13 +1,5 @@
-import {
-  type DiscordInteraction,
-  type DiscordContext,
-} from '@ltdjms/shared';
-import {
-  EmbedBuilder,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-} from 'discord.js';
+import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { type InteractionHandler } from '../../../commands/infra/CommandHandler.js';
 import { MemberInfoFacade } from '../../../facades/MemberInfoFacade.js';
 import { PanelSessionManager } from '../../../session/PanelSessionManager.js';
@@ -30,10 +22,7 @@ export class TransactionHistoryHandler implements InteractionHandler {
     private readonly sessionManager: PanelSessionManager,
   ) {}
 
-  async execute(
-    interaction: DiscordInteraction,
-    context: DiscordContext,
-  ): Promise<void> {
+  async execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void> {
     const guildId = interaction.getGuildId();
     const userId = interaction.getUserId();
 
@@ -58,10 +47,7 @@ export class TransactionHistoryHandler implements InteractionHandler {
     }
   }
 
-  private parseNavCustomId(
-    fullCustomId: string,
-    prefix: string,
-  ): { page: number } {
+  private parseNavCustomId(fullCustomId: string, prefix: string): { page: number } {
     if (fullCustomId === prefix || fullCustomId === `${prefix}_history`) {
       return { page: 1 };
     }
@@ -227,9 +213,8 @@ export class TransactionHistoryHandler implements InteractionHandler {
         description = ZhTwStrings.historyEmpty;
       } else {
         const lines = history.items.map((item) => {
-          const maskedCode = item.code.length > 8
-            ? `${item.code.slice(0, 4)}****${item.code.slice(-4)}`
-            : item.code;
+          const maskedCode =
+            item.code.length > 8 ? `${item.code.slice(0, 4)}****${item.code.slice(-4)}` : item.code;
           const time = new Date(item.createdAt).toLocaleString('zh-TW');
           return `${time}\n${item.productName} - ${maskedCode}`;
         });

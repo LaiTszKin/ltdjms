@@ -12,10 +12,7 @@ export class ToolExecutionContext {
   /**
    * Runs a function within a tool execution context.
    */
-  static run<T>(
-    context: IToolExecutionContext,
-    fn: () => T | Promise<T>,
-  ): T | Promise<T> {
+  static run<T>(context: IToolExecutionContext, fn: () => T | Promise<T>): T | Promise<T> {
     return this.storage.run(context, fn);
   }
 

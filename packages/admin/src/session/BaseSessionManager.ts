@@ -36,9 +36,7 @@ export abstract class BaseSessionManager<T extends BaseSessionData> {
   protected readonly sessions = new Map<string, T>();
   private cleanupIntervalId: ReturnType<typeof setInterval> | null = null;
 
-  constructor(
-    protected readonly cacheService?: CacheService,
-  ) {}
+  constructor(protected readonly cacheService?: CacheService) {}
 
   /**
    * Returns the session key prefix (e.g. 'admin_panel:' or 'user_panel:').

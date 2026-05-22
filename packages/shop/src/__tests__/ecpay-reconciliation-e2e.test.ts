@@ -6,7 +6,11 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { DrizzleFiatOrderRepository } from '../persistence/drizzle-fiat-order-repository.js';
 import { EcpayTradeQueryService } from '../services/ecpay-trade-query.service.js';
 import { FiatPaymentReconciliationService } from '../services/fiat-payment-reconciliation.service.js';
-import { seedGuild, seedProduct, seedFiatOrder } from '../../../shared/src/__tests__/seed-factory.js';
+import {
+  seedGuild,
+  seedProduct,
+  seedFiatOrder,
+} from '../../../shared/src/__tests__/seed-factory.js';
 import type { EnvironmentConfig } from '@ltdjms/shared';
 
 const itE2E = process.env.RUN_ECPAY_E2E === 'true' ? it : it.skip;

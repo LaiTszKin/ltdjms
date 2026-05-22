@@ -27,9 +27,7 @@ export class DiscordJsEmbedBuilder implements DiscordEmbedBuilder {
 
   setTitle(title: string): DiscordEmbedBuilder {
     this.embed.setTitle(
-      title.length > this.MAX_TITLE_LENGTH
-        ? this.truncate(title, this.MAX_TITLE_LENGTH)
-        : title,
+      title.length > this.MAX_TITLE_LENGTH ? this.truncate(title, this.MAX_TITLE_LENGTH) : title,
     );
     return this;
   }
@@ -71,9 +69,7 @@ export class DiscordJsEmbedBuilder implements DiscordEmbedBuilder {
   setFooter(text: string): DiscordEmbedBuilder {
     this.embed.setFooter({
       text:
-        text.length > this.MAX_FOOTER_LENGTH
-          ? this.truncate(text, this.MAX_FOOTER_LENGTH)
-          : text,
+        text.length > this.MAX_FOOTER_LENGTH ? this.truncate(text, this.MAX_FOOTER_LENGTH) : text,
     });
     return this;
   }

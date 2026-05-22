@@ -9,10 +9,7 @@ import { RedemptionCodeHandler } from './RedemptionCodeHandler.js';
 export class RedeemCodeCommandHandler implements CommandHandler {
   readonly commandName = 'redeem-code';
 
-  async execute(
-    interaction: DiscordInteraction,
-    _context: DiscordContext,
-  ): Promise<void> {
+  async execute(interaction: DiscordInteraction, _context: DiscordContext): Promise<void> {
     await interaction.showModal(RedemptionCodeHandler.buildRedeemModal());
   }
 }

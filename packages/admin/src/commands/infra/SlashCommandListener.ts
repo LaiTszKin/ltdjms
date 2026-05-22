@@ -5,9 +5,7 @@ import {
   DiscordJsInteraction,
   DiscordJsContext,
 } from '@ltdjms/shared';
-import {
-  type Client,
-} from 'discord.js';
+import { type Client } from 'discord.js';
 import { type CommandHandler, type InteractionHandler } from './CommandHandler.js';
 import { SlashCommandMetrics } from './SlashCommandMetrics.js';
 import { BotErrorHandler } from './BotErrorHandler.js';
@@ -91,9 +89,7 @@ export class SlashCommandListener {
     });
   }
 
-  private async handleRawInteraction(
-    rawInteraction: unknown,
-  ): Promise<void> {
+  private async handleRawInteraction(rawInteraction: unknown): Promise<void> {
     // Determine interaction type and extract name/customId
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const interaction = rawInteraction as any;
@@ -107,9 +103,7 @@ export class SlashCommandListener {
     } else if (typeof interaction.isButton === 'function' && interaction.isButton()) {
       type = 'button';
       commandNameOrCustomId = String(interaction.customId ?? '');
-    } else if (
-      typeof interaction.isAnySelectMenu === 'function' && interaction.isAnySelectMenu()
-    ) {
+    } else if (typeof interaction.isAnySelectMenu === 'function' && interaction.isAnySelectMenu()) {
       type = 'stringSelect';
       commandNameOrCustomId = String(interaction.customId ?? '');
     } else if (typeof interaction.isModalSubmit === 'function' && interaction.isModalSubmit()) {
@@ -160,20 +154,12 @@ export class SlashCommandListener {
 
       switch (type) {
         case 'chatInput':
-          success = await this.dispatchCommand(
-            commandNameOrCustomId,
-            interaction,
-            context,
-          );
+          success = await this.dispatchCommand(commandNameOrCustomId, interaction, context);
           break;
         case 'button':
         case 'stringSelect':
         case 'modalSubmit':
-          success = await this.dispatchInteraction(
-            commandNameOrCustomId,
-            interaction,
-            context,
-          );
+          success = await this.dispatchInteraction(commandNameOrCustomId, interaction, context);
           break;
       }
 

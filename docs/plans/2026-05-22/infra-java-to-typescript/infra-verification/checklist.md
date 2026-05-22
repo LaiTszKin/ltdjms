@@ -18,21 +18,21 @@
 
 ## Behavior-to-Test Checklist
 
-- [ ] CL-01: CacheService 合約 — R1.1 → T1.1 — Result: `NOT RUN`
-- [ ] CL-02: RedisCacheService CRUD + graceful degradation — R1.2, R1.3 → T1.2 — Result: `NOT RUN`
-- [ ] CL-03: CacheKeyGenerator 鍵格式與 Java 一致 — R1.1 → T1.3 — Result: `NOT RUN`
-- [ ] CL-04: EnvironmentConfig 優先級順序 — R2.1, R2.2 → T2.1 — Result: `NOT RUN`
-- [ ] CL-05: 必要設定缺失時拋出 — R2.3, R2.4 → T2.1 — Result: `NOT RUN`
-- [ ] CL-06: EnvLoader 正確解析 .env — R2.x → T2.2 — Result: `NOT RUN`
-- [ ] CL-07: 連線池重試邏輯 — R3.1 → T3.1 — Result: `NOT RUN`
-- [ ] CL-08: Migration runner baseline + incremental — R3.2 → T3.2 — Result: `NOT RUN`
-- [ ] CL-09: Migration 失敗錯誤處理 — R3.3 → T3.2 — Result: `NOT RUN`
-- [ ] CL-10: EventPublisher 同步分發 + 隔離 — R4.1, R4.2 → T4.1 — Result: `NOT RUN`
-- [ ] CL-11: 所有事件類型 eventType 值與 Java 一致 — R4.3 → T4.2 — Result: `NOT RUN`
-- [ ] CL-12: Result map/flatMap/mapError 行為 — R5.1-R5.4 → T5.1 — Result: `NOT RUN`
-- [ ] CL-13: DomainError category + factory — R5.5 → T5.2 — Result: `NOT RUN`
-- [ ] CL-14: Snowflake ID 正確性 — 工具層 → T6.1 — Result: `NOT RUN`
-- [ ] CL-15: 全基建 smoke test — 跨組件 → T7.1 — Result: `NOT RUN`
+- [x] CL-01: CacheService 合約 — R1.1 → T1.1 — Result: `PASS`
+- [x] CL-02: RedisCacheService CRUD + graceful degradation — R1.2, R1.3 → T1.2 — Result: `PASS`
+- [x] CL-03: CacheKeyGenerator 鍵格式與 Java 一致 — R1.1 → T1.3 — Result: `PASS`
+- [x] CL-04: EnvironmentConfig 優先級順序 — R2.1, R2.2 → T2.1 — Result: `PASS`
+- [x] CL-05: 必要設定缺失時拋出 — R2.3, R2.4 → T2.1 — Result: `PASS`
+- [x] CL-06: EnvLoader 正確解析 .env — R2.x → T2.2 — Result: `PASS`
+- [x] CL-07: 連線池重試邏輯 — R3.1 → T3.1 — Result: `PASS`
+- [x] CL-08: Migration runner baseline + incremental — R3.2 → T3.2 — Result: `PASS`
+- [x] CL-09: Migration 失敗錯誤處理 — R3.3 → T3.2 — Result: `PASS`
+- [x] CL-10: EventPublisher 同步分發 + 隔離 — R4.1, R4.2 → T4.1 — Result: `PASS`
+- [x] CL-11: 所有事件類型 eventType 值與 Java 一致 — R4.3 → T4.2 — Result: `PASS`
+- [x] CL-12: Result map/flatMap/mapError 行為 — R5.1-R5.4 → T5.1 — Result: `PASS`
+- [x] CL-13: DomainError category + factory — R5.5 → T5.2 — Result: `PASS`
+- [x] CL-14: Snowflake ID 正確性 — 工具層 → T6.1 — Result: `PASS`
+- [x] CL-15: 全基建 smoke test — 跨組件 → T7.1 — Result: `PASS`
 
 ## Hardening Checklist
 
@@ -53,20 +53,20 @@
 
 ## Execution Summary
 
-- [ ] Unit: `NOT RUN`
+- [x] Unit: `PASS`
 - [ ] Regression: `N/A`
 - [ ] Property-based: `N/A`
-- [ ] Integration: `NOT RUN`
+- [x] Integration: `PASS`
 - [ ] E2E: `N/A`
-- [ ] Mock scenarios: `NOT RUN`
-- [ ] Adversarial: `NOT RUN`
+- [x] Mock scenarios: `PASS`
+- [x] Adversarial: `PASS`
 
 ## Completion Records
 
-- [ ] Cache layer verification: pending — Remaining: T1.1-T1.3
-- [ ] Config layer verification: pending — Remaining: T2.1-T2.2
-- [ ] Database layer verification: pending — Remaining: T3.1-T3.2
-- [ ] Event layer verification: pending — Remaining: T4.1-T4.2
-- [ ] Type layer verification: pending — Remaining: T5.1-T5.2
-- [ ] Utility layer verification: pending — Remaining: T6.1-T6.2
-- [ ] Smoke test: pending — Remaining: T7.1
+- [x] Cache layer verification: done — T1.1, T1.2, T1.3
+- [x] Config layer verification: done — T2.1, T2.2
+- [x] Database layer verification: done — T3.1, T3.2
+- [x] Event layer verification: done — T4.1, T4.2
+- [x] Type layer verification: done — T5.1, T5.2
+- [x] Utility layer verification: done — T6.1, T6.2
+- [x] Smoke test: done — T7.1

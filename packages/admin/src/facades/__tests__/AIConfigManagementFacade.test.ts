@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { Ok, Err, DomainError, DomainErrorCategory, type DomainEventPublisher } from '@ltdjms/shared';
+import {
+  Ok,
+  Err,
+  DomainError,
+  DomainErrorCategory,
+  type DomainEventPublisher,
+} from '@ltdjms/shared';
 import { AIConfigManagementFacade } from '../AIConfigManagementFacade.js';
 import type {
   AIChannelRestrictionService,

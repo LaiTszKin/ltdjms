@@ -2,7 +2,10 @@ import type { Result, Unit } from '@ltdjms/shared';
 import { Ok, Err, DomainError, okVoid } from '@ltdjms/shared';
 
 import type { EscortOptionPriceRepo } from '../repo/escort-option-price.repo.js';
-import type { EscortOptionCatalogRepository, EscortOptionCatalogEntry } from '../repo/escort-option-catalog.repo.js';
+import type {
+  EscortOptionCatalogRepository,
+  EscortOptionCatalogEntry,
+} from '../repo/escort-option-catalog.repo.js';
 import type { EscortOrderOption, OptionPriceView } from '../domain/option-price-view.js';
 
 /**
@@ -97,9 +100,7 @@ export class EscortOptionPricingService {
 
     const cat = await this.catalogRepository.findByCode(normalizedCode);
     if (cat == null) {
-      const allCodes = (await this.catalogRepository.findAll())
-        .map((c) => c.code)
-        .join(', ');
+      const allCodes = (await this.catalogRepository.findAll()).map((c) => c.code).join(', ');
       return new Err(DomainError.invalidInput(`護航選項代碼無效，可用代碼：${allCodes}`));
     }
 
@@ -129,10 +130,7 @@ export class EscortOptionPricingService {
     }
   }
 
-  async resetOptionPrice(
-    guildId: number,
-    optionCode: string,
-  ): Promise<Result<Unit, DomainError>> {
+  async resetOptionPrice(guildId: number, optionCode: string): Promise<Result<Unit, DomainError>> {
     if (!optionCode || optionCode.trim().length === 0) {
       return new Err(DomainError.invalidInput('護航選項代碼不能為空'));
     }
@@ -140,9 +138,7 @@ export class EscortOptionPricingService {
 
     const exists = await this.catalogRepository.existsByCode(normalizedCode);
     if (!exists) {
-      const allCodes = (await this.catalogRepository.findAll())
-        .map((c) => c.code)
-        .join(', ');
+      const allCodes = (await this.catalogRepository.findAll()).map((c) => c.code).join(', ');
       return new Err(DomainError.invalidInput(`護航選項代碼無效，可用代碼：${allCodes}`));
     }
 

@@ -76,7 +76,10 @@ export class CurrencyManagementFacade {
       return err(DomainError.invalidInput('設定金額必須為非負整數'));
     }
 
-    const currentResult = await this.balanceService.getBalance(safeSnowflakeToNumber(guildId), userId);
+    const currentResult = await this.balanceService.getBalance(
+      safeSnowflakeToNumber(guildId),
+      userId,
+    );
     if (currentResult.isErr()) {
       return err(currentResult.getError());
     }

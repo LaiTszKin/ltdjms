@@ -9,7 +9,11 @@ export type EscortOrderBuyerNotifier = {
  * Service interface for notifying admins of new orders.
  */
 export type AdminOrderNotifier = {
-  notifyAdminsOrderCreated(guildId: number, buyerUserId: number, dispatchOrder: DispatchOrderSnapshot): void;
+  notifyAdminsOrderCreated(
+    guildId: number,
+    buyerUserId: number,
+    dispatchOrder: DispatchOrderSnapshot,
+  ): void;
 };
 
 /** Reward grant request shape. */
@@ -23,5 +27,7 @@ export interface GrantRewardRequest {
 
 /** Service interface for granting product rewards. */
 export interface ProductRewardGranter {
-  grantReward(request: GrantRewardRequest): Promise<{ isErr: () => boolean; getError: () => { message: string } }>;
+  grantReward(
+    request: GrantRewardRequest,
+  ): Promise<{ isErr: () => boolean; getError: () => { message: string } }>;
 }

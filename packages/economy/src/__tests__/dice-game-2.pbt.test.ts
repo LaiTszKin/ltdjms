@@ -123,15 +123,13 @@ describe('DiceGame2 PBT', () => {
             let expectedTripleReward = 0;
             for (const seg of analysis.tripleSegments) {
               const tripleSum = seg[0] * 3;
-              expectedTripleReward += tripleSum < 10 ? config.tripleLowBonus : config.tripleHighBonus;
+              expectedTripleReward +=
+                tripleSum < 10 ? config.tripleLowBonus : config.tripleHighBonus;
             }
             expect(analysis.tripleReward).toBe(expectedTripleReward);
 
             // Non-straight reward: (sum of all dice - straight-sum - triple-sum) * baseMultiplier
-            const tripleDiceSum = analysis.tripleSegments.reduce(
-              (sum, seg) => sum + seg[0] * 3,
-              0,
-            );
+            const tripleDiceSum = analysis.tripleSegments.reduce((sum, seg) => sum + seg[0] * 3, 0);
             const totalDiceSum = diceRolls.reduce((s, d) => s + d, 0);
             const expectedNonStraightSum = totalDiceSum - straightDiceSum - tripleDiceSum;
             expect(analysis.nonStraightReward).toBe(expectedNonStraightSum * config.baseMultiplier);
@@ -258,7 +256,12 @@ describe('DiceGame2 PBT', () => {
               updatedAt: new Date(),
             };
 
-            const result = await diGameService.play(gId, String(uId), maxTokens + extraTokens, config);
+            const result = await diGameService.play(
+              gId,
+              String(uId),
+              maxTokens + extraTokens,
+              config,
+            );
             expect(result.isErr()).toBe(true);
           },
         ),

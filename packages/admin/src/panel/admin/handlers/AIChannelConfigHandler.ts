@@ -1,7 +1,4 @@
-import {
-  type DiscordInteraction,
-  type DiscordContext,
-} from '@ltdjms/shared';
+import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
 import {
   EmbedBuilder,
   ActionRowBuilder,
@@ -33,10 +30,7 @@ export class AIChannelConfigHandler extends BaseAdminHandler {
     super(sessionManager, errorHandler);
   }
 
-  async execute(
-    interaction: DiscordInteraction,
-    context: DiscordContext,
-  ): Promise<void> {
+  async execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void> {
     const guildId = interaction.getGuildId();
     const userId = interaction.getUserId();
 
@@ -103,9 +97,10 @@ export class AIChannelConfigHandler extends BaseAdminHandler {
     _guildId: string,
     action: 'add' | 'remove',
   ): Promise<void> {
-    const customId = action === 'add'
-      ? 'admin_aichannel_add_channel_select'
-      : 'admin_aichannel_remove_channel_select';
+    const customId =
+      action === 'add'
+        ? 'admin_aichannel_add_channel_select'
+        : 'admin_aichannel_remove_channel_select';
 
     const embed = new EmbedBuilder()
       .setTitle(ZhTwStrings.aiChannelTitle)
@@ -126,9 +121,10 @@ export class AIChannelConfigHandler extends BaseAdminHandler {
     _guildId: string,
     action: 'add' | 'remove',
   ): Promise<void> {
-    const customId = action === 'add'
-      ? 'admin_aichannel_add_category_confirm'
-      : 'admin_aichannel_remove_category_confirm';
+    const customId =
+      action === 'add'
+        ? 'admin_aichannel_add_category_confirm'
+        : 'admin_aichannel_remove_category_confirm';
 
     const embed = new EmbedBuilder()
       .setTitle(ZhTwStrings.aiChannelTitle)
@@ -144,10 +140,7 @@ export class AIChannelConfigHandler extends BaseAdminHandler {
     await interaction.editWithComponents(embed, [row]);
   }
 
-  private async handleAddChannel(
-    interaction: DiscordInteraction,
-    guildId: string,
-  ): Promise<void> {
+  private async handleAddChannel(interaction: DiscordInteraction, guildId: string): Promise<void> {
     const selectedValues = interaction.getSelectedValues();
     if (!selectedValues || selectedValues.length === 0) {
       await this.showChannelConfig(interaction, guildId);
@@ -242,28 +235,36 @@ export class AIChannelConfigHandler extends BaseAdminHandler {
     }
   }
 
-  private async showChannelConfig(
-    interaction: DiscordInteraction,
-    guildId: string,
-  ): Promise<void> {
+  private async showChannelConfig(interaction: DiscordInteraction, guildId: string): Promise<void> {
     const [channelsResult, categoriesResult] = await Promise.all([
       this.facade.getAllowedChannels(guildId),
       this.facade.getAllowedCategories(guildId),
     ]);
 
-    const channelList = channelsResult.isOk() && channelsResult.getValue().length > 0
-      ? channelsResult.getValue().map((c) => `<#${c.channelId}>`).join('\n')
-      : '無';
-    const categoryList = categoriesResult.isOk() && categoriesResult.getValue().length > 0
-      ? categoriesResult.getValue().map((c) => `<#${c.categoryId}>`).join('\n')
-      : '無';
+    const channelList =
+      channelsResult.isOk() && channelsResult.getValue().length > 0
+        ? channelsResult
+            .getValue()
+            .map((c) => `<#${c.channelId}>`)
+            .join('\n')
+        : '無';
+    const categoryList =
+      categoriesResult.isOk() && categoriesResult.getValue().length > 0
+        ? categoriesResult
+            .getValue()
+            .map((c) => `<#${c.categoryId}>`)
+            .join('\n')
+        : '無';
 
-    const description = (channelsResult.isOk() && channelsResult.getValue().length === 0 &&
-      categoriesResult.isOk() && categoriesResult.getValue().length === 0)
-      ? ZhTwStrings.aiChannelEmpty
-      : ZhTwStrings.aiChannelList
-          .replace('{channels}', channelList)
-          .replace('{categories}', categoryList);
+    const description =
+      channelsResult.isOk() &&
+      channelsResult.getValue().length === 0 &&
+      categoriesResult.isOk() &&
+      categoriesResult.getValue().length === 0
+        ? ZhTwStrings.aiChannelEmpty
+        : ZhTwStrings.aiChannelList
+            .replace('{channels}', channelList)
+            .replace('{categories}', categoryList);
 
     const embed = new EmbedBuilder()
       .setTitle(ZhTwStrings.aiChannelTitle)
@@ -291,7 +292,10 @@ export class AIChannelConfigHandler extends BaseAdminHandler {
       .setStyle(ButtonStyle.Danger);
 
     const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(addChannelBtn, addCategoryBtn);
-    const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(removeChannelBtn, removeCategoryBtn);
+    const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      removeChannelBtn,
+      removeCategoryBtn,
+    );
 
     await interaction.editWithComponents(embed, [row1, row2]);
   }

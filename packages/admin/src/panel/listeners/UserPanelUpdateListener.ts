@@ -89,10 +89,7 @@ export class UserPanelUpdateListener {
 
       try {
         // Refresh data
-        const result = await this.memberInfoFacade.getUserPanelView(
-          guildId,
-          session.userId,
-        );
+        const result = await this.memberInfoFacade.getUserPanelView(guildId, session.userId);
 
         if (result.isErr()) {
           console.error(
@@ -136,9 +133,9 @@ export class UserPanelUpdateListener {
 
         console.log(
           `[UserPanelUpdateListener] Updated panel for ` +
-          `guildId=${guildId}, userId=${session.userId}: ` +
-          `balance=${view.balance}${view.currencyIcon}, tokens=${view.tokens}` +
-          (session.channelId ? `, channelId=${session.channelId}` : ''),
+            `guildId=${guildId}, userId=${session.userId}: ` +
+            `balance=${view.balance}${view.currencyIcon}, tokens=${view.tokens}` +
+            (session.channelId ? `, channelId=${session.channelId}` : ''),
         );
       } catch (err) {
         console.error(
@@ -182,8 +179,7 @@ export class UserPanelUpdateListener {
         if (v < cutoff) this.lastUpdateTimestamps.delete(k);
       }
       if (this.lastUpdateTimestamps.size >= UserPanelUpdateListener.MAX_THROTTLE_ENTRIES) {
-        const sorted = [...this.lastUpdateTimestamps.entries()]
-          .sort((a, b) => a[1] - b[1]);
+        const sorted = [...this.lastUpdateTimestamps.entries()].sort((a, b) => a[1] - b[1]);
         const evictCount = sorted.length - UserPanelUpdateListener.MAX_THROTTLE_ENTRIES;
         for (let i = 0; i < evictCount; i++) {
           this.lastUpdateTimestamps.delete(sorted[i][0]);

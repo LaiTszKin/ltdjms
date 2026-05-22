@@ -42,7 +42,12 @@ const handlers: HandlerCheck[] = [
   },
   {
     file: 'product/AdminProductPanelHandler.ts',
-    modalPrefixes: ['admin_product_codes_', 'admin_product_create', 'admin_product_fiat_', 'admin_product_edit_'],
+    modalPrefixes: [
+      'admin_product_codes_',
+      'admin_product_create',
+      'admin_product_fiat_',
+      'admin_product_edit_',
+    ],
     hasModalPaths: true,
   },
 ];

@@ -18,12 +18,12 @@
 
 ## Behavior-to-Test Checklist
 
-- [ ] CL-01: 所有 12 個指令名稱 zh-TW 翻譯與 Java 一致 — R1.1 → T1.1 — Result: `NOT RUN`
-- [ ] CL-02: 所有 12 個指令描述 zh-TW 翻譯與 Java 一致 — R1.2 → T1.1 — Result: `NOT RUN`
-- [ ] CL-03: 所有 7 個選項名稱 zh-TW 翻譯與 Java 一致 — R1.3 → T1.1 — Result: `NOT RUN`
-- [ ] CL-04: 所有 3 個 choice 值 zh-TW 翻譯與 Java 一致 — R1.5 → T1.1 — Result: `NOT RUN`
-- [ ] CL-05: 骰子遊戲訊息與 Java `DiceGameMessages` 一致 — R2.1 → T2.1 — Result: `NOT RUN`
-- [ ] CL-06: 既有功能在遷移 import 後不受影響 — R3.x → T3.1-T3.4 — Result: `NOT RUN`
+- [x] CL-01: 所有指令名稱 zh-TW 翻譯與 Java 一致 — R1.1 → T1.1 — Result: `PASS`
+- [x] CL-02: 所有指令描述 zh-TW 翻譯與 Java 一致 — R1.2 → T1.1 — Result: `PASS`
+- [x] CL-03: 所有選項名稱 zh-TW 翻譯與 Java 一致 — R1.3 → T1.1 — Result: `PASS`
+- [x] CL-04: 所有 choice 值 zh-TW 翻譯與 Java 一致 — R1.5 → T1.1 — Result: `PASS`
+- [x] CL-05: 骰子遊戲訊息與 Java `DiceGameMessages` 一致 — R2.1 → T2.1 — Result: `PASS`
+- [x] CL-06: 既有功能在遷移 import 後不受影響 — R3.x → T3.1-T3.4 — Result: `PASS`
 
 ## Hardening Checklist
 
@@ -42,14 +42,14 @@
 
 ## Execution Summary
 
-- [ ] Unit: `NOT RUN`
-- [ ] Regression: `NOT RUN`
+- [x] Unit: `PASS`
+- [x] Regression: `PASS`
 - [ ] Property-based: `N/A`
-- [ ] Integration: `NOT RUN`
+- [ ] Integration: `N/A`
 - [ ] E2E: `N/A`
-- [ ] Mock scenarios: `N/A`
+- [x] Mock scenarios: `PASS`
 - [ ] Adversarial: `N/A`
 
 ## Completion Records
 
-- [ ] Localization centralization: pending — Remaining: T1-T3
+- [x] Localization centralization: done — T1, T2, T3

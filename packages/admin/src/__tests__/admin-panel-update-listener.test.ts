@@ -6,11 +6,7 @@ import type { DomainEvent } from '@ltdjms/shared';
 /**
  * Creates a mock session for testing with the given view state.
  */
-function createSession(
-  userId: string,
-  viewState: AdminPanelViewState,
-  hasChannelRef = true,
-) {
+function createSession(userId: string, viewState: AdminPanelViewState, hasChannelRef = true) {
   return {
     guildId: '1',
     userId,
@@ -117,7 +113,9 @@ describe('AdminPanelUpdateListener', () => {
       mockSessionManager.getAllForGuild.mockReturnValue(
         sessions.map((s) => createSession(s.userId, s.viewState)),
       );
-      mockDiscordGateway.requireReadyClient.mockReturnValue(createMockClientWithFailingMessageFetch());
+      mockDiscordGateway.requireReadyClient.mockReturnValue(
+        createMockClientWithFailingMessageFetch(),
+      );
 
       await listener.onEvent(event);
       // Wait for debounce timer (DEBOUNCE_MS = 1ms) to fire
@@ -129,14 +127,11 @@ describe('AdminPanelUpdateListener', () => {
     }
 
     it('should skip BALANCE view state for non-rebuildable product_changed', async () => {
-      const matched = await getMatchedUserIds(
-        { guildId, eventType: 'product_changed' },
-        [
-          { userId: '100', viewState: AdminPanelViewState.MAIN },
-          { userId: '101', viewState: AdminPanelViewState.BALANCE },
-          { userId: '102', viewState: AdminPanelViewState.TOKEN },
-        ],
-      );
+      const matched = await getMatchedUserIds({ guildId, eventType: 'product_changed' }, [
+        { userId: '100', viewState: AdminPanelViewState.MAIN },
+        { userId: '101', viewState: AdminPanelViewState.BALANCE },
+        { userId: '102', viewState: AdminPanelViewState.TOKEN },
+      ]);
 
       // product_changed matches PRODUCT_LIST and PRODUCT_DETAIL view states;
       // BALANCE and TOKEN should not be matched. MAIN also not matched.
@@ -144,28 +139,22 @@ describe('AdminPanelUpdateListener', () => {
     });
 
     it('should skip all view states for non-rebuildable game_token_changed', async () => {
-      const matched = await getMatchedUserIds(
-        { guildId, eventType: 'game_token_changed' },
-        [
-          { userId: '100', viewState: AdminPanelViewState.MAIN },
-          { userId: '101', viewState: AdminPanelViewState.TOKEN },
-          { userId: '102', viewState: AdminPanelViewState.BALANCE },
-        ],
-      );
+      const matched = await getMatchedUserIds({ guildId, eventType: 'game_token_changed' }, [
+        { userId: '100', viewState: AdminPanelViewState.MAIN },
+        { userId: '101', viewState: AdminPanelViewState.TOKEN },
+        { userId: '102', viewState: AdminPanelViewState.BALANCE },
+      ]);
 
       // game_token_changed is no longer an admin-relevant event (P2-23), so no sessions are processed
       expect(matched).toEqual([]);
     });
 
     it('should match MAIN and GAME_CONFIG for dice_game_config_changed', async () => {
-      const matched = await getMatchedUserIds(
-        { guildId, eventType: 'dice_game_config_changed' },
-        [
-          { userId: '100', viewState: AdminPanelViewState.MAIN },
-          { userId: '101', viewState: AdminPanelViewState.GAME_CONFIG },
-          { userId: '102', viewState: AdminPanelViewState.PRODUCT_LIST },
-        ],
-      );
+      const matched = await getMatchedUserIds({ guildId, eventType: 'dice_game_config_changed' }, [
+        { userId: '100', viewState: AdminPanelViewState.MAIN },
+        { userId: '101', viewState: AdminPanelViewState.GAME_CONFIG },
+        { userId: '102', viewState: AdminPanelViewState.PRODUCT_LIST },
+      ]);
 
       expect(matched).toContain('100');
       expect(matched).toContain('101');
@@ -173,14 +162,11 @@ describe('AdminPanelUpdateListener', () => {
     });
 
     it('should match PRODUCT_LIST and PRODUCT_DETAIL for product_changed', async () => {
-      const matched = await getMatchedUserIds(
-        { guildId, eventType: 'product_changed' },
-        [
-          { userId: '100', viewState: AdminPanelViewState.MAIN },
-          { userId: '101', viewState: AdminPanelViewState.PRODUCT_LIST },
-          { userId: '102', viewState: AdminPanelViewState.PRODUCT_DETAIL },
-        ],
-      );
+      const matched = await getMatchedUserIds({ guildId, eventType: 'product_changed' }, [
+        { userId: '100', viewState: AdminPanelViewState.MAIN },
+        { userId: '101', viewState: AdminPanelViewState.PRODUCT_LIST },
+        { userId: '102', viewState: AdminPanelViewState.PRODUCT_DETAIL },
+      ]);
 
       // P1-15: non-rebuildable events now fall through to no-op re-edit.
       // Matching sessions (PRODUCT_LIST, PRODUCT_DETAIL) attempt channel fetch
@@ -217,14 +203,11 @@ describe('AdminPanelUpdateListener', () => {
     });
 
     it('should match AI_CHANNEL for ai_channel_config_changed', async () => {
-      const matched = await getMatchedUserIds(
-        { guildId, eventType: 'ai_channel_config_changed' },
-        [
-          { userId: '100', viewState: AdminPanelViewState.MAIN },
-          { userId: '101', viewState: AdminPanelViewState.AI_CHANNEL },
-          { userId: '102', viewState: AdminPanelViewState.AI_AGENT },
-        ],
-      );
+      const matched = await getMatchedUserIds({ guildId, eventType: 'ai_channel_config_changed' }, [
+        { userId: '100', viewState: AdminPanelViewState.MAIN },
+        { userId: '101', viewState: AdminPanelViewState.AI_CHANNEL },
+        { userId: '102', viewState: AdminPanelViewState.AI_AGENT },
+      ]);
 
       expect(matched).toContain('101');
       expect(matched).not.toContain('100');
@@ -259,25 +242,19 @@ describe('AdminPanelUpdateListener', () => {
     });
 
     it('should match all view states for escort_pricing_changed', async () => {
-      const matched = await getMatchedUserIds(
-        { guildId, eventType: 'escort_pricing_changed' },
-        [
-          { userId: '100', viewState: AdminPanelViewState.MAIN },
-          { userId: '101', viewState: AdminPanelViewState.ESCORT_PRICING },
-        ],
-      );
+      const matched = await getMatchedUserIds({ guildId, eventType: 'escort_pricing_changed' }, [
+        { userId: '100', viewState: AdminPanelViewState.MAIN },
+        { userId: '101', viewState: AdminPanelViewState.ESCORT_PRICING },
+      ]);
 
       expect(matched.length).toBe(2);
     });
 
     it('should match all view states for escort_catalog_changed', async () => {
-      const matched = await getMatchedUserIds(
-        { guildId, eventType: 'escort_catalog_changed' },
-        [
-          { userId: '100', viewState: AdminPanelViewState.MAIN },
-          { userId: '101', viewState: AdminPanelViewState.GAME_CONFIG },
-        ],
-      );
+      const matched = await getMatchedUserIds({ guildId, eventType: 'escort_catalog_changed' }, [
+        { userId: '100', viewState: AdminPanelViewState.MAIN },
+        { userId: '101', viewState: AdminPanelViewState.GAME_CONFIG },
+      ]);
 
       expect(matched.length).toBe(2);
     });
@@ -291,7 +268,9 @@ describe('AdminPanelUpdateListener', () => {
     it('should remove session when channel/message fetch fails', async () => {
       const sessions = [createSession('100', AdminPanelViewState.MAIN, true)];
       mockSessionManager.getAllForGuild.mockReturnValue(sessions);
-      mockDiscordGateway.requireReadyClient.mockReturnValue(createMockClientWithFailingMessageFetch());
+      mockDiscordGateway.requireReadyClient.mockReturnValue(
+        createMockClientWithFailingMessageFetch(),
+      );
 
       const event: DomainEvent = { guildId, eventType: 'currency_config_changed' };
       await listener.onEvent(event);
@@ -339,7 +318,9 @@ describe('AdminPanelUpdateListener', () => {
         mockSessionManager.getAllForGuild.mockReturnValue([
           createSession('100', AdminPanelViewState.MAIN, true),
         ]);
-        mockDiscordGateway.requireReadyClient.mockReturnValue(createMockClientWithFailingMessageFetch());
+        mockDiscordGateway.requireReadyClient.mockReturnValue(
+          createMockClientWithFailingMessageFetch(),
+        );
 
         const event: DomainEvent = { guildId, eventType };
         await listener.onEvent(event);

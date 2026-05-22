@@ -94,7 +94,8 @@ describe('BalanceTransfer PBT', () => {
               tx.senderIdx >= users.length ||
               tx.receiverIdx >= users.length ||
               tx.senderIdx === tx.receiverIdx
-            ) continue;
+            )
+              continue;
 
             const senderId = users[tx.senderIdx].userId;
             const receiverId = users[tx.receiverIdx].userId;

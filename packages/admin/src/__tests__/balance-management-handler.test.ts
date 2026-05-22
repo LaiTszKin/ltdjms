@@ -1,10 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import {
-  MockDiscordInteraction,
-  Ok,
-  Err,
-  DomainError,
-} from '@ltdjms/shared';
+import { MockDiscordInteraction, Ok, Err, DomainError } from '@ltdjms/shared';
 import { BalanceManagementHandler } from '../panel/admin/handlers/BalanceManagementHandler.js';
 
 /**
@@ -79,11 +74,20 @@ describe('BalanceManagementHandler', () => {
   describe('permission checks', () => {
     it('should reject non-admin users', async () => {
       const interaction = new MockDiscordInteraction(
-        guildId, userId, '10', false, 'admin_balance', false,
+        guildId,
+        userId,
+        '10',
+        false,
+        'admin_balance',
+        false,
       );
       mockSessionManager.getSession.mockReturnValue({
-        guildId, userId, viewState: 'MAIN', context: {},
-        createdAt: Date.now(), lastAccessedAt: Date.now(),
+        guildId,
+        userId,
+        viewState: 'MAIN',
+        context: {},
+        createdAt: Date.now(),
+        lastAccessedAt: Date.now(),
       });
 
       await handler.execute(interaction, {} as never);
@@ -95,7 +99,12 @@ describe('BalanceManagementHandler', () => {
 
     it('should reject non-admin users even without session', async () => {
       const interaction = new MockDiscordInteraction(
-        guildId, userId, '10', false, 'admin_balance', false,
+        guildId,
+        userId,
+        '10',
+        false,
+        'admin_balance',
+        false,
       );
 
       await handler.execute(interaction, {} as never);
@@ -112,7 +121,12 @@ describe('BalanceManagementHandler', () => {
   describe('session checks', () => {
     it('should reject expired session for admin user', async () => {
       const interaction = new MockDiscordInteraction(
-        guildId, userId, '10', false, 'admin_balance', true,
+        guildId,
+        userId,
+        '10',
+        false,
+        'admin_balance',
+        true,
       );
       mockSessionManager.getSession.mockReturnValue(null);
 
@@ -131,11 +145,20 @@ describe('BalanceManagementHandler', () => {
   describe('member selection flow', () => {
     it('should show member select when no member is selected', async () => {
       const interaction = new MockDiscordInteraction(
-        guildId, userId, '10', false, 'admin_balance', true,
+        guildId,
+        userId,
+        '10',
+        false,
+        'admin_balance',
+        true,
       );
       mockSessionManager.getSession.mockReturnValue({
-        guildId, userId, viewState: 'MAIN', context: {},
-        createdAt: Date.now(), lastAccessedAt: Date.now(),
+        guildId,
+        userId,
+        viewState: 'MAIN',
+        context: {},
+        createdAt: Date.now(),
+        lastAccessedAt: Date.now(),
       });
       mockSessionManager.getContext.mockReturnValue(null);
 
@@ -146,11 +169,20 @@ describe('BalanceManagementHandler', () => {
 
     it('should show balance view when member is already selected', async () => {
       const interaction = new MockDiscordInteraction(
-        guildId, userId, '10', false, 'admin_balance', true,
+        guildId,
+        userId,
+        '10',
+        false,
+        'admin_balance',
+        true,
       );
       mockSessionManager.getSession.mockReturnValue({
-        guildId, userId, viewState: 'MAIN', context: {},
-        createdAt: Date.now(), lastAccessedAt: Date.now(),
+        guildId,
+        userId,
+        viewState: 'MAIN',
+        context: {},
+        createdAt: Date.now(),
+        lastAccessedAt: Date.now(),
       });
       mockSessionManager.getContext.mockReturnValue('200');
       mockFacade.getBalance.mockResolvedValue(
@@ -165,14 +197,23 @@ describe('BalanceManagementHandler', () => {
 
     it('should handle member selection from user select menu', async () => {
       const interaction = new MockDiscordInteraction(
-        guildId, userId, '10', false, 'admin_balance_select_member', true,
+        guildId,
+        userId,
+        '10',
+        false,
+        'admin_balance_select_member',
+        true,
       );
       // Mock getSelectedValues to return the selected user
       vi.spyOn(interaction, 'getSelectedValues').mockReturnValue(['200']);
 
       mockSessionManager.getSession.mockReturnValue({
-        guildId, userId, viewState: 'MAIN', context: {},
-        createdAt: Date.now(), lastAccessedAt: Date.now(),
+        guildId,
+        userId,
+        viewState: 'MAIN',
+        context: {},
+        createdAt: Date.now(),
+        lastAccessedAt: Date.now(),
       });
       mockFacade.getBalance.mockResolvedValue(
         new Ok({ guildId: 1, userId: 200, balance: 500, currencyName: 'G', currencyIcon: '🪙' }),
@@ -181,7 +222,10 @@ describe('BalanceManagementHandler', () => {
       await handler.execute(interaction, {} as never);
 
       expect(mockSessionManager.setContext).toHaveBeenCalledWith(
-        guildId, userId, 'selectedUserId', '200',
+        guildId,
+        userId,
+        'selectedUserId',
+        '200',
       );
       expect(mockFacade.getBalance).toHaveBeenCalled();
     });
@@ -198,9 +242,7 @@ describe('BalanceManagementHandler', () => {
       customId: string,
       facadeMethodName: 'adjustBalance' | 'setBalance',
     ) {
-      const interaction = new MockDiscordInteraction(
-        guildId, userId, '10', false, customId, true,
-      );
+      const interaction = new MockDiscordInteraction(guildId, userId, '10', false, customId, true);
       vi.spyOn(interaction, 'getTextInputValue').mockImplementation((field: string) => {
         if (field === 'balance_amount') return String(testAmount);
         if (field === 'balance_reason') return 'test reason';
@@ -208,8 +250,12 @@ describe('BalanceManagementHandler', () => {
       });
 
       mockSessionManager.getSession.mockReturnValue({
-        guildId, userId, viewState: 'MAIN', context: {},
-        createdAt: Date.now(), lastAccessedAt: Date.now(),
+        guildId,
+        userId,
+        viewState: 'MAIN',
+        context: {},
+        createdAt: Date.now(),
+        lastAccessedAt: Date.now(),
       });
       mockSessionManager.getContext.mockReturnValue('200');
       mockFacade[facadeMethodName].mockResolvedValue(
@@ -244,13 +290,22 @@ describe('BalanceManagementHandler', () => {
 
     it('should show error when no selected user in context on modal submit', async () => {
       const interaction = new MockDiscordInteraction(
-        guildId, userId, '10', false, 'admin_balance_add', true,
+        guildId,
+        userId,
+        '10',
+        false,
+        'admin_balance_add',
+        true,
       );
       vi.spyOn(interaction, 'getTextInputValue').mockReturnValue('100');
 
       mockSessionManager.getSession.mockReturnValue({
-        guildId, userId, viewState: 'MAIN', context: {},
-        createdAt: Date.now(), lastAccessedAt: Date.now(),
+        guildId,
+        userId,
+        viewState: 'MAIN',
+        context: {},
+        createdAt: Date.now(),
+        lastAccessedAt: Date.now(),
       });
       mockSessionManager.getContext.mockReturnValue(null);
 
@@ -262,7 +317,12 @@ describe('BalanceManagementHandler', () => {
 
     it('should show validation error for non-positive amount', async () => {
       const interaction = new MockDiscordInteraction(
-        guildId, userId, '10', false, 'admin_balance_add', true,
+        guildId,
+        userId,
+        '10',
+        false,
+        'admin_balance_add',
+        true,
       );
       vi.spyOn(interaction, 'getTextInputValue').mockImplementation((field: string) => {
         if (field === 'balance_amount') return '0';
@@ -271,8 +331,12 @@ describe('BalanceManagementHandler', () => {
       });
 
       mockSessionManager.getSession.mockReturnValue({
-        guildId, userId, viewState: 'MAIN', context: {},
-        createdAt: Date.now(), lastAccessedAt: Date.now(),
+        guildId,
+        userId,
+        viewState: 'MAIN',
+        context: {},
+        createdAt: Date.now(),
+        lastAccessedAt: Date.now(),
       });
       mockSessionManager.getContext.mockReturnValue('200');
 
@@ -284,7 +348,12 @@ describe('BalanceManagementHandler', () => {
 
     it('should handle facade error gracefully', async () => {
       const interaction = new MockDiscordInteraction(
-        guildId, userId, '10', false, 'admin_balance_add', true,
+        guildId,
+        userId,
+        '10',
+        false,
+        'admin_balance_add',
+        true,
       );
       vi.spyOn(interaction, 'getTextInputValue').mockImplementation((field: string) => {
         if (field === 'balance_amount') return '100';
@@ -293,8 +362,12 @@ describe('BalanceManagementHandler', () => {
       });
 
       mockSessionManager.getSession.mockReturnValue({
-        guildId, userId, viewState: 'MAIN', context: {},
-        createdAt: Date.now(), lastAccessedAt: Date.now(),
+        guildId,
+        userId,
+        viewState: 'MAIN',
+        context: {},
+        createdAt: Date.now(),
+        lastAccessedAt: Date.now(),
       });
       mockSessionManager.getContext.mockReturnValue('200');
       mockFacade.adjustBalance.mockResolvedValue(
@@ -323,12 +396,21 @@ describe('BalanceManagementHandler', () => {
     for (const { customId, mode } of modes) {
       it(`should show modal for ${mode}`, async () => {
         const interaction = new MockDiscordInteraction(
-          guildId, userId, '10', false, customId, true,
+          guildId,
+          userId,
+          '10',
+          false,
+          customId,
+          true,
         );
 
         mockSessionManager.getSession.mockReturnValue({
-          guildId, userId, viewState: 'MAIN', context: {},
-          createdAt: Date.now(), lastAccessedAt: Date.now(),
+          guildId,
+          userId,
+          viewState: 'MAIN',
+          context: {},
+          createdAt: Date.now(),
+          lastAccessedAt: Date.now(),
         });
         mockModalFactory.buildBalanceAdjustModal.mockReturnValue({
           title: `Test ${mode} title`,
@@ -352,16 +434,23 @@ describe('BalanceManagementHandler', () => {
   describe('balance query errors', () => {
     it('should handle getBalance failure gracefully', async () => {
       const interaction = new MockDiscordInteraction(
-        guildId, userId, '10', false, 'admin_balance', true,
+        guildId,
+        userId,
+        '10',
+        false,
+        'admin_balance',
+        true,
       );
       mockSessionManager.getSession.mockReturnValue({
-        guildId, userId, viewState: 'MAIN', context: {},
-        createdAt: Date.now(), lastAccessedAt: Date.now(),
+        guildId,
+        userId,
+        viewState: 'MAIN',
+        context: {},
+        createdAt: Date.now(),
+        lastAccessedAt: Date.now(),
       });
       mockSessionManager.getContext.mockReturnValue('200');
-      mockFacade.getBalance.mockResolvedValue(
-        new Err(DomainError.persistenceFailure('DB error')),
-      );
+      mockFacade.getBalance.mockResolvedValue(new Err(DomainError.persistenceFailure('DB error')));
 
       await handler.execute(interaction, {} as never);
 

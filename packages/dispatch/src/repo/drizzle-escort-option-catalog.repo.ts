@@ -14,12 +14,9 @@ export class DrizzleEscortOptionCatalogRepo implements EscortOptionCatalogReposi
   constructor(private readonly db: NodePgDatabase) {}
 
   async findAll(): Promise<EscortOptionCatalogEntry[]> {
-    const rows = await this.db
-      .select()
-      .from(escortOptionCatalog)
-      .orderBy(escortOptionCatalog.code);
+    const rows = await this.db.select().from(escortOptionCatalog).orderBy(escortOptionCatalog.code);
 
-    return rows.map(row => ({
+    return rows.map((row) => ({
       code: row.code,
       type: row.type,
       level: row.level,
@@ -59,7 +56,9 @@ export class DrizzleEscortOptionCatalogRepo implements EscortOptionCatalogReposi
     return rows.length > 0;
   }
 
-  async create(entry: Omit<EscortOptionCatalogEntry, 'code'> & { code: string }): Promise<EscortOptionCatalogEntry> {
+  async create(
+    entry: Omit<EscortOptionCatalogEntry, 'code'> & { code: string },
+  ): Promise<EscortOptionCatalogEntry> {
     const rows = await this.db
       .insert(escortOptionCatalog)
       .values({
@@ -82,7 +81,10 @@ export class DrizzleEscortOptionCatalogRepo implements EscortOptionCatalogReposi
     };
   }
 
-  async update(code: string, data: Partial<Omit<EscortOptionCatalogEntry, 'code'>>): Promise<EscortOptionCatalogEntry | null> {
+  async update(
+    code: string,
+    data: Partial<Omit<EscortOptionCatalogEntry, 'code'>>,
+  ): Promise<EscortOptionCatalogEntry | null> {
     const values: Record<string, unknown> = {};
     if (data.type !== undefined) values.type = data.type;
     if (data.level !== undefined) values.level = data.level;

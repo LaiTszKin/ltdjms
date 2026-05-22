@@ -63,11 +63,7 @@ const ecpaySubstitutions: [RegExp, string][] = [
 ];
 
 /** Rebuild the CheckMacValue step by step for cross-validation. */
-function referenceCheckMacValue(
-  params: Record<string, string>,
-  key: string,
-  iv: string,
-): string {
+function referenceCheckMacValue(params: Record<string, string>, key: string, iv: string): string {
   // Step 1-2: Sort params alphabetically, build check string
   const sorted = Object.entries(params)
     .filter(([, v]) => v !== '' && v !== null && v !== undefined)
@@ -325,8 +321,7 @@ describe('P0-1: data integrity cross-check', () => {
   });
 
   it('should preserve Chinese characters through AES roundtrip', () => {
-    const chineseText =
-      '{"TradeDesc":"Discord 商品下單","ItemName":"測試商品 A&B"}';
+    const chineseText = '{"TradeDesc":"Discord 商品下單","ItemName":"測試商品 A&B"}';
     const encrypted = encryptAES(chineseText, hashKey, hashIv);
     const decrypted = decryptAES(encrypted, hashKey, hashIv);
     expect(decrypted).toBe(chineseText);
@@ -342,9 +337,7 @@ describe('P0-1: data integrity cross-check', () => {
 
   it('should produce deterministic AES output for identical fixture inputs', () => {
     // Run multiple times to confirm no hidden state or RNG affects output
-    const results = Array.from({ length: 10 }, () =>
-      encryptAES(fixturePlainText, hashKey, hashIv),
-    );
+    const results = Array.from({ length: 10 }, () => encryptAES(fixturePlainText, hashKey, hashIv));
     for (let i = 1; i < results.length; i++) {
       expect(results[i]).toBe(results[0]);
     }

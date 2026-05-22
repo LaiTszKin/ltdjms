@@ -25,9 +25,7 @@ export async function createTemplateDatabase(connectionUrl: string): Promise<voi
       `SELECT 1 FROM pg_database WHERE datname = '${TEMPLATE_DB_NAME}'`,
     );
     if (result.rows.length === 0) {
-      await adminPool.query(
-        `CREATE DATABASE ${TEMPLATE_DB_NAME} TEMPLATE ${DEFAULT_DB_NAME}`,
-      );
+      await adminPool.query(`CREATE DATABASE ${TEMPLATE_DB_NAME} TEMPLATE ${DEFAULT_DB_NAME}`);
     }
   } finally {
     await adminPool.end();
@@ -49,12 +47,15 @@ export async function resetDatabase(
   const adminPool = new Pool({ connectionString: adminUrl(connectionUrl), max: 1 });
   try {
     // Terminate other connections to the target database
-    await adminPool.query(`
+    await adminPool.query(
+      `
       SELECT pg_terminate_backend(pg_stat_activity.pid)
       FROM pg_stat_activity
       WHERE pg_stat_activity.datname = $1
         AND pid <> pg_backend_pid()
-    `, [dbName]);
+    `,
+      [dbName],
+    );
 
     // Drop and recreate from template
     await adminPool.query(`DROP DATABASE IF EXISTS "${dbName}"`);
@@ -101,7 +102,7 @@ export async function initProjectDatabase(
     } else {
       throw new Error(
         'Testcontainer not initialized. The shared package globalSetup must run first. ' +
-        `Cannot find container info for project "${projectName}".`,
+          `Cannot find container info for project "${projectName}".`,
       );
     }
   }
@@ -111,11 +112,14 @@ export async function initProjectDatabase(
 
   try {
     // Drop existing database if present (from a previous run)
-    await adminPool.query(`
+    await adminPool.query(
+      `
       SELECT pg_terminate_backend(pg_stat_activity.pid)
       FROM pg_stat_activity
       WHERE pg_stat_activity.datname = $1 AND pid <> pg_backend_pid()
-    `, [dbName]);
+    `,
+      [dbName],
+    );
     await adminPool.query(`DROP DATABASE IF EXISTS "${dbName}"`);
 
     // Create fresh database from the clean template

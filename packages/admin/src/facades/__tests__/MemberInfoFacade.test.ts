@@ -85,11 +85,7 @@ describe('MemberInfoFacade', () => {
 
       const result = await facade.redeemCode(guildId, userId, 'TESTCODE12345678');
       expect(result.isOk()).toBe(true);
-      expect(mockRedemptionService.redeemCode).toHaveBeenCalledWith(
-        'TESTCODE12345678',
-        1,
-        '100',
-      );
+      expect(mockRedemptionService.redeemCode).toHaveBeenCalledWith('TESTCODE12345678', 1, '100');
     });
   });
 });

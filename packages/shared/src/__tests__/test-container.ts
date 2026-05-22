@@ -20,9 +20,10 @@ export interface TestContainerOptions {
  * NOTE: Call `resetRootContainer()` in `beforeEach` to fully clear instances
  * between tests. This is important because tsyringe stores singleton instances.
  */
-export function createTestContainer(
-  options: TestContainerOptions,
-): { container: typeof rootContainer; db: NodePgDatabase } {
+export function createTestContainer(options: TestContainerOptions): {
+  container: typeof rootContainer;
+  db: NodePgDatabase;
+} {
   // Clear any previously registered instances to avoid cross-test pollution
   rootContainer.clearInstances();
 

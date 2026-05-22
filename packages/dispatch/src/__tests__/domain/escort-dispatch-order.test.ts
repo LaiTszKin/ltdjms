@@ -141,7 +141,13 @@ function makeRawOrder(overrides?: Partial<EscortDispatchOrder>): EscortDispatchO
 describe('EscortDispatchOrder — factory functions', () => {
   describe('createPending', () => {
     it('should create a PENDING_CONFIRMATION order with MANUAL source', () => {
-      const result = createPending(ORDER_NUMBER, GUILD_ID, ASSIGNED_BY, ESCORT_USER_ID, CUSTOMER_USER_ID);
+      const result = createPending(
+        ORDER_NUMBER,
+        GUILD_ID,
+        ASSIGNED_BY,
+        ESCORT_USER_ID,
+        CUSTOMER_USER_ID,
+      );
       expect(result.isOk()).toBe(true);
       if (!result.isOk()) return;
       const order = result.getValue();
@@ -161,8 +167,12 @@ describe('EscortDispatchOrder — factory functions', () => {
     });
 
     it('should return error when customerUserId <= 0', () => {
-      expect(isErr(createPending(ORDER_NUMBER, GUILD_ID, ASSIGNED_BY, ESCORT_USER_ID, 0))).toBe(true);
-      expect(isErr(createPending(ORDER_NUMBER, GUILD_ID, ASSIGNED_BY, ESCORT_USER_ID, -1))).toBe(true);
+      expect(isErr(createPending(ORDER_NUMBER, GUILD_ID, ASSIGNED_BY, ESCORT_USER_ID, 0))).toBe(
+        true,
+      );
+      expect(isErr(createPending(ORDER_NUMBER, GUILD_ID, ASSIGNED_BY, ESCORT_USER_ID, -1))).toBe(
+        true,
+      );
     });
 
     it('should return error when orderNumber is blank', () => {
@@ -177,7 +187,9 @@ describe('EscortDispatchOrder — factory functions', () => {
       const result = createPending(ORDER_NUMBER, GUILD_ID, ASSIGNED_BY, 400, 400);
       expect(isErr(result)).toBe(true);
       if (isErr(result)) {
-        expect(result.getError().message).toContain('escortUserId and customerUserId must be different');
+        expect(result.getError().message).toContain(
+          'escortUserId and customerUserId must be different',
+        );
       }
     });
 
@@ -194,7 +206,11 @@ describe('EscortDispatchOrder — factory functions', () => {
   describe('createManualOpenOrder', () => {
     it('should create an unassigned manual order with escortUserId=0', () => {
       const result = createManualOpenOrder(
-        ORDER_NUMBER, GUILD_ID, ASSIGNED_BY, CUSTOMER_USER_ID, 'PVE-BASIC',
+        ORDER_NUMBER,
+        GUILD_ID,
+        ASSIGNED_BY,
+        CUSTOMER_USER_ID,
+        'PVE-BASIC',
       );
       expect(result.isOk()).toBe(true);
       if (!result.isOk()) return;
@@ -207,11 +223,19 @@ describe('EscortDispatchOrder — factory functions', () => {
     });
 
     it('should return error when customerUserId <= 0', () => {
-      expect(isErr(createManualOpenOrder(ORDER_NUMBER, GUILD_ID, ASSIGNED_BY, 0, 'PVE-BASIC'))).toBe(true);
+      expect(
+        isErr(createManualOpenOrder(ORDER_NUMBER, GUILD_ID, ASSIGNED_BY, 0, 'PVE-BASIC')),
+      ).toBe(true);
     });
 
     it('should return error for blank orderNumber', () => {
-      const result = createManualOpenOrder('', GUILD_ID, ASSIGNED_BY, CUSTOMER_USER_ID, 'PVE-BASIC');
+      const result = createManualOpenOrder(
+        '',
+        GUILD_ID,
+        ASSIGNED_BY,
+        CUSTOMER_USER_ID,
+        'PVE-BASIC',
+      );
       expect(isErr(result)).toBe(true);
       if (isErr(result)) {
         expect(result.getError().message).toContain('orderNumber must not be blank');
@@ -222,9 +246,18 @@ describe('EscortDispatchOrder — factory functions', () => {
   describe('createAutoHandoff', () => {
     it('should create an auto-handoff order with CURRENCY_PURCHASE source', () => {
       const result = createAutoHandoff(
-        ORDER_NUMBER, GUILD_ID, 0, 0, CUSTOMER_USER_ID,
-        SourceType.CURRENCY_PURCHASE, 'REF-001', 42, 'Product A',
-        5000, null, 'PVE-ADV',
+        ORDER_NUMBER,
+        GUILD_ID,
+        0,
+        0,
+        CUSTOMER_USER_ID,
+        SourceType.CURRENCY_PURCHASE,
+        'REF-001',
+        42,
+        'Product A',
+        5000,
+        null,
+        'PVE-ADV',
       );
       expect(result.isOk()).toBe(true);
       if (!result.isOk()) return;
@@ -244,9 +277,18 @@ describe('EscortDispatchOrder — factory functions', () => {
 
     it('should create auto-handoff order with FIAT_PAYMENT source', () => {
       const result = createAutoHandoff(
-        ORDER_NUMBER, GUILD_ID, 0, 0, CUSTOMER_USER_ID,
-        SourceType.FIAT_PAYMENT, 'REF-002', 99, 'Product B',
-        null, 1500, 'PVP-BASIC',
+        ORDER_NUMBER,
+        GUILD_ID,
+        0,
+        0,
+        CUSTOMER_USER_ID,
+        SourceType.FIAT_PAYMENT,
+        'REF-002',
+        99,
+        'Product B',
+        null,
+        1500,
+        'PVP-BASIC',
       );
       expect(result.isOk()).toBe(true);
       if (!result.isOk()) return;
@@ -259,8 +301,18 @@ describe('EscortDispatchOrder — factory functions', () => {
 
     it('should reject blank sourceReference for non-MANUAL source', () => {
       const result = createAutoHandoff(
-        ORDER_NUMBER, GUILD_ID, 0, 0, CUSTOMER_USER_ID,
-        SourceType.CURRENCY_PURCHASE, '', 1, 'P', 100, null, 'PVE',
+        ORDER_NUMBER,
+        GUILD_ID,
+        0,
+        0,
+        CUSTOMER_USER_ID,
+        SourceType.CURRENCY_PURCHASE,
+        '',
+        1,
+        'P',
+        100,
+        null,
+        'PVE',
       );
       expect(isErr(result)).toBe(true);
       if (isErr(result)) {
@@ -270,8 +322,18 @@ describe('EscortDispatchOrder — factory functions', () => {
 
     it('should reject null sourceProductId for non-MANUAL source', () => {
       const result = createAutoHandoff(
-        ORDER_NUMBER, GUILD_ID, 0, 0, CUSTOMER_USER_ID,
-        SourceType.CURRENCY_PURCHASE, 'REF', null as unknown as number, 'P', 100, null, 'PVE',
+        ORDER_NUMBER,
+        GUILD_ID,
+        0,
+        0,
+        CUSTOMER_USER_ID,
+        SourceType.CURRENCY_PURCHASE,
+        'REF',
+        null as unknown as number,
+        'P',
+        100,
+        null,
+        'PVE',
       );
       expect(isErr(result)).toBe(true);
       if (isErr(result)) {
@@ -346,7 +408,9 @@ describe('EscortDispatchOrder — factory functions', () => {
       });
       expect(isErr(result)).toBe(true);
       if (isErr(result)) {
-        expect(result.getError().message).toContain('confirmedAt must not be null for status CONFIRMED');
+        expect(result.getError().message).toContain(
+          'confirmedAt must not be null for status CONFIRMED',
+        );
       }
     });
   });
@@ -397,7 +461,10 @@ describe('EscortDispatchOrder — state transitions', () => {
   });
 
   it('withAfterSalesRequested: should transition to AFTER_SALES_REQUESTED', () => {
-    const order = makeBaseOrder({ status: EscortDispatchOrderStatus.COMPLETED, completedAt: new Date() });
+    const order = makeBaseOrder({
+      status: EscortDispatchOrderStatus.COMPLETED,
+      completedAt: new Date(),
+    });
     const requestedAt = new Date('2026-05-22T10:00:00Z');
     const result = withAfterSalesRequested(order, requestedAt);
     expect(result.isOk()).toBe(true);
@@ -482,54 +549,92 @@ describe('EscortDispatchOrder — predicate helpers', () => {
     const pending = makeBaseOrder();
     expect(isPendingEscortConfirmation(pending)).toBe(true);
 
-    const confirmed = makeBaseOrder({ status: EscortDispatchOrderStatus.CONFIRMED, confirmedAt: new Date() });
+    const confirmed = makeBaseOrder({
+      status: EscortDispatchOrderStatus.CONFIRMED,
+      confirmedAt: new Date(),
+    });
     expect(isPendingEscortConfirmation(confirmed)).toBe(false);
   });
 
   it('isConfirmed', () => {
-    expect(isConfirmed(makeBaseOrder({ status: EscortDispatchOrderStatus.CONFIRMED, confirmedAt: new Date() }))).toBe(true);
+    expect(
+      isConfirmed(
+        makeBaseOrder({ status: EscortDispatchOrderStatus.CONFIRMED, confirmedAt: new Date() }),
+      ),
+    ).toBe(true);
     expect(isConfirmed(makeBaseOrder())).toBe(false);
   });
 
   it('isPendingCustomerConfirmation', () => {
-    expect(isPendingCustomerConfirmation(makeBaseOrder({
-      status: EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION,
-      confirmedAt: new Date(),
-      completionRequestedAt: new Date(),
-    }))).toBe(true);
+    expect(
+      isPendingCustomerConfirmation(
+        makeBaseOrder({
+          status: EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION,
+          confirmedAt: new Date(),
+          completionRequestedAt: new Date(),
+        }),
+      ),
+    ).toBe(true);
     expect(isPendingCustomerConfirmation(makeBaseOrder())).toBe(false);
   });
 
   it('isAfterSalesRequested', () => {
-    expect(isAfterSalesRequested(makeBaseOrder({
-      status: EscortDispatchOrderStatus.AFTER_SALES_REQUESTED,
-      afterSalesRequestedAt: new Date(),
-    }))).toBe(true);
+    expect(
+      isAfterSalesRequested(
+        makeBaseOrder({
+          status: EscortDispatchOrderStatus.AFTER_SALES_REQUESTED,
+          afterSalesRequestedAt: new Date(),
+        }),
+      ),
+    ).toBe(true);
     expect(isAfterSalesRequested(makeBaseOrder())).toBe(false);
   });
 
   it('isAfterSalesInProgress', () => {
-    expect(isAfterSalesInProgress(makeBaseOrder({
-      status: EscortDispatchOrderStatus.AFTER_SALES_IN_PROGRESS,
-      afterSalesRequestedAt: new Date(),
-      afterSalesAssigneeUserId: 500,
-      afterSalesAssignedAt: new Date(),
-    }))).toBe(true);
+    expect(
+      isAfterSalesInProgress(
+        makeBaseOrder({
+          status: EscortDispatchOrderStatus.AFTER_SALES_IN_PROGRESS,
+          afterSalesRequestedAt: new Date(),
+          afterSalesAssigneeUserId: 500,
+          afterSalesAssignedAt: new Date(),
+        }),
+      ),
+    ).toBe(true);
     expect(isAfterSalesInProgress(makeBaseOrder())).toBe(false);
   });
 
   it('isCompleted should return true for COMPLETED and AFTER_SALES_CLOSED', () => {
-    expect(isCompleted(makeBaseOrder({ status: EscortDispatchOrderStatus.COMPLETED, completedAt: new Date() }))).toBe(true);
-    expect(isCompleted(makeBaseOrder({
-      status: EscortDispatchOrderStatus.AFTER_SALES_CLOSED,
-      afterSalesRequestedAt: new Date(),
-      afterSalesAssigneeUserId: 500,
-      afterSalesAssignedAt: new Date(),
-      afterSalesClosedAt: new Date(),
-    }))).toBe(true);
+    expect(
+      isCompleted(
+        makeBaseOrder({ status: EscortDispatchOrderStatus.COMPLETED, completedAt: new Date() }),
+      ),
+    ).toBe(true);
+    expect(
+      isCompleted(
+        makeBaseOrder({
+          status: EscortDispatchOrderStatus.AFTER_SALES_CLOSED,
+          afterSalesRequestedAt: new Date(),
+          afterSalesAssigneeUserId: 500,
+          afterSalesAssignedAt: new Date(),
+          afterSalesClosedAt: new Date(),
+        }),
+      ),
+    ).toBe(true);
     expect(isCompleted(makeBaseOrder())).toBe(false);
-    expect(isCompleted(makeBaseOrder({ status: EscortDispatchOrderStatus.CONFIRMED, confirmedAt: new Date() }))).toBe(false);
-    expect(isCompleted(makeBaseOrder({ status: EscortDispatchOrderStatus.AFTER_SALES_REQUESTED, afterSalesRequestedAt: new Date() }))).toBe(false);
+    expect(
+      isCompleted(
+        makeBaseOrder({ status: EscortDispatchOrderStatus.CONFIRMED, confirmedAt: new Date() }),
+      ),
+    ).toBe(false);
+    expect(
+      isCompleted(
+        makeBaseOrder({
+          status: EscortDispatchOrderStatus.AFTER_SALES_REQUESTED,
+          afterSalesRequestedAt: new Date(),
+        }),
+      ),
+    ).toBe(false);
   });
 });
 
@@ -649,15 +754,26 @@ describe('EscortDispatchOrder — validation edge cases', () => {
     });
     expect(isErr(result)).toBe(true);
     if (isErr(result)) {
-      expect(result.getError().message).toContain('manual dispatch order must not carry source snapshot');
+      expect(result.getError().message).toContain(
+        'manual dispatch order must not carry source snapshot',
+      );
     }
   });
 
   it('non-MANUAL source with both price snapshots null should fail', () => {
     const result = createAutoHandoff(
-      ORDER_NUMBER, GUILD_ID, 0, 0, CUSTOMER_USER_ID,
-      SourceType.CURRENCY_PURCHASE, 'REF', 1, 'P',
-      null, null, 'PVE',
+      ORDER_NUMBER,
+      GUILD_ID,
+      0,
+      0,
+      CUSTOMER_USER_ID,
+      SourceType.CURRENCY_PURCHASE,
+      'REF',
+      1,
+      'P',
+      null,
+      null,
+      'PVE',
     );
     expect(isErr(result)).toBe(true);
     if (isErr(result)) {
@@ -667,9 +783,18 @@ describe('EscortDispatchOrder — validation edge cases', () => {
 
   it('non-MANUAL source with empty sourceReference should fail', () => {
     const result = createAutoHandoff(
-      ORDER_NUMBER, GUILD_ID, 0, 0, CUSTOMER_USER_ID,
-      SourceType.CURRENCY_PURCHASE, '', 1, 'P',
-      100, null, 'PVE',
+      ORDER_NUMBER,
+      GUILD_ID,
+      0,
+      0,
+      CUSTOMER_USER_ID,
+      SourceType.CURRENCY_PURCHASE,
+      '',
+      1,
+      'P',
+      100,
+      null,
+      'PVE',
     );
     expect(isErr(result)).toBe(true);
     if (isErr(result)) {

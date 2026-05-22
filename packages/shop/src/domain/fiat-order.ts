@@ -72,7 +72,10 @@ export const FiatOrderSchema = z
   )
   .refine(
     (data) => {
-      if (data.fulfillmentEscortOptionCode !== null && data.fulfillmentEscortOptionCode.length > 120)
+      if (
+        data.fulfillmentEscortOptionCode !== null &&
+        data.fulfillmentEscortOptionCode.length > 120
+      )
         return false;
       return true;
     },

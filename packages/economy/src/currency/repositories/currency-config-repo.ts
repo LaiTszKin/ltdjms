@@ -53,9 +53,7 @@ export class CurrencyConfigRepository {
    * Deletes currency configuration for a guild.
    */
   async deleteByGuildId(guildId: number): Promise<void> {
-    await this.db
-      .delete(guildCurrencyConfig)
-      .where(eq(guildCurrencyConfig.guildId, guildId));
+    await this.db.delete(guildCurrencyConfig).where(eq(guildCurrencyConfig.guildId, guildId));
   }
 }
 

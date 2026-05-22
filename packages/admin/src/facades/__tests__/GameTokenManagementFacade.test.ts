@@ -1,11 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import {
-  Ok,
-  Err,
-  DomainError,
-  DomainErrorCategory,
-  DomainEventPublisher,
-} from '@ltdjms/shared';
+import { Ok, Err, DomainError, DomainErrorCategory, DomainEventPublisher } from '@ltdjms/shared';
 import { GameTokenManagementFacade } from '../GameTokenManagementFacade.js';
 import type {
   GameTokenService,

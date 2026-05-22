@@ -1,10 +1,7 @@
-import {
-  type DiscordInteraction,
-  type DiscordContext,
-} from '@ltdjms/shared';
+import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
 import { GameTokenService } from '../token/services/game-token-service.js';
 import { GameTokenTransactionSource } from '../domain/types.js';
-import { DiceGameMessages } from '../localization/dice-game-messages.js';
+import { DiceGameMessages } from '@ltdjms/shared';
 
 /**
  * /game-token-adjust slash command handler (admin only).
@@ -14,14 +11,9 @@ import { DiceGameMessages } from '../localization/dice-game-messages.js';
 export class GameTokenAdjustHandler {
   readonly commandName = 'game-token-adjust';
 
-  constructor(
-    private readonly gameTokenService: GameTokenService,
-  ) {}
+  constructor(private readonly gameTokenService: GameTokenService) {}
 
-  async execute(
-    interaction: DiscordInteraction,
-    context: DiscordContext,
-  ): Promise<void> {
+  async execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void> {
     interaction.makeEphemeral();
     if (!interaction.isAdministrator()) {
       await interaction.reply('此操作需要管理員權限');
@@ -58,8 +50,7 @@ export class GameTokenAdjustHandler {
     if (result.isErr()) {
       const error = result.getError();
       await interaction.reply(
-        DiceGameMessages.TOKEN_ADJUST_FAILED
-          .replace('{reason}', error.message),
+        DiceGameMessages.TOKEN_ADJUST_FAILED.replace('{reason}', error.message),
       );
       return;
     }
@@ -69,8 +60,7 @@ export class GameTokenAdjustHandler {
     const message = [
       `**${DiceGameMessages.TOKEN_ADJUST_TITLE}**`,
       '',
-      DiceGameMessages.TOKEN_ADJUST_SUCCESS
-        .replace('{before}', String(adjustment.previousTokens))
+      DiceGameMessages.TOKEN_ADJUST_SUCCESS.replace('{before}', String(adjustment.previousTokens))
         .replace('{after}', String(adjustment.newTokens))
         .replace('{amount}', String(adjustment.adjustment)),
     ].join('\n');

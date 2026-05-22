@@ -1,6 +1,9 @@
 export { DispatchPanelCommandHandler } from './DispatchPanelCommandHandler.js';
 export { DispatchPanelInteractionHandler } from './DispatchPanelInteractionHandler.js';
-export { DispatchPanelSessionManager, type DispatchSessionState } from './DispatchPanelSessionManager.js';
+export {
+  DispatchPanelSessionManager,
+  type DispatchSessionState,
+} from './DispatchPanelSessionManager.js';
 
 export { COLOR_INFO, COLOR_WARNING, COLOR_ERROR } from '../constants.js';
 

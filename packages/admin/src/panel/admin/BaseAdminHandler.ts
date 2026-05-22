@@ -1,7 +1,4 @@
-import {
-  type DiscordInteraction,
-  type DiscordContext,
-} from '@ltdjms/shared';
+import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
 import { type InteractionHandler } from '../../commands/infra/CommandHandler.js';
 import { AdminPanelSessionManager } from '../../session/AdminPanelSessionManager.js';
 import { type AdminPanelSessionData } from '../../session/types.js';
@@ -12,9 +9,7 @@ import { BotErrorHandler } from '../../commands/infra/BotErrorHandler.js';
  * Safe to call multiple times — the DiscordInteraction abstraction
  * checks isAcknowledged() before deferring.
  */
-export async function ensureDeferred(
-  interaction: DiscordInteraction,
-): Promise<void> {
+export async function ensureDeferred(interaction: DiscordInteraction): Promise<void> {
   if (!interaction.isAcknowledged()) {
     interaction.makeEphemeral();
     await interaction.deferReply();
@@ -36,10 +31,7 @@ export abstract class BaseAdminHandler implements InteractionHandler {
     protected readonly errorHandler: BotErrorHandler,
   ) {}
 
-  abstract execute(
-    interaction: DiscordInteraction,
-    context: DiscordContext,
-  ): Promise<void>;
+  abstract execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void>;
 
   /**
    * Checks whether the user has ADMINISTRATOR permission or is the guild owner.
@@ -53,9 +45,7 @@ export abstract class BaseAdminHandler implements InteractionHandler {
    * Retrieves the current admin panel session for the interaction user.
    * Returns null if no active session exists.
    */
-  protected getSession(
-    interaction: DiscordInteraction,
-  ): AdminPanelSessionData | null {
+  protected getSession(interaction: DiscordInteraction): AdminPanelSessionData | null {
     const guildId = interaction.getGuildId();
     const userId = interaction.getUserId();
     return this.sessionManager.getSession(guildId, userId);
@@ -66,9 +56,7 @@ export abstract class BaseAdminHandler implements InteractionHandler {
    * Safe to call multiple times — the DiscordInteraction abstraction
    * checks isAcknowledged() before deferring.
    */
-  protected async ensureDeferred(
-    interaction: DiscordInteraction,
-  ): Promise<void> {
+  protected async ensureDeferred(interaction: DiscordInteraction): Promise<void> {
     return ensureDeferred(interaction);
   }
 }

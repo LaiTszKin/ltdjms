@@ -59,7 +59,11 @@ export function buildOrderConfirmedEmbed(order: EscortDispatchOrder): EmbedView 
       { name: '訂單編號', value: order.orderNumber, inline: true },
       { name: '護航者', value: `<@${order.escortUserId}>`, inline: true },
       { name: '客戶', value: `<@${order.customerUserId}>`, inline: true },
-      { name: '確認時間', value: order.confirmedAt?.toLocaleString('zh-TW') ?? 'N/A', inline: false },
+      {
+        name: '確認時間',
+        value: order.confirmedAt?.toLocaleString('zh-TW') ?? 'N/A',
+        inline: false,
+      },
     ],
     footer: '服務進行中',
   };
@@ -74,7 +78,11 @@ export function buildPendingCustomerConfirmationEmbed(order: EscortDispatchOrder
     fields: [
       { name: '訂單編號', value: order.orderNumber, inline: true },
       { name: '護航者', value: `<@${order.escortUserId}>`, inline: true },
-      { name: '送出時間', value: order.completionRequestedAt?.toLocaleString('zh-TW') ?? 'N/A', inline: false },
+      {
+        name: '送出時間',
+        value: order.completionRequestedAt?.toLocaleString('zh-TW') ?? 'N/A',
+        inline: false,
+      },
     ],
     footer: '24 小時未確認將視為訂單完成',
   };
@@ -89,7 +97,11 @@ export function buildOrderCompletedEmbed(order: EscortDispatchOrder): EmbedView 
     fields: [
       { name: '訂單編號', value: order.orderNumber, inline: true },
       { name: '護航者', value: `<@${order.escortUserId}>`, inline: true },
-      { name: '完成時間', value: order.completedAt?.toLocaleString('zh-TW') ?? 'N/A', inline: false },
+      {
+        name: '完成時間',
+        value: order.completedAt?.toLocaleString('zh-TW') ?? 'N/A',
+        inline: false,
+      },
     ],
     footer: '訂單已完成',
   };
@@ -104,7 +116,11 @@ export function buildAfterSalesRequestedEmbed(order: EscortDispatchOrder): Embed
     fields: [
       { name: '訂單編號', value: order.orderNumber, inline: true },
       { name: '客戶', value: `<@${order.customerUserId}>`, inline: true },
-      { name: '申請時間', value: order.afterSalesRequestedAt?.toLocaleString('zh-TW') ?? 'N/A', inline: false },
+      {
+        name: '申請時間',
+        value: order.afterSalesRequestedAt?.toLocaleString('zh-TW') ?? 'N/A',
+        inline: false,
+      },
     ],
     footer: '等待售後人員接手',
   };
@@ -119,7 +135,11 @@ export function buildAfterSalesClaimedEmbed(order: EscortDispatchOrder): EmbedVi
     fields: [
       { name: '訂單編號', value: order.orderNumber, inline: true },
       { name: '售後人員', value: `<@${order.afterSalesAssigneeUserId}>`, inline: true },
-      { name: '接手時間', value: order.afterSalesAssignedAt?.toLocaleString('zh-TW') ?? 'N/A', inline: false },
+      {
+        name: '接手時間',
+        value: order.afterSalesAssignedAt?.toLocaleString('zh-TW') ?? 'N/A',
+        inline: false,
+      },
     ],
     footer: '售後處理中',
   };
@@ -134,7 +154,11 @@ export function buildAfterSalesClosedEmbed(order: EscortDispatchOrder): EmbedVie
     fields: [
       { name: '訂單編號', value: order.orderNumber, inline: true },
       { name: '售後人員', value: `<@${order.afterSalesAssigneeUserId}>`, inline: true },
-      { name: '結案時間', value: order.afterSalesClosedAt?.toLocaleString('zh-TW') ?? 'N/A', inline: false },
+      {
+        name: '結案時間',
+        value: order.afterSalesClosedAt?.toLocaleString('zh-TW') ?? 'N/A',
+        inline: false,
+      },
     ],
     footer: '售後已結案',
   };
@@ -150,7 +174,11 @@ export function buildOrderDetailEmbed(order: EscortDispatchOrder): EmbedView {
     fields: [
       { name: '訂單編號', value: order.orderNumber, inline: true },
       { name: '狀態', value: statusLabel, inline: true },
-      { name: '護航者', value: order.escortUserId > 0 ? `<@${order.escortUserId}>` : '尚未指派', inline: true },
+      {
+        name: '護航者',
+        value: order.escortUserId > 0 ? `<@${order.escortUserId}>` : '尚未指派',
+        inline: true,
+      },
       { name: '客戶', value: `<@${order.customerUserId}>`, inline: true },
       { name: '建立者', value: `<@${order.assignedByUserId}>`, inline: true },
       { name: '護航品類', value: order.sourceEscortOptionCode ?? '一般', inline: true },

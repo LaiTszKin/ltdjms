@@ -12,12 +12,7 @@ export class MockDiscordContext implements DiscordContext {
   private readonly _userMention: string;
   private readonly options: Map<string, unknown> = new Map();
 
-  constructor(
-    guildId: string,
-    userId: string,
-    channelId: string,
-    userMention: string,
-  ) {
+  constructor(guildId: string, userId: string, channelId: string, userMention: string) {
     if (!guildId) throw new Error('guildId must be a valid non-empty id');
     if (!userId || userId === '0') throw new Error('userId must be a valid non-zero id');
     if (!channelId || channelId === '0') throw new Error('channelId must be a valid non-zero id');

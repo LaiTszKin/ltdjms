@@ -123,7 +123,10 @@ export class EcpayCvsPaymentService {
       const transCode = responseJson.TransCode ?? -1;
       if (transCode !== 1) {
         const transMsg = responseJson.TransMsg ?? '未知錯誤';
-        this.log.warn({ transCode, transMsg, merchantId, stageMode: this.config.getEcpayStageMode() }, 'ECPay transCode failed');
+        this.log.warn(
+          { transCode, transMsg, merchantId, stageMode: this.config.getEcpayStageMode() },
+          'ECPay transCode failed',
+        );
         return err(DomainError.unexpectedFailure(this.buildTransCodeFailureMessage(transMsg)));
       }
 
@@ -154,7 +157,11 @@ export class EcpayCvsPaymentService {
       const cvsInfo = dataNode.CVSInfo ?? {};
       const paymentNoVal: string = cvsInfo.PaymentNo ?? '';
       const expireDateStr: string | null = cvsInfo.ExpireDate ?? null;
-      const expireAt = this.resolveExpireAt(expireDateStr, requestAt, this.clampCvsExpireMinutes(this.config.getEcpayCvsExpireMinutes()));
+      const expireAt = this.resolveExpireAt(
+        expireDateStr,
+        requestAt,
+        this.clampCvsExpireMinutes(this.config.getEcpayCvsExpireMinutes()),
+      );
       const paymentUrl: string | null = cvsInfo.PaymentURL ?? null;
 
       if (!orderNumber || !paymentNoVal) {
@@ -284,9 +291,7 @@ export class EcpayCvsPaymentService {
 
   private buildTransCodeFailureMessage(transMsg: string): string {
     if (transMsg && transMsg.toLowerCase().includes('decrypt fail')) {
-      return (
-        `綠界取號失敗：${transMsg}。請確認 ECPAY_STAGE_MODE 是否和 MerchantID/HashKey/HashIV 對應同一環境，並檢查金鑰是否有貼錯或多餘空白。`
-      );
+      return `綠界取號失敗：${transMsg}。請確認 ECPAY_STAGE_MODE 是否和 MerchantID/HashKey/HashIV 對應同一環境，並檢查金鑰是否有貼錯或多餘空白。`;
     }
     return `綠界取號失敗：${transMsg}`;
   }

@@ -42,18 +42,14 @@ export {
   NoOpCacheService,
   type CacheKeyGenerator,
   DefaultCacheKeyGenerator,
+  CacheInvalidationListener,
 } from './infra/cache/index.js';
 
 // Events
 export { DomainEventPublisher } from './infra/events/index.js';
 
 // DI
-export {
-  initializeContainer,
-  container,
-  TOKENS,
-  type TokenMap,
-} from './infra/di/index.js';
+export { initializeContainer, container, TOKENS, type TokenMap } from './infra/di/index.js';
 
 // Utils
 export { processWithConcurrencyLimit } from './utils/concurrency.js';
@@ -82,3 +78,17 @@ export {
   type SelectMenuOption,
   type SelectMenuDefinition,
 } from './discord/index.js';
+
+// Localization
+export {
+  CommandLocalizations,
+  getCommandNameLocalization,
+  getCommandDescriptionLocalization,
+  getOptionNameLocalization,
+  getOptionDescriptionLocalization,
+  getChoiceLocalization,
+  DiceGameMessages,
+  type CommandName,
+  type OptionName,
+  type ChoiceValue,
+} from './localization/index.js';

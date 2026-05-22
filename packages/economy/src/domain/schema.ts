@@ -68,7 +68,10 @@ export const currencyTransaction = pgTable(
     ),
     guildIdx: index('idx_currency_transaction_guild').on(table.guildId, table.createdAt.desc()),
     sourceIdx: index('idx_currency_transaction_source').on(table.source),
-    balanceAfterCheck: check('currency_tx_balance_after_non_negative', sql`${table.balanceAfter} >= 0`),
+    balanceAfterCheck: check(
+      'currency_tx_balance_after_non_negative',
+      sql`${table.balanceAfter} >= 0`,
+    ),
   }),
 );
 
@@ -117,7 +120,10 @@ export const gameTokenTransaction = pgTable(
     ),
     guildIdx: index('idx_game_token_transaction_guild').on(table.guildId, table.createdAt.desc()),
     sourceIdx: index('idx_game_token_transaction_source').on(table.source),
-    balanceAfterCheck: check('game_token_tx_balance_after_non_negative', sql`${table.balanceAfter} >= 0`),
+    balanceAfterCheck: check(
+      'game_token_tx_balance_after_non_negative',
+      sql`${table.balanceAfter} >= 0`,
+    ),
   }),
 );
 
@@ -131,15 +137,26 @@ export const diceGame1Config = pgTable(
     guildId: bigint('guild_id', { mode: 'number' }).primaryKey(),
     minTokensPerPlay: bigint('min_tokens_per_play', { mode: 'number' }).notNull().default(1),
     maxTokensPerPlay: bigint('max_tokens_per_play', { mode: 'number' }).notNull().default(10),
-    rewardPerDiceValue: bigint('reward_per_dice_value', { mode: 'number' }).notNull().default(250000),
+    rewardPerDiceValue: bigint('reward_per_dice_value', { mode: 'number' })
+      .notNull()
+      .default(250000),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    minTokensCheck: check('dice_game1_min_tokens_non_negative', sql`${table.minTokensPerPlay} >= 0`),
-    maxTokensCheck: check('dice_game1_max_tokens_non_negative', sql`${table.maxTokensPerPlay} >= 0`),
+    minTokensCheck: check(
+      'dice_game1_min_tokens_non_negative',
+      sql`${table.minTokensPerPlay} >= 0`,
+    ),
+    maxTokensCheck: check(
+      'dice_game1_max_tokens_non_negative',
+      sql`${table.maxTokensPerPlay} >= 0`,
+    ),
     rewardCheck: check('dice_game1_reward_non_negative', sql`${table.rewardPerDiceValue} >= 0`),
-    minMaxCheck: check('dice_game1_min_le_max', sql`${table.minTokensPerPlay} <= ${table.maxTokensPerPlay}`),
+    minMaxCheck: check(
+      'dice_game1_min_le_max',
+      sql`${table.minTokensPerPlay} <= ${table.maxTokensPerPlay}`,
+    ),
   }),
 );
 
@@ -161,13 +178,28 @@ export const diceGame2Config = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    minTokensCheck: check('dice_game2_min_tokens_non_negative', sql`${table.minTokensPerPlay} >= 0`),
-    maxTokensCheck: check('dice_game2_max_tokens_non_negative', sql`${table.maxTokensPerPlay} >= 0`),
-    straightMulCheck: check('dice_game2_straight_mul_non_negative', sql`${table.straightMultiplier} >= 0`),
+    minTokensCheck: check(
+      'dice_game2_min_tokens_non_negative',
+      sql`${table.minTokensPerPlay} >= 0`,
+    ),
+    maxTokensCheck: check(
+      'dice_game2_max_tokens_non_negative',
+      sql`${table.maxTokensPerPlay} >= 0`,
+    ),
+    straightMulCheck: check(
+      'dice_game2_straight_mul_non_negative',
+      sql`${table.straightMultiplier} >= 0`,
+    ),
     baseMulCheck: check('dice_game2_base_mul_non_negative', sql`${table.baseMultiplier} >= 0`),
     tripleLowCheck: check('dice_game2_triple_low_non_negative', sql`${table.tripleLowBonus} >= 0`),
-    tripleHighCheck: check('dice_game2_triple_high_non_negative', sql`${table.tripleHighBonus} >= 0`),
-    minMaxCheck: check('dice_game2_min_le_max', sql`${table.minTokensPerPlay} <= ${table.maxTokensPerPlay}`),
+    tripleHighCheck: check(
+      'dice_game2_triple_high_non_negative',
+      sql`${table.tripleHighBonus} >= 0`,
+    ),
+    minMaxCheck: check(
+      'dice_game2_min_le_max',
+      sql`${table.minTokensPerPlay} <= ${table.maxTokensPerPlay}`,
+    ),
   }),
 );
 

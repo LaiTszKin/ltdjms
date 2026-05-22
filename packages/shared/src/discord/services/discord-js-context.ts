@@ -12,10 +12,7 @@ import { type DiscordContext } from '../domain/discord-context.js';
  */
 export class DiscordJsContext implements DiscordContext {
   constructor(
-    private readonly interaction:
-      | CommandInteraction
-      | ButtonInteraction
-      | ModalSubmitInteraction,
+    private readonly interaction: CommandInteraction | ButtonInteraction | ModalSubmitInteraction,
   ) {}
 
   getGuildId(): string {

@@ -108,20 +108,14 @@ export class LangChainAIChatService implements AIChatService {
     const chunks: string[] = [];
     const errorRef: { current: DomainError | null } = { current: null };
 
-    await this.generateStreamingResponse(
-      guildId,
-      channelId,
-      userId,
-      userMessage,
-      {
-        onChunk: async (chunk: string, _isComplete: boolean, error: DomainError | null) => {
-          if (error) {
-            errorRef.current = error;
-          }
-          chunks.push(chunk);
-        },
+    await this.generateStreamingResponse(guildId, channelId, userId, userMessage, {
+      onChunk: async (chunk: string, _isComplete: boolean, error: DomainError | null) => {
+        if (error) {
+          errorRef.current = error;
+        }
+        chunks.push(chunk);
       },
-    );
+    });
 
     if (errorRef.current) {
       return err(errorRef.current);
@@ -140,7 +134,15 @@ export class LangChainAIChatService implements AIChatService {
     messageId?: string,
   ): Promise<void> {
     if (messageId) {
-      return this.generateStreamingResponseWithId(guildId, channelId, userId, userMessage, messageId, handler, agentEnabled);
+      return this.generateStreamingResponseWithId(
+        guildId,
+        channelId,
+        userId,
+        userMessage,
+        messageId,
+        handler,
+        agentEnabled,
+      );
     }
     await this.doStream(guildId, channelId, userId, userMessage, [], handler, agentEnabled);
   }
@@ -154,7 +156,16 @@ export class LangChainAIChatService implements AIChatService {
     handler: StreamingResponseHandler,
     agentEnabled: boolean = false,
   ): Promise<void> {
-    await this.doStream(guildId, channelId, userId, userMessage, [], handler, agentEnabled, messageId);
+    await this.doStream(
+      guildId,
+      channelId,
+      userId,
+      userMessage,
+      [],
+      handler,
+      agentEnabled,
+      messageId,
+    );
   }
 
   async generateWithHistory(
@@ -174,9 +185,10 @@ export class LangChainAIChatService implements AIChatService {
 
     const userMessage = lastUserMsgIndex >= 0 ? history[lastUserMsgIndex].content : '';
     // Remove last user message from history to avoid duplication in buildMessages (P2-14)
-    const filteredHistory = lastUserMsgIndex >= 0
-      ? [...history.slice(0, lastUserMsgIndex), ...history.slice(lastUserMsgIndex + 1)]
-      : history;
+    const filteredHistory =
+      lastUserMsgIndex >= 0
+        ? [...history.slice(0, lastUserMsgIndex), ...history.slice(lastUserMsgIndex + 1)]
+        : history;
 
     await this.doStream(guildId, _channelId, _userId, userMessage, filteredHistory, handler);
   }
@@ -274,12 +286,7 @@ export class LangChainAIChatService implements AIChatService {
             // For non-agent mode, emit CONTENT in real-time
             // For agent mode, accumulate content and emit after tool loop completes
             if (!agentEnabled) {
-              handler.onChunk(
-                content,
-                false,
-                null,
-                StreamChunkType.CONTENT,
-              );
+              handler.onChunk(content, false, null, StreamChunkType.CONTENT);
             }
           }
 
@@ -288,12 +295,7 @@ export class LangChainAIChatService implements AIChatService {
           const reasoningContent = msg.reasoning_content as string | undefined;
           if (reasoningContent) {
             reasoningBuffer += reasoningContent;
-            handler.onChunk(
-              reasoningContent,
-              false,
-              null,
-              StreamChunkType.REASONING,
-            );
+            handler.onChunk(reasoningContent, false, null, StreamChunkType.REASONING);
           }
         }
 
@@ -302,12 +304,7 @@ export class LangChainAIChatService implements AIChatService {
         if (toolCalls.length > 0) {
           // Emit TOOL_INTENT for each tool call so the listener can display them
           for (const tc of toolCalls) {
-            handler.onChunk(
-              `使用工具：${tc.name}`,
-              false,
-              null,
-              StreamChunkType.TOOL_INTENT,
-            );
+            handler.onChunk(`使用工具：${tc.name}`, false, null, StreamChunkType.TOOL_INTENT);
           }
 
           // Add assistant message with tool_calls to message history
@@ -325,7 +322,7 @@ export class LangChainAIChatService implements AIChatService {
           // Execute tools with bounded concurrency (max 3 parallel) and add results as ToolMessages (P2-12)
           const results = await processWithConcurrencyLimit(
             toolCalls,
-            tc => this.executeTool(guildId, channelId, userId, tc, channelId),
+            (tc) => this.executeTool(guildId, channelId, userId, tc, channelId),
             3,
           );
           for (let i = 0; i < toolCalls.length; i++) {
@@ -339,7 +336,12 @@ export class LangChainAIChatService implements AIChatService {
 
           // P2-8: Send accumulated content from this iteration before continuing
           if (agentEnabled && totalContent.length > sentContentLength) {
-            handler.onChunk(totalContent.slice(sentContentLength), false, null, StreamChunkType.CONTENT);
+            handler.onChunk(
+              totalContent.slice(sentContentLength),
+              false,
+              null,
+              StreamChunkType.CONTENT,
+            );
             sentContentLength = totalContent.length;
           }
 
@@ -371,9 +373,12 @@ export class LangChainAIChatService implements AIChatService {
       // Runtime field checks ensure type safety before casting (P2-14).
       if (this.eventPublisher && totalContent) {
         const hasRequiredFields =
-          typeof guildId === 'string' && !!guildId &&
-          typeof channelId === 'string' && !!channelId &&
-          typeof userId === 'string' && !!userId &&
+          typeof guildId === 'string' &&
+          !!guildId &&
+          typeof channelId === 'string' &&
+          !!channelId &&
+          typeof userId === 'string' &&
+          !!userId &&
           typeof userMessage === 'string';
         if (hasRequiredFields) {
           const event: DomainEvent = {
@@ -426,84 +431,81 @@ export class LangChainAIChatService implements AIChatService {
     const args = this.parseToolArgs(tc.args);
 
     // Execute within ToolExecutionContext for thread-local context
-    return ToolExecutionContext.run(
-      { guildId, channelId, userId },
-      async () => {
-        // Get guild via runtime gateway for authorization
-        let guild: Guild | null = null;
-        try {
-          const client = this.runtimeGateway?.requireReadyClient() as
-            | (import('discord.js').Client & { guilds: { cache: Map<string, Guild>; fetch: (id: string) => Promise<Guild> } })
-            | undefined;
-          if (client) {
-            guild = client.guilds.cache.get(guildId) ?? (await client.guilds.fetch(guildId).catch(() => null));
+    return ToolExecutionContext.run({ guildId, channelId, userId }, async () => {
+      // Get guild via runtime gateway for authorization
+      let guild: Guild | null = null;
+      try {
+        const client = this.runtimeGateway?.requireReadyClient() as
+          | (import('discord.js').Client & {
+              guilds: { cache: Map<string, Guild>; fetch: (id: string) => Promise<Guild> };
+            })
+          | undefined;
+        if (client) {
+          guild =
+            client.guilds.cache.get(guildId) ??
+            (await client.guilds.fetch(guildId).catch(() => null));
+        }
+      } catch {
+        // guild fetch failed — proceed with null guild (auth will fail gracefully)
+      }
+
+      // P0-8: Interceptor lifecycle
+      const correlationId = this.interceptor?.onToolExecutionStarted(tc.name, args);
+
+      try {
+        // Execute the tool's handler function
+        // Authorization is handled by each tool's own validateAdministrator() call (P2-10)
+        if (!guild) {
+          const noGuildMsg = `錯誤：無法取得伺服器資訊 (${guildId})`;
+          if (correlationId) {
+            this.interceptor?.onToolExecutionCompleted(correlationId, noGuildMsg);
           }
-        } catch {
-          // guild fetch failed — proceed with null guild (auth will fail gracefully)
+          return noGuildMsg;
+        }
+        // P1-13: Per-tool execution timeout (30 seconds) with AbortController signal propagation (P3-5)
+        const abortController = new AbortController();
+        let result: string;
+        let timer: NodeJS.Timeout | undefined;
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timer = setTimeout(() => {
+            abortController.abort();
+            reject(new Error(`工具「${tc.name}」執行逾時 (30 秒)`));
+          }, 30000);
+        });
+        try {
+          result = await Promise.race([tool.execute(args, guild), timeoutPromise]);
+        } finally {
+          clearTimeout(timer);
         }
 
-        // P0-8: Interceptor lifecycle
-        const correlationId = this.interceptor?.onToolExecutionStarted(tc.name, args);
+        // P0-8: Interceptor completion
+        if (correlationId) {
+          this.interceptor?.onToolExecutionCompleted(correlationId, result);
+        }
 
-        try {
-          // Execute the tool's handler function
-          // Authorization is handled by each tool's own validateAdministrator() call (P2-10)
-          if (!guild) {
-            const noGuildMsg = `錯誤：無法取得伺服器資訊 (${guildId})`;
-            if (correlationId) {
-              this.interceptor?.onToolExecutionCompleted(correlationId, noGuildMsg);
-            }
-            return noGuildMsg;
-          }
-          // P1-13: Per-tool execution timeout (30 seconds) with AbortController signal propagation (P3-5)
-          const abortController = new AbortController();
-          let result: string;
-          let timer: NodeJS.Timeout | undefined;
-          const timeoutPromise = new Promise<never>((_, reject) => {
-            timer = setTimeout(() => {
-              abortController.abort();
-              reject(new Error(`工具「${tc.name}」執行逾時 (30 秒)`));
-            }, 30000);
+        // P0-9: Record in tool call history (use threadId/channelId as key)
+        if (this.toolCallHistory) {
+          const summary = InMemoryToolCallHistory.createMemorySummary(tc.name, args, result);
+          const historyKey = sourceId || channelId;
+          this.toolCallHistory.addToolCall(historyKey, userId, {
+            toolName: tc.name,
+            parameters: args,
+            memorySummary: summary.memorySummary,
+            redactionMode: summary.redactionMode,
+            timestamp: new Date(),
+            success: true,
           });
-          try {
-            result = await Promise.race([tool.execute(args, guild), timeoutPromise]);
-          } finally {
-            clearTimeout(timer);
-          }
-
-          // P0-8: Interceptor completion
-          if (correlationId) {
-            this.interceptor?.onToolExecutionCompleted(correlationId, result);
-          }
-
-          // P0-9: Record in tool call history (use threadId/channelId as key)
-          if (this.toolCallHistory) {
-            const summary = InMemoryToolCallHistory.createMemorySummary(tc.name, args, result);
-            const historyKey = sourceId || channelId;
-            this.toolCallHistory.addToolCall(
-              historyKey,
-              userId,
-              {
-                toolName: tc.name,
-                parameters: args,
-                memorySummary: summary.memorySummary,
-                redactionMode: summary.redactionMode,
-                timestamp: new Date(),
-                success: true,
-              },
-            );
-          }
-
-          return result;
-        } catch (err) {
-          // P0-8: Interceptor failure
-          if (correlationId) {
-            this.interceptor?.onToolExecutionFailed(correlationId, err);
-          }
-          return `工具「${tc.name}」執行失敗：${err instanceof Error ? err.message : String(err)}`;
         }
-      },
-    );
+
+        return result;
+      } catch (err) {
+        // P0-8: Interceptor failure
+        if (correlationId) {
+          this.interceptor?.onToolExecutionFailed(correlationId, err);
+        }
+        return `工具「${tc.name}」執行失敗：${err instanceof Error ? err.message : String(err)}`;
+      }
+    });
   }
 
   /**
@@ -566,9 +568,7 @@ export const CHAT_MAX_ITERATIONS = 1;
  * Each tool must expose name, description, and schema properties.
  * The func is a stub since actual execution goes through the agent loop.
  */
-export function buildToolDefinitionsFromTools(
-  tools: unknown[],
-): DynamicStructuredTool[] {
+export function buildToolDefinitionsFromTools(tools: unknown[]): DynamicStructuredTool[] {
   return tools.map((tool) => {
     const t = tool as {
       name: string;
@@ -600,16 +600,18 @@ export function createChatModel(
   existingModel?: ChatOpenAI,
   toolDefs?: DynamicStructuredTool[],
 ): { model: ChatOpenAI | ReturnType<ChatOpenAI['bindTools']>; maxIterations: number } {
-  const model = existingModel ?? new ChatOpenAI({
-    configuration: {
-      baseURL: config.baseUrl,
-      apiKey: config.apiKey,
-    },
-    modelName: config.model,
-    temperature: config.temperature,
-    timeout: config.timeoutSeconds * 1000,
-    streaming: true,
-  });
+  const model =
+    existingModel ??
+    new ChatOpenAI({
+      configuration: {
+        baseURL: config.baseUrl,
+        apiKey: config.apiKey,
+      },
+      modelName: config.model,
+      temperature: config.temperature,
+      timeout: config.timeoutSeconds * 1000,
+      streaming: true,
+    });
 
   if (agentEnabled && toolDefs && toolDefs.length > 0) {
     return {

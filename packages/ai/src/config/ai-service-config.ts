@@ -64,11 +64,13 @@ export class AIServiceConfig {
   /**
    * Creates an AIServiceConfig from a raw values object (for testing).
    */
-  static fromValues(values: Partial<AIServiceConfigValues> & {
-    baseUrl: string;
-    apiKey: string;
-    model: string;
-  }): AIServiceConfig {
+  static fromValues(
+    values: Partial<AIServiceConfigValues> & {
+      baseUrl: string;
+      apiKey: string;
+      model: string;
+    },
+  ): AIServiceConfig {
     const parsed = AIServiceConfigSchema.parse({
       temperature: 0.7,
       timeoutSeconds: 30,
@@ -98,12 +100,13 @@ export class AIServiceConfig {
 
     if (!result.success) {
       const firstIssue = result.error.issues[0];
-      return err(DomainError.invalidInput(
-        `AI config validation failed: ${firstIssue.path.join('.')} — ${firstIssue.message}`,
-      ));
+      return err(
+        DomainError.invalidInput(
+          `AI config validation failed: ${firstIssue.path.join('.')} — ${firstIssue.message}`,
+        ),
+      );
     }
 
     return okVoid<DomainError>();
   }
-
 }

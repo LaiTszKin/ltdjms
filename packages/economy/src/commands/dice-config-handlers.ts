@@ -1,9 +1,6 @@
-import {
-  type DiscordInteraction,
-  type DiscordContext,
-} from '@ltdjms/shared';
+import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
 import { type DiceConfigService } from '../dice/services/dice-config-service.js';
-import { DiceGameMessages } from '../localization/dice-game-messages.js';
+import { DiceGameMessages } from '@ltdjms/shared';
 
 /**
  * /dice-game-1-config slash command handler (admin only).
@@ -12,14 +9,9 @@ import { DiceGameMessages } from '../localization/dice-game-messages.js';
 export class DiceGame1ConfigHandler {
   readonly commandName = 'dice-game-1-config';
 
-  constructor(
-    private readonly diceConfigService: DiceConfigService,
-  ) {}
+  constructor(private readonly diceConfigService: DiceConfigService) {}
 
-  async execute(
-    interaction: DiscordInteraction,
-    context: DiscordContext,
-  ): Promise<void> {
+  async execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void> {
     interaction.makeEphemeral();
     if (!interaction.isAdministrator()) {
       await interaction.reply('此操作需要管理員權限');
@@ -65,15 +57,19 @@ export class DiceGame1ConfigHandler {
       });
 
       await interaction.reply(
-        `${DiceGameMessages.DICE_CONFIG_SUCCESS}\n${DiceGameMessages.DICE_CONFIG_1_DISPLAY
-          .replace('{min}', String(saved.minTokensPerPlay))
+        `${DiceGameMessages.DICE_CONFIG_SUCCESS}\n${DiceGameMessages.DICE_CONFIG_1_DISPLAY.replace(
+          '{min}',
+          String(saved.minTokensPerPlay),
+        )
           .replace('{max}', String(saved.maxTokensPerPlay))
           .replace('{reward}', String(saved.rewardPerDiceValue))}`,
       );
     } catch (err) {
       await interaction.reply(
-        DiceGameMessages.DICE_CONFIG_FAILED
-          .replace('{reason}', err instanceof Error ? err.message : String(err)),
+        DiceGameMessages.DICE_CONFIG_FAILED.replace(
+          '{reason}',
+          err instanceof Error ? err.message : String(err),
+        ),
       );
     }
   }
@@ -86,14 +82,9 @@ export class DiceGame1ConfigHandler {
 export class DiceGame2ConfigHandler {
   readonly commandName = 'dice-game-2-config';
 
-  constructor(
-    private readonly diceConfigService: DiceConfigService,
-  ) {}
+  constructor(private readonly diceConfigService: DiceConfigService) {}
 
-  async execute(
-    interaction: DiscordInteraction,
-    context: DiscordContext,
-  ): Promise<void> {
+  async execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void> {
     interaction.makeEphemeral();
     if (!interaction.isAdministrator()) {
       await interaction.reply('此操作需要管理員權限');
@@ -110,9 +101,12 @@ export class DiceGame2ConfigHandler {
     const tripleHighStr = context.getOptionAsString('triple-high-bonus');
 
     if (
-      !minTokensStr || !maxTokensStr ||
-      !straightMulStr || !baseMulStr ||
-      !tripleLowStr || !tripleHighStr
+      !minTokensStr ||
+      !maxTokensStr ||
+      !straightMulStr ||
+      !baseMulStr ||
+      !tripleLowStr ||
+      !tripleHighStr
     ) {
       await interaction.reply(DiceGameMessages.INVALID_OPTION);
       return;
@@ -132,9 +126,12 @@ export class DiceGame2ConfigHandler {
       !Number.isFinite(baseMultiplier) ||
       !Number.isFinite(tripleLowBonus) ||
       !Number.isFinite(tripleHighBonus) ||
-      minTokens <= 0 || maxTokens <= 0 ||
-      straightMultiplier <= 0 || baseMultiplier <= 0 ||
-      tripleLowBonus <= 0 || tripleHighBonus <= 0 ||
+      minTokens <= 0 ||
+      maxTokens <= 0 ||
+      straightMultiplier <= 0 ||
+      baseMultiplier <= 0 ||
+      tripleLowBonus <= 0 ||
+      tripleHighBonus <= 0 ||
       maxTokens < minTokens
     ) {
       await interaction.reply(DiceGameMessages.INVALID_OPTION);
@@ -155,8 +152,10 @@ export class DiceGame2ConfigHandler {
       });
 
       await interaction.reply(
-        `${DiceGameMessages.DICE_CONFIG_SUCCESS}\n${DiceGameMessages.DICE_CONFIG_2_DISPLAY
-          .replace('{min}', String(saved.minTokensPerPlay))
+        `${DiceGameMessages.DICE_CONFIG_SUCCESS}\n${DiceGameMessages.DICE_CONFIG_2_DISPLAY.replace(
+          '{min}',
+          String(saved.minTokensPerPlay),
+        )
           .replace('{max}', String(saved.maxTokensPerPlay))
           .replace('{straightMul}', String(saved.straightMultiplier))
           .replace('{baseMul}', String(saved.baseMultiplier))
@@ -165,8 +164,10 @@ export class DiceGame2ConfigHandler {
       );
     } catch (err) {
       await interaction.reply(
-        DiceGameMessages.DICE_CONFIG_FAILED
-          .replace('{reason}', err instanceof Error ? err.message : String(err)),
+        DiceGameMessages.DICE_CONFIG_FAILED.replace(
+          '{reason}',
+          err instanceof Error ? err.message : String(err),
+        ),
       );
     }
   }

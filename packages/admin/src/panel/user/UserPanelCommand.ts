@@ -1,7 +1,4 @@
-import {
-  type DiscordInteraction,
-  type DiscordContext,
-} from '@ltdjms/shared';
+import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { type CommandHandler } from '../../commands/infra/CommandHandler.js';
 import { MemberInfoFacade } from '../../facades/MemberInfoFacade.js';
@@ -22,10 +19,7 @@ export class UserPanelCommand implements CommandHandler {
     private readonly embedBuilder: UserPanelEmbedBuilder,
   ) {}
 
-  async execute(
-    interaction: DiscordInteraction,
-    context: DiscordContext,
-  ): Promise<void> {
+  async execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void> {
     const guildId = interaction.getGuildId();
     const userId = interaction.getUserId();
 

@@ -142,7 +142,9 @@ export class AIConfigManagementFacade {
    */
   async getAgentConfigs(
     guildId: string,
-  ): Promise<Result<Array<{ channelId: string; mode: string; activatedAt: Date | null }>, DomainError>> {
+  ): Promise<
+    Result<Array<{ channelId: string; mode: string; activatedAt: Date | null }>, DomainError>
+  > {
     const result = await this.agentConfigService.getEnabledChannels(guildId);
     if (result.isErr()) return err(result.getError());
 
@@ -172,7 +174,7 @@ export class AIConfigManagementFacade {
     if (mode !== AgentMode.AGENT) {
       console.warn(
         `[AIConfigManagementFacade] Non-AGENT mode (${mode}) requested for guild=${guildId}, ` +
-        `channel=${channelId}. Falling back to AGENT — service layer only supports enabled/disabled.`,
+          `channel=${channelId}. Falling back to AGENT — service layer only supports enabled/disabled.`,
       );
     }
     const result = await this.agentConfigService.setAgentEnabled(guildId, channelId, true);
@@ -191,10 +193,7 @@ export class AIConfigManagementFacade {
   /**
    * Disables agent mode for a channel.
    */
-  async disableAgent(
-    guildId: string,
-    channelId: string,
-  ): Promise<Result<Unit, DomainError>> {
+  async disableAgent(guildId: string, channelId: string): Promise<Result<Unit, DomainError>> {
     const result = await this.agentConfigService.setAgentEnabled(guildId, channelId, false);
     if (result.isOk()) {
       this.eventPublisher.publish({
@@ -227,10 +226,7 @@ export class AIConfigManagementFacade {
   /**
    * Removes the agent configuration for a channel.
    */
-  async removeAgentConfig(
-    guildId: string,
-    channelId: string,
-  ): Promise<Result<Unit, DomainError>> {
+  async removeAgentConfig(guildId: string, channelId: string): Promise<Result<Unit, DomainError>> {
     return this.agentConfigService.removeChannel(guildId, channelId);
   }
 }

@@ -2,7 +2,10 @@ import type { Result, TokenMap, DiscordRuntimeGateway } from '@ltdjms/shared';
 import { Ok, Err, DomainError } from '@ltdjms/shared';
 
 import type { EscortDispatchOrderRepo } from '../repo/escort-dispatch-order.repo.js';
-import { EscortDispatchOrderNumberGenerator, generateUniqueOrderNumber } from '../domain/order-number-generator.js';
+import {
+  EscortDispatchOrderNumberGenerator,
+  generateUniqueOrderNumber,
+} from '../domain/order-number-generator.js';
 import type { EscortOptionCatalogRepository } from '../repo/escort-option-catalog.repo.js';
 import { type DispatchAfterSalesStaffService } from './dispatch-after-sales-staff.service.js';
 import type { DispatchNotificationService } from '../notification/DispatchNotificationService.js';
@@ -70,14 +73,23 @@ export class EscortDispatchOrderService {
 
     // P1-13: 驗證客戶存在於伺服器中
     if (this.gateway) {
-      const memberExists = await this.gateway.retrieveMemberById(String(guildId), String(customerUserId));
+      const memberExists = await this.gateway.retrieveMemberById(
+        String(guildId),
+        String(customerUserId),
+      );
       if (!memberExists) {
         return new Err(DomainError.invalidInput('找不到指定客戶'));
       }
     }
 
     const orderNumber = await this.generateUniqueOrderNumber();
-    const pendingResult = createPending(orderNumber, guildId, assignedByUserId, escortUserId, customerUserId);
+    const pendingResult = createPending(
+      orderNumber,
+      guildId,
+      assignedByUserId,
+      escortUserId,
+      customerUserId,
+    );
     if (pendingResult.isErr()) {
       return pendingResult;
     }
@@ -104,7 +116,10 @@ export class EscortDispatchOrderService {
 
     // P1-13: 驗證客戶存在於伺服器中
     if (this.gateway) {
-      const memberExists = await this.gateway.retrieveMemberById(String(guildId), String(customerUserId));
+      const memberExists = await this.gateway.retrieveMemberById(
+        String(guildId),
+        String(customerUserId),
+      );
       if (!memberExists) {
         return new Err(DomainError.invalidInput('找不到指定客戶'));
       }
@@ -115,11 +130,11 @@ export class EscortDispatchOrderService {
     }
 
     if (this.catalogRepository) {
-      const exists = await this.catalogRepository.existsByCode(escortOptionCode.trim().toUpperCase());
+      const exists = await this.catalogRepository.existsByCode(
+        escortOptionCode.trim().toUpperCase(),
+      );
       if (!exists) {
-        const allCodes = (await this.catalogRepository.findAll())
-          .map((c) => c.code)
-          .join(', ');
+        const allCodes = (await this.catalogRepository.findAll()).map((c) => c.code).join(', ');
         return new Err(DomainError.invalidInput(`護航品類無效，可用代碼：${allCodes}`));
       }
     }
@@ -346,10 +361,7 @@ export class EscortDispatchOrderService {
       if (afterSalesResult.isErr()) {
         return afterSalesResult;
       }
-      const updated = await this.repository.update(
-        afterSalesResult.getValue(),
-        expectedStatus,
-      );
+      const updated = await this.repository.update(afterSalesResult.getValue(), expectedStatus);
       if (updated == null) {
         return new Err(DomainError.invalidInput('申請售後失敗，訂單狀態可能已被變更'));
       }
@@ -374,7 +386,10 @@ export class EscortDispatchOrderService {
 
     // R8.1: Verify user is an after-sales staff member
     if (this.afterSalesStaffService) {
-      const isStaff = await this.afterSalesStaffService.isAfterSalesStaff(order.guildId, String(afterSalesUserId));
+      const isStaff = await this.afterSalesStaffService.isAfterSalesStaff(
+        order.guildId,
+        String(afterSalesUserId),
+      );
       if (!isStaff) {
         return new Err(DomainError.invalidInput('你不是售後人員，無法接手售後案件'));
       }
@@ -471,9 +486,7 @@ export class EscortDispatchOrderService {
   }
 
   /** 公開查詢單筆訂單。委派給內部 findOrder。 */
-  async findByOrderNumber(
-    orderNumber: string,
-  ): Promise<Result<EscortDispatchOrder, DomainError>> {
+  async findByOrderNumber(orderNumber: string): Promise<Result<EscortDispatchOrder, DomainError>> {
     return this.findOrder(orderNumber);
   }
 
@@ -482,7 +495,10 @@ export class EscortDispatchOrderService {
     guildId: number,
     limit?: number,
   ): Promise<Result<EscortDispatchOrder[], DomainError>> {
-    const safeLimit = this.normalizeLimit(limit ?? DEFAULT_PENDING_ASSIGNMENT_LIMIT, MAX_PENDING_ASSIGNMENT_LIMIT);
+    const safeLimit = this.normalizeLimit(
+      limit ?? DEFAULT_PENDING_ASSIGNMENT_LIMIT,
+      MAX_PENDING_ASSIGNMENT_LIMIT,
+    );
     try {
       const orders = await this.repository.findPendingAssignmentByGuildId(guildId, safeLimit);
       return new Ok(orders);
@@ -505,9 +521,7 @@ export class EscortDispatchOrderService {
 
   // ---- Private Helpers ----
 
-  private async findOrder(
-    orderNumber: string,
-  ): Promise<Result<EscortDispatchOrder, DomainError>> {
+  private async findOrder(orderNumber: string): Promise<Result<EscortDispatchOrder, DomainError>> {
     if (!orderNumber || orderNumber.trim().length === 0) {
       return new Err(DomainError.invalidInput('訂單編號無效'));
     }
@@ -540,7 +554,10 @@ export class EscortDispatchOrderService {
       return order;
     }
     try {
-      const updated = await this.repository.update(completedResult.getValue(), EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION);
+      const updated = await this.repository.update(
+        completedResult.getValue(),
+        EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION,
+      );
 
       if (updated == null) {
         // If optimistic lock failed, return original order (non-blocking)
@@ -584,7 +601,8 @@ export class EscortDispatchOrderService {
 
   private normalizeLimit(limit: number, maxLimit: number): number {
     if (limit <= 0) {
-      const defaultForMax = maxLimit === MAX_HISTORY_LIMIT ? DEFAULT_HISTORY_LIMIT : DEFAULT_PENDING_ASSIGNMENT_LIMIT;
+      const defaultForMax =
+        maxLimit === MAX_HISTORY_LIMIT ? DEFAULT_HISTORY_LIMIT : DEFAULT_PENDING_ASSIGNMENT_LIMIT;
       return defaultForMax;
     }
     return Math.min(limit, maxLimit);

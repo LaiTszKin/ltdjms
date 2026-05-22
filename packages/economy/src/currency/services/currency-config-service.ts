@@ -40,9 +40,7 @@ export class CurrencyConfigService {
   /**
    * Gets the currency configuration with Result-based error handling.
    */
-  async tryGetConfig(
-    guildId: number,
-  ): Promise<Result<GuildCurrencyConfig, DomainError>> {
+  async tryGetConfig(guildId: number): Promise<Result<GuildCurrencyConfig, DomainError>> {
     try {
       const config = await this.getConfig(guildId);
       return new Ok(config);
@@ -63,11 +61,7 @@ export class CurrencyConfigService {
    * For custom Discord emoji, validates the format matches `<:name:id>` or `<a:name:id>`.
    * Publishes CurrencyConfigChangedEvent on success.
    */
-  async updateConfig(
-    guildId: number,
-    name: string,
-    icon: string,
-  ): Promise<GuildCurrencyConfig> {
+  async updateConfig(guildId: number, name: string, icon: string): Promise<GuildCurrencyConfig> {
     // Validate inputs
     validateName(name);
     const iconValidation = this.emojiValidator.validate(icon);
@@ -161,4 +155,3 @@ function tryValidateName(name: string): Result<import('@ltdjms/shared').Unit, Do
   }
   return okVoid();
 }
-

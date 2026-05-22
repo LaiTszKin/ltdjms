@@ -35,12 +35,13 @@ export class AdminProductPanelViewFactory {
 
     return {
       title: ZhTwStrings.productListTitle,
-      description: products.length === 0
-        ? ZhTwStrings.productListEmpty
-        : ZhTwStrings.productPageIndicator
-            .replace('{current}', String(page))
-            .replace('{total}', String(totalPages))
-            .replace('{count}', String(products.length)),
+      description:
+        products.length === 0
+          ? ZhTwStrings.productListEmpty
+          : ZhTwStrings.productPageIndicator
+              .replace('{current}', String(page))
+              .replace('{total}', String(totalPages))
+              .replace('{count}', String(products.length)),
       fields,
       color: Colors.PRODUCT_DEFAULT,
     };
@@ -89,7 +90,9 @@ export class AdminProductPanelViewFactory {
     color: number;
   } {
     const codeLines = codes.map((c) => {
-      const status = c.redeemed ? ZhTwStrings.productCodeRedeemed : ZhTwStrings.productCodeAvailable;
+      const status = c.redeemed
+        ? ZhTwStrings.productCodeRedeemed
+        : ZhTwStrings.productCodeAvailable;
       return `\`${c.code}\` — ${status}`;
     });
 

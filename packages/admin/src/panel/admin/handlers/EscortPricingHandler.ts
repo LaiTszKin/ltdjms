@@ -1,7 +1,4 @@
-import {
-  type DiscordInteraction,
-  type DiscordContext,
-} from '@ltdjms/shared';
+import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
 import {
   EmbedBuilder,
   ModalBuilder,
@@ -39,10 +36,7 @@ export class EscortPricingHandler extends BaseAdminHandler {
     super(sessionManager, errorHandler);
   }
 
-  async execute(
-    interaction: DiscordInteraction,
-    context: DiscordContext,
-  ): Promise<void> {
+  async execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void> {
     const guildId = interaction.getGuildId();
     const userId = interaction.getUserId();
 
@@ -109,13 +103,24 @@ export class EscortPricingHandler extends BaseAdminHandler {
 
     // Pagination navigation
     if (fullCustomId === 'admin_escortprice_page_prev') {
-      const currentPage = parseInt(this.sessionManager.getContext(guildId, userId, 'pricing_page') ?? '1', 10);
-      this.sessionManager.setContext(guildId, userId, 'pricing_page', String(Math.max(1, currentPage - 1)));
+      const currentPage = parseInt(
+        this.sessionManager.getContext(guildId, userId, 'pricing_page') ?? '1',
+        10,
+      );
+      this.sessionManager.setContext(
+        guildId,
+        userId,
+        'pricing_page',
+        String(Math.max(1, currentPage - 1)),
+      );
       await this.showPricingList(interaction, guildId, userId);
       return;
     }
     if (fullCustomId === 'admin_escortprice_page_next') {
-      const currentPage = parseInt(this.sessionManager.getContext(guildId, userId, 'pricing_page') ?? '1', 10);
+      const currentPage = parseInt(
+        this.sessionManager.getContext(guildId, userId, 'pricing_page') ?? '1',
+        10,
+      );
       this.sessionManager.setContext(guildId, userId, 'pricing_page', String(currentPage + 1));
       await this.showPricingList(interaction, guildId, userId);
       return;
@@ -147,10 +152,7 @@ export class EscortPricingHandler extends BaseAdminHandler {
       }
     }
 
-    const modalData = this.modalFactory.buildEscortPricingEditModal(
-      optionName,
-      currentOverride,
-    );
+    const modalData = this.modalFactory.buildEscortPricingEditModal(optionName, currentOverride);
 
     const modal = new ModalBuilder()
       .setCustomId('admin_escortprice_save_' + optionCode)
@@ -168,9 +170,7 @@ export class EscortPricingHandler extends BaseAdminHandler {
       if ('placeholder' in field && field.placeholder) {
         input.setPlaceholder(field.placeholder);
       }
-      modal.addComponents(
-        new ActionRowBuilder<TextInputBuilder>().addComponents(input),
-      );
+      modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
     }
 
     await interaction.showModal(modal);
@@ -231,9 +231,7 @@ export class EscortPricingHandler extends BaseAdminHandler {
 
     const embed = new EmbedBuilder()
       .setTitle(ZhTwStrings.escortPricingTitle)
-      .setDescription(
-        ZhTwStrings.escortPricingResetConfirm.replace('{name}', optionName),
-      )
+      .setDescription(ZhTwStrings.escortPricingResetConfirm.replace('{name}', optionName))
       .setColor(Colors.WARNING);
 
     const confirmBtn = new ButtonBuilder()
@@ -263,14 +261,14 @@ export class EscortPricingHandler extends BaseAdminHandler {
       // Query global default price after reset
       const catalogEntry = await this.facade.findCatalogEntry(optionCode);
       const catalogEntryValue = catalogEntry.isOk() ? catalogEntry.getValue() : null;
-      const defaultPrice = catalogEntryValue
-        ? String(catalogEntryValue.priceTwd)
-        : '0';
+      const defaultPrice = catalogEntryValue ? String(catalogEntryValue.priceTwd) : '0';
 
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.escortPricingTitle)
         .setDescription(
-          ZhTwStrings.escortPricingResetDone.replace('{name}', optionCode).replace('{price}', defaultPrice),
+          ZhTwStrings.escortPricingResetDone
+            .replace('{name}', optionCode)
+            .replace('{price}', defaultPrice),
         )
         .setColor(Colors.SUCCESS);
       await interaction.editEmbed(embed);
@@ -290,7 +288,10 @@ export class EscortPricingHandler extends BaseAdminHandler {
     // Pagination: compute current page and slice entries
     const pageStr = this.sessionManager.getContext(guildId, userId, 'pricing_page');
     const currentPage = Math.max(1, parseInt(pageStr ?? '1', 10) || 1);
-    const totalPages = Math.max(1, Math.ceil(allPrices.length / EscortPricingHandler.ITEMS_PER_PAGE));
+    const totalPages = Math.max(
+      1,
+      Math.ceil(allPrices.length / EscortPricingHandler.ITEMS_PER_PAGE),
+    );
     const pageIndex = Math.min(currentPage - 1, totalPages - 1);
     const pagePrices = allPrices.slice(
       pageIndex * EscortPricingHandler.ITEMS_PER_PAGE,

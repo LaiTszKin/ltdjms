@@ -94,10 +94,7 @@ export class BaseAccountRepository<TAccount> {
    * Finds an account by guild and user IDs.
    * Returns null if not found.
    */
-  async findByGuildIdAndUserId(
-    guildId: number,
-    userId: string,
-  ): Promise<TAccount | null> {
+  async findByGuildIdAndUserId(guildId: number, userId: string): Promise<TAccount | null> {
     const rows = await this.db
       .select()
       .from(this.cfg.table)
@@ -117,11 +114,7 @@ export class BaseAccountRepository<TAccount> {
    * value = value + delta WHERE value + delta >= 0.
    * Returns the updated account, or throws if the constraint would be violated.
    */
-  async adjust(
-    guildId: number,
-    userId: string,
-    delta: number,
-  ): Promise<TAccount> {
+  async adjust(guildId: number, userId: string, delta: number): Promise<TAccount> {
     const result = await this.db
       .update(this.cfg.table)
       .set({
@@ -194,16 +187,12 @@ export class BaseAccountRepository<TAccount> {
    * Uses INSERT...ON CONFLICT DO UPDATE (upsert) to avoid a separate
    * findOrCreate round-trip (P1-10).
    */
-  async set(
-    guildId: number,
-    userId: string,
-    newValue: number,
-  ): Promise<TAccount> {
+  async set(guildId: number, userId: string, newValue: number): Promise<TAccount> {
     if (newValue < 0) {
       throw new Error(`Cannot set negative value: ${newValue}`);
     }
 
-    const result = await this.db
+    const result = (await this.db
       .insert(this.cfg.table)
       .values({
         guildId,
@@ -218,7 +207,7 @@ export class BaseAccountRepository<TAccount> {
           [this.cfg.updatedAtFieldName]: sql`NOW()`,
         } as any,
       })
-      .returning() as unknown as any[];
+      .returning()) as unknown as any[];
 
     return this.cfg.mapToDomain(result[0]);
   }

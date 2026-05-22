@@ -1,6 +1,11 @@
 import { container, TOKENS } from '@ltdjms/shared';
 import { EnvironmentConfig } from '@ltdjms/shared';
-import type { DiscordRuntimeGateway, DomainEventPublisher, Result, DomainError } from '@ltdjms/shared';
+import type {
+  DiscordRuntimeGateway,
+  DomainEventPublisher,
+  Result,
+  DomainError,
+} from '@ltdjms/shared';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type pino from 'pino';
 
@@ -31,9 +36,7 @@ import { EscortOrderBuyerNotificationService } from '../services/escort-order-bu
 import { ShopAdminNotificationService } from '../services/shop-admin-notification.service.js';
 
 import { EcpayCallbackHttpServer } from '../web/ecpay-callback-server.js';
-import {
-  type EscortDispatchHandoffService,
-} from '../domain/escort-dispatch-handoff-service.js';
+import { type EscortDispatchHandoffService } from '../domain/escort-dispatch-handoff-service.js';
 import {
   type EscortOrderBuyerNotifier,
   type AdminOrderNotifier,
@@ -75,11 +78,27 @@ export interface BalanceAdjustmentService {
 
 /** Redemption transaction service interface as used by shop services. */
 export interface RedemptionTransactionService {
-  recordTransaction(guildId: number, userId: string, product: Product, code: { code: string }): Promise<unknown>;
+  recordTransaction(
+    guildId: number,
+    userId: string,
+    product: Product,
+    code: { code: string },
+  ): Promise<unknown>;
 
   /** Gets a paginated page of redemption transactions for a user. */
-  getUserRedemptionPage(guildId: number, userId: string, page: number, pageSize: number): Promise<{
-    items: Array<{ id: number; productName: string; code: string; rewardAmount: number | null; createdAt: Date }>;
+  getUserRedemptionPage(
+    guildId: number,
+    userId: string,
+    page: number,
+    pageSize: number,
+  ): Promise<{
+    items: Array<{
+      id: number;
+      productName: string;
+      code: string;
+      rewardAmount: number | null;
+      createdAt: Date;
+    }>;
     hasNext: boolean;
     totalPages: number;
     currentPage: number;
@@ -121,7 +140,9 @@ export const SHOP_TOKENS = {
 
 export function configureContainer(options: ShopModuleOptions): void {
   const config: EnvironmentConfig = container.resolve<EnvironmentConfig>(TOKENS.EnvironmentConfig);
-  const discordRuntimeGateway: DiscordRuntimeGateway = container.resolve(TOKENS.DiscordRuntimeGateway);
+  const discordRuntimeGateway: DiscordRuntimeGateway = container.resolve(
+    TOKENS.DiscordRuntimeGateway,
+  );
   const eventPublisher: DomainEventPublisher = container.resolve(TOKENS.DomainEventPublisher);
   const log = options.logger ?? container.resolve<pino.Logger>(TOKENS.Logger);
 
@@ -136,14 +157,14 @@ export function configureContainer(options: ShopModuleOptions): void {
     SHOP_TOKENS.RedemptionCodeRepository,
     redemptionCodeRepo,
   );
-  container.registerInstance<ProductRepository>(
-    SHOP_TOKENS.ProductRepository,
-    productRepo,
-  );
+  container.registerInstance<ProductRepository>(SHOP_TOKENS.ProductRepository, productRepo);
 
   // ---- Notification Services ----
   const buyerNotification = new FiatOrderBuyerNotificationService(discordRuntimeGateway, log);
-  const escortBuyerNotification = new EscortOrderBuyerNotificationService(discordRuntimeGateway, log);
+  const escortBuyerNotification = new EscortOrderBuyerNotificationService(
+    discordRuntimeGateway,
+    log,
+  );
   const adminNotification = new ShopAdminNotificationService(discordRuntimeGateway, log);
 
   container.registerInstance(SHOP_TOKENS.ShopAdminNotificationService, adminNotification);
@@ -160,12 +181,7 @@ export function configureContainer(options: ShopModuleOptions): void {
   container.registerInstance(SHOP_TOKENS.FiatPaymentCallbackService, paymentCallback);
 
   // ---- FiatOrder Service ----
-  const fiatOrderService = new FiatOrderService(
-    productRepo,
-    ecpayCvsPayment,
-    fiatOrderRepo,
-    log,
-  );
+  const fiatOrderService = new FiatOrderService(productRepo, ecpayCvsPayment, fiatOrderRepo, log);
   container.registerInstance(SHOP_TOKENS.FiatOrderService, fiatOrderService);
 
   // ---- Post-Payment Worker ----
@@ -224,7 +240,12 @@ export function configureContainer(options: ShopModuleOptions): void {
   const shopService = new ShopService(productRepo, log);
   container.registerInstance(SHOP_TOKENS.ShopService, shopService);
 
-  const shopCommandHandler = new ShopCommandHandler(shopService, fiatOrderService, currencyPurchase, productService);
+  const shopCommandHandler = new ShopCommandHandler(
+    shopService,
+    fiatOrderService,
+    currencyPurchase,
+    productService,
+  );
   container.registerInstance(SHOP_TOKENS.ShopCommandHandler, shopCommandHandler);
 
   // ---- Redemption ----

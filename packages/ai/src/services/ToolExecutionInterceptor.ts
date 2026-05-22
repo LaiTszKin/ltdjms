@@ -8,7 +8,10 @@ import pino from 'pino';
 export class ToolExecutionInterceptor {
   private readonly logger: pino.Logger;
   private static readonly MAX_ORPHANED_ENTRIES = 1000;
-  private durations = new Map<string, { startTime: number; timer: ReturnType<typeof setTimeout> }>();
+  private durations = new Map<
+    string,
+    { startTime: number; timer: ReturnType<typeof setTimeout> }
+  >();
   // Entries are cleared on completion/failure via getAndClearDuration, or after 60s
   // via the fallback timeout. Under high concurrency with orphaned executions (no
   // completed/failed callback), entries accumulate until the 60s timeout fires.
@@ -44,13 +47,16 @@ export class ToolExecutionInterceptor {
     }
     this.durations.set(correlationId, { startTime: Date.now(), timer });
 
-    this.logger.info({
-      event: 'tool_execution_started',
-      timestamp: new Date().toISOString(),
-      correlationId,
-      toolName,
-      paramKeys: Object.keys(params),
-    }, `Tool execution started: ${toolName}`);
+    this.logger.info(
+      {
+        event: 'tool_execution_started',
+        timestamp: new Date().toISOString(),
+        correlationId,
+        toolName,
+        paramKeys: Object.keys(params),
+      },
+      `Tool execution started: ${toolName}`,
+    );
 
     return correlationId;
   }
@@ -65,14 +71,17 @@ export class ToolExecutionInterceptor {
   onToolExecutionCompleted(correlationId: string, result: unknown): void {
     const duration = this.getAndClearDuration(correlationId);
 
-    this.logger.info({
-      event: 'tool_execution_completed',
-      timestamp: new Date().toISOString(),
-      correlationId,
-      durationMs: duration,
-      success: true,
-      result,
-    }, `Tool execution completed (${duration}ms)`);
+    this.logger.info(
+      {
+        event: 'tool_execution_completed',
+        timestamp: new Date().toISOString(),
+        correlationId,
+        durationMs: duration,
+        success: true,
+        result,
+      },
+      `Tool execution completed (${duration}ms)`,
+    );
   }
 
   /**
@@ -86,14 +95,17 @@ export class ToolExecutionInterceptor {
     const duration = this.getAndClearDuration(correlationId);
     const message = error instanceof Error ? error.message : String(error);
 
-    this.logger.info({
-      event: 'tool_execution_failed',
-      timestamp: new Date().toISOString(),
-      correlationId,
-      durationMs: duration,
-      success: false,
-      error: message,
-    }, `Tool execution failed (${duration}ms): ${message}`);
+    this.logger.info(
+      {
+        event: 'tool_execution_failed',
+        timestamp: new Date().toISOString(),
+        correlationId,
+        durationMs: duration,
+        success: false,
+        error: message,
+      },
+      `Tool execution failed (${duration}ms): ${message}`,
+    );
   }
 
   /**

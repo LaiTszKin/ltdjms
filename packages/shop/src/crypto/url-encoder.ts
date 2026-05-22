@@ -5,14 +5,16 @@
 export function javaUrlEncode(str: string): string {
   // encodeURIComponent doesn't encode * ! ' ( ) ~
   // Java URLEncoder.encode encodes them
-  return encodeURIComponent(str)
-    .replace(/!/g, '%21')
-    .replace(/'/g, '%27')
-    .replace(/\(/g, '%28')
-    .replace(/\)/g, '%29')
-    .replace(/~/g, '%7E')
-    // Java URLEncoder.encode encodes space as +, not %20
-    .replace(/%20/g, '+');
+  return (
+    encodeURIComponent(str)
+      .replace(/!/g, '%21')
+      .replace(/'/g, '%27')
+      .replace(/\(/g, '%28')
+      .replace(/\)/g, '%29')
+      .replace(/~/g, '%7E')
+      // Java URLEncoder.encode encodes space as +, not %20
+      .replace(/%20/g, '+')
+  );
 }
 
 /**

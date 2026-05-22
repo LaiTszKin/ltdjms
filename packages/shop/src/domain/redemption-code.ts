@@ -19,14 +19,15 @@ export const RedemptionCodeSchema = z
     redeemedAt: z.date().nullable(),
     createdAt: z.date(),
     invalidatedAt: z.date().nullable(),
-    quantity: z.number().int().min(1, 'quantity must be positive').max(1000, 'quantity must not exceed 1000'),
+    quantity: z
+      .number()
+      .int()
+      .min(1, 'quantity must be positive')
+      .max(1000, 'quantity must not exceed 1000'),
   })
-  .refine(
-    (data) => (data.redeemedBy === null) === (data.redeemedAt === null),
-    {
-      message: 'redeemedBy and redeemedAt must both be specified or both be null',
-    },
-  );
+  .refine((data) => (data.redeemedBy === null) === (data.redeemedAt === null), {
+    message: 'redeemedBy and redeemedAt must both be specified or both be null',
+  });
 
 export type RedemptionCode = z.infer<typeof RedemptionCodeSchema>;
 
@@ -52,15 +53,20 @@ export function createRedemptionCode(
   return validated;
 }
 
-export function withRedeemed(code: RedemptionCode, userId: string): Result<RedemptionCode, DomainError> {
+export function withRedeemed(
+  code: RedemptionCode,
+  userId: string,
+): Result<RedemptionCode, DomainError> {
   if (isRedeemed(code)) {
     return err(DomainError.invalidInput('Code has already been redeemed'));
   }
-  return ok(RedemptionCodeSchema.parse({
-    ...code,
-    redeemedBy: safeSnowflakeToNumber(userId),
-    redeemedAt: new Date(),
-  }));
+  return ok(
+    RedemptionCodeSchema.parse({
+      ...code,
+      redeemedBy: safeSnowflakeToNumber(userId),
+      redeemedAt: new Date(),
+    }),
+  );
 }
 
 export function isRedeemed(code: RedemptionCode): boolean {
@@ -83,11 +89,13 @@ export function withInvalidated(code: RedemptionCode): Result<RedemptionCode, Do
   if (isInvalidated(code)) {
     return err(DomainError.invalidInput('Code has already been invalidated'));
   }
-  return ok(RedemptionCodeSchema.parse({
-    ...code,
-    productId: null,
-    invalidatedAt: new Date(),
-  }));
+  return ok(
+    RedemptionCodeSchema.parse({
+      ...code,
+      productId: null,
+      invalidatedAt: new Date(),
+    }),
+  );
 }
 
 export function belongsToGuild(code: RedemptionCode, guildId: number): boolean {

@@ -1,10 +1,4 @@
-import {
-  pgTable,
-  bigint,
-  timestamp,
-  primaryKey,
-  index,
-} from 'drizzle-orm/pg-core';
+import { pgTable, bigint, timestamp, primaryKey, index } from 'drizzle-orm/pg-core';
 
 /**
  * 派單系統售後人員設定

@@ -19,18 +19,10 @@ export class SendMessagesTool {
   readonly description = '發送訊息至指定的頻道';
   readonly schema = SendMessagesParamsSchema;
 
-  constructor(
-    private readonly authGuard: ToolCallerAuthorizationGuard,
-  ) {}
+  constructor(private readonly authGuard: ToolCallerAuthorizationGuard) {}
 
-  async execute(
-    params: SendMessagesParams,
-    guild: Guild,
-  ): Promise<string> {
-    const authError = await this.authGuard.validateAdministrator(
-      guild,
-      this.name,
-    );
+  async execute(params: SendMessagesParams, guild: Guild): Promise<string> {
+    const authError = await this.authGuard.validateAdministrator(guild, this.name);
     if (authError) return authError;
 
     try {
@@ -68,9 +60,7 @@ export class SendMessagesTool {
             for (const msg of messagesToSend) {
               await channel.send(msg);
             }
-            results.push(
-              `已發送 ${messagesToSend.length} 則訊息至 #${channel.name}`,
-            );
+            results.push(`已發送 ${messagesToSend.length} 則訊息至 #${channel.name}`);
           }
         } catch (err) {
           results.push(

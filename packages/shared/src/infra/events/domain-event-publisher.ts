@@ -16,7 +16,10 @@ export class DomainEventPublisher {
   private _lastEvent: DomainEvent | null = null;
   private readonly logger: Logger;
   /** Maps original listener → wrapped function for unregister support. */
-  private readonly wrapperMap = new WeakMap<(event: DomainEvent) => void | Promise<void>, (event: DomainEvent) => void>();
+  private readonly wrapperMap = new WeakMap<
+    (event: DomainEvent) => void | Promise<void>,
+    (event: DomainEvent) => void
+  >();
 
   constructor(logger?: Logger) {
     this.emitter.setMaxListeners(50);
@@ -72,9 +75,7 @@ export class DomainEventPublisher {
    */
   publish(event: DomainEvent): void {
     this._lastEvent = event;
-    const listeners = this.emitter.listeners(EVENT_CHANNEL) as Array<
-      (event: DomainEvent) => void
-    >;
+    const listeners = this.emitter.listeners(EVENT_CHANNEL) as Array<(event: DomainEvent) => void>;
 
     this.logger.debug({ event }, 'Publishing event');
 

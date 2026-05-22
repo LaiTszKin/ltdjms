@@ -27,10 +27,7 @@ export class AdminPanelCommand implements CommandHandler {
     private readonly embedBuilder: DiscordEmbedBuilder,
   ) {}
 
-  async execute(
-    interaction: DiscordInteraction,
-    context: DiscordContext,
-  ): Promise<void> {
+  async execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void> {
     // Permission check (second layer)
     if (!this.hasAdminPermission(interaction)) {
       await interaction.reply(ZhTwStrings.permissionAdminRequired);
@@ -86,11 +83,7 @@ export class AdminPanelCommand implements CommandHandler {
 
     // Split into rows of 3 (3x3 grid per spec)
     for (let i = 0; i < buttons.length; i += 3) {
-      rows.push(
-        new ActionRowBuilder<ButtonBuilder>().addComponents(
-          buttons.slice(i, i + 3),
-        ),
-      );
+      rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(buttons.slice(i, i + 3)));
     }
 
     // Send embed with components and store channelId/messageId for real-time push updates

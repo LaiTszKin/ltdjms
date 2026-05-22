@@ -1,4 +1,10 @@
-import { container, TOKENS, type CacheService, type CacheKeyGenerator, type DomainEventPublisher } from '@ltdjms/shared';
+import {
+  container,
+  TOKENS,
+  type CacheService,
+  type CacheKeyGenerator,
+  type DomainEventPublisher,
+} from '@ltdjms/shared';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { type Pool } from 'pg';
 
@@ -28,7 +34,10 @@ import { BalanceHandler } from '../commands/balance-handler.js';
 import { CurrencyConfigHandler } from '../commands/currency-config-handler.js';
 import { DiceGame1Handler } from '../commands/dice-game-1-handler.js';
 import { DiceGame2Handler } from '../commands/dice-game-2-handler.js';
-import { DiceGame1ConfigHandler, DiceGame2ConfigHandler } from '../commands/dice-config-handlers.js';
+import {
+  DiceGame1ConfigHandler,
+  DiceGame2ConfigHandler,
+} from '../commands/dice-config-handlers.js';
 import { GameTokenAdjustHandler } from '../commands/game-token-adjust-handler.js';
 
 /**
@@ -128,7 +137,11 @@ export function configureEconomyContainer(): void {
   const emojiValidator = new EmojiValidator();
   container.registerInstance(ECONOMY_TOKENS.EmojiValidator, emojiValidator);
 
-  const currencyConfigService = new CurrencyConfigService(currencyConfigRepo, eventPublisher, emojiValidator);
+  const currencyConfigService = new CurrencyConfigService(
+    currencyConfigRepo,
+    eventPublisher,
+    emojiValidator,
+  );
   container.registerInstance(ECONOMY_TOKENS.CurrencyConfigService, currencyConfigService);
 
   const gameTokenTxService = new GameTokenTransactionService(tokenTxRepo);
@@ -143,20 +156,13 @@ export function configureEconomyContainer(): void {
   );
   container.registerInstance(ECONOMY_TOKENS.GameTokenService, gameTokenService);
 
-  const gameRewardService = new GameRewardService(
-    balanceAdjustmentService,
-    balanceService,
-  );
+  const gameRewardService = new GameRewardService(balanceAdjustmentService, balanceService);
   container.registerInstance(ECONOMY_TOKENS.GameRewardService, gameRewardService);
 
-  const diceGame1Service = new DiceGame1Service(
-    gameRewardService,
-  );
+  const diceGame1Service = new DiceGame1Service(gameRewardService);
   container.registerInstance(ECONOMY_TOKENS.DiceGame1Service, diceGame1Service);
 
-  const diceGame2Service = new DiceGame2Service(
-    gameRewardService,
-  );
+  const diceGame2Service = new DiceGame2Service(gameRewardService);
   container.registerInstance(ECONOMY_TOKENS.DiceGame2Service, diceGame2Service);
 
   const diceConfigService = new DiceConfigService(diceConfigRepo, eventPublisher);

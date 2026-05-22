@@ -3,7 +3,10 @@ import { Ok, Err, DomainError } from '@ltdjms/shared';
 
 import type { EscortDispatchOrderRepo } from '../repo/escort-dispatch-order.repo.js';
 import type { EscortOptionCatalogRepository } from '../repo/escort-option-catalog.repo.js';
-import { EscortDispatchOrderNumberGenerator, generateUniqueOrderNumber } from '../domain/order-number-generator.js';
+import {
+  EscortDispatchOrderNumberGenerator,
+  generateUniqueOrderNumber,
+} from '../domain/order-number-generator.js';
 import { type EscortDispatchOrder, SourceType, createAutoHandoff } from '../domain/index.js';
 
 /**
@@ -39,7 +42,13 @@ export class EscortDispatchHandoffService {
     product: HandoffProductSnapshot | null,
     sourceReference: string,
   ): Promise<Result<EscortDispatchOrder, DomainError>> {
-    return this.handoff(guildId, buyerUserId, product, sourceReference, SourceType.CURRENCY_PURCHASE);
+    return this.handoff(
+      guildId,
+      buyerUserId,
+      product,
+      sourceReference,
+      SourceType.CURRENCY_PURCHASE,
+    );
   }
 
   /** Handoff from fiat payment (idempotent). */
@@ -77,9 +86,13 @@ export class EscortDispatchHandoffService {
 
       // Verify the option code exists in the catalog (P2-5)
       if (this.catalogRepository) {
-        const catalogEntry = await this.catalogRepository.findByCode(product.escortOptionCode.trim());
+        const catalogEntry = await this.catalogRepository.findByCode(
+          product.escortOptionCode.trim(),
+        );
         if (!catalogEntry) {
-          return new Err(DomainError.invalidInput(`護航選項代碼 ${product.escortOptionCode} 不存在於目錄中`));
+          return new Err(
+            DomainError.invalidInput(`護航選項代碼 ${product.escortOptionCode} 不存在於目錄中`),
+          );
         }
       }
 

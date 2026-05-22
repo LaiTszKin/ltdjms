@@ -145,7 +145,10 @@ export class DispatchManagementFacade {
    * Publishes EscortPricingChangedEvent on success.
    */
   async resetPricing(guildId: string, optionCode: string): Promise<Result<void, DomainError>> {
-    const result = await this.pricingService.resetOptionPrice(safeSnowflakeToNumber(guildId), optionCode);
+    const result = await this.pricingService.resetOptionPrice(
+      safeSnowflakeToNumber(guildId),
+      optionCode,
+    );
     if (result.isOk()) {
       this.eventPublisher.publish({
         eventType: 'escort_pricing_changed',
@@ -182,7 +185,9 @@ export class DispatchManagementFacade {
   /**
    * Finds a catalog entry by its code.
    */
-  async findCatalogEntry(code: string): Promise<Result<EscortOptionCatalogEntry | null, DomainError>> {
+  async findCatalogEntry(
+    code: string,
+  ): Promise<Result<EscortOptionCatalogEntry | null, DomainError>> {
     try {
       const entry = await this.catalogService.findByCode(code);
       return ok(entry);

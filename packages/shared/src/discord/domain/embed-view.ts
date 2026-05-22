@@ -54,11 +54,16 @@ export function createButtonView(
   disabled = false,
 ): Result<ButtonView, DomainError> {
   if (id.length > 100) {
-    return err(DomainError.invalidInput(`ButtonView id exceeds 100 character limit: ${id.length} chars`));
+    return err(
+      DomainError.invalidInput(`ButtonView id exceeds 100 character limit: ${id.length} chars`),
+    );
   }
   if (label.length > 80) {
-    return err(DomainError.invalidInput(`ButtonView label exceeds 80 character limit: ${label.length} chars`));
+    return err(
+      DomainError.invalidInput(
+        `ButtonView label exceeds 80 character limit: ${label.length} chars`,
+      ),
+    );
   }
   return ok({ id, label, style, disabled } as ButtonView);
 }
-

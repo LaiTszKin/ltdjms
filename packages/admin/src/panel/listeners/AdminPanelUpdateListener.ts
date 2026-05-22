@@ -113,21 +113,14 @@ export class AdminPanelUpdateListener {
    * Schedules or resets the debounce timer for a given key.
    * When the timer fires, the batched update is executed.
    */
-  private scheduleDebouncedUpdate(
-    key: string,
-    guildId: string,
-    event: DomainEvent,
-  ): void {
+  private scheduleDebouncedUpdate(key: string, guildId: string, event: DomainEvent): void {
     const existing = this.debounceTimers.get(key);
     if (existing) clearTimeout(existing);
 
     const timer = setTimeout(() => {
       this.debounceTimers.delete(key);
       this.processBatchedUpdate(guildId, event).catch((err) => {
-        console.error(
-          `[AdminPanelUpdateListener] Error in batched update for ${key}:`,
-          err,
-        );
+        console.error(`[AdminPanelUpdateListener] Error in batched update for ${key}:`, err);
       });
     }, AdminPanelUpdateListener.DEBOUNCE_MS);
 
@@ -139,10 +132,7 @@ export class AdminPanelUpdateListener {
    * Groups sessions by channelId so channel.fetch is called once per unique channel,
    * then runs the channel groups concurrently with a bounded concurrency limit.
    */
-  private async processBatchedUpdate(
-    guildId: string,
-    event: DomainEvent,
-  ): Promise<void> {
+  private async processBatchedUpdate(guildId: string, event: DomainEvent): Promise<void> {
     const eventType = event.eventType;
 
     // Rate-limit protection: skip if less than 200ms since last same-type update
@@ -247,8 +237,8 @@ export class AdminPanelUpdateListener {
 
             console.log(
               `[AdminPanelUpdateListener] Event ${eventType} triggers update for ` +
-              `guildId=${guildId}, userId=${session.userId}, viewState=${session.viewState}` +
-              `, channelId=${channelId}`,
+                `guildId=${guildId}, userId=${session.userId}, viewState=${session.viewState}` +
+                `, channelId=${channelId}`,
             );
           } catch (fetchErr) {
             console.log(
@@ -333,11 +323,7 @@ export class AdminPanelUpdateListener {
       );
 
       for (let i = 0; i < buttons.length; i += 3) {
-        rows.push(
-          new ActionRowBuilder<ButtonBuilder>().addComponents(
-            buttons.slice(i, i + 3),
-          ),
-        );
+        rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(buttons.slice(i, i + 3)));
       }
 
       return { embed, rows };
@@ -371,7 +357,9 @@ export class AdminPanelUpdateListener {
           const pricing = pricingResult.getValue();
 
           const lines = pricing.map((p) => {
-            const suffix = p.overridden ? `（已覆蓋）NT$${p.effectivePriceTwd.toLocaleString()}` : `（預設）NT$${p.effectivePriceTwd.toLocaleString()}`;
+            const suffix = p.overridden
+              ? `（已覆蓋）NT$${p.effectivePriceTwd.toLocaleString()}`
+              : `（預設）NT$${p.effectivePriceTwd.toLocaleString()}`;
             return `\`${p.optionCode}\` ${p.option.type}｜${p.option.level}｜${p.option.target}｜${suffix}`;
           });
 
@@ -392,9 +380,7 @@ export class AdminPanelUpdateListener {
             return `\`${c.code}\` ${c.type}｜${c.level}｜${c.target}｜NT$${c.priceTwd.toLocaleString()}`;
           });
 
-          const description = lines.length > 0
-            ? lines.join('\n')
-            : ZhTwStrings.escortCatalogEmpty;
+          const description = lines.length > 0 ? lines.join('\n') : ZhTwStrings.escortCatalogEmpty;
 
           const embed = new EmbedBuilder()
             .setTitle(ZhTwStrings.escortCatalogTitle)
@@ -420,17 +406,15 @@ export class AdminPanelUpdateListener {
     return AdminPanelUpdateListener.RELEVANT_EVENT_TYPES.has(event.eventType);
   }
 
-  private shouldUpdateForViewState(
-    event: DomainEvent,
-    viewState: AdminPanelViewState,
-  ): boolean {
+  private shouldUpdateForViewState(event: DomainEvent, viewState: AdminPanelViewState): boolean {
     switch (event.eventType) {
       case EVENT_TYPES.CURRENCY_CONFIG_CHANGED:
         return true;
 
       case EVENT_TYPES.DICE_GAME_CONFIG_CHANGED:
-        return viewState === AdminPanelViewState.MAIN ||
-               viewState === AdminPanelViewState.GAME_CONFIG;
+        return (
+          viewState === AdminPanelViewState.MAIN || viewState === AdminPanelViewState.GAME_CONFIG
+        );
 
       case EVENT_TYPES.PRODUCT_CHANGED:
         return (
@@ -480,8 +464,7 @@ export class AdminPanelUpdateListener {
         if (v < cutoff) this.lastUpdateTimestamps.delete(k);
       }
       if (this.lastUpdateTimestamps.size >= AdminPanelUpdateListener.MAX_THROTTLE_ENTRIES) {
-        const sorted = [...this.lastUpdateTimestamps.entries()]
-          .sort((a, b) => a[1] - b[1]);
+        const sorted = [...this.lastUpdateTimestamps.entries()].sort((a, b) => a[1] - b[1]);
         const evictCount = sorted.length - AdminPanelUpdateListener.MAX_THROTTLE_ENTRIES;
         for (let i = 0; i < evictCount; i++) {
           this.lastUpdateTimestamps.delete(sorted[i][0]);

@@ -41,10 +41,7 @@ export function initializeContainer(options?: {
 
   // Cache
   if (options?.cacheService) {
-    tsyringeContainer.registerInstance<CacheService>(
-      TOKENS.CacheService,
-      options.cacheService,
-    );
+    tsyringeContainer.registerInstance<CacheService>(TOKENS.CacheService, options.cacheService);
   } else {
     if (process.env.NODE_ENV === 'production') {
       const msg =
@@ -77,10 +74,7 @@ export function initializeContainer(options?: {
 
   // Event Publisher
   if (options?.eventPublisher) {
-    tsyringeContainer.registerInstance(
-      TOKENS.DomainEventPublisher,
-      options.eventPublisher,
-    );
+    tsyringeContainer.registerInstance(TOKENS.DomainEventPublisher, options.eventPublisher);
   } else {
     tsyringeContainer.registerInstance(
       TOKENS.DomainEventPublisher,
@@ -90,9 +84,7 @@ export function initializeContainer(options?: {
 
   // Register event listeners with the publisher
   if (options?.eventListeners && options.eventListeners.length > 0) {
-    const publisher = tsyringeContainer.resolve<DomainEventPublisher>(
-      TOKENS.DomainEventPublisher,
-    );
+    const publisher = tsyringeContainer.resolve<DomainEventPublisher>(TOKENS.DomainEventPublisher);
     for (const listener of options.eventListeners) {
       publisher.register(listener);
     }
@@ -129,14 +121,17 @@ export function initializeContainer(options?: {
     // In production this must be explicitly provided.
     tsyringeContainer.registerInstance(
       TOKENS.DatabasePool,
-      new Proxy({}, {
-        get(_target, prop) {
-          throw new Error(
-            `DatabasePool.${String(prop)} accessed but no pool was provided. ` +
-            'Pass a Pool instance via initializeContainer({ databasePool }).',
-          );
+      new Proxy(
+        {},
+        {
+          get(_target, prop) {
+            throw new Error(
+              `DatabasePool.${String(prop)} accessed but no pool was provided. ` +
+                'Pass a Pool instance via initializeContainer({ databasePool }).',
+            );
+          },
         },
-      }),
+      ),
     );
   }
 }

@@ -34,11 +34,7 @@ export class AdminPanelSessionManager extends BaseSessionManager<AdminPanelSessi
   /**
    * Updates the view state for a session.
    */
-  setViewState(
-    guildId: string,
-    userId: string,
-    state: AdminPanelViewState,
-  ): boolean {
+  setViewState(guildId: string, userId: string, state: AdminPanelViewState): boolean {
     const session = this.getSession(guildId, userId);
     if (!session) return false;
 
@@ -49,10 +45,7 @@ export class AdminPanelSessionManager extends BaseSessionManager<AdminPanelSessi
   /**
    * Gets the current view state for a session.
    */
-  getViewState(
-    guildId: string,
-    userId: string,
-  ): AdminPanelViewState | null {
+  getViewState(guildId: string, userId: string): AdminPanelViewState | null {
     const session = this.getSession(guildId, userId);
     return session?.viewState ?? null;
   }

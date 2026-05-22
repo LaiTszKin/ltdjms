@@ -4,10 +4,7 @@ import { DomainError, DomainErrorCategory } from '../domain-error.js';
 describe('DomainError', () => {
   describe('constructor', () => {
     it('creates a domain error with category and message', () => {
-      const error = new DomainError(
-        DomainErrorCategory.INVALID_INPUT,
-        'Invalid input provided',
-      );
+      const error = new DomainError(DomainErrorCategory.INVALID_INPUT, 'Invalid input provided');
       expect(error.category).toBe(DomainErrorCategory.INVALID_INPUT);
       expect(error.message).toBe('Invalid input provided');
       expect(error.cause).toBeUndefined();
@@ -74,9 +71,7 @@ describe('DomainError', () => {
 
     it('discordInvalidComponentId', () => {
       const e = DomainError.discordInvalidComponentId('bad id');
-      expect(e.category).toBe(
-        DomainErrorCategory.DISCORD_INVALID_COMPONENT_ID,
-      );
+      expect(e.category).toBe(DomainErrorCategory.DISCORD_INVALID_COMPONENT_ID);
     });
 
     it('aiServiceTimeout', () => {

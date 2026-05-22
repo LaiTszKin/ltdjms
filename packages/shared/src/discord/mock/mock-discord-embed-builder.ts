@@ -25,9 +25,7 @@ export class MockDiscordEmbedBuilder implements DiscordEmbedBuilder {
 
   setTitle(title: string): DiscordEmbedBuilder {
     this._title =
-      title.length > this.MAX_TITLE_LENGTH
-        ? this.truncate(title, this.MAX_TITLE_LENGTH)
-        : title;
+      title.length > this.MAX_TITLE_LENGTH ? this.truncate(title, this.MAX_TITLE_LENGTH) : title;
     return this;
   }
 
@@ -64,9 +62,7 @@ export class MockDiscordEmbedBuilder implements DiscordEmbedBuilder {
 
   setFooter(text: string): DiscordEmbedBuilder {
     this._footer =
-      text.length > this.MAX_FOOTER_LENGTH
-        ? this.truncate(text, this.MAX_FOOTER_LENGTH)
-        : text;
+      text.length > this.MAX_FOOTER_LENGTH ? this.truncate(text, this.MAX_FOOTER_LENGTH) : text;
     return this;
   }
 

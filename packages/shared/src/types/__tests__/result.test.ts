@@ -32,9 +32,7 @@ describe('Result<T, E>', () => {
     });
 
     it('rejects null value', () => {
-      expect(() => ok<null, string>(null)).toThrow(
-        'value must not be null or undefined',
-      );
+      expect(() => ok<null, string>(null)).toThrow('value must not be null or undefined');
     });
 
     it('rejects undefined value', () => {
@@ -74,9 +72,7 @@ describe('Result<T, E>', () => {
     });
 
     it('rejects null error', () => {
-      expect(() => err<number, null>(null)).toThrow(
-        'error must not be null or undefined',
-      );
+      expect(() => err<number, null>(null)).toThrow('error must not be null or undefined');
     });
 
     it('rejects undefined error', () => {
@@ -128,9 +124,7 @@ describe('Result<T, E>', () => {
         n > 0 ? ok<number, string>(n) : err<number, string>('negative');
       const double = (n: number) => ok<number, string>(n * 2);
 
-      const result = ok<number, string>(5)
-        .flatMap(validate)
-        .flatMap(double);
+      const result = ok<number, string>(5).flatMap(validate).flatMap(double);
       expect(result.getValue()).toBe(10);
     });
 

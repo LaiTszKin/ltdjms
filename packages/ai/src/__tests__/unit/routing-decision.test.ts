@@ -1,6 +1,10 @@
 import 'reflect-metadata';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { AIChatMentionRoutingDecision, resolveRestrictionChannelId, resolveCategoryId } from '../../services/routing/routing-decision.js';
+import {
+  AIChatMentionRoutingDecision,
+  resolveRestrictionChannelId,
+  resolveCategoryId,
+} from '../../services/routing/routing-decision.js';
 import {
   InMemoryAIChannelRestrictionRepository,
   DefaultAIChannelRestrictionService,
@@ -26,7 +30,7 @@ function createMockThreadChannel(parentId: string): Channel {
     id: 'thread-1',
     parentId,
     isThread: () => true,
-    ...({ parent: { id: parentId } }),
+    ...{ parent: { id: parentId } },
   } as unknown as Channel;
 }
 
@@ -42,14 +46,8 @@ describe('AIChatMentionRoutingDecision', () => {
     restrictionService = new DefaultAIChannelRestrictionService(restrictionRepo);
     agentConfigRepo = new InMemoryAIAgentChannelConfigRepository();
     const cacheService = NoOpCacheService.getInstance();
-    agentConfigService = new DefaultAIAgentChannelConfigService(
-      agentConfigRepo,
-      cacheService,
-    );
-    decision = new AIChatMentionRoutingDecision(
-      agentConfigService,
-      restrictionService,
-    );
+    agentConfigService = new DefaultAIAgentChannelConfigService(agentConfigRepo, cacheService);
+    decision = new AIChatMentionRoutingDecision(agentConfigService, restrictionService);
 
     // Seed an allowlisted channel
     await restrictionRepo.addChannel('guild-1', {

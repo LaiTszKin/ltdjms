@@ -14,9 +14,7 @@ export const ModifyRolePermissionsParamsSchema = z.object({
   ),
 });
 
-export type ModifyRolePermissionsParams = z.infer<
-  typeof ModifyRolePermissionsParamsSchema
->;
+export type ModifyRolePermissionsParams = z.infer<typeof ModifyRolePermissionsParamsSchema>;
 
 /**
  * Modifies permissions for a specific role.
@@ -27,18 +25,10 @@ export class ModifyRolePermissionsTool {
   readonly description = '修改指定身分組的權限設定';
   readonly schema = ModifyRolePermissionsParamsSchema;
 
-  constructor(
-    private readonly authGuard: ToolCallerAuthorizationGuard,
-  ) {}
+  constructor(private readonly authGuard: ToolCallerAuthorizationGuard) {}
 
-  async execute(
-    params: ModifyRolePermissionsParams,
-    guild: Guild,
-  ): Promise<string> {
-    const authError = await this.authGuard.validateAdministrator(
-      guild,
-      this.name,
-    );
+  async execute(params: ModifyRolePermissionsParams, guild: Guild): Promise<string> {
+    const authError = await this.authGuard.validateAdministrator(guild, this.name);
     if (authError) return authError;
 
     try {

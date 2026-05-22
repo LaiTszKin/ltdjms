@@ -203,10 +203,16 @@ describe('GameToken PBT', () => {
           });
 
           expect(await tokenService.hasEnoughTokens(gId, String(uId), initialTokens)).toBe(true);
-          expect(await tokenService.hasEnoughTokens(gId, String(uId), initialTokens - 1)).toBe(true);
+          expect(await tokenService.hasEnoughTokens(gId, String(uId), initialTokens - 1)).toBe(
+            true,
+          );
           expect(await tokenService.hasEnoughTokens(gId, String(uId), 0)).toBe(true);
-          expect(await tokenService.hasEnoughTokens(gId, String(uId), initialTokens + 1)).toBe(false);
-          expect(await tokenService.hasEnoughTokens(gId, String(uId), initialTokens + 100)).toBe(false);
+          expect(await tokenService.hasEnoughTokens(gId, String(uId), initialTokens + 1)).toBe(
+            false,
+          );
+          expect(await tokenService.hasEnoughTokens(gId, String(uId), initialTokens + 100)).toBe(
+            false,
+          );
         },
       ),
       { numRuns: 50 },

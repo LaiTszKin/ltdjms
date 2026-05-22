@@ -9,8 +9,15 @@ import {
   isRewardGranted,
   toFulfillmentProduct,
 } from '../domain/fiat-order.js';
-import type { DispatchOrderSnapshot, EscortDispatchHandoffService } from '../domain/escort-dispatch-handoff-service.js';
-import type { EscortOrderBuyerNotifier, AdminOrderNotifier, ProductRewardGranter } from '../domain/notification-interfaces.js';
+import type {
+  DispatchOrderSnapshot,
+  EscortDispatchHandoffService,
+} from '../domain/escort-dispatch-handoff-service.js';
+import type {
+  EscortOrderBuyerNotifier,
+  AdminOrderNotifier,
+  ProductRewardGranter,
+} from '../domain/notification-interfaces.js';
 import pino from 'pino';
 
 /**
@@ -43,7 +50,7 @@ export class FiatOrderPostPaymentWorker {
 
   async processPendingOrders(): Promise<void> {
     const orders = await this.fiatOrderRepository.findOrdersPendingPostPayment(DEFAULT_BATCH_SIZE);
-    await processWithConcurrencyLimit(orders, order => this.processSingleOrder(order), 5);
+    await processWithConcurrencyLimit(orders, (order) => this.processSingleOrder(order), 5);
   }
 
   async processSingleOrder(incomingOrder: FiatOrder): Promise<void> {
@@ -137,10 +144,7 @@ export class FiatOrderPostPaymentWorker {
         if (rewardResult.isErr()) {
           throw new WorkflowStateException(rewardResult.getError().message);
         }
-        await this.fiatOrderRepository.markRewardGrantedIfNeeded(
-          order.orderNumber,
-          new Date(),
-        );
+        await this.fiatOrderRepository.markRewardGrantedIfNeeded(order.orderNumber, new Date());
       }
 
       // Step 4: Mark fulfilled (Java: no release on null return)
@@ -148,9 +152,15 @@ export class FiatOrderPostPaymentWorker {
     } catch (e) {
       await this.fiatOrderRepository.releaseFulfillmentProcessing(order.orderNumber);
       if (e instanceof WorkflowStateException) {
-        this.log.warn({ orderNumber: order.orderNumber, error: e }, 'Workflow state violation processing paid fiat order');
+        this.log.warn(
+          { orderNumber: order.orderNumber, error: e },
+          'Workflow state violation processing paid fiat order',
+        );
       } else {
-        this.log.error({ orderNumber: order.orderNumber, error: e }, 'Failed to process paid fiat order');
+        this.log.error(
+          { orderNumber: order.orderNumber, error: e },
+          'Failed to process paid fiat order',
+        );
       }
     }
   }

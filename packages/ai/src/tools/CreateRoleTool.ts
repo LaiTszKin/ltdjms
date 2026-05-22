@@ -30,9 +30,7 @@ export class CreateRoleTool {
   readonly description = '在伺服器中創建一個新的身分組';
   readonly schema = CreateRoleParamsSchema;
 
-  constructor(
-    private readonly authGuard: ToolCallerAuthorizationGuard,
-  ) {}
+  constructor(private readonly authGuard: ToolCallerAuthorizationGuard) {}
 
   async execute(params: CreateRoleParams, guild: Guild): Promise<string> {
     const authError = await this.authGuard.validateAdministrator(guild, this.name);

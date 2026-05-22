@@ -11,9 +11,7 @@ import {
   isPendingCustomerConfirmation,
   CUSTOMER_CONFIRM_TIMEOUT_MS,
 } from '../../domain/escort-dispatch-order.js';
-import type {
-  EscortDispatchOrder,
-} from '../../domain/escort-dispatch-order.js';
+import type { EscortDispatchOrder } from '../../domain/escort-dispatch-order.js';
 import type { EscortDispatchOrderRepo } from '../../repo/escort-dispatch-order.repo.js';
 import type { EscortOptionCatalogRepository } from '../../repo/escort-option-catalog.repo.js';
 import type { DispatchAfterSalesStaffService } from '../../service/dispatch-after-sales-staff.service.js';
@@ -28,11 +26,20 @@ const ORDER_NUMBER = 'ESC-20260521-ABC123';
 const ANOTHER_NUMBER = 'ESC-20260521-DEF456';
 
 function makeOrder(overrides?: Partial<EscortDispatchOrder>): EscortDispatchOrder {
-  const result = createPending(ORDER_NUMBER, GUILD_ID, ASSIGNED_BY, ESCORT_USER_ID, CUSTOMER_USER_ID);
+  const result = createPending(
+    ORDER_NUMBER,
+    GUILD_ID,
+    ASSIGNED_BY,
+    ESCORT_USER_ID,
+    CUSTOMER_USER_ID,
+  );
   return { ...result.getValue(), id: 1, ...overrides };
 }
 
-function makeOrderWithCompletionRequestedAt(status: EscortDispatchOrderStatus, completionRequestedAt: Date): EscortDispatchOrder {
+function makeOrderWithCompletionRequestedAt(
+  status: EscortDispatchOrderStatus,
+  completionRequestedAt: Date,
+): EscortDispatchOrder {
   const order = makeOrderFromStatus(status);
   return { ...order, completionRequestedAt };
 }
@@ -51,9 +58,22 @@ function makeOrderFromStatus(status: EscortDispatchOrderStatus): EscortDispatchO
     case EscortDispatchOrderStatus.AFTER_SALES_REQUESTED:
       return { ...base, status, afterSalesRequestedAt: new Date() };
     case EscortDispatchOrderStatus.AFTER_SALES_IN_PROGRESS:
-      return { ...base, status, afterSalesRequestedAt: new Date(), afterSalesAssigneeUserId: 500, afterSalesAssignedAt: new Date() };
+      return {
+        ...base,
+        status,
+        afterSalesRequestedAt: new Date(),
+        afterSalesAssigneeUserId: 500,
+        afterSalesAssignedAt: new Date(),
+      };
     case EscortDispatchOrderStatus.AFTER_SALES_CLOSED:
-      return { ...base, status, afterSalesRequestedAt: new Date(), afterSalesAssigneeUserId: 500, afterSalesAssignedAt: new Date(), afterSalesClosedAt: new Date() };
+      return {
+        ...base,
+        status,
+        afterSalesRequestedAt: new Date(),
+        afterSalesAssigneeUserId: 500,
+        afterSalesAssignedAt: new Date(),
+        afterSalesClosedAt: new Date(),
+      };
     default:
       return base;
   }
@@ -142,7 +162,12 @@ describe('EscortDispatchOrderService', () => {
       const savedOrder = makeOrder();
       vi.spyOn(repo, 'save').mockResolvedValue(savedOrder);
 
-      const result = await service.createOrder(GUILD_ID, ASSIGNED_BY, ESCORT_USER_ID, CUSTOMER_USER_ID);
+      const result = await service.createOrder(
+        GUILD_ID,
+        ASSIGNED_BY,
+        ESCORT_USER_ID,
+        CUSTOMER_USER_ID,
+      );
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -163,7 +188,12 @@ describe('EscortDispatchOrderService', () => {
     it('should fail when customer does not exist in guild (gateway check)', async () => {
       vi.spyOn(gateway, 'retrieveMemberById').mockResolvedValue(false);
 
-      const result = await service.createOrder(GUILD_ID, ASSIGNED_BY, ESCORT_USER_ID, CUSTOMER_USER_ID);
+      const result = await service.createOrder(
+        GUILD_ID,
+        ASSIGNED_BY,
+        ESCORT_USER_ID,
+        CUSTOMER_USER_ID,
+      );
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -176,12 +206,22 @@ describe('EscortDispatchOrderService', () => {
       const noGatewayService = new EscortDispatchOrderService(
         repo,
         mockCatalogRepo,
-        undefined, FIXED_CLOCK, undefined, undefined, undefined, undefined,
+        undefined,
+        FIXED_CLOCK,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
       );
       vi.spyOn(repo, 'existsByOrderNumber').mockResolvedValue(false);
       vi.spyOn(repo, 'save').mockResolvedValue(makeOrder());
 
-      const result = await noGatewayService.createOrder(GUILD_ID, ASSIGNED_BY, ESCORT_USER_ID, CUSTOMER_USER_ID);
+      const result = await noGatewayService.createOrder(
+        GUILD_ID,
+        ASSIGNED_BY,
+        ESCORT_USER_ID,
+        CUSTOMER_USER_ID,
+      );
       expect(result.isOk()).toBe(true);
     });
 
@@ -189,7 +229,12 @@ describe('EscortDispatchOrderService', () => {
       vi.spyOn(repo, 'existsByOrderNumber').mockResolvedValue(false);
       vi.spyOn(repo, 'save').mockRejectedValue(new Error('DB connection error'));
 
-      const result = await service.createOrder(GUILD_ID, ASSIGNED_BY, ESCORT_USER_ID, CUSTOMER_USER_ID);
+      const result = await service.createOrder(
+        GUILD_ID,
+        ASSIGNED_BY,
+        ESCORT_USER_ID,
+        CUSTOMER_USER_ID,
+      );
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -203,7 +248,18 @@ describe('EscortDispatchOrderService', () => {
   // ============================================================
   describe('createManualOpenOrder', () => {
     const mockCatalogRepo: EscortOptionCatalogRepository = {
-      findAll: vi.fn().mockResolvedValue([{ code: 'PVE-BASIC', type: 'PVE', level: 'BASIC', mapScope: 'ANY', target: 'Normal', priceTwd: 1000 }]),
+      findAll: vi
+        .fn()
+        .mockResolvedValue([
+          {
+            code: 'PVE-BASIC',
+            type: 'PVE',
+            level: 'BASIC',
+            mapScope: 'ANY',
+            target: 'Normal',
+            priceTwd: 1000,
+          },
+        ]),
       findByCode: vi.fn().mockResolvedValue(null),
       existsByCode: vi.fn().mockResolvedValue(true),
       create: vi.fn(),
@@ -215,8 +271,12 @@ describe('EscortDispatchOrderService', () => {
       return new EscortDispatchOrderService(
         repo,
         mockCatalogRepo,
-        undefined, FIXED_CLOCK,
-        undefined, undefined, undefined, gateway,
+        undefined,
+        FIXED_CLOCK,
+        undefined,
+        undefined,
+        undefined,
+        gateway,
       );
     }
 
@@ -225,7 +285,12 @@ describe('EscortDispatchOrderService', () => {
       vi.spyOn(repo, 'save').mockResolvedValue(makeOrder({ escortUserId: 0 }));
 
       const svc = createServiceWithCatalog();
-      const result = await svc.createManualOpenOrder(GUILD_ID, ASSIGNED_BY, CUSTOMER_USER_ID, 'PVE-BASIC');
+      const result = await svc.createManualOpenOrder(
+        GUILD_ID,
+        ASSIGNED_BY,
+        CUSTOMER_USER_ID,
+        'PVE-BASIC',
+      );
 
       expect(result.isOk()).toBe(true);
     });
@@ -239,7 +304,12 @@ describe('EscortDispatchOrderService', () => {
     });
 
     it('should fail when escortOptionCode is empty', async () => {
-      const result = await service.createManualOpenOrder(GUILD_ID, ASSIGNED_BY, CUSTOMER_USER_ID, '');
+      const result = await service.createManualOpenOrder(
+        GUILD_ID,
+        ASSIGNED_BY,
+        CUSTOMER_USER_ID,
+        '',
+      );
       expect(result.isErr()).toBe(true);
     });
 
@@ -248,7 +318,12 @@ describe('EscortDispatchOrderService', () => {
       // existsByCode returns false
       vi.spyOn(mockCatalogRepo, 'existsByCode').mockResolvedValueOnce(false);
 
-      const result = await svc.createManualOpenOrder(GUILD_ID, ASSIGNED_BY, CUSTOMER_USER_ID, 'INVALID');
+      const result = await svc.createManualOpenOrder(
+        GUILD_ID,
+        ASSIGNED_BY,
+        CUSTOMER_USER_ID,
+        'INVALID',
+      );
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
@@ -343,7 +418,9 @@ describe('EscortDispatchOrderService', () => {
     });
 
     it('should fail when order is already confirmed', async () => {
-      vi.spyOn(repo, 'findByOrderNumber').mockResolvedValue(makeOrderFromStatus(EscortDispatchOrderStatus.CONFIRMED));
+      vi.spyOn(repo, 'findByOrderNumber').mockResolvedValue(
+        makeOrderFromStatus(EscortDispatchOrderStatus.CONFIRMED),
+      );
 
       const result = await service.confirmOrder(ORDER_NUMBER, ESCORT_USER_ID);
       expect(result.isErr()).toBe(true);
@@ -364,7 +441,9 @@ describe('EscortDispatchOrderService', () => {
     it('should request completion from CONFIRMED state', async () => {
       const confirmed = makeOrderFromStatus(EscortDispatchOrderStatus.CONFIRMED);
       vi.spyOn(repo, 'findByOrderNumber').mockResolvedValue(confirmed);
-      const pendingCustomer = makeOrderFromStatus(EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION);
+      const pendingCustomer = makeOrderFromStatus(
+        EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION,
+      );
       vi.spyOn(repo, 'update').mockResolvedValue(pendingCustomer);
 
       const result = await service.requestCompletion(ORDER_NUMBER, ESCORT_USER_ID);
@@ -373,7 +452,9 @@ describe('EscortDispatchOrderService', () => {
     });
 
     it('should fail when wrong user requests completion', async () => {
-      vi.spyOn(repo, 'findByOrderNumber').mockResolvedValue(makeOrderFromStatus(EscortDispatchOrderStatus.CONFIRMED));
+      vi.spyOn(repo, 'findByOrderNumber').mockResolvedValue(
+        makeOrderFromStatus(EscortDispatchOrderStatus.CONFIRMED),
+      );
 
       const result = await service.requestCompletion(ORDER_NUMBER, 999);
       expect(result.isErr()).toBe(true);
@@ -406,7 +487,9 @@ describe('EscortDispatchOrderService', () => {
     });
 
     it('should succeed (idempotent) when order is already completed', async () => {
-      vi.spyOn(repo, 'findByOrderNumber').mockResolvedValue(makeOrderFromStatus(EscortDispatchOrderStatus.COMPLETED));
+      vi.spyOn(repo, 'findByOrderNumber').mockResolvedValue(
+        makeOrderFromStatus(EscortDispatchOrderStatus.COMPLETED),
+      );
 
       const result = await service.customerConfirmCompletion(ORDER_NUMBER, CUSTOMER_USER_ID);
 
@@ -414,7 +497,9 @@ describe('EscortDispatchOrderService', () => {
     });
 
     it('should fail when wrong user tries to confirm completion', async () => {
-      vi.spyOn(repo, 'findByOrderNumber').mockResolvedValue(makeOrderFromStatus(EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION));
+      vi.spyOn(repo, 'findByOrderNumber').mockResolvedValue(
+        makeOrderFromStatus(EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION),
+      );
 
       const result = await service.customerConfirmCompletion(ORDER_NUMBER, ESCORT_USER_ID);
       expect(result.isErr()).toBe(true);
@@ -447,7 +532,9 @@ describe('EscortDispatchOrderService', () => {
     });
 
     it('should reject after-sales when already in after-sales flow', async () => {
-      vi.spyOn(repo, 'findByOrderNumber').mockResolvedValue(makeOrderFromStatus(EscortDispatchOrderStatus.AFTER_SALES_REQUESTED));
+      vi.spyOn(repo, 'findByOrderNumber').mockResolvedValue(
+        makeOrderFromStatus(EscortDispatchOrderStatus.AFTER_SALES_REQUESTED),
+      );
 
       const result = await service.requestAfterSales(ORDER_NUMBER, CUSTOMER_USER_ID);
       expect(result.isErr()).toBe(true);
@@ -461,7 +548,9 @@ describe('EscortDispatchOrderService', () => {
     });
 
     it('should fail when wrong user requests after-sales', async () => {
-      vi.spyOn(repo, 'findByOrderNumber').mockResolvedValue(makeOrderFromStatus(EscortDispatchOrderStatus.COMPLETED));
+      vi.spyOn(repo, 'findByOrderNumber').mockResolvedValue(
+        makeOrderFromStatus(EscortDispatchOrderStatus.COMPLETED),
+      );
 
       const result = await service.requestAfterSales(ORDER_NUMBER, ESCORT_USER_ID);
       expect(result.isErr()).toBe(true);
@@ -484,8 +573,12 @@ describe('EscortDispatchOrderService', () => {
       return new EscortDispatchOrderService(
         repo,
         mockCatalogRepo,
-        undefined, FIXED_CLOCK,
-        afterSalesStaffService, undefined, undefined, gateway,
+        undefined,
+        FIXED_CLOCK,
+        afterSalesStaffService,
+        undefined,
+        undefined,
+        gateway,
       );
     }
 
@@ -503,7 +596,9 @@ describe('EscortDispatchOrderService', () => {
     });
 
     it('should fail when user is not after-sales staff', async () => {
-      vi.spyOn(repo, 'findByOrderNumber').mockResolvedValue(makeOrderFromStatus(EscortDispatchOrderStatus.AFTER_SALES_REQUESTED));
+      vi.spyOn(repo, 'findByOrderNumber').mockResolvedValue(
+        makeOrderFromStatus(EscortDispatchOrderStatus.AFTER_SALES_REQUESTED),
+      );
       vi.spyOn(afterSalesStaffService, 'isAfterSalesStaff').mockResolvedValue(false);
 
       const svc = createServiceWithStaff();
@@ -571,7 +666,9 @@ describe('EscortDispatchOrderService', () => {
     });
 
     it('should fail when wrong user tries to close', async () => {
-      vi.spyOn(repo, 'findByOrderNumber').mockResolvedValue(makeOrderFromStatus(EscortDispatchOrderStatus.AFTER_SALES_IN_PROGRESS));
+      vi.spyOn(repo, 'findByOrderNumber').mockResolvedValue(
+        makeOrderFromStatus(EscortDispatchOrderStatus.AFTER_SALES_IN_PROGRESS),
+      );
 
       const result = await service.closeAfterSales(ORDER_NUMBER, 999);
       expect(result.isErr()).toBe(true);
@@ -629,7 +726,9 @@ describe('EscortDispatchOrderService', () => {
   // ============================================================
   describe('findPendingAssignmentOrders', () => {
     it('should return pending assignment orders', async () => {
-      vi.spyOn(repo, 'findPendingAssignmentByGuildId').mockResolvedValue([makeOrder({ escortUserId: 0 })]);
+      vi.spyOn(repo, 'findPendingAssignmentByGuildId').mockResolvedValue([
+        makeOrder({ escortUserId: 0 }),
+      ]);
 
       const result = await service.findPendingAssignmentOrders(GUILD_ID);
 
@@ -704,9 +803,16 @@ describe('EscortDispatchOrderService', () => {
   describe('timeout auto-completion', () => {
     it('should auto-complete timed-out order when queried', async () => {
       const oldRequestedAt = new Date(FIXED_DATE.getTime() - CUSTOMER_CONFIRM_TIMEOUT_MS - 5000);
-      const timedOut = makeOrderWithCompletionRequestedAt(EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION, oldRequestedAt);
+      const timedOut = makeOrderWithCompletionRequestedAt(
+        EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION,
+        oldRequestedAt,
+      );
       vi.spyOn(repo, 'findByOrderNumber').mockResolvedValue(timedOut);
-      const completed = { ...timedOut, status: EscortDispatchOrderStatus.COMPLETED, completedAt: FIXED_DATE };
+      const completed = {
+        ...timedOut,
+        status: EscortDispatchOrderStatus.COMPLETED,
+        completedAt: FIXED_DATE,
+      };
       vi.spyOn(repo, 'update').mockResolvedValue(completed);
 
       const result = await service.findByOrderNumber(ORDER_NUMBER);
@@ -720,14 +826,19 @@ describe('EscortDispatchOrderService', () => {
 
     it('should NOT auto-complete order within timeout window', async () => {
       const recentRequestedAt = new Date(FIXED_DATE.getTime() - 1000); // 1 second ago
-      const notTimedOut = makeOrderWithCompletionRequestedAt(EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION, recentRequestedAt);
+      const notTimedOut = makeOrderWithCompletionRequestedAt(
+        EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION,
+        recentRequestedAt,
+      );
       vi.spyOn(repo, 'findByOrderNumber').mockResolvedValue(notTimedOut);
 
       const result = await service.findByOrderNumber(ORDER_NUMBER);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
-        expect(result.getValue().status).toBe(EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION);
+        expect(result.getValue().status).toBe(
+          EscortDispatchOrderStatus.PENDING_CUSTOMER_CONFIRMATION,
+        );
       }
       expect(repo.update).not.toHaveBeenCalled();
     });

@@ -36,21 +36,13 @@ export class CreateCategoryTool {
     private readonly permissionParser: PermissionParser,
   ) {}
 
-  async execute(
-    params: CreateCategoryParams,
-    guild: Guild,
-  ): Promise<string> {
-    const authError = await this.authGuard.validateAdministrator(
-      guild,
-      this.name,
-    );
+  async execute(params: CreateCategoryParams, guild: Guild): Promise<string> {
+    const authError = await this.authGuard.validateAdministrator(guild, this.name);
     if (authError) return authError;
 
     try {
       const permissionOverwrites = params.permissions
-        ? this.permissionParser.parse(
-            params.permissions as PermissionSetting[],
-          )
+        ? this.permissionParser.parse(params.permissions as PermissionSetting[])
         : undefined;
 
       const category = await guild.channels.create({

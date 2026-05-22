@@ -37,12 +37,7 @@ export class MarkdownValidatingAIChatService implements AIChatService {
     userId: string,
     userMessage: string,
   ): Promise<Result<string[], DomainError>> {
-    const result = await this.delegate.generateResponse(
-      guildId,
-      channelId,
-      userId,
-      userMessage,
-    );
+    const result = await this.delegate.generateResponse(guildId, channelId, userId, userMessage);
 
     if (result.isErr()) return result;
 
@@ -129,23 +124,11 @@ export class MarkdownValidatingAIChatService implements AIChatService {
     handler: StreamingResponseHandler,
   ): Promise<void> {
     if (!this.config.enableMarkdownValidation) {
-      return this.delegate.generateWithHistory(
-        guildId,
-        channelId,
-        userId,
-        history,
-        handler,
-      );
+      return this.delegate.generateWithHistory(guildId, channelId, userId, history, handler);
     }
 
     const wrappedHandler = this.createValidatingHandler(handler);
-    return this.delegate.generateWithHistory(
-      guildId,
-      channelId,
-      userId,
-      history,
-      wrappedHandler,
-    );
+    return this.delegate.generateWithHistory(guildId, channelId, userId, history, wrappedHandler);
   }
 
   /**
@@ -154,9 +137,7 @@ export class MarkdownValidatingAIChatService implements AIChatService {
    * Completed paragraphs are flushed through the pipeline and emitted early,
    * reducing time-to-first-byte compared to buffering all content before processing.
    */
-  private createValidatingHandler(
-    handler: StreamingResponseHandler,
-  ): StreamingResponseHandler {
+  private createValidatingHandler(handler: StreamingResponseHandler): StreamingResponseHandler {
     // Buffer for accumulating CONTENT chunks
     let pendingContent = '';
 
@@ -180,10 +161,7 @@ export class MarkdownValidatingAIChatService implements AIChatService {
      * Only processes content up to the last natural boundary;
      * incomplete content stays in the buffer.
      */
-    const flushContent = async (
-      isComplete: boolean,
-      error: DomainError | null,
-    ): Promise<void> => {
+    const flushContent = async (isComplete: boolean, error: DomainError | null): Promise<void> => {
       if (!pendingContent) return;
 
       // Determine how much content is ready to process
@@ -215,7 +193,12 @@ export class MarkdownValidatingAIChatService implements AIChatService {
     };
 
     return {
-      onChunk: async (chunk: string, isComplete: boolean, error: DomainError | null, chunkType?: StreamChunkType) => {
+      onChunk: async (
+        chunk: string,
+        isComplete: boolean,
+        error: DomainError | null,
+        chunkType?: StreamChunkType,
+      ) => {
         if (error) {
           handler.onChunk(chunk, isComplete, error, chunkType);
           return;
@@ -255,6 +238,12 @@ export class MarkdownValidatingAIChatService implements AIChatService {
    * 委派給共用工具函數 applyMarkdownPipeline（P2-4）。
    */
   private async applyPipeline(markdown: string): Promise<string[]> {
-    return applyMarkdownPipeline(markdown, this.sanitizer, this.autoFixer, this.validator, this.paginator);
+    return applyMarkdownPipeline(
+      markdown,
+      this.sanitizer,
+      this.autoFixer,
+      this.validator,
+      this.paginator,
+    );
   }
 }

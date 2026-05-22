@@ -59,7 +59,10 @@ export class DispatchAfterSalesStaffService {
     }
     try {
       const staff = await this.repository.findStaffUserIds(guildId);
-      this.staffCache.set(guildId, { staff, expiresAt: now + DispatchAfterSalesStaffService.STAFF_CACHE_TTL_MS });
+      this.staffCache.set(guildId, {
+        staff,
+        expiresAt: now + DispatchAfterSalesStaffService.STAFF_CACHE_TTL_MS,
+      });
       return staff.has(safeSnowflakeToNumber(userId));
     } catch {
       return false;

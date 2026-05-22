@@ -2,16 +2,9 @@
 // Domain
 // ============================================================
 
-export {
-  EscortDispatchOrderStatus,
-  SourceType,
-} from './domain/index.js';
+export { EscortDispatchOrderStatus, SourceType } from './domain/index.js';
 
-export type {
-  EscortDispatchOrder,
-  EscortOrderOption,
-  OptionPriceView,
-} from './domain/index.js';
+export type { EscortDispatchOrder, EscortOrderOption, OptionPriceView } from './domain/index.js';
 
 // ============================================================
 // Repositories

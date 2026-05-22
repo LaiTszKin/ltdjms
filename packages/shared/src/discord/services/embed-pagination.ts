@@ -50,15 +50,10 @@ export function paginateEmbedView(
 
   // Paginate by description
   if (description && description.length > limits.MAX_DESCRIPTION_LENGTH) {
-    const totalPages = Math.ceil(
-      description.length / limits.MAX_DESCRIPTION_LENGTH,
-    );
+    const totalPages = Math.ceil(description.length / limits.MAX_DESCRIPTION_LENGTH);
     for (let i = 0; i < totalPages; i++) {
       const start = i * limits.MAX_DESCRIPTION_LENGTH;
-      const end = Math.min(
-        start + limits.MAX_DESCRIPTION_LENGTH,
-        description.length,
-      );
+      const end = Math.min(start + limits.MAX_DESCRIPTION_LENGTH, description.length);
       const page: APIEmbed = {};
       page.description = description.slice(start, end);
       if (title) {
@@ -97,10 +92,7 @@ export function paginateEmbedView(
       pageIndex++;
       page = {};
       if (title) {
-        page.title =
-          data.fields.length > limits.MAX_FIELDS
-            ? `${title} (${pageIndex + 1})`
-            : title;
+        page.title = data.fields.length > limits.MAX_FIELDS ? `${title} (${pageIndex + 1})` : title;
       }
       if (data.color) page.color = data.color;
       if (footer) page.footer = { text: footer };

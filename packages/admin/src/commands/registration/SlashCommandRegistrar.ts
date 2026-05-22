@@ -1,3 +1,4 @@
+import { CommandLocalizations } from '@ltdjms/shared';
 import { AdminPanelSlashCommand } from '../../panel/admin/definitions/AdminPanelSlashCommand.js';
 import { UserPanelSlashCommand } from '../../panel/user/definitions/UserPanelSlashCommand.js';
 import {
@@ -29,8 +30,8 @@ const ShopSlashCommand: SlashCommandDefinition = {
   name: 'shop',
   description: '開啟商城',
   defaultMemberPermissions: null,
-  nameLocalizations: { 'zh-TW': '商城' },
-  descriptionLocalizations: { 'zh-TW': '瀏覽與購買商品' },
+  nameLocalizations: CommandLocalizations.COMMAND_NAME_LOCALIZATIONS['shop'],
+  descriptionLocalizations: CommandLocalizations.COMMAND_DESCRIPTION_LOCALIZATIONS['shop'],
 };
 
 /** /redeem-code — redeem a code (available to all members). */
@@ -112,8 +113,7 @@ export class SlashCommandRegistrar {
         message: `Successfully registered ${count} commands${guildId ? ` in guild ${guildId}` : ' globally'}`,
       };
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : String(err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
       return {
         success: false,
         message: `Failed to register commands: ${errorMessage}`,

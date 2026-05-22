@@ -18,16 +18,52 @@ export class AdminProductPanelModalFactory {
    */
   buildCreateProductModal(): {
     title: string;
-    fields: { label: string; placeholder: string; minLength: number; maxLength: number; required: boolean }[];
+    fields: {
+      label: string;
+      placeholder: string;
+      minLength: number;
+      maxLength: number;
+      required: boolean;
+    }[];
   } {
     return {
       title: ZhTwStrings.productCreateModalTitle,
       fields: [
-        { label: ZhTwStrings.productModalName, placeholder: ZhTwStrings.productModalNamePlaceholder, minLength: 1, maxLength: 100, required: true },
-        { label: ZhTwStrings.productModalDesc, placeholder: ZhTwStrings.productModalDescPlaceholder, minLength: 0, maxLength: 1000, required: false },
-        { label: ZhTwStrings.productModalPrice, placeholder: ZhTwStrings.productModalPricePlaceholder, minLength: 0, maxLength: 20, required: true },
-        { label: ZhTwStrings.productModalFiatPrice, placeholder: ZhTwStrings.productModalFiatPricePlaceholder, minLength: 0, maxLength: 20, required: false },
-        { label: ZhTwStrings.productModalImageUrl, placeholder: ZhTwStrings.productModalImageUrlPlaceholder, minLength: 0, maxLength: 500, required: false },
+        {
+          label: ZhTwStrings.productModalName,
+          placeholder: ZhTwStrings.productModalNamePlaceholder,
+          minLength: 1,
+          maxLength: 100,
+          required: true,
+        },
+        {
+          label: ZhTwStrings.productModalDesc,
+          placeholder: ZhTwStrings.productModalDescPlaceholder,
+          minLength: 0,
+          maxLength: 1000,
+          required: false,
+        },
+        {
+          label: ZhTwStrings.productModalPrice,
+          placeholder: ZhTwStrings.productModalPricePlaceholder,
+          minLength: 0,
+          maxLength: 20,
+          required: true,
+        },
+        {
+          label: ZhTwStrings.productModalFiatPrice,
+          placeholder: ZhTwStrings.productModalFiatPricePlaceholder,
+          minLength: 0,
+          maxLength: 20,
+          required: false,
+        },
+        {
+          label: ZhTwStrings.productModalImageUrl,
+          placeholder: ZhTwStrings.productModalImageUrlPlaceholder,
+          minLength: 0,
+          maxLength: 500,
+          required: false,
+        },
       ],
     };
   }
@@ -37,16 +73,52 @@ export class AdminProductPanelModalFactory {
    */
   buildEditProductModal(product: Product): {
     title: string;
-    fields: { label: string; value: string; minLength: number; maxLength: number; required: boolean }[];
+    fields: {
+      label: string;
+      value: string;
+      minLength: number;
+      maxLength: number;
+      required: boolean;
+    }[];
   } {
     return {
       title: `${ZhTwStrings.productEditBtn} - ${product.name}`,
       fields: [
-        { label: ZhTwStrings.productModalName, value: product.name, minLength: 1, maxLength: 100, required: true },
-        { label: ZhTwStrings.productModalDesc, value: product.description ?? '', minLength: 0, maxLength: 1000, required: false },
-        { label: ZhTwStrings.productModalPrice, value: product.currencyPrice?.toString() ?? '0', minLength: 1, maxLength: 20, required: true },
-        { label: ZhTwStrings.productModalFiatPrice, value: product.fiatPriceTwd?.toString() ?? '', minLength: 0, maxLength: 20, required: false },
-        { label: ZhTwStrings.productModalImageUrl, value: '', minLength: 0, maxLength: 500, required: false },
+        {
+          label: ZhTwStrings.productModalName,
+          value: product.name,
+          minLength: 1,
+          maxLength: 100,
+          required: true,
+        },
+        {
+          label: ZhTwStrings.productModalDesc,
+          value: product.description ?? '',
+          minLength: 0,
+          maxLength: 1000,
+          required: false,
+        },
+        {
+          label: ZhTwStrings.productModalPrice,
+          value: product.currencyPrice?.toString() ?? '0',
+          minLength: 1,
+          maxLength: 20,
+          required: true,
+        },
+        {
+          label: ZhTwStrings.productModalFiatPrice,
+          value: product.fiatPriceTwd?.toString() ?? '',
+          minLength: 0,
+          maxLength: 20,
+          required: false,
+        },
+        {
+          label: ZhTwStrings.productModalImageUrl,
+          value: '',
+          minLength: 0,
+          maxLength: 500,
+          required: false,
+        },
       ],
     };
   }
@@ -56,14 +128,38 @@ export class AdminProductPanelModalFactory {
    */
   buildGenerateCodesModal(): {
     title: string;
-    fields: { label: string; placeholder: string; minLength: number; maxLength: number; required: boolean }[];
+    fields: {
+      label: string;
+      placeholder: string;
+      minLength: number;
+      maxLength: number;
+      required: boolean;
+    }[];
   } {
     return {
       title: ZhTwStrings.generateCodesModalTitle,
       fields: [
-        { label: ZhTwStrings.generateCodesCountLabel, placeholder: ZhTwStrings.generateCodesCountPlaceholder, minLength: 1, maxLength: 3, required: true },
-        { label: ZhTwStrings.generateCodesNoteLabel, placeholder: ZhTwStrings.generateCodesNotePlaceholder, minLength: 0, maxLength: 100, required: false },
-        { label: ZhTwStrings.generateCodesDaysLabel, placeholder: ZhTwStrings.generateCodesDaysPlaceholder, minLength: 0, maxLength: 5, required: false },
+        {
+          label: ZhTwStrings.generateCodesCountLabel,
+          placeholder: ZhTwStrings.generateCodesCountPlaceholder,
+          minLength: 1,
+          maxLength: 3,
+          required: true,
+        },
+        {
+          label: ZhTwStrings.generateCodesNoteLabel,
+          placeholder: ZhTwStrings.generateCodesNotePlaceholder,
+          minLength: 0,
+          maxLength: 100,
+          required: false,
+        },
+        {
+          label: ZhTwStrings.generateCodesDaysLabel,
+          placeholder: ZhTwStrings.generateCodesDaysPlaceholder,
+          minLength: 0,
+          maxLength: 5,
+          required: false,
+        },
       ],
     };
   }

@@ -47,10 +47,7 @@ export class EscortCatalogService {
     return this.catalogRepository.create(data);
   }
 
-  async update(
-    code: string,
-    data: UpdateCatalogData,
-  ): Promise<EscortOptionCatalogEntry | null> {
+  async update(code: string, data: UpdateCatalogData): Promise<EscortOptionCatalogEntry | null> {
     return this.catalogRepository.update(code, data);
   }
 

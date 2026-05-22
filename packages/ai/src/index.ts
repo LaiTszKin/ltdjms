@@ -49,12 +49,7 @@ export type {
 
 // Markdown Types
 export { ErrorType } from './markdown/types.js';
-export type {
-  MarkdownError,
-  ValidationResult,
-  Valid,
-  Invalid,
-} from './markdown/types.js';
+export type { MarkdownError, ValidationResult, Valid, Invalid } from './markdown/types.js';
 
 // Markdown Interfaces (not concrete implementations)
 export type { MarkdownValidator } from './markdown/validation/MarkdownValidator.js';

@@ -1,7 +1,4 @@
-import {
-  type DiscordInteraction,
-  type DiscordContext,
-} from '@ltdjms/shared';
+import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
 import {
   EmbedBuilder,
   ActionRowBuilder,
@@ -32,10 +29,7 @@ export class DispatchAfterSalesHandler extends BaseAdminHandler {
     super(sessionManager, errorHandler);
   }
 
-  async execute(
-    interaction: DiscordInteraction,
-    context: DiscordContext,
-  ): Promise<void> {
+  async execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void> {
     const guildId = interaction.getGuildId();
     const userId = interaction.getUserId();
 
@@ -85,8 +79,10 @@ export class DispatchAfterSalesHandler extends BaseAdminHandler {
     interaction: DiscordInteraction,
     action: 'add' | 'remove',
   ): Promise<void> {
-    const customId = action === 'add' ? 'admin_dispatch_add_select' : 'admin_dispatch_remove_select';
-    const desc = action === 'add' ? ZhTwStrings.dispatchSelectMember : ZhTwStrings.dispatchSelectRemove;
+    const customId =
+      action === 'add' ? 'admin_dispatch_add_select' : 'admin_dispatch_remove_select';
+    const desc =
+      action === 'add' ? ZhTwStrings.dispatchSelectMember : ZhTwStrings.dispatchSelectRemove;
     const title = action === 'add' ? ZhTwStrings.dispatchAddBtn : ZhTwStrings.dispatchRemoveBtn;
 
     const embed = new EmbedBuilder()
@@ -94,18 +90,13 @@ export class DispatchAfterSalesHandler extends BaseAdminHandler {
       .setDescription(desc)
       .setColor(Colors.PRIMARY);
 
-    const select = new UserSelectMenuBuilder()
-      .setCustomId(customId)
-      .setPlaceholder(title);
+    const select = new UserSelectMenuBuilder().setCustomId(customId).setPlaceholder(title);
 
     const row = new ActionRowBuilder<UserSelectMenuBuilder>().addComponents(select);
     await interaction.editWithComponents(embed, [row]);
   }
 
-  private async handleAddStaff(
-    interaction: DiscordInteraction,
-    guildId: string,
-  ): Promise<void> {
+  private async handleAddStaff(interaction: DiscordInteraction, guildId: string): Promise<void> {
     const selectedIds = interaction.getSelectedValues();
     if (selectedIds.length === 0) {
       await this.showStaffList(interaction, guildId);
@@ -126,10 +117,7 @@ export class DispatchAfterSalesHandler extends BaseAdminHandler {
     }
   }
 
-  private async handleRemoveStaff(
-    interaction: DiscordInteraction,
-    guildId: string,
-  ): Promise<void> {
+  private async handleRemoveStaff(interaction: DiscordInteraction, guildId: string): Promise<void> {
     const selectedIds = interaction.getSelectedValues();
     if (selectedIds.length === 0) {
       await this.showStaffList(interaction, guildId);
@@ -150,10 +138,7 @@ export class DispatchAfterSalesHandler extends BaseAdminHandler {
     }
   }
 
-  private async showStaffList(
-    interaction: DiscordInteraction,
-    guildId: string,
-  ): Promise<void> {
+  private async showStaffList(interaction: DiscordInteraction, guildId: string): Promise<void> {
     const result = await this.facade.listStaff(guildId);
 
     let description: string;
@@ -162,7 +147,9 @@ export class DispatchAfterSalesHandler extends BaseAdminHandler {
       if (staffIds.size === 0) {
         description = ZhTwStrings.dispatchStaffEmpty;
       } else {
-        const staffList = Array.from(staffIds).map((id) => `<@${id}>`).join('\n');
+        const staffList = Array.from(staffIds)
+          .map((id) => `<@${id}>`)
+          .join('\n');
         description = ZhTwStrings.dispatchStaffList.replace('{staffs}', staffList);
       }
     } else {

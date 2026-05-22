@@ -24,10 +24,7 @@ export class DrizzleEscortOptionPriceRepo implements EscortOptionPriceRepo {
     return map;
   }
 
-  async findByGuildIdAndOptionCode(
-    guildId: number,
-    optionCode: string,
-  ): Promise<number | null> {
+  async findByGuildIdAndOptionCode(guildId: number, optionCode: string): Promise<number | null> {
     const rows = await this.db
       .select({ priceTwd: guildEscortOptionPrice.priceTwd })
       .from(guildEscortOptionPrice)

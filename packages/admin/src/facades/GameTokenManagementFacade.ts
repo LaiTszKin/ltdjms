@@ -59,7 +59,9 @@ export class GameTokenManagementFacade {
     if (validation) return validation;
 
     return this.tokenService.tryAdjustTokens(
-      safeSnowflakeToNumber(guildId), userId, amount,
+      safeSnowflakeToNumber(guildId),
+      userId,
+      amount,
       GameTokenTransactionSource.ADMIN_ADJUSTMENT,
       reason,
     );
@@ -80,7 +82,10 @@ export class GameTokenManagementFacade {
     }
 
     try {
-      const currentBalance = await this.tokenService.getBalance(safeSnowflakeToNumber(guildId), userId);
+      const currentBalance = await this.tokenService.getBalance(
+        safeSnowflakeToNumber(guildId),
+        userId,
+      );
       const delta = amount - currentBalance;
 
       if (delta === 0) {

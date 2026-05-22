@@ -1,7 +1,4 @@
-import {
-  type DiscordInteraction,
-  type DiscordContext,
-} from '@ltdjms/shared';
+import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
 import {
   EmbedBuilder,
   ActionRowBuilder,
@@ -33,10 +30,7 @@ export class AIAgentConfigHandler extends BaseAdminHandler {
     super(sessionManager, errorHandler);
   }
 
-  async execute(
-    interaction: DiscordInteraction,
-    context: DiscordContext,
-  ): Promise<void> {
+  async execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void> {
     const guildId = interaction.getGuildId();
     const userId = interaction.getUserId();
 
@@ -169,7 +163,11 @@ export class AIAgentConfigHandler extends BaseAdminHandler {
     interaction: DiscordInteraction,
     guildId: string,
   ): Promise<void> {
-    const channelId = this.sessionManager.getContext(guildId, interaction.getUserId(), 'agent_channel');
+    const channelId = this.sessionManager.getContext(
+      guildId,
+      interaction.getUserId(),
+      'agent_channel',
+    );
     if (!channelId) {
       await this.showAgentConfig(interaction, guildId);
       return;
@@ -217,10 +215,7 @@ export class AIAgentConfigHandler extends BaseAdminHandler {
     }
   }
 
-  private async handleRemoveAgent(
-    interaction: DiscordInteraction,
-    guildId: string,
-  ): Promise<void> {
+  private async handleRemoveAgent(interaction: DiscordInteraction, guildId: string): Promise<void> {
     const selectedValues = interaction.getSelectedValues();
     if (!selectedValues || selectedValues.length === 0) {
       await this.showAgentConfig(interaction, guildId);
@@ -254,21 +249,21 @@ export class AIAgentConfigHandler extends BaseAdminHandler {
     }
   }
 
-  private async showAgentConfig(
-    interaction: DiscordInteraction,
-    guildId: string,
-  ): Promise<void> {
+  private async showAgentConfig(interaction: DiscordInteraction, guildId: string): Promise<void> {
     const result = await this.facade.getAgentConfigs(guildId);
 
     let description: string;
     if (result.isOk() && result.getValue().length > 0) {
-      const channelList = result.getValue().map((ch) => {
-        const modeName = ch.mode === 'chat' ? 'Chat' : ch.mode === 'hybrid' ? 'Hybrid' : 'Agent';
-        const activatedStr = ch.activatedAt
-          ? new Date(ch.activatedAt).toLocaleString('zh-TW')
-          : '不詳';
-        return `<#${ch.channelId}> (模式: ${modeName}, 啟用時間: ${activatedStr})`;
-      }).join('\n');
+      const channelList = result
+        .getValue()
+        .map((ch) => {
+          const modeName = ch.mode === 'chat' ? 'Chat' : ch.mode === 'hybrid' ? 'Hybrid' : 'Agent';
+          const activatedStr = ch.activatedAt
+            ? new Date(ch.activatedAt).toLocaleString('zh-TW')
+            : '不詳';
+          return `<#${ch.channelId}> (模式: ${modeName}, 啟用時間: ${activatedStr})`;
+        })
+        .join('\n');
       description = ZhTwStrings.aiAgentList.replace('{channels}', channelList);
     } else {
       description = ZhTwStrings.aiAgentEmpty;

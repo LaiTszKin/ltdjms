@@ -200,7 +200,10 @@ export function splitSelectMenuOptions(
   baseId: string,
   extraId: string,
   placeholder = '請選擇',
-): { primary: ReturnType<typeof buildEscortOptionSelectMenu>; extra: ReturnType<typeof buildEscortOptionSelectMenu> | null } {
+): {
+  primary: ReturnType<typeof buildEscortOptionSelectMenu>;
+  extra: ReturnType<typeof buildEscortOptionSelectMenu> | null;
+} {
   if (options.length <= 25) {
     return {
       primary: buildEscortOptionSelectMenu(options, baseId, placeholder),

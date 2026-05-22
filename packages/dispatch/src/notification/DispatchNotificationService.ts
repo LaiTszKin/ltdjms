@@ -48,23 +48,32 @@ export class DispatchNotificationService {
 
   /** DM 給護航者：已分配到新訂單（embed 格式），附「確認接單」按鈕。 */
   async notifyEscortAssigned(order: EscortDispatchOrder): Promise<boolean> {
-    return this.sendDMEmbed(String(order.escortUserId), {
-      title: `📋 新訂單已分配 #${order.orderNumber}`,
-      description: '您已被分配一個新訂單，請點擊下方按鈕確認接單。',
-      color: COLOR_INFO,
-      fields: [
-        { name: '訂單編號', value: order.orderNumber, inline: true },
-        { name: '客戶', value: `<@${order.customerUserId}>`, inline: true },
-      ],
-      footer: { text: '請在時限內確認接單' },
-    }, [
+    return this.sendDMEmbed(
+      String(order.escortUserId),
       {
-        type: 1,
-        components: [
-          { type: 2, style: 3, custom_id: `${NOTIFY_CONFIRM}:${order.orderNumber}`, label: '確認接單' },
+        title: `📋 新訂單已分配 #${order.orderNumber}`,
+        description: '您已被分配一個新訂單，請點擊下方按鈕確認接單。',
+        color: COLOR_INFO,
+        fields: [
+          { name: '訂單編號', value: order.orderNumber, inline: true },
+          { name: '客戶', value: `<@${order.customerUserId}>`, inline: true },
         ],
+        footer: { text: '請在時限內確認接單' },
       },
-    ]);
+      [
+        {
+          type: 1,
+          components: [
+            {
+              type: 2,
+              style: 3,
+              custom_id: `${NOTIFY_CONFIRM}:${order.orderNumber}`,
+              label: '確認接單',
+            },
+          ],
+        },
+      ],
+    );
   }
 
   /** DM 給管理員與客戶：護航者已確認接單（embed 格式）。 */
@@ -100,24 +109,38 @@ export class DispatchNotificationService {
 
   /** DM 給客戶：要求確認完成（embed 格式）。 */
   async notifyCompletionRequested(order: EscortDispatchOrder): Promise<boolean> {
-    return this.sendDMEmbed(String(order.customerUserId), {
-      title: `🔔 請確認完成 #${order.orderNumber}`,
-      description: '護航者已完成服務，請前往面板確認完成。若 24 小時內未確認，系統將自動完成。',
-      color: COLOR_WARNING,
-      fields: [
-        { name: '訂單編號', value: order.orderNumber, inline: true },
-        { name: '護航者', value: `<@${order.escortUserId}>`, inline: true },
-      ],
-      footer: { text: '24 小時未確認將視為訂單完成' },
-    }, [
+    return this.sendDMEmbed(
+      String(order.customerUserId),
       {
-        type: 1,
-        components: [
-          { type: 2, style: 3, custom_id: `${NOTIFY_CONFIRM_COMPLETION}:${order.orderNumber}`, label: '確認完成' },
-          { type: 2, style: 4, custom_id: `${NOTIFY_AFTER_SALES}:${order.orderNumber}`, label: '申請售後' },
+        title: `🔔 請確認完成 #${order.orderNumber}`,
+        description: '護航者已完成服務，請前往面板確認完成。若 24 小時內未確認，系統將自動完成。',
+        color: COLOR_WARNING,
+        fields: [
+          { name: '訂單編號', value: order.orderNumber, inline: true },
+          { name: '護航者', value: `<@${order.escortUserId}>`, inline: true },
         ],
+        footer: { text: '24 小時未確認將視為訂單完成' },
       },
-    ]);
+      [
+        {
+          type: 1,
+          components: [
+            {
+              type: 2,
+              style: 3,
+              custom_id: `${NOTIFY_CONFIRM_COMPLETION}:${order.orderNumber}`,
+              label: '確認完成',
+            },
+            {
+              type: 2,
+              style: 4,
+              custom_id: `${NOTIFY_AFTER_SALES}:${order.orderNumber}`,
+              label: '申請售後',
+            },
+          ],
+        },
+      ],
+    );
   }
 
   /** DM 給護航者：客戶已確認完成（embed 格式）。spec R6.1：僅通知護航者，不通知管理員。 */
@@ -128,7 +151,11 @@ export class DispatchNotificationService {
       color: COLOR_INFO,
       fields: [
         { name: '訂單編號', value: order.orderNumber, inline: true },
-        { name: '完成時間', value: order.completedAt?.toLocaleString('zh-TW') ?? 'N/A', inline: false },
+        {
+          name: '完成時間',
+          value: order.completedAt?.toLocaleString('zh-TW') ?? 'N/A',
+          inline: false,
+        },
       ],
       footer: { text: '訂單已完成' },
     });
@@ -169,11 +196,24 @@ export class DispatchNotificationService {
       // P2-18: 限制單次通知人數，避免多人同時收到 DM
       const targetIds = filteredIds.slice(0, MAX_NOTIFICATION_RECIPIENTS);
 
-      await processWithConcurrencyLimit(targetIds, async (staffId) =>
-        this.sendDMEmbed(String(staffId), embed, [
-          { type: 1, components: [{ type: 2, style: 3, custom_id: `${NOTIFY_CLAIM}:${order.orderNumber}`, label: '承接售後' }] },
-        ]),
-      3);
+      await processWithConcurrencyLimit(
+        targetIds,
+        async (staffId) =>
+          this.sendDMEmbed(String(staffId), embed, [
+            {
+              type: 1,
+              components: [
+                {
+                  type: 2,
+                  style: 3,
+                  custom_id: `${NOTIFY_CLAIM}:${order.orderNumber}`,
+                  label: '承接售後',
+                },
+              ],
+            },
+          ]),
+        3,
+      );
       return true;
     } catch {
       return false;
@@ -196,18 +236,32 @@ export class DispatchNotificationService {
     // R8: DM the after-sales staff with a "結案" button (P0-8)
     let staffResult = true;
     if (order.afterSalesAssigneeUserId != null) {
-      staffResult = await this.sendDMEmbed(String(order.afterSalesAssigneeUserId), {
-        title: `🛠️ 售後案件已接手 #${order.orderNumber}`,
-        description: '您已接手此售後案件，處理完成後請點擊結案。',
-        color: COLOR_INFO,
-        fields: [
-          { name: '訂單編號', value: order.orderNumber, inline: true },
-          { name: '客戶', value: `<@${order.customerUserId}>`, inline: true },
+      staffResult = await this.sendDMEmbed(
+        String(order.afterSalesAssigneeUserId),
+        {
+          title: `🛠️ 售後案件已接手 #${order.orderNumber}`,
+          description: '您已接手此售後案件，處理完成後請點擊結案。',
+          color: COLOR_INFO,
+          fields: [
+            { name: '訂單編號', value: order.orderNumber, inline: true },
+            { name: '客戶', value: `<@${order.customerUserId}>`, inline: true },
+          ],
+          footer: { text: '售後處理中' },
+        },
+        [
+          {
+            type: 1,
+            components: [
+              {
+                type: 2,
+                style: 4,
+                custom_id: `${NOTIFY_CLOSE}:${order.orderNumber}`,
+                label: '結案',
+              },
+            ],
+          },
         ],
-        footer: { text: '售後處理中' },
-      }, [
-        { type: 1, components: [{ type: 2, style: 4, custom_id: `${NOTIFY_CLOSE}:${order.orderNumber}`, label: '結案' }] },
-      ]);
+      );
     }
 
     return customerResult && staffResult;
@@ -219,9 +273,7 @@ export class DispatchNotificationService {
       title: `✅ 售後已結案 #${order.orderNumber}`,
       description: '您的售後案件已結案。若有其他問題請隨時聯繫我們。',
       color: COLOR_INFO,
-      fields: [
-        { name: '訂單編號', value: order.orderNumber, inline: true },
-      ],
+      fields: [{ name: '訂單編號', value: order.orderNumber, inline: true }],
       footer: { text: '售後已結案' },
     });
   }
@@ -240,10 +292,7 @@ export class DispatchNotificationService {
       }
       return await this.gateway.sendDM(userId, options);
     } catch (e) {
-      console.warn(
-        `Failed to send DM to user ${userId}:`,
-        e instanceof Error ? e.message : e,
-      );
+      console.warn(`Failed to send DM to user ${userId}:`, e instanceof Error ? e.message : e);
       return false;
     }
   }
@@ -255,14 +304,18 @@ export class DispatchNotificationService {
   private async filterOnlineStaff(guildId: number, staffIds: number[]): Promise<number[]> {
     // P2-31/P3-21: 使用 Map 保留原始 staffIds 順序，避免 processWithConcurrencyLimit 回傳亂序
     const results = new Map<number, boolean>();
-    await processWithConcurrencyLimit(staffIds, async (staffId) => {
-      try {
-        const isOnline = await this.gateway.isMemberOnline(String(guildId), String(staffId));
-        results.set(staffId, isOnline);
-      } catch {
-        results.set(staffId, false);
-      }
-    }, 5);
+    await processWithConcurrencyLimit(
+      staffIds,
+      async (staffId) => {
+        try {
+          const isOnline = await this.gateway.isMemberOnline(String(guildId), String(staffId));
+          results.set(staffId, isOnline);
+        } catch {
+          results.set(staffId, false);
+        }
+      },
+      5,
+    );
     return staffIds.filter((id) => results.get(id) === true);
   }
 }

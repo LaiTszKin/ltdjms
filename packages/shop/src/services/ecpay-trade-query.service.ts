@@ -40,9 +40,7 @@ export class EcpayTradeQueryService {
     const hashIv = this.config.getEcpayHashIv().trim();
 
     if (!merchantId || !hashKey || !hashIv) {
-      return err(
-        DomainError.invalidInput('綠界金流尚未完成設定（MerchantID/HashKey/HashIV）'),
-      );
+      return err(DomainError.invalidInput('綠界金流尚未完成設定（MerchantID/HashKey/HashIV）'));
     }
 
     try {
@@ -71,9 +69,7 @@ export class EcpayTradeQueryService {
       if (!response.ok) {
         const body = await response.text();
         this.log.warn({ status: response.status, body }, 'ECPay query trade failed');
-        return err(
-          DomainError.unexpectedFailure(`綠界查單失敗（HTTP ${response.status}）`),
-        );
+        return err(DomainError.unexpectedFailure(`綠界查單失敗（HTTP ${response.status}）`));
       }
 
       const body = await response.text();

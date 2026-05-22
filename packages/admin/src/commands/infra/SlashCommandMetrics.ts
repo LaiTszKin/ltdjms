@@ -61,15 +61,9 @@ export class SlashCommandMetrics {
 
     // Update counters
     if (success) {
-      this.successCounts.set(
-        commandName,
-        (this.successCounts.get(commandName) ?? 0) + 1,
-      );
+      this.successCounts.set(commandName, (this.successCounts.get(commandName) ?? 0) + 1);
     } else {
-      this.errorCounts.set(
-        commandName,
-        (this.errorCounts.get(commandName) ?? 0) + 1,
-      );
+      this.errorCounts.set(commandName, (this.errorCounts.get(commandName) ?? 0) + 1);
     }
   }
 

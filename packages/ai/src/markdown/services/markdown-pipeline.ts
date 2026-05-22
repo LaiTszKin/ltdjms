@@ -39,12 +39,15 @@ export async function applyMarkdownPipeline(
   for (let attempt = 0; attempt < 3 && !isValid(validationResult); attempt++) {
     // Time budget guard: break out if we've exceeded MAX_PROCESSING_TIME_MS
     if (Date.now() - startTime > MAX_PROCESSING_TIME_MS) {
-      logger.warn({ elapsed: Date.now() - startTime }, 'Markdown pipeline exceeded time budget, returning current result');
+      logger.warn(
+        { elapsed: Date.now() - startTime },
+        'Markdown pipeline exceeded time budget, returning current result',
+      );
       break;
     }
 
     // Yield to event loop between retries to avoid blocking
-    await new Promise<void>(resolve => setImmediate(resolve));
+    await new Promise<void>((resolve) => setImmediate(resolve));
     result = autoFixer.autoFix(result);
     validationResult = validator.validate(result);
   }

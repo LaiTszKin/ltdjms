@@ -31,7 +31,9 @@ export function formatFiatOrderDMMessage(result: FiatOrderResult): string {
   lines.push(`**商品：** ${result.product.name}`);
   lines.push(`**訂單編號：** \`${result.orderNumber}\``);
   lines.push(`**超商代碼：** \`${result.paymentNo}\``);
-  lines.push(`**金額：** ${formatFiatPriceTwd(result.product) ?? `NT$${result.product.fiatPriceTwd}`}`);
+  lines.push(
+    `**金額：** ${formatFiatPriceTwd(result.product) ?? `NT$${result.product.fiatPriceTwd}`}`,
+  );
   if (result.expireDate) {
     lines.push(`**繳費期限：** ${result.expireDate}`);
   }

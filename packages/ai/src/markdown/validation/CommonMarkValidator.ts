@@ -1,12 +1,6 @@
 import { lexer, type Token, type Tokens } from 'marked';
 import { MarkdownValidator } from './MarkdownValidator.js';
-import {
-  ErrorType,
-  type MarkdownError,
-  type ValidationResult,
-  valid,
-  invalid,
-} from '../types.js';
+import { ErrorType, type MarkdownError, type ValidationResult, valid, invalid } from '../types.js';
 
 /**
  * CommonMarkValidator implementation using marked.lexer() AST parser.
@@ -102,10 +96,7 @@ export class CommonMarkValidator implements MarkdownValidator {
         const raw = codeToken.raw.trimStart();
         if (raw.startsWith('```') || raw.startsWith('~~~')) {
           const trimmedEnd = raw.trimEnd();
-          if (
-            !trimmedEnd.endsWith('```') &&
-            !trimmedEnd.endsWith('~~~')
-          ) {
+          if (!trimmedEnd.endsWith('```') && !trimmedEnd.endsWith('~~~')) {
             errors.push({
               errorType: ErrorType.UNCLOSED_CODE_BLOCK,
               line: lines.length,
@@ -151,9 +142,7 @@ export class CommonMarkValidator implements MarkdownValidator {
       }
 
       // Compute 1-based line number from character position using binary search
-      const lineNum = pos >= 0
-        ? this.getLineNumber(pos, lineStarts)
-        : 1;
+      const lineNum = pos >= 0 ? this.getLineNumber(pos, lineStarts) : 1;
 
       switch (token.type) {
         case 'heading':
@@ -163,7 +152,13 @@ export class CommonMarkValidator implements MarkdownValidator {
           // Code block is properly closed — nothing to validate inside
           break;
         case 'list':
-          this.validateListToken(token as Tokens.List, errors, markdown, pos >= 0 ? pos : 0, lineStarts);
+          this.validateListToken(
+            token as Tokens.List,
+            errors,
+            markdown,
+            pos >= 0 ? pos : 0,
+            lineStarts,
+          );
           break;
         case 'hr':
           this.validateHrToken(token as Tokens.Hr, errors, lineNum);
@@ -182,7 +177,15 @@ export class CommonMarkValidator implements MarkdownValidator {
       // Recurse into nested tokens (e.g. list items)
       const tok = token as Token & { tokens?: Token[] };
       if (tok.tokens && tok.tokens.length > 0) {
-        this.walkTokens(tok.tokens, lines, markdown, errors, lineStarts, token.raw, pos >= 0 ? pos : 0);
+        this.walkTokens(
+          tok.tokens,
+          lines,
+          markdown,
+          errors,
+          lineStarts,
+          token.raw,
+          pos >= 0 ? pos : 0,
+        );
       }
     }
   }
@@ -192,7 +195,6 @@ export class CommonMarkValidator implements MarkdownValidator {
     errors: MarkdownError[],
     lineNum: number,
   ): void {
-
     // Check heading level exceeded
     if (token.depth > 6) {
       errors.push({
@@ -248,7 +250,10 @@ export class CommonMarkValidator implements MarkdownValidator {
         errorType: ErrorType.INLINE_HEADING,
         line: lineNum,
         column: (inlineHeadingMatch.index ?? 0) + 1,
-        context: raw.slice(Math.max(0, (inlineHeadingMatch.index ?? 0) - 5), (inlineHeadingMatch.index ?? 0) + 20),
+        context: raw.slice(
+          Math.max(0, (inlineHeadingMatch.index ?? 0) - 5),
+          (inlineHeadingMatch.index ?? 0) + 20,
+        ),
         suggestion: '標題應在行首，而非行內',
       });
     }
@@ -294,9 +299,7 @@ export class CommonMarkValidator implements MarkdownValidator {
         itemCursor = relativePos + item.raw.length;
       }
       const absolutePos = relativePos >= 0 ? listPos + relativePos : -1;
-      const itemLineNum = absolutePos >= 0
-        ? this.getLineNumber(absolutePos, lineStarts)
-        : 1;
+      const itemLineNum = absolutePos >= 0 ? this.getLineNumber(absolutePos, lineStarts) : 1;
       const rawFirstLine = item.raw.split('\n')[0];
       const trimmed = rawFirstLine.trimStart();
 
@@ -336,11 +339,7 @@ export class CommonMarkValidator implements MarkdownValidator {
     }
   }
 
-  private validateHrToken(
-    token: Tokens.Hr,
-    errors: MarkdownError[],
-    lineNum: number,
-  ): void {
+  private validateHrToken(token: Tokens.Hr, errors: MarkdownError[], lineNum: number): void {
     errors.push({
       errorType: ErrorType.DISCORD_RENDER_ISSUE,
       line: lineNum,
@@ -350,11 +349,7 @@ export class CommonMarkValidator implements MarkdownValidator {
     });
   }
 
-  private validateTableToken(
-    token: Tokens.Table,
-    errors: MarkdownError[],
-    lineNum: number,
-  ): void {
+  private validateTableToken(token: Tokens.Table, errors: MarkdownError[], lineNum: number): void {
     errors.push({
       errorType: ErrorType.DISCORD_RENDER_ISSUE,
       line: lineNum,
@@ -370,10 +365,7 @@ export class CommonMarkValidator implements MarkdownValidator {
    * Uses its own code fence tracking rather than the AST-based line set.
    * Uses compound regex expressions and early continue after each match (P2-10).
    */
-  private regexFormatPass(
-    lines: string[],
-    errors: MarkdownError[],
-  ): void {
+  private regexFormatPass(lines: string[], errors: MarkdownError[]): void {
     // Compound regex for code fence detection
     const CODE_FENCE_RE = /^\s*(```|~~~)/;
     let inCodeBlock = false;
@@ -449,7 +441,10 @@ export class CommonMarkValidator implements MarkdownValidator {
           errorType: ErrorType.INLINE_HEADING,
           line: lineNum,
           column: (inlineMatch.index ?? 0) + 1,
-          context: line.slice(Math.max(0, (inlineMatch.index ?? 0) - 5), (inlineMatch.index ?? 0) + 20),
+          context: line.slice(
+            Math.max(0, (inlineMatch.index ?? 0) - 5),
+            (inlineMatch.index ?? 0) + 20,
+          ),
           suggestion: '標題應在行首，而非行內',
         });
         continue;
@@ -527,9 +522,7 @@ export class MarkdownErrorFormatter {
     const lines: string[] = ['Markdown 格式問題：'];
 
     for (const error of errors) {
-      lines.push(
-        `- 第 ${error.line} 行：${error.suggestion}（${error.errorType}）`,
-      );
+      lines.push(`- 第 ${error.line} 行：${error.suggestion}（${error.errorType}）`);
     }
 
     return lines.join('\n');

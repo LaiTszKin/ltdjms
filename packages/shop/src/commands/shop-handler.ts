@@ -1,7 +1,10 @@
 import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
 import { ShopService, type ShopPage } from '../services/shop.service.js';
 import { FiatOrderService, formatFiatOrderDMMessage } from '../services/fiat-order.service.js';
-import { CurrencyPurchaseService, formatPurchaseSuccessMessage } from '../services/currency-purchase.service.js';
+import {
+  CurrencyPurchaseService,
+  formatPurchaseSuccessMessage,
+} from '../services/currency-purchase.service.js';
 import { ProductService } from '../services/product-service.js';
 import {
   ModalBuilder,
@@ -58,10 +61,7 @@ export class ShopCommandHandler {
    * Handles the initial /shop slash command.
    * Fetches the first page of products and replies with an embed.
    */
-  async execute(
-    interaction: DiscordInteraction,
-    _context: DiscordContext,
-  ): Promise<void> {
+  async execute(interaction: DiscordInteraction, _context: DiscordContext): Promise<void> {
     interaction.makeEphemeral();
     await interaction.deferReply();
 
@@ -71,7 +71,11 @@ export class ShopCommandHandler {
       if (hook) {
         await hook.editReply({ content: '無法解析伺服器 ID' });
       } else {
-        await interaction.editEmbed({ title: '錯誤', description: '無法解析伺服器 ID', color: 0xED4245 });
+        await interaction.editEmbed({
+          title: '錯誤',
+          description: '無法解析伺服器 ID',
+          color: 0xed4245,
+        });
       }
       return;
     }
@@ -231,8 +235,18 @@ export class ShopCommandHandler {
         return;
       }
       const trimmedKeyword = keyword.trim();
-      const embed = buildSearchResultEmbed(page.products, page.currentPage, page.totalPages, trimmedKeyword);
-      const components = buildSearchComponents(page.currentPage, page.totalPages, trimmedKeyword, page.products);
+      const embed = buildSearchResultEmbed(
+        page.products,
+        page.currentPage,
+        page.totalPages,
+        trimmedKeyword,
+      );
+      const components = buildSearchComponents(
+        page.currentPage,
+        page.totalPages,
+        trimmedKeyword,
+        page.products,
+      );
       await this.editWithComponents(interaction, embed, components);
       return;
     }
@@ -246,8 +260,18 @@ export class ShopCommandHandler {
         await interaction.reply('此頁面沒有搜尋結果');
         return;
       }
-      const embed = buildSearchResultEmbed(page.products, page.currentPage, page.totalPages, parsed.keyword);
-      const components = buildSearchComponents(page.currentPage, page.totalPages, parsed.keyword, page.products);
+      const embed = buildSearchResultEmbed(
+        page.products,
+        page.currentPage,
+        page.totalPages,
+        parsed.keyword,
+      );
+      const components = buildSearchComponents(
+        page.currentPage,
+        page.totalPages,
+        parsed.keyword,
+        page.products,
+      );
       await this.editWithComponents(interaction, embed, components);
       return;
     }
@@ -261,8 +285,18 @@ export class ShopCommandHandler {
         await interaction.reply('此頁面沒有搜尋結果');
         return;
       }
-      const embed = buildSearchResultEmbed(page.products, page.currentPage, page.totalPages, parsed.keyword);
-      const components = buildSearchComponents(page.currentPage, page.totalPages, parsed.keyword, page.products);
+      const embed = buildSearchResultEmbed(
+        page.products,
+        page.currentPage,
+        page.totalPages,
+        parsed.keyword,
+      );
+      const components = buildSearchComponents(
+        page.currentPage,
+        page.totalPages,
+        parsed.keyword,
+        page.products,
+      );
       await this.editWithComponents(interaction, embed, components);
       return;
     }
@@ -293,10 +327,7 @@ export class ShopCommandHandler {
    * Shows a select menu for choosing a product to buy.
    * Loads all products across all pages and renders them as select menu options.
    */
-  private async showBuySelection(
-    interaction: DiscordInteraction,
-    guildId: number,
-  ): Promise<void> {
+  private async showBuySelection(interaction: DiscordInteraction, guildId: number): Promise<void> {
     // Load all products at once (large page size) so the select menu is not
     // restricted to the first page only.
     const page = await this.shopService.getShopPageWithSize(guildId, 1, 25);
@@ -364,7 +395,7 @@ export class ShopCommandHandler {
     productId: number,
   ): Promise<void> {
     const userId = interaction.getUserId();
-        const result = await this.currencyPurchaseService.purchaseProduct(guildId, userId, productId);
+    const result = await this.currencyPurchaseService.purchaseProduct(guildId, userId, productId);
     if (result.isErr()) {
       await interaction.reply(`購買失敗：${result.getError().message}`);
       return;

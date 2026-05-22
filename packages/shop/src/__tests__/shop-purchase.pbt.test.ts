@@ -5,12 +5,28 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { sql } from 'drizzle-orm';
 import pino from 'pino';
-import { container, TOKENS, initializeContainer, EnvironmentConfig, ok, isOk, isErr, err } from '@ltdjms/shared';
+import {
+  container,
+  TOKENS,
+  initializeContainer,
+  EnvironmentConfig,
+  ok,
+  isOk,
+  isErr,
+  err,
+} from '@ltdjms/shared';
 import { configureEconomyContainer, ECONOMY_TOKENS } from '@ltdjms/economy';
 import { configureContainer, SHOP_TOKENS, type ProductRewardService } from '../di/shop-module.js';
 import type { EscortDispatchHandoffService } from '../domain/escort-dispatch-handoff-service.js';
-import { getTestPool, cleanAllTestTables } from '../../../shared/src/infra/database/test-db-reset.js';
-import { seedGuild, seedProduct, seedUserAccount } from '../../../shared/src/__tests__/seed-factory.js';
+import {
+  getTestPool,
+  cleanAllTestTables,
+} from '../../../shared/src/infra/database/test-db-reset.js';
+import {
+  seedGuild,
+  seedProduct,
+  seedUserAccount,
+} from '../../../shared/src/__tests__/seed-factory.js';
 
 const CONNECTION_URL = process.env.__TEST_CONTAINER_URL!;
 let db: NodePgDatabase;
@@ -30,7 +46,9 @@ beforeEach(async () => {
     runtimeGateway: {
       isReady: () => false,
       publishReady: () => {},
-      requireReadyClient: () => { throw new Error('not ready'); },
+      requireReadyClient: () => {
+        throw new Error('not ready');
+      },
       findGuild: () => null,
       findGuildChannel: () => null,
       selfUserId: () => 'test-bot',
@@ -43,14 +61,20 @@ beforeEach(async () => {
   configureEconomyContainer();
 
   const economyBalanceService = container.resolve(ECONOMY_TOKENS.BalanceService);
-  const economyBalanceAdjustmentService = container.resolve(ECONOMY_TOKENS.BalanceAdjustmentService);
+  const economyBalanceAdjustmentService = container.resolve(
+    ECONOMY_TOKENS.BalanceAdjustmentService,
+  );
 
   db = drizzle(pool);
 
   const productRewardService: ProductRewardService = {
     grantReward: async ({ guildId, userId, product, amount, description }) => {
       const result = await economyBalanceAdjustmentService.tryAdjustBalance(
-        guildId, userId, amount, 'PRODUCT_REWARD' as any, description,
+        guildId,
+        userId,
+        amount,
+        'PRODUCT_REWARD' as any,
+        description,
       );
       if (isOk(result)) {
         return ok({ amount, currencyBalanceAfter: result.getValue().newBalance });

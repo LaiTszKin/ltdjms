@@ -13,7 +13,7 @@ export function safeSnowflakeToNumber(id: string): number {
   if (!Number.isSafeInteger(num) || String(num) !== id) {
     console.warn(
       `[snowflake] ID ${id} loses precision as number ${num}. ` +
-      `Consider BigInt migration for full 64-bit Discord snowflake support.`,
+        `Consider BigInt migration for full 64-bit Discord snowflake support.`,
     );
   }
   return num;

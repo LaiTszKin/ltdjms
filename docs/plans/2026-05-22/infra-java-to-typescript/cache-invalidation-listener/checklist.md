@@ -17,11 +17,11 @@
 
 ## Behavior-to-Test Checklist
 
-- [ ] CL-01: BalanceChangedEvent 正確觸發餘額快取失效 — R1.1, R1.2 → T3.1 — Result: `NOT RUN`
-- [ ] CL-02: GameTokenChangedEvent 正確觸發代幣快取失效 — R2.1, R2.2 → T3.1 — Result: `NOT RUN`
-- [ ] CL-03: 非相關事件不觸發快取失效 — R1.2, R2.1 → T3.1 — Result: `NOT RUN`
-- [ ] CL-04: Cache service 失敗時不中斷事件處理鏈 — R1.3 → T3.1 — Result: `NOT RUN`
-- [ ] CL-05: 事件缺少必要欄位時不拋出例外 — R1.2 → T3.1 — Result: `NOT RUN`
+- [x] CL-01: BalanceChangedEvent 正確觸發餘額快取失效 — R1.1, R1.2 → T3.1 — Result: `PASS`
+- [x] CL-02: GameTokenChangedEvent 正確觸發代幣快取失效 — R2.1, R2.2 → T3.1 — Result: `PASS`
+- [x] CL-03: 非相關事件不觸發快取失效 — R1.2, R2.1 → T3.1 — Result: `PASS`
+- [x] CL-04: Cache service 失敗時不中斷事件處理鏈 — R1.3 → T3.1 — Result: `PASS`
+- [x] CL-05: 事件缺少必要欄位時不拋出例外 — R1.2 → T3.1 — Result: `PASS`
 
 ## Hardening Checklist
 
@@ -40,14 +40,14 @@
 
 ## Execution Summary
 
-- [ ] Unit: `NOT RUN`
+- [x] Unit: `PASS`
 - [ ] Regression: `N/A`
 - [ ] Property-based: `N/A`
-- [ ] Integration: `NOT RUN`
+- [ ] Integration: `N/A`
 - [ ] E2E: `N/A`
-- [ ] Mock scenarios: `NOT RUN`
+- [x] Mock scenarios: `PASS`
 - [ ] Adversarial: `N/A`
 
 ## Completion Records
 
-- [ ] Cache invalidation listener: pending — Remaining: T1-T3
+- [x] Cache invalidation listener: done — T1, T2, T3

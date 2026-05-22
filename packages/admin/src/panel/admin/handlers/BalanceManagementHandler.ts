@@ -1,7 +1,4 @@
-import {
-  type DiscordInteraction,
-  type DiscordContext,
-} from '@ltdjms/shared';
+import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
 import {
   EmbedBuilder,
   ActionRowBuilder,
@@ -37,10 +34,7 @@ export class BalanceManagementHandler extends BaseAdminHandler {
     super(sessionManager, errorHandler);
   }
 
-  async execute(
-    interaction: DiscordInteraction,
-    context: DiscordContext,
-  ): Promise<void> {
+  async execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void> {
     const guildId = interaction.getGuildId();
     const userId = interaction.getUserId();
 
@@ -71,7 +65,11 @@ export class BalanceManagementHandler extends BaseAdminHandler {
     this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.BALANCE);
 
     // Modal submit handling
-    if (fullCustomId === 'admin_balance_add' || fullCustomId === 'admin_balance_deduct' || fullCustomId === 'admin_balance_set') {
+    if (
+      fullCustomId === 'admin_balance_add' ||
+      fullCustomId === 'admin_balance_deduct' ||
+      fullCustomId === 'admin_balance_set'
+    ) {
       await this.handleModalSubmit(interaction, guildId, userId, fullCustomId);
       return;
     }
@@ -98,9 +96,7 @@ export class BalanceManagementHandler extends BaseAdminHandler {
     }
   }
 
-  private async showMemberSelect(
-    interaction: DiscordInteraction,
-  ): Promise<void> {
+  private async showMemberSelect(interaction: DiscordInteraction): Promise<void> {
     const embed = new EmbedBuilder()
       .setTitle(ZhTwStrings.balanceTitle)
       .setDescription(ZhTwStrings.balanceSelectMember)
@@ -165,16 +161,15 @@ export class BalanceManagementHandler extends BaseAdminHandler {
   ): Promise<void> {
     const modalData = this.modalFactory.buildBalanceAdjustModal(mode);
 
-    const modal = new ModalBuilder()
-      .setCustomId('admin_balance_' + mode)
-      .setTitle(modalData.title);
+    const modal = new ModalBuilder().setCustomId('admin_balance_' + mode).setTitle(modalData.title);
 
     for (const field of modalData.fields) {
-      const customId = field.label === ZhTwStrings.balanceModalAmountLabel
-        ? 'balance_amount'
-        : field.label === ZhTwStrings.balanceModalReasonLabel
-          ? 'balance_reason'
-          : field.label;
+      const customId =
+        field.label === ZhTwStrings.balanceModalAmountLabel
+          ? 'balance_amount'
+          : field.label === ZhTwStrings.balanceModalReasonLabel
+            ? 'balance_reason'
+            : field.label;
       const input = new TextInputBuilder()
         .setCustomId(customId)
         .setLabel(field.label)
@@ -185,9 +180,7 @@ export class BalanceManagementHandler extends BaseAdminHandler {
       if ('placeholder' in field && field.placeholder) {
         input.setPlaceholder(field.placeholder);
       }
-      modal.addComponents(
-        new ActionRowBuilder<TextInputBuilder>().addComponents(input),
-      );
+      modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
     }
 
     await interaction.showModal(modal);

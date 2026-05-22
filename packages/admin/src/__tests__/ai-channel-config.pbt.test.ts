@@ -1,6 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as fc from 'fast-check';
-import { Ok, Err, DomainError, DomainErrorCategory, okVoid, type DomainEventPublisher } from '@ltdjms/shared';
+import {
+  Ok,
+  Err,
+  DomainError,
+  DomainErrorCategory,
+  okVoid,
+  type DomainEventPublisher,
+} from '@ltdjms/shared';
 import { AIConfigManagementFacade } from '../facades/AIConfigManagementFacade.js';
 import { AgentMode } from '../facades/agent-mode.js';
 import type {
@@ -11,8 +18,7 @@ import type {
 } from '@ltdjms/ai';
 
 /** Generates a short alphanumeric ID token (no whitespace). */
-const idToken = (): fc.Arbitrary<string> =>
-  fc.stringMatching(/^[a-z0-9]{1,12}$/);
+const idToken = (): fc.Arbitrary<string> => fc.stringMatching(/^[a-z0-9]{1,12}$/);
 
 describe('AIConfigManagementFacade PBT', () => {
   let facade: AIConfigManagementFacade;
@@ -66,18 +72,35 @@ describe('AIConfigManagementFacade PBT', () => {
 
     it('addAllowedChannel：成功時發布事件', async () => {
       await fc.assert(
-        fc.asyncProperty(idToken(), idToken(), idToken(), async (guildIdStr, channelIdStr, channelName) => {
-          const channel: AllowedChannel = { guildId: guildIdStr, channelId: channelIdStr, channelName };
-          mockChannelService.addAllowedChannel = vi.fn().mockResolvedValue(new Ok(channel));
-          const result = await facade.addAllowedChannel(guildIdStr, channelIdStr, channelName);
-          expect(result.isOk()).toBe(true);
-          expect(result.getValue()).toEqual(channel);
-          expect(mockChannelService.addAllowedChannel).toHaveBeenLastCalledWith(guildIdStr, { channelId: channelIdStr, channelName });
-          expect(mockEventPublisher.publish).toHaveBeenLastCalledWith(
-            expect.objectContaining({ eventType: 'ai_channel_config_changed', guildId: guildIdStr, changeType: 'channel_added', targetId: channelIdStr }),
-          );
-          return true;
-        }),
+        fc.asyncProperty(
+          idToken(),
+          idToken(),
+          idToken(),
+          async (guildIdStr, channelIdStr, channelName) => {
+            const channel: AllowedChannel = {
+              guildId: guildIdStr,
+              channelId: channelIdStr,
+              channelName,
+            };
+            mockChannelService.addAllowedChannel = vi.fn().mockResolvedValue(new Ok(channel));
+            const result = await facade.addAllowedChannel(guildIdStr, channelIdStr, channelName);
+            expect(result.isOk()).toBe(true);
+            expect(result.getValue()).toEqual(channel);
+            expect(mockChannelService.addAllowedChannel).toHaveBeenLastCalledWith(guildIdStr, {
+              channelId: channelIdStr,
+              channelName,
+            });
+            expect(mockEventPublisher.publish).toHaveBeenLastCalledWith(
+              expect.objectContaining({
+                eventType: 'ai_channel_config_changed',
+                guildId: guildIdStr,
+                changeType: 'channel_added',
+                targetId: channelIdStr,
+              }),
+            );
+            return true;
+          },
+        ),
       );
     });
 
@@ -100,9 +123,17 @@ describe('AIConfigManagementFacade PBT', () => {
           mockChannelService.removeAllowedChannel = vi.fn().mockResolvedValue(okVoid());
           const result = await facade.removeAllowedChannel(guildIdStr, channelIdStr);
           expect(result.isOk()).toBe(true);
-          expect(mockChannelService.removeAllowedChannel).toHaveBeenLastCalledWith(guildIdStr, channelIdStr);
+          expect(mockChannelService.removeAllowedChannel).toHaveBeenLastCalledWith(
+            guildIdStr,
+            channelIdStr,
+          );
           expect(mockEventPublisher.publish).toHaveBeenLastCalledWith(
-            expect.objectContaining({ eventType: 'ai_channel_config_changed', guildId: guildIdStr, changeType: 'channel_removed', targetId: channelIdStr }),
+            expect.objectContaining({
+              eventType: 'ai_channel_config_changed',
+              guildId: guildIdStr,
+              changeType: 'channel_removed',
+              targetId: channelIdStr,
+            }),
           );
           return true;
         }),
@@ -129,17 +160,34 @@ describe('AIConfigManagementFacade PBT', () => {
 
     it('addAllowedCategory：成功時發布事件', async () => {
       await fc.assert(
-        fc.asyncProperty(idToken(), idToken(), idToken(), async (guildIdStr, categoryIdStr, categoryName) => {
-          const category: AllowedCategory = { guildId: guildIdStr, categoryId: categoryIdStr, categoryName };
-          mockChannelService.addAllowedCategory = vi.fn().mockResolvedValue(new Ok(category));
-          const result = await facade.addAllowedCategory(guildIdStr, categoryIdStr, categoryName);
-          expect(result.isOk()).toBe(true);
-          expect(mockChannelService.addAllowedCategory).toHaveBeenLastCalledWith(guildIdStr, { categoryId: categoryIdStr, categoryName });
-          expect(mockEventPublisher.publish).toHaveBeenLastCalledWith(
-            expect.objectContaining({ eventType: 'ai_channel_config_changed', guildId: guildIdStr, changeType: 'category_added', targetId: categoryIdStr }),
-          );
-          return true;
-        }),
+        fc.asyncProperty(
+          idToken(),
+          idToken(),
+          idToken(),
+          async (guildIdStr, categoryIdStr, categoryName) => {
+            const category: AllowedCategory = {
+              guildId: guildIdStr,
+              categoryId: categoryIdStr,
+              categoryName,
+            };
+            mockChannelService.addAllowedCategory = vi.fn().mockResolvedValue(new Ok(category));
+            const result = await facade.addAllowedCategory(guildIdStr, categoryIdStr, categoryName);
+            expect(result.isOk()).toBe(true);
+            expect(mockChannelService.addAllowedCategory).toHaveBeenLastCalledWith(guildIdStr, {
+              categoryId: categoryIdStr,
+              categoryName,
+            });
+            expect(mockEventPublisher.publish).toHaveBeenLastCalledWith(
+              expect.objectContaining({
+                eventType: 'ai_channel_config_changed',
+                guildId: guildIdStr,
+                changeType: 'category_added',
+                targetId: categoryIdStr,
+              }),
+            );
+            return true;
+          },
+        ),
       );
     });
 
@@ -149,9 +197,17 @@ describe('AIConfigManagementFacade PBT', () => {
           mockChannelService.removeAllowedCategory = vi.fn().mockResolvedValue(okVoid());
           const result = await facade.removeAllowedCategory(guildIdStr, categoryIdStr);
           expect(result.isOk()).toBe(true);
-          expect(mockChannelService.removeAllowedCategory).toHaveBeenLastCalledWith(guildIdStr, categoryIdStr);
+          expect(mockChannelService.removeAllowedCategory).toHaveBeenLastCalledWith(
+            guildIdStr,
+            categoryIdStr,
+          );
           expect(mockEventPublisher.publish).toHaveBeenLastCalledWith(
-            expect.objectContaining({ eventType: 'ai_channel_config_changed', guildId: guildIdStr, changeType: 'category_removed', targetId: categoryIdStr }),
+            expect.objectContaining({
+              eventType: 'ai_channel_config_changed',
+              guildId: guildIdStr,
+              changeType: 'category_removed',
+              targetId: categoryIdStr,
+            }),
           );
           return true;
         }),
@@ -169,9 +225,18 @@ describe('AIConfigManagementFacade PBT', () => {
           mockAgentService.setAgentEnabled = vi.fn().mockResolvedValue(okVoid());
           const result = await facade.enableAgent(guildIdStr, channelIdStr, AgentMode.AGENT);
           expect(result.isOk()).toBe(true);
-          expect(mockAgentService.setAgentEnabled).toHaveBeenLastCalledWith(guildIdStr, channelIdStr, true);
+          expect(mockAgentService.setAgentEnabled).toHaveBeenLastCalledWith(
+            guildIdStr,
+            channelIdStr,
+            true,
+          );
           expect(mockEventPublisher.publish).toHaveBeenLastCalledWith(
-            expect.objectContaining({ eventType: 'ai_agent_channel_config_changed', guildId: guildIdStr, channelId: channelIdStr, agentEnabled: true }),
+            expect.objectContaining({
+              eventType: 'ai_agent_channel_config_changed',
+              guildId: guildIdStr,
+              channelId: channelIdStr,
+              agentEnabled: true,
+            }),
           );
           return true;
         }),
@@ -184,9 +249,18 @@ describe('AIConfigManagementFacade PBT', () => {
           mockAgentService.setAgentEnabled = vi.fn().mockResolvedValue(okVoid());
           const result = await facade.disableAgent(guildIdStr, channelIdStr);
           expect(result.isOk()).toBe(true);
-          expect(mockAgentService.setAgentEnabled).toHaveBeenLastCalledWith(guildIdStr, channelIdStr, false);
+          expect(mockAgentService.setAgentEnabled).toHaveBeenLastCalledWith(
+            guildIdStr,
+            channelIdStr,
+            false,
+          );
           expect(mockEventPublisher.publish).toHaveBeenLastCalledWith(
-            expect.objectContaining({ eventType: 'ai_agent_channel_config_changed', guildId: guildIdStr, channelId: channelIdStr, agentEnabled: false }),
+            expect.objectContaining({
+              eventType: 'ai_agent_channel_config_changed',
+              guildId: guildIdStr,
+              channelId: channelIdStr,
+              agentEnabled: false,
+            }),
           );
           return true;
         }),
@@ -195,19 +269,23 @@ describe('AIConfigManagementFacade PBT', () => {
 
     it('getAgentConfigs：對任何 guildId 委派並回傳設定清單', async () => {
       await fc.assert(
-        fc.asyncProperty(idToken(), fc.array(idToken(), { minLength: 0, maxLength: 5 }), async (guildIdStr, channelIds) => {
-          mockAgentService.getEnabledChannels = vi.fn().mockResolvedValue(new Ok(channelIds));
-          const result = await facade.getAgentConfigs(guildIdStr);
-          expect(result.isOk()).toBe(true);
-          const configs = result.getValue();
-          expect(configs).toHaveLength(channelIds.length);
-          for (let i = 0; i < channelIds.length; i++) {
-            expect(configs[i].channelId).toBe(channelIds[i]);
-            expect(configs[i].mode).toBe('agent');
-          }
-          expect(mockAgentService.getEnabledChannels).toHaveBeenLastCalledWith(guildIdStr);
-          return true;
-        }),
+        fc.asyncProperty(
+          idToken(),
+          fc.array(idToken(), { minLength: 0, maxLength: 5 }),
+          async (guildIdStr, channelIds) => {
+            mockAgentService.getEnabledChannels = vi.fn().mockResolvedValue(new Ok(channelIds));
+            const result = await facade.getAgentConfigs(guildIdStr);
+            expect(result.isOk()).toBe(true);
+            const configs = result.getValue();
+            expect(configs).toHaveLength(channelIds.length);
+            for (let i = 0; i < channelIds.length; i++) {
+              expect(configs[i].channelId).toBe(channelIds[i]);
+              expect(configs[i].mode).toBe('agent');
+            }
+            expect(mockAgentService.getEnabledChannels).toHaveBeenLastCalledWith(guildIdStr);
+            return true;
+          },
+        ),
       );
     });
 
@@ -217,7 +295,11 @@ describe('AIConfigManagementFacade PBT', () => {
           mockAgentService.setAgentEnabled = vi.fn().mockResolvedValue(okVoid());
           const result = await facade.setAgentEnabled(guildIdStr, channelIdStr, true);
           expect(result.isOk()).toBe(true);
-          expect(mockAgentService.setAgentEnabled).toHaveBeenLastCalledWith(guildIdStr, channelIdStr, true);
+          expect(mockAgentService.setAgentEnabled).toHaveBeenLastCalledWith(
+            guildIdStr,
+            channelIdStr,
+            true,
+          );
           return true;
         }),
       );
@@ -229,7 +311,11 @@ describe('AIConfigManagementFacade PBT', () => {
           mockAgentService.setAgentEnabled = vi.fn().mockResolvedValue(okVoid());
           const result = await facade.setAgentEnabled(guildIdStr, channelIdStr, false);
           expect(result.isOk()).toBe(true);
-          expect(mockAgentService.setAgentEnabled).toHaveBeenLastCalledWith(guildIdStr, channelIdStr, false);
+          expect(mockAgentService.setAgentEnabled).toHaveBeenLastCalledWith(
+            guildIdStr,
+            channelIdStr,
+            false,
+          );
           return true;
         }),
       );

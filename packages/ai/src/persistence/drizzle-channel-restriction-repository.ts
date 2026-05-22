@@ -1,6 +1,14 @@
 import { eq, and, notInArray } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { DomainError, ok, okVoid, err, safeSnowflakeToNumber, type Result, type Unit } from '@ltdjms/shared';
+import {
+  DomainError,
+  ok,
+  okVoid,
+  err,
+  safeSnowflakeToNumber,
+  type Result,
+  type Unit,
+} from '@ltdjms/shared';
 import type {
   AllowedChannel,
   AllowedCategory,
@@ -84,9 +92,7 @@ export class DrizzleAIChannelRestrictionRepository implements AIChannelRestricti
     const existing = await this.findChannel(guildId, channel.channelId);
     if (existing) {
       return err(
-        DomainError.duplicateChannel(
-          `Channel ${channel.channelId} is already in the allowlist`,
-        ),
+        DomainError.duplicateChannel(`Channel ${channel.channelId} is already in the allowlist`),
       );
     }
 
@@ -102,14 +108,19 @@ export class DrizzleAIChannelRestrictionRepository implements AIChannelRestricti
       return ok(mapChannelRow(row));
     } catch (cause) {
       // Handle unique violation (error code 23505)
-      if (cause instanceof Error && 'code' in cause && (cause as Record<string, unknown>).code === '23505') {
+      if (
+        cause instanceof Error &&
+        'code' in cause &&
+        (cause as Record<string, unknown>).code === '23505'
+      ) {
         return err(
-          DomainError.duplicateChannel(
-            `Channel ${channel.channelId} is already in the allowlist`,
-          ),
+          DomainError.duplicateChannel(`Channel ${channel.channelId} is already in the allowlist`),
         );
       }
-      this.log.warn({ guildId, channelId: channel.channelId, error: cause }, 'Failed to add allowed channel');
+      this.log.warn(
+        { guildId, channelId: channel.channelId, error: cause },
+        'Failed to add allowed channel',
+      );
       return err(
         DomainError.persistenceFailure(
           'Failed to add allowed channel',
@@ -145,14 +156,21 @@ export class DrizzleAIChannelRestrictionRepository implements AIChannelRestricti
       return ok(mapCategoryRow(row));
     } catch (cause) {
       // Handle unique violation (error code 23505)
-      if (cause instanceof Error && 'code' in cause && (cause as Record<string, unknown>).code === '23505') {
+      if (
+        cause instanceof Error &&
+        'code' in cause &&
+        (cause as Record<string, unknown>).code === '23505'
+      ) {
         return err(
           DomainError.duplicateCategory(
             `Category ${category.categoryId} is already in the allowlist`,
           ),
         );
       }
-      this.log.warn({ guildId, categoryId: category.categoryId, error: cause }, 'Failed to add allowed category');
+      this.log.warn(
+        { guildId, categoryId: category.categoryId, error: cause },
+        'Failed to add allowed category',
+      );
       return err(
         DomainError.persistenceFailure(
           'Failed to add allowed category',
@@ -162,10 +180,7 @@ export class DrizzleAIChannelRestrictionRepository implements AIChannelRestricti
     }
   }
 
-  async removeChannel(
-    guildId: string,
-    channelId: string,
-  ): Promise<Result<Unit, DomainError>> {
+  async removeChannel(guildId: string, channelId: string): Promise<Result<Unit, DomainError>> {
     try {
       const result = await this.db
         .delete(aiAllowedChannel)
@@ -189,10 +204,7 @@ export class DrizzleAIChannelRestrictionRepository implements AIChannelRestricti
     }
   }
 
-  async removeCategory(
-    guildId: string,
-    categoryId: string,
-  ): Promise<Result<Unit, DomainError>> {
+  async removeCategory(guildId: string, categoryId: string): Promise<Result<Unit, DomainError>> {
     try {
       const result = await this.db
         .delete(aiAllowedCategory)
@@ -216,15 +228,10 @@ export class DrizzleAIChannelRestrictionRepository implements AIChannelRestricti
     }
   }
 
-  async deleteRemovedChannels(
-    guildId: string,
-    validChannelIds: string[],
-  ): Promise<void> {
+  async deleteRemovedChannels(guildId: string, validChannelIds: string[]): Promise<void> {
     const numericGuildId = safeSnowflakeToNumber(guildId);
     if (validChannelIds.length === 0) {
-      await this.db
-        .delete(aiAllowedChannel)
-        .where(eq(aiAllowedChannel.guildId, numericGuildId));
+      await this.db.delete(aiAllowedChannel).where(eq(aiAllowedChannel.guildId, numericGuildId));
       return;
     }
 

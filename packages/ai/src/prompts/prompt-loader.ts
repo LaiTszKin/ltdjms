@@ -118,9 +118,7 @@ export class DefaultPromptLoader implements PromptLoader {
     try {
       await stat(dirPath);
     } catch {
-      return err(DomainError.promptDirNotFound(
-        `Prompt directory not found: ${dirPath}`,
-      ));
+      return err(DomainError.promptDirNotFound(`Prompt directory not found: ${dirPath}`));
     }
 
     const entries = await readdir(dirPath, { withFileTypes: true });
@@ -149,9 +147,7 @@ export class DefaultPromptLoader implements PromptLoader {
         const name = fileName.replace(/\.md$/, '');
         return { name, content } as PromptSection;
       } catch (cause) {
-        console.warn(
-          `[prompt-loader] Failed to read prompt file: ${fileName}, skipping`,
-        );
+        console.warn(`[prompt-loader] Failed to read prompt file: ${fileName}, skipping`);
         return null;
       }
     });

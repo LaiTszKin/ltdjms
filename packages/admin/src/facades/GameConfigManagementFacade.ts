@@ -49,9 +49,7 @@ export class GameConfigManagementFacade {
   /**
    * Gets the Dice Game 1 configuration for a guild.
    */
-  async getDiceGame1Config(
-    guildId: string,
-  ): Promise<Result<DiceGame1Config, DomainError>> {
+  async getDiceGame1Config(guildId: string): Promise<Result<DiceGame1Config, DomainError>> {
     try {
       const config = await this.diceConfigService.findDice1Config(safeSnowflakeToNumber(guildId));
       if (!config) {
@@ -124,9 +122,7 @@ export class GameConfigManagementFacade {
   /**
    * Gets the Dice Game 2 configuration for a guild.
    */
-  async getDiceGame2Config(
-    guildId: string,
-  ): Promise<Result<DiceGame2Config, DomainError>> {
+  async getDiceGame2Config(guildId: string): Promise<Result<DiceGame2Config, DomainError>> {
     try {
       const config = await this.diceConfigService.findDice2Config(safeSnowflakeToNumber(guildId));
       if (!config) {

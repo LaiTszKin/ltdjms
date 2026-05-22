@@ -18,9 +18,7 @@ async function main(): Promise<void> {
 
   const guildIdIndex = args.indexOf('--guild-id');
   const guildId =
-    guildIdIndex >= 0 && guildIdIndex + 1 < args.length
-      ? args[guildIdIndex + 1]
-      : undefined;
+    guildIdIndex >= 0 && guildIdIndex + 1 < args.length ? args[guildIdIndex + 1] : undefined;
 
   // Load env from .env file relative to the monorepo root (two levels up from this script)
   const scriptDir = dirname(fileURLToPath(import.meta.url));

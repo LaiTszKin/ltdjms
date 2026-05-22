@@ -1,8 +1,4 @@
-import {
-  type ToolCallEntry,
-  RedactionMode,
-  ConversationIdStrategy,
-} from '../ai-chat-service.js';
+import { type ToolCallEntry, RedactionMode, ConversationIdStrategy } from '../ai-chat-service.js';
 
 /**
  * ConversationIdBuilder for constructing and parsing conversation IDs.
@@ -111,7 +107,7 @@ export class InMemoryToolCallHistory {
     const now = Date.now();
     const expiry = InMemoryToolCallHistory.TTL_MS;
     for (const [key, entries] of this.store.entries()) {
-      const valid = entries.filter(e => now - e.timestamp.getTime() < expiry);
+      const valid = entries.filter((e) => now - e.timestamp.getTime() < expiry);
       if (valid.length === 0) {
         this.store.delete(key);
       } else {
@@ -125,11 +121,7 @@ export class InMemoryToolCallHistory {
    * FIFO eviction when exceeding MAX_HISTORY_PER_CONVERSATION.
    * LRU eviction when exceeding MAX_CONVERSATIONS.
    */
-  addToolCall(
-    threadId: string,
-    userId: string,
-    entry: ToolCallEntry,
-  ): void {
+  addToolCall(threadId: string, userId: string, entry: ToolCallEntry): void {
     const key = ConversationIdBuilder.buildToolCallKey(threadId, userId);
 
     // LRU eviction: if at capacity and this is a new conversation, drop the oldest
@@ -156,10 +148,7 @@ export class InMemoryToolCallHistory {
    * Gets tool call messages for memory context.
    * Only returns safe summaries (REDACTED results are summarized, OMITTED entries are skipped).
    */
-  getToolCallMessages(
-    threadId: string,
-    userId: string,
-  ): ToolCallEntry[] {
+  getToolCallMessages(threadId: string, userId: string): ToolCallEntry[] {
     const key = ConversationIdBuilder.buildToolCallKey(threadId, userId);
     const history = this.store.get(key) ?? [];
 
@@ -169,10 +158,7 @@ export class InMemoryToolCallHistory {
   /**
    * Gets raw audit entries (for auditing purposes).
    */
-  getAuditEntries(
-    threadId: string,
-    userId: string,
-  ): ToolCallEntry[] {
+  getAuditEntries(threadId: string, userId: string): ToolCallEntry[] {
     const key = ConversationIdBuilder.buildToolCallKey(threadId, userId);
     return this.store.get(key) ?? [];
   }
@@ -226,9 +212,7 @@ export class InMemoryToolCallHistory {
     }
 
     // Normal entry
-    const truncatedResult = result.length > 200
-      ? result.slice(0, 200) + '...'
-      : result;
+    const truncatedResult = result.length > 200 ? result.slice(0, 200) + '...' : result;
 
     return {
       memorySummary: truncatedResult,

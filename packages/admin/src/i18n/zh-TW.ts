@@ -52,9 +52,12 @@ export const ZhTwStrings = {
   balanceModalReasonPlaceholder: '請輸入調整原因（1-256字）',
   balanceSuccessAdjust: '調整成功！\n調整前：{before}\n調整後：{after}',
   balanceErrorPrefix: '調整失敗：',
-  balanceSuccessAdd: '成功增加 {amount} {currencyIcon}\n調整前：{before} → 調整後：{after}\n原因：{reason}',
-  balanceSuccessDeduct: '成功扣除 {amount} {currencyIcon}\n調整前：{before} → 調整後：{after}\n原因：{reason}',
-  balanceSuccessSet: '成功設定為 {amount} {currencyIcon}\n調整前：{before} → 調整後：{after}\n原因：{reason}',
+  balanceSuccessAdd:
+    '成功增加 {amount} {currencyIcon}\n調整前：{before} → 調整後：{after}\n原因：{reason}',
+  balanceSuccessDeduct:
+    '成功扣除 {amount} {currencyIcon}\n調整前：{before} → 調整後：{after}\n原因：{reason}',
+  balanceSuccessSet:
+    '成功設定為 {amount} {currencyIcon}\n調整前：{before} → 調整後：{after}\n原因：{reason}',
   balanceInsufficient: '目標用戶餘額不足，當前餘額：{balance}',
 
   // ============================================================
@@ -73,7 +76,8 @@ export const ZhTwStrings = {
   tokenSuccessAdjust: '調整成功！\n調整前：{before}\n調整後：{after}',
   tokenErrorPrefix: '調整失敗：',
   tokenSuccessAdd: '成功增加 {amount} 個代幣\n調整前：{before} → 調整後：{after}\n原因：{reason}',
-  tokenSuccessDeduct: '成功扣除 {amount} 個代幣\n調整前：{before} → 調整後：{after}\n原因：{reason}',
+  tokenSuccessDeduct:
+    '成功扣除 {amount} 個代幣\n調整前：{before} → 調整後：{after}\n原因：{reason}',
   tokenSuccessSet: '成功設定為 {amount} 個代幣\n調整前：{before} → 調整後：{after}\n原因：{reason}',
   tokenInsufficient: '目標用戶代幣不足，當前代幣：{tokens}',
 
@@ -86,7 +90,8 @@ export const ZhTwStrings = {
   gameDice1Title: '骰子遊戲 1 設定',
   gameDice2Title: '骰子遊戲 2 設定',
   gameDice1Fields: '代幣範圍：{min} ~ {max}\n每骰獎勵：{reward}',
-  gameDice2Fields: '代幣範圍：{min} ~ {max}\n順子倍率：{straight}\n基本倍率：{base}\n三條低獎：{lowTriple}\n三條高獎：{highTriple}',
+  gameDice2Fields:
+    '代幣範圍：{min} ~ {max}\n順子倍率：{straight}\n基本倍率：{base}\n三條低獎：{lowTriple}\n三條高獎：{highTriple}',
   gameSaveSuccess: '遊戲設定已成功儲存',
   gameSaveFailed: '遊戲設定儲存失敗：{reason}',
   gameEditBtn: '編輯設定',
@@ -346,4 +351,6 @@ export type ZhTwStringsType = typeof ZhTwStrings;
  * message, this line will cause a compile-time error.
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _exhaustiveCategoryCheck: DomainErrorCategory extends keyof typeof ZhTwStrings.errorMapping ? true : false = true;
+const _exhaustiveCategoryCheck: DomainErrorCategory extends keyof typeof ZhTwStrings.errorMapping
+  ? true
+  : false = true;

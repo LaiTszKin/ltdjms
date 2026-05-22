@@ -75,7 +75,10 @@ export function configureDispatchContainer(): void {
   // ============================================================
 
   const orderNumberGenerator = new EscortDispatchOrderNumberGenerator();
-  container.registerInstance(DISPATCH_TOKENS.EscortDispatchOrderNumberGenerator, orderNumberGenerator);
+  container.registerInstance(
+    DISPATCH_TOKENS.EscortDispatchOrderNumberGenerator,
+    orderNumberGenerator,
+  );
 
   // ============================================================
   // Real catalog repo backed by escort_option_catalog table (V028)
@@ -88,10 +91,7 @@ export function configureDispatchContainer(): void {
   );
 
   const escortCatalogService = new EscortCatalogService(catalogRepo, optionPriceRepo);
-  container.registerInstance(
-    DISPATCH_TOKENS.EscortCatalogService,
-    escortCatalogService,
-  );
+  container.registerInstance(DISPATCH_TOKENS.EscortCatalogService, escortCatalogService);
 
   // ============================================================
   // Shared services (resolved from container)
@@ -117,10 +117,7 @@ export function configureDispatchContainer(): void {
     discordRuntimeGateway,
     afterSalesStaffService,
   );
-  container.registerInstance(
-    DISPATCH_TOKENS.DispatchNotificationService,
-    notificationService,
-  );
+  container.registerInstance(DISPATCH_TOKENS.DispatchNotificationService, notificationService);
 
   const dispatchOrderService = new EscortDispatchOrderService(
     dispatchOrderRepo,
@@ -145,16 +142,10 @@ export function configureDispatchContainer(): void {
   // ============================================================
 
   const panelCommandHandler = new DispatchPanelCommandHandler(dispatchOrderService);
-  container.registerInstance(
-    DISPATCH_TOKENS.DispatchPanelCommandHandler,
-    panelCommandHandler,
-  );
+  container.registerInstance(DISPATCH_TOKENS.DispatchPanelCommandHandler, panelCommandHandler);
 
   const sessionManager = new DispatchPanelSessionManager();
-  container.registerInstance(
-    DISPATCH_TOKENS.DispatchPanelSessionManager,
-    sessionManager,
-  );
+  container.registerInstance(DISPATCH_TOKENS.DispatchPanelSessionManager, sessionManager);
 
   const panelInteractionHandler = new DispatchPanelInteractionHandler(
     dispatchOrderService,

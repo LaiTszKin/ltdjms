@@ -1,13 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import {
-  Ok,
-  Err,
-  DomainError,
-  DomainErrorCategory,
-} from '@ltdjms/shared';
-import {
-  CurrencyManagementFacade,
-} from '../CurrencyManagementFacade.js';
+import { Ok, Err, DomainError, DomainErrorCategory } from '@ltdjms/shared';
+import { CurrencyManagementFacade } from '../CurrencyManagementFacade.js';
 import type {
   BalanceService,
   BalanceAdjustmentService,
@@ -113,7 +106,13 @@ describe('CurrencyManagementFacade', () => {
     });
 
     it('should reject amounts exceeding safe integer', async () => {
-      const result = await facade.adjustBalance(guildId, userId, Number.MAX_SAFE_INTEGER + 1, 'test', actorId);
+      const result = await facade.adjustBalance(
+        guildId,
+        userId,
+        Number.MAX_SAFE_INTEGER + 1,
+        'test',
+        actorId,
+      );
       expect(result.isErr()).toBe(true);
       expect(result.getError().category).toBe(DomainErrorCategory.INVALID_INPUT);
     });

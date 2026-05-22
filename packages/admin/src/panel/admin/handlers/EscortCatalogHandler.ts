@@ -1,7 +1,4 @@
-import {
-  type DiscordInteraction,
-  type DiscordContext,
-} from '@ltdjms/shared';
+import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
 import {
   EmbedBuilder,
   ModalBuilder,
@@ -39,10 +36,7 @@ export class EscortCatalogHandler extends BaseAdminHandler {
     super(sessionManager, errorHandler);
   }
 
-  async execute(
-    interaction: DiscordInteraction,
-    context: DiscordContext,
-  ): Promise<void> {
+  async execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void> {
     const guildId = interaction.getGuildId();
     const userId = interaction.getUserId();
 
@@ -80,13 +74,24 @@ export class EscortCatalogHandler extends BaseAdminHandler {
 
     // Pagination navigation
     if (fullCustomId === 'admin_escortcatalog_page_prev') {
-      const currentPage = parseInt(this.sessionManager.getContext(guildId, userId, 'catalog_page') ?? '1', 10);
-      this.sessionManager.setContext(guildId, userId, 'catalog_page', String(Math.max(1, currentPage - 1)));
+      const currentPage = parseInt(
+        this.sessionManager.getContext(guildId, userId, 'catalog_page') ?? '1',
+        10,
+      );
+      this.sessionManager.setContext(
+        guildId,
+        userId,
+        'catalog_page',
+        String(Math.max(1, currentPage - 1)),
+      );
       await this.showCatalog(interaction, guildId, userId);
       return;
     }
     if (fullCustomId === 'admin_escortcatalog_page_next') {
-      const currentPage = parseInt(this.sessionManager.getContext(guildId, userId, 'catalog_page') ?? '1', 10);
+      const currentPage = parseInt(
+        this.sessionManager.getContext(guildId, userId, 'catalog_page') ?? '1',
+        10,
+      );
       this.sessionManager.setContext(guildId, userId, 'catalog_page', String(currentPage + 1));
       await this.showCatalog(interaction, guildId, userId);
       return;
@@ -154,18 +159,13 @@ export class EscortCatalogHandler extends BaseAdminHandler {
       if ('value' in field && field.value) {
         input.setValue(field.value as string);
       }
-      modal.addComponents(
-        new ActionRowBuilder<TextInputBuilder>().addComponents(input),
-      );
+      modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
     }
 
     await interaction.showModal(modal);
   }
 
-  private async showEditModal(
-    interaction: DiscordInteraction,
-    entryCode: string,
-  ): Promise<void> {
+  private async showEditModal(interaction: DiscordInteraction, entryCode: string): Promise<void> {
     const entryResult = await this.facade.findCatalogEntry(entryCode);
     const entry = entryResult.isOk() ? entryResult.getValue() : null;
 
@@ -189,9 +189,7 @@ export class EscortCatalogHandler extends BaseAdminHandler {
       if ('value' in field && field.value) {
         input.setValue(field.value as string);
       }
-      modal.addComponents(
-        new ActionRowBuilder<TextInputBuilder>().addComponents(input),
-      );
+      modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
     }
 
     await interaction.showModal(modal);
@@ -246,7 +244,9 @@ export class EscortCatalogHandler extends BaseAdminHandler {
       const entry = result.getValue();
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.escortCatalogTitle)
-        .setDescription(ZhTwStrings.escortCatalogCreated.replace('{name}', `${entry.type} - ${entry.target}`))
+        .setDescription(
+          ZhTwStrings.escortCatalogCreated.replace('{name}', `${entry.type} - ${entry.target}`),
+        )
         .setColor(Colors.SUCCESS);
       await interaction.editEmbed(embed);
     } else {
@@ -254,10 +254,7 @@ export class EscortCatalogHandler extends BaseAdminHandler {
     }
   }
 
-  private async handleEditSave(
-    interaction: DiscordInteraction,
-    entryCode: string,
-  ): Promise<void> {
+  private async handleEditSave(interaction: DiscordInteraction, entryCode: string): Promise<void> {
     const mapScope = interaction.getTextInputValue(ZhTwStrings.escortCatalogModalDesc).trim();
     const priceStr = interaction.getTextInputValue(ZhTwStrings.escortCatalogModalPrice).trim();
     const type = interaction.getTextInputValue(ZhTwStrings.escortCatalogModalCategory).trim();
@@ -301,7 +298,9 @@ export class EscortCatalogHandler extends BaseAdminHandler {
 
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.escortCatalogTitle)
-        .setDescription(ZhTwStrings.escortCatalogUpdated.replace('{name}', `${updated.type} - ${updated.target}`))
+        .setDescription(
+          ZhTwStrings.escortCatalogUpdated.replace('{name}', `${updated.type} - ${updated.target}`),
+        )
         .setColor(Colors.SUCCESS);
       await interaction.editEmbed(embed);
     } else {
@@ -322,9 +321,13 @@ export class EscortCatalogHandler extends BaseAdminHandler {
     if (refCount > 0) {
       // Query guild names for the referencing guilds
       const guildIdsResult = await this.facade.findCatalogRefGuildIds(entryCode);
-      const guildList = guildIdsResult.isOk() && guildIdsResult.getValue().length > 0
-        ? guildIdsResult.getValue().map((id) => `Guild ${id}`).join('\n')
-        : `${refCount} 個 guild`;
+      const guildList =
+        guildIdsResult.isOk() && guildIdsResult.getValue().length > 0
+          ? guildIdsResult
+              .getValue()
+              .map((id) => `Guild ${id}`)
+              .join('\n')
+          : `${refCount} 個 guild`;
 
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.escortCatalogTitle)
@@ -340,9 +343,7 @@ export class EscortCatalogHandler extends BaseAdminHandler {
 
     const embed = new EmbedBuilder()
       .setTitle(ZhTwStrings.escortCatalogTitle)
-      .setDescription(
-        ZhTwStrings.escortCatalogConfirmDelete.replace('{name}', name),
-      )
+      .setDescription(ZhTwStrings.escortCatalogConfirmDelete.replace('{name}', name))
       .setColor(Colors.WARNING);
 
     const confirmBtn = new ButtonBuilder()
@@ -371,9 +372,13 @@ export class EscortCatalogHandler extends BaseAdminHandler {
     if (refCount > 0) {
       // Query guild names for the referencing guilds
       const guildIdsResult = await this.facade.findCatalogRefGuildIds(entryCode);
-      const guildList = guildIdsResult.isOk() && guildIdsResult.getValue().length > 0
-        ? guildIdsResult.getValue().map((id) => `Guild ${id}`).join('\n')
-        : `${refCount} 個 guild`;
+      const guildList =
+        guildIdsResult.isOk() && guildIdsResult.getValue().length > 0
+          ? guildIdsResult
+              .getValue()
+              .map((id) => `Guild ${id}`)
+              .join('\n')
+          : `${refCount} 個 guild`;
 
       const entryResult = await this.facade.findCatalogEntry(entryCode);
       const existing = entryResult.isOk() ? entryResult.getValue() : null;
@@ -429,7 +434,10 @@ export class EscortCatalogHandler extends BaseAdminHandler {
         // Pagination: compute current page and slice entries
         const pageStr = this.sessionManager.getContext(guildId, userId, 'catalog_page');
         const currentPage = Math.max(1, parseInt(pageStr ?? '1', 10) || 1);
-        const totalPages = Math.max(1, Math.ceil(entries.length / EscortCatalogHandler.ITEMS_PER_PAGE));
+        const totalPages = Math.max(
+          1,
+          Math.ceil(entries.length / EscortCatalogHandler.ITEMS_PER_PAGE),
+        );
         const pageIndex = Math.min(currentPage - 1, totalPages - 1);
         const pageEntries = entries.slice(
           pageIndex * EscortCatalogHandler.ITEMS_PER_PAGE,
@@ -464,7 +472,10 @@ export class EscortCatalogHandler extends BaseAdminHandler {
       // Get current page entries for button rendering
       const pageStr = this.sessionManager.getContext(guildId, userId, 'catalog_page');
       const currentPage = Math.max(1, parseInt(pageStr ?? '1', 10) || 1);
-      const totalPages = Math.max(1, Math.ceil(entries.length / EscortCatalogHandler.ITEMS_PER_PAGE));
+      const totalPages = Math.max(
+        1,
+        Math.ceil(entries.length / EscortCatalogHandler.ITEMS_PER_PAGE),
+      );
       const pageIndex = Math.min(currentPage - 1, totalPages - 1);
       const pageEntries = entries.slice(
         pageIndex * EscortCatalogHandler.ITEMS_PER_PAGE,

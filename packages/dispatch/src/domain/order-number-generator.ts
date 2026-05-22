@@ -25,7 +25,9 @@ export class EscortDispatchOrderNumberGenerator {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
-    }).format(now).replace(/\//g, '');
+    })
+      .format(now)
+      .replace(/\//g, '');
 
     return `${EscortDispatchOrderNumberGenerator.PREFIX}-${datePart}-${this.randomSuffix()}`;
   }

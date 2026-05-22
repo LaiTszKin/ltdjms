@@ -33,11 +33,7 @@ export class TokenAccountRepository extends BaseAccountRepository<GameTokenAccou
     return this.tryAdjust(guildId, userId, delta);
   }
 
-  async setTokens(
-    guildId: number,
-    userId: string,
-    newTokens: number,
-  ): Promise<GameTokenAccount> {
+  async setTokens(guildId: number, userId: string, newTokens: number): Promise<GameTokenAccount> {
     return this.set(guildId, userId, newTokens);
   }
 }

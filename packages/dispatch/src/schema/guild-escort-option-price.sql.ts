@@ -1,11 +1,4 @@
-import {
-  pgTable,
-  bigint,
-  varchar,
-  timestamp,
-  primaryKey,
-  index,
-} from 'drizzle-orm/pg-core';
+import { pgTable, bigint, varchar, timestamp, primaryKey, index } from 'drizzle-orm/pg-core';
 
 /**
  * Guild-level escort option pricing overrides for dynamic order pricing.

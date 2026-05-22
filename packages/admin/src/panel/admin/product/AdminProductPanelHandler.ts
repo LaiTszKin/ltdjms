@@ -39,10 +39,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     super(sessionManager, errorHandler);
   }
 
-  async execute(
-    interaction: DiscordInteraction,
-    context: DiscordContext,
-  ): Promise<void> {
+  async execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void> {
     const guildId = interaction.getGuildId();
     const userId = interaction.getUserId();
 
@@ -146,13 +143,19 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     }
 
     if (fullCustomId === 'admin_product_prev') {
-      const page = Math.max(1, parseInt(this.sessionManager.getContext(guildId, userId, 'productPage') ?? '1', 10) - 1);
+      const page = Math.max(
+        1,
+        parseInt(this.sessionManager.getContext(guildId, userId, 'productPage') ?? '1', 10) - 1,
+      );
       this.sessionManager.setContext(guildId, userId, 'productPage', String(page));
       await this.showProductList(interaction, guildId, page);
       return;
     }
     if (fullCustomId === 'admin_product_next') {
-      const currentPage = parseInt(this.sessionManager.getContext(guildId, userId, 'productPage') ?? '1', 10);
+      const currentPage = parseInt(
+        this.sessionManager.getContext(guildId, userId, 'productPage') ?? '1',
+        10,
+      );
       this.sessionManager.setContext(guildId, userId, 'productPage', String(currentPage + 1));
       await this.showProductList(interaction, guildId, currentPage + 1);
       return;
@@ -160,12 +163,18 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
 
     if (fullCustomId === 'admin_product_back') {
       this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.PRODUCT_LIST);
-      const page = parseInt(this.sessionManager.getContext(guildId, userId, 'productPage') ?? '1', 10);
+      const page = parseInt(
+        this.sessionManager.getContext(guildId, userId, 'productPage') ?? '1',
+        10,
+      );
       await this.showProductList(interaction, guildId, page);
       return;
     }
 
-    const page = parseInt(this.sessionManager.getContext(guildId, userId, 'productPage') ?? '1', 10);
+    const page = parseInt(
+      this.sessionManager.getContext(guildId, userId, 'productPage') ?? '1',
+      10,
+    );
     await this.showProductList(interaction, guildId, page);
   }
 
@@ -187,9 +196,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
       if ('placeholder' in field && field.placeholder) {
         input.setPlaceholder(field.placeholder);
       }
-      modal.addComponents(
-        new ActionRowBuilder<TextInputBuilder>().addComponents(input),
-      );
+      modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
     }
 
     await interaction.showModal(modal);
@@ -228,9 +235,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
       if ('value' in field) {
         input.setValue(field.value);
       }
-      modal.addComponents(
-        new ActionRowBuilder<TextInputBuilder>().addComponents(input),
-      );
+      modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
     }
 
     await interaction.showModal(modal);
@@ -369,9 +374,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
 
     const embed = new EmbedBuilder()
       .setTitle(ZhTwStrings.productListTitle)
-      .setDescription(
-        ZhTwStrings.productConfirmDelete.replace('{name}', name),
-      )
+      .setDescription(ZhTwStrings.productConfirmDelete.replace('{name}', name))
       .setColor(Colors.WARNING);
 
     const confirmBtn = new ButtonBuilder()
@@ -440,9 +443,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
       if ('placeholder' in field && field.placeholder) {
         input.setPlaceholder(field.placeholder);
       }
-      modal.addComponents(
-        new ActionRowBuilder<TextInputBuilder>().addComponents(input),
-      );
+      modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
     }
 
     await interaction.showModal(modal);
@@ -478,14 +479,26 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     }
 
     try {
-      const savedCodes = await this.productFacade.generateAndSaveCodes(productId, count, safeSnowflakeToNumber(guildId), expiresAt);
+      const savedCodes = await this.productFacade.generateAndSaveCodes(
+        productId,
+        count,
+        safeSnowflakeToNumber(guildId),
+        expiresAt,
+      );
 
-      this.sessionManager.setViewState(guildId, interaction.getUserId(), AdminPanelViewState.PRODUCT_CODE_LIST);
+      this.sessionManager.setViewState(
+        guildId,
+        interaction.getUserId(),
+        AdminPanelViewState.PRODUCT_CODE_LIST,
+      );
 
       const product = await this.productFacade.findProductById(productId);
       const productName = product?.name ?? String(productId);
 
-      const displayCodes = savedCodes.map((c) => ({ code: c.code, redeemed: c.redeemedBy !== null }));
+      const displayCodes = savedCodes.map((c) => ({
+        code: c.code,
+        redeemed: c.redeemedBy !== null,
+      }));
       const embedData = this.viewFactory.buildProductCodeListEmbed(displayCodes, productName, 1);
       const embed = new EmbedBuilder()
         .setTitle(embedData.title)
@@ -537,11 +550,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     }
 
     try {
-      const product = await this.productFacade.updateProduct(
-        productId,
-        { fiatPriceTwd },
-        guildId,
-      );
+      const product = await this.productFacade.updateProduct(productId, { fiatPriceTwd }, guildId);
       if (!product) {
         const embed = new EmbedBuilder()
           .setTitle(ZhTwStrings.productListTitle)
@@ -567,7 +576,11 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     productId: number,
   ): Promise<void> {
     try {
-      this.sessionManager.setViewState(guildId, interaction.getUserId(), AdminPanelViewState.PRODUCT_DETAIL);
+      this.sessionManager.setViewState(
+        guildId,
+        interaction.getUserId(),
+        AdminPanelViewState.PRODUCT_DETAIL,
+      );
 
       const product = await this.productFacade.findProductById(productId);
 
@@ -617,7 +630,11 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
         .setLabel(ZhTwStrings.productBackBtn)
         .setStyle(ButtonStyle.Secondary);
 
-      const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(generateCodesBtn, editBtn, fiatPriceBtn);
+      const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        generateCodesBtn,
+        editBtn,
+        fiatPriceBtn,
+      );
       const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(deleteBtn, backBtn);
 
       await interaction.editWithComponents(embed, [row1, row2]);

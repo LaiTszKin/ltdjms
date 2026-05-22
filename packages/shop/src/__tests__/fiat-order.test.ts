@@ -96,26 +96,74 @@ describe('FiatOrder', () => {
   it('should fail when reward type and amount are inconsistent', () => {
     expect(() =>
       createPending(
-        1, 2, 3, 'Product', 'CURRENCY' as any, null, false, null, 'ORD001', 'PAY001', 100, new Date(),
+        1,
+        2,
+        3,
+        'Product',
+        'CURRENCY' as any,
+        null,
+        false,
+        null,
+        'ORD001',
+        'PAY001',
+        100,
+        new Date(),
       ),
     ).toThrow();
   });
 
   it('should fail when reward type null but amount non-null', () => {
     expect(() =>
-      createPending(1, 2, 3, 'Product', null, 100, false, null, 'ORD001', 'PAY001', 100, new Date()),
+      createPending(
+        1,
+        2,
+        3,
+        'Product',
+        null,
+        100,
+        false,
+        null,
+        'ORD001',
+        'PAY001',
+        100,
+        new Date(),
+      ),
     ).toThrow();
   });
 
   it('should require escortOptionCode when autoCreateEscortOrder is true', () => {
     expect(() =>
-      createPending(1, 2, 3, 'Product', null, null, true, null, 'ORD001', 'PAY001', 100, new Date()),
+      createPending(
+        1,
+        2,
+        3,
+        'Product',
+        null,
+        null,
+        true,
+        null,
+        'ORD001',
+        'PAY001',
+        100,
+        new Date(),
+      ),
     ).toThrow();
   });
 
   it('should allow autoCreateEscortOrder with valid escortOptionCode', () => {
     const order = createPending(
-      1, 2, 3, 'Product', null, null, true, 'STANDARD', 'ORD001', 'PAY001', 100, new Date(),
+      1,
+      2,
+      3,
+      'Product',
+      null,
+      null,
+      true,
+      'STANDARD',
+      'ORD001',
+      'PAY001',
+      100,
+      new Date(),
     );
     expect(order.fulfillmentAutoCreateEscortOrder).toBe(true);
     expect(order.fulfillmentEscortOptionCode).toBe('STANDARD');
@@ -150,14 +198,22 @@ describe('FiatOrder', () => {
 
     it('isRewardGranted should check rewardGrantedAt', () => {
       const order = FiatOrderSchema.parse(
-        makeBaseOrder({ status: FiatOrderStatus.PAID, paidAt: new Date(), rewardGrantedAt: new Date() }),
+        makeBaseOrder({
+          status: FiatOrderStatus.PAID,
+          paidAt: new Date(),
+          rewardGrantedAt: new Date(),
+        }),
       );
       expect(isRewardGranted(order)).toBe(true);
     });
 
     it('isFulfilled should check fulfilledAt', () => {
       const order = FiatOrderSchema.parse(
-        makeBaseOrder({ status: FiatOrderStatus.PAID, paidAt: new Date(), fulfilledAt: new Date() }),
+        makeBaseOrder({
+          status: FiatOrderStatus.PAID,
+          paidAt: new Date(),
+          fulfilledAt: new Date(),
+        }),
       );
       expect(isFulfilled(order)).toBe(true);
     });

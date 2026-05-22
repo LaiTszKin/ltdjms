@@ -1,9 +1,4 @@
-import {
-  type Result,
-  Ok,
-  Err,
-  DomainError,
-} from '@ltdjms/shared';
+import { type Result, Ok, Err, DomainError } from '@ltdjms/shared';
 import { BalanceAdjustmentService } from '../../currency/services/balance-adjustment-service.js';
 import { BalanceService } from '../../currency/services/balance-service.js';
 import type { CurrencyTransactionSource } from '../../domain/types.js';
@@ -46,9 +41,7 @@ export class GameRewardService {
     transactionSource: CurrencyTransactionSource,
   ): Promise<Result<{ previousBalance: number; newBalance: number }, DomainError>> {
     if (rewardAmount < 0) {
-      return new Err(
-        DomainError.invalidInput(`Reward amount cannot be negative: ${rewardAmount}`),
-      );
+      return new Err(DomainError.invalidInput(`Reward amount cannot be negative: ${rewardAmount}`));
     }
 
     if (rewardAmount === 0) {

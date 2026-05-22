@@ -1,7 +1,4 @@
-import {
-  type DiscordInteraction,
-  type DiscordContext,
-} from '@ltdjms/shared';
+import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
 import {
   EmbedBuilder,
   ActionRowBuilder,
@@ -37,10 +34,7 @@ export class TokenManagementHandler extends BaseAdminHandler {
     super(sessionManager, errorHandler);
   }
 
-  async execute(
-    interaction: DiscordInteraction,
-    context: DiscordContext,
-  ): Promise<void> {
+  async execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void> {
     const guildId = interaction.getGuildId();
     const userId = interaction.getUserId();
 
@@ -71,7 +65,11 @@ export class TokenManagementHandler extends BaseAdminHandler {
     this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.TOKEN);
 
     // Modal submit handling
-    if (fullCustomId === 'admin_token_add' || fullCustomId === 'admin_token_deduct' || fullCustomId === 'admin_token_set') {
+    if (
+      fullCustomId === 'admin_token_add' ||
+      fullCustomId === 'admin_token_deduct' ||
+      fullCustomId === 'admin_token_set'
+    ) {
       await this.handleModalSubmit(interaction, guildId, userId, fullCustomId);
       return;
     }
@@ -98,9 +96,7 @@ export class TokenManagementHandler extends BaseAdminHandler {
     }
   }
 
-  private async showMemberSelect(
-    interaction: DiscordInteraction,
-  ): Promise<void> {
+  private async showMemberSelect(interaction: DiscordInteraction): Promise<void> {
     const embed = new EmbedBuilder()
       .setTitle(ZhTwStrings.tokenTitle)
       .setDescription(ZhTwStrings.tokenSelectMember)
@@ -125,9 +121,7 @@ export class TokenManagementHandler extends BaseAdminHandler {
     if (result.isOk()) {
       const embed = new EmbedBuilder()
         .setTitle(ZhTwStrings.tokenTitle)
-        .setDescription(
-          ZhTwStrings.tokenDisplay.replace('{tokens}', String(result.getValue())),
-        )
+        .setDescription(ZhTwStrings.tokenDisplay.replace('{tokens}', String(result.getValue())))
         .setColor(Colors.PRIMARY);
 
       const addBtn = new ButtonBuilder()
@@ -160,9 +154,7 @@ export class TokenManagementHandler extends BaseAdminHandler {
   ): Promise<void> {
     const modalData = this.modalFactory.buildTokenAdjustModal(mode);
 
-    const modal = new ModalBuilder()
-      .setCustomId('admin_token_' + mode)
-      .setTitle(modalData.title);
+    const modal = new ModalBuilder().setCustomId('admin_token_' + mode).setTitle(modalData.title);
 
     for (const field of modalData.fields) {
       const input = new TextInputBuilder()
@@ -175,9 +167,7 @@ export class TokenManagementHandler extends BaseAdminHandler {
       if ('placeholder' in field && field.placeholder) {
         input.setPlaceholder(field.placeholder);
       }
-      modal.addComponents(
-        new ActionRowBuilder<TextInputBuilder>().addComponents(input),
-      );
+      modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
     }
 
     await interaction.showModal(modal);

@@ -45,9 +45,7 @@ describe('EnvironmentConfig', () => {
       DATABASE_PASSWORD: 'secret',
     });
     config.parse();
-    expect(config.getDatabaseUrl()).toBe(
-      'postgresql://admin:secret@myhost:7777/mydb',
-    );
+    expect(config.getDatabaseUrl()).toBe('postgresql://admin:secret@myhost:7777/mydb');
   });
 
   it('uses DB_URL when provided', () => {
@@ -85,6 +83,26 @@ describe('EnvironmentConfig', () => {
     });
     config.parse();
     expect(config.getAppPublicBaseUrl()).toBe('https://example.com');
+  });
+
+  it('throws when getAIServiceApiKey is called but key is empty', () => {
+    const config = new EnvironmentConfig(NO_DOT_ENV, {
+      DISCORD_BOT_TOKEN: 'token',
+      // AI_SERVICE_API_KEY defaults to '' in Zod schema
+    });
+    config.parse();
+    expect(() => config.getAIServiceApiKey()).toThrow(
+      'AI_SERVICE_API_KEY is required when AI features are enabled',
+    );
+  });
+
+  it('returns AI_SERVICE_API_KEY when set', () => {
+    const config = new EnvironmentConfig(NO_DOT_ENV, {
+      DISCORD_BOT_TOKEN: 'token',
+      AI_SERVICE_API_KEY: 'sk-test-key',
+    });
+    config.parse();
+    expect(config.getAIServiceApiKey()).toBe('sk-test-key');
   });
 
   it('returns defaults for port numbers', () => {

@@ -11,7 +11,11 @@ import type { GameTokenChangedEvent } from '../../events/index.js';
 import { TokenAccountRepository } from '../repositories/token-account-repo.js';
 import { GameTokenTransactionService } from './game-token-tx-service.js';
 import type { GameTokenAccount, TokenAdjustmentResult } from '../../domain/types.js';
-import { TOKEN_CACHE_TTL, GameTokenTransactionSource, isValidAdjustmentAmount } from '../../domain/types.js';
+import {
+  TOKEN_CACHE_TTL,
+  GameTokenTransactionSource,
+  isValidAdjustmentAmount,
+} from '../../domain/types.js';
 
 /**
  * Service for managing game token accounts with caching.
@@ -33,11 +37,7 @@ export class GameTokenService {
     newTokens: number,
   ): Promise<void> {
     const cacheKey = this.cacheKeyGenerator.gameTokenKey(String(guildId), String(userId));
-    await this.cacheService.put(
-      cacheKey,
-      newTokens,
-      GameTokenService.TOKEN_TTL_SECONDS,
-    );
+    await this.cacheService.put(cacheKey, newTokens, GameTokenService.TOKEN_TTL_SECONDS);
 
     const event: GameTokenChangedEvent = {
       guildId: String(guildId),
@@ -75,8 +75,9 @@ export class GameTokenService {
       return await pending;
     }
 
-    const fetchPromise = this.accountRepository.findOrCreate(guildId, userId)
-      .then(account => account.tokens);
+    const fetchPromise = this.accountRepository
+      .findOrCreate(guildId, userId)
+      .then((account) => account.tokens);
     this.pendingFetches.set(cacheKey, fetchPromise);
     try {
       const balance = await fetchPromise;
@@ -102,22 +103,16 @@ export class GameTokenService {
     description: string | null = null,
   ): Promise<Result<TokenAdjustmentResult, DomainError>> {
     if (!Number.isFinite(amount)) {
-      return new Err(
-        DomainError.invalidInput(`Invalid adjustment amount: ${amount}`),
-      );
+      return new Err(DomainError.invalidInput(`Invalid adjustment amount: ${amount}`));
     }
 
     if (amount === 0) {
-      return new Err(
-        DomainError.invalidInput('調整金額不可為零'),
-      );
+      return new Err(DomainError.invalidInput('調整金額不可為零'));
     }
 
     // Validate adjustment amount does not exceed maximum (P3-18)
     if (!isValidAdjustmentAmount(amount)) {
-      return new Err(
-        DomainError.invalidInput(`Adjustment exceeds maximum: ${amount}`),
-      );
+      return new Err(DomainError.invalidInput(`Adjustment exceeds maximum: ${amount}`));
     }
 
     try {
@@ -126,22 +121,18 @@ export class GameTokenService {
 
       // Overflow check: ensure adjustment does not exceed MAX_SAFE_INTEGER (P2-4)
       if (amount > 0 && previousTokens > Number.MAX_SAFE_INTEGER - amount) {
-        return new Err(
-          DomainError.invalidInput(`Adjustment would overflow: ${amount}`),
-        );
+        return new Err(DomainError.invalidInput(`Adjustment would overflow: ${amount}`));
       }
       // Underflow check: ensure tokens do not go below zero (P2-4)
       if (amount < 0 && previousTokens < Math.abs(amount)) {
         return new Err(
-          DomainError.insufficientTokens(`Insufficient tokens: ${previousTokens} < ${Math.abs(amount)}`),
+          DomainError.insufficientTokens(
+            `Insufficient tokens: ${previousTokens} < ${Math.abs(amount)}`,
+          ),
         );
       }
 
-      const adjustResult = await this.accountRepository.tryAdjustTokens(
-        guildId,
-        userId,
-        amount,
-      );
+      const adjustResult = await this.accountRepository.tryAdjustTokens(guildId, userId, amount);
 
       if (adjustResult.isErr()) {
         return new Err(adjustResult.getError());
@@ -182,11 +173,7 @@ export class GameTokenService {
   /**
    * Checks if a member has enough tokens.
    */
-  async hasEnoughTokens(
-    guildId: number,
-    userId: string,
-    requiredTokens: number,
-  ): Promise<boolean> {
+  async hasEnoughTokens(guildId: number, userId: string, requiredTokens: number): Promise<boolean> {
     const balance = await this.getBalance(guildId, userId);
     return balance >= requiredTokens;
   }
@@ -210,9 +197,7 @@ export class GameTokenService {
     source: GameTokenTransactionSource = GameTokenTransactionSource.GAME_PLAY,
   ): Promise<Result<TokenAdjustmentResult, DomainError>> {
     if (tokens <= 0) {
-      return new Err(
-        DomainError.invalidInput(`Tokens to deduct must be positive: ${tokens}`),
-      );
+      return new Err(DomainError.invalidInput(`Tokens to deduct must be positive: ${tokens}`));
     }
 
     // Delegate to tryAdjustTokens which handles findOrCreate, adjustment,
@@ -227,20 +212,12 @@ export class GameTokenService {
    * Deduct path that throws on insufficient - use tryAdjustTokens for Result-based.
    * Records a transaction after successful deduction (P1-9).
    */
-  async deductTokens(
-    guildId: number,
-    userId: string,
-    tokens: number,
-  ): Promise<GameTokenAccount> {
+  async deductTokens(guildId: number, userId: string, tokens: number): Promise<GameTokenAccount> {
     if (tokens <= 0) {
       throw new Error(`Tokens to deduct must be positive: ${tokens}`);
     }
 
-    const updated = await this.accountRepository.adjustTokens(
-      guildId,
-      userId,
-      -tokens,
-    );
+    const updated = await this.accountRepository.adjustTokens(guildId, userId, -tokens);
 
     // Update cache and publish event
     await this.updateCacheAndPublishEvent(guildId, userId, updated.tokens);

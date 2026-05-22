@@ -19,10 +19,7 @@ export class ToolCallerAuthorizationGuard {
    * @param toolName - The tool name for logging
    * @returns null if authorized, or an error message string if unauthorized
    */
-  async validateAdministrator(
-    guild: Guild,
-    toolName: string,
-  ): Promise<string | null> {
+  async validateAdministrator(guild: Guild, toolName: string): Promise<string | null> {
     const context = ToolExecutionContext.getContext();
     if (!context) {
       return '工具執行上下文遺失，無法驗證權限。';
@@ -55,10 +52,16 @@ export class ToolCallerAuthorizationGuard {
         return null;
       }
 
-      this.log.warn({ userId, toolName, guildId: guild.id }, 'Non-admin user attempted to use tool');
+      this.log.warn(
+        { userId, toolName, guildId: guild.id },
+        'Non-admin user attempted to use tool',
+      );
       return '你沒有權限使用此工具。';
     } catch {
-      this.log.warn({ userId, toolName, guildId: guild.id }, 'Member not found for user attempting tool');
+      this.log.warn(
+        { userId, toolName, guildId: guild.id },
+        'Member not found for user attempting tool',
+      );
       return '無法在伺服器中找到你的成員資料。';
     }
   }
