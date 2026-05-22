@@ -6,11 +6,9 @@ import { resetRootContainer } from '@ltdjms/shared/__tests__/test-container';
 import { seedGuild, seedUserAccount } from '@ltdjms/shared/__tests__/seed-factory';
 import { guildId, userId, positiveAmount } from '@ltdjms/shared/__tests__/arbitrary';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { configureEconomyContainer, ECONOMY_TOKENS } from '../di/economy-module.js';
-import { DiceGame2Service } from '../dice/services/dice-game-2-service.js';
-import { GameRewardService } from '../dice/services/game-reward-service.js';
-import type { DiceGame2Config } from '../domain/types.js';
-import type { DiceGame2Service as DiceGame2ServiceType } from '../dice/services/dice-game-2-service.js';
+import { configureEconomyContainer } from '../di/economy-module.js';
+import { configureGamesContainer, GAMES_TOKENS } from '@ltdjms/games';
+import { DiceGame2Service, GameRewardService, type DiceGame2Config } from '@ltdjms/games';
 
 /**
  * Creates a DiceGame2Service with a noop GameRewardService for unit-testing analyzeRolls.
@@ -37,14 +35,15 @@ async function cleanTestTables(pool: ReturnType<typeof getTestPool>): Promise<vo
 
 describe('DiceGame2 PBT', () => {
   let pool: ReturnType<typeof getTestPool>;
-  let diGameService: DiceGame2ServiceType;
+  let diGameService: DiceGame2Service;
 
   beforeEach(async () => {
     pool = getTestPool(process.env.__TEST_CONTAINER_URL!);
     await cleanTestTables(pool);
     resetRootContainer(pool);
     configureEconomyContainer();
-    diGameService = container.resolve(ECONOMY_TOKENS.DiceGame2Service);
+    configureGamesContainer();
+    diGameService = container.resolve(GAMES_TOKENS.DiceGame2Service);
   });
 
   // ------------------------------------------------------------------

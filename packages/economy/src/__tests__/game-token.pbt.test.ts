@@ -6,9 +6,9 @@ import { resetRootContainer } from '@ltdjms/shared/__tests__/test-container';
 import { seedGuild, seedUserAccount } from '@ltdjms/shared/__tests__/seed-factory';
 import { guildId, userId, positiveAmount } from '@ltdjms/shared/__tests__/arbitrary';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { configureEconomyContainer, ECONOMY_TOKENS } from '../di/economy-module.js';
-import { GameTokenTransactionSource } from '../domain/types.js';
-import type { GameTokenService } from '../token/services/game-token-service.js';
+import { configureEconomyContainer } from '../di/economy-module.js';
+import { configureGamesContainer, GAMES_TOKENS, GameTokenTransactionSource } from '@ltdjms/games';
+import type { GameTokenService } from '@ltdjms/games';
 
 /**
  * Fast cleanup of economy test tables between fast-check predicate runs.
@@ -30,7 +30,8 @@ describe('GameToken PBT', () => {
     await cleanTestTables(pool);
     resetRootContainer(pool);
     configureEconomyContainer();
-    tokenService = container.resolve(ECONOMY_TOKENS.GameTokenService);
+    configureGamesContainer();
+    tokenService = container.resolve(GAMES_TOKENS.GameTokenService);
   });
 
   // Adding tokens increases the balance by exactly the added amount.

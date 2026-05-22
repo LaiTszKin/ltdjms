@@ -1,6 +1,7 @@
 import { ZhTwStrings } from '../../../i18n/zh-TW.js';
 import { Colors } from '../../../constants/colors.js';
-import type { GuildCurrencyConfig, DiceGame1Config, DiceGame2Config } from '@ltdjms/economy';
+import type { GuildCurrencyConfig } from '@ltdjms/economy';
+import type { DiceGame1Config, DiceGame2Config } from '@ltdjms/games';
 
 /**
  * Generic embed view builder for admin panels.

@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as fc from 'fast-check';
 import { DomainErrorCategory, type DomainEventPublisher } from '@ltdjms/shared';
-import { GameConfigManagementFacade } from '../facades/GameConfigManagementFacade.js';
-import type { DiceConfigService, DiceGame1Config, DiceGame2Config } from '@ltdjms/economy';
+import { GameConfigManagementFacade } from '@ltdjms/games';
+import type { DiceConfigService, DiceGame1Config, DiceGame2Config } from '@ltdjms/games';
 
 const guildId = (): fc.Arbitrary<number> => fc.integer({ min: 1, max: 2147483647 });
 

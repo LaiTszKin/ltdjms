@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Ok, DomainError, type DomainEventPublisher } from '@ltdjms/shared';
-import { GameConfigManagementFacade } from '../GameConfigManagementFacade.js';
-import type { DiceConfigService } from '@ltdjms/economy';
-import type { DiceGame1Config, DiceGame2Config } from '@ltdjms/economy';
+import { GameConfigManagementFacade } from '@ltdjms/games';
+import type { DiceConfigService, DiceGame1Config, DiceGame2Config } from '@ltdjms/games';
 
 describe('GameConfigManagementFacade', () => {
   let facade: GameConfigManagementFacade;

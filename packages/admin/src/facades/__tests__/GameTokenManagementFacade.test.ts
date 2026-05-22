@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Ok, Err, DomainError, DomainErrorCategory, DomainEventPublisher } from '@ltdjms/shared';
-import { GameTokenManagementFacade } from '../GameTokenManagementFacade.js';
+import { GameTokenManagementFacade } from '@ltdjms/games';
 import type {
   GameTokenService,
   GameTokenTransactionService,
   TokenAdjustmentResult,
   GameTokenTransaction,
   TransactionPage,
-} from '@ltdjms/economy';
+} from '@ltdjms/games';
 
 describe('GameTokenManagementFacade', () => {
   let facade: GameTokenManagementFacade;

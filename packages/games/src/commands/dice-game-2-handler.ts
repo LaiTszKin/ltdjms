@@ -2,7 +2,7 @@ import { type DiscordInteraction, type DiscordContext, DomainErrorCategory } fro
 import { type DiceGame2Service } from '../dice/services/dice-game-2-service.js';
 import { type DiceConfigService } from '../dice/services/dice-config-service.js';
 import { type GameTokenService } from '../token/services/game-token-service.js';
-import { type CurrencyConfigService } from '../currency/services/currency-config-service.js';
+import { type CurrencyConfigService } from '@ltdjms/economy';
 import { DiceGameMessages } from '@ltdjms/shared';
 import { GameTokenTransactionSource } from '../domain/types.js';
 
@@ -21,6 +21,16 @@ import { GameTokenTransactionSource } from '../domain/types.js';
 export class DiceGame2Handler {
   readonly commandName = 'dice-game-2';
 
+  /** Maps die face values to Discord emoji for display. */
+  private static readonly DICE_EMOJI: Record<number, string> = {
+    1: ':one:',
+    2: ':two:',
+    3: ':three:',
+    4: ':four:',
+    5: ':five:',
+    6: ':six:',
+  };
+
   constructor(
     private readonly diceGame2Service: DiceGame2Service,
     private readonly diceConfigService: DiceConfigService,
@@ -33,31 +43,37 @@ export class DiceGame2Handler {
     const guildId = Number(interaction.getGuildId());
     const userId = interaction.getUserId();
 
+    // Look up config first so we can use min/max in error messages (matching Java flow)
+    const config = await this.diceConfigService.findOrCreateDefaultDice2(guildId);
+
     const tokenCountStr = context.getOptionAsString('tokens');
     if (!tokenCountStr) {
-      await interaction.reply(DiceGameMessages.INVALID_TOKEN_COUNT);
+      await interaction.reply(
+        DiceGameMessages.MISSING_TOKENS_ERROR.replace('{min}', String(config.minTokensPerPlay)).replace(
+          '{max}',
+          String(config.maxTokensPerPlay),
+        ),
+      );
       return;
     }
 
     const tokenCount = parseInt(tokenCountStr, 10);
     if (!Number.isFinite(tokenCount) || tokenCount <= 0) {
-      await interaction.reply(DiceGameMessages.INVALID_TOKEN_COUNT);
-      return;
-    }
-
-    // Look up config with default fallback (findOrCreateDefault)
-    const config = await this.diceConfigService.findOrCreateDefaultDice2(guildId);
-
-    // Validate token count against config
-    if (tokenCount < config.minTokensPerPlay) {
       await interaction.reply(
-        DiceGameMessages.TOKEN_COUNT_TOO_LOW.replace('{min}', String(config.minTokensPerPlay)),
+        DiceGameMessages.MISSING_TOKENS_ERROR.replace('{min}', String(config.minTokensPerPlay)).replace(
+          '{max}',
+          String(config.maxTokensPerPlay),
+        ),
       );
       return;
     }
-    if (tokenCount > config.maxTokensPerPlay) {
+
+    // Validate token count against config
+    if (tokenCount < config.minTokensPerPlay || tokenCount > config.maxTokensPerPlay) {
       await interaction.reply(
-        DiceGameMessages.TOKEN_COUNT_TOO_HIGH.replace('{max}', String(config.maxTokensPerPlay)),
+        DiceGameMessages.TOKEN_RANGE_ERROR.replace('{input}', tokenCount.toLocaleString())
+          .replace('{min}', String(config.minTokensPerPlay))
+          .replace('{max}', String(config.maxTokensPerPlay)),
       );
       return;
     }
@@ -73,7 +89,13 @@ export class DiceGame2Handler {
     if (deductResult.isErr()) {
       const error = deductResult.getError();
       if (error.category === DomainErrorCategory.INSUFFICIENT_TOKENS) {
-        await interaction.reply(DiceGameMessages.TOKEN_INSUFFICIENT);
+        const currentBalance = await this.gameTokenService.getBalance(guildId, userId);
+        await interaction.reply(
+          DiceGameMessages.TOKEN_INSUFFICIENT_ERROR.replace('{required}', tokenCount.toLocaleString()).replace(
+            '{current}',
+            currentBalance.toLocaleString(),
+          ),
+        );
       } else {
         await interaction.reply(DiceGameMessages.UNEXPECTED_ERROR);
       }
@@ -102,37 +124,51 @@ export class DiceGame2Handler {
 
       const gameResult = result.getValue();
 
-      const diceDisplay = gameResult.diceRolls.join('、');
-      const straightDisplay =
-        gameResult.straightSegments.length > 0
-          ? gameResult.straightSegments
-              .map((seg: readonly number[]) => `[${seg.join('、')}]`)
-              .join(' ')
-          : '無';
-      const tripleDisplay =
-        gameResult.tripleSegments.length > 0
-          ? gameResult.tripleSegments
-              .map((seg: readonly number[]) => `[${seg.join('、')}]`)
-              .join(' ')
-          : '無';
+      const diceDisplay = gameResult.diceRolls
+        .map((d: number) => DiceGame2Handler.DICE_EMOJI[d] ?? String(d))
+        .join(' ');
 
-      const message = [
+      const parts: string[] = [
         `**${DiceGameMessages.GAME_2_TITLE}**`,
         '',
-        DiceGameMessages.GAME_2_RESULT.replace('{dice}', diceDisplay)
-          .replace('{straightSegments}', straightDisplay)
-          .replace('{tripleSegments}', tripleDisplay)
-          .replace('{straightReward}', String(gameResult.straightReward))
-          .replace('{tripleReward}', String(gameResult.tripleReward))
-          .replace('{baseReward}', String(gameResult.nonStraightReward))
-          .replace('{totalReward}', String(gameResult.totalReward))
-          .replace('{previousBalance}', String(gameResult.previousBalance))
-          .replace('{newBalance}', String(gameResult.newBalance)),
-        `
-  貨幣：${currencyIcon}${currencyName}`,
-      ].join('\n');
+        `骰子結果：${diceDisplay}`,
+        '',
+      ];
 
-      await interaction.reply(message);
+      if (gameResult.straightSegments.length > 0) {
+        parts.push(
+          DiceGameMessages.GAME_2_STRAIGHT_REWARD.replace('{icon}', currencyIcon)
+            .replace('{reward}', gameResult.straightReward.toLocaleString())
+            .replace('{name}', currencyName),
+        );
+      }
+      if (gameResult.tripleSegments.length > 0) {
+        parts.push(
+          DiceGameMessages.GAME_2_TRIPLE_REWARD.replace('{icon}', currencyIcon)
+            .replace('{reward}', gameResult.tripleReward.toLocaleString())
+            .replace('{name}', currencyName)
+            .replace('{count}', String(gameResult.tripleSegments.length)),
+        );
+      }
+      if (gameResult.nonStraightReward > 0) {
+        parts.push(
+          DiceGameMessages.GAME_2_BASE_REWARD.replace('{icon}', currencyIcon)
+            .replace('{reward}', gameResult.nonStraightReward.toLocaleString())
+            .replace('{name}', currencyName),
+        );
+      }
+
+      parts.push(
+        '',
+        DiceGameMessages.GAME_2_TOTAL_REWARD.replace('{icon}', currencyIcon)
+          .replace('{reward}', gameResult.totalReward.toLocaleString())
+          .replace('{name}', currencyName),
+        DiceGameMessages.GAME_2_NEW_BALANCE.replace('{icon}', currencyIcon)
+          .replace('{balance}', gameResult.newBalance.toLocaleString())
+          .replace('{name}', currencyName),
+      );
+
+      await interaction.reply(parts.join('\n'));
     } catch (error) {
       // Spec says tokens are NOT refunded on game error/loss. (P1-4)
       await interaction.reply(DiceGameMessages.UNEXPECTED_ERROR);

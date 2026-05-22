@@ -1,6 +1,7 @@
 import { ZhTwStrings } from '../../i18n/zh-TW.js';
 import type { MemberPanelView } from '../../facades/MemberInfoFacade.js';
-import type { CurrencyTransaction, GameTokenTransaction } from '@ltdjms/economy';
+import type { CurrencyTransaction } from '@ltdjms/economy';
+import type { GameTokenTransaction } from '@ltdjms/games';
 import { Colors } from '../../constants/colors.js';
 
 /**

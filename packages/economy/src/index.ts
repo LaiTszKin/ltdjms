@@ -4,32 +4,23 @@
 
 export type {
   BalanceChangedEvent,
-  GameTokenChangedEvent,
   CurrencyConfigChangedEvent,
-  DiceGameConfigChangedEvent,
 } from './events/index.js';
-export { GameType } from './events/index.js';
 
 // ============================================================
 // Domain
 // ============================================================
 
 export {
-  // Enums
   CurrencyTransactionSource,
-  GameTokenTransactionSource,
 } from './domain/types.js';
 
 export type {
   GuildCurrencyConfig,
   CurrencyTransaction,
   BalanceView,
-  GameTokenTransaction,
-  DiceGame1Config,
-  DiceGame2Config,
   TransactionPage,
   BalanceAdjustmentResult,
-  TokenAdjustmentResult,
 } from './domain/types.js';
 
 // ============================================================
@@ -48,32 +39,19 @@ export type { CurrencyTransactionService } from './currency/services/currency-tx
 export type { CurrencyConfigRepository } from './currency/repositories/currency-config-repo.js';
 
 // ============================================================
-// Token Services
-// ============================================================
-
-export type { GameTokenService } from './token/services/game-token-service.js';
-export type { GameTokenTransactionService } from './token/services/game-token-tx-service.js';
-
-// ============================================================
-// Dice Services
-// ============================================================
-
-export type { GameRewardService } from './dice/services/game-reward-service.js';
-export type { DiceConfigService } from './dice/services/dice-config-service.js';
-
-// ============================================================
 // Command Handlers
 // ============================================================
 
-export type {
-  BalanceHandler,
-  CurrencyConfigHandler,
-  DiceGame1Handler,
-  DiceGame2Handler,
-  DiceGame1ConfigHandler,
-  DiceGame2ConfigHandler,
-  GameTokenAdjustHandler,
-} from './commands/index.js';
+export type { BalanceHandler, CurrencyConfigHandler } from './commands/index.js';
+
+// ============================================================
+// Common Base Classes
+// ============================================================
+
+export { BaseAccountRepository } from './common/base-account-repo.js';
+export type { AccountRepositoryConfig } from './common/base-account-repo.js';
+export { BaseTransactionService } from './common/base-tx-service.js';
+export type { TransactionRepository } from './common/base-tx-service.js';
 
 // ============================================================
 // DI

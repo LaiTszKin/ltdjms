@@ -1,11 +1,22 @@
 export const DiceGameMessages = {
-  GAME_1_TITLE: '🎲 骰子遊戲 1',
-  GAME_1_DESCRIPTION: '擲 {count} 顆骰子，總獎勵 {reward} 貨幣',
-  GAME_1_RESULT: '**骰子結果：** {dice}\n**總和：** {sum}\n**獎勵：** {reward} 貨幣',
-  GAME_2_TITLE: '🎲 骰子遊戲 2',
-  GAME_2_DESCRIPTION: '每 1 代幣擲 3 顆骰子，分析順子、三條與一般骰子',
-  GAME_2_RESULT:
-    '**骰子結果：** {dice}\n\n**順子區段：** {straightSegments}\n**三條區段：** {tripleSegments}\n\n**順子獎勵：** {straightReward}\n**三條獎勵：** {tripleReward}\n**一般獎勵：** {baseReward}\n**總獎勵：** {totalReward} 貨幣\n\n**餘額變動：** {previousBalance} → {newBalance} 貨幣',
+  // Game 1
+  GAME_1_TITLE: '骰子遊戲結果',
+  GAME_1_RESULT: '骰子結果：{dice}\n\n總獎勵：{icon} {reward} {name}\n新餘額：{icon} {newBalance} {name}',
+
+  // Game 2
+  GAME_2_TITLE: '骰子遊戲2結果',
+  GAME_2_STRAIGHT_REWARD: '順子：{icon} {reward} {name}',
+  GAME_2_TRIPLE_REWARD: '三條：{icon} {reward} {name}（{count} 組）',
+  GAME_2_BASE_REWARD: '基礎：{icon} {reward} {name}',
+  GAME_2_TOTAL_REWARD: '**總獎勵：** {icon} {reward} {name}',
+  GAME_2_NEW_BALANCE: '**新餘額：** {icon} {balance} {name}',
+
+  // Error messages
+  MISSING_TOKENS_ERROR: '請輸入本局要投入的遊戲代幣數量！\n必須介於 {min} ~ {max} 代幣之間',
+  TOKEN_RANGE_ERROR: '代幣投入數量超出範圍！\n您輸入的數量：{input}\n允許範圍：{min} ~ {max} 代幣',
+  TOKEN_INSUFFICIENT_ERROR: '遊戲代幣不足！\n需要：{required} 代幣\n目前餘額：{current} 代幣',
+
+  // Non-game constants (unchanged)
   BALANCE_TITLE: '貨幣餘額',
   BALANCE_DISPLAY: '目前餘額：**{balance}** {currencyIcon}\n貨幣名稱：{currencyName}',
   BALANCE_FETCH_FAILED: '無法取得餘額資訊，請稍後再試',
@@ -14,7 +25,6 @@ export const DiceGameMessages = {
   TOKEN_ADJUST_TITLE: '代幣調整',
   TOKEN_ADJUST_SUCCESS: '成功調整代幣\n調整前：{before} → 調整後：{after}\n調整量：{amount}',
   TOKEN_ADJUST_FAILED: '代幣調整失敗：{reason}',
-  TOKEN_INSUFFICIENT: '代幣不足',
   TOKEN_CURRENT_BALANCE: '目前代幣：**{tokens}** 個',
   DICE_CONFIG_1_TITLE: '骰子遊戲 1 設定',
   DICE_CONFIG_2_TITLE: '骰子遊戲 2 設定',
@@ -24,8 +34,5 @@ export const DiceGameMessages = {
   DICE_CONFIG_2_DISPLAY:
     '代幣範圍：{min} ~ {max}\n順子倍率：{straightMul}\n基本倍率：{baseMul}\n三條低獎：{tripleLow}\n三條高獎：{tripleHigh}',
   UNEXPECTED_ERROR: '發生未預期的錯誤，請聯絡管理員',
-  INVALID_TOKEN_COUNT: '代幣數量無效',
-  TOKEN_COUNT_TOO_LOW: '代幣數量低於最低限制（{min}）',
-  TOKEN_COUNT_TOO_HIGH: '代幣數量超過最高限制（{max}）',
   INVALID_OPTION: '指令參數無效',
 } as const;

@@ -50,6 +50,9 @@ importers:
       '@ltdjms/economy':
         specifier: workspace:*
         version: link:../../packages/economy
+      '@ltdjms/games':
+        specifier: workspace:*
+        version: link:../../packages/games
       '@ltdjms/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -105,6 +108,9 @@ importers:
       '@ltdjms/economy':
         specifier: workspace:*
         version: link:../economy
+      '@ltdjms/games':
+        specifier: workspace:*
+        version: link:../games
       '@ltdjms/shared':
         specifier: workspace:*
         version: link:../shared
@@ -237,6 +243,40 @@ importers:
       zod:
         specifier: ^3.24.0
         version: 3.25.76
+    devDependencies:
+      '@ltdjms/games':
+        specifier: workspace:*
+        version: link:../games
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.41
+      '@types/pg':
+        specifier: ^8.11.0
+        version: 8.20.0
+      typescript:
+        specifier: ^5.5.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/node@20.19.41)(tsx@4.22.2)(yaml@2.9.0)
+
+  packages/games:
+    dependencies:
+      '@ltdjms/economy':
+        specifier: workspace:*
+        version: link:../economy
+      '@ltdjms/shared':
+        specifier: workspace:*
+        version: link:../shared
+      drizzle-orm:
+        specifier: ^0.42.0
+        version: 0.42.0(@types/pg@8.20.0)(gel@2.2.0)(pg@8.21.0)
+      pg:
+        specifier: ^8.13.0
+        version: 8.21.0
+      reflect-metadata:
+        specifier: ^0.2.0
+        version: 0.2.2
     devDependencies:
       '@types/node':
         specifier: ^20.0.0

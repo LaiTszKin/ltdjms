@@ -6,9 +6,9 @@ import { resetRootContainer } from '@ltdjms/shared/__tests__/test-container';
 import { seedGuild, seedUserAccount } from '@ltdjms/shared/__tests__/seed-factory';
 import { guildId, userId, positiveAmount } from '@ltdjms/shared/__tests__/arbitrary';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { configureEconomyContainer, ECONOMY_TOKENS } from '../di/economy-module.js';
-import type { DiceGame1Service } from '../dice/services/dice-game-1-service.js';
-import type { DiceGame1Config } from '../domain/types.js';
+import { configureEconomyContainer } from '@ltdjms/economy';
+import type { DiceGame1Service, DiceGame1Config } from '@ltdjms/games';
+import { configureGamesContainer, GAMES_TOKENS } from '@ltdjms/games';
 
 /**
  * Fast cleanup of economy test tables between fast-check predicate runs.
@@ -32,7 +32,8 @@ describe('DiceGame1 PBT', () => {
     await cleanTestTables(pool);
     resetRootContainer(pool);
     configureEconomyContainer();
-    gameService = container.resolve(ECONOMY_TOKENS.DiceGame1Service);
+    configureGamesContainer();
+    gameService = container.resolve(GAMES_TOKENS.DiceGame1Service);
   });
 
   // For every valid bet, the dice count equals the token count,

@@ -4,6 +4,7 @@
 build:
 	npx tsc --project packages/shared && \
 	npx tsc --project packages/economy && \
+	npx tsc --project packages/games && \
 	npx tsc --project packages/shop && \
 	npx tsc --project packages/dispatch && \
 	npx tsc --project packages/ai && \
@@ -13,6 +14,7 @@ build:
 
 test:
 	pnpm vitest run --project @ltdjms/shared && \
+	pnpm vitest run --project @ltdjms/games && \
 	pnpm vitest run --project @ltdjms/admin && \
 	pnpm vitest run --project @ltdjms/ai && \
 	pnpm vitest run --project @ltdjms/dispatch && \

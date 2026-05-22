@@ -21,8 +21,8 @@ import {
   configureEconomyContainer,
   ECONOMY_TOKENS,
   CurrencyTransactionSource,
-  type GameRewardService,
 } from '@ltdjms/economy';
+import { GAMES_TOKENS, type GameRewardService, configureGamesContainer } from '@ltdjms/games';
 import { configureDispatchContainer, DISPATCH_TOKENS } from '@ltdjms/dispatch';
 import {
   configureContainer as configureShopContainer,
@@ -135,7 +135,11 @@ export async function main(): Promise<void> {
   configureEconomyContainer();
   logger.info('Economy module initialized');
 
-  // 8. Dispatch module
+  // 8. Games module
+  configureGamesContainer();
+  logger.info('Games module initialized');
+
+  // 9. Dispatch module
   configureDispatchContainer();
   logger.info('Dispatch module initialized');
 
@@ -155,7 +159,7 @@ export async function main(): Promise<void> {
   // ProductRewardService adapter wrapping GameRewardService.creditReward
   // into the grantReward interface expected by the shop module.
   const gameRewardService = container.resolve<GameRewardService>(
-    ECONOMY_TOKENS.GameRewardService,
+    GAMES_TOKENS.GameRewardService as symbol,
   );
   const productRewardService: ProductRewardService = {
     async grantReward(request) {

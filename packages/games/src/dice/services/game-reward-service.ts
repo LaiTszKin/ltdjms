@@ -1,7 +1,6 @@
 import { type Result, Ok, Err, DomainError } from '@ltdjms/shared';
-import { BalanceAdjustmentService } from '../../currency/services/balance-adjustment-service.js';
-import { BalanceService } from '../../currency/services/balance-service.js';
-import type { CurrencyTransactionSource } from '../../domain/types.js';
+import type { BalanceAdjustmentService, BalanceService } from '@ltdjms/economy';
+import type { CurrencyTransactionSource } from '@ltdjms/economy';
 import { MAX_ADJUSTMENT_AMOUNT } from '../../domain/types.js';
 
 /**

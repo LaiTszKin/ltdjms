@@ -6,13 +6,9 @@ import {
   type DomainEventPublisher,
   safeSnowflakeToNumber,
 } from '@ltdjms/shared';
-import {
-  type DiceConfigService,
-  type DiceGame1Config,
-  type DiceGame2Config,
-  type DiceGameConfigChangedEvent,
-  GameType,
-} from '@ltdjms/economy';
+import { type DiceConfigService } from '../dice/services/dice-config-service.js';
+import type { DiceGame1Config, DiceGame2Config } from '../domain/types.js';
+import { type DiceGameConfigChangedEvent, GameType } from '../events/index.js';
 
 /**
  * Configuration update parameters for Dice Game 1.

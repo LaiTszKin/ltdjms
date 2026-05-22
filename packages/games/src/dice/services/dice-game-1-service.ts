@@ -1,7 +1,7 @@
 import { type Result, Ok, Err, DomainError } from '@ltdjms/shared';
 import { GameRewardService } from './game-reward-service.js';
 import type { DiceGame1Config, DiceGame1Result } from '../../domain/types.js';
-import { CurrencyTransactionSource } from '../../domain/types.js';
+import { CurrencyTransactionSource } from '@ltdjms/economy';
 import { type Random, DefaultRandom, rollDice as randomRollDice } from './random.js';
 
 /**

@@ -1,12 +1,12 @@
 import { type Result, ok, err, DomainError, safeSnowflakeToNumber } from '@ltdjms/shared';
+import { type GameTokenService } from '../token/services/game-token-service.js';
+import { type GameTokenTransactionService } from '../token/services/game-token-tx-service.js';
 import {
-  type GameTokenService,
-  type GameTokenTransactionService,
   GameTokenTransactionSource,
   type TokenAdjustmentResult,
   type GameTokenTransaction,
   type TransactionPage,
-} from '@ltdjms/economy';
+} from '../domain/types.js';
 
 /**
  * Facade for game token management operations.

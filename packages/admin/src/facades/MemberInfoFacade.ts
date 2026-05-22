@@ -1,14 +1,16 @@
 import { type Result, ok, err, DomainError, safeSnowflakeToNumber } from '@ltdjms/shared';
 import type {
   BalanceService,
-  GameTokenService,
   CurrencyTransactionService,
-  GameTokenTransactionService,
   BalanceView,
   CurrencyTransaction,
+} from '@ltdjms/economy';
+import type {
+  GameTokenService,
+  GameTokenTransactionService,
   GameTokenTransaction,
   TransactionPage,
-} from '@ltdjms/economy';
+} from '@ltdjms/games';
 import {
   type RedemptionService,
   type RedemptionResult,

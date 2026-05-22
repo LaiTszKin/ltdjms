@@ -1,9 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { Ok, Err, DomainError } from '@ltdjms/shared';
 import { GameRewardService } from '../dice/services/game-reward-service.js';
-import type { CurrencyTransactionSource } from '../domain/types.js';
 import { MAX_ADJUSTMENT_AMOUNT } from '../domain/types.js';
-import type { BalanceAdjustmentResult, BalanceView } from '../domain/types.js';
+import type { CurrencyTransactionSource, BalanceAdjustmentResult, BalanceView } from '@ltdjms/economy';
 
 describe('GameRewardService', () => {
   /** Creates a mock BalanceAdjustmentService for DI (P2-8). */

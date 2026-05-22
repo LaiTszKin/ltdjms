@@ -2,9 +2,9 @@ import type { DomainEvent } from '@ltdjms/shared';
 import { type DiscordRuntimeGateway } from '@ltdjms/shared';
 import type {
   BalanceChangedEvent,
-  GameTokenChangedEvent,
   CurrencyConfigChangedEvent,
 } from '@ltdjms/economy';
+import type { GameTokenChangedEvent } from '@ltdjms/games';
 import { type Client, type TextChannel } from 'discord.js';
 import { PanelSessionManager } from '../../session/PanelSessionManager.js';
 import { MemberInfoFacade } from '../../facades/MemberInfoFacade.js';

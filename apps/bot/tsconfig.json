@@ -4,5 +4,14 @@
     "outDir": "./dist",
     "rootDir": "./src"
   },
-  "include": ["src"]
+  "include": ["src"],
+  "references": [
+    { "path": "../packages/shared" },
+    { "path": "../packages/economy" },
+    { "path": "../packages/games" },
+    { "path": "../packages/dispatch" },
+    { "path": "../packages/shop" },
+    { "path": "../packages/ai" },
+    { "path": "../packages/admin" }
+  ]
 }

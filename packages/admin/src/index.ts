@@ -8,10 +8,6 @@ export type { ZhTwStringsType } from './i18n/index.js';
 // ============================================================
 export {
   CurrencyManagementFacade,
-  GameTokenManagementFacade,
-  GameConfigManagementFacade,
-  type DiceGame1ConfigUpdate,
-  type DiceGame2ConfigUpdate,
   AIConfigManagementFacade,
   MemberInfoFacade,
   type MemberPanelView,

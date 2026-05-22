@@ -9,7 +9,7 @@ import {
   ButtonBuilder,
   ButtonStyle,
 } from 'discord.js';
-import { GameTokenManagementFacade } from '../../../facades/GameTokenManagementFacade.js';
+import { GameTokenManagementFacade } from '@ltdjms/games';
 import { AdminPanelSessionManager } from '../../../session/AdminPanelSessionManager.js';
 import { BotErrorHandler } from '../../../commands/infra/BotErrorHandler.js';
 import { AdminPanelViewState } from '../../../session/types.js';

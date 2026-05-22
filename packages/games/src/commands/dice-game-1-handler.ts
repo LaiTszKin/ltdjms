@@ -2,7 +2,7 @@ import { type DiscordInteraction, type DiscordContext, DomainErrorCategory } fro
 import { type DiceGame1Service } from '../dice/services/dice-game-1-service.js';
 import { type DiceConfigService } from '../dice/services/dice-config-service.js';
 import { type GameTokenService } from '../token/services/game-token-service.js';
-import { type CurrencyConfigService } from '../currency/services/currency-config-service.js';
+import { type CurrencyConfigService } from '@ltdjms/economy';
 import { DiceGameMessages } from '@ltdjms/shared';
 import { GameTokenTransactionSource } from '../domain/types.js';
 
@@ -42,31 +42,37 @@ export class DiceGame1Handler {
     const guildId = Number(interaction.getGuildId());
     const userId = interaction.getUserId();
 
+    // Look up config first so we can use min/max in error messages (matching Java flow)
+    const config = await this.diceConfigService.findOrCreateDefaultDice1(guildId);
+
     const tokenCountStr = context.getOptionAsString('tokens');
     if (!tokenCountStr) {
-      await interaction.reply(DiceGameMessages.INVALID_TOKEN_COUNT);
+      await interaction.reply(
+        DiceGameMessages.MISSING_TOKENS_ERROR.replace('{min}', String(config.minTokensPerPlay)).replace(
+          '{max}',
+          String(config.maxTokensPerPlay),
+        ),
+      );
       return;
     }
 
     const tokenCount = parseInt(tokenCountStr, 10);
     if (!Number.isFinite(tokenCount) || tokenCount <= 0) {
-      await interaction.reply(DiceGameMessages.INVALID_TOKEN_COUNT);
-      return;
-    }
-
-    // Look up config with default fallback (findOrCreateDefault)
-    const config = await this.diceConfigService.findOrCreateDefaultDice1(guildId);
-
-    // Validate token count against config
-    if (tokenCount < config.minTokensPerPlay) {
       await interaction.reply(
-        DiceGameMessages.TOKEN_COUNT_TOO_LOW.replace('{min}', String(config.minTokensPerPlay)),
+        DiceGameMessages.MISSING_TOKENS_ERROR.replace('{min}', String(config.minTokensPerPlay)).replace(
+          '{max}',
+          String(config.maxTokensPerPlay),
+        ),
       );
       return;
     }
-    if (tokenCount > config.maxTokensPerPlay) {
+
+    // Validate token count against config
+    if (tokenCount < config.minTokensPerPlay || tokenCount > config.maxTokensPerPlay) {
       await interaction.reply(
-        DiceGameMessages.TOKEN_COUNT_TOO_HIGH.replace('{max}', String(config.maxTokensPerPlay)),
+        DiceGameMessages.TOKEN_RANGE_ERROR.replace('{input}', tokenCount.toLocaleString())
+          .replace('{min}', String(config.minTokensPerPlay))
+          .replace('{max}', String(config.maxTokensPerPlay)),
       );
       return;
     }
@@ -82,7 +88,13 @@ export class DiceGame1Handler {
     if (deductResult.isErr()) {
       const error = deductResult.getError();
       if (error.category === DomainErrorCategory.INSUFFICIENT_TOKENS) {
-        await interaction.reply(DiceGameMessages.TOKEN_INSUFFICIENT);
+        const currentBalance = await this.gameTokenService.getBalance(guildId, userId);
+        await interaction.reply(
+          DiceGameMessages.TOKEN_INSUFFICIENT_ERROR.replace('{required}', tokenCount.toLocaleString()).replace(
+            '{current}',
+            currentBalance.toLocaleString(),
+          ),
+        );
       } else {
         await interaction.reply(DiceGameMessages.UNEXPECTED_ERROR);
       }
@@ -114,21 +126,15 @@ export class DiceGame1Handler {
       const diceDisplay = gameResult.diceRolls
         .map((d: number) => DiceGame1Handler.DICE_EMOJI[d] ?? String(d))
         .join(' ');
-      const rewardDisplay = String(gameResult.totalReward);
 
       const message = [
         `**${DiceGameMessages.GAME_1_TITLE}**`,
         '',
         DiceGameMessages.GAME_1_RESULT.replace('{dice}', diceDisplay)
-          .replace('{sum}', String(gameResult.diceSum))
-          .replace('{reward}', rewardDisplay),
-        '',
-        `餘額變動：${String(gameResult.previousBalance)} → ${String(gameResult.newBalance)} ${currencyIcon}${currencyName}`,
-        '',
-        `_${DiceGameMessages.GAME_1_DESCRIPTION.replace('{count}', String(tokenCount)).replace(
-          '{reward}',
-          String(gameResult.totalReward),
-        )}_`,
+          .replace('{icon}', currencyIcon)
+          .replace('{reward}', gameResult.totalReward.toLocaleString())
+          .replace('{name}', currencyName)
+          .replace('{newBalance}', gameResult.newBalance.toLocaleString()),
       ].join('\n');
 
       await interaction.reply(message);

@@ -13,6 +13,7 @@
   "dependencies": {
     "@ltdjms/shared": "workspace:*",
     "@ltdjms/economy": "workspace:*",
+    "@ltdjms/games": "workspace:*",
     "@ltdjms/shop": "workspace:*",
     "@ltdjms/dispatch": "workspace:*",
     "@ltdjms/ai": "workspace:*",

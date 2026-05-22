@@ -4,23 +4,26 @@ import type {
   BalanceService,
   BalanceAdjustmentService,
   CurrencyConfigService,
-} from '@ltdjms/economy';
-import type {
   CurrencyTransactionService,
+} from '@ltdjms/economy';
+import { ECONOMY_TOKENS } from '@ltdjms/economy';
+import type {
+  DiceConfigService,
   GameTokenService,
   GameTokenTransactionService,
-} from '@ltdjms/economy';
-import type { DiceConfigService } from '@ltdjms/economy';
-import type {
-  BalanceHandler,
-  CurrencyConfigHandler,
   DiceGame1Handler,
   DiceGame2Handler,
   DiceGame1ConfigHandler,
   DiceGame2ConfigHandler,
   GameTokenAdjustHandler,
+  GameConfigManagementFacade,
+  GameTokenManagementFacade,
+} from '@ltdjms/games';
+import { GAMES_TOKENS } from '@ltdjms/games';
+import type {
+  BalanceHandler,
+  CurrencyConfigHandler,
 } from '@ltdjms/economy';
-import { ECONOMY_TOKENS } from '@ltdjms/economy';
 import type {
   RedemptionService,
   ShopService,
@@ -42,8 +45,6 @@ import type { ShopCommandHandler } from '@ltdjms/shop';
 
 // Facades
 import { CurrencyManagementFacade } from '../facades/CurrencyManagementFacade.js';
-import { GameTokenManagementFacade } from '../facades/GameTokenManagementFacade.js';
-import { GameConfigManagementFacade } from '../facades/GameConfigManagementFacade.js';
 import { AIConfigManagementFacade } from '../facades/AIConfigManagementFacade.js';
 import { MemberInfoFacade } from '../facades/MemberInfoFacade.js';
 import { DispatchManagementFacade } from '../facades/DispatchManagementFacade.js';
@@ -231,17 +232,21 @@ export function configureAdminContainer(): void {
   );
   container.registerInstance(ADMIN_TOKENS.CurrencyManagementFacade, currencyFacade);
 
-  const gameTokenService = container.resolve<GameTokenService>(ECONOMY_TOKENS.GameTokenService);
+  const gameTokenService = container.resolve<GameTokenService>(GAMES_TOKENS.GameTokenService as symbol);
   const gameTokenTxService = container.resolve<GameTokenTransactionService>(
-    ECONOMY_TOKENS.GameTokenTransactionService,
+    GAMES_TOKENS.GameTokenTransactionService as symbol,
   );
 
-  const tokenFacade = new GameTokenManagementFacade(gameTokenService, gameTokenTxService);
+  const tokenFacade = container.resolve<GameTokenManagementFacade>(
+    GAMES_TOKENS.GameTokenManagementFacade as symbol,
+  );
   container.registerInstance(ADMIN_TOKENS.GameTokenManagementFacade, tokenFacade);
 
-  const diceConfigService = container.resolve<DiceConfigService>(ECONOMY_TOKENS.DiceConfigService);
+  const diceConfigService = container.resolve<DiceConfigService>(GAMES_TOKENS.DiceConfigService as symbol);
 
-  const gameConfigFacade = new GameConfigManagementFacade(diceConfigService, eventPublisher);
+  const gameConfigFacade = container.resolve<GameConfigManagementFacade>(
+    GAMES_TOKENS.GameConfigManagementFacade as symbol,
+  );
   container.registerInstance(ADMIN_TOKENS.GameConfigManagementFacade, gameConfigFacade);
 
   const channelRestrictionService = container.resolve<AIChannelRestrictionService>(
@@ -300,11 +305,11 @@ export function configureAdminContainer(): void {
   slashCommandListener.registerCommands([
     container.resolve<BalanceHandler>(ECONOMY_TOKENS.BalanceHandler),
     container.resolve<CurrencyConfigHandler>(ECONOMY_TOKENS.CurrencyConfigHandler),
-    container.resolve<DiceGame1Handler>(ECONOMY_TOKENS.DiceGame1Handler),
-    container.resolve<DiceGame2Handler>(ECONOMY_TOKENS.DiceGame2Handler),
-    container.resolve<DiceGame1ConfigHandler>(ECONOMY_TOKENS.DiceGame1ConfigHandler),
-    container.resolve<DiceGame2ConfigHandler>(ECONOMY_TOKENS.DiceGame2ConfigHandler),
-    container.resolve<GameTokenAdjustHandler>(ECONOMY_TOKENS.GameTokenAdjustHandler),
+    container.resolve<DiceGame1Handler>(GAMES_TOKENS.DiceGame1Handler as symbol),
+    container.resolve<DiceGame2Handler>(GAMES_TOKENS.DiceGame2Handler as symbol),
+    container.resolve<DiceGame1ConfigHandler>(GAMES_TOKENS.DiceGame1ConfigHandler as symbol),
+    container.resolve<DiceGame2ConfigHandler>(GAMES_TOKENS.DiceGame2ConfigHandler as symbol),
+    container.resolve<GameTokenAdjustHandler>(GAMES_TOKENS.GameTokenAdjustHandler as symbol),
   ]);
 
   // ============================================================

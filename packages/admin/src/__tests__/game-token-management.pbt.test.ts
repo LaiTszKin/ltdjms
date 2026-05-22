@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as fc from 'fast-check';
 import { Ok, Err, DomainError, DomainErrorCategory } from '@ltdjms/shared';
-import { GameTokenManagementFacade } from '../facades/GameTokenManagementFacade.js';
+import { GameTokenManagementFacade } from '@ltdjms/games';
 import type {
   GameTokenService,
   GameTokenTransactionService,
   TokenAdjustmentResult,
-} from '@ltdjms/economy';
+} from '@ltdjms/games';
 
 const guildId = (): fc.Arbitrary<number> => fc.integer({ min: 1, max: 2147483647 });
 const userId = (): fc.Arbitrary<number> => fc.integer({ min: 1, max: 2147483647 });
