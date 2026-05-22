@@ -1,3 +1,5 @@
+import 'reflect-metadata';
+
 import {
   createRootLogger,
   EnvironmentConfig,
@@ -170,10 +172,6 @@ export async function main(): Promise<void> {
   });
   logger.info('Shop module initialized');
 
-  // 10. AI module
-  initializeAIModule();
-  logger.info('AI module initialized');
-
   // 11. Discord client
   const client = new Client({
     intents: [
@@ -200,16 +198,20 @@ export async function main(): Promise<void> {
   runtimeGateway.publishReady(client);
   logger.info({ user: client.user?.tag }, 'Discord bot logged in successfully');
 
-  // 14. Admin module — wires all handlers and interactionCreate via DI.
+  // 14. AI module — must be after publishReady (needs selfUserId via DiscordRuntimeGateway)
+  initializeAIModule();
+  logger.info('AI module initialized');
+
+  // 15. Admin module — wires all handlers and interactionCreate via DI.
   //     Must happen after client is ready (listen() calls requireReadyClient()).
   configureAdminContainer();
   logger.info('Admin module initialized');
 
-  // 15. Wire AI message listener
+  // 16. Wire AI message listener
   const aiListener = container.resolve<AIChatMentionListener>(AI_TOKENS.AIChatMentionListener);
   client.on('messageCreate', (msg) => aiListener.onMessageCreate(msg));
 
-  // 16. Register slash commands with Discord API
+  // 17. Register slash commands with Discord API
   if (client.user) {
     const result = await SlashCommandRegistrar.registerAll(
       client.user.id,
@@ -220,7 +222,7 @@ export async function main(): Promise<void> {
     logger.info({ result }, 'Slash commands registered');
   }
 
-  // 17. Start background services
+  // 18. Start background services
   const scheduler = container.resolve<FiatOrderProcessingScheduler>(
     SHOP_TOKENS.FiatOrderProcessingScheduler,
   );
@@ -233,7 +235,7 @@ export async function main(): Promise<void> {
 
   logger.info('Application startup complete');
 
-  // 18. Shutdown hook
+  // 19. Shutdown hook
   const shutdown = async () => {
     logger.info('Shutting down...');
     scheduler.stop();

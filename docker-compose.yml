@@ -16,15 +16,14 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_DB: ${DATABASE_NAME}
-      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_USER: ${DB_USERNAME:-${DATABASE_USER:-postgres}}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./src/main/resources/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DATABASE_NAME}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-${DATABASE_USER:-postgres}} -d ${DATABASE_NAME}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -32,33 +31,23 @@ services:
   bot:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.ts
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     ports:
-      - "80:80"
-      - "443:443"
+      - "8085:8085"
     env_file:
       - .env
     environment:
-      # Docker 環境覆寫（與 .env 不同或未包含的值）
       PROMPTS_DIR_PATH: /app/prompts
-      LOG_DIR: /app/logs
       REDIS_URI: redis://redis:6379
       ECPAY_CALLBACK_BIND_HOST: 127.0.0.1
       ECPAY_CALLBACK_BIND_PORT: 8085
-      JAVA_OPTS: >-
-        -XX:+UseContainerSupport
-        -XX:MaxRAMPercentage=75.0
-        -XX:InitialRAMPercentage=50.0
-        -XX:+UseG1GC
-    entrypoint: ["/bin/bash", "-c", "java $$JAVA_OPTS -jar app.jar"]
     volumes:
       - ./prompts:/app/prompts:ro
-      - bot_logs:/app/logs
     restart: unless-stopped
 
   caddy:
@@ -78,6 +67,5 @@ services:
 volumes:
   redis_data:
   postgres_data:
-  bot_logs:
   caddy_data:
   caddy_config:
