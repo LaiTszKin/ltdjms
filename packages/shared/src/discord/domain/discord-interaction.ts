@@ -12,6 +12,9 @@ export interface DiscordInteraction {
   /** Checks if this interaction is ephemeral (user-only visible). */
   isEphemeral(): boolean;
 
+  /** Marks all subsequent replies as ephemeral (user-only visible). */
+  makeEphemeral(): void;
+
   /** Replies with a plain text message. */
   reply(message: string): Promise<void>;
 

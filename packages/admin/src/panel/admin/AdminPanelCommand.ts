@@ -37,6 +37,7 @@ export class AdminPanelCommand implements CommandHandler {
       return;
     }
 
+    interaction.makeEphemeral();
     await interaction.deferReply();
 
     // Create session

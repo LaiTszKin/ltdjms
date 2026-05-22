@@ -10,6 +10,7 @@ export class MockDiscordInteraction implements DiscordInteraction {
   private readonly _userId: string;
   private readonly _channelId: string | undefined;
   private readonly _ephemeral: boolean;
+  private _makeEphemeral = false;
   private readonly _customId: string;
   private _isAdministrator: boolean;
   private readonly _interactionType: 'button' | 'modalSubmit' | 'chatInput';
@@ -51,7 +52,11 @@ export class MockDiscordInteraction implements DiscordInteraction {
   }
 
   isEphemeral(): boolean {
-    return this._ephemeral;
+    return this._ephemeral || this._makeEphemeral;
+  }
+
+  makeEphemeral(): void {
+    this._makeEphemeral = true;
   }
 
   async reply(message: string): Promise<void> {

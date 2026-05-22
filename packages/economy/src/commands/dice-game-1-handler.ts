@@ -47,6 +47,7 @@ export class DiceGame1Handler {
     interaction: DiscordInteraction,
     context: DiscordContext,
   ): Promise<void> {
+    interaction.makeEphemeral();
     const guildId = Number(interaction.getGuildId());
     const userId = interaction.getUserId();
 

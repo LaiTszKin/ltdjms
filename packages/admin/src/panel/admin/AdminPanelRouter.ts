@@ -29,6 +29,7 @@ export class AdminPanelFallbackHandler implements InteractionHandler {
     // Check session validity
     const session = this.sessionManager.getSession(guildId, userId);
     if (!session) {
+      interaction.makeEphemeral();
       await interaction.reply(ZhTwStrings.sessionExpired);
       return;
     }
@@ -40,6 +41,7 @@ export class AdminPanelFallbackHandler implements InteractionHandler {
     //
     // If this handler is reached, it means no sub-handler matched the customId,
     // indicating an invalid/unregistered interaction route.
+    interaction.makeEphemeral();
     await interaction.reply('無效的操作，請重新開啟管理面板。若問題持續發生，請聯絡管理員。');
   }
 }

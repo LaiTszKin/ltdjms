@@ -20,6 +20,7 @@ export class CurrencyConfigHandler {
     interaction: DiscordInteraction,
     context: DiscordContext,
   ): Promise<void> {
+    interaction.makeEphemeral();
     if (!interaction.isAdministrator()) {
       await interaction.reply('此操作需要管理員權限');
       return;

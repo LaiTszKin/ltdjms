@@ -62,6 +62,7 @@ export class ShopCommandHandler {
     interaction: DiscordInteraction,
     _context: DiscordContext,
   ): Promise<void> {
+    interaction.makeEphemeral();
     await interaction.deferReply();
 
     const guildId = this.parseGuildId(interaction.getGuildId());
@@ -96,6 +97,7 @@ export class ShopCommandHandler {
     _context: DiscordContext,
     customId: string,
   ): Promise<void> {
+    interaction.makeEphemeral();
     const guildId = this.parseGuildId(interaction.getGuildId());
     if (guildId == null) return;
 

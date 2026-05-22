@@ -27,8 +27,8 @@ import { Colors } from '../../../constants/colors.js';
 export class EscortCatalogHandler extends BaseAdminHandler {
   readonly customIdPrefix = 'admin_escortcatalog';
 
-  /** Max items per page to stay within Discord's 5-ActionRow limit (1 add + 2 pairs + 1 nav). */
-  private static readonly ITEMS_PER_PAGE = 4;
+  /** Max items per page to stay within Discord's 5-ActionRow limit (1 add + N items + 1 nav). */
+  private static readonly ITEMS_PER_PAGE = 3;
 
   constructor(
     sessionManager: AdminPanelSessionManager,

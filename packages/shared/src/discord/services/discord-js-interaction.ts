@@ -15,6 +15,7 @@ import { type DiscordInteraction } from '../domain/discord-interaction.js';
 export class DiscordJsInteraction implements DiscordInteraction {
   private acknowledged: boolean;
   private _ephemeral: boolean;
+  private _makeEphemeral = false;
 
   constructor(
     private readonly interaction:
@@ -37,24 +38,36 @@ export class DiscordJsInteraction implements DiscordInteraction {
   }
 
   isEphemeral(): boolean {
-    return this._ephemeral;
+    return this._ephemeral || this._makeEphemeral;
+  }
+
+  makeEphemeral(): void {
+    this._makeEphemeral = true;
   }
 
   async reply(message: string): Promise<void> {
     if (this.acknowledged) {
-      await this.interaction.followUp(message);
+      const opts: Record<string, unknown> = { content: message };
+      if (this._makeEphemeral) opts.ephemeral = true;
+      await this.interaction.followUp(opts as never);
     } else {
-      await this.interaction.reply(message);
+      if (this._makeEphemeral) {
+        await this.interaction.reply({ content: message, ephemeral: true });
+      } else {
+        await this.interaction.reply(message);
+      }
     }
     this.acknowledged = true;
   }
 
   async replyEmbed(embed: unknown): Promise<void> {
     const discordEmbed = embed as EmbedBuilder;
+    const opts: Record<string, unknown> = { embeds: [discordEmbed] };
+    if (this._makeEphemeral) opts.ephemeral = true;
     if (this.acknowledged) {
-      await this.interaction.followUp({ embeds: [discordEmbed] });
+      await this.interaction.followUp(opts as never);
     } else {
-      await this.interaction.reply({ embeds: [discordEmbed] });
+      await this.interaction.reply(opts as never);
     }
     this.acknowledged = true;
   }
@@ -66,7 +79,9 @@ export class DiscordJsInteraction implements DiscordInteraction {
 
   async deferReply(): Promise<void> {
     if (!this.acknowledged) {
-      await this.interaction.deferReply();
+      const opts: Record<string, unknown> = {};
+      if (this._makeEphemeral) opts.ephemeral = true;
+      await this.interaction.deferReply(opts as never);
       this.acknowledged = true;
     }
   }
@@ -164,6 +179,7 @@ export class DiscordJsInteraction implements DiscordInteraction {
     const discordEmbed = embed as EmbedBuilder;
     // Callers pass ActionRowBuilder<T>[] at runtime; cast through any for discord.js type compatibility
     const opts: Record<string, unknown> = { embeds: [discordEmbed], components };
+    if (this._makeEphemeral) opts.ephemeral = true;
     if (this.acknowledged) {
       await this.interaction.followUp(opts as Record<string, unknown>);
     } else {

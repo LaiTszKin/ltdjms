@@ -20,6 +20,7 @@ export class DiceGame1ConfigHandler {
     interaction: DiscordInteraction,
     context: DiscordContext,
   ): Promise<void> {
+    interaction.makeEphemeral();
     if (!interaction.isAdministrator()) {
       await interaction.reply('此操作需要管理員權限');
       return;
@@ -93,6 +94,7 @@ export class DiceGame2ConfigHandler {
     interaction: DiscordInteraction,
     context: DiscordContext,
   ): Promise<void> {
+    interaction.makeEphemeral();
     if (!interaction.isAdministrator()) {
       await interaction.reply('此操作需要管理員權限');
       return;

@@ -16,6 +16,7 @@ export async function ensureDeferred(
   interaction: DiscordInteraction,
 ): Promise<void> {
   if (!interaction.isAcknowledged()) {
+    interaction.makeEphemeral();
     await interaction.deferReply();
   }
 }
