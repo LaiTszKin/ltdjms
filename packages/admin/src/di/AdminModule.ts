@@ -139,6 +139,8 @@ export function configureAdminContainer(): void {
   const eventPublisher = container.resolve<DomainEventPublisher>(
     TOKENS.DomainEventPublisher,
   );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const logger: any = container.resolve<any>(TOKENS.Logger);
 
   // ============================================================
   // Infra (no dependencies)
@@ -150,7 +152,7 @@ export function configureAdminContainer(): void {
   const errorHandler = new BotErrorHandler();
   container.registerInstance(ADMIN_TOKENS.BotErrorHandler, errorHandler);
 
-  const slashCommandListener = new SlashCommandListener(metrics, errorHandler);
+  const slashCommandListener = new SlashCommandListener(metrics, errorHandler, logger);
   container.registerInstance(
     ADMIN_TOKENS.SlashCommandListener,
     slashCommandListener,

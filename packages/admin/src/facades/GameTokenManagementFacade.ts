@@ -1,4 +1,4 @@
-import { type Result, ok, err, DomainError } from '@ltdjms/shared';
+import { type Result, ok, err, DomainError, safeSnowflakeToNumber } from '@ltdjms/shared';
 import {
   type GameTokenService,
   type GameTokenTransactionService,
@@ -28,7 +28,7 @@ export class GameTokenManagementFacade {
    */
   async getTokens(guildId: string, userId: string): Promise<Result<number, DomainError>> {
     try {
-      const balance = await this.tokenService.getBalance(Number(guildId), userId);
+      const balance = await this.tokenService.getBalance(safeSnowflakeToNumber(guildId), userId);
       return ok(balance);
     } catch (e) {
       return err(
@@ -59,7 +59,7 @@ export class GameTokenManagementFacade {
     if (validation) return validation;
 
     return this.tokenService.tryAdjustTokens(
-      Number(guildId), userId, amount,
+      safeSnowflakeToNumber(guildId), userId, amount,
       GameTokenTransactionSource.ADMIN_ADJUSTMENT,
       reason,
     );
@@ -80,13 +80,13 @@ export class GameTokenManagementFacade {
     }
 
     try {
-      const currentBalance = await this.tokenService.getBalance(Number(guildId), userId);
+      const currentBalance = await this.tokenService.getBalance(safeSnowflakeToNumber(guildId), userId);
       const delta = amount - currentBalance;
 
       if (delta === 0) {
         // No change needed
         return ok({
-          guildId: Number(guildId),
+          guildId: safeSnowflakeToNumber(guildId),
           userId: String(userId),
           previousTokens: currentBalance,
           newTokens: currentBalance,
@@ -94,7 +94,7 @@ export class GameTokenManagementFacade {
         });
       }
 
-      return this.tokenService.tryAdjustTokens(Number(guildId), userId, delta);
+      return this.tokenService.tryAdjustTokens(safeSnowflakeToNumber(guildId), userId, delta);
     } catch (e) {
       return err(
         DomainError.persistenceFailure(
@@ -116,7 +116,7 @@ export class GameTokenManagementFacade {
   ): Promise<Result<TransactionPage<GameTokenTransaction>, DomainError>> {
     try {
       const txPage = await this.tokenTransactionService.getTransactionPage(
-        Number(guildId),
+        safeSnowflakeToNumber(guildId),
         userId,
         page,
         pageSize,

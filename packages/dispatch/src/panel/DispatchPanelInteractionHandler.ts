@@ -2,6 +2,7 @@ import {
   type DiscordInteraction, type DiscordContext, type DiscordRuntimeGateway,
   type EmbedView, type ButtonView,
   ButtonStyle,
+  safeSnowflakeToNumber,
 } from '@ltdjms/shared';
 import {
   type EscortDispatchOrderService,
@@ -215,7 +216,7 @@ export class DispatchPanelInteractionHandler {
 
   private async showCreateMode(interaction: DiscordInteraction, guildId: string): Promise<void> {
     const view = buildCreateModeEmbed();
-    const guildIdNum = Number(guildId);
+    const guildIdNum = safeSnowflakeToNumber(guildId);
 
     if (Number.isNaN(guildIdNum)) {
       const errorView = buildQueryFailedEmbed();
@@ -263,7 +264,7 @@ export class DispatchPanelInteractionHandler {
 
   private async showAssignMode(interaction: DiscordInteraction, guildId: string): Promise<void> {
     const view = buildAssignModeEmbed();
-    const guildIdNum = Number(guildId);
+    const guildIdNum = safeSnowflakeToNumber(guildId);
 
     if (Number.isNaN(guildIdNum)) {
       const errorView = buildQueryFailedEmbed();
@@ -319,7 +320,7 @@ export class DispatchPanelInteractionHandler {
   }
 
   private async showRecentOrders(interaction: DiscordInteraction, guildId: string): Promise<void> {
-    const guildIdNum = Number(guildId);
+    const guildIdNum = safeSnowflakeToNumber(guildId);
     if (Number.isNaN(guildIdNum)) {
       const errorView = buildQueryFailedEmbed();
       await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
@@ -341,7 +342,7 @@ export class DispatchPanelInteractionHandler {
 
   private async showHistory(interaction: DiscordInteraction, guildId: string): Promise<void> {
     // History is same as recent orders for now
-    const guildIdNum = Number(guildId);
+    const guildIdNum = safeSnowflakeToNumber(guildId);
     if (Number.isNaN(guildIdNum)) {
       const errorView = buildQueryFailedEmbed();
       await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
@@ -382,7 +383,7 @@ export class DispatchPanelInteractionHandler {
 
     const result = await this.dispatchOrderService.confirmOrder(
       session.selectedOrderNumber,
-      Number(userId),
+      safeSnowflakeToNumber(userId),
     );
 
     if (result.isErr()) {
@@ -414,7 +415,7 @@ export class DispatchPanelInteractionHandler {
 
     const result = await this.dispatchOrderService.requestCompletion(
       session.selectedOrderNumber,
-      Number(userId),
+      safeSnowflakeToNumber(userId),
     );
 
     if (result.isErr()) {
@@ -446,7 +447,7 @@ export class DispatchPanelInteractionHandler {
 
     const result = await this.dispatchOrderService.customerConfirmCompletion(
       session.selectedOrderNumber,
-      Number(userId),
+      safeSnowflakeToNumber(userId),
     );
 
     if (result.isErr()) {
@@ -478,7 +479,7 @@ export class DispatchPanelInteractionHandler {
 
     const result = await this.dispatchOrderService.requestAfterSales(
       session.selectedOrderNumber,
-      Number(userId),
+      safeSnowflakeToNumber(userId),
     );
 
     if (result.isErr()) {
@@ -524,7 +525,7 @@ export class DispatchPanelInteractionHandler {
 
     const result = await this.dispatchOrderService.claimAfterSales(
       session.selectedOrderNumber,
-      Number(userId),
+      safeSnowflakeToNumber(userId),
     );
 
     if (result.isErr()) {
@@ -556,7 +557,7 @@ export class DispatchPanelInteractionHandler {
 
     const result = await this.dispatchOrderService.closeAfterSales(
       session.selectedOrderNumber,
-      Number(userId),
+      safeSnowflakeToNumber(userId),
     );
 
     if (result.isErr()) {
@@ -646,7 +647,7 @@ export class DispatchPanelInteractionHandler {
     const canClaimAfterSales = isAfterSalesRequested(order);
     const canCloseAfterSales =
       isAfterSalesInProgress(order) &&
-      isAfterSalesAssignee(order, Number(userId));
+      isAfterSalesAssignee(order, safeSnowflakeToNumber(userId));
     const buttons = buildOrderDetailActionRow(canConfirm, canComplete, canRequestAfterSales, canClaimAfterSales, canCloseAfterSales);
 
     // P0-2: 在 Assign Mode 中顯示 member select menu + 派發訂單按鈕
@@ -735,7 +736,7 @@ export class DispatchPanelInteractionHandler {
     userId: string,
     session: DispatchSessionState,
   ): Promise<void> {
-    const guildIdNum = Number(guildId);
+    const guildIdNum = safeSnowflakeToNumber(guildId);
     if (Number.isNaN(guildIdNum)) {
       const errorView = buildQueryFailedEmbed();
       await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
@@ -750,7 +751,7 @@ export class DispatchPanelInteractionHandler {
 
     const result = await this.dispatchOrderService.createManualOpenOrder(
       guildIdNum,
-      Number(userId),
+      safeSnowflakeToNumber(userId),
       session.selectedCustomerId,
       session.selectedOptionCode,
     );
@@ -806,7 +807,7 @@ export class DispatchPanelInteractionHandler {
     _userId: string,
     session: DispatchSessionState,
   ): Promise<void> {
-    const guildIdNum = Number(guildId);
+    const guildIdNum = safeSnowflakeToNumber(guildId);
     if (Number.isNaN(guildIdNum)) {
       const errorView = buildQueryFailedEmbed();
       await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
@@ -825,7 +826,7 @@ export class DispatchPanelInteractionHandler {
 
     const result = await this.dispatchOrderService.assignPendingOrder(
       session.selectedOrderNumber,
-      Number(_userId),
+      safeSnowflakeToNumber(_userId),
       session.selectedEscortUserId,
     );
 
@@ -919,7 +920,7 @@ export class DispatchPanelInteractionHandler {
     orderNumber: string,
     userId: string,
   ): Promise<void> {
-    const result = await this.dispatchOrderService.confirmOrder(orderNumber, Number(userId));
+    const result = await this.dispatchOrderService.confirmOrder(orderNumber, safeSnowflakeToNumber(userId));
     if (result.isErr()) {
       const errorView = buildErrorEmbed(result.getError().message);
       await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
@@ -938,7 +939,7 @@ export class DispatchPanelInteractionHandler {
     orderNumber: string,
     userId: string,
   ): Promise<void> {
-    const result = await this.dispatchOrderService.requestCompletion(orderNumber, Number(userId));
+    const result = await this.dispatchOrderService.requestCompletion(orderNumber, safeSnowflakeToNumber(userId));
     if (result.isErr()) {
       const errorView = buildErrorEmbed(result.getError().message);
       await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
@@ -957,7 +958,7 @@ export class DispatchPanelInteractionHandler {
     orderNumber: string,
     userId: string,
   ): Promise<void> {
-    const result = await this.dispatchOrderService.customerConfirmCompletion(orderNumber, Number(userId));
+    const result = await this.dispatchOrderService.customerConfirmCompletion(orderNumber, safeSnowflakeToNumber(userId));
     if (result.isErr()) {
       const errorView = buildErrorEmbed(result.getError().message);
       await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
@@ -976,7 +977,7 @@ export class DispatchPanelInteractionHandler {
     orderNumber: string,
     userId: string,
   ): Promise<void> {
-    const result = await this.dispatchOrderService.requestAfterSales(orderNumber, Number(userId));
+    const result = await this.dispatchOrderService.requestAfterSales(orderNumber, safeSnowflakeToNumber(userId));
     if (result.isErr()) {
       const errorView = buildErrorEmbed(result.getError().message);
       await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
@@ -995,7 +996,7 @@ export class DispatchPanelInteractionHandler {
     orderNumber: string,
     userId: string,
   ): Promise<void> {
-    const result = await this.dispatchOrderService.claimAfterSales(orderNumber, Number(userId));
+    const result = await this.dispatchOrderService.claimAfterSales(orderNumber, safeSnowflakeToNumber(userId));
     if (result.isErr()) {
       const errorView = buildErrorEmbed(result.getError().message);
       await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);
@@ -1014,7 +1015,7 @@ export class DispatchPanelInteractionHandler {
     orderNumber: string,
     userId: string,
   ): Promise<void> {
-    const result = await this.dispatchOrderService.closeAfterSales(orderNumber, Number(userId));
+    const result = await this.dispatchOrderService.closeAfterSales(orderNumber, safeSnowflakeToNumber(userId));
     if (result.isErr()) {
       const errorView = buildErrorEmbed(result.getError().message);
       await interaction.replyEmbed(embedViewToApiEmbed(errorView) as never);

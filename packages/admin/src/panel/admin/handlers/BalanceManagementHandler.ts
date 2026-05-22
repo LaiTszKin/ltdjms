@@ -43,6 +43,7 @@ export class BalanceManagementHandler extends BaseAdminHandler {
   ): Promise<void> {
     const guildId = interaction.getGuildId();
     const userId = interaction.getUserId();
+    const fullCustomId = interaction.getCustomId();
 
     // Permission check
     if (!this.checkAdminPermission(interaction)) {
@@ -59,8 +60,6 @@ export class BalanceManagementHandler extends BaseAdminHandler {
     await this.ensureDeferred(interaction);
 
     this.sessionManager.setViewState(guildId, userId, AdminPanelViewState.BALANCE);
-
-    const fullCustomId = interaction.getCustomId();
 
     // Modal submit handling
     if (fullCustomId === 'admin_balance_add' || fullCustomId === 'admin_balance_deduct' || fullCustomId === 'admin_balance_set') {

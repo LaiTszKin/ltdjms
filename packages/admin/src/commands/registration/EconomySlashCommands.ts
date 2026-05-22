@@ -32,7 +32,7 @@ export const DiceGame1SlashCommand: SlashCommandDefinition = {
   name: 'dice-game-1',
   description: '骰子遊戲 1',
   defaultMemberPermissions: null,
-  nameLocalizations: { 'zh-TW': '骰子遊戲 1' },
+  nameLocalizations: { 'zh-TW': '骰子遊戲1' },
   descriptionLocalizations: { 'zh-TW': '使用遊戲代幣進行骰子遊戲 1' },
   options: [
     { name: 'tokens', description: '要使用的代幣數量', type: 4, required: true },
@@ -44,7 +44,7 @@ export const DiceGame2SlashCommand: SlashCommandDefinition = {
   name: 'dice-game-2',
   description: '骰子遊戲 2',
   defaultMemberPermissions: null,
-  nameLocalizations: { 'zh-TW': '骰子遊戲 2' },
+  nameLocalizations: { 'zh-TW': '骰子遊戲2' },
   descriptionLocalizations: { 'zh-TW': '使用遊戲代幣進行骰子遊戲 2' },
   options: [
     { name: 'tokens', description: '要使用的代幣數量', type: 4, required: true },
@@ -56,7 +56,7 @@ export const DiceGame1ConfigSlashCommand: SlashCommandDefinition = {
   name: 'dice-game-1-config',
   description: '設定骰子遊戲 1 參數',
   defaultMemberPermissions: '8',
-  nameLocalizations: { 'zh-TW': '骰子遊戲 1 設定' },
+  nameLocalizations: { 'zh-TW': '骰子遊戲1設定' },
   descriptionLocalizations: { 'zh-TW': '設定骰子遊戲 1 的參數（管理員專用）' },
 };
 
@@ -65,7 +65,7 @@ export const DiceGame2ConfigSlashCommand: SlashCommandDefinition = {
   name: 'dice-game-2-config',
   description: '設定骰子遊戲 2 參數',
   defaultMemberPermissions: '8',
-  nameLocalizations: { 'zh-TW': '骰子遊戲 2 設定' },
+  nameLocalizations: { 'zh-TW': '骰子遊戲2設定' },
   descriptionLocalizations: { 'zh-TW': '設定骰子遊戲 2 的參數（管理員專用）' },
 };
 

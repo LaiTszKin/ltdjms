@@ -1,5 +1,6 @@
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { eq, and, desc, count } from 'drizzle-orm';
+import { safeSnowflakeToNumber } from '@ltdjms/shared';
 import { gameTokenTransaction } from '../../domain/schema.js';
 import type { GameTokenTransaction } from '../../domain/types.js';
 import { GameTokenTransactionSource } from '../../domain/types.js';
@@ -19,7 +20,7 @@ export class TokenTransactionRepository {
       .insert(gameTokenTransaction)
       .values({
         guildId: tx.guildId,
-        userId: Number(tx.userId),
+        userId: safeSnowflakeToNumber(tx.userId),
         amount: tx.amount,
         balanceAfter: tx.balanceAfter,
         source: tx.source,
@@ -46,7 +47,7 @@ export class TokenTransactionRepository {
       .where(
         and(
           eq(gameTokenTransaction.guildId, guildId),
-          eq(gameTokenTransaction.userId, Number(userId)),
+          eq(gameTokenTransaction.userId, safeSnowflakeToNumber(userId)),
         ),
       )
       .orderBy(desc(gameTokenTransaction.createdAt))
@@ -66,7 +67,7 @@ export class TokenTransactionRepository {
       .where(
         and(
           eq(gameTokenTransaction.guildId, guildId),
-          eq(gameTokenTransaction.userId, Number(userId)),
+          eq(gameTokenTransaction.userId, safeSnowflakeToNumber(userId)),
         ),
       );
 
@@ -82,7 +83,7 @@ export class TokenTransactionRepository {
       .where(
         and(
           eq(gameTokenTransaction.guildId, guildId),
-          eq(gameTokenTransaction.userId, Number(userId)),
+          eq(gameTokenTransaction.userId, safeSnowflakeToNumber(userId)),
         ),
       );
   }

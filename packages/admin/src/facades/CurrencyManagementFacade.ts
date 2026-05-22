@@ -1,4 +1,4 @@
-import { type Result, ok, err, DomainError } from '@ltdjms/shared';
+import { type Result, ok, err, DomainError, safeSnowflakeToNumber } from '@ltdjms/shared';
 import { CurrencyTransactionSource } from '@ltdjms/economy';
 import type {
   BalanceService,
@@ -29,14 +29,14 @@ export class CurrencyManagementFacade {
    * Gets the currency configuration for a guild.
    */
   async getConfig(guildId: string): Promise<Result<GuildCurrencyConfig, DomainError>> {
-    return this.currencyConfigService.tryGetConfig(Number(guildId));
+    return this.currencyConfigService.tryGetConfig(safeSnowflakeToNumber(guildId));
   }
 
   /**
    * Gets the balance view for a member in a guild.
    */
   async getBalance(guildId: string, userId: string): Promise<Result<BalanceView, DomainError>> {
-    return this.balanceService.getBalance(Number(guildId), userId);
+    return this.balanceService.getBalance(safeSnowflakeToNumber(guildId), userId);
   }
 
   /**
@@ -53,7 +53,7 @@ export class CurrencyManagementFacade {
     if (validation) return validation;
 
     return this.balanceAdjustmentService.tryAdjustBalance(
-      Number(guildId),
+      safeSnowflakeToNumber(guildId),
       userId,
       amount,
       CurrencyTransactionSource.ADMIN_ADJUSTMENT,
@@ -76,7 +76,7 @@ export class CurrencyManagementFacade {
       return err(DomainError.invalidInput('設定金額必須為非負整數'));
     }
 
-    const currentResult = await this.balanceService.getBalance(Number(guildId), userId);
+    const currentResult = await this.balanceService.getBalance(safeSnowflakeToNumber(guildId), userId);
     if (currentResult.isErr()) {
       return err(currentResult.getError());
     }
@@ -85,7 +85,7 @@ export class CurrencyManagementFacade {
     const delta = amount - currentBalance;
 
     return this.balanceAdjustmentService.tryAdjustBalance(
-      Number(guildId),
+      safeSnowflakeToNumber(guildId),
       userId,
       delta,
       CurrencyTransactionSource.ADMIN_ADJUSTMENT,

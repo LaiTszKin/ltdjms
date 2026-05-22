@@ -1,6 +1,6 @@
 import { eq, and } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { DomainError, ok, okVoid, err, type Result, type Unit } from '@ltdjms/shared';
+import { DomainError, ok, okVoid, err, safeSnowflakeToNumber, type Result, type Unit } from '@ltdjms/shared';
 import type { AIAgentChannelConfig } from '../services/ai-chat-service.js';
 import type { AIAgentChannelConfigRepository } from '../services/routing/agent-config-service.js';
 import { aiAgentChannelConfig } from './schema.js';
@@ -35,7 +35,7 @@ export class DrizzleAIAgentChannelConfigRepository implements AIAgentChannelConf
         .from(aiAgentChannelConfig)
         .where(
           and(
-            eq(aiAgentChannelConfig.guildId, Number(guildId)),
+            eq(aiAgentChannelConfig.guildId, safeSnowflakeToNumber(guildId)),
             eq(aiAgentChannelConfig.channelId, Number(channelId)),
           ),
         )
@@ -64,7 +64,7 @@ export class DrizzleAIAgentChannelConfigRepository implements AIAgentChannelConf
       const [row] = await this.db
         .insert(aiAgentChannelConfig)
         .values({
-          guildId: Number(guildId),
+          guildId: safeSnowflakeToNumber(guildId),
           channelId: Number(channelId),
           agentEnabled: enabled,
         })
@@ -94,7 +94,7 @@ export class DrizzleAIAgentChannelConfigRepository implements AIAgentChannelConf
         .from(aiAgentChannelConfig)
         .where(
           and(
-            eq(aiAgentChannelConfig.guildId, Number(guildId)),
+            eq(aiAgentChannelConfig.guildId, safeSnowflakeToNumber(guildId)),
             eq(aiAgentChannelConfig.agentEnabled, true),
           ),
         );
@@ -118,7 +118,7 @@ export class DrizzleAIAgentChannelConfigRepository implements AIAgentChannelConf
         .delete(aiAgentChannelConfig)
         .where(
           and(
-            eq(aiAgentChannelConfig.guildId, Number(guildId)),
+            eq(aiAgentChannelConfig.guildId, safeSnowflakeToNumber(guildId)),
             eq(aiAgentChannelConfig.channelId, Number(channelId)),
           ),
         );

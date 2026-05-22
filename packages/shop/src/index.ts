@@ -35,6 +35,8 @@ export {
   SHOP_TOKENS,
   type ProductRewardService,
   type RedemptionTransactionService,
+  type BalanceService,
+  type BalanceAdjustmentService,
 } from './di/shop-module.js';
 
 export type { EscortDispatchHandoffService } from './domain/escort-dispatch-handoff-service.js';

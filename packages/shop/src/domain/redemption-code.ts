@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ok, err, DomainError, type Result } from '@ltdjms/shared';
+import { ok, err, DomainError, type Result, safeSnowflakeToNumber } from '@ltdjms/shared';
 
 /** Length of generated redemption codes. */
 export const CODE_LENGTH = 16;
@@ -58,7 +58,7 @@ export function withRedeemed(code: RedemptionCode, userId: string): Result<Redem
   }
   return ok(RedemptionCodeSchema.parse({
     ...code,
-    redeemedBy: Number(userId),
+    redeemedBy: safeSnowflakeToNumber(userId),
     redeemedAt: new Date(),
   }));
 }

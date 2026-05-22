@@ -54,7 +54,7 @@ export class DispatchManagementFacade {
    * Lists all after-sales staff user IDs for a guild.
    */
   async listStaff(guildId: string): Promise<Result<Set<number>, DomainError>> {
-    return this.staffService.getStaffUserIds(Number(guildId));
+    return this.staffService.getStaffUserIds(safeSnowflakeToNumber(guildId));
   }
 
   /**
@@ -62,7 +62,7 @@ export class DispatchManagementFacade {
    * Publishes DispatchAfterSalesConfigChangedEvent on success.
    */
   async addStaff(guildId: string, userId: string): Promise<Result<boolean, DomainError>> {
-    const result = await this.staffService.addStaff(Number(guildId), userId);
+    const result = await this.staffService.addStaff(safeSnowflakeToNumber(guildId), userId);
     if (result.isOk()) {
       this.eventPublisher.publish({
         eventType: 'dispatch_after_sales_config_changed',
@@ -78,7 +78,7 @@ export class DispatchManagementFacade {
    * Publishes DispatchAfterSalesConfigChangedEvent on success.
    */
   async removeStaff(guildId: string, userId: string): Promise<Result<boolean, DomainError>> {
-    const result = await this.staffService.removeStaff(Number(guildId), userId);
+    const result = await this.staffService.removeStaff(safeSnowflakeToNumber(guildId), userId);
     if (result.isOk()) {
       this.eventPublisher.publish({
         eventType: 'dispatch_after_sales_config_changed',
@@ -97,7 +97,7 @@ export class DispatchManagementFacade {
    * Counts active (non-terminal) escort dispatch orders for a guild.
    */
   async countActiveOrders(guildId: string): Promise<Result<number, DomainError>> {
-    return this.dispatchOrderService.countActiveOrders(Number(guildId));
+    return this.dispatchOrderService.countActiveOrders(safeSnowflakeToNumber(guildId));
   }
 
   // ================================================================
@@ -108,7 +108,7 @@ export class DispatchManagementFacade {
    * Lists all escort option prices with guild overrides.
    */
   async listPricing(guildId: string): Promise<Result<OptionPriceView[], DomainError>> {
-    return this.pricingService.listOptionPrices(Number(guildId));
+    return this.pricingService.listOptionPrices(safeSnowflakeToNumber(guildId));
   }
 
   /**
@@ -122,7 +122,7 @@ export class DispatchManagementFacade {
     price: number,
   ): Promise<Result<OptionPriceView, DomainError>> {
     const result = await this.pricingService.updateOptionPrice(
-      Number(guildId),
+      safeSnowflakeToNumber(guildId),
       safeSnowflakeToNumber(actorId),
       optionCode,
       price,
@@ -145,7 +145,7 @@ export class DispatchManagementFacade {
    * Publishes EscortPricingChangedEvent on success.
    */
   async resetPricing(guildId: string, optionCode: string): Promise<Result<void, DomainError>> {
-    const result = await this.pricingService.resetOptionPrice(Number(guildId), optionCode);
+    const result = await this.pricingService.resetOptionPrice(safeSnowflakeToNumber(guildId), optionCode);
     if (result.isOk()) {
       this.eventPublisher.publish({
         eventType: 'escort_pricing_changed',

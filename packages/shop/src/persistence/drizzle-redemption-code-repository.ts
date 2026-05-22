@@ -1,5 +1,6 @@
 import { eq, and, isNull, or, sql, gt, gte, lte } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { safeSnowflakeToNumber } from '@ltdjms/shared';
 import { type RedemptionCodeRepository, type CodeStats, createCodeStatsZero } from '../domain/redemption-code-repository.js';
 import { type RedemptionCode } from '../domain/redemption-code.js';
 import { redemptionCode as redemptionCodeTable } from './schema.js';
@@ -96,7 +97,7 @@ export class DrizzleRedemptionCodeRepository implements RedemptionCodeRepository
     const result = await this.db
       .update(redemptionCodeTable)
       .set({
-        redeemedBy: Number(userId),
+        redeemedBy: safeSnowflakeToNumber(userId),
         redeemedAt,
       })
       .where(
@@ -127,7 +128,7 @@ export class DrizzleRedemptionCodeRepository implements RedemptionCodeRepository
       .where(
         and(
           eq(redemptionCodeTable.id, codeId),
-          eq(redemptionCodeTable.redeemedBy, Number(userId)),
+          eq(redemptionCodeTable.redeemedBy, safeSnowflakeToNumber(userId)),
           eq(redemptionCodeTable.redeemedAt, redeemedAt),
         ),
       );

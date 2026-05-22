@@ -1,4 +1,4 @@
-import { Result, ok, err, DomainError } from '@ltdjms/shared';
+import { Result, ok, err, DomainError, safeSnowflakeToNumber } from '@ltdjms/shared';
 import type { FiatOrderRepository } from '../domain/fiat-order-repository.js';
 import { createPending, toFulfillmentProduct } from '../domain/fiat-order.js';
 import { EcpayCvsPaymentService } from './ecpay-cvs-payment.service.js';
@@ -99,7 +99,7 @@ export class FiatOrderService {
     try {
       const order = createPending(
         guildId,
-        Number(userId),
+        safeSnowflakeToNumber(userId),
         product.id,
         product.name,
         product.rewardType as RewardType | null,

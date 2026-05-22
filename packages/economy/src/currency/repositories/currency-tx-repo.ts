@@ -1,5 +1,6 @@
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { eq, and, desc, count } from 'drizzle-orm';
+import { safeSnowflakeToNumber } from '@ltdjms/shared';
 import { currencyTransaction } from '../../domain/schema.js';
 import type { CurrencyTransaction } from '../../domain/types.js';
 import { CurrencyTransactionSource } from '../../domain/types.js';
@@ -19,7 +20,7 @@ export class CurrencyTransactionRepository {
       .insert(currencyTransaction)
       .values({
         guildId: tx.guildId,
-        userId: Number(tx.userId),
+        userId: safeSnowflakeToNumber(tx.userId),
         amount: tx.amount,
         balanceAfter: tx.balanceAfter,
         source: tx.source,
@@ -46,7 +47,7 @@ export class CurrencyTransactionRepository {
       .where(
         and(
           eq(currencyTransaction.guildId, guildId),
-          eq(currencyTransaction.userId, Number(userId)),
+          eq(currencyTransaction.userId, safeSnowflakeToNumber(userId)),
         ),
       )
       .orderBy(desc(currencyTransaction.createdAt))
@@ -66,7 +67,7 @@ export class CurrencyTransactionRepository {
       .where(
         and(
           eq(currencyTransaction.guildId, guildId),
-          eq(currencyTransaction.userId, Number(userId)),
+          eq(currencyTransaction.userId, safeSnowflakeToNumber(userId)),
         ),
       );
 
@@ -82,7 +83,7 @@ export class CurrencyTransactionRepository {
       .where(
         and(
           eq(currencyTransaction.guildId, guildId),
-          eq(currencyTransaction.userId, Number(userId)),
+          eq(currencyTransaction.userId, safeSnowflakeToNumber(userId)),
         ),
       );
   }

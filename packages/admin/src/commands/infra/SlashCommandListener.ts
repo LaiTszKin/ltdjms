@@ -31,6 +31,8 @@ export class SlashCommandListener {
   constructor(
     metrics?: SlashCommandMetrics,
     errorHandler?: BotErrorHandler,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    private readonly logger?: any,
   ) {
     this.metrics = metrics ?? new SlashCommandMetrics();
     this.errorHandler = errorHandler ?? new BotErrorHandler();
@@ -79,9 +81,11 @@ export class SlashCommandListener {
   listen(gateway: DiscordRuntimeGateway): void {
     const client = gateway.requireReadyClient() as Client;
     client.on('interactionCreate', async (rawInteraction) => {
+      this.logger?.info({ type: 'interactionCreate' }, 'Interaction received');
       try {
         await this.handleRawInteraction(rawInteraction);
       } catch (err) {
+        this.logger?.error({ err }, '[SlashCommandListener] Unhandled error in interactionCreate');
         console.error('[SlashCommandListener] Unhandled error in interactionCreate:', err);
       }
     });
@@ -104,11 +108,7 @@ export class SlashCommandListener {
       type = 'button';
       commandNameOrCustomId = String(interaction.customId ?? '');
     } else if (
-      typeof interaction.isStringSelectMenu === 'function' && interaction.isStringSelectMenu() ||
-      typeof interaction.isUserSelect === 'function' && interaction.isUserSelect() ||
-      typeof interaction.isRoleSelect === 'function' && interaction.isRoleSelect() ||
-      typeof interaction.isMentionableSelect === 'function' && interaction.isMentionableSelect() ||
-      typeof interaction.isChannelSelect === 'function' && interaction.isChannelSelect()
+      typeof interaction.isAnySelectMenu === 'function' && interaction.isAnySelectMenu()
     ) {
       type = 'stringSelect';
       commandNameOrCustomId = String(interaction.customId ?? '');
@@ -179,6 +179,7 @@ export class SlashCommandListener {
 
       const elapsedMs = performance.now() - startTime;
       this.metrics.recordEnd(commandNameOrCustomId, elapsedMs, success);
+      this.logger?.info({ commandNameOrCustomId, type, elapsedMs, success }, 'Interaction handled');
     } catch (err) {
       const elapsedMs = performance.now() - startTime;
       this.metrics.recordEnd(commandNameOrCustomId, elapsedMs, false);

@@ -1,6 +1,6 @@
 import { eq, and, notInArray } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { DomainError, ok, okVoid, err, type Result, type Unit } from '@ltdjms/shared';
+import { DomainError, ok, okVoid, err, safeSnowflakeToNumber, type Result, type Unit } from '@ltdjms/shared';
 import type {
   AllowedChannel,
   AllowedCategory,
@@ -42,7 +42,7 @@ export class DrizzleAIChannelRestrictionRepository implements AIChannelRestricti
       .from(aiAllowedChannel)
       .where(
         and(
-          eq(aiAllowedChannel.guildId, Number(guildId)),
+          eq(aiAllowedChannel.guildId, safeSnowflakeToNumber(guildId)),
           eq(aiAllowedChannel.channelId, Number(channelId)),
         ),
       )
@@ -54,7 +54,7 @@ export class DrizzleAIChannelRestrictionRepository implements AIChannelRestricti
     const rows = await this.db
       .select()
       .from(aiAllowedChannel)
-      .where(eq(aiAllowedChannel.guildId, Number(guildId)))
+      .where(eq(aiAllowedChannel.guildId, safeSnowflakeToNumber(guildId)))
       .limit(500);
     return rows.map(mapChannelRow);
   }
@@ -71,7 +71,7 @@ export class DrizzleAIChannelRestrictionRepository implements AIChannelRestricti
     const rows = await this.db
       .select()
       .from(aiAllowedCategory)
-      .where(eq(aiAllowedCategory.guildId, Number(guildId)))
+      .where(eq(aiAllowedCategory.guildId, safeSnowflakeToNumber(guildId)))
       .limit(500);
     return rows.map(mapCategoryRow);
   }
@@ -94,7 +94,7 @@ export class DrizzleAIChannelRestrictionRepository implements AIChannelRestricti
       const [row] = await this.db
         .insert(aiAllowedChannel)
         .values({
-          guildId: Number(guildId),
+          guildId: safeSnowflakeToNumber(guildId),
           channelId: Number(channel.channelId),
           channelName: channel.channelName,
         })
@@ -137,7 +137,7 @@ export class DrizzleAIChannelRestrictionRepository implements AIChannelRestricti
       const [row] = await this.db
         .insert(aiAllowedCategory)
         .values({
-          guildId: Number(guildId),
+          guildId: safeSnowflakeToNumber(guildId),
           categoryId: Number(category.categoryId),
           categoryName: category.categoryName,
         })
@@ -171,7 +171,7 @@ export class DrizzleAIChannelRestrictionRepository implements AIChannelRestricti
         .delete(aiAllowedChannel)
         .where(
           and(
-            eq(aiAllowedChannel.guildId, Number(guildId)),
+            eq(aiAllowedChannel.guildId, safeSnowflakeToNumber(guildId)),
             eq(aiAllowedChannel.channelId, Number(channelId)),
           ),
         );
@@ -198,7 +198,7 @@ export class DrizzleAIChannelRestrictionRepository implements AIChannelRestricti
         .delete(aiAllowedCategory)
         .where(
           and(
-            eq(aiAllowedCategory.guildId, Number(guildId)),
+            eq(aiAllowedCategory.guildId, safeSnowflakeToNumber(guildId)),
             eq(aiAllowedCategory.categoryId, Number(categoryId)),
           ),
         );
@@ -220,7 +220,7 @@ export class DrizzleAIChannelRestrictionRepository implements AIChannelRestricti
     guildId: string,
     validChannelIds: string[],
   ): Promise<void> {
-    const numericGuildId = Number(guildId);
+    const numericGuildId = safeSnowflakeToNumber(guildId);
     if (validChannelIds.length === 0) {
       await this.db
         .delete(aiAllowedChannel)

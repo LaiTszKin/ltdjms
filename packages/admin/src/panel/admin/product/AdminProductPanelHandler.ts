@@ -1,6 +1,7 @@
 import {
   type DiscordInteraction,
   type DiscordContext,
+  safeSnowflakeToNumber,
 } from '@ltdjms/shared';
 import {
   EmbedBuilder,
@@ -280,7 +281,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     try {
       const product = await this.productFacade.createProduct(
         {
-          guildId: Number(guildId),
+          guildId: safeSnowflakeToNumber(guildId),
           name,
           description,
           rewardType: null,
@@ -479,7 +480,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     }
 
     try {
-      const savedCodes = await this.productFacade.generateAndSaveCodes(productId, count, Number(guildId), expiresAt);
+      const savedCodes = await this.productFacade.generateAndSaveCodes(productId, count, safeSnowflakeToNumber(guildId), expiresAt);
 
       this.sessionManager.setViewState(guildId, interaction.getUserId(), AdminPanelViewState.PRODUCT_CODE_LIST);
 
@@ -633,7 +634,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     page: number,
   ): Promise<void> {
     try {
-      const shopPage = await this.productFacade.getShopPage(Number(guildId), page);
+      const shopPage = await this.productFacade.getShopPage(safeSnowflakeToNumber(guildId), page);
 
       const embedData = this.viewFactory.buildProductListEmbed(
         shopPage.products,

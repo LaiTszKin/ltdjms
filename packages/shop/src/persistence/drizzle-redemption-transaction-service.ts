@@ -1,6 +1,7 @@
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { productRedemptionTransaction as txTable } from './schema.js';
 import { count, desc, and, eq } from 'drizzle-orm';
+import { safeSnowflakeToNumber } from '@ltdjms/shared';
 import type { RedemptionTransactionService } from '../di/shop-module.js';
 import type { Product } from '../domain/product-types.js';
 
@@ -19,7 +20,7 @@ export class DrizzleRedemptionTransactionService implements RedemptionTransactio
   ): Promise<unknown> {
     return await this.db.insert(txTable).values({
       guildId: guildId,
-      userId: Number(userId),
+      userId: safeSnowflakeToNumber(userId),
       productId: product.id as number,
       productName: product.name,
       redemptionCode: code.code,
@@ -44,7 +45,7 @@ export class DrizzleRedemptionTransactionService implements RedemptionTransactio
     const countResult = await this.db
       .select({ total: count() })
       .from(txTable)
-      .where(and(eq(txTable.guildId, guildId), eq(txTable.userId, Number(userId))));
+      .where(and(eq(txTable.guildId, guildId), eq(txTable.userId, safeSnowflakeToNumber(userId))));
 
     const totalCount = Number(countResult[0]?.total ?? 0);
     const totalPages = Math.max(1, Math.ceil(totalCount / safePageSize));
@@ -53,7 +54,7 @@ export class DrizzleRedemptionTransactionService implements RedemptionTransactio
     const rows = await this.db
       .select()
       .from(txTable)
-      .where(and(eq(txTable.guildId, guildId), eq(txTable.userId, Number(userId))))
+      .where(and(eq(txTable.guildId, guildId), eq(txTable.userId, safeSnowflakeToNumber(userId))))
       .orderBy(desc(txTable.createdAt))
       .limit(safePageSize)
       .offset(offset);

@@ -4,6 +4,7 @@ import {
   err,
   DomainError,
   type DomainEventPublisher,
+  safeSnowflakeToNumber,
 } from '@ltdjms/shared';
 import {
   type DiceConfigService,
@@ -52,7 +53,7 @@ export class GameConfigManagementFacade {
     guildId: string,
   ): Promise<Result<DiceGame1Config, DomainError>> {
     try {
-      const config = await this.diceConfigService.findDice1Config(Number(guildId));
+      const config = await this.diceConfigService.findDice1Config(safeSnowflakeToNumber(guildId));
       if (!config) {
         return err(DomainError.invalidInput('尚未設定骰子遊戲 1 的設定'));
       }
@@ -89,7 +90,7 @@ export class GameConfigManagementFacade {
 
     try {
       const now = new Date();
-      const numericGuildId = Number(guildId);
+      const numericGuildId = safeSnowflakeToNumber(guildId);
       const currentConfig = await this.diceConfigService.findDice1Config(numericGuildId);
 
       const updated: DiceGame1Config = {
@@ -127,7 +128,7 @@ export class GameConfigManagementFacade {
     guildId: string,
   ): Promise<Result<DiceGame2Config, DomainError>> {
     try {
-      const config = await this.diceConfigService.findDice2Config(Number(guildId));
+      const config = await this.diceConfigService.findDice2Config(safeSnowflakeToNumber(guildId));
       if (!config) {
         return err(DomainError.invalidInput('尚未設定骰子遊戲 2 的設定'));
       }
@@ -167,7 +168,7 @@ export class GameConfigManagementFacade {
 
     try {
       const now = new Date();
-      const numericGuildId = Number(guildId);
+      const numericGuildId = safeSnowflakeToNumber(guildId);
       const currentConfig = await this.diceConfigService.findDice2Config(numericGuildId);
 
       const updated: DiceGame2Config = {

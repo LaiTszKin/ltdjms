@@ -1,5 +1,5 @@
 import type { Result } from '@ltdjms/shared';
-import { Ok, Err, DomainError, okVoid, type Unit } from '@ltdjms/shared';
+import { Ok, Err, DomainError, okVoid, safeSnowflakeToNumber, type Unit } from '@ltdjms/shared';
 
 import type { DispatchAfterSalesStaffRepo } from '../repo/dispatch-after-sales-staff.repo.js';
 
@@ -55,12 +55,12 @@ export class DispatchAfterSalesStaffService {
     const now = Date.now();
     const cached = this.staffCache.get(guildId);
     if (cached && cached.expiresAt > now) {
-      return cached.staff.has(Number(userId));
+      return cached.staff.has(safeSnowflakeToNumber(userId));
     }
     try {
       const staff = await this.repository.findStaffUserIds(guildId);
       this.staffCache.set(guildId, { staff, expiresAt: now + DispatchAfterSalesStaffService.STAFF_CACHE_TTL_MS });
-      return staff.has(Number(userId));
+      return staff.has(safeSnowflakeToNumber(userId));
     } catch {
       return false;
     }
