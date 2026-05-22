@@ -23,6 +23,7 @@
     "@ltdjms/shop": "workspace:*",
     "@ltdjms/ai": "workspace:*",
     "@ltdjms/admin": "workspace:*",
+    "reflect-metadata": "^0.2.0",
     "discord.js": "^14.18.0",
     "pino": "^9.6.0",
     "tsyringe": "^4.8.0",
