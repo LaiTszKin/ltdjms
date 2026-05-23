@@ -54,9 +54,12 @@ export class DiceConfigService {
   /**
    * Upserts dice game 1 configuration and publishes a
    * DiceGameConfigChangedEvent on success.
+   *
+   * @param config - the config to save
+   * @param previousVersion - pre-fetched old config to avoid redundant DB query (P2-5)
    */
-  async upsertDice1Config(config: DiceGame1Config): Promise<DiceGame1Config> {
-    const oldConfig = await this.diceConfigRepository.findDice1Config(config.guildId);
+  async upsertDice1Config(config: DiceGame1Config, previousVersion?: DiceGame1Config | null): Promise<DiceGame1Config> {
+    const oldConfig = previousVersion ?? await this.diceConfigRepository.findDice1Config(config.guildId);
 
     const saved = await this.diceConfigRepository.upsertDice1Config(config);
 
@@ -75,9 +78,12 @@ export class DiceConfigService {
   /**
    * Upserts dice game 2 configuration and publishes a
    * DiceGameConfigChangedEvent on success.
+   *
+   * @param config - the config to save
+   * @param previousVersion - pre-fetched old config to avoid redundant DB query (P2-5)
    */
-  async upsertDice2Config(config: DiceGame2Config): Promise<DiceGame2Config> {
-    const oldConfig = await this.diceConfigRepository.findDice2Config(config.guildId);
+  async upsertDice2Config(config: DiceGame2Config, previousVersion?: DiceGame2Config | null): Promise<DiceGame2Config> {
+    const oldConfig = previousVersion ?? await this.diceConfigRepository.findDice2Config(config.guildId);
 
     const saved = await this.diceConfigRepository.upsertDice2Config(config);
 

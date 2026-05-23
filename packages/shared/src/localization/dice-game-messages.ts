@@ -5,6 +5,7 @@ export const DiceGameMessages = {
 
   // Game 2
   GAME_2_TITLE: '骰子遊戲2結果',
+  GAME_2_DICE_RESULT: '骰子結果：{dice}',
   GAME_2_STRAIGHT_REWARD: '順子：{icon} {reward} {name}',
   GAME_2_TRIPLE_REWARD: '三條：{icon} {reward} {name}（{count} 組）',
   GAME_2_BASE_REWARD: '基礎：{icon} {reward} {name}',

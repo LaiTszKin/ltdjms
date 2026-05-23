@@ -102,12 +102,18 @@ export class DiceGame2Handler {
       return;
     }
 
+    // Get currency info for display with fallback defaults (P1-1)
+    let currencyName = 'G';
+    let currencyIcon = '🪙';
     try {
-      // Get currency info for display (P2-3)
       const currencyConfig = await this.currencyConfigService.getConfig(guildId);
-      const currencyName = currencyConfig.currencyName;
-      const currencyIcon = currencyConfig.currencyIcon;
+      currencyName = currencyConfig.currencyName;
+      currencyIcon = currencyConfig.currencyIcon;
+    } catch {
+      // Use defaults on failure — game results must not be lost
+    }
 
+    try {
       // Play the game
       const result = await this.diceGame2Service.play(guildId, userId, tokenCount, config);
 
@@ -131,7 +137,7 @@ export class DiceGame2Handler {
       const parts: string[] = [
         `**${DiceGameMessages.GAME_2_TITLE}**`,
         '',
-        `骰子結果：${diceDisplay}`,
+        DiceGameMessages.GAME_2_DICE_RESULT.replace('{dice}', diceDisplay),
         '',
       ];
 

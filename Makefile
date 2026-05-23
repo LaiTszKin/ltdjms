@@ -14,7 +14,10 @@ build:
 
 test:
 	pnpm vitest run --project @ltdjms/shared && \
-	pnpm vitest run --project @ltdjms/games && \
+	pnpm vitest run --project @ltdjms/games --exclude '**/*.pbt.test.ts' && \
+	for f in packages/games/src/__tests__/*.pbt.test.ts; do \
+	  pnpm vitest run --project @ltdjms/games "$$f" || exit 1; \
+	done && \
 	pnpm vitest run --project @ltdjms/admin && \
 	pnpm vitest run --project @ltdjms/ai && \
 	pnpm vitest run --project @ltdjms/dispatch && \

@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { Ok, Err, DomainError } from '@ltdjms/shared';
 import { GameRewardService } from '../dice/services/game-reward-service.js';
 import { MAX_ADJUSTMENT_AMOUNT } from '../domain/types.js';
-import type { CurrencyTransactionSource, BalanceAdjustmentResult, BalanceView } from '@ltdjms/economy';
+import type { CurrencyTransactionSource, BalanceAdjustmentResult } from '@ltdjms/economy';
 
 describe('GameRewardService', () => {
   /** Creates a mock BalanceAdjustmentService for DI (P2-8). */
@@ -13,23 +13,12 @@ describe('GameRewardService', () => {
   }
 
   describe('creditReward', () => {
-    it('should return current balance when reward is 0 instead of returning 0 (P0-3)', async () => {
+    it('should return zero balances when reward is 0', async () => {
       const mockAdjustmentService = createMockBalanceAdjustmentService();
-      const mockBalanceService = {
-        getBalance: vi.fn().mockResolvedValue(
-          new Ok({
-            guildId: 1,
-            userId: '1',
-            balance: 5000,
-            currencyName: 'LTD',
-            currencyIcon: 'L',
-          } as BalanceView),
-        ),
-      };
 
       const service = new GameRewardService(
         mockAdjustmentService as any,
-        mockBalanceService as any,
+        {} as any,
       );
 
       const result = await service.creditReward(
@@ -41,10 +30,9 @@ describe('GameRewardService', () => {
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
-        // 0-reward path returns {previousBalance, newBalance} object
-        expect(result.getValue()).toEqual({ previousBalance: 5000, newBalance: 5000 });
+        // Zero-reward path returns {0, 0} without a DB query (P3-2)
+        expect(result.getValue()).toEqual({ previousBalance: 0, newBalance: 0 });
       }
-      expect(mockBalanceService.getBalance).toHaveBeenCalledWith(1, '1');
       expect(mockAdjustmentService.tryBatchAdjust).not.toHaveBeenCalled();
     });
 

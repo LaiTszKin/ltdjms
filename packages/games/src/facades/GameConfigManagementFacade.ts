@@ -8,7 +8,6 @@ import {
 } from '@ltdjms/shared';
 import { type DiceConfigService } from '../dice/services/dice-config-service.js';
 import type { DiceGame1Config, DiceGame2Config } from '../domain/types.js';
-import { type DiceGameConfigChangedEvent, GameType } from '../events/index.js';
 
 /**
  * Configuration update parameters for Dice Game 1.
@@ -96,13 +95,7 @@ export class GameConfigManagementFacade {
         updatedAt: now,
       };
 
-      const saved = await this.diceConfigService.upsertDice1Config(updated);
-
-      this.eventPublisher.publish({
-        eventType: 'dice_game_config_changed',
-        guildId,
-        gameType: GameType.DICE_GAME_1,
-      } as DiceGameConfigChangedEvent);
+      const saved = await this.diceConfigService.upsertDice1Config(updated, currentConfig);
 
       return ok(saved);
     } catch (e) {
@@ -175,13 +168,7 @@ export class GameConfigManagementFacade {
         updatedAt: now,
       };
 
-      const saved = await this.diceConfigService.upsertDice2Config(updated);
-
-      this.eventPublisher.publish({
-        eventType: 'dice_game_config_changed',
-        guildId,
-        gameType: GameType.DICE_GAME_2,
-      } as DiceGameConfigChangedEvent);
+      const saved = await this.diceConfigService.upsertDice2Config(updated, currentConfig);
 
       return ok(saved);
     } catch (e) {

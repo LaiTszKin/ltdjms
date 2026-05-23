@@ -101,12 +101,18 @@ export class DiceGame1Handler {
       return;
     }
 
+    // Get currency info for display with fallback defaults (P1-1)
+    let currencyName = 'G';
+    let currencyIcon = '🪙';
     try {
-      // Get currency info for display (P2-3)
       const currencyConfig = await this.currencyConfigService.getConfig(guildId);
-      const currencyName = currencyConfig.currencyName;
-      const currencyIcon = currencyConfig.currencyIcon;
+      currencyName = currencyConfig.currencyName;
+      currencyIcon = currencyConfig.currencyIcon;
+    } catch {
+      // Use defaults on failure — game results must not be lost
+    }
 
+    try {
       // Play the game
       const result = await this.diceGame1Service.play(guildId, userId, tokenCount, config);
 

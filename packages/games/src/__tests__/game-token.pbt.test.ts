@@ -6,7 +6,7 @@ import { resetRootContainer } from '@ltdjms/shared/__tests__/test-container';
 import { seedGuild, seedUserAccount } from '@ltdjms/shared/__tests__/seed-factory';
 import { guildId, userId, positiveAmount } from '@ltdjms/shared/__tests__/arbitrary';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { configureEconomyContainer } from '../di/economy-module.js';
+import { configureEconomyContainer } from '@ltdjms/economy';
 import { configureGamesContainer, GAMES_TOKENS, GameTokenTransactionSource } from '@ltdjms/games';
 import type { GameTokenService } from '@ltdjms/games';
 

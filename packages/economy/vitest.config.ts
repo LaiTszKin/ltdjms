@@ -3,7 +3,6 @@ import path from 'path';
 
 const sharedSrc = path.resolve(__dirname, '../shared/src');
 const economySrc = path.resolve(__dirname, '../economy/src');
-const gamesSrc = path.resolve(__dirname, '../games/src');
 
 export default defineConfig({
   resolve: {
@@ -11,7 +10,6 @@ export default defineConfig({
       { find: /^@ltdjms\/shared\/(.+)$/, replacement: sharedSrc + '/$1' },
       { find: /^@ltdjms\/shared$/, replacement: sharedSrc },
       { find: /^@ltdjms\/economy$/, replacement: economySrc },
-      { find: /^@ltdjms\/games$/, replacement: gamesSrc },
     ],
   },
   test: {

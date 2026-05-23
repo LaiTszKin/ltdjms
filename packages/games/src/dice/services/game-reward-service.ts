@@ -44,10 +44,8 @@ export class GameRewardService {
     }
 
     if (rewardAmount === 0) {
-      // No reward to credit — return current balance as both previous and new.
-      const balanceResult = await this.balanceService.getBalance(guildId, userId);
-      const balance = balanceResult.isOk() ? balanceResult.getValue().balance : 0;
-      return new Ok({ previousBalance: balance, newBalance: balance });
+      // No reward to credit — return zero balances directly without DB query.
+      return new Ok({ previousBalance: 0, newBalance: 0 });
     }
 
     const result = await this.balanceAdjustmentService.tryBatchAdjust(

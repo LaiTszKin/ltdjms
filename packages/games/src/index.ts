@@ -27,7 +27,6 @@ export type {
 export {
   MAX_ADJUSTMENT_AMOUNT,
   TOKEN_CACHE_TTL,
-  DEFAULT_PAGE_SIZE,
   DICE_GAME_2_DICE_PER_TOKEN,
   isValidAdjustmentAmount,
 } from './domain/types.js';

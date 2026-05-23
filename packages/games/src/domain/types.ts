@@ -136,8 +136,5 @@ export function isValidAdjustmentAmount(amount: number): boolean {
 /** Cache TTL for game tokens (seconds). */
 export const TOKEN_CACHE_TTL = 300;
 
-/** Default page size for transaction queries. */
-export const DEFAULT_PAGE_SIZE = 10;
-
 /** Number of dice per token for dice game 2. */
 export const DICE_GAME_2_DICE_PER_TOKEN = 3;

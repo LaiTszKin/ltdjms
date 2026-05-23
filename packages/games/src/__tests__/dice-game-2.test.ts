@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { Ok } from '@ltdjms/shared';
-import { DiceGame2Service, GameRewardService } from '../dice/services/dice-game-2-service.js';
+import { DiceGame2Service } from '../dice/services/dice-game-2-service.js';
+import { GameRewardService } from '../dice/services/game-reward-service.js';
 import type { DiceGame2Config } from '../domain/types.js';
 
 const defaultConfig: DiceGame2Config = {
