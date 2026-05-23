@@ -17,11 +17,11 @@
 
 ## Behavior-to-Test Checklist
 
-- [ ] CL-01: `make build` 編譯通過 — R1-R10 → T10.3 — Result: `NOT RUN`
-- [ ] CL-02: `make test` 全部通過（799 tests） — R1-R10 → T10.4 — Result: `NOT RUN`
-- [ ] CL-03: `make verify` 完整驗證通過 — R1-R10 → T10.5 — Result: `NOT RUN`
-- [ ] CL-04: economy package 不再導出遊戲相關類型 — R7 → T8.1 — Result: `NOT RUN`
-- [ ] CL-05: games package 完整導出所有公共 API — R8 → T7.1 — Result: `NOT RUN`
+- [x] CL-01: `make build` 編譯通過 — R1-R10 → T10.3 — Result: `PASS`
+- [x] CL-02: `make test` 全部通過 — R1-R10 → T10.4 — Result: `PASS`
+- [x] CL-03: `make verify` 完整驗證通過 — R1-R10 → T10.5 — Result: `PASS`
+- [x] CL-04: economy package 不再導出遊戲相關類型 — R7 → T8.1 — Result: `PASS`
+- [x] CL-05: games package 完整導出所有公共 API — R8 → T7.1 — Result: `PASS`
 
 ## Hardening Checklist
 
@@ -41,14 +41,14 @@
 
 ## Execution Summary
 
-- [ ] Unit: `NOT RUN`
-- [ ] Regression: `NOT RUN`
+- [x] Unit: `PASS`
+- [x] Regression: `PASS`
 - [ ] Property-based: `N/A`
-- [ ] Integration: `NOT RUN`
+- [x] Integration: `PASS`
 - [ ] E2E: `N/A`
 - [ ] Mock scenarios: `N/A`
 - [ ] Adversarial: `N/A`
 
 ## Completion Records
 
-- [ ] package-extraction: pending — Remaining: None
+- [x] package-extraction: completed — Remaining: None

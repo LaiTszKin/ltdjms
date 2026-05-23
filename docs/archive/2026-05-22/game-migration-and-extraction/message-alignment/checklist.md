@@ -17,11 +17,11 @@
 
 ## Behavior-to-Test Checklist
 
-- [ ] CL-01: DiceGame1 成功訊息格式與 Java formatDiceGame1ResultZhTw 一致 — R1.1-R1.6 → T4.3 — Result: `NOT RUN`
-- [ ] CL-02: DiceGame2 成功訊息格式與 Java formatDiceGame2ResultZhTw 一致 — R2.1-R2.8 → T4.3 — Result: `NOT RUN`
-- [ ] CL-03: 三種錯誤訊息格式與 Java formatInsufficientTokens / formatTokenRangeError / formatMissingTokensError 一致 — R3.1-R3.6 → T4.3 — Result: `NOT RUN`
-- [ ] CL-04: `make build` 編譯通過 — All → T4.1 — Result: `NOT RUN`
-- [ ] CL-05: `make test` 全部通過 — All → T4.2 — Result: `NOT RUN`
+- [x] CL-01: DiceGame1 成功訊息格式與 Java formatDiceGame1ResultZhTw 一致 — R1.1-R1.6 → T4.3 — Result: `PASS`
+- [x] CL-02: DiceGame2 成功訊息格式與 Java formatDiceGame2ResultZhTw 一致 — R2.1-R2.8 → T4.3 — Result: `PASS`
+- [x] CL-03: 三種錯誤訊息格式與 Java formatInsufficientTokens / formatTokenRangeError / formatMissingTokensError 一致 — R3.1-R3.6 → T4.3 — Result: `PASS`
+- [x] CL-04: `make build` 編譯通過 — All → T4.1 — Result: `PASS`
+- [x] CL-05: `make test` 全部通過 — All → T4.2 — Result: `PASS`
 
 ## Hardening Checklist
 
@@ -40,14 +40,14 @@
 
 ## Execution Summary
 
-- [ ] Unit: `NOT RUN`
-- [ ] Regression: `NOT RUN`
+- [x] Unit: `PASS`
+- [x] Regression: `PASS`
 - [ ] Property-based: `N/A`
-- [ ] Integration: `NOT RUN`
+- [x] Integration: `PASS`
 - [ ] E2E: `N/A`
 - [ ] Mock scenarios: `N/A`
 - [ ] Adversarial: `N/A`
 
 ## Completion Records
 
-- [ ] message-alignment: pending — Remaining: None
+- [x] message-alignment: completed — Remaining: None
