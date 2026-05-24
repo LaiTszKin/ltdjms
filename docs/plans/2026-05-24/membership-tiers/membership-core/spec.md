@@ -29,9 +29,9 @@
 **AND** `NONE` 表示未達青銅
 
 **Requirements**:
-- [ ] R1.1 `MembershipTier` 含 NONE, BRONZE, SILVER, GOLD, PLATINUM, DIAMOND, BLACK
-- [ ] R1.2 每 tier 暴露 `discountRate()`（d）、`monthlyTokenGrant()`、`thresholdListPriceTwd()`
-- [ ] R1.3 門檻值：500 / 14_000 / 33_000 / 100_000 / 120_000 / 250_000
+- [x] R1.1 `MembershipTier` 含 NONE, BRONZE, SILVER, GOLD, PLATINUM, DIAMOND, BLACK
+- [x] R1.2 每 tier 暴露 `discountRate()`（d）、`monthlyTokenGrant()`、`thresholdListPriceTwd()`
+- [x] R1.3 門檻值：500 / 14_000 / 33_000 / 100_000 / 120_000 / 250_000
 
 ### Requirement 2: Tier 判定（純函式）
 **GIVEN** 週期平均 listPriceM、hasQualifyingBronzeOrder=true
@@ -40,9 +40,9 @@
 **AND** avgM 不足時若 hasQualifyingBronzeOrder 則至少 BRONZE，否則 NONE
 
 **Requirements**:
-- [ ] R2.1 avgM ≥ 250_000 → BLACK（且依序檢查）
-- [ ] R2.2 avgM < 14_000 且 hasQualifyingBronzeOrder → BRONZE
-- [ ] R2.3 avgM < 500 且 !hasQualifyingBronzeOrder → NONE
+- [x] R2.1 avgM ≥ 250_000 → BLACK（且依序檢查）
+- [x] R2.2 avgM < 14_000 且 hasQualifyingBronzeOrder → BRONZE
+- [x] R2.3 avgM < 500 且 !hasQualifyingBronzeOrder → NONE
 
 ### Requirement 3: 持久化
 **GIVEN** discordUserId
@@ -50,14 +50,14 @@
 **THEN** 回傳 `GlobalMemberMembership`，預設 tier=NONE
 
 **Requirements**:
-- [ ] R3.1 表 `global_member_membership` 主鍵 `discord_user_id`
-- [ ] R3.2 欄位：`current_tier`, `earliest_guild_join_at`, `settlement_day_of_month`, `last_settlement_at`, `next_settlement_at`, `has_qualifying_bronze_order`, timestamps
-- [ ] R3.3 JDBC repository 實作
+- [x] R3.1 表 `global_member_membership` 主鍵 `discord_user_id`
+- [x] R3.2 欄位：`current_tier`, `earliest_guild_join_at`, `settlement_day_of_month`, `last_settlement_at`, `next_settlement_at`, `has_qualifying_bronze_order`, timestamps
+- [x] R3.3 JDBC repository 實作
 
 ## Error and Edge Cases
-- [ ] avgM 為負或 null → treat as 0
-- [ ] tier 字串 DB  corrupt → migration 用 CHECK 或 app 層 validate
-- [ ] 同一 userId 並發 findOrCreate → UPSERT 或 transaction 安全
+- [x] avgM 為負或 null → treat as 0
+- [x] tier 字串 DB  corrupt → migration 用 CHECK 或 app 層 validate
+- [x] 同一 userId 並發 findOrCreate → UPSERT 或 transaction 安全
 
 ## Clarification Questions
 None（batch coordination 已確認）

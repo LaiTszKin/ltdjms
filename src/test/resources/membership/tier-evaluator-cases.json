@@ -1,0 +1,12 @@
+[
+  {"avgM": 0, "bronze": false, "expected": "NONE"},
+  {"avgM": 0, "bronze": true, "expected": "BRONZE"},
+  {"avgM": 500, "bronze": true, "expected": "BRONZE"},
+  {"avgM": 14000, "bronze": true, "expected": "SILVER"},
+  {"avgM": 33000, "bronze": true, "expected": "GOLD"},
+  {"avgM": 100000, "bronze": true, "expected": "PLATINUM"},
+  {"avgM": 120000, "bronze": true, "expected": "DIAMOND"},
+  {"avgM": 250000, "bronze": true, "expected": "BLACK"},
+  {"avgM": 13999, "bronze": true, "expected": "BRONZE"},
+  {"avgM": 250000, "bronze": false, "expected": "BLACK"}
+]

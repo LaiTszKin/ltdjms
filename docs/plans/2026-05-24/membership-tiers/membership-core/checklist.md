@@ -1,10 +1,10 @@
 # Checklist: membership-core
 
-- [ ] C1 Flyway V029 套用成功
-- [ ] C2 六等常數與 coordination 表一致
-- [ ] C3 Tier evaluator 邊界測試全綠（含 NONE/BRONZE/BLACK）
-- [ ] C4 Repository findOrCreate 並發安全（至少單測 mock 或 IT）
-- [ ] C5 `make verify` 通過
+- [x] C1 Flyway V029 套用成功
+- [x] C2 六等常數與 coordination 表一致
+- [x] C3 Tier evaluator 邊界測試全綠（含 NONE/BRONZE/BLACK）
+- [x] C4 Repository findOrCreate 並發安全（至少單測 mock 或 IT）
+- [x] C5 `make verify` 通過
 
 ## Test Strategy
 

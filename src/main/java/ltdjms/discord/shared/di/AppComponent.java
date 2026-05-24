@@ -25,6 +25,7 @@ import ltdjms.discord.gametoken.persistence.GameTokenTransactionRepository;
 import ltdjms.discord.gametoken.services.DiceGame1Service;
 import ltdjms.discord.gametoken.services.GameTokenService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService;
+import ltdjms.discord.membership.di.MembershipModule;
 import ltdjms.discord.panel.commands.AdminPanelButtonHandler;
 import ltdjms.discord.panel.commands.AdminProductPanelHandler;
 import ltdjms.discord.panel.commands.UserPanelButtonHandler;
@@ -69,7 +70,8 @@ import ltdjms.discord.shop.services.FiatOrderProcessingScheduler;
       EventModule.class,
       AIChatModule.class,
       AIAgentModule.class,
-      MarkdownValidationModule.class
+      MarkdownValidationModule.class,
+      MembershipModule.class
     })
 public interface AppComponent {
 
