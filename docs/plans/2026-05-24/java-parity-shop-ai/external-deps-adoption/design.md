@@ -77,3 +77,30 @@
 ## Batch-only
 
 Shop/AI parity behavior owned by sibling specs; this spec only delivers deps + PoC + test kit.
+
+## PoC conclusions (2026-05-24)
+
+### LangGraph checkpoint (R3)
+
+| Backend | Result | Notes |
+| --- | --- | --- |
+| **Postgres** (`PostgresSaver` + existing `pg` pool) | **Adopt** | `setup()` creates checkpoint tables; write/read roundtrip verified against testcontainers Postgres. |
+| **Redis** (`RedisSaver` + Redis Stack) | **Optional** | Works when `REDIS_URI` points at Redis Stack (RedisJSON + RediSearch). If unavailable, ai-agent spec uses **Postgres-only** checkpoint — no blocker. |
+
+### Streaming outer control (R3.3)
+
+LangGraph `StateGraph` / `createReactAgent` invokes the chat model **inside** the graph. That means token streaming is owned by the graph runtime, not the current hand-written loop in `LangChainAIChatService`.
+
+**Decision for ai-agent-java-parity:** Keep **REASONING** and **TOOL_INTENT** formatting in an **outer wrapper** around graph invocation (same pattern as Java `ReasoningMessageTracker` + mention listener). Do not rely on graph-internal streaming for Discord spoiler prefixes (`-# `) or tool-intent UX. The graph handles tool-call state; the outer layer maps chunks to Discord messages.
+
+### zod-to-json-schema (R4)
+
+Tool parameter schemas use **Zod 4** (`z.object(...)`). `z.toJSONSchema()` is the primary conversion path for LangChain `DynamicStructuredTool` binding — verified for `create_channel` and `list_channels`. The `zod-to-json-schema` package remains installed for **zod/v3** fixture schemas (`import { z } from 'zod/v3'`) when importing Java oracle definitions; it does not emit properties from Zod 4 native schemas (empty `{}` definitions). ai-agent spec should use `z.toJSONSchema()` for all 17 tools.
+
+### @robojs/mock (R5)
+
+`sessionManager.create()` works for isolated guild/channel fixtures. **Full `/shop` reply capture requires a Robo.js bot entrypoint** — LTDJMS is not Robo-based. **Fallback:** use `@ltdjms/shared` `MockDiscordInteraction` for shop handler parity (documented in contract.md EXT-005).
+
+### supertest (R6)
+
+Express 5 callback route smoke tests pass with `supertest@^7.2.2` + `@types/supertest@^6`. PoC mirrors `EcpayCallbackHttpServer` POST handler without binding a real port; coexists with existing `payment-callback.test.ts`.

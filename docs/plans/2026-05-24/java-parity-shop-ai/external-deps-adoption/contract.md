@@ -122,6 +122,7 @@
 
 - Spec IDs covered: R3–R5
 - Unknown / TBD: @robojs/mock API stability for modal interactions
+- **PoC fallback (2026-05-24):** LTDJMS is not a Robo.js project. `sessionManager.create()` validates mock infrastructure; shop-java-parity UT-306–308 should use `@ltdjms/shared` `MockDiscordInteraction` for slash/button handler tests until a Robo entrypoint exists or @robojs/mock adds standalone discord.js harness support.
 
 ### supertest
 
