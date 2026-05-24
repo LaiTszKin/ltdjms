@@ -69,9 +69,7 @@ import {
   InMemoryToolExecutionLogRepository,
   type ToolExecutionLogRepository,
 } from '../persistence/drizzle-tool-execution-log-repository.js';
-import {
-  createLangGraphCheckpointProvider,
-} from '../services/memory/langgraph-checkpoint-provider.js';
+import { createLangGraphCheckpointProvider } from '../services/memory/langgraph-checkpoint-provider.js';
 import { ToolExecutionListener } from '../listeners/tool-execution-listener.js';
 import { AgentCompletionListener } from '../listeners/agent-completion-listener.js';
 

@@ -42,13 +42,10 @@ describe('UT-AG-024 tool execution log integration', () => {
     const repository = new DrizzleToolExecutionLogRepository(db);
     const interceptor = new ToolExecutionInterceptor(repository);
 
-    ToolExecutionContext.run(
-      { guildId: '100', channelId: '200', userId: '300' },
-      () => {
-        interceptor.onToolExecutionStarted('create_channel', { name: 'secret-name' });
-        interceptor.onToolExecutionCompleted('created');
-      },
-    );
+    ToolExecutionContext.run({ guildId: '100', channelId: '200', userId: '300' }, () => {
+      interceptor.onToolExecutionStarted('create_channel', { name: 'secret-name' });
+      interceptor.onToolExecutionCompleted('created');
+    });
 
     const result = await repository.findByChannelId('200', 5);
     expect(result.isOk()).toBe(true);

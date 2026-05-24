@@ -14,10 +14,7 @@ describe('UT-305 getAllPurchasableProducts parity', () => {
     repository = {
       findByGuildIdPaginated: vi.fn(),
     };
-    productService = new ProductService(
-      repository as never,
-      { publish: vi.fn() } as never,
-    );
+    productService = new ProductService(repository as never, { publish: vi.fn() } as never);
   });
 
   it('merges currency-priced and fiat-only products without duplicates', async () => {

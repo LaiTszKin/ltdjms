@@ -106,7 +106,10 @@ describe('UT-304 ShopView buy/search/confirm parity', () => {
       fiatPriceTwd: 500,
     });
     const rows = buildBuyMenu([product]);
-    const select = rows[0].components[0] as { customId: string; options: Array<{ description: string }> };
+    const select = rows[0].components[0] as {
+      customId: string;
+      options: Array<{ description: string }>;
+    };
     expect(select.customId).toBe(oracle.scenarios.buyMenu.selectId);
     expect(select.options[0].description).toContain('100');
     expect(select.options[0].description).toContain('NT$500');
@@ -149,7 +152,8 @@ describe('UT-304 ShopView buy/search/confirm parity', () => {
     }
 
     const insufficient = buildPurchaseConfirmEmbed(product, 50);
-    for (const fragment of oracle.scenarios.confirmPurchase.insufficientBalance.descriptionContains) {
+    for (const fragment of oracle.scenarios.confirmPurchase.insufficientBalance
+      .descriptionContains) {
       expect(insufficient.description).toContain(fragment);
     }
 

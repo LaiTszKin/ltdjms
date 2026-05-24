@@ -10,7 +10,10 @@ describe('UT-AG-025 authorization guard parity', () => {
 
   beforeEach(() => {
     guard = new ToolCallerAuthorizationGuard();
-    ToolExecutionContext.run({ guildId: '1', channelId: '2', userId: TEST_USER_ID }, () => undefined);
+    ToolExecutionContext.run(
+      { guildId: '1', channelId: '2', userId: TEST_USER_ID },
+      () => undefined,
+    );
   });
 
   afterEach(() => {
@@ -38,7 +41,7 @@ describe('UT-AG-025 authorization guard parity', () => {
       members: {
         cache: {
           has: vi.fn(() => options.memberInCache ?? true),
-          get: vi.fn(() => (options.memberInCache ?? true ? member : undefined)),
+          get: vi.fn(() => ((options.memberInCache ?? true) ? member : undefined)),
         },
         fetch: vi.fn(async () => {
           if (options.fetchThrows) {
@@ -54,27 +57,36 @@ describe('UT-AG-025 authorization guard parity', () => {
   }
 
   it('rejects non-admin caller', async () => {
-    await ToolExecutionContext.run({ guildId: '1', channelId: '2', userId: TEST_USER_ID }, async () => {
-      const error = await guard.validateAdministrator(mockGuild({ admin: false }), 'TestTool');
-      expect(error).toBe('你沒有權限使用此工具。');
-    });
+    await ToolExecutionContext.run(
+      { guildId: '1', channelId: '2', userId: TEST_USER_ID },
+      async () => {
+        const error = await guard.validateAdministrator(mockGuild({ admin: false }), 'TestTool');
+        expect(error).toBe('你沒有權限使用此工具。');
+      },
+    );
   });
 
   it('allows admin caller', async () => {
-    await ToolExecutionContext.run({ guildId: '1', channelId: '2', userId: TEST_USER_ID }, async () => {
-      const error = await guard.validateAdministrator(mockGuild({ admin: true }), 'TestTool');
-      expect(error).toBeNull();
-    });
+    await ToolExecutionContext.run(
+      { guildId: '1', channelId: '2', userId: TEST_USER_ID },
+      async () => {
+        const error = await guard.validateAdministrator(mockGuild({ admin: true }), 'TestTool');
+        expect(error).toBeNull();
+      },
+    );
   });
 
   it('allows member retrieved from API', async () => {
-    await ToolExecutionContext.run({ guildId: '1', channelId: '2', userId: TEST_USER_ID }, async () => {
-      const error = await guard.validateAdministrator(
-        mockGuild({ memberInCache: false, fetchAdmin: true }),
-        'TestTool',
-      );
-      expect(error).toBeNull();
-    });
+    await ToolExecutionContext.run(
+      { guildId: '1', channelId: '2', userId: TEST_USER_ID },
+      async () => {
+        const error = await guard.validateAdministrator(
+          mockGuild({ memberInCache: false, fetchAdmin: true }),
+          'TestTool',
+        );
+        expect(error).toBeNull();
+      },
+    );
   });
 
   it('rejects when context missing userId', async () => {
@@ -83,22 +95,28 @@ describe('UT-AG-025 authorization guard parity', () => {
   });
 
   it('rejects when member retrieval fails', async () => {
-    await ToolExecutionContext.run({ guildId: '1', channelId: '2', userId: TEST_USER_ID }, async () => {
-      const error = await guard.validateAdministrator(
-        mockGuild({ memberInCache: false, fetchThrows: true }),
-        'TestTool',
-      );
-      expect(error).toContain('成員');
-    });
+    await ToolExecutionContext.run(
+      { guildId: '1', channelId: '2', userId: TEST_USER_ID },
+      async () => {
+        const error = await guard.validateAdministrator(
+          mockGuild({ memberInCache: false, fetchThrows: true }),
+          'TestTool',
+        );
+        expect(error).toContain('成員');
+      },
+    );
   });
 
   it('allows guild owner without admin permission', async () => {
-    await ToolExecutionContext.run({ guildId: '1', channelId: '2', userId: TEST_USER_ID }, async () => {
-      const error = await guard.validateAdministrator(
-        mockGuild({ ownerId: TEST_USER_ID, admin: false }),
-        'TestTool',
-      );
-      expect(error).toBeNull();
-    });
+    await ToolExecutionContext.run(
+      { guildId: '1', channelId: '2', userId: TEST_USER_ID },
+      async () => {
+        const error = await guard.validateAdministrator(
+          mockGuild({ ownerId: TEST_USER_ID, admin: false }),
+          'TestTool',
+        );
+        expect(error).toBeNull();
+      },
+    );
   });
 });

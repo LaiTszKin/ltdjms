@@ -144,12 +144,14 @@ export class AIChatMentionListener {
         }
         completionProcessed = true;
 
-        await tracker.deleteAll(async () => {
-          if (pendingContent.length === 0) {
-            await this.sendToChannel(message, ':question: AI 沒有產生回應');
-            return;
-          }
-          await this.sendAgentFinalContent(message, pendingContent, streamProcessed);
+        await tracker.deleteAll(() => {
+          void (async () => {
+            if (pendingContent.length === 0) {
+              await this.sendToChannel(message, ':question: AI 沒有產生回應');
+              return;
+            }
+            await this.sendAgentFinalContent(message, pendingContent, streamProcessed);
+          })();
         });
       },
     };

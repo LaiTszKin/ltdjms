@@ -56,8 +56,7 @@ function buildSelectOption(product: Product): {
   value: string;
   description: string;
 } {
-  const label =
-    product.name.length > 100 ? `${product.name.substring(0, 97)}...` : product.name;
+  const label = product.name.length > 100 ? `${product.name.substring(0, 97)}...` : product.name;
   return {
     label,
     value: String(product.id),

@@ -48,8 +48,7 @@ describe('UT-AG-019 chat memory provider parity', () => {
     toolCallHistory.addToolCall('200', '300', {
       toolName: 'search_messages',
       parameters: { keywords: 'secret' },
-      memorySummary:
-        '工具「search_messages」已執行，結果因敏感內容已從跨回合記憶隔離。',
+      memorySummary: '工具「search_messages」已執行，結果因敏感內容已從跨回合記憶隔離。',
       redactionMode: RedactionMode.REDACTED,
       timestamp: new Date(),
       success: true,

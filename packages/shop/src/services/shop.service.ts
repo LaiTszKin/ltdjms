@@ -85,8 +85,7 @@ export class ShopService {
     const totalCount = await this.productRepository.countByGuildId(guildId);
     const totalPages = totalCount === 0 ? 0 : Math.ceil(totalCount / pageSize);
 
-    const validPage =
-      totalPages === 0 ? 0 : Math.max(0, Math.min(pageIndex, totalPages - 1));
+    const validPage = totalPages === 0 ? 0 : Math.max(0, Math.min(pageIndex, totalPages - 1));
     const products = await this.productRepository.findByGuildIdPaginated(
       guildId,
       validPage,
@@ -112,8 +111,7 @@ export class ShopService {
     );
     const totalPages = totalCount === 0 ? 0 : Math.ceil(totalCount / PAGE_SIZE);
 
-    const validPage =
-      totalPages === 0 ? 0 : Math.max(0, Math.min(pageIndex, totalPages - 1));
+    const validPage = totalPages === 0 ? 0 : Math.max(0, Math.min(pageIndex, totalPages - 1));
     const products = await this.productRepository.findByGuildIdAndNameContaining(
       guildId,
       keyword,

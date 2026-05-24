@@ -101,11 +101,7 @@ export class ShopCommandHandler {
       }
 
       const embed = buildShopEmbed(shopPage.products, shopPage.currentPage, shopPage.totalPages);
-      const components = buildShopComponents(
-        shopPage.currentPage,
-        shopPage.totalPages,
-        true,
-      );
+      const components = buildShopComponents(shopPage.currentPage, shopPage.totalPages, true);
       await interaction.replyWithComponents(embed, components);
     } catch {
       await interaction.reply('發生錯誤，請稍後再試');
@@ -144,10 +140,7 @@ export class ShopCommandHandler {
       return;
     }
 
-    if (
-      customId.startsWith(BUTTON_CONFIRM_PURCHASE) ||
-      customId === BUTTON_CANCEL_PURCHASE
-    ) {
+    if (customId.startsWith(BUTTON_CONFIRM_PURCHASE) || customId === BUTTON_CANCEL_PURCHASE) {
       await this.handlePurchaseConfirmButton(interaction, customId);
       return;
     }
@@ -275,9 +268,9 @@ export class ShopCommandHandler {
     content: string,
     components: unknown[],
   ): Promise<void> {
-    const raw = interaction.getHook() as
-      | { reply?: (options: Record<string, unknown>) => Promise<unknown> }
-      | null;
+    const raw = interaction.getHook() as {
+      reply?: (options: Record<string, unknown>) => Promise<unknown>;
+    } | null;
     if (raw?.reply) {
       const opts: Record<string, unknown> = { content, components };
       if (interaction.isEphemeral()) {
@@ -328,7 +321,7 @@ export class ShopCommandHandler {
 
   private async handlePurchaseSelect(
     interaction: DiscordInteraction,
-    customId: string,
+    _customId: string,
   ): Promise<void> {
     const guildId = this.parseGuildId(interaction.getGuildId());
     if (guildId == null) {
@@ -583,7 +576,9 @@ export class ShopCommandHandler {
     sb.push(`**商品：** ${order.product.name}\n`);
     sb.push(`**訂單編號：** \`${order.orderNumber}\`\n`);
     sb.push(`**超商代碼：** \`${order.paymentNo}\`\n`);
-    sb.push(`**金額：** ${order.product.fiatPriceTwd ? `NT$${order.product.fiatPriceTwd.toLocaleString()}` : ''}\n`);
+    sb.push(
+      `**金額：** ${order.product.fiatPriceTwd ? `NT$${order.product.fiatPriceTwd.toLocaleString()}` : ''}\n`,
+    );
     if (order.expireDate) {
       sb.push(`**繳費期限：** ${order.expireDate}\n`);
     }
@@ -634,11 +629,7 @@ export class ShopCommandHandler {
     return hook?.id ?? 'interaction-unknown';
   }
 
-  private buildFiatOrderInflightKey(
-    guildId: number,
-    userId: string,
-    productId: number,
-  ): string {
+  private buildFiatOrderInflightKey(guildId: number, userId: string, productId: number): string {
     return `${guildId}:${userId}:${productId}`;
   }
 

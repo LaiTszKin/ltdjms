@@ -41,7 +41,10 @@ describe('UT-301 ShopService pagination parity', () => {
           testCase.expected.totalPages === 0 ? 0 : testCase.expected.totalPages - 1,
         ),
       );
-      const sliceSize = Math.min(pageSize, Math.max(0, testCase.totalProducts - expectedPageIndex * pageSize));
+      const sliceSize = Math.min(
+        pageSize,
+        Math.max(0, testCase.totalProducts - expectedPageIndex * pageSize),
+      );
       repository.findByGuildIdPaginated.mockResolvedValue(makeProducts(sliceSize));
 
       const result = await shopService.getShopPage(guildId, testCase.inputPageIndex);

@@ -3,8 +3,16 @@ import { ok, MockDiscordContext } from '@ltdjms/shared';
 import { ShopCommandHandler } from '../shop-handler.js';
 import { ShopService } from '../../services/shop.service.js';
 import { ProductService } from '../../services/product-service.js';
-import { BUTTON_PREV_PAGE, BUTTON_BUY, BUTTON_SEARCH, BUTTON_BACK_TO_SHOP } from '../../view/shop-view.js';
-import { ShopTestInteraction, createTestProduct } from '../../__tests__/helpers/shop-test-interaction.js';
+import {
+  BUTTON_PREV_PAGE,
+  BUTTON_BUY,
+  BUTTON_SEARCH,
+  BUTTON_BACK_TO_SHOP,
+} from '../../view/shop-view.js';
+import {
+  ShopTestInteraction,
+  createTestProduct,
+} from '../../__tests__/helpers/shop-test-interaction.js';
 
 describe('UT-306 ShopCommandHandler parity', () => {
   const guildId = '123456789';
@@ -52,7 +60,10 @@ describe('UT-306 ShopCommandHandler parity', () => {
     });
 
     const interaction = new ShopTestInteraction(guildId, userId, { interactionType: 'chatInput' });
-    await handler.execute(interaction, new MockDiscordContext(guildId, userId, '1', `<@${userId}>`));
+    await handler.execute(
+      interaction,
+      new MockDiscordContext(guildId, userId, '1', `<@${userId}>`),
+    );
 
     expect(shopService.getShopPage).toHaveBeenCalledWith(guildIdNum, 0);
     expect(interaction.getReplyEmbedCount()).toBe(1);
@@ -71,7 +82,10 @@ describe('UT-306 ShopCommandHandler parity', () => {
     });
 
     const interaction = new ShopTestInteraction(guildId, userId, { interactionType: 'chatInput' });
-    await handler.execute(interaction, new MockDiscordContext(guildId, userId, '1', `<@${userId}>`));
+    await handler.execute(
+      interaction,
+      new MockDiscordContext(guildId, userId, '1', `<@${userId}>`),
+    );
 
     expect(interaction.getReplyEmbedCount()).toBe(1);
     expect(interaction.getReplyComponents()).toHaveLength(0);

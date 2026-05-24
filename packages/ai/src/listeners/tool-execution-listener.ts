@@ -3,7 +3,7 @@ import type {
   LangChain4jToolExecutedEvent,
   LangChain4jToolExecutionStartedEvent,
 } from '@ltdjms/shared';
-import type { GuildTextBasedChannel, Message } from 'discord.js';
+import type { GuildTextBasedChannel } from 'discord.js';
 import { MessageSplitter } from '../services/MessageSplitter.js';
 import pino from 'pino';
 
@@ -76,10 +76,7 @@ export class ToolExecutionListener {
     }
   }
 
-  private resolveMessageChannel(
-    guildId: string,
-    channelId: string,
-  ): GuildTextBasedChannel | null {
+  private resolveMessageChannel(guildId: string, channelId: string): GuildTextBasedChannel | null {
     const channel =
       this.runtimeGateway.findGuildChannel(guildId, channelId) ??
       this.runtimeGateway.findThreadChannel(guildId, channelId);

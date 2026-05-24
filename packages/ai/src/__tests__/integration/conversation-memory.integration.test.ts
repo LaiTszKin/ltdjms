@@ -18,11 +18,7 @@ describe('UT-AG-026 conversation memory checkpoint integration', () => {
     }
 
     pool = new Pool({ connectionString: CONNECTION_URL, max: 2 });
-    const threadId = LangGraphCheckpointProvider.conversationThreadId(
-      '100',
-      '200',
-      '300',
-    );
+    const threadId = LangGraphCheckpointProvider.conversationThreadId('100', '200', '300');
     const config = { configurable: { thread_id: `restart-${threadId}-${Date.now()}` } };
 
     const provider1 = new LangGraphCheckpointProvider(pool);

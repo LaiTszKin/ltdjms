@@ -91,10 +91,7 @@ export class AgentCompletionListener {
     }
   }
 
-  private resolveMessageChannel(
-    guildId: string,
-    channelId: string,
-  ): GuildTextBasedChannel | null {
+  private resolveMessageChannel(guildId: string, channelId: string): GuildTextBasedChannel | null {
     if (!/^\d+$/.test(channelId)) {
       this.logger.warn({ channelId }, '無法解析頻道 ID');
       return null;

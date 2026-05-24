@@ -2,7 +2,14 @@ import { expect } from 'vitest';
 
 type JsonRecord = Record<string, unknown>;
 
-const EMBED_VOLATILE_KEYS = new Set(['timestamp', 'url', 'thumbnail', 'image', 'author', 'provider']);
+const EMBED_VOLATILE_KEYS = new Set([
+  'timestamp',
+  'url',
+  'thumbnail',
+  'image',
+  'author',
+  'provider',
+]);
 
 /**
  * Normalizes a Discord embed (or embed-like object) for stable JSON snapshot comparison.

@@ -4,6 +4,15 @@ import { RedisSaver } from '@langchain/langgraph-checkpoint-redis';
 import { Annotation, END, START, StateGraph } from '@langchain/langgraph';
 import pino from 'pino';
 
+/** PostgresSaver.setup() is not idempotent when migrations already exist. */
+function isCheckpointSetupAlreadyApplied(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) {
+    return false;
+  }
+  const pgError = error as { code?: string; constraint?: string };
+  return pgError.code === '23505' && pgError.constraint === 'checkpoint_migrations_pkey';
+}
+
 type CheckpointSaver = PostgresSaver | RedisSaver;
 
 /** LangGraph checkpoint TTL — aligns with Java RedisPostgresChatMemoryStore 3600s intent. */
@@ -41,7 +50,13 @@ export class LangGraphCheckpointProvider {
 
   async initialize(): Promise<void> {
     this.postgresSaver = new PostgresSaver(this.pool);
-    await this.postgresSaver.setup();
+    try {
+      await this.postgresSaver.setup();
+    } catch (error) {
+      if (!isCheckpointSetupAlreadyApplied(error)) {
+        throw error;
+      }
+    }
     this.activeSaver = this.postgresSaver;
 
     if (this.redisUrl) {

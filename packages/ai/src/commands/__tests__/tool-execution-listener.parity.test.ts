@@ -30,9 +30,7 @@ describe('UT-AG-022 tool execution listener parity', () => {
       toolName: 'WeatherTool',
       timestamp: new Date(),
     });
-    expect(send).toHaveBeenCalledWith(
-      '🤖 我先執行這一步：正在呼叫工具「WeatherTool」...',
-    );
+    expect(send).toHaveBeenCalledWith('🤖 我先執行這一步：正在呼叫工具「WeatherTool」...');
   });
 
   it('handles successful tool executed event', () => {

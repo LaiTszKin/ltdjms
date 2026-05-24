@@ -9,7 +9,10 @@ import {
   BUTTON_CONFIRM_PURCHASE,
   BUTTON_CANCEL_PURCHASE,
 } from '../../view/shop-view.js';
-import { ShopTestInteraction, createTestProduct } from '../../__tests__/helpers/shop-test-interaction.js';
+import {
+  ShopTestInteraction,
+  createTestProduct,
+} from '../../__tests__/helpers/shop-test-interaction.js';
 
 describe('UT-308 ShopSelectMenuHandler purchase parity', () => {
   const guildId = '123456789';

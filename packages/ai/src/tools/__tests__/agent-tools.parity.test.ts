@@ -39,9 +39,7 @@ describe('UT-AG-001 create-channel tool parity', () => {
     vi.mocked(guild.channels.create).mockResolvedValue(created as never);
 
     const tool = new CreateChannelTool(createMockAuthGuard(), permissionParser);
-    const result = await withToolContext(() =>
-      tool.execute({ name: 'test-channel' }, guild),
-    );
+    const result = await withToolContext(() => tool.execute({ name: 'test-channel' }, guild));
 
     expect(result).toContain('test-channel');
     expect(result).toContain(created.id);
@@ -49,9 +47,7 @@ describe('UT-AG-001 create-channel tool parity', () => {
 
   it('rejects unauthorized caller', async () => {
     const tool = new CreateChannelTool(createMockAuthGuard({ admin: false }), permissionParser);
-    const result = await withToolContext(() =>
-      tool.execute({ name: 'test' }, createMockGuild()),
-    );
+    const result = await withToolContext(() => tool.execute({ name: 'test' }, createMockGuild()));
     expect(result).toBe('你沒有權限使用此工具。');
   });
 });
@@ -95,7 +91,11 @@ describe('UT-AG-004 list-channels tool parity', () => {
 describe('UT-AG-005 list-categories tool parity', () => {
   it('lists categories', async () => {
     const guild = createMockGuild();
-    guild.channels.cache.set('c1', { id: 'c1', name: 'Cat', type: ChannelType.GuildCategory } as never);
+    guild.channels.cache.set('c1', {
+      id: 'c1',
+      name: 'Cat',
+      type: ChannelType.GuildCategory,
+    } as never);
     const tool = new ListCategoriesTool(createMockAuthGuard());
     const result = await withToolContext(() => tool.execute({}, guild));
     expect(result.toLowerCase()).toMatch(/cat|分類/);

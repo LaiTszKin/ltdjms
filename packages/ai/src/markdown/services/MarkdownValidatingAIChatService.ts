@@ -192,11 +192,7 @@ export class MarkdownValidatingAIChatService implements AIChatService {
     });
   }
 
-  private emitPages(
-    handler: StreamingResponseHandler,
-    pages: string[],
-    isComplete: boolean,
-  ): void {
+  private emitPages(handler: StreamingResponseHandler, pages: string[], isComplete: boolean): void {
     if (!pages.length) {
       return;
     }
@@ -216,9 +212,7 @@ export class MarkdownValidatingAIChatService implements AIChatService {
     );
   }
 
-  private extractLastUserMessage(
-    history: Array<{ role: string; content: string }>,
-  ): string | null {
+  private extractLastUserMessage(history: Array<{ role: string; content: string }>): string | null {
     for (let i = history.length - 1; i >= 0; i--) {
       if (history[i].role === 'user') {
         return history[i].content;

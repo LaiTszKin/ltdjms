@@ -1,22 +1,16 @@
 import { desc, eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import {
-  DomainError,
-  err,
-  ok,
-  safeSnowflakeToNumber,
-  type Result,
-} from '@ltdjms/shared';
-import {
-  type ToolExecutionLog,
-  ToolExecutionStatus,
-} from '../domain/tool-execution-log.js';
+import { DomainError, err, ok, safeSnowflakeToNumber, type Result } from '@ltdjms/shared';
+import { type ToolExecutionLog, ToolExecutionStatus } from '../domain/tool-execution-log.js';
 import { aiToolExecutionLog } from './schema.js';
 import pino from 'pino';
 
 export interface ToolExecutionLogRepository {
   save(log: ToolExecutionLog): Promise<Result<ToolExecutionLog, DomainError>>;
-  findByChannelId(channelId: string, limit: number): Promise<Result<ToolExecutionLog[], DomainError>>;
+  findByChannelId(
+    channelId: string,
+    limit: number,
+  ): Promise<Result<ToolExecutionLog[], DomainError>>;
 }
 
 function mapRow(row: typeof aiToolExecutionLog.$inferSelect): ToolExecutionLog {

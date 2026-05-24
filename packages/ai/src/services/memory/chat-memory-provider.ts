@@ -98,7 +98,11 @@ export class SimplifiedChatMemoryProvider implements ChatMemoryProvider {
     const threadId = ConversationIdBuilder.extractThreadId(conversationId);
     const userId = ConversationIdBuilder.extractUserId(conversationId);
 
-    if (!isNumericSnowflake(guildId) || !isNumericSnowflake(threadId) || !isNumericSnowflake(userId)) {
+    if (
+      !isNumericSnowflake(guildId) ||
+      !isNumericSnowflake(threadId) ||
+      !isNumericSnowflake(userId)
+    ) {
       return [];
     }
 
@@ -148,7 +152,11 @@ export class SimplifiedChatMemoryProvider implements ChatMemoryProvider {
     const channelId = parts.length >= 2 ? parts[1] : null;
     const userId = ConversationIdBuilder.extractUserId(conversationId);
 
-    if (!isNumericSnowflake(guildId) || !isNumericSnowflake(channelId) || !isNumericSnowflake(userId)) {
+    if (
+      !isNumericSnowflake(guildId) ||
+      !isNumericSnowflake(channelId) ||
+      !isNumericSnowflake(userId)
+    ) {
       return [];
     }
 

@@ -106,9 +106,7 @@ describe('UT-AG-018 tool execution interceptor parity', () => {
     });
 
     const logs = await repository.findByChannelId(TEST_CHANNEL_ID, 1);
-    expect(logs.getValue()[0].parameters).toBe(
-      auditOracle.serializationFailureFallback.parameters,
-    );
+    expect(logs.getValue()[0].parameters).toBe(auditOracle.serializationFailureFallback.parameters);
     expect(logs.getValue()[0].executionResult).toBe(
       auditOracle.serializationFailureFallback.executionResult,
     );
