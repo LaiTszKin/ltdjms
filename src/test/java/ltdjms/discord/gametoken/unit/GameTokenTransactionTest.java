@@ -229,6 +229,8 @@ class GameTokenTransactionTest {
       assertThat(GameTokenTransaction.Source.GAME_PLAY.getDisplayName()).isEqualTo("遊戲消耗");
       assertThat(GameTokenTransaction.Source.REWARD.getDisplayName()).isEqualTo("獎勵");
       assertThat(GameTokenTransaction.Source.INITIAL.getDisplayName()).isEqualTo("初始化");
+      assertThat(GameTokenTransaction.Source.MEMBERSHIP_GRANT.getDisplayName())
+          .isEqualTo("會員結算贈幣");
     }
   }
 

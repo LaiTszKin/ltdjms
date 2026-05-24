@@ -24,16 +24,19 @@ public class MembershipSettlementService {
 
   private final MembershipRepository membershipRepository;
   private final MembershipSpendRepository membershipSpendRepository;
+  private final MembershipTokenGrantService tokenGrantService;
   private final DomainEventPublisher eventPublisher;
   private final Clock clock;
 
   public MembershipSettlementService(
       MembershipRepository membershipRepository,
       MembershipSpendRepository membershipSpendRepository,
+      MembershipTokenGrantService tokenGrantService,
       DomainEventPublisher eventPublisher,
       Clock clock) {
     this.membershipRepository = Objects.requireNonNull(membershipRepository);
     this.membershipSpendRepository = Objects.requireNonNull(membershipSpendRepository);
+    this.tokenGrantService = Objects.requireNonNull(tokenGrantService);
     this.eventPublisher = Objects.requireNonNull(eventPublisher);
     this.clock = Objects.requireNonNull(clock);
   }
@@ -89,6 +92,8 @@ public class MembershipSettlementService {
           new MembershipTierChangedEvent(
               discordUserId, previousTier, newTier, avgM, settledAt));
     }
+
+    tokenGrantService.grantForSettlement(discordUserId, periodEnd, newTier);
 
     LOG.info(
         "Settled membership for userId={}: tier {} -> {}, avgM={}, nextSettlement={}",

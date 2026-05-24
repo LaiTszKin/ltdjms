@@ -40,6 +40,10 @@ import ltdjms.discord.panel.services.AdminPanelUpdateListener;
 import ltdjms.discord.panel.services.CurrencyManagementFacade;
 import ltdjms.discord.panel.services.GameConfigManagementFacade;
 import ltdjms.discord.panel.services.GameTokenManagementFacade;
+import java.time.Clock;
+
+import ltdjms.discord.membership.persistence.MembershipRepository;
+import ltdjms.discord.membership.persistence.MembershipSpendRepository;
 import ltdjms.discord.panel.services.MemberInfoFacade;
 import ltdjms.discord.panel.services.PanelSessionManager;
 import ltdjms.discord.panel.services.ProductRedemptionUpdateListener;
@@ -167,14 +171,20 @@ public class CommandHandlerModule {
       GameTokenTransactionService gameTokenTransactionService,
       CurrencyTransactionService currencyTransactionService,
       RedemptionService redemptionService,
-      ProductRedemptionTransactionService productRedemptionTransactionService) {
+      ProductRedemptionTransactionService productRedemptionTransactionService,
+      MembershipRepository membershipRepository,
+      MembershipSpendRepository membershipSpendRepository,
+      Clock clock) {
     return new MemberInfoFacade(
         balanceService,
         gameTokenService,
         gameTokenTransactionService,
         currencyTransactionService,
         redemptionService,
-        productRedemptionTransactionService);
+        productRedemptionTransactionService,
+        membershipRepository,
+        membershipSpendRepository,
+        clock);
   }
 
   // ========== Panel Services ==========

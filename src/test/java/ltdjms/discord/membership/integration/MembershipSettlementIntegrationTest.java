@@ -15,10 +15,18 @@ import ltdjms.discord.membership.domain.GlobalMemberMembership;
 import ltdjms.discord.membership.domain.MembershipTier;
 import ltdjms.discord.membership.persistence.JdbcMembershipRepository;
 import ltdjms.discord.membership.persistence.JdbcMembershipSpendRepository;
+import ltdjms.discord.membership.persistence.JdbcMembershipTokenGrantRepository;
 import ltdjms.discord.membership.persistence.MembershipRepository;
 import ltdjms.discord.membership.persistence.MembershipSpendRepository;
 import ltdjms.discord.membership.services.MembershipJoinService;
 import ltdjms.discord.membership.services.MembershipSettlementService;
+import ltdjms.discord.membership.services.MembershipTokenGrantService;
+import ltdjms.discord.gametoken.persistence.JdbcGameTokenAccountRepository;
+import ltdjms.discord.gametoken.persistence.JdbcGameTokenTransactionRepository;
+import ltdjms.discord.gametoken.services.GameTokenService;
+import ltdjms.discord.gametoken.services.GameTokenTransactionService;
+import ltdjms.discord.shared.cache.DefaultCacheKeyGenerator;
+import ltdjms.discord.shared.cache.NoOpCacheService;
 import ltdjms.discord.shared.events.DomainEventPublisher;
 import ltdjms.discord.shared.events.MembershipTierChangedEvent;
 
@@ -34,6 +42,7 @@ class MembershipSettlementIntegrationTest extends PostgresIntegrationTestBase {
 
   private MembershipRepository membershipRepository;
   private MembershipSpendRepository spendRepository;
+  private MembershipTokenGrantService tokenGrantService;
   private MembershipSettlementService settlementService;
   private RecordingEventPublisher eventPublisher;
 
@@ -42,10 +51,24 @@ class MembershipSettlementIntegrationTest extends PostgresIntegrationTestBase {
     membershipRepository = new JdbcMembershipRepository(dataSource);
     spendRepository = new JdbcMembershipSpendRepository(dataSource);
     eventPublisher = new RecordingEventPublisher();
+    var grantRepository = new JdbcMembershipTokenGrantRepository(dataSource);
+    var accountRepository = new JdbcGameTokenAccountRepository(dataSource);
+    var transactionRepository = new JdbcGameTokenTransactionRepository(dataSource);
+    GameTokenService gameTokenService =
+        new GameTokenService(
+            accountRepository,
+            eventPublisher,
+            NoOpCacheService.getInstance(),
+            new DefaultCacheKeyGenerator());
+    GameTokenTransactionService transactionService =
+        new GameTokenTransactionService(transactionRepository);
+    tokenGrantService =
+        new MembershipTokenGrantService(
+            grantRepository, spendRepository, gameTokenService, transactionService);
     Clock clock = Clock.fixed(SETTLE_NOW, MembershipJoinService.SETTLEMENT_ZONE);
     settlementService =
         new MembershipSettlementService(
-            membershipRepository, spendRepository, eventPublisher, clock);
+            membershipRepository, spendRepository, tokenGrantService, eventPublisher, clock);
   }
 
   @Test

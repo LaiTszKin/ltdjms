@@ -1,6 +1,7 @@
 package ltdjms.discord.membership.persistence;
 
 import java.time.Instant;
+import java.util.Optional;
 
 /** Persistence port for membership spend ledger entries. */
 public interface MembershipSpendRepository {
@@ -21,4 +22,7 @@ public interface MembershipSpendRepository {
 
   /** Returns the sum of catalog list prices M for a user within {@code [from, to)}. */
   long sumListPriceInPeriod(long discordUserId, Instant from, Instant to);
+
+  /** Returns the guild ID from the user's most recent spend entry, if any. */
+  Optional<Long> findMostRecentGuildId(long discordUserId);
 }

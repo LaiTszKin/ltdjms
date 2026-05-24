@@ -40,6 +40,7 @@ class MembershipSettlementServiceTest {
 
   @Mock private MembershipRepository membershipRepository;
   @Mock private MembershipSpendRepository membershipSpendRepository;
+  @Mock private MembershipTokenGrantService tokenGrantService;
   @Mock private DomainEventPublisher eventPublisher;
 
   private MembershipSettlementService service;
@@ -49,7 +50,11 @@ class MembershipSettlementServiceTest {
     Clock clock = Clock.fixed(NOW, MembershipJoinService.SETTLEMENT_ZONE);
     service =
         new MembershipSettlementService(
-            membershipRepository, membershipSpendRepository, eventPublisher, clock);
+            membershipRepository,
+            membershipSpendRepository,
+            tokenGrantService,
+            eventPublisher,
+            clock);
   }
 
   @Nested
@@ -87,7 +92,11 @@ class MembershipSettlementServiceTest {
           Clock.fixed(PERIOD_END.minusSeconds(3600), MembershipJoinService.SETTLEMENT_ZONE);
       service =
           new MembershipSettlementService(
-              membershipRepository, membershipSpendRepository, eventPublisher, futureClock);
+              membershipRepository,
+              membershipSpendRepository,
+              tokenGrantService,
+              eventPublisher,
+              futureClock);
 
       assertThat(service.settle(TEST_USER_ID)).isFalse();
     }

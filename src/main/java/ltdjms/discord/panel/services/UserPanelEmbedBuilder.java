@@ -41,7 +41,9 @@ public final class UserPanelEmbedBuilder {
                 new EmbedView.FieldView(
                     view.getCurrencyFieldName(), view.formatCurrencyField(), true),
                 new EmbedView.FieldView(
-                    view.getGameTokensFieldName(), view.formatGameTokensField(), true)),
+                    view.getGameTokensFieldName(), view.formatGameTokensField(), true),
+                new EmbedView.FieldView(
+                    view.getMembershipFieldName(), view.formatMembershipField(), false)),
             footer));
   }
 

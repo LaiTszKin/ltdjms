@@ -10,15 +10,20 @@ import dagger.Provides;
 import ltdjms.discord.membership.listeners.GuildMemberJoinListener;
 import ltdjms.discord.membership.persistence.JdbcMembershipRepository;
 import ltdjms.discord.membership.persistence.JdbcMembershipSpendRepository;
+import ltdjms.discord.membership.persistence.JdbcMembershipTokenGrantRepository;
 import ltdjms.discord.membership.persistence.MembershipRepository;
 import ltdjms.discord.membership.persistence.MembershipSpendRepository;
+import ltdjms.discord.membership.persistence.MembershipTokenGrantRepository;
 import ltdjms.discord.membership.services.MembershipJoinService;
 import ltdjms.discord.membership.services.MembershipPricingService;
 import ltdjms.discord.membership.services.MembershipSettlementScheduler;
 import ltdjms.discord.membership.services.MembershipSettlementService;
 import ltdjms.discord.membership.services.MembershipSpendService;
+import ltdjms.discord.membership.services.MembershipTokenGrantService;
 import ltdjms.discord.product.domain.EscortOptionCatalogRepository;
 import ltdjms.discord.shared.events.DomainEventPublisher;
+import ltdjms.discord.gametoken.services.GameTokenService;
+import ltdjms.discord.gametoken.services.GameTokenTransactionService;
 
 /** Dagger module providing membership repository dependencies. */
 @Module
@@ -34,6 +39,13 @@ public class MembershipModule {
   @Singleton
   public MembershipSpendRepository provideMembershipSpendRepository(DataSource dataSource) {
     return new JdbcMembershipSpendRepository(dataSource);
+  }
+
+  @Provides
+  @Singleton
+  public MembershipTokenGrantRepository provideMembershipTokenGrantRepository(
+      DataSource dataSource) {
+    return new JdbcMembershipTokenGrantRepository(dataSource);
   }
 
   @Provides
@@ -75,13 +87,29 @@ public class MembershipModule {
 
   @Provides
   @Singleton
+  public MembershipTokenGrantService provideMembershipTokenGrantService(
+      MembershipTokenGrantRepository grantRepository,
+      MembershipSpendRepository spendRepository,
+      GameTokenService gameTokenService,
+      GameTokenTransactionService gameTokenTransactionService) {
+    return new MembershipTokenGrantService(
+        grantRepository, spendRepository, gameTokenService, gameTokenTransactionService);
+  }
+
+  @Provides
+  @Singleton
   public MembershipSettlementService provideMembershipSettlementService(
       MembershipRepository membershipRepository,
       MembershipSpendRepository membershipSpendRepository,
+      MembershipTokenGrantService tokenGrantService,
       DomainEventPublisher eventPublisher,
       Clock clock) {
     return new MembershipSettlementService(
-        membershipRepository, membershipSpendRepository, eventPublisher, clock);
+        membershipRepository,
+        membershipSpendRepository,
+        tokenGrantService,
+        eventPublisher,
+        clock);
   }
 
   @Provides

@@ -42,7 +42,9 @@ public record GameTokenTransaction(
     /** Tokens granted from redeeming a redemption code */
     REDEMPTION_CODE("兌換碼獎勵"),
     /** Tokens granted as a product reward */
-    PRODUCT_REWARD("商品獎勵");
+    PRODUCT_REWARD("商品獎勵"),
+    /** Tokens granted at membership settlement */
+    MEMBERSHIP_GRANT("會員結算贈幣");
 
     private final String displayName;
 

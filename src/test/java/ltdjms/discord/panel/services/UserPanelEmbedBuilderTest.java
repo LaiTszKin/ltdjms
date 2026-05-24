@@ -2,10 +2,13 @@ package ltdjms.discord.panel.services;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Instant;
 import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import ltdjms.discord.membership.domain.MembershipTier;
 
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
@@ -24,13 +27,19 @@ class UserPanelEmbedBuilderTest {
   private static final String TEST_USER_MENTION = "<@987654321098765432>";
 
   private UserPanelView createTestView(long currencyBalance, long gameTokens) {
+    return createTestView(currencyBalance, gameTokens, null);
+  }
+
+  private UserPanelView createTestView(
+      long currencyBalance, long gameTokens, MembershipPanelSummary membershipSummary) {
     return new UserPanelView(
         TEST_GUILD_ID,
         TEST_USER_ID,
         currencyBalance,
         TEST_CURRENCY_NAME,
         TEST_CURRENCY_ICON,
-        gameTokens);
+        gameTokens,
+        membershipSummary);
   }
 
   @Test
@@ -59,7 +68,7 @@ class UserPanelEmbedBuilderTest {
 
     // Then
     List<MessageEmbed.Field> fields = embed.getFields();
-    assertThat(fields).hasSize(2);
+    assertThat(fields).hasSize(3);
 
     MessageEmbed.Field currencyField = fields.get(0);
     assertThat(currencyField.getName()).isEqualTo("星幣餘額");
@@ -79,13 +88,48 @@ class UserPanelEmbedBuilderTest {
 
     // Then
     List<MessageEmbed.Field> fields = embed.getFields();
-    assertThat(fields).hasSize(2);
+    assertThat(fields).hasSize(3);
 
     MessageEmbed.Field tokensField = fields.get(1);
     assertThat(tokensField.getName()).isEqualTo("遊戲代幣餘額");
     assertThat(tokensField.getValue()).contains("🎮");
     assertThat(tokensField.getValue()).contains("42");
     assertThat(tokensField.getValue()).contains("遊戲代幣");
+  }
+
+  @Test
+  @DisplayName("buildPanelEmbed 應包含會員等級欄位")
+  void buildPanelEmbedShouldContainMembershipField() {
+    MembershipPanelSummary summary =
+        new MembershipPanelSummary(
+            MembershipTier.GOLD,
+            20_000L,
+            MembershipTier.PLATINUM.thresholdListPriceTwd(),
+            Instant.parse("2026-05-15T00:00:00+08:00"),
+            MembershipTier.GOLD.discountRate());
+    UserPanelView view = createTestView(100L, 42L, summary);
+
+    MessageEmbed embed = UserPanelEmbedBuilder.buildPanelEmbed(view, TEST_USER_MENTION);
+
+    MessageEmbed.Field membershipField = embed.getFields().get(2);
+    assertThat(membershipField.getName()).isEqualTo("會員等級");
+    assertThat(membershipField.getValue()).contains("黃金");
+    assertThat(membershipField.getValue()).contains("護航 85 折");
+    assertThat(membershipField.getValue()).contains("20,000");
+    assertThat(membershipField.getValue()).contains("下一門檻進度");
+    assertThat(membershipField.getValue()).contains("下次結算日");
+  }
+
+  @Test
+  @DisplayName("buildPanelEmbed 無會員時應顯示升級提示")
+  void buildPanelEmbedShouldShowNoneTierHint() {
+    UserPanelView view = createTestView(100L, 5L, null);
+
+    MessageEmbed embed = UserPanelEmbedBuilder.buildPanelEmbed(view, TEST_USER_MENTION);
+
+    MessageEmbed.Field membershipField = embed.getFields().get(2);
+    assertThat(membershipField.getValue())
+        .contains("完成一筆 NT$500 以上護航法幣訂單即可升級青銅");
   }
 
   @Test

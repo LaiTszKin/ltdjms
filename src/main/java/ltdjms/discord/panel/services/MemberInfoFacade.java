@@ -1,5 +1,9 @@
 package ltdjms.discord.panel.services;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.util.Optional;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -8,6 +12,11 @@ import ltdjms.discord.currency.services.BalanceService;
 import ltdjms.discord.currency.services.CurrencyTransactionService;
 import ltdjms.discord.gametoken.services.GameTokenService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService;
+import ltdjms.discord.membership.domain.GlobalMemberMembership;
+import ltdjms.discord.membership.domain.MembershipTier;
+import ltdjms.discord.membership.domain.MembershipTierLabels;
+import ltdjms.discord.membership.persistence.MembershipRepository;
+import ltdjms.discord.membership.persistence.MembershipSpendRepository;
 import ltdjms.discord.redemption.services.ProductRedemptionTransactionService;
 import ltdjms.discord.redemption.services.RedemptionService;
 import ltdjms.discord.shared.DomainError;
@@ -20,6 +29,7 @@ import ltdjms.discord.shared.Result;
 public class MemberInfoFacade {
 
   private static final Logger LOG = LoggerFactory.getLogger(MemberInfoFacade.class);
+  private static final Instant EPOCH = Instant.EPOCH;
 
   private final BalanceService balanceService;
   private final GameTokenService gameTokenService;
@@ -27,6 +37,9 @@ public class MemberInfoFacade {
   private final CurrencyTransactionService currencyTransactionService;
   private final RedemptionService redemptionService;
   private final ProductRedemptionTransactionService productRedemptionTransactionService;
+  private final MembershipRepository membershipRepository;
+  private final MembershipSpendRepository membershipSpendRepository;
+  private final Clock clock;
 
   public MemberInfoFacade(
       BalanceService balanceService,
@@ -34,13 +47,19 @@ public class MemberInfoFacade {
       GameTokenTransactionService gameTokenTransactionService,
       CurrencyTransactionService currencyTransactionService,
       RedemptionService redemptionService,
-      ProductRedemptionTransactionService productRedemptionTransactionService) {
+      ProductRedemptionTransactionService productRedemptionTransactionService,
+      MembershipRepository membershipRepository,
+      MembershipSpendRepository membershipSpendRepository,
+      Clock clock) {
     this.balanceService = balanceService;
     this.gameTokenService = gameTokenService;
     this.gameTokenTransactionService = gameTokenTransactionService;
     this.currencyTransactionService = currencyTransactionService;
     this.redemptionService = redemptionService;
     this.productRedemptionTransactionService = productRedemptionTransactionService;
+    this.membershipRepository = membershipRepository;
+    this.membershipSpendRepository = membershipSpendRepository;
+    this.clock = clock;
   }
 
   /**
@@ -53,7 +72,6 @@ public class MemberInfoFacade {
   public Result<UserPanelView, DomainError> getUserPanelView(long guildId, long userId) {
     LOG.debug("Getting user panel view for guildId={}, userId={}", guildId, userId);
 
-    // Get currency balance
     Result<BalanceView, DomainError> balanceResult = balanceService.tryGetBalance(guildId, userId);
     if (balanceResult.isErr()) {
       LOG.warn(
@@ -65,9 +83,8 @@ public class MemberInfoFacade {
     }
 
     BalanceView balanceView = balanceResult.getValue();
-
-    // Get game token balance (this doesn't fail, returns 0 if not found)
     long gameTokens = gameTokenService.getBalance(guildId, userId);
+    MembershipPanelSummary membershipSummary = getMembershipSummary(userId);
 
     UserPanelView panelView =
         new UserPanelView(
@@ -76,7 +93,8 @@ public class MemberInfoFacade {
             balanceView.balance(),
             balanceView.currencyName(),
             balanceView.currencyIcon(),
-            gameTokens);
+            gameTokens,
+            membershipSummary);
 
     LOG.debug(
         "User panel view created: guildId={}, userId={}, currency={}, tokens={}",
@@ -86,6 +104,34 @@ public class MemberInfoFacade {
         gameTokens);
 
     return Result.ok(panelView);
+  }
+
+  /**
+   * Builds membership tier and period progress for the user panel.
+   *
+   * @param userId Discord user snowflake
+   * @return summary for panel rendering; tier {@link MembershipTier#NONE} when no membership row
+   */
+  public MembershipPanelSummary getMembershipSummary(long userId) {
+    Optional<GlobalMemberMembership> membershipOpt = membershipRepository.findByUserId(userId);
+    if (membershipOpt.isEmpty()) {
+      return noneSummary(null);
+    }
+
+    GlobalMemberMembership membership = membershipOpt.get();
+    Instant now = clock.instant();
+    Instant periodStart = resolvePeriodStart(membership);
+    long periodSpendM = membershipSpendRepository.sumListPriceInPeriod(userId, periodStart, now);
+
+    long nextTierThresholdM =
+        MembershipTierLabels.nextTierThresholdM(membership.currentTier()).orElse(0L);
+
+    return new MembershipPanelSummary(
+        membership.currentTier(),
+        periodSpendM,
+        nextTierThresholdM,
+        membership.nextSettlementAt(),
+        membership.currentTier().discountRate());
   }
 
   /**
@@ -154,5 +200,21 @@ public class MemberInfoFacade {
         page);
     return productRedemptionTransactionService.getTransactionPage(
         guildId, userId, page, ProductRedemptionTransactionService.DEFAULT_PAGE_SIZE);
+  }
+
+  private static MembershipPanelSummary noneSummary(Instant nextSettlementAt) {
+    return new MembershipPanelSummary(
+        MembershipTier.NONE, 0L, MembershipTier.SILVER.thresholdListPriceTwd(), nextSettlementAt,
+        MembershipTier.NONE.discountRate());
+  }
+
+  private static Instant resolvePeriodStart(GlobalMemberMembership membership) {
+    if (membership.lastSettlementAt() != null) {
+      return membership.lastSettlementAt();
+    }
+    if (membership.earliestGuildJoinAt() != null) {
+      return membership.earliestGuildJoinAt();
+    }
+    return EPOCH;
   }
 }

@@ -55,6 +55,11 @@ public class MembershipSpendService {
           public long sumListPriceInPeriod(long discordUserId, Instant from, Instant to) {
             return 0L;
           }
+
+          @Override
+          public java.util.Optional<Long> findMostRecentGuildId(long discordUserId) {
+            return java.util.Optional.empty();
+          }
         },
         new MembershipRepository() {
           @Override

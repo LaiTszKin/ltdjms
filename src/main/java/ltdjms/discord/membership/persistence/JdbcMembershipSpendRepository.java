@@ -6,6 +6,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.Optional;
 import javax.sql.DataSource;
 
 import org.slf4j.Logger;
@@ -99,5 +100,28 @@ public class JdbcMembershipSpendRepository implements MembershipSpendRepository 
     }
 
     return 0L;
+  }
+
+  @Override
+  public Optional<Long> findMostRecentGuildId(long discordUserId) {
+    String sql =
+        "SELECT guild_id FROM membership_spend_entry"
+            + " WHERE discord_user_id = ? ORDER BY paid_at DESC LIMIT 1";
+
+    try (Connection conn = dataSource.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(sql)) {
+      stmt.setLong(1, discordUserId);
+
+      try (ResultSet rs = stmt.executeQuery()) {
+        if (rs.next()) {
+          return Optional.of(rs.getLong("guild_id"));
+        }
+      }
+    } catch (SQLException e) {
+      LOG.error("Failed to find most recent spend guild for userId={}", discordUserId, e);
+      throw new RepositoryException("Failed to find most recent spend guild", e);
+    }
+
+    return Optional.empty();
   }
 }

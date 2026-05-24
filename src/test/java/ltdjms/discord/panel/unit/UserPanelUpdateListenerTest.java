@@ -72,7 +72,7 @@ class UserPanelUpdateListenerTest {
       // Given 最新餘額與面板 view
       long newBalance = 2_000L;
       UserPanelView view =
-          new UserPanelView(TEST_GUILD_ID, TEST_USER_ID, newBalance, "星幣", "✨", 50L);
+          new UserPanelView(TEST_GUILD_ID, TEST_USER_ID, newBalance, "星幣", "✨", 50L, null);
       when(userPanelService.getUserPanelView(TEST_GUILD_ID, TEST_USER_ID))
           .thenReturn(Result.ok(view));
 
@@ -87,7 +87,7 @@ class UserPanelUpdateListenerTest {
       verify(interactionHook).editOriginalEmbeds(embedCaptor.capture());
       MessageEmbed embed = embedCaptor.getValue();
 
-      assertThat(embed.getFields()).hasSize(2);
+      assertThat(embed.getFields()).hasSize(3);
       assertThat(embed.getFooter()).isNotNull();
       assertThat(embed.getFooter().getText()).isEqualTo("點擊下方按鈕查看流水紀錄");
       // 第一個欄位為貨幣餘額欄位，應包含最新餘額與貨幣名稱 / 圖示
@@ -107,7 +107,7 @@ class UserPanelUpdateListenerTest {
       // Given 最新遊戲代幣與面板 view
       long newTokens = 999L;
       UserPanelView view =
-          new UserPanelView(TEST_GUILD_ID, TEST_USER_ID, 1_000L, "星幣", "✨", newTokens);
+          new UserPanelView(TEST_GUILD_ID, TEST_USER_ID, 1_000L, "星幣", "✨", newTokens, null);
       when(userPanelService.getUserPanelView(TEST_GUILD_ID, TEST_USER_ID))
           .thenReturn(Result.ok(view));
 
@@ -122,7 +122,7 @@ class UserPanelUpdateListenerTest {
       verify(interactionHook).editOriginalEmbeds(embedCaptor.capture());
       MessageEmbed embed = embedCaptor.getValue();
 
-      assertThat(embed.getFields()).hasSize(2);
+      assertThat(embed.getFields()).hasSize(3);
       MessageEmbed.Field tokenField = embed.getFields().get(1);
       assertThat(tokenField.getName()).contains("遊戲代幣");
       assertThat(tokenField.getValue()).contains("🎮").contains("999");
