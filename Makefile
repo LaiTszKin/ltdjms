@@ -1,7 +1,57 @@
-.PHONY: build test verify clean docker-build docker-up docker-down docker-logs db-up db-down docker-dev format format-check lint setup-env update-env db-create db-create-test mvn-build mvn-test mvn-format mvn-format-check mvn-lint mvn-clean mvn-coverage mvn-verify mvn-coverage-check mvn-test-integration
+.PHONY: build test test-integration verify clean format format-check lint setup-env update-env db-up db-down db-create db-create-test start start-dev stop logs restart dev update help ts-build ts-test ts-format ts-format-check ts-lint coverage coverage-check mvn-build mvn-test mvn-test-integration mvn-verify mvn-format mvn-format-check mvn-clean mvn-coverage mvn-coverage-check
 
-# TypeScript commands (default)
+# Java / Maven commands (default)
 build:
+	mvn clean package -DskipTests
+
+test:
+	mvn -Punit-tests test
+
+test-integration:
+	mvn clean verify
+
+verify: build lint test
+
+format:
+	mvn spotless:apply
+
+format-check:
+	mvn spotless:check
+
+lint:
+	mvn -Ptype-safety -DskipTests test-compile
+
+clean:
+	mvn clean
+
+coverage:
+	mvn clean test jacoco:report
+	open target/site/jacoco/index.html
+
+coverage-check:
+	mvn clean verify -DskipTests=false
+
+# Legacy Maven aliases
+mvn-build: build
+
+mvn-test: test
+
+mvn-test-integration: test-integration
+
+mvn-verify: verify
+
+mvn-format: format
+
+mvn-format-check: format-check
+
+mvn-clean: clean
+
+mvn-coverage: coverage
+
+mvn-coverage-check: coverage-check
+
+# TypeScript commands (legacy monorepo)
+ts-build:
 	npx tsc --project packages/shared && \
 	npx tsc --project packages/economy && \
 	npx tsc --project packages/games && \
@@ -12,7 +62,7 @@ build:
 	npx tsc --project packages/admin && \
 	npx tsc --project apps/bot
 
-test:
+ts-test:
 	pnpm vitest run --project @ltdjms/shared && \
 	pnpm vitest run --project @ltdjms/games --exclude '**/*.pbt.test.ts' && \
 	for f in packages/games/src/__tests__/*.pbt.test.ts; do \
@@ -31,53 +81,6 @@ test:
 	done && \
 	pnpm vitest run --project @ltdjms/user-panel
 
-verify: build test lint format-check
-
-format:
-	pnpm prettier --write "packages/*/src/**/*.ts" "*.ts" "*.mjs" "tsconfig.json" ".prettierrc"
-
-format-check:
-	pnpm prettier --check "packages/*/src/**/*.ts"
-
-lint:
-	pnpm eslint .
-
-# Maven commands
-mvn-build:
-	mvn clean package -DskipTests
-
-mvn-format:
-	mvn spotless:apply
-
-mvn-format-check:
-	mvn spotless:check
-
-mvn-test:
-	mvn test
-
-mvn-test-integration:
-	mvn verify
-
-mvn-verify:
-	mvn clean verify
-
-mvn-coverage-check:
-	mvn clean verify -DskipTests=false
-
-mvn-clean:
-	mvn clean
-
-mvn-coverage:
-	mvn clean test jacoco:report
-	open target/site/jacoco/index.html
-
-# TypeScript commands (pnpm monorepo)
-ts-build:
-	tsc -b
-
-ts-test:
-	pnpm vitest run
-
 ts-format:
 	pnpm prettier --write "packages/*/src/**/*.ts" "*.ts" "*.mjs" "tsconfig.json" ".prettierrc"
 
@@ -85,8 +88,8 @@ ts-format-check:
 	pnpm prettier --check "packages/*/src/**/*.ts"
 
 ts-lint:
-	pnpm eslint packages/*/src/
-	
+	pnpm eslint .
+
 # Docker commands
 update:
 	git pull origin main
@@ -137,15 +140,18 @@ update-env:
 # Help
 help:
 	@echo "Available targets:"
-	@echo "  build            - Build the project (skip tests)"
-	@echo "  format           - Format code with Spotless"
-	@echo "  format-check     - Check code format with Spotless"
-	@echo "  test             - Run unit tests"
-	@echo "  test-integration - Run all tests including integration"
-	@echo "  verify           - Clean build and run all tests with coverage check"
-	@echo "  coverage-check   - Run tests and enforce 80% coverage threshold"
-	@echo "  coverage         - Generate code coverage report"
-	@echo "  clean            - Clean build artifacts"
+	@echo "  build            - Build the Java project (skip tests)"
+	@echo "  format           - Format Java code with Spotless"
+	@echo "  format-check     - Check Java code format with Spotless"
+	@echo "  lint             - Run Java type-safety compile checks"
+	@echo "  test             - Run Java unit tests"
+	@echo "  test-integration - Run full Maven verify (integration tests + coverage gate)"
+	@echo "  verify           - Build, lint, and unit tests"
+	@echo "  coverage-check   - Run tests and enforce coverage threshold"
+	@echo "  coverage         - Generate Java code coverage report"
+	@echo "  clean            - Clean Maven build artifacts"
+	@echo "  ts-build         - Build legacy TypeScript packages"
+	@echo "  ts-test          - Run legacy TypeScript tests"
 	@echo "  setup-env        - Interactive .env setup assistant for deployment values"
 	@echo "  update-env       - Sync .env with .env.example (backup to .env.bak)"
 	@echo "  update           - Pull latest changes, sync env, and build Docker image"

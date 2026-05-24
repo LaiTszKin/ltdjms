@@ -113,6 +113,7 @@
 - Bot 需具備 `bot` 與 `applications.commands` scope
 - 啟動後會逐 guild 同步 slash commands
 - `MESSAGE_CONTENT` intent 會在 JDA 啟動時啟用
+- `GUILD_MEMBERS` intent 會在 JDA 啟動時啟用（需在 [Discord Developer Portal](https://discord.com/developers/applications) → Bot → **Privileged Gateway Intents** 啟用 **Server Members Intent**；用於會員結算日錨點）
 
 ### PostgreSQL
 

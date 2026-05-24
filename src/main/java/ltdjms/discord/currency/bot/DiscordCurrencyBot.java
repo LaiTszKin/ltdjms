@@ -72,9 +72,8 @@ public class DiscordCurrencyBot {
     this.ecpayCallbackHttpServer = appComponent.ecpayCallbackHttpServer();
     this.fiatOrderProcessingScheduler = appComponent.fiatOrderProcessingScheduler();
 
-    // Build JDA instance with default non-privileged gateway intents to avoid
-    // DISALLOWED_INTENTS (4014) errors when the bot token does not have
-    // privileged intents such as GUILD_MEMBERS enabled.
+    // Build JDA with MESSAGE_CONTENT and GUILD_MEMBERS (privileged). GUILD_MEMBERS
+    // requires Server Members Intent enabled in Discord Developer Portal.
     List<Object> eventListeners =
         buildEventListeners(
             slashCommandListener,
@@ -88,8 +87,9 @@ public class DiscordCurrencyBot {
 
     this.jda =
         JDABuilder.createLight(envConfig.getDiscordBotToken())
-            // 啟用 MESSAGE_CONTENT 以允許在提及與討論串中讀取訊息內容
-            .enableIntents(GatewayIntent.MESSAGE_CONTENT)
+            // 啟用 MESSAGE_CONTENT 以允許在提及與討論串中讀取訊息內容；
+            // GUILD_MEMBERS 用於記錄成員加入時間（會員結算日錨點）
+            .enableIntents(GatewayIntent.MESSAGE_CONTENT, GatewayIntent.GUILD_MEMBERS)
             .addEventListeners(eventListeners.toArray())
             .build();
 

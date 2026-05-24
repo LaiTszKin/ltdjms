@@ -3,20 +3,20 @@
 ## Common Development Commands
 
 - `make build` — 打包專案並驗證可編譯（跳過測試）。
-- `make test` — 執行單元測試。
-- `make test-integration` — 執行 `mvn verify` 等級的整合驗證。
-- `make verify` — clean 後跑完整驗證流程。
-- `make format` — 用 Prettier 格式化 TypeScript 程式碼。
-- `make format-check` — 檢查格式是否符合規範。
-- `make lint` — 用 ESLint 檢查 TypeScript 程式碼。
+- `make test` — 執行 Java 單元測試。
+- `make test-integration` — 執行 `mvn verify`（含整合測試與覆蓋率門檻）。
+- `make verify` — 建置、型別安全檢查與單元測試。
+- `make format` — 用 Spotless 格式化 Java 程式碼。
+- `make format-check` — 檢查 Java 格式是否符合規範。
+- `make lint` — 執行 Java 型別安全編譯檢查。
 - `make start-dev` — 建置並啟動 bot、PostgreSQL、Redis。
 - `make logs` — 追蹤 Docker Compose 日誌。
 - `make db-up` — 只啟動 PostgreSQL。
 - `make setup-env` — 互動式建立或更新部署用 `.env`。
 - `make update-env` — 以 `.env.example` 非互動同步缺漏欄位並保留既有值。
-- `RUN_ECPAY_E2E=true make test` — 含 ECPay Stage API E2E 測試。
-- `pnpm vitest run --project @ltdjms/economy -t "should conserve"` — 執行單一測試名稱。
-- `npx tsx apps/bot/scripts/register-slash-commands.ts [--guild-id <id>]` — 向 Discord API 註冊 slash commands。
+- `RUN_ECPAY_E2E=true mvn test -Dtest=EcpayFiatPaymentE2EIntegrationTest` — 含 ECPay Stage API E2E 測試。
+- `mvn test -Dtest=ClassName#methodName` — 執行單一 Java 測試。
+- `make ts-build` / `make ts-test` — 建置或測試 legacy TypeScript 套件（若仍維護）。
 
 ## Project Business Goals
 
