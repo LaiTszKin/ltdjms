@@ -8,6 +8,7 @@ import ltdjms.discord.discord.domain.ButtonView;
 import ltdjms.discord.discord.domain.EmbedView;
 import ltdjms.discord.discord.services.DiscordComponentRenderer;
 import ltdjms.discord.discord.services.SelectMenuUtil;
+import ltdjms.discord.membership.services.EscortPriceQuote;
 import ltdjms.discord.product.domain.Product;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
@@ -126,15 +127,15 @@ public class ShopView {
   }
 
   /** Builds a payment method choice embed for products with both currency and fiat prices. */
-  public static MessageEmbed buildPaymentMethodChoiceEmbed(Product product) {
+  public static MessageEmbed buildPaymentMethodChoiceEmbed(Product product, EscortPriceQuote quote) {
     StringBuilder sb = new StringBuilder();
     sb.append("**商品：** ").append(product.name()).append("\n\n");
     sb.append("**請選擇支付方式：**\n\n");
     if (product.hasCurrencyPrice()) {
-      sb.append("💰 **貨幣購買** — ").append(product.formatCurrencyPrice()).append("\n");
+      sb.append("💰 **貨幣購買** — ").append(quote.formatCurrencyPriceLine()).append("\n");
     }
     if (product.hasFiatPriceTwd()) {
-      sb.append("💳 **法幣下單** — ").append(product.formatFiatPriceTwd());
+      sb.append("💳 **法幣下單** — ").append(quote.formatFiatPriceLine());
     }
 
     return DiscordComponentRenderer.buildEmbed(
@@ -228,18 +229,20 @@ public class ShopView {
   }
 
   /** Builds an embed for purchase confirmation. */
-  public static MessageEmbed buildPurchaseConfirmEmbed(Product product, long userBalance) {
+  public static MessageEmbed buildPurchaseConfirmEmbed(
+      Product product, long userBalance, EscortPriceQuote quote) {
     StringBuilder sb = new StringBuilder();
     sb.append("**商品：** ").append(product.name()).append("\n");
-    sb.append("**價格：** ").append(product.formatCurrencyPrice()).append("\n");
+    sb.append("**價格：** ").append(quote.formatCurrencyPriceLine()).append("\n");
     sb.append("**您的餘額：** ").append(String.format("%,d", userBalance)).append(" 貨幣\n");
 
+    long chargedPrice = quote.chargedCurrencyPrice();
     Color color = EMBED_COLOR;
-    if (userBalance < product.currencyPrice()) {
+    if (userBalance < chargedPrice) {
       sb.append("\n⚠️ **餘額不足！**");
       color = WARNING_COLOR;
     } else {
-      long remaining = userBalance - product.currencyPrice();
+      long remaining = userBalance - chargedPrice;
       sb.append("**購買後餘額：** ").append(String.format("%,d", remaining)).append(" 貨幣");
     }
 

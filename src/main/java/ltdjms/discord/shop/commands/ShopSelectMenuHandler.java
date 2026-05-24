@@ -12,6 +12,7 @@ import ltdjms.discord.discord.domain.ButtonView;
 import ltdjms.discord.discord.services.DiscordComponentRenderer;
 import ltdjms.discord.dispatch.domain.EscortDispatchOrder;
 import ltdjms.discord.dispatch.services.EscortDispatchHandoffService;
+import ltdjms.discord.membership.services.MembershipPricingService;
 import ltdjms.discord.product.domain.Product;
 import ltdjms.discord.product.services.ProductService;
 import ltdjms.discord.shared.DomainError;
@@ -45,6 +46,7 @@ public class ShopSelectMenuHandler extends ListenerAdapter {
   private final EscortDispatchHandoffService escortDispatchHandoffService;
   private final ShopAdminNotificationService adminNotificationService;
   private final EscortOrderBuyerNotificationService escortOrderBuyerNotificationService;
+  private final MembershipPricingService membershipPricingService;
   private final Set<String> inflightFiatOrders = ConcurrentHashMap.newKeySet();
 
   public ShopSelectMenuHandler(
@@ -54,7 +56,8 @@ public class ShopSelectMenuHandler extends ListenerAdapter {
       FiatOrderService fiatOrderService,
       EscortDispatchHandoffService escortDispatchHandoffService,
       ShopAdminNotificationService adminNotificationService,
-      EscortOrderBuyerNotificationService escortOrderBuyerNotificationService) {
+      EscortOrderBuyerNotificationService escortOrderBuyerNotificationService,
+      MembershipPricingService membershipPricingService) {
     this.productService = productService;
     this.balanceService = balanceService;
     this.purchaseService = purchaseService;
@@ -62,6 +65,7 @@ public class ShopSelectMenuHandler extends ListenerAdapter {
     this.escortDispatchHandoffService = escortDispatchHandoffService;
     this.adminNotificationService = adminNotificationService;
     this.escortOrderBuyerNotificationService = escortOrderBuyerNotificationService;
+    this.membershipPricingService = membershipPricingService;
   }
 
   @Override
@@ -99,8 +103,9 @@ public class ShopSelectMenuHandler extends ListenerAdapter {
 
                 if (hasCurrency && hasFiat) {
                   // Dual-price product: show payment method choice
+                  var quote = membershipPricingService.quoteEscortPrice(userId, product, guildId);
                   event
-                      .editMessageEmbeds(ShopView.buildPaymentMethodChoiceEmbed(product))
+                      .editMessageEmbeds(ShopView.buildPaymentMethodChoiceEmbed(product, quote))
                       .setComponents(ShopView.buildPaymentMethodChoiceComponents(product))
                       .queue();
                 } else if (hasCurrency) {
@@ -269,9 +274,10 @@ public class ShopSelectMenuHandler extends ListenerAdapter {
       long productId) {
     var balanceResult = balanceService.tryGetBalance(guildId, userId);
     long userBalance = balanceResult.isOk() ? balanceResult.getValue().balance() : 0;
+    var quote = membershipPricingService.quoteEscortPrice(userId, product, guildId);
 
     event
-        .editMessageEmbeds(ShopView.buildPurchaseConfirmEmbed(product, userBalance))
+        .editMessageEmbeds(ShopView.buildPurchaseConfirmEmbed(product, userBalance, quote))
         .setComponents(
             List.of(
                 DiscordComponentRenderer.buildActionRow(
@@ -294,9 +300,10 @@ public class ShopSelectMenuHandler extends ListenerAdapter {
       ButtonInteractionEvent event, Product product, long guildId, long userId, long productId) {
     var balanceResult = balanceService.tryGetBalance(guildId, userId);
     long userBalance = balanceResult.isOk() ? balanceResult.getValue().balance() : 0;
+    var quote = membershipPricingService.quoteEscortPrice(userId, product, guildId);
 
     event
-        .editMessageEmbeds(ShopView.buildPurchaseConfirmEmbed(product, userBalance))
+        .editMessageEmbeds(ShopView.buildPurchaseConfirmEmbed(product, userBalance, quote))
         .setComponents(
             List.of(
                 DiscordComponentRenderer.buildActionRow(
@@ -403,7 +410,7 @@ public class ShopSelectMenuHandler extends ListenerAdapter {
     sb.append("**商品：** ").append(order.product().name()).append("\n");
     sb.append("**訂單編號：** `").append(order.orderNumber()).append("`\n");
     sb.append("**超商代碼：** `").append(order.paymentNo()).append("`\n");
-    sb.append("**金額：** ").append(order.product().formatFiatPriceTwd()).append("\n");
+    sb.append("**金額：** ").append(order.priceQuote().formatFiatPriceLine()).append("\n");
     if (order.expireDate() != null && !order.expireDate().isBlank()) {
       sb.append("**繳費期限：** ").append(order.expireDate()).append("\n");
     }

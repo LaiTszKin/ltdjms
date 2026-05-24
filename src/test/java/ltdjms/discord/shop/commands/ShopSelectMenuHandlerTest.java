@@ -23,6 +23,11 @@ import ltdjms.discord.currency.domain.BalanceView;
 import ltdjms.discord.currency.services.BalanceService;
 import ltdjms.discord.dispatch.domain.EscortDispatchOrder;
 import ltdjms.discord.dispatch.services.EscortDispatchHandoffService;
+import java.math.BigDecimal;
+
+import ltdjms.discord.membership.domain.MembershipTier;
+import ltdjms.discord.membership.services.EscortPriceQuote;
+import ltdjms.discord.membership.services.MembershipPricingService;
 import ltdjms.discord.product.domain.Product;
 import ltdjms.discord.product.services.ProductService;
 import ltdjms.discord.shared.DomainError;
@@ -70,6 +75,8 @@ class ShopSelectMenuHandlerTest {
 
   @Mock private EscortOrderBuyerNotificationService escortOrderBuyerNotificationService;
 
+  @Mock private MembershipPricingService membershipPricingService;
+
   @Mock private StringSelectInteractionEvent selectEvent;
 
   @Mock private ButtonInteractionEvent buttonEvent;
@@ -106,7 +113,8 @@ class ShopSelectMenuHandlerTest {
             fiatOrderService,
             escortDispatchHandoffService,
             adminNotificationService,
-            escortOrderBuyerNotificationService);
+            escortOrderBuyerNotificationService,
+            membershipPricingService);
 
     // 設定預設的 mock 行為
     when(selectEvent.getGuild()).thenReturn(guild);
@@ -120,6 +128,12 @@ class ShopSelectMenuHandlerTest {
     when(user.openPrivateChannel()).thenReturn(openPrivateChannelAction);
     when(privateChannel.sendMessage(anyString())).thenReturn(dmMessageAction);
     when(interactionHook.editOriginal(any(String.class))).thenReturn(hookEditAction);
+    when(membershipPricingService.quoteEscortPrice(anyLong(), any(), anyLong()))
+        .thenAnswer(
+            invocation -> {
+              Product product = invocation.getArgument(1);
+              return noDiscountQuote(product);
+            });
     doAnswer(
             invocation -> {
               @SuppressWarnings("unchecked")
@@ -325,6 +339,7 @@ class ShopSelectMenuHandlerTest {
             Result.ok(
                 new FiatOrderService.FiatOrderResult(
                     product,
+                    noDiscountQuote(product),
                     "FD260409000001",
                     "ABC123456789",
                     "2026/04/12 23:59:59",
@@ -397,6 +412,7 @@ class ShopSelectMenuHandlerTest {
             Result.ok(
                 new FiatOrderService.FiatOrderResult(
                     product,
+                    noDiscountQuote(product),
                     "FD260409000002",
                     "ABC999999999",
                     "2026/04/12 23:59:59",
@@ -448,6 +464,7 @@ class ShopSelectMenuHandlerTest {
             Result.ok(
                 new FiatOrderService.FiatOrderResult(
                     product,
+                    noDiscountQuote(product),
                     "FD260409000003",
                     "ABC888888888",
                     "2026/04/12 23:59:59",
@@ -605,6 +622,7 @@ class ShopSelectMenuHandlerTest {
             Result.ok(
                 new FiatOrderService.FiatOrderResult(
                     product,
+                    noDiscountQuote(product),
                     "FD260409000001",
                     "ABC123456789",
                     "2026/04/12 23:59:59",
@@ -673,7 +691,7 @@ class ShopSelectMenuHandlerTest {
             100L,
             Instant.now(),
             Instant.now());
-    var purchaseResult = new CurrencyPurchaseService.PurchaseResult(product, 500L, 400L, 100L, "");
+    var purchaseResult = new CurrencyPurchaseService.PurchaseResult(product, 500L, 400L, 100L, noDiscountQuote(product), "");
 
     when(buttonEvent.getComponentId()).thenReturn(buttonId);
     when(purchaseService.purchaseProduct(TEST_GUILD_ID, TEST_USER_ID, TEST_PRODUCT_ID))
@@ -703,7 +721,7 @@ class ShopSelectMenuHandlerTest {
             "escort-a",
             Instant.now(),
             Instant.now());
-    var purchaseResult = new CurrencyPurchaseService.PurchaseResult(product, 500L, 400L, 100L, "");
+    var purchaseResult = new CurrencyPurchaseService.PurchaseResult(product, 500L, 400L, 100L, noDiscountQuote(product), "");
     EscortDispatchOrder dispatchOrder =
         EscortDispatchOrder.createAutoHandoff(
             "ESC-20260411-ABC123",
@@ -753,7 +771,7 @@ class ShopSelectMenuHandlerTest {
             "escort-a",
             Instant.now(),
             Instant.now());
-    var purchaseResult = new CurrencyPurchaseService.PurchaseResult(product, 500L, 400L, 100L, "");
+    var purchaseResult = new CurrencyPurchaseService.PurchaseResult(product, 500L, 400L, 100L, noDiscountQuote(product), "");
     EscortDispatchOrder dispatchOrder =
         EscortDispatchOrder.createAutoHandoff(
             "ESC-20260411-ABC123",
@@ -799,7 +817,7 @@ class ShopSelectMenuHandlerTest {
             "escort-a",
             Instant.now(),
             Instant.now());
-    var purchaseResult = new CurrencyPurchaseService.PurchaseResult(product, 500L, 400L, 100L, "");
+    var purchaseResult = new CurrencyPurchaseService.PurchaseResult(product, 500L, 400L, 100L, noDiscountQuote(product), "");
 
     when(buttonEvent.getComponentId()).thenReturn(buttonId);
     when(purchaseService.purchaseProduct(TEST_GUILD_ID, TEST_USER_ID, TEST_PRODUCT_ID))
@@ -834,7 +852,7 @@ class ShopSelectMenuHandlerTest {
             "escort-a",
             Instant.now(),
             Instant.now());
-    var purchaseResult = new CurrencyPurchaseService.PurchaseResult(product, 500L, 400L, 100L, "");
+    var purchaseResult = new CurrencyPurchaseService.PurchaseResult(product, 500L, 400L, 100L, noDiscountQuote(product), "");
     EscortDispatchOrder dispatchOrder =
         EscortDispatchOrder.createAutoHandoff(
             "ESC-20260411-ABC123",
@@ -897,5 +915,12 @@ class ShopSelectMenuHandlerTest {
 
     verify(buttonEvent).reply("發生錯誤，請稍後再試");
     verify(replyAction).setEphemeral(true);
+  }
+
+  private static EscortPriceQuote noDiscountQuote(Product product) {
+    long fiat = product.hasFiatPriceTwd() ? product.fiatPriceTwd() : 0L;
+    long currency = product.hasCurrencyPrice() ? product.currencyPrice() : 0L;
+    return new EscortPriceQuote(
+        fiat, fiat, currency, currency, MembershipTier.NONE, BigDecimal.ZERO);
   }
 }

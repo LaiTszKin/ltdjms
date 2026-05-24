@@ -7,6 +7,8 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import ltdjms.discord.membership.domain.MembershipTier;
+import ltdjms.discord.membership.services.EscortPriceQuote;
 import ltdjms.discord.product.domain.Product;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
@@ -215,7 +217,8 @@ class ShopViewTest {
             java.time.Instant.now(),
             java.time.Instant.now());
 
-    MessageEmbed embed = ShopView.buildPaymentMethodChoiceEmbed(product);
+    MessageEmbed embed =
+        ShopView.buildPaymentMethodChoiceEmbed(product, quoteFor(product, 100L, 500L));
 
     assertThat(embed.getTitle()).isEqualTo("🛒 選擇支付方式");
     assertThat(embed.getDescription()).contains("雙價格商品");
@@ -281,7 +284,7 @@ class ShopViewTest {
   void buildPurchaseConfirmEmbedShouldCreateConfirmationEmbed() {
     Product product = Product.createWithCurrencyPrice(TEST_GUILD_ID, "測試商品", null, 100L);
 
-    MessageEmbed embed = ShopView.buildPurchaseConfirmEmbed(product, 500L);
+    MessageEmbed embed = ShopView.buildPurchaseConfirmEmbed(product, 500L, quoteFor(product, 100L, 0L));
 
     assertThat(embed.getTitle()).isEqualTo("💰 確認購買");
     assertThat(embed.getDescription()).contains("**商品：** 測試商品");
@@ -295,7 +298,7 @@ class ShopViewTest {
   void buildPurchaseConfirmEmbedShouldShowWarningWhenInsufficientBalance() {
     Product product = Product.createWithCurrencyPrice(TEST_GUILD_ID, "測試商品", null, 100L);
 
-    MessageEmbed embed = ShopView.buildPurchaseConfirmEmbed(product, 50L);
+    MessageEmbed embed = ShopView.buildPurchaseConfirmEmbed(product, 50L, quoteFor(product, 100L, 0L));
 
     assertThat(embed.getDescription()).contains("⚠️ **餘額不足！**");
   }
@@ -304,5 +307,12 @@ class ShopViewTest {
   @DisplayName("getPageSize 應該返回正確的頁面大小")
   void getPageSizeShouldReturnCorrectPageSize() {
     assertThat(ShopView.getPageSize()).isEqualTo(5);
+  }
+
+  private static EscortPriceQuote quoteFor(Product product, long currency, long fiat) {
+    long listCurrency = product.hasCurrencyPrice() ? product.currencyPrice() : currency;
+    long listFiat = product.hasFiatPriceTwd() ? product.fiatPriceTwd() : fiat;
+    return new EscortPriceQuote(
+        listFiat, listFiat, listCurrency, listCurrency, MembershipTier.NONE, java.math.BigDecimal.ZERO);
   }
 }

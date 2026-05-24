@@ -330,13 +330,15 @@ public class CommandHandlerModule {
       BalanceService balanceService,
       BalanceAdjustmentService balanceAdjustmentService,
       CurrencyTransactionService currencyTransactionService,
-      ProductRewardService productRewardService) {
+      ProductRewardService productRewardService,
+      ltdjms.discord.membership.services.MembershipPricingService membershipPricingService) {
     return new ltdjms.discord.shop.services.CurrencyPurchaseService(
         productService,
         balanceService,
         balanceAdjustmentService,
         currencyTransactionService,
-        productRewardService);
+        productRewardService,
+        membershipPricingService);
   }
 
   @Provides
@@ -371,8 +373,10 @@ public class CommandHandlerModule {
   public FiatOrderService provideFiatOrderService(
       ProductService productService,
       EcpayCvsPaymentService ecpayCvsPaymentService,
-      FiatOrderRepository fiatOrderRepository) {
-    return new FiatOrderService(productService, ecpayCvsPaymentService, fiatOrderRepository);
+      FiatOrderRepository fiatOrderRepository,
+      ltdjms.discord.membership.services.MembershipPricingService membershipPricingService) {
+    return new FiatOrderService(
+        productService, ecpayCvsPaymentService, fiatOrderRepository, membershipPricingService);
   }
 
   @Provides
@@ -440,7 +444,8 @@ public class CommandHandlerModule {
       FiatOrderService fiatOrderService,
       EscortDispatchHandoffService escortDispatchHandoffService,
       ShopAdminNotificationService shopAdminNotificationService,
-      EscortOrderBuyerNotificationService escortOrderBuyerNotificationService) {
+      EscortOrderBuyerNotificationService escortOrderBuyerNotificationService,
+      ltdjms.discord.membership.services.MembershipPricingService membershipPricingService) {
     return new ShopSelectMenuHandler(
         productService,
         balanceService,
@@ -448,7 +453,8 @@ public class CommandHandlerModule {
         fiatOrderService,
         escortDispatchHandoffService,
         shopAdminNotificationService,
-        escortOrderBuyerNotificationService);
+        escortOrderBuyerNotificationService,
+        membershipPricingService);
   }
 
   @Provides

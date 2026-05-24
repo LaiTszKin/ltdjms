@@ -5,6 +5,8 @@ import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ltdjms.discord.membership.services.EscortPriceQuote;
+import ltdjms.discord.membership.services.MembershipPricingService;
 import ltdjms.discord.product.domain.Product;
 import ltdjms.discord.product.services.ProductService;
 import ltdjms.discord.shared.DomainError;
@@ -20,16 +22,21 @@ public class FiatOrderService {
   private final ProductService productService;
   private final EcpayCvsPaymentService ecpayCvsPaymentService;
   private final FiatOrderRepository fiatOrderRepository;
+  private final MembershipPricingService membershipPricingService;
 
   public FiatOrderService(
       ProductService productService,
       EcpayCvsPaymentService ecpayCvsPaymentService,
-      FiatOrderRepository fiatOrderRepository) {
+      FiatOrderRepository fiatOrderRepository,
+      MembershipPricingService membershipPricingService) {
     this.productService = Objects.requireNonNull(productService, "productService must not be null");
     this.ecpayCvsPaymentService =
         Objects.requireNonNull(ecpayCvsPaymentService, "ecpayCvsPaymentService must not be null");
     this.fiatOrderRepository =
         Objects.requireNonNull(fiatOrderRepository, "fiatOrderRepository must not be null");
+    this.membershipPricingService =
+        Objects.requireNonNull(
+            membershipPricingService, "membershipPricingService must not be null");
   }
 
   /**
@@ -56,9 +63,14 @@ public class FiatOrderService {
       return Result.err(DomainError.unexpectedFailure("商品資料異常，缺少商品編號", null));
     }
 
+    EscortPriceQuote quote = membershipPricingService.quoteEscortPrice(userId, product, guildId);
+    long chargedAmountTwd = quote.chargedPriceTwd();
+
     Result<EcpayCvsPaymentService.CvsPaymentCode, DomainError> paymentResult =
         ecpayCvsPaymentService.generateCvsPaymentCode(
-            product.fiatPriceTwd(), product.name(), String.format("Discord 商品下單 user:%d", userId));
+            chargedAmountTwd,
+            product.name(),
+            String.format("Discord 商品下單 user:%d", userId));
     if (paymentResult.isErr()) {
       return Result.err(paymentResult.getError());
     }
@@ -77,13 +89,16 @@ public class FiatOrderService {
               product.escortOptionCode(),
               paymentCode.orderNumber(),
               paymentCode.paymentNo(),
-              product.fiatPriceTwd(),
+              chargedAmountTwd,
+              quote.listPriceTwd(),
+              chargedAmountTwd,
               paymentCode.expireAt());
       FiatOrder savedOrder = fiatOrderRepository.save(order);
       Product fulfillmentSnapshot = savedOrder.toFulfillmentProduct();
       return Result.ok(
           new FiatOrderResult(
               fulfillmentSnapshot,
+              quote,
               paymentCode.orderNumber(),
               paymentCode.paymentNo(),
               paymentCode.expireDate(),
@@ -106,6 +121,7 @@ public class FiatOrderService {
   /** Result of fiat-only order creation. */
   public record FiatOrderResult(
       Product product,
+      EscortPriceQuote priceQuote,
       String orderNumber,
       String paymentNo,
       String expireDate,
@@ -119,7 +135,7 @@ public class FiatOrderService {
       sb.append("**商品：** ").append(product.name()).append("\n");
       sb.append("**訂單編號：** `").append(orderNumber).append("`\n");
       sb.append("**超商代碼：** `").append(paymentNo).append("`\n");
-      sb.append("**金額：** ").append(product.formatFiatPriceTwd()).append("\n");
+      sb.append("**金額：** ").append(priceQuote.formatFiatPriceLine()).append("\n");
       if (expireDate != null && !expireDate.isBlank()) {
         sb.append("**繳費期限：** ").append(expireDate).append("\n");
       }
