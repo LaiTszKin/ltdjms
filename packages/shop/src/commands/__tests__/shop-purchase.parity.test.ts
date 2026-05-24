@@ -30,6 +30,7 @@ describe('UT-308 ShopSelectMenuHandler purchase parity', () => {
   let adminNotification: { notifyAdminsOrderCreated: ReturnType<typeof vi.fn> };
   let buyerNotification: { notifyEscortOrderCreated: ReturnType<typeof vi.fn> };
   let discordGateway: { requireReadyClient: ReturnType<typeof vi.fn> };
+  let userSend: ReturnType<typeof vi.fn>;
   let handler: ShopCommandHandler;
 
   beforeEach(() => {
@@ -42,10 +43,11 @@ describe('UT-308 ShopSelectMenuHandler purchase parity', () => {
     escortHandoff = { handoffFromCurrencyPurchase: vi.fn() };
     adminNotification = { notifyAdminsOrderCreated: vi.fn() };
     buyerNotification = { notifyEscortOrderCreated: vi.fn() };
+    userSend = vi.fn().mockResolvedValue(undefined);
     discordGateway = {
       requireReadyClient: vi.fn().mockReturnValue({
         users: {
-          fetch: vi.fn().mockResolvedValue({ send: vi.fn().mockResolvedValue(undefined) }),
+          fetch: vi.fn().mockResolvedValue({ send: userSend }),
         },
       }),
     };
@@ -181,6 +183,79 @@ describe('UT-308 ShopSelectMenuHandler purchase parity', () => {
     expect(interaction.getReplyMessages()[0]).toContain('法幣訂單已建立');
   });
 
+  it('fiat-only select sends DM with payment URL on success', async () => {
+    const product = createTestProduct({
+      id: productId,
+      guildId: guildIdNum,
+      currencyPrice: null,
+      fiatPriceTwd: 1200,
+    });
+    const paymentUrl = 'https://example.com/pay';
+    vi.mocked(productService.getProduct).mockResolvedValue(product);
+    fiatOrderService.createFiatOnlyOrder.mockResolvedValue(
+      ok({
+        product,
+        orderNumber: 'FD260409000001',
+        paymentNo: 'ABC123456789',
+        expireDate: '2026/04/12 23:59:59',
+        paymentUrl,
+        fulfillmentWarning: null,
+      }),
+    );
+
+    const interaction = new ShopTestInteraction(guildId, userId, {
+      customId: SELECT_BUY_PRODUCT,
+      selectedValues: [String(productId)],
+    });
+    await handler.handleInteraction(
+      interaction,
+      new MockDiscordContext(guildId, userId, '1', `<@${userId}>`),
+      SELECT_BUY_PRODUCT,
+    );
+
+    expect(userSend).toHaveBeenCalledWith(expect.stringContaining(paymentUrl));
+    expect(interaction.getReplyMessages()[0]).toContain('完整付款資訊也已私訊給你');
+  });
+
+  it('fiat-only select shows fallback when DM fails', async () => {
+    const product = createTestProduct({
+      id: productId,
+      guildId: guildIdNum,
+      currencyPrice: null,
+      fiatPriceTwd: 1200,
+    });
+    vi.mocked(productService.getProduct).mockResolvedValue(product);
+    discordGateway.requireReadyClient.mockReturnValue({
+      users: {
+        fetch: vi.fn().mockRejectedValue(new Error('DM disabled')),
+      },
+    });
+    fiatOrderService.createFiatOnlyOrder.mockResolvedValue(
+      ok({
+        product,
+        orderNumber: 'FD260409000002',
+        paymentNo: 'ABC999999999',
+        expireDate: '2026/04/12 23:59:59',
+        paymentUrl: 'https://example.com/pay',
+        fulfillmentWarning: null,
+      }),
+    );
+
+    const interaction = new ShopTestInteraction(guildId, userId, {
+      customId: SELECT_BUY_PRODUCT,
+      selectedValues: [String(productId)],
+    });
+    await handler.handleInteraction(
+      interaction,
+      new MockDiscordContext(guildId, userId, '1', `<@${userId}>`),
+      SELECT_BUY_PRODUCT,
+    );
+
+    expect(interaction.getReplyMessages()[0]).toContain('無法私訊你');
+    expect(interaction.getReplyMessages()[0]).toContain('FD260409000002');
+    expect(interaction.getReplyMessages()[0]).toContain('ABC999999999');
+  });
+
   it('inflight fiat guard blocks duplicate keys', () => {
     const key = `${guildIdNum}:${userId}:${productId}`;
     expect(handler.inflightFiatOrders.has(key)).toBe(false);
@@ -250,6 +325,12 @@ describe('UT-308 ShopSelectMenuHandler purchase parity', () => {
 
     expect(buyerNotification.notifyEscortOrderCreated).toHaveBeenCalled();
     expect(adminNotification.notifyAdminsOrderCreated).toHaveBeenCalled();
+    expect(escortHandoff.handoffFromCurrencyPurchase).toHaveBeenCalledWith(
+      guildIdNum,
+      Number(userId),
+      product,
+      expect.any(String),
+    );
   });
 
   it('pay with currency button shows confirm embed', async () => {

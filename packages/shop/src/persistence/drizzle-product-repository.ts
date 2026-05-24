@@ -1,4 +1,4 @@
-import { eq, and, ilike, count, asc, sql } from 'drizzle-orm';
+import { eq, and, ilike, count, asc, sql, gt, or, isNull, lte, isNotNull } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { type Product, type ProductRepository } from '../domain/product-types.js';
 import { product as productTable } from './schema.js';
@@ -22,6 +22,37 @@ export class DrizzleProductRepository implements ProductRepository {
       .from(productTable)
       .where(eq(productTable.guildId, guildId));
     return result[0]?.count ?? 0;
+  }
+
+  async findByGuildIdWithCurrencyPrice(guildId: number): Promise<Product[]> {
+    const rows = await this.db
+      .select()
+      .from(productTable)
+      .where(
+        and(
+          eq(productTable.guildId, guildId),
+          isNotNull(productTable.currencyPrice),
+          gt(productTable.currencyPrice, 0),
+        ),
+      )
+      .orderBy(asc(productTable.name));
+    return rows.map((r) => this.mapRow(r));
+  }
+
+  async findFiatOnlyByGuildId(guildId: number): Promise<Product[]> {
+    const rows = await this.db
+      .select()
+      .from(productTable)
+      .where(
+        and(
+          eq(productTable.guildId, guildId),
+          isNotNull(productTable.fiatPriceTwd),
+          gt(productTable.fiatPriceTwd, 0),
+          or(isNull(productTable.currencyPrice), lte(productTable.currencyPrice, 0)),
+        ),
+      )
+      .orderBy(asc(productTable.name));
+    return rows.map((r) => this.mapRow(r));
   }
 
   async findByGuildIdPaginated(guildId: number, page: number, size: number): Promise<Product[]> {

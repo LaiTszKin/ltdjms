@@ -78,6 +78,8 @@ export function shouldAutoCreateEscortOrder(product: Product): boolean {
 export interface ProductRepository {
   findById(id: number): Promise<Product | null>;
   countByGuildId(guildId: number): Promise<number>;
+  findByGuildIdWithCurrencyPrice(guildId: number): Promise<Product[]>;
+  findFiatOnlyByGuildId(guildId: number): Promise<Product[]>;
   findByGuildIdPaginated(guildId: number, page: number, size: number): Promise<Product[]>;
   countByGuildIdAndNameContaining(guildId: number, keyword: string): Promise<number>;
   findByGuildIdAndNameContaining(

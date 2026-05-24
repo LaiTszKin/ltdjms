@@ -1,6 +1,6 @@
 import type { MarkdownAutoFixer } from '../autofix/MarkdownAutoFixer.js';
 import type { MarkdownValidator } from '../validation/MarkdownValidator.js';
-import { isValid } from '../types.js';
+import { isValid, isInvalid } from '../types.js';
 import { MarkdownHeadingSegmenter } from './MarkdownHeadingSegmenter.js';
 import { DiscordMarkdownSanitizer } from './DiscordMarkdownSanitizer.js';
 import { DiscordMarkdownPaginator } from './DiscordMarkdownPaginator.js';
@@ -47,6 +47,13 @@ export class DiscordMarkdownStreamProcessor {
 
       const fixed = this.autoFixer.autoFix(sanitizedOriginal);
       const sanitizedFixed = this.sanitizer.sanitize(fixed);
+      const fixedValidation = this.validator.validate(sanitizedFixed);
+      if (!isValid(fixedValidation)) {
+        console.warn(
+          '[DiscordMarkdownStreamProcessor] Markdown still invalid after autofix:',
+          isInvalid(fixedValidation) ? fixedValidation.errors : fixedValidation,
+        );
+      }
       pages.push(...this.paginator.paginate(sanitizedFixed));
     }
     return pages;

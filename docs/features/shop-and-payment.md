@@ -90,6 +90,11 @@ Then the order is queried against ECPay's trade status API
 And if payment was received (missed callback), the order transitions to `PAID`  
 And if not paid, the order is marked as `EXPIRED` or retried with backoff
 
+### Fiat Order Inflight Dedup
+The shop handler tracks in-flight fiat orders in an in-process `Set` keyed by `guildId:userId:productId`.  
+This prevents duplicate fiat order creation within a single bot instance when the user double-clicks buy.  
+Multi-instance deployments do not share this guard; use a single bot instance or add a distributed lock (e.g. Redis) if cross-process dedup is required.
+
 ## Redemption Codes
 
 ### Generate Redemption Codes (Admin)

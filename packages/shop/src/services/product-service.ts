@@ -1,11 +1,6 @@
 import { type Result, ok, err, DomainError } from '@ltdjms/shared';
 import type { DomainEventPublisher } from '@ltdjms/shared';
-import {
-  type Product,
-  type ProductRepository,
-  hasCurrencyPrice,
-  isFiatOnly,
-} from '../domain/product-types.js';
+import { type Product, type ProductRepository } from '../domain/product-types.js';
 import { OperationType } from '@ltdjms/shared';
 import { type ProductChangedEvent } from '../events/index.js';
 import pino from 'pino';
@@ -30,39 +25,17 @@ export class ProductService {
   }
 
   async getProductsForPurchase(guildId: number): Promise<Product[]> {
-    const all = await this.loadAllProducts(guildId);
-    return all.filter(hasCurrencyPrice);
+    return this.repository.findByGuildIdWithCurrencyPrice(guildId);
   }
 
   async getFiatOnlyProducts(guildId: number): Promise<Product[]> {
-    const all = await this.loadAllProducts(guildId);
-    return all.filter(isFiatOnly);
+    return this.repository.findFiatOnlyByGuildId(guildId);
   }
 
   async getAllPurchasableProducts(guildId: number): Promise<Product[]> {
-    const currencyProducts = await this.getProductsForPurchase(guildId);
-    const fiatProducts = await this.getFiatOnlyProducts(guildId);
+    const currencyProducts = await this.repository.findByGuildIdWithCurrencyPrice(guildId);
+    const fiatProducts = await this.repository.findFiatOnlyByGuildId(guildId);
     return [...currencyProducts, ...fiatProducts];
-  }
-
-  private async loadAllProducts(guildId: number): Promise<Product[]> {
-    const all: Product[] = [];
-    const pageSize = 100;
-    let page = 0;
-
-    while (true) {
-      const batch = await this.repository.findByGuildIdPaginated(guildId, page, pageSize);
-      if (batch.length === 0) {
-        break;
-      }
-      all.push(...batch);
-      if (batch.length < pageSize) {
-        break;
-      }
-      page++;
-    }
-
-    return all;
   }
 
   async countByGuildId(guildId: number): Promise<number> {

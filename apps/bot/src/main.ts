@@ -227,7 +227,7 @@ export async function main(): Promise<void> {
   logger.info('User panel module initialized');
 
   // 15. AI module — must be after publishReady (needs selfUserId via DiscordRuntimeGateway)
-  initializeAIModule();
+  await initializeAIModule();
   logger.info('AI module initialized');
 
   // 16. Admin module — registers admin handlers (interaction listener wired after user-panel).

@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHash } from 'node:crypto';
 import pino from 'pino';
 import type {
@@ -19,6 +20,7 @@ interface ExecutionContext {
   toolName: string;
   parameters: Record<string, unknown> | null;
   startTime: number;
+  managedByRun?: boolean;
 }
 
 const EMPTY_PARAMETERS_SUMMARY = '{"redacted":true,"entryCount":0,"keys":[]}';
@@ -29,8 +31,9 @@ const TEXT_FALLBACK_SUMMARY = '{"redacted":true,"type":"text"}';
  * Matches Java ToolExecutionInterceptor (redacted params/results, DB + events).
  */
 export class ToolExecutionInterceptor {
+  private static readonly executionStorage = new AsyncLocalStorage<ExecutionContext>();
+
   private readonly logger: pino.Logger;
-  private context: ExecutionContext | null = null;
   private readonly forceJsonFailure: boolean;
 
   constructor(
@@ -43,6 +46,44 @@ export class ToolExecutionInterceptor {
     this.forceJsonFailure = options?.forceJsonFailure ?? false;
   }
 
+  /**
+   * Runs a tool execution fn with isolated interceptor context (concurrency-safe).
+   */
+  async runTracked<T>(
+    toolName: string,
+    parameters: Record<string, unknown>,
+    fn: () => Promise<T>,
+  ): Promise<T> {
+    const ctx = ToolExecutionContext.getContext();
+    if (!ctx) {
+      return fn();
+    }
+
+    const executionCtx: ExecutionContext = {
+      guildId: ctx.guildId,
+      channelId: ctx.channelId,
+      userId: ctx.userId,
+      toolName,
+      parameters: parameters ?? null,
+      startTime: Date.now(),
+      managedByRun: true,
+    };
+
+    return ToolExecutionInterceptor.executionStorage.run(executionCtx, async () => {
+      this.onToolExecutionStarted(toolName, parameters);
+      try {
+        const result = await fn();
+        if (typeof result === 'string') {
+          this.onToolExecutionCompleted(result);
+        }
+        return result;
+      } catch (error) {
+        this.onToolExecutionFailed(error);
+        throw error;
+      }
+    });
+  }
+
   onToolExecutionStarted(toolName: string, parameters: Record<string, unknown>): void {
     try {
       const ctx = ToolExecutionContext.getContext();
@@ -51,14 +92,17 @@ export class ToolExecutionInterceptor {
         return;
       }
 
-      this.context = {
-        guildId: ctx.guildId,
-        channelId: ctx.channelId,
-        userId: ctx.userId,
-        toolName,
-        parameters: parameters ?? null,
-        startTime: Date.now(),
-      };
+      if (!ToolExecutionInterceptor.executionStorage.getStore()) {
+        const executionCtx: ExecutionContext = {
+          guildId: ctx.guildId,
+          channelId: ctx.channelId,
+          userId: ctx.userId,
+          toolName,
+          parameters: parameters ?? null,
+          startTime: Date.now(),
+        };
+        ToolExecutionInterceptor.executionStorage.enterWith(executionCtx);
+      }
 
       if (this.eventPublisher) {
         const event: LangChain4jToolExecutionStartedEvent = {
@@ -77,7 +121,7 @@ export class ToolExecutionInterceptor {
   }
 
   onToolExecutionCompleted(result: string): string {
-    const ctx = this.context;
+    const ctx = ToolExecutionInterceptor.executionStorage.getStore();
     if (!ctx) {
       this.logger.debug('無工具執行上下文，跳過成功記錄');
       return result;
@@ -116,12 +160,12 @@ export class ToolExecutionInterceptor {
       this.logger.error({ err: error, toolName: ctx.toolName }, '記錄工具執行成功日誌失敗');
       return result;
     } finally {
-      this.context = null;
+      this.clearExecutionContext();
     }
   }
 
   onToolExecutionFailed(error: unknown): string {
-    const ctx = this.context;
+    const ctx = ToolExecutionInterceptor.executionStorage.getStore();
     const message = error instanceof Error ? error.message : String(error);
 
     if (!ctx) {
@@ -162,8 +206,16 @@ export class ToolExecutionInterceptor {
       this.logger.error({ err: persistError, toolName: ctx.toolName }, '記錄工具執行失敗日誌失敗');
       return `❌ 工具執行失敗：${message}`;
     } finally {
-      this.context = null;
+      this.clearExecutionContext();
     }
+  }
+
+  private clearExecutionContext(): void {
+    const ctx = ToolExecutionInterceptor.executionStorage.getStore();
+    if (ctx?.managedByRun) {
+      return;
+    }
+    ToolExecutionInterceptor.executionStorage.enterWith(undefined as unknown as ExecutionContext);
   }
 
   private async persistLog(log: ReturnType<typeof createSuccessToolExecutionLog>): Promise<void> {

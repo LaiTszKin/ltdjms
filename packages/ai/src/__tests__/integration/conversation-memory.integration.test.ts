@@ -36,4 +36,25 @@ describe('UT-AG-026 conversation memory checkpoint integration', () => {
     expect(snapshot.values.turnCount).toBe(1);
     expect(provider2.isPostgresOnly()).toBe(true);
   });
+
+  it('recordAgentTurn survives simulated process restart', async () => {
+    if (!CONNECTION_URL) {
+      throw new Error('__TEST_CONTAINER_URL is required (run with shared vitest globalSetup)');
+    }
+
+    pool = new Pool({ connectionString: CONNECTION_URL, max: 2 });
+    const conversationId = `agent-turn-${Date.now()}`;
+
+    const provider1 = new LangGraphCheckpointProvider(pool);
+    await provider1.initialize();
+    await provider1.recordAgentTurn(conversationId);
+    await provider1.recordAgentTurn(conversationId);
+    expect(await provider1.getAgentTurnCount(conversationId)).toBe(2);
+    await provider1.shutdown();
+
+    const provider2 = new LangGraphCheckpointProvider(pool);
+    await provider2.initialize();
+    expect(await provider2.getAgentTurnCount(conversationId)).toBe(2);
+    await provider2.shutdown();
+  });
 });

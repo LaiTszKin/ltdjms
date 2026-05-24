@@ -16,13 +16,23 @@ import {
   StreamChunkType,
 } from './ai-chat-service.js';
 import { type Result, DomainError, ok, err, processWithConcurrencyLimit } from '@ltdjms/shared';
-import type { DiscordRuntimeGateway, DomainEventPublisher, DomainEvent } from '@ltdjms/shared';
+import type {
+  AgentCompletedEvent,
+  AgentFailedEvent,
+  DiscordRuntimeGateway,
+  DomainEventPublisher,
+  DomainEvent,
+} from '@ltdjms/shared';
 import { LangChainExceptionMapper } from './LangChainExceptionMapper.js';
 import type { PromptLoader } from '../prompts/prompt-loader.js';
 import { ToolExecutionContext } from '../tools/ToolExecutionContext.js';
 import { ToolExecutionInterceptor } from './ToolExecutionInterceptor.js';
-import { InMemoryToolCallHistory } from './memory/tool-call-history.js';
+import { ConversationIdBuilder, InMemoryToolCallHistory } from './memory/tool-call-history.js';
 import type { ChatMemoryProvider } from './memory/chat-memory-provider.js';
+import type { LangGraphCheckpointProvider } from './memory/langgraph-checkpoint-provider.js';
+
+/** Default max chars for tool results appended to LLM context. */
+export const DEFAULT_TOOL_RESULT_MAX_CHARS = 8000;
 
 // ===== Types =====
 
@@ -67,6 +77,8 @@ export class LangChainAIChatService implements AIChatService {
     private readonly runtimeGateway?: DiscordRuntimeGateway,
     private readonly eventPublisher?: DomainEventPublisher,
     private readonly memoryProvider?: ChatMemoryProvider,
+    private readonly checkpointProvider?: LangGraphCheckpointProvider,
+    private readonly toolResultMaxChars: number = DEFAULT_TOOL_RESULT_MAX_CHARS,
     private readonly exceptionMapper: LangChainExceptionMapper = new LangChainExceptionMapper(),
   ) {
     this.config = config;
@@ -211,14 +223,21 @@ export class LangChainAIChatService implements AIChatService {
       return;
     }
 
+    const conversationId = ConversationIdBuilder.build(
+      guildId,
+      channelId,
+      this.resolveThreadId(guildId, channelId),
+      userId,
+      messageId ?? null,
+    );
+
     try {
       // Build messages array (agent prompts included when agent is enabled)
       const messages = await this.buildMessages(userMessage, history, agentEnabled);
 
       // Append conversation memory if memory provider is available (P2-11)
       if (this.memoryProvider) {
-        const memoryId = `${guildId}:${channelId}:${userId}`;
-        const memoryMessages = await this.memoryProvider.getMemory(memoryId);
+        const memoryMessages = await this.memoryProvider.getMemory(conversationId);
         for (const mem of memoryMessages) {
           if (mem.role === 'user') {
             messages.push(new HumanMessage(mem.content));
@@ -237,8 +256,9 @@ export class LangChainAIChatService implements AIChatService {
         : { model: this.chatModel, maxIterations: 1 };
 
       let totalContent = '';
-      let sentContentLength = 0;
+      let finalResponseContent = '';
       let reasoningBuffer = '';
+      let agentSucceeded = false;
 
       /**
        * Manual agent iteration loop instead of LangChain's built-in AgentExecutor.
@@ -256,6 +276,7 @@ export class LangChainAIChatService implements AIChatService {
        */
       for (let iteration = 0; iteration < maxIterations; iteration++) {
         const pendingToolCalls = new Map<number, AccumulatedToolCall>();
+        let pendingContent = '';
         const stream = await chatModel.stream(messages);
 
         for await (const chunk of stream) {
@@ -281,9 +302,8 @@ export class LangChainAIChatService implements AIChatService {
           // ===== Content =====
           const content = typeof chunk.content === 'string' ? chunk.content : '';
           if (content) {
+            pendingContent += content;
             totalContent += content;
-            // For non-agent mode, emit CONTENT in real-time
-            // For agent mode, accumulate content and emit after tool loop completes
             if (!agentEnabled) {
               void handler.onChunk(content, false, null, StreamChunkType.CONTENT);
             }
@@ -301,15 +321,15 @@ export class LangChainAIChatService implements AIChatService {
         const toolCalls = Array.from(pendingToolCalls.values());
 
         if (toolCalls.length > 0) {
-          // Emit TOOL_INTENT for each tool call so the listener can display them
-          for (const tc of toolCalls) {
-            void handler.onChunk(`使用工具：${tc.name}`, false, null, StreamChunkType.TOOL_INTENT);
+          if (agentEnabled && pendingContent.trim()) {
+            void handler.onChunk(pendingContent, false, null, StreamChunkType.TOOL_INTENT);
+            pendingContent = '';
           }
 
           // Add assistant message with tool_calls to message history
           messages.push(
             new AIMessage({
-              content: totalContent || '',
+              content: pendingContent || '',
               tool_calls: toolCalls.map((tc) => ({
                 name: tc.name,
                 args: this.parseToolArgs(tc.args),
@@ -328,20 +348,9 @@ export class LangChainAIChatService implements AIChatService {
             messages.push(
               new ToolMessage({
                 tool_call_id: toolCalls[i].id,
-                content: results[i],
+                content: this.truncateToolResult(results[i]),
               }),
             );
-          }
-
-          // P2-8: Send accumulated content from this iteration before continuing
-          if (agentEnabled && totalContent.length > sentContentLength) {
-            void handler.onChunk(
-              totalContent.slice(sentContentLength),
-              false,
-              null,
-              StreamChunkType.CONTENT,
-            );
-            sentContentLength = totalContent.length;
           }
 
           // Continue to next iteration for model to process tool results
@@ -349,10 +358,20 @@ export class LangChainAIChatService implements AIChatService {
         }
 
         // No tool calls — this is the final iteration
+        finalResponseContent = pendingContent;
         break;
       }
 
       if (!totalContent && !reasoningBuffer) {
+        if (agentEnabled) {
+          this.publishAgentFailed(
+            guildId,
+            channelId,
+            userId,
+            conversationId,
+            'AI did not generate a response',
+          );
+        }
         void handler.onChunk(
           '',
           true,
@@ -361,15 +380,27 @@ export class LangChainAIChatService implements AIChatService {
         return;
       }
 
-      // P2-8: Send remaining accumulated content with completion signal
-      if (agentEnabled && totalContent) {
-        const remaining = totalContent.slice(sentContentLength);
-        void handler.onChunk(remaining, true, null, StreamChunkType.CONTENT);
+      if (agentEnabled && finalResponseContent) {
+        void handler.onChunk(finalResponseContent, true, null, StreamChunkType.CONTENT);
+        agentSucceeded = true;
       }
 
       // Final completion signal (used by non-agent mode)
       if (!agentEnabled) {
         void handler.onChunk('', true, null);
+      }
+
+      if (agentEnabled && agentSucceeded) {
+        if (this.checkpointProvider) {
+          await this.checkpointProvider.recordAgentTurn(conversationId);
+        }
+        this.publishAgentCompleted(
+          guildId,
+          channelId,
+          userId,
+          conversationId,
+          finalResponseContent || totalContent,
+        );
       }
 
       // Publish AIMessageEvent after successful completion (INT-011)
@@ -400,8 +431,77 @@ export class LangChainAIChatService implements AIChatService {
       }
     } catch (error) {
       const domainError = this.exceptionMapper.map(error);
+      if (agentEnabled) {
+        this.publishAgentFailed(guildId, channelId, userId, conversationId, domainError.message);
+      }
       void handler.onChunk('', true, domainError);
     }
+  }
+
+  private resolveThreadId(guildId: string, channelId: string): string | null {
+    const channel =
+      this.runtimeGateway?.findGuildChannel(guildId, channelId) ??
+      this.runtimeGateway?.findThreadChannel(guildId, channelId);
+    if (!channel || typeof channel !== 'object') {
+      return null;
+    }
+    const candidate = channel as { isThread?: () => boolean };
+    if (typeof candidate.isThread === 'function' && candidate.isThread()) {
+      return channelId;
+    }
+    return null;
+  }
+
+  private truncateToolResult(result: string): string {
+    if (result.length <= this.toolResultMaxChars) {
+      return result;
+    }
+    const truncated = result.slice(0, this.toolResultMaxChars);
+    return `${truncated}\n\n{"truncated":true,"total":${result.length}}`;
+  }
+
+  private publishAgentCompleted(
+    guildId: string,
+    channelId: string,
+    userId: string,
+    conversationId: string,
+    finalResponse: string,
+  ): void {
+    if (!this.eventPublisher) {
+      return;
+    }
+    const event: AgentCompletedEvent = {
+      eventType: 'agent_completed',
+      guildId,
+      channelId,
+      userId,
+      conversationId,
+      finalResponse,
+      timestamp: new Date(),
+    };
+    this.eventPublisher.publish(event);
+  }
+
+  private publishAgentFailed(
+    guildId: string,
+    channelId: string,
+    userId: string,
+    conversationId: string,
+    reason: string,
+  ): void {
+    if (!this.eventPublisher) {
+      return;
+    }
+    const event: AgentFailedEvent = {
+      eventType: 'agent_failed',
+      guildId,
+      channelId,
+      userId,
+      conversationId,
+      reason,
+      timestamp: new Date(),
+    };
+    this.eventPublisher.publish(event);
   }
 
   /**
@@ -433,9 +533,7 @@ export class LangChainAIChatService implements AIChatService {
 
     const args = this.parseToolArgs(tc.args);
 
-    // Execute within ToolExecutionContext for thread-local context
-    return ToolExecutionContext.run({ guildId, channelId, userId }, async () => {
-      // Get guild via runtime gateway for authorization
+    const executeWithGuild = async (): Promise<string> => {
       let guild: Guild | null = null;
       try {
         const client = this.runtimeGateway?.requireReadyClient() as
@@ -452,52 +550,61 @@ export class LangChainAIChatService implements AIChatService {
         // guild fetch failed — proceed with null guild (auth will fail gracefully)
       }
 
-      // P0-8: Interceptor lifecycle (Java API — no correlation ID)
-      this.interceptor?.onToolExecutionStarted(tc.name, args);
+      if (!guild) {
+        const noGuildMsg = `錯誤：無法取得伺服器資訊 (${guildId})`;
+        throw new Error(noGuildMsg);
+      }
+
+      const abortController = new AbortController();
+      let timer: NodeJS.Timeout | undefined;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+          abortController.abort();
+          reject(new Error(`工具「${tc.name}」執行逾時 (30 秒)`));
+        }, 30000);
+      });
+      try {
+        return await Promise.race([tool.execute(args, guild), timeoutPromise]);
+      } finally {
+        clearTimeout(timer);
+      }
+    };
+
+    // Execute within ToolExecutionContext for thread-local context
+    return ToolExecutionContext.run({ guildId, channelId, userId }, async () => {
+      const recordHistory = (result: string): void => {
+        if (!this.toolCallHistory) {
+          return;
+        }
+        const summary = InMemoryToolCallHistory.createMemorySummary(tc.name, args, result);
+        const historyKey = sourceId || channelId;
+        this.toolCallHistory.addToolCall(historyKey, userId, {
+          toolName: tc.name,
+          parameters: args,
+          memorySummary: summary.memorySummary,
+          redactionMode: summary.redactionMode,
+          timestamp: new Date(),
+          success: true,
+        });
+      };
+
+      if (this.interceptor) {
+        try {
+          const result = await this.interceptor.runTracked(tc.name, args, executeWithGuild);
+          recordHistory(result);
+          return result;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return `工具「${tc.name}」執行失敗：${message}`;
+        }
+      }
 
       try {
-        if (!guild) {
-          const noGuildMsg = `錯誤：無法取得伺服器資訊 (${guildId})`;
-          this.interceptor?.onToolExecutionFailed(noGuildMsg);
-          return noGuildMsg;
-        }
-        // P1-13: Per-tool execution timeout (30 seconds) with AbortController signal propagation (P3-5)
-        const abortController = new AbortController();
-        let result: string;
-        let timer: NodeJS.Timeout | undefined;
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          timer = setTimeout(() => {
-            abortController.abort();
-            reject(new Error(`工具「${tc.name}」執行逾時 (30 秒)`));
-          }, 30000);
-        });
-        try {
-          result = await Promise.race([tool.execute(args, guild), timeoutPromise]);
-        } finally {
-          clearTimeout(timer);
-        }
-
-        // P0-8: Interceptor completion (notification only; LLM gets original result)
-        this.interceptor?.onToolExecutionCompleted(result);
-
-        // P0-9: Record in tool call history (use threadId/channelId as key)
-        if (this.toolCallHistory) {
-          const summary = InMemoryToolCallHistory.createMemorySummary(tc.name, args, result);
-          const historyKey = sourceId || channelId;
-          this.toolCallHistory.addToolCall(historyKey, userId, {
-            toolName: tc.name,
-            parameters: args,
-            memorySummary: summary.memorySummary,
-            redactionMode: summary.redactionMode,
-            timestamp: new Date(),
-            success: true,
-          });
-        }
-
+        const result = await executeWithGuild();
+        recordHistory(result);
         return result;
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        this.interceptor?.onToolExecutionFailed(message);
         return `工具「${tc.name}」執行失敗：${message}`;
       }
     });

@@ -54,20 +54,15 @@ describe('UT-AG-018 tool execution interceptor parity', () => {
   });
 
   it('records successful execution with redacted parameters', async () => {
-    withContext(() => {
-      interceptor.onToolExecutionStarted('create_channel', {
-        name: 'test-channel',
-        type: 'text',
-      });
-    });
-
-    const result = withContext(() =>
-      interceptor.onToolExecutionCompleted('Channel created successfully'),
+    const result = await withContext(async () =>
+      interceptor.runTracked(
+        'create_channel',
+        { name: 'test-channel', type: 'text' },
+        async () => 'Channel created successfully',
+      ),
     );
 
-    expect(result).toContain('✅');
-    expect(result).toContain('創建頻道');
-    expect(result).toContain('執行成功');
+    expect(result).toBe('Channel created successfully');
 
     const logs = await repository.findByChannelId(TEST_CHANNEL_ID, 10);
     expect(logs.isOk()).toBe(true);
@@ -113,14 +108,15 @@ describe('UT-AG-018 tool execution interceptor parity', () => {
   });
 
   it('records failed execution with redacted error', async () => {
-    withContext(() => {
-      interceptor.onToolExecutionStarted('create_channel', { name: 'secret' });
+    await withContext(async () => {
+      try {
+        await interceptor.runTracked('create_channel', { name: 'secret' }, async () => {
+          throw new Error('Permission denied');
+        });
+      } catch {
+        // expected
+      }
     });
-
-    const result = withContext(() => interceptor.onToolExecutionFailed('Permission denied'));
-    expect(result).toContain('❌');
-    expect(result).toContain('執行失敗');
-    expect(result).toContain('Permission denied');
 
     const logs = await repository.findByChannelId(TEST_CHANNEL_ID, 1);
     const saved = logs.getValue()[0];
@@ -136,5 +132,37 @@ describe('UT-AG-018 tool execution interceptor parity', () => {
     });
     const second = interceptor.onToolExecutionCompleted('Another');
     expect(second).toBe('Another');
+  });
+
+  it('isolates concurrent tool executions with correct audit logs', async () => {
+    const contexts = [
+      { guildId: '111', channelId: '222', userId: '333', toolName: 'list_channels' },
+      { guildId: '444', channelId: '555', userId: '666', toolName: 'create_channel' },
+      { guildId: '777', channelId: '888', userId: '999', toolName: 'list_roles' },
+    ] as const;
+
+    await Promise.all(
+      contexts.map(({ guildId, channelId, userId, toolName }) =>
+        ToolExecutionContext.run({ guildId, channelId, userId }, async () =>
+          interceptor.runTracked(toolName, { key: toolName }, async () => {
+            await new Promise((resolve) => setTimeout(resolve, 10));
+            return `${toolName}-result`;
+          }),
+        ),
+      ),
+    );
+
+    for (const { guildId, channelId, userId, toolName } of contexts) {
+      const logs = await repository.findByChannelId(channelId, 10);
+      expect(logs.isOk()).toBe(true);
+      const matching = logs
+        .getValue()
+        .filter(
+          (log) =>
+            log.guildId === guildId && log.triggerUserId === userId && log.toolName === toolName,
+        );
+      expect(matching).toHaveLength(1);
+      expect(matching[0].executionResult).toContain('"redacted":true');
+    }
   });
 });

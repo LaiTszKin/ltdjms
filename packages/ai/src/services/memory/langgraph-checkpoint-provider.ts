@@ -65,8 +65,7 @@ export class LangGraphCheckpointProvider {
           defaultTTL: CHECKPOINT_CACHE_TTL_SECONDS,
           refreshOnRead: true,
         });
-        this.activeSaver = this.redisSaver;
-        this.logger.info('LangGraph checkpoint: Postgres + Redis Stack (3600s TTL)');
+        this.logger.info('LangGraph checkpoint: Postgres authoritative + Redis cache (3600s TTL)');
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         this.logger.warn(
@@ -74,7 +73,6 @@ export class LangGraphCheckpointProvider {
           'Redis checkpoint unavailable — Postgres-only fallback (ai-agent-java-parity)',
         );
         this.redisSaver = null;
-        this.activeSaver = this.postgresSaver;
       }
     } else {
       this.logger.info('LangGraph checkpoint: Postgres-only mode');
@@ -100,6 +98,21 @@ export class LangGraphCheckpointProvider {
       .addEdge(START, 'increment')
       .addEdge('increment', END)
       .compile({ checkpointer });
+  }
+
+  /** Records one agent turn for the given conversation thread (Postgres authoritative). */
+  async recordAgentTurn(conversationId: string): Promise<void> {
+    const app = this.buildConversationGraph();
+    const config = { configurable: { thread_id: conversationId } };
+    await app.invoke({}, config);
+  }
+
+  /** Returns persisted agent turn count for the conversation thread. */
+  async getAgentTurnCount(conversationId: string): Promise<number> {
+    const app = this.buildConversationGraph();
+    const config = { configurable: { thread_id: conversationId } };
+    const snapshot = await app.getState(config);
+    return snapshot.values.turnCount ?? 0;
   }
 
   async shutdown(): Promise<void> {

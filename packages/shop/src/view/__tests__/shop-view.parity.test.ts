@@ -24,7 +24,7 @@ import {
   buildSearchResultComponents,
   buildPurchaseConfirmEmbed,
   buildPurchaseConfirmComponents,
-  getPageSize,
+  PAGE_SIZE,
 } from '../shop-view.js';
 import customIds from '../../../../../docs/plans/2026-05-24/java-parity-shop-ai/shop-java-parity/fixtures/java-shop-custom-ids.json';
 import oracle from '../../../../../docs/plans/2026-05-24/java-parity-shop-ai/shop-java-parity/fixtures/java-shop-view-oracle.json';
@@ -46,7 +46,7 @@ describe('UT-302 ShopView embed + modal parity', () => {
     expect(BUTTON_SEARCH_NEXT).toBe(customIds.constants.BUTTON_SEARCH_NEXT);
     expect(BUTTON_CONFIRM_PURCHASE).toBe(customIds.constants.BUTTON_CONFIRM_PURCHASE);
     expect(BUTTON_CANCEL_PURCHASE).toBe(customIds.constants.BUTTON_CANCEL_PURCHASE);
-    expect(getPageSize()).toBe(customIds.pageSize);
+    expect(PAGE_SIZE).toBe(customIds.pageSize);
   });
 
   it('search modal uses keyword field id', () => {

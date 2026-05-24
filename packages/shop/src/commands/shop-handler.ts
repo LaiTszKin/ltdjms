@@ -69,6 +69,7 @@ interface DiscordClientLike {
  */
 export class ShopCommandHandler {
   readonly commandName = 'shop';
+  /** Process-local only; multi-instance deployments have no cross-process dedup. */
   readonly inflightFiatOrders = new Set<string>();
 
   constructor(
@@ -86,9 +87,8 @@ export class ShopCommandHandler {
   async execute(interaction: DiscordInteraction, _context: DiscordContext): Promise<void> {
     interaction.makeEphemeral();
 
-    const guildId = this.parseGuildId(interaction.getGuildId());
+    const guildId = await this.requireGuild(interaction);
     if (guildId == null) {
-      await interaction.reply('此功能只能在伺服器中使用');
       return;
     }
 
@@ -149,9 +149,8 @@ export class ShopCommandHandler {
       return;
     }
 
-    const guildId = this.parseGuildId(interaction.getGuildId());
+    const guildId = await this.requireGuild(interaction);
     if (guildId == null) {
-      await interaction.reply('此功能只能在伺服器中使用');
       return;
     }
 
@@ -189,9 +188,8 @@ export class ShopCommandHandler {
   }
 
   private async handleSearchButton(interaction: DiscordInteraction): Promise<void> {
-    const guildId = this.parseGuildId(interaction.getGuildId());
+    const guildId = await this.requireGuild(interaction);
     if (guildId == null) {
-      await interaction.reply('此功能只能在伺服器中使用');
       return;
     }
 
@@ -199,9 +197,8 @@ export class ShopCommandHandler {
   }
 
   private async handleSearchModalSubmit(interaction: DiscordInteraction): Promise<void> {
-    const guildId = this.parseGuildId(interaction.getGuildId());
+    const guildId = await this.requireGuild(interaction);
     if (guildId == null) {
-      await interaction.reply('此功能只能在伺服器中使用');
       return;
     }
 
@@ -211,10 +208,12 @@ export class ShopCommandHandler {
       return;
     }
 
+    const trimmedKeyword = keyword.trim();
+
     try {
-      const searchResults = await this.shopService.searchProducts(guildId, keyword.trim(), 0);
+      const searchResults = await this.shopService.searchProducts(guildId, trimmedKeyword, 0);
       if (searchResults.isEmpty()) {
-        await interaction.reply(`找不到符合「${keyword}」的商品`);
+        await interaction.reply(`找不到符合「${trimmedKeyword}」的商品`);
         return;
       }
 
@@ -226,7 +225,7 @@ export class ShopCommandHandler {
       const components = buildSearchResultComponents(
         searchResults.currentPage,
         searchResults.totalPages,
-        keyword.trim(),
+        trimmedKeyword,
         searchResults.products,
       );
       await interaction.replyWithComponents(embed, components);
@@ -323,9 +322,8 @@ export class ShopCommandHandler {
     interaction: DiscordInteraction,
     _customId: string,
   ): Promise<void> {
-    const guildId = this.parseGuildId(interaction.getGuildId());
+    const guildId = await this.requireGuild(interaction);
     if (guildId == null) {
-      await interaction.reply('此功能只能在伺服器中使用');
       return;
     }
 
@@ -380,9 +378,8 @@ export class ShopCommandHandler {
     interaction: DiscordInteraction,
     customId: string,
   ): Promise<void> {
-    const guildId = this.parseGuildId(interaction.getGuildId());
+    const guildId = await this.requireGuild(interaction);
     if (guildId == null) {
-      await interaction.reply('此功能只能在伺服器中使用');
       return;
     }
 
@@ -410,9 +407,8 @@ export class ShopCommandHandler {
     interaction: DiscordInteraction,
     customId: string,
   ): Promise<void> {
-    const guildId = this.parseGuildId(interaction.getGuildId());
+    const guildId = await this.requireGuild(interaction);
     if (guildId == null) {
-      await interaction.reply('此功能只能在伺服器中使用');
       return;
     }
 
@@ -428,9 +424,8 @@ export class ShopCommandHandler {
     interaction: DiscordInteraction,
     customId: string,
   ): Promise<void> {
-    const guildId = this.parseGuildId(interaction.getGuildId());
+    const guildId = await this.requireGuild(interaction);
     if (guildId == null) {
-      await interaction.reply('此功能只能在伺服器中使用');
       return;
     }
 
@@ -618,6 +613,15 @@ export class ShopCommandHandler {
     }
     const id = parseInt(guildId, 10);
     return Number.isNaN(id) ? null : id;
+  }
+
+  private async requireGuild(interaction: DiscordInteraction): Promise<number | null> {
+    const guildId = this.parseGuildId(interaction.getGuildId());
+    if (guildId == null) {
+      await interaction.reply('此功能只能在伺服器中使用');
+      return null;
+    }
+    return guildId;
   }
 
   private parseUserIdNumber(userId: string): number {

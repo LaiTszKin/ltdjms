@@ -109,7 +109,7 @@ Requirements: —
 Scope: `packages/shop/src/commands/` 新檔
 Out of scope: 行為變更
 
-- T7.1 [x] **（可選）拆分 shop-command/button/select handlers** — mirror Java 三檔結構
+- T7.1 [ ] **（可選）拆分 shop-command/button/select handlers** — mirror Java 三檔結構
   - Verify: 所有 UT-306–308 仍綠
 
 ## **Task 8: 回歸與驗收**

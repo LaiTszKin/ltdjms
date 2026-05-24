@@ -3,7 +3,6 @@ import { ChannelType } from 'discord.js';
 import { ConversationIdBuilder } from './tool-call-history.js';
 import { InMemoryToolCallHistory } from './tool-call-history.js';
 import { ConversationIdStrategy } from '../ai-chat-service.js';
-import { TokenEstimator } from './TokenEstimator.js';
 import type { DiscordRuntimeGateway } from '@ltdjms/shared';
 
 /**
@@ -71,11 +70,9 @@ export class SimplifiedChatMemoryProvider implements ChatMemoryProvider {
     private readonly threadHistoryProvider: DiscordThreadHistoryProvider,
     private readonly toolCallHistory: InMemoryToolCallHistory,
     private readonly runtimeGateway: DiscordRuntimeGateway,
-    private readonly tokenEstimator: TokenEstimator,
     maxMessages: number = SimplifiedChatMemoryProvider.THREAD_MAX_MESSAGES,
   ) {
     void maxMessages;
-    void tokenEstimator;
   }
 
   async getMemory(memoryId: string): Promise<Array<{ role: string; content: string }>> {

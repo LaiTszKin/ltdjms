@@ -6,13 +6,15 @@ describe('UT-305 getAllPurchasableProducts parity', () => {
   const guildId = 123456789;
 
   let repository: {
-    findByGuildIdPaginated: ReturnType<typeof vi.fn>;
+    findByGuildIdWithCurrencyPrice: ReturnType<typeof vi.fn>;
+    findFiatOnlyByGuildId: ReturnType<typeof vi.fn>;
   };
   let productService: ProductService;
 
   beforeEach(() => {
     repository = {
-      findByGuildIdPaginated: vi.fn(),
+      findByGuildIdWithCurrencyPrice: vi.fn(),
+      findFiatOnlyByGuildId: vi.fn(),
     };
     productService = new ProductService(repository as never, { publish: vi.fn() } as never);
   });
@@ -22,11 +24,11 @@ describe('UT-305 getAllPurchasableProducts parity', () => {
     const fiatOnlyProduct = createProduct(guildId, 'Fiat Item', null, null, null, null, 500);
     const dualProduct = createProduct(guildId, 'Dual Item', null, null, null, 200, 800);
 
-    repository.findByGuildIdPaginated.mockResolvedValue([
+    repository.findByGuildIdWithCurrencyPrice.mockResolvedValue([
       { ...currencyProduct, id: 1 },
-      { ...fiatOnlyProduct, id: 2 },
       { ...dualProduct, id: 3 },
     ]);
+    repository.findFiatOnlyByGuildId.mockResolvedValue([{ ...fiatOnlyProduct, id: 2 }]);
 
     const result = await productService.getAllPurchasableProducts(guildId);
 
@@ -36,8 +38,21 @@ describe('UT-305 getAllPurchasableProducts parity', () => {
     expect(result.some((p) => p.id === 2)).toBe(true);
   });
 
+  it('calls filtered repository queries once each', async () => {
+    repository.findByGuildIdWithCurrencyPrice.mockResolvedValue([]);
+    repository.findFiatOnlyByGuildId.mockResolvedValue([]);
+
+    await productService.getAllPurchasableProducts(guildId);
+
+    expect(repository.findByGuildIdWithCurrencyPrice).toHaveBeenCalledTimes(1);
+    expect(repository.findByGuildIdWithCurrencyPrice).toHaveBeenCalledWith(guildId);
+    expect(repository.findFiatOnlyByGuildId).toHaveBeenCalledTimes(1);
+    expect(repository.findFiatOnlyByGuildId).toHaveBeenCalledWith(guildId);
+  });
+
   it('returns empty list when guild has no products', async () => {
-    repository.findByGuildIdPaginated.mockResolvedValue([]);
+    repository.findByGuildIdWithCurrencyPrice.mockResolvedValue([]);
+    repository.findFiatOnlyByGuildId.mockResolvedValue([]);
     await expect(productService.getAllPurchasableProducts(guildId)).resolves.toEqual([]);
   });
 });

@@ -26,15 +26,25 @@ describe('UT-AIC-011 autofixer parity', () => {
     expect(oracle.autofixOrder[0]).toBe('code_fence');
   });
 
+  for (const testCase of oracle.cases) {
+    if (testCase.input) {
+      it(`matches oracle case: ${testCase.name}`, () => {
+        const fixed = fixer.autoFix(testCase.input);
+        expect(fixed.length).toBeGreaterThan(0);
+        if (testCase.expectValidAfterAutofix) {
+          expect(isValid(validator.validate(fixed))).toBe(true);
+        }
+        if (testCase.streamPrefix) {
+          expect(testCase.streamPrefix).toBe('-# ');
+        }
+      });
+    }
+  }
+
   it('shouldFixHeadingFormatMissingSpace', () => {
     const input = '#This is a heading\n##Another heading';
     const expected = '# This is a heading\n## Another heading';
     expect(fixer.autoFix(input)).toBe(expected);
-  });
-
-  it('unbalanced_bold_autofix from oracle case', () => {
-    const fixed = fixer.autoFix('hello **world');
-    expect(fixed).toContain('**');
   });
 
   it('shouldFixUnclosedCodeBlock', () => {

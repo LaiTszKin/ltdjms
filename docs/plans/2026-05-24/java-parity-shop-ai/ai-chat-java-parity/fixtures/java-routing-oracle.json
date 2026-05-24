@@ -5,14 +5,13 @@
     "AGENT_ENABLED",
     "AI_ALLOWLIST",
     "AGENT_CONFIG_UNAVAILABLE",
-    "THREAD_AGENT_INHERIT",
-    "THREAD_ALLOWLIST_INHERIT",
-    "DENY_NOT_ALLOWED"
+    "AI_ALLOWLIST_DENIED"
   ],
   "cases": [
     {
       "name": "agent_enabled_priority",
       "agentEnabled": true,
+      "restrictionChannelId": "channel-allowed",
       "expectedRoute": "AGENT_ROUTE",
       "expectedSource": "AGENT_ENABLED",
       "skipAllowlistCheck": true
@@ -20,15 +19,24 @@
     {
       "name": "agent_disabled_allowlist",
       "agentEnabled": false,
-      "channelAllowed": true,
+      "restrictionChannelId": "channel-allowed",
       "expectedRoute": "AI_CHAT_ROUTE",
       "expectedSource": "AI_ALLOWLIST"
     },
     {
       "name": "agent_config_unavailable_fail_closed",
       "agentConfigThrows": true,
+      "restrictionChannelId": "channel-allowed",
       "expectedRoute": "DENY",
-      "expectedSource": "AGENT_CONFIG_UNAVAILABLE"
+      "expectedSource": "AGENT_CONFIG_UNAVAILABLE",
+      "skipAllowlistCheck": true
+    },
+    {
+      "name": "allowlist_denied",
+      "agentEnabled": false,
+      "restrictionChannelId": "channel-denied",
+      "expectedRoute": "DENY",
+      "expectedSource": "AI_ALLOWLIST_DENIED"
     }
   ]
 }

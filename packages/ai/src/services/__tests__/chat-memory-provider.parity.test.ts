@@ -5,7 +5,6 @@ import {
 } from '../memory/chat-memory-provider.js';
 import { InMemoryToolCallHistory } from '../memory/tool-call-history.js';
 import { RedactionMode } from '../ai-chat-service.js';
-import { TokenEstimator } from '../memory/TokenEstimator.js';
 import type { DiscordRuntimeGateway } from '@ltdjms/shared';
 
 /** UT-AG-019 — SimplifiedChatMemoryProviderTest.java */
@@ -28,7 +27,6 @@ describe('UT-AG-019 chat memory provider parity', () => {
       threadHistoryProvider,
       toolCallHistory,
       runtimeGateway,
-      new TokenEstimator(),
     );
   });
 

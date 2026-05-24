@@ -28,9 +28,7 @@ export const BUTTON_SEARCH_NEXT = 'shop_snext_';
 export const BUTTON_CONFIRM_PURCHASE = 'shop_confirm_purchase_';
 export const BUTTON_CANCEL_PURCHASE = 'shop_cancel_purchase';
 
-export function getPageSize(): number {
-  return PAGE_SIZE;
-}
+export { PAGE_SIZE } from '../services/shop.service.js';
 
 export function encodeKeyword(keyword: string): string {
   return Buffer.from(keyword, 'utf-8').toString('base64').replace(/=+$/, '');

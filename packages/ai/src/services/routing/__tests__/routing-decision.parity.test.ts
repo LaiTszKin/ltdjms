@@ -60,49 +60,38 @@ describe('UT-AIC-001 routing-decision parity', () => {
   it('loads java-routing-oracle.json fixture', () => {
     expect(oracle.source).toBe('AIChatMentionRoutingDecisionTest.java');
     expect(oracle.routes).toContain('AGENT_ROUTE');
+    expect(oracle.sources).toEqual(Object.values(Source));
   });
 
-  it('shouldPreferAgentRouteWhenAgentEnabled — agent priority, skip allowlist', async () => {
-    vi.spyOn(agentConfigService, 'isAgentEnabledAsync').mockResolvedValue(true);
-    const allowSpy = vi.spyOn(restrictionService, 'isChannelAllowed');
+  for (const testCase of oracle.cases) {
+    it(`matches oracle case: ${testCase.name}`, async () => {
+      const allowSpy = vi.spyOn(restrictionService, 'isChannelAllowed');
 
-    const result = await decision.decide('guild-1', 'channel-1', 'channel-allowed', 'cat-1');
+      if (testCase.agentConfigThrows) {
+        vi.spyOn(agentConfigService, 'isAgentEnabledAsync').mockRejectedValue(
+          new Error('agent config unavailable'),
+        );
+      } else {
+        vi.spyOn(agentConfigService, 'isAgentEnabledAsync').mockResolvedValue(
+          testCase.agentEnabled ?? false,
+        );
+      }
 
-    expect(result.route).toBe(Route.AGENT_ROUTE);
-    expect(result.source).toBe(Source.AGENT_ENABLED);
-    expect(allowSpy).not.toHaveBeenCalled();
-  });
+      const result = await decision.decide(
+        'guild-1',
+        'channel-1',
+        testCase.restrictionChannelId ?? 'channel-allowed',
+        'cat-1',
+      );
 
-  it('shouldUseAllowlistWhenAgentDisabled — allowlist route', async () => {
-    vi.spyOn(agentConfigService, 'isAgentEnabledAsync').mockResolvedValue(false);
+      expect(result.route).toBe(testCase.expectedRoute);
+      expect(result.source).toBe(testCase.expectedSource);
 
-    const result = await decision.decide('guild-1', 'channel-1', 'channel-allowed', 'cat-1');
-
-    expect(result.route).toBe(Route.AI_CHAT_ROUTE);
-    expect(result.source).toBe(Source.AI_ALLOWLIST);
-  });
-
-  it('shouldDenyWhenAgentConfigUnavailable — fail closed', async () => {
-    vi.spyOn(agentConfigService, 'isAgentEnabledAsync').mockRejectedValue(
-      new Error('agent config unavailable'),
-    );
-    const allowSpy = vi.spyOn(restrictionService, 'isChannelAllowed');
-
-    const result = await decision.decide('guild-1', 'channel-1', 'channel-allowed', 'cat-1');
-
-    expect(result.route).toBe(Route.DENY);
-    expect(result.source).toBe(Source.AGENT_CONFIG_UNAVAILABLE);
-    expect(allowSpy).not.toHaveBeenCalled();
-  });
-
-  it('should deny when allowlist rejects', async () => {
-    vi.spyOn(agentConfigService, 'isAgentEnabledAsync').mockResolvedValue(false);
-
-    const result = await decision.decide('guild-1', 'channel-1', 'channel-denied', null);
-
-    expect(result.route).toBe(Route.DENY);
-    expect(result.source).toBe(Source.AI_ALLOWLIST_DENIED);
-  });
+      if (testCase.skipAllowlistCheck) {
+        expect(allowSpy).not.toHaveBeenCalled();
+      }
+    });
+  }
 });
 
 describe('resolveRestrictionChannelId', () => {

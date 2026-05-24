@@ -55,6 +55,45 @@ describe('UT-AIC-013 validating-chat-service parity', () => {
     expect(Array.isArray(remaining)).toBe(true);
   });
 
+  it('stream processor warns when markdown remains invalid after autofix', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const invalidResult = {
+      _tag: 'invalid' as const,
+      errors: [
+        {
+          errorType: 'HEADING_FORMAT' as const,
+          line: 1,
+          column: 1,
+          context: '#Bad',
+          suggestion: 'Add space after #',
+        },
+      ],
+    };
+    const validator = {
+      validate: vi.fn().mockReturnValue(invalidResult),
+    };
+    const autoFixer = {
+      autoFix: vi.fn((input: string) => input),
+    };
+
+    const processor = new DiscordMarkdownStreamProcessor(
+      new MarkdownHeadingSegmenter(),
+      validator,
+      autoFixer,
+      new DiscordMarkdownSanitizer(),
+      new DiscordMarkdownPaginator(),
+    );
+
+    processor.onChunk('#Bad heading\n\n');
+    const pages = processor.flush();
+    expect(Array.isArray(pages)).toBe(true);
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[DiscordMarkdownStreamProcessor] Markdown still invalid after autofix:',
+      invalidResult.errors,
+    );
+    warnSpy.mockRestore();
+  });
+
   it('streaming passes REASONING through unchanged', async () => {
     const chunks: Array<{ chunk: string; type?: StreamChunkType }> = [];
     const delegate = {

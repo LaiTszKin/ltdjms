@@ -13,6 +13,7 @@ import {
 } from '../services/routing/routing-decision.js';
 import { DomainError } from '@ltdjms/shared';
 import { MessageSplitter } from '../services/MessageSplitter.js';
+import { MessageChunkAccumulator } from '../services/message-chunk-accumulator.js';
 import { ReasoningMessageTracker } from './reasoning-message-tracker.js';
 
 const SPOILER_PREFIX = '-# ';
@@ -177,11 +178,12 @@ export class AIChatMentionListener {
   ): Promise<void> {
     const tracker = new ReasoningMessageTracker();
     tracker.setInitialMessage(thinkingMsg);
-    const contentBuffer: string[] = [];
+    const contentAccumulator = new MessageChunkAccumulator();
     let completed = false;
     let isFirstChunk = true;
     let hasReasoning = false;
     const firstContentSent = { value: false };
+    const bufferContentStarted = { value: false };
 
     const handler: StreamingResponseHandler = {
       onChunk: async (
@@ -222,7 +224,16 @@ export class AIChatMentionListener {
                 allowEditThinking,
               );
             } else {
-              contentBuffer.push(chunk);
+              const readySegments = contentAccumulator.accumulate(chunk);
+              for (const segment of readySegments) {
+                await this.sendAccumulatedContentSegment(
+                  message,
+                  thinkingMsg,
+                  segment,
+                  hasReasoning,
+                  bufferContentStarted,
+                );
+              }
             }
           }
         }
@@ -239,16 +250,20 @@ export class AIChatMentionListener {
           return;
         }
 
-        const fullContent = contentBuffer.join('').trim();
-        if (!fullContent) {
+        const remainingContent = contentAccumulator.drain();
+        if (!remainingContent && !bufferContentStarted.value) {
           await thinkingMsg.edit(':question: AI 沒有產生回應').catch(() => {});
           return;
         }
 
-        if (this.showReasoning && hasReasoning) {
-          await this.sendBufferedContent(message, null, fullContent);
-        } else {
-          await this.sendBufferedContent(message, thinkingMsg, fullContent);
+        if (remainingContent) {
+          await this.sendAccumulatedContentSegment(
+            message,
+            thinkingMsg,
+            remainingContent,
+            hasReasoning,
+            bufferContentStarted,
+          );
         }
       },
     };
@@ -260,6 +275,28 @@ export class AIChatMentionListener {
       userMessage,
       handler,
     );
+  }
+
+  private async sendAccumulatedContentSegment(
+    message: Message,
+    thinkingMessage: Message,
+    content: string,
+    hasReasoning: boolean,
+    contentStarted: { value: boolean },
+  ): Promise<void> {
+    if (this.showReasoning && hasReasoning) {
+      await this.sendBufferedContent(message, null, content);
+      contentStarted.value = true;
+      return;
+    }
+
+    if (!contentStarted.value) {
+      contentStarted.value = true;
+      await this.sendBufferedContent(message, thinkingMessage, content);
+      return;
+    }
+
+    await this.sendBufferedContent(message, null, content);
   }
 
   private async sendBufferedContent(

@@ -62,7 +62,6 @@ import { DeleteDiscordResourceTool } from '../tools/DeleteDiscordResourceTool.js
 import { InMemoryToolCallHistory } from '../services/memory/tool-call-history.js';
 import { DiscordThreadHistoryProvider } from '../services/memory/chat-memory-provider.js';
 import { SimplifiedChatMemoryProvider } from '../services/memory/chat-memory-provider.js';
-import { TokenEstimator } from '../services/memory/TokenEstimator.js';
 import { ToolExecutionInterceptor } from '../services/ToolExecutionInterceptor.js';
 import {
   DrizzleToolExecutionLogRepository,
@@ -100,7 +99,6 @@ export const AI_TOKENS = {
   InMemoryToolCallHistory: Symbol('InMemoryToolCallHistory'),
   DiscordThreadHistoryProvider: Symbol('DiscordThreadHistoryProvider'),
   SimplifiedChatMemoryProvider: Symbol('SimplifiedChatMemoryProvider'),
-  TokenEstimator: Symbol('TokenEstimator'),
   CommonMarkValidator: Symbol('CommonMarkValidator'),
   RegexBasedAutoFixer: Symbol('RegexBasedAutoFixer'),
   DiscordMarkdownSanitizer: Symbol('DiscordMarkdownSanitizer'),
@@ -136,7 +134,7 @@ export const AI_TOKENS = {
 /**
  * Initializes the AI module in the tsyringe DI container.
  */
-export function initializeAIModule(): void {
+export async function initializeAIModule(): Promise<void> {
   const envConfig = container.resolve<EnvironmentConfig>(TOKENS.EnvironmentConfig);
   const cacheService = container.resolve<CacheService>(TOKENS.CacheService);
   const eventPublisher = container.resolve<DomainEventPublisher>(TOKENS.DomainEventPublisher);
@@ -310,18 +308,18 @@ export function initializeAIModule(): void {
   container.registerInstance(AI_TOKENS.InMemoryToolCallHistory, toolCallHistory);
 
   // ===== LangGraph checkpoint (Postgres + optional Redis) =====
-  void createLangGraphCheckpointProvider(rawPool, envConfig.getRedisUri())
-    .then((provider) => {
-      if (provider) {
-        container.registerInstance(AI_TOKENS.LangGraphCheckpointProvider, provider);
-      }
-    })
-    .catch((error) => {
-      logger.warn(
-        { err: error instanceof Error ? error.message : String(error) },
-        'LangGraph checkpoint init failed — agent memory uses Discord thread history only',
-      );
-    });
+  let checkpointProvider: Awaited<ReturnType<typeof createLangGraphCheckpointProvider>> = null;
+  try {
+    checkpointProvider = await createLangGraphCheckpointProvider(rawPool, envConfig.getRedisUri());
+    if (checkpointProvider) {
+      container.registerInstance(AI_TOKENS.LangGraphCheckpointProvider, checkpointProvider);
+    }
+  } catch (error) {
+    logger.warn(
+      { err: error instanceof Error ? error.message : String(error) },
+      'LangGraph checkpoint init failed — agent memory uses Discord thread history only',
+    );
+  }
 
   // ===== Agent event listeners =====
   const toolExecutionListener = new ToolExecutionListener(runtimeGateway, logger);
@@ -329,7 +327,7 @@ export function initializeAIModule(): void {
   container.registerInstance(AI_TOKENS.ToolExecutionListener, toolExecutionListener);
   container.registerInstance(AI_TOKENS.AgentCompletionListener, agentCompletionListener);
   eventPublisher.register((event) => toolExecutionListener.accept(event));
-  eventPublisher.register((event) => agentCompletionListener.accept(event));
+  // AgentCompletionListener stays in DI for unit tests; mention listener owns Discord UX (P1-5/P1-6).
 
   // ===== Shared ChatOpenAI Singleton =====
   // Single shared instance to avoid multiple HTTP agents/connection pools (P1-30, P2-11)
@@ -350,15 +348,10 @@ export function initializeAIModule(): void {
   const threadHistoryProvider = new DiscordThreadHistoryProvider(runtimeGateway);
   container.registerInstance(AI_TOKENS.DiscordThreadHistoryProvider, threadHistoryProvider);
 
-  // TokenEstimator for context-window management (P2-26)
-  const tokenEstimator = new TokenEstimator();
-  container.registerInstance(AI_TOKENS.TokenEstimator, tokenEstimator);
-
   const memoryProvider = new SimplifiedChatMemoryProvider(
     threadHistoryProvider,
     toolCallHistory,
     runtimeGateway,
-    tokenEstimator,
   );
   container.registerInstance(AI_TOKENS.SimplifiedChatMemoryProvider, memoryProvider);
 
@@ -372,6 +365,7 @@ export function initializeAIModule(): void {
     runtimeGateway,
     eventPublisher,
     memoryProvider,
+    checkpointProvider ?? undefined,
   );
   container.registerInstance(AI_TOKENS.LangChainAIChatService, langChainService);
 

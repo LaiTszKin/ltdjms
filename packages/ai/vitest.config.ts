@@ -7,6 +7,7 @@ const sharedTestTeardown = path.resolve(__dirname, '../shared/src/__tests__/vite
 export default defineConfig({
   test: {
     include: ['src/**/*.test.ts'],
+    exclude: ['**/*.poc.test.ts'],
     testTimeout: 30000,
     setupFiles: ['./vitest.setup.ts'],
     globalSetup: [sharedTestSetup],

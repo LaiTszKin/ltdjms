@@ -35,23 +35,8 @@ Date: 2026-05-24
 
 | Java test | TS test ID | TS target |
 |-----------|------------|-----------|
-| LangChain4jCreateChannelToolTest.java | UT-AG-001 | packages/ai/src/tools/__tests__/create-channel.parity.test.ts |
-| LangChain4jCreateCategoryToolTest.java | UT-AG-002 | packages/ai/src/tools/__tests__/create-category.parity.test.ts |
-| LangChain4jCreateRoleToolTest.java | UT-AG-003 | packages/ai/src/tools/__tests__/create-role.parity.test.ts |
-| LangChain4jListChannelsToolTest.java | UT-AG-004 | packages/ai/src/tools/__tests__/list-channels.parity.test.ts |
-| LangChain4jListCategoriesToolTest.java | UT-AG-005 | packages/ai/src/tools/__tests__/list-categories.parity.test.ts |
-| LangChain4jListRolesToolTest.java | UT-AG-006 | packages/ai/src/tools/__tests__/list-roles.parity.test.ts |
-| LangChain4jGetChannelPermissionsToolTest.java | UT-AG-007 | packages/ai/src/tools/__tests__/get-channel-permissions.parity.test.ts |
-| LangChain4jGetCategoryPermissionsToolTest.java | UT-AG-008 | packages/ai/src/tools/__tests__/get-category-permissions.parity.test.ts |
-| LangChain4jGetRolePermissionsToolTest.java | UT-AG-009 | packages/ai/src/tools/__tests__/get-role-permissions.parity.test.ts |
-| LangChain4jModifyChannelPermissionsToolTest.java | UT-AG-010 | packages/ai/src/tools/__tests__/modify-channel-permissions.parity.test.ts |
-| LangChain4jModifyCategoryPermissionsToolTest.java | UT-AG-011 | packages/ai/src/tools/__tests__/modify-category-permissions.parity.test.ts |
-| LangChain4jModifyRolePermissionsToolTest.java | UT-AG-012 | packages/ai/src/tools/__tests__/modify-role-permissions.parity.test.ts |
-| LangChain4jSendMessagesToolTest.java | UT-AG-013 | packages/ai/src/tools/__tests__/send-messages.parity.test.ts |
-| LangChain4jSearchMessagesToolTest.java | UT-AG-014 | packages/ai/src/tools/__tests__/search-messages.parity.test.ts |
-| LangChain4jManageMessageToolTest.java | UT-AG-015 | packages/ai/src/tools/__tests__/manage-message.parity.test.ts |
-| LangChain4jMoveChannelToolTest.java | UT-AG-016 | packages/ai/src/tools/__tests__/move-channel.parity.test.ts |
-| LangChain4jDeleteDiscordResourceToolTest.java | UT-AG-017 | packages/ai/src/tools/__tests__/delete-discord-resource.parity.test.ts |
+| LangChain4jCreateChannelToolTest.java … LangChain4jDeleteDiscordResourceToolTest.java | UT-AG-001 … UT-AG-017 | packages/ai/src/tools/__tests__/agent-tools.parity.test.ts |
+| LangChain4jToolSchemaTest.java | UT-AG-501 | packages/ai/src/tools/__tests__/tool-schema.parity.test.ts |
 | ToolExecutionInterceptorTest.java | UT-AG-018 | packages/ai/src/services/__tests__/tool-execution-interceptor.parity.test.ts |
 | SimplifiedChatMemoryProviderTest.java | UT-AG-019 | packages/ai/src/services/__tests__/chat-memory-provider.parity.test.ts |
 | InMemoryToolCallHistoryTest.java | UT-AG-020 | packages/ai/src/services/__tests__/tool-call-history.parity.test.ts |

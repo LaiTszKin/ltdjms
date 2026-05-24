@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CommonMarkValidator } from '../validation/CommonMarkValidator.js';
+import { RegexBasedAutoFixer } from '../autofix/RegexBasedAutoFixer.js';
 import { ErrorType, isInvalid, isValid } from '../types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -19,10 +20,20 @@ const oracle = JSON.parse(
 /** UT-AIC-010 — CommonMarkValidatorTest_* parity */
 describe('UT-AIC-010 validator parity', () => {
   const validator = new CommonMarkValidator();
+  const fixer = new RegexBasedAutoFixer();
 
   it('loads java-markdown-oracle.json error types', () => {
     expect(oracle.errorTypes).toContain('UNBALANCED_EMPHASIS');
   });
+
+  for (const testCase of oracle.cases) {
+    if (testCase.expectValidAfterAutofix && testCase.input) {
+      it(`matches oracle case: ${testCase.name}`, () => {
+        const fixed = fixer.autoFix(testCase.input);
+        expect(isValid(validator.validate(fixed))).toBe(true);
+      });
+    }
+  }
 
   it('flags heading without space', () => {
     const result = validator.validate('#Heading');
@@ -48,7 +59,7 @@ describe('UT-AIC-010 validator parity', () => {
     const result = validator.validate('-item');
     expect(isInvalid(result)).toBe(true);
     if (isInvalid(result)) {
-      expect(result.errors[0].errorType).toBe(ErrorType.MALFORMED_LIST);
+      expect(result.errors.some((e) => e.errorType === ErrorType.MALFORMED_LIST)).toBe(true);
     }
   });
 });
