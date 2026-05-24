@@ -86,6 +86,11 @@ beforeEach(async () => {
       getError: () => ({ message: '' }),
       getValue: () => ({ guildId: 0, customerUserId: 0, orderNumber: '' }),
     }),
+    handoffFromCurrencyPurchase: async () => ({
+      isOk: () => true,
+      getError: () => ({ message: '' }),
+      getValue: () => ({ guildId: 0, customerUserId: 0, orderNumber: '' }),
+    }),
   };
 
   configureContainer({

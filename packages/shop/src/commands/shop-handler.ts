@@ -1,27 +1,40 @@
-import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
-import { ShopService, type ShopPage } from '../services/shop.service.js';
-import { FiatOrderService, formatFiatOrderDMMessage } from '../services/fiat-order.service.js';
+import {
+  type DiscordInteraction,
+  type DiscordContext,
+  type DiscordRuntimeGateway,
+} from '@ltdjms/shared';
+import { ShopService } from '../services/shop.service.js';
+import {
+  FiatOrderService,
+  formatFiatOrderDMMessage,
+  type FiatOrderResult,
+} from '../services/fiat-order.service.js';
 import {
   CurrencyPurchaseService,
   formatPurchaseSuccessMessage,
 } from '../services/currency-purchase.service.js';
 import { ProductService } from '../services/product-service.js';
 import {
-  ModalBuilder,
-  TextInputBuilder,
-  ActionRowBuilder,
-  TextInputStyle,
-  StringSelectMenuBuilder,
-  StringSelectMenuOptionBuilder,
-} from 'discord.js';
+  type Product,
+  hasCurrencyPrice,
+  hasFiatPriceTwd,
+  shouldAutoCreateEscortOrder,
+} from '../domain/product-types.js';
+import type { EscortDispatchHandoffService } from '../domain/escort-dispatch-handoff-service.js';
+import { EscortOrderBuyerNotificationService } from '../services/escort-order-buyer-notification.service.js';
+import { ShopAdminNotificationService } from '../services/shop-admin-notification.service.js';
+import type { BalanceService } from '../di/shop-module.js';
 import {
   buildShopEmbed,
   buildEmptyShopEmbed,
   buildShopComponents,
-  buildSearchComponents,
-  buildSearchResultEmbed,
+  buildSearchResultComponents,
+  buildBuyMenu,
   buildPaymentMethodChoiceEmbed,
   buildPaymentMethodChoiceComponents,
+  buildPurchaseConfirmEmbed,
+  buildPurchaseConfirmComponents,
+  buildSearchModal,
   decodeKeyword,
   BUTTON_PREV_PAGE,
   BUTTON_NEXT_PAGE,
@@ -35,444 +48,612 @@ import {
   BUTTON_SEARCH_NEXT,
   MODAL_SEARCH,
   SELECT_SEARCH_BUY,
+  BUTTON_CONFIRM_PURCHASE,
+  BUTTON_CANCEL_PURCHASE,
 } from '../view/shop-view.js';
 
-type DiscordRawHook = {
-  editReply: (options: Record<string, unknown>) => Promise<unknown>;
-  reply?: (options: Record<string, unknown>) => Promise<unknown>;
-  showModal?: (modal: unknown) => Promise<void>;
-  values?: string[];
-  fields?: { getTextInputValue: (customId: string) => string | null };
-};
+interface DiscordUserLike {
+  id: string;
+  send(message: string): Promise<unknown>;
+}
+
+interface DiscordClientLike {
+  users: {
+    fetch(userId: string): Promise<DiscordUserLike>;
+  };
+}
 
 /**
- * Handler for the /shop slash command and its associated component interactions.
- *
- * Flow:
- *   /shop -> fetches first page -> shows embed + action row (prev/buy/search/next)
- *   Button clicks -> paginate, trigger buy flow, or open search modal
- *   Search modal submit -> shows search results with separate pagination
- *   Buy flow -> product selection -> payment method choice -> confirmation
+ * Handler for the /shop slash command and shop_* component interactions.
+ * Mirrors Java ShopCommandHandler, ShopButtonHandler, and ShopSelectMenuHandler.
  */
 export class ShopCommandHandler {
   readonly commandName = 'shop';
+  readonly inflightFiatOrders = new Set<string>();
 
   constructor(
     private readonly shopService: ShopService,
-    private readonly fiatOrderService: FiatOrderService,
-    private readonly currencyPurchaseService: CurrencyPurchaseService,
     private readonly productService: ProductService,
+    private readonly balanceService: BalanceService,
+    private readonly currencyPurchaseService: CurrencyPurchaseService,
+    private readonly fiatOrderService: FiatOrderService,
+    private readonly escortDispatchHandoffService: EscortDispatchHandoffService,
+    private readonly adminNotificationService: ShopAdminNotificationService,
+    private readonly escortOrderBuyerNotificationService: EscortOrderBuyerNotificationService,
+    private readonly discordRuntimeGateway: DiscordRuntimeGateway,
   ) {}
 
-  /**
-   * Handles the initial /shop slash command.
-   * Fetches the first page of products and replies with an embed.
-   */
   async execute(interaction: DiscordInteraction, _context: DiscordContext): Promise<void> {
     interaction.makeEphemeral();
-    await interaction.deferReply();
 
     const guildId = this.parseGuildId(interaction.getGuildId());
     if (guildId == null) {
-      const hook = this.getRaw(interaction);
-      if (hook) {
-        await hook.editReply({ content: '無法解析伺服器 ID' });
-      } else {
-        await interaction.editEmbed({
-          title: '錯誤',
-          description: '無法解析伺服器 ID',
-          color: 0xed4245,
-        });
+      await interaction.reply('此功能只能在伺服器中使用');
+      return;
+    }
+
+    try {
+      const shopPage = await this.shopService.getShopPage(guildId, 0);
+
+      if (shopPage.isEmpty()) {
+        await interaction.replyEmbed(buildEmptyShopEmbed());
+        return;
       }
-      return;
+
+      const embed = buildShopEmbed(shopPage.products, shopPage.currentPage, shopPage.totalPages);
+      const components = buildShopComponents(
+        shopPage.currentPage,
+        shopPage.totalPages,
+        true,
+      );
+      await interaction.replyWithComponents(embed, components);
+    } catch {
+      await interaction.reply('發生錯誤，請稍後再試');
     }
-
-    const page = await this.shopService.getShopPage(guildId, 1);
-
-    if (ShopCommandHandler.pageIsEmpty(page)) {
-      await interaction.editEmbed(buildEmptyShopEmbed());
-      return;
-    }
-
-    const embed = buildShopEmbed(page.products, page.currentPage, page.totalPages);
-    const components = buildShopComponents(page.currentPage, page.totalPages);
-    await this.editWithComponents(interaction, embed, components);
   }
 
-  /**
-   * Handles component interactions (button clicks, select menus, modal submits)
-   * for the shop panel. The customId determines which action to take.
-   */
   async handleInteraction(
     interaction: DiscordInteraction,
     _context: DiscordContext,
     customId: string,
   ): Promise<void> {
     interaction.makeEphemeral();
-    const guildId = this.parseGuildId(interaction.getGuildId());
-    if (guildId == null) return;
 
-    // Search modal MUST be shown before deferral — showModal requires non-deferred state
     if (customId === BUTTON_SEARCH) {
-      const raw = this.getRaw(interaction);
-      const modal = new ModalBuilder()
-        .setCustomId(MODAL_SEARCH)
-        .setTitle('搜尋商品')
-        .addComponents(
-          new ActionRowBuilder<TextInputBuilder>().addComponents(
-            new TextInputBuilder()
-              .setCustomId('shop_search_input')
-              .setLabel('關鍵字')
-              .setStyle(TextInputStyle.Short)
-              .setMinLength(1)
-              .setMaxLength(100)
-              .setRequired(true),
-          ),
-        );
-      await raw.showModal!(modal);
+      await this.handleSearchButton(interaction);
       return;
     }
 
-    // Acknowledge interaction to allow editReply calls (P0-7)
-    await interaction.deferReply();
-
-    // Pagination: previous page
-    if (customId.startsWith(BUTTON_PREV_PAGE)) {
-      const pageNum = parseInt(customId.replace(BUTTON_PREV_PAGE, ''), 10);
-      if (isNaN(pageNum)) return;
-      await this.showPage(interaction, guildId, pageNum);
-      return;
-    }
-
-    // Pagination: next page
-    if (customId.startsWith(BUTTON_NEXT_PAGE)) {
-      const pageNum = parseInt(customId.replace(BUTTON_NEXT_PAGE, ''), 10);
-      if (isNaN(pageNum)) return;
-      await this.showPage(interaction, guildId, pageNum);
-      return;
-    }
-
-    // Buy: show product selection via select menu
-    if (customId === BUTTON_BUY) {
-      await this.showBuySelection(interaction, guildId);
-      return;
-    }
-
-    // Buy select menu: user picked a product (from main shop view)
-    if (customId === SELECT_BUY_PRODUCT) {
-      const raw = this.getRaw(interaction);
-      const productIdStr = raw.values?.[0];
-      if (!productIdStr) {
-        await interaction.reply('無法取得商品資訊');
-        return;
-      }
-      const productId = parseInt(productIdStr, 10);
-      if (isNaN(productId)) {
-        await interaction.reply('商品編號無效');
-        return;
-      }
-      await this.showPaymentChoice(interaction, guildId, productId);
-      return;
-    }
-
-    // Search buy select menu: user picked a product from search results
-    if (customId === SELECT_SEARCH_BUY) {
-      const raw = this.getRaw(interaction);
-      const productIdStr = raw.values?.[0];
-      if (!productIdStr) {
-        await interaction.reply('無法取得商品資訊');
-        return;
-      }
-      const productId = parseInt(productIdStr, 10);
-      if (isNaN(productId)) {
-        await interaction.reply('商品編號無效');
-        return;
-      }
-      await this.showPaymentChoice(interaction, guildId, productId);
-      return;
-    }
-
-    // Payment method: currency
-    if (customId.startsWith(BUTTON_PAY_WITH_CURRENCY)) {
-      const productId = parseInt(customId.replace(BUTTON_PAY_WITH_CURRENCY, ''), 10);
-      if (isNaN(productId)) return;
-      await this.showCurrencyPurchaseConfirm(interaction, guildId, productId);
-      return;
-    }
-
-    // Payment method: fiat (P2-14)
-    if (customId.startsWith(BUTTON_PAY_WITH_FIAT)) {
-      const productId = parseInt(customId.replace(BUTTON_PAY_WITH_FIAT, ''), 10);
-      if (isNaN(productId)) return;
-      const userId = interaction.getUserId();
-      const result = await this.fiatOrderService.createFiatOnlyOrder(guildId, userId, productId);
-      if (result.isErr()) {
-        await interaction.reply(`建立訂單失敗：${result.getError().message}`);
-        return;
-      }
-      const orderResult = result.getValue();
-      await interaction.reply(formatFiatOrderDMMessage(orderResult));
-      return;
-    }
-
-    // Back to main shop
-    if (customId === BUTTON_BACK_TO_SHOP) {
-      const page = await this.shopService.getShopPage(guildId, 1);
-      if (ShopCommandHandler.pageIsEmpty(page)) {
-        await interaction.editEmbed(buildEmptyShopEmbed());
-      } else {
-        const embed = buildShopEmbed(page.products, page.currentPage, page.totalPages);
-        const components = buildShopComponents(page.currentPage, page.totalPages);
-        await this.editWithComponents(interaction, embed, components);
-      }
-      return;
-    }
-
-    // Search modal submit (P1-13)
     if (customId === MODAL_SEARCH) {
-      const raw = this.getRaw(interaction);
-      const keyword: string = raw.fields?.getTextInputValue('shop_search_input') ?? '';
-      if (!keyword || keyword.trim().length === 0) {
-        await interaction.reply('請輸入搜尋關鍵字');
-        return;
-      }
-      const page = await this.shopService.searchProducts(guildId, keyword.trim(), 1);
-      if (ShopCommandHandler.pageIsEmpty(page)) {
-        await interaction.reply('找不到符合條件的商品');
-        return;
-      }
-      const trimmedKeyword = keyword.trim();
-      const embed = buildSearchResultEmbed(
-        page.products,
-        page.currentPage,
-        page.totalPages,
-        trimmedKeyword,
-      );
-      const components = buildSearchComponents(
-        page.currentPage,
-        page.totalPages,
-        trimmedKeyword,
-        page.products,
-      );
-      await this.editWithComponents(interaction, embed, components);
+      await this.handleSearchModalSubmit(interaction);
       return;
     }
 
-    // Search pagination: previous page (P1-13)
-    if (customId.startsWith(BUTTON_SEARCH_PREV)) {
-      const parsed = this.parseSearchCustomId(customId, BUTTON_SEARCH_PREV);
-      if (!parsed) return;
-      const page = await this.shopService.searchProducts(guildId, parsed.keyword, parsed.pageNum);
-      if (ShopCommandHandler.pageIsEmpty(page)) {
-        await interaction.reply('此頁面沒有搜尋結果');
-        return;
-      }
-      const embed = buildSearchResultEmbed(
-        page.products,
-        page.currentPage,
-        page.totalPages,
-        parsed.keyword,
-      );
-      const components = buildSearchComponents(
-        page.currentPage,
-        page.totalPages,
-        parsed.keyword,
-        page.products,
-      );
-      await this.editWithComponents(interaction, embed, components);
+    if (this.isPurchaseSelect(customId)) {
+      await this.handlePurchaseSelect(interaction, customId);
       return;
     }
 
-    // Search pagination: next page (P1-13)
-    if (customId.startsWith(BUTTON_SEARCH_NEXT)) {
-      const parsed = this.parseSearchCustomId(customId, BUTTON_SEARCH_NEXT);
-      if (!parsed) return;
-      const page = await this.shopService.searchProducts(guildId, parsed.keyword, parsed.pageNum);
-      if (ShopCommandHandler.pageIsEmpty(page)) {
-        await interaction.reply('此頁面沒有搜尋結果');
-        return;
-      }
-      const embed = buildSearchResultEmbed(
-        page.products,
-        page.currentPage,
-        page.totalPages,
-        parsed.keyword,
-      );
-      const components = buildSearchComponents(
-        page.currentPage,
-        page.totalPages,
-        parsed.keyword,
-        page.products,
-      );
-      await this.editWithComponents(interaction, embed, components);
+    if (customId.startsWith(BUTTON_PAY_WITH_CURRENCY)) {
+      await this.handlePayWithCurrency(interaction, customId);
       return;
     }
 
-    // Unknown interaction
-    await interaction.reply('未知的操作');
+    if (customId.startsWith(BUTTON_PAY_WITH_FIAT)) {
+      await this.handlePayWithFiat(interaction, customId);
+      return;
+    }
+
+    if (
+      customId.startsWith(BUTTON_CONFIRM_PURCHASE) ||
+      customId === BUTTON_CANCEL_PURCHASE
+    ) {
+      await this.handlePurchaseConfirmButton(interaction, customId);
+      return;
+    }
+
+    if (!this.isShopBrowseButton(customId)) {
+      return;
+    }
+
+    const guildId = this.parseGuildId(interaction.getGuildId());
+    if (guildId == null) {
+      await interaction.reply('此功能只能在伺服器中使用');
+      return;
+    }
+
+    try {
+      if (customId.startsWith(BUTTON_PREV_PAGE) || customId.startsWith(BUTTON_NEXT_PAGE)) {
+        const page = this.parsePageFromButtonId(
+          customId,
+          customId.startsWith(BUTTON_PREV_PAGE) ? BUTTON_PREV_PAGE : BUTTON_NEXT_PAGE,
+        );
+        await this.showShopPage(interaction, guildId, page);
+        return;
+      }
+
+      if (customId === BUTTON_BUY) {
+        await this.showBuyMenu(interaction, guildId);
+        return;
+      }
+
+      if (customId === BUTTON_BACK_TO_SHOP) {
+        await this.showShopPage(interaction, guildId, 1);
+        return;
+      }
+
+      if (customId.startsWith(BUTTON_SEARCH_PREV) || customId.startsWith(BUTTON_SEARCH_NEXT)) {
+        await this.handleSearchPagination(
+          interaction,
+          guildId,
+          customId,
+          customId.startsWith(BUTTON_SEARCH_PREV) ? BUTTON_SEARCH_PREV : BUTTON_SEARCH_NEXT,
+        );
+      }
+    } catch {
+      await interaction.reply('發生錯誤，請稍後再試');
+    }
   }
 
-  /**
-   * Shows a specific page of products in the shop embed with pagination buttons.
-   */
-  private async showPage(
+  private async handleSearchButton(interaction: DiscordInteraction): Promise<void> {
+    const guildId = this.parseGuildId(interaction.getGuildId());
+    if (guildId == null) {
+      await interaction.reply('此功能只能在伺服器中使用');
+      return;
+    }
+
+    await interaction.showModal(buildSearchModal());
+  }
+
+  private async handleSearchModalSubmit(interaction: DiscordInteraction): Promise<void> {
+    const guildId = this.parseGuildId(interaction.getGuildId());
+    if (guildId == null) {
+      await interaction.reply('此功能只能在伺服器中使用');
+      return;
+    }
+
+    const keyword = interaction.getTextInputValue('keyword');
+    if (!keyword || keyword.trim().length === 0) {
+      await interaction.reply('請輸入有效的關鍵字');
+      return;
+    }
+
+    try {
+      const searchResults = await this.shopService.searchProducts(guildId, keyword.trim(), 0);
+      if (searchResults.isEmpty()) {
+        await interaction.reply(`找不到符合「${keyword}」的商品`);
+        return;
+      }
+
+      const embed = buildShopEmbed(
+        searchResults.products,
+        searchResults.currentPage,
+        searchResults.totalPages,
+      );
+      const components = buildSearchResultComponents(
+        searchResults.currentPage,
+        searchResults.totalPages,
+        keyword.trim(),
+        searchResults.products,
+      );
+      await interaction.replyWithComponents(embed, components);
+    } catch {
+      await interaction.reply('搜尋發生錯誤，請稍後再試');
+    }
+  }
+
+  private async showShopPage(
     interaction: DiscordInteraction,
     guildId: number,
-    pageNum: number,
+    pageOneBased: number,
   ): Promise<void> {
-    const page = await this.shopService.getShopPage(guildId, pageNum);
-    if (ShopCommandHandler.pageIsEmpty(page)) {
-      await interaction.reply('此頁面沒有商品');
+    const shopPage = await this.shopService.getShopPage(guildId, pageOneBased - 1);
+
+    if (shopPage.isEmpty()) {
+      await interaction.editWithComponents(buildEmptyShopEmbed(), []);
       return;
     }
-    const embed = buildShopEmbed(page.products, page.currentPage, page.totalPages);
-    const components = buildShopComponents(page.currentPage, page.totalPages);
-    await this.editWithComponents(interaction, embed, components);
+
+    const embed = buildShopEmbed(shopPage.products, shopPage.currentPage, shopPage.totalPages);
+    const components = buildShopComponents(shopPage.currentPage, shopPage.totalPages, true);
+    await interaction.editWithComponents(embed, components);
   }
 
-  /**
-   * Shows a select menu for choosing a product to buy.
-   * Loads all products across all pages and renders them as select menu options.
-   */
-  private async showBuySelection(interaction: DiscordInteraction, guildId: number): Promise<void> {
-    // Load all products at once (large page size) so the select menu is not
-    // restricted to the first page only.
-    const page = await this.shopService.getShopPageWithSize(guildId, 1, 25);
-    if (ShopCommandHandler.pageIsEmpty(page)) {
+  private async showBuyMenu(interaction: DiscordInteraction, guildId: number): Promise<void> {
+    const allProducts = await this.productService.getAllPurchasableProducts(guildId);
+    if (allProducts.length === 0) {
       await interaction.reply('目前沒有可購買的商品');
       return;
     }
 
-    // Build select menu options from all products on the current page
-    // Discord enforces a maximum of 25 options per select menu (P0-5)
-    const options = page.products.slice(0, 25).map((product) => {
-      return new StringSelectMenuOptionBuilder()
-        .setLabel(product.name.length > 100 ? product.name.substring(0, 97) + '...' : product.name)
-        .setValue(String(product.id))
-        .setDescription(
-          product.fiatPriceTwd
-            ? `NT$${product.fiatPriceTwd}`
-            : product.currencyPrice
-              ? `${product.currencyPrice} 貨幣`
-              : '可購買',
-        );
-    });
-
-    const selectMenu = new StringSelectMenuBuilder()
-      .setCustomId(SELECT_BUY_PRODUCT)
-      .setPlaceholder('選擇要購買的商品')
-      .addOptions(options);
-
-    const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
-
-    const hook = this.getRaw(interaction);
-    if (hook) {
-      await hook.editReply({ content: '請選擇一個商品：', components: [row] });
-    } else {
-      await interaction.reply('請選擇一個商品：');
-    }
+    const buyRows = buildBuyMenu(allProducts);
+    await this.replyWithMessageAndComponents(interaction, '請選擇要購買的商品', buyRows);
   }
 
-  /**
-   * Shows the payment method choice for a specific product.
-   * Called after the user selects a product from the buy select menu.
-   */
-  private async showPaymentChoice(
+  private async replyWithMessageAndComponents(
     interaction: DiscordInteraction,
-    guildId: number,
-    productId: number,
-  ): Promise<void> {
-    const product = await this.productService.findById(productId);
-    if (!product || product.guildId !== guildId) {
-      await interaction.reply('找不到此商品');
-      return;
-    }
-    const embed = buildPaymentMethodChoiceEmbed(product);
-    const components = buildPaymentMethodChoiceComponents(product);
-    await this.editWithComponents(interaction, embed, components);
-  }
-
-  /**
-   * Shows the currency purchase confirmation.
-   * Wires up CurrencyPurchaseService.purchaseProduct when available (P2-15).
-   */
-  private async showCurrencyPurchaseConfirm(
-    interaction: DiscordInteraction,
-    guildId: number,
-    productId: number,
-  ): Promise<void> {
-    const userId = interaction.getUserId();
-    const result = await this.currencyPurchaseService.purchaseProduct(guildId, userId, productId);
-    if (result.isErr()) {
-      await interaction.reply(`購買失敗：${result.getError().message}`);
-      return;
-    }
-    const purchaseResult = result.getValue();
-    await interaction.reply(formatPurchaseSuccessMessage(purchaseResult));
-  }
-
-  /**
-   * Parses the guild ID string to a number. Returns null on invalid input.
-   */
-  private parseGuildId(guildId: string): number | null {
-    const id = parseInt(guildId, 10);
-    if (isNaN(id)) {
-      return null;
-    }
-    return id;
-  }
-
-  /**
-   * Checks whether a shop page is empty.
-   */
-  private static pageIsEmpty(page: ShopPage): boolean {
-    return page.products.length === 0;
-  }
-
-  /**
-   * Temporary helper to bypass DiscordInteraction interface limitations.
-   * The shared DiscordInteraction interface does not expose all Discord.js raw API methods.
-   * This provides access to the underlying interaction hook for features like
-   * modals, select menu values, and editReply with components.
-   * Once the shared layer extends DiscordInteraction, this can be removed.
-   */
-  private getRaw(interaction: DiscordInteraction): DiscordRawHook {
-    return interaction.getHook() as DiscordRawHook;
-  }
-
-  /**
-   * Edits the interaction reply with an embed and action row components.
-   * Uses the raw hook because the abstract DiscordInteraction.editEmbed only accepts an embed.
-   */
-  private async editWithComponents(
-    interaction: DiscordInteraction,
-    embed: unknown,
+    content: string,
     components: unknown[],
   ): Promise<void> {
-    const hook = this.getRaw(interaction);
-    if (!hook) {
-      await interaction.editEmbed(embed);
+    const raw = interaction.getHook() as
+      | { reply?: (options: Record<string, unknown>) => Promise<unknown> }
+      | null;
+    if (raw?.reply) {
+      const opts: Record<string, unknown> = { content, components };
+      if (interaction.isEphemeral()) {
+        opts.ephemeral = true;
+      }
+      await raw.reply(opts);
       return;
     }
-    await hook.editReply({ embeds: [embed], components });
+    await interaction.reply(content);
   }
 
-  /**
-   * Parses a search pagination customId to extract the keyword and page number.
-   * Format: <prefix><base64keyword>_<pageNum>
-   */
+  private async handleSearchPagination(
+    interaction: DiscordInteraction,
+    guildId: number,
+    customId: string,
+    prefix: string,
+  ): Promise<void> {
+    const parsed = this.parseSearchCustomId(customId, prefix);
+    if (!parsed) {
+      await interaction.reply('發生錯誤，請重新搜尋');
+      return;
+    }
+
+    const searchResults = await this.shopService.searchProducts(
+      guildId,
+      parsed.keyword,
+      parsed.pageOneBased - 1,
+    );
+
+    if (searchResults.isEmpty()) {
+      await interaction.editWithComponents(buildEmptyShopEmbed(), []);
+      return;
+    }
+
+    const embed = buildShopEmbed(
+      searchResults.products,
+      searchResults.currentPage,
+      searchResults.totalPages,
+    );
+    const components = buildSearchResultComponents(
+      searchResults.currentPage,
+      searchResults.totalPages,
+      parsed.keyword,
+      searchResults.products,
+    );
+    await interaction.editWithComponents(embed, components);
+  }
+
+  private async handlePurchaseSelect(
+    interaction: DiscordInteraction,
+    customId: string,
+  ): Promise<void> {
+    const guildId = this.parseGuildId(interaction.getGuildId());
+    if (guildId == null) {
+      await interaction.reply('此功能只能在伺服器中使用');
+      return;
+    }
+
+    const userId = interaction.getUserId();
+
+    try {
+      const values = interaction.getSelectedValues();
+      if (values.length === 0) {
+        await interaction.reply('請先選擇商品');
+        return;
+      }
+
+      const productId = parseInt(values[0], 10);
+      if (Number.isNaN(productId)) {
+        await interaction.reply('商品編號無效');
+        return;
+      }
+
+      const product = await this.productService.getProduct(productId);
+      if (!product) {
+        await interaction.reply('找不到該商品');
+        return;
+      }
+
+      const hasCurrency = hasCurrencyPrice(product);
+      const hasFiat = hasFiatPriceTwd(product);
+
+      if (hasCurrency && hasFiat) {
+        const embed = buildPaymentMethodChoiceEmbed(product);
+        const components = buildPaymentMethodChoiceComponents(product);
+        await interaction.editWithComponents(embed, components);
+        return;
+      }
+
+      if (hasCurrency) {
+        await this.showPurchaseConfirm(interaction, product, guildId, userId, productId);
+        return;
+      }
+
+      if (hasFiat) {
+        await this.startDeferredFiatOrder(interaction, guildId, userId, productId);
+        return;
+      }
+
+      await interaction.reply('此商品暫無可用的購買方式');
+    } catch {
+      await interaction.reply('發生錯誤，請稍後再試');
+    }
+  }
+
+  private async handlePayWithCurrency(
+    interaction: DiscordInteraction,
+    customId: string,
+  ): Promise<void> {
+    const guildId = this.parseGuildId(interaction.getGuildId());
+    if (guildId == null) {
+      await interaction.reply('此功能只能在伺服器中使用');
+      return;
+    }
+
+    try {
+      const productId = parseInt(customId.replace(BUTTON_PAY_WITH_CURRENCY, ''), 10);
+      const product = await this.productService.getProduct(productId);
+      if (!product) {
+        await interaction.reply('找不到該商品');
+        return;
+      }
+
+      await this.showPurchaseConfirm(
+        interaction,
+        product,
+        guildId,
+        interaction.getUserId(),
+        productId,
+      );
+    } catch {
+      await interaction.reply('發生錯誤，請稍後再試');
+    }
+  }
+
+  private async handlePayWithFiat(
+    interaction: DiscordInteraction,
+    customId: string,
+  ): Promise<void> {
+    const guildId = this.parseGuildId(interaction.getGuildId());
+    if (guildId == null) {
+      await interaction.reply('此功能只能在伺服器中使用');
+      return;
+    }
+
+    try {
+      const productId = parseInt(customId.replace(BUTTON_PAY_WITH_FIAT, ''), 10);
+      await this.startDeferredFiatOrder(interaction, guildId, interaction.getUserId(), productId);
+    } catch {
+      await interaction.reply('發生錯誤，請稍後再試');
+    }
+  }
+
+  private async handlePurchaseConfirmButton(
+    interaction: DiscordInteraction,
+    customId: string,
+  ): Promise<void> {
+    const guildId = this.parseGuildId(interaction.getGuildId());
+    if (guildId == null) {
+      await interaction.reply('此功能只能在伺服器中使用');
+      return;
+    }
+
+    try {
+      if (customId === BUTTON_CANCEL_PURCHASE) {
+        await interaction.reply('已取消購買');
+        return;
+      }
+
+      const productId = parseInt(customId.replace(BUTTON_CONFIRM_PURCHASE, ''), 10);
+      const userId = interaction.getUserId();
+      const purchaseResult = await this.currencyPurchaseService.purchaseProduct(
+        guildId,
+        userId,
+        productId,
+      );
+
+      if (purchaseResult.isErr()) {
+        await interaction.reply(`購買失敗：${purchaseResult.getError().message}`);
+        return;
+      }
+
+      let successMessage = formatPurchaseSuccessMessage(purchaseResult.getValue());
+      const purchasedProduct = purchaseResult.getValue().product;
+
+      if (shouldAutoCreateEscortOrder(purchasedProduct)) {
+        const handoffResult = await this.escortDispatchHandoffService.handoffFromCurrencyPurchase(
+          guildId,
+          this.parseUserIdNumber(userId),
+          purchasedProduct,
+          this.resolveInteractionId(interaction),
+        );
+
+        if (handoffResult.isOk()) {
+          const dispatchOrder = handoffResult.getValue();
+          this.escortOrderBuyerNotificationService.notifyEscortOrderCreated(dispatchOrder);
+          this.adminNotificationService.notifyAdminsOrderCreated(
+            guildId,
+            this.parseUserIdNumber(userId),
+            dispatchOrder,
+          );
+        } else {
+          successMessage += '\n\n⚠️ 自動護航單建立失敗，請稍後通知管理員。';
+        }
+      }
+
+      await interaction.reply(successMessage);
+    } catch {
+      await interaction.reply('發生錯誤，請稍後再試');
+    }
+  }
+
+  private async showPurchaseConfirm(
+    interaction: DiscordInteraction,
+    product: Product,
+    guildId: number,
+    userId: string,
+    productId: number,
+  ): Promise<void> {
+    const balanceResult = await this.balanceService.tryGetBalance(guildId, userId);
+    const userBalance = balanceResult.isOk() ? balanceResult.getValue().balance : 0;
+    const embed = buildPurchaseConfirmEmbed(product, userBalance);
+    const components = buildPurchaseConfirmComponents(productId);
+    await interaction.editWithComponents(embed, components);
+  }
+
+  private async startDeferredFiatOrder(
+    interaction: DiscordInteraction,
+    guildId: number,
+    userId: string,
+    productId: number,
+  ): Promise<void> {
+    const inflightKey = this.buildFiatOrderInflightKey(guildId, userId, productId);
+    if (this.inflightFiatOrders.has(inflightKey)) {
+      await interaction.reply('⚠️ 這筆法幣訂單正在處理中，請稍候檢查互動結果。');
+      return;
+    }
+    this.inflightFiatOrders.add(inflightKey);
+
+    await interaction.deferReply();
+
+    try {
+      await this.processDeferredFiatOrder(interaction, guildId, userId, productId, inflightKey);
+    } catch {
+      this.inflightFiatOrders.delete(inflightKey);
+      await interaction.reply('發生錯誤，請稍後再試');
+    }
+  }
+
+  private async processDeferredFiatOrder(
+    interaction: DiscordInteraction,
+    guildId: number,
+    userId: string,
+    productId: number,
+    inflightKey: string,
+  ): Promise<void> {
+    const orderResult = await this.fiatOrderService.createFiatOnlyOrder(guildId, userId, productId);
+    if (orderResult.isErr()) {
+      this.inflightFiatOrders.delete(inflightKey);
+      await interaction.reply(`下單失敗：${orderResult.getError().message}`);
+      return;
+    }
+
+    const order = orderResult.getValue();
+    const dmDelivered = await this.trySendFiatOrderDm(userId, order);
+    const message = this.buildFiatOrderInteractionMessage(
+      order,
+      dmDelivered,
+      dmDelivered ? null : '⚠️ 無法私訊你，請直接使用以下資訊付款。',
+    );
+
+    this.inflightFiatOrders.delete(inflightKey);
+    await interaction.reply(message);
+  }
+
+  private async trySendFiatOrderDm(userId: string, order: FiatOrderResult): Promise<boolean> {
+    try {
+      const client = this.discordRuntimeGateway.requireReadyClient() as DiscordClientLike;
+      const user = await client.users.fetch(userId);
+      await user.send(formatFiatOrderDMMessage(order));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private buildFiatOrderInteractionMessage(
+    order: FiatOrderResult,
+    dmDelivered: boolean,
+    dmWarning: string | null,
+  ): string {
+    const sb: string[] = [];
+    if (dmDelivered) {
+      sb.push('✅ 法幣訂單已建立，完整付款資訊也已私訊給你。\n\n');
+    } else {
+      sb.push('✅ 法幣訂單已建立。\n');
+      if (dmWarning && dmWarning.trim().length > 0) {
+        sb.push(`${dmWarning}\n\n`);
+      } else {
+        sb.push('\n');
+      }
+    }
+    sb.push(`**商品：** ${order.product.name}\n`);
+    sb.push(`**訂單編號：** \`${order.orderNumber}\`\n`);
+    sb.push(`**超商代碼：** \`${order.paymentNo}\`\n`);
+    sb.push(`**金額：** ${order.product.fiatPriceTwd ? `NT$${order.product.fiatPriceTwd.toLocaleString()}` : ''}\n`);
+    if (order.expireDate) {
+      sb.push(`**繳費期限：** ${order.expireDate}\n`);
+    }
+    if (order.paymentUrl) {
+      sb.push(`**繳費說明：** ${order.paymentUrl}\n`);
+    }
+    if (order.fulfillmentWarning) {
+      sb.push(`${order.fulfillmentWarning}\n`);
+    }
+    sb.push('請在付款期限內完成付款，否則訂單將自動轉為逾期取消狀態。\n');
+    sb.push('\n若需查詢訂單或回報付款，請提供訂單編號給管理員。');
+    return sb.join('');
+  }
+
+  private isShopBrowseButton(customId: string): boolean {
+    return (
+      customId.startsWith(BUTTON_PREV_PAGE) ||
+      customId.startsWith(BUTTON_NEXT_PAGE) ||
+      customId === BUTTON_BUY ||
+      customId === BUTTON_BACK_TO_SHOP ||
+      customId.startsWith(BUTTON_SEARCH_PREV) ||
+      customId.startsWith(BUTTON_SEARCH_NEXT)
+    );
+  }
+
+  private isPurchaseSelect(customId: string): boolean {
+    return customId === SELECT_BUY_PRODUCT || customId === SELECT_SEARCH_BUY;
+  }
+
+  private parsePageFromButtonId(customId: string, prefix: string): number {
+    return parseInt(customId.substring(prefix.length), 10);
+  }
+
+  private parseGuildId(guildId: string): number | null {
+    if (!guildId || guildId === '0') {
+      return null;
+    }
+    const id = parseInt(guildId, 10);
+    return Number.isNaN(id) ? null : id;
+  }
+
+  private parseUserIdNumber(userId: string): number {
+    return parseInt(userId, 10);
+  }
+
+  private resolveInteractionId(interaction: DiscordInteraction): string {
+    const hook = interaction.getHook() as { id?: string } | null;
+    return hook?.id ?? 'interaction-unknown';
+  }
+
+  private buildFiatOrderInflightKey(
+    guildId: number,
+    userId: string,
+    productId: number,
+  ): string {
+    return `${guildId}:${userId}:${productId}`;
+  }
+
   private parseSearchCustomId(
     customId: string,
     prefix: string,
-  ): { keyword: string; pageNum: number } | null {
+  ): { keyword: string; pageOneBased: number } | null {
     const rest = customId.substring(prefix.length);
     const lastUnderscore = rest.lastIndexOf('_');
     if (lastUnderscore < 0) return null;
     const encodedKeyword = rest.substring(0, lastUnderscore);
-    const pageNum = parseInt(rest.substring(lastUnderscore + 1), 10);
-    if (isNaN(pageNum)) return null;
+    const pageOneBased = parseInt(rest.substring(lastUnderscore + 1), 10);
+    if (Number.isNaN(pageOneBased)) return null;
     try {
-      return { keyword: decodeKeyword(encodedKeyword), pageNum };
+      return { keyword: decodeKeyword(encodedKeyword), pageOneBased };
     } catch {
       return null;
     }

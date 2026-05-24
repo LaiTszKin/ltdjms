@@ -2,7 +2,6 @@ import {
   type Product,
   hasCurrencyPrice,
   hasFiatPriceTwd,
-  isFiatOnly,
   hasReward,
   formatCurrencyPrice,
   formatFiatPriceTwd,
@@ -10,11 +9,11 @@ import {
 } from '../domain/product-types.js';
 import { PAGE_SIZE } from '../services/shop.service.js';
 
-// Theme color constants (P3-12)
 const EMBED_COLOR_PRIMARY = 0x5865f2;
 const EMBED_COLOR_DANGER = 0xed4245;
 const DIVIDER = '────────────────────────────────────';
 
+export const MODAL_SEARCH = 'shop_search_modal';
 export const BUTTON_PREV_PAGE = 'shop_prev_';
 export const BUTTON_NEXT_PAGE = 'shop_next_';
 export const BUTTON_BUY = 'shop_buy';
@@ -26,7 +25,12 @@ export const BUTTON_BACK_TO_SHOP = 'shop_back';
 export const SELECT_SEARCH_BUY = 'shop_search_buy_select';
 export const BUTTON_SEARCH_PREV = 'shop_sprev_';
 export const BUTTON_SEARCH_NEXT = 'shop_snext_';
-export const MODAL_SEARCH = 'shop_search_modal';
+export const BUTTON_CONFIRM_PURCHASE = 'shop_confirm_purchase_';
+export const BUTTON_CANCEL_PURCHASE = 'shop_cancel_purchase';
+
+export function getPageSize(): number {
+  return PAGE_SIZE;
+}
 
 export function encodeKeyword(keyword: string): string {
   return Buffer.from(keyword, 'utf-8').toString('base64').replace(/=+$/, '');
@@ -34,6 +38,89 @@ export function encodeKeyword(keyword: string): string {
 
 export function decodeKeyword(encoded: string): string {
   return Buffer.from(encoded, 'base64').toString('utf-8');
+}
+
+function buildPriceDescription(product: Product): string {
+  const parts: string[] = [];
+  if (hasCurrencyPrice(product)) {
+    parts.push(formatCurrencyPrice(product)!);
+  }
+  if (hasFiatPriceTwd(product)) {
+    parts.push(formatFiatPriceTwd(product)!);
+  }
+  return parts.join(' / ');
+}
+
+function buildSelectOption(product: Product): {
+  label: string;
+  value: string;
+  description: string;
+} {
+  const label =
+    product.name.length > 100 ? `${product.name.substring(0, 97)}...` : product.name;
+  return {
+    label,
+    value: String(product.id),
+    description: buildPriceDescription(product),
+  };
+}
+
+function buildSelectRows(
+  selectId: string,
+  placeholder: string,
+  products: Product[],
+): Array<{ type: number; components: unknown[] }> {
+  const MAX_OPTIONS = 25;
+  const rows: Array<{ type: number; components: unknown[] }> = [];
+
+  for (let i = 0; i < products.length; i += MAX_OPTIONS) {
+    const chunk = products.slice(i, i + MAX_OPTIONS);
+    rows.push({
+      type: 1,
+      components: [
+        {
+          type: 3,
+          customId: selectId,
+          placeholder,
+          maxValues: 1,
+          options: chunk.map(buildSelectOption),
+        },
+      ],
+    });
+  }
+
+  return rows;
+}
+
+function buildPaginationButtons(
+  currentPage: number,
+  totalPages: number,
+): Array<{
+  type: number;
+  customId: string;
+  label: string;
+  style: number;
+  disabled?: boolean;
+}> {
+  const isFirstPage = currentPage === 1;
+  const isLastPage = currentPage >= totalPages;
+
+  return [
+    {
+      type: 2,
+      customId: `${BUTTON_PREV_PAGE}${currentPage - 1}`,
+      label: '⬅️ 上一頁',
+      style: 2,
+      disabled: isFirstPage,
+    },
+    {
+      type: 2,
+      customId: `${BUTTON_NEXT_PAGE}${currentPage + 1}`,
+      label: '下一頁 ➡️',
+      style: 2,
+      disabled: isLastPage,
+    },
+  ];
 }
 
 export function buildShopEmbed(
@@ -90,13 +177,63 @@ export function buildEmptyShopEmbed(): { title: string; description: string; col
   };
 }
 
-/**
- * Builds an embed for choosing a payment method for a product.
- * This is an intentional UX enhancement beyond the spec: when a product
- * has both currency and fiat prices, the user selects a payment method
- * before proceeding. Spec R1.6 defines a direct purchase flow; this UI
- * step was added to support dual-pricing products.
- */
+export function buildShopComponents(
+  currentPage: number,
+  totalPages: number,
+  hasProducts = false,
+): Array<{
+  type: number;
+  components: Array<{
+    type: number;
+    customId: string;
+    label: string;
+    style: number;
+    disabled?: boolean;
+  }>;
+}> {
+  const rows: Array<{
+    type: number;
+    components: Array<{
+      type: number;
+      customId: string;
+      label: string;
+      style: number;
+      disabled?: boolean;
+    }>;
+  }> = [
+    {
+      type: 1,
+      components: buildPaginationButtons(currentPage, totalPages),
+    },
+  ];
+
+  if (hasProducts) {
+    rows.push({
+      type: 1,
+      components: [
+        {
+          type: 2,
+          customId: BUTTON_BUY,
+          label: '🛒 購買',
+          style: 3,
+        },
+        {
+          type: 2,
+          customId: BUTTON_SEARCH,
+          label: '🔍 搜尋',
+          style: 2,
+        },
+      ],
+    });
+  }
+
+  return rows;
+}
+
+export function buildBuyMenu(products: Product[]): Array<{ type: number; components: unknown[] }> {
+  return buildSelectRows(SELECT_BUY_PRODUCT, '選擇要購買的商品', products);
+}
+
 export function buildPaymentMethodChoiceEmbed(product: Product): {
   title: string;
   description: string;
@@ -119,71 +256,6 @@ export function buildPaymentMethodChoiceEmbed(product: Product): {
   };
 }
 
-/**
- * Builds the action row components (buttons) for the shop embed.
- * Includes pagination (prev/next), buy, and search buttons.
- */
-/**
- * Builds a buy menu embed for selecting a product to purchase.
- * Displays the product name, price, and confirmation prompt.
- */
-export function buildBuyMenu(
-  product: Product,
-  userBalance: number,
-): {
-  title: string;
-  description: string;
-  color: number;
-} {
-  return buildPurchaseConfirmEmbed(product, userBalance);
-}
-
-/**
- * Builds a modal for searching products by keyword.
- * Returns a modal-compatible object with customId, title, and components.
- */
-export function buildSearchModal(): {
-  customId: string;
-  title: string;
-  components: Array<{
-    type: number;
-    components: Array<{
-      type: number;
-      customId: string;
-      label: string;
-      style: number;
-      placeholder: string;
-      required: boolean;
-      maxLength: number;
-    }>;
-  }>;
-} {
-  return {
-    customId: MODAL_SEARCH,
-    title: '搜尋商品',
-    components: [
-      {
-        type: 1,
-        components: [
-          {
-            type: 4,
-            customId: 'shop_search_keyword',
-            label: '關鍵字',
-            style: 1,
-            placeholder: '請輸入商品名稱關鍵字',
-            required: true,
-            maxLength: 100,
-          },
-        ],
-      },
-    ],
-  };
-}
-
-/**
- * Builds action row components for choosing a payment method (currency or fiat).
- * Used when a product supports both payment types (spec R1.6 extension).
- */
 export function buildPaymentMethodChoiceComponents(product: Product): Array<{
   type: number;
   components: Array<{
@@ -206,122 +278,134 @@ export function buildPaymentMethodChoiceComponents(product: Product): Array<{
     buttons.push({
       type: 2,
       customId: `${BUTTON_PAY_WITH_CURRENCY}${product.id}`,
-      label: `💰 貨幣支付 (${formatCurrencyPrice(product)})`,
+      label: '💰 貨幣購買',
       style: 3,
     });
   }
 
-  if (isFiatOnly(product)) {
+  if (hasFiatPriceTwd(product)) {
     buttons.push({
       type: 2,
       customId: `${BUTTON_PAY_WITH_FIAT}${product.id}`,
-      label: `💳 法幣下單 (${formatFiatPriceTwd(product)})`,
-      style: 4,
+      label: '💳 法幣下單',
+      style: 1,
     });
   }
 
-  buttons.push({
-    type: 2,
-    customId: BUTTON_BACK_TO_SHOP,
-    label: '🏪 回商店',
-    style: 2,
-  });
-
-  return [
-    {
-      type: 1,
-      components: buttons,
-    },
-  ];
+  return [{ type: 1, components: buttons }];
 }
 
-export function buildShopComponents(
-  currentPage: number,
-  totalPages: number,
-): Array<{
-  type: number;
+export function buildSearchModal(): {
+  customId: string;
+  title: string;
   components: Array<{
     type: number;
-    customId: string;
-    label: string;
-    style: number;
-    disabled?: boolean;
+    components: Array<{
+      type: number;
+      customId: string;
+      label: string;
+      style: number;
+      placeholder: string;
+      required: boolean;
+      minLength: number;
+      maxLength: number;
+    }>;
   }>;
-}> {
-  const hasPrev = currentPage > 1;
-  const hasNext = currentPage < totalPages;
-
-  const buttons: Array<{
-    type: number;
-    customId: string;
-    label: string;
-    style: number;
-    disabled?: boolean;
-  }> = [];
-
-  if (hasPrev) {
-    buttons.push({
-      type: 2,
-      customId: `${BUTTON_PREV_PAGE}${currentPage - 1}`,
-      label: '◀ 上一頁',
-      style: 1,
-    });
-  }
-
-  buttons.push({
-    type: 2,
-    customId: `${BUTTON_BUY}`,
-    label: '🛒 購買',
-    style: 3,
-  });
-
-  buttons.push({
-    type: 2,
-    customId: `${BUTTON_SEARCH}`,
-    label: '🔍 搜尋',
-    style: 2,
-  });
-
-  if (hasNext) {
-    buttons.push({
-      type: 2,
-      customId: `${BUTTON_NEXT_PAGE}${currentPage + 1}`,
-      label: '下一頁 ▶',
-      style: 1,
-    });
-  }
-
-  return [
-    {
-      type: 1,
-      components: buttons,
-    },
-  ];
+} {
+  return {
+    customId: MODAL_SEARCH,
+    title: '🔍 搜尋商品',
+    components: [
+      {
+        type: 1,
+        components: [
+          {
+            type: 4,
+            customId: 'keyword',
+            label: '關鍵字',
+            style: 1,
+            placeholder: '請輸入要搜尋的商品關鍵字',
+            required: true,
+            minLength: 1,
+            maxLength: 100,
+          },
+        ],
+      },
+    ],
+  };
 }
+
+export function buildSearchResultComponents(
+  currentPage: number,
+  totalPages: number,
+  keyword: string,
+  products: Product[],
+): Array<{ type: number; components: unknown[] }> {
+  const encodedKeyword = encodeKeyword(keyword);
+  const isFirstPage = currentPage === 1;
+  const isLastPage = currentPage >= totalPages;
+
+  const rows: Array<{ type: number; components: unknown[] }> = [];
+
+  if (products.length > 0) {
+    rows.push(...buildSelectRows(SELECT_SEARCH_BUY, '選擇要購買的商品', products));
+  }
+
+  rows.push({
+    type: 1,
+    components: [
+      {
+        type: 2,
+        customId: `${BUTTON_SEARCH_PREV}${encodedKeyword}_${currentPage - 1}`,
+        label: '⬅️ 上一頁',
+        style: 2,
+        disabled: isFirstPage,
+      },
+      {
+        type: 2,
+        customId: `${BUTTON_SEARCH_NEXT}${encodedKeyword}_${currentPage + 1}`,
+        label: '下一頁 ➡️',
+        style: 2,
+        disabled: isLastPage,
+      },
+    ],
+  });
+
+  rows.push({
+    type: 1,
+    components: [
+      {
+        type: 2,
+        customId: BUTTON_BACK_TO_SHOP,
+        label: '返回商店',
+        style: 2,
+      },
+    ],
+  });
+
+  return rows;
+}
+
+/** @deprecated Use buildSearchResultComponents for Java parity */
+export const buildSearchComponents = buildSearchResultComponents;
 
 export function buildPurchaseConfirmEmbed(
   product: Product,
   userBalance: number,
 ): { title: string; description: string; color: number } {
   const sb: string[] = [];
-  const currencyPrice = product.currencyPrice;
+  const currencyPrice = product.currencyPrice!;
 
   sb.push(`**商品：** ${product.name}\n`);
-
-  if (currencyPrice == null) {
-    sb.push('\n⚠️ **此商品不支援貨幣購買。**');
-    return { title: '購買確認', description: sb.join('\n'), color: EMBED_COLOR_DANGER };
-  }
-
   sb.push(`**價格：** ${formatCurrencyPrice(product)}\n`);
   sb.push(`**您的餘額：** ${userBalance.toLocaleString()} 貨幣\n`);
 
-  const color = userBalance < currencyPrice ? EMBED_COLOR_DANGER : EMBED_COLOR_PRIMARY;
-
+  let color = EMBED_COLOR_PRIMARY;
   if (userBalance < currencyPrice) {
     sb.push('\n⚠️ **餘額不足！**');
+    color = EMBED_COLOR_DANGER;
   } else {
-    const remaining = userBalance - product.currencyPrice!;
+    const remaining = userBalance - currencyPrice;
     sb.push(`**購買後餘額：** ${remaining.toLocaleString()} 貨幣`);
   }
 
@@ -340,9 +424,46 @@ export function buildPurchaseConfirmEmbed(
   };
 }
 
-/**
- * Builds an embed for search results with a search context header.
- */
+export function buildPurchaseConfirmComponents(productId: number): Array<{
+  type: number;
+  components: Array<{
+    type: number;
+    customId: string;
+    label: string;
+    style: number;
+    disabled?: boolean;
+  }>;
+}> {
+  return [
+    {
+      type: 1,
+      components: [
+        {
+          type: 2,
+          customId: `${BUTTON_CONFIRM_PURCHASE}${productId}`,
+          label: '確認購買',
+          style: 3,
+        },
+        {
+          type: 2,
+          customId: BUTTON_CANCEL_PURCHASE,
+          label: '取消',
+          style: 2,
+        },
+      ],
+    },
+  ];
+}
+
+/** @deprecated Use buildPurchaseConfirmEmbed — kept for legacy imports */
+export function buildBuyMenuEmbed(
+  product: Product,
+  userBalance: number,
+): { title: string; description: string; color: number } {
+  return buildPurchaseConfirmEmbed(product, userBalance);
+}
+
+/** @deprecated Search results use buildShopEmbed in Java parity flow */
 export function buildSearchResultEmbed(
   products: Product[],
   currentPage: number,
@@ -354,91 +475,4 @@ export function buildSearchResultEmbed(
     ...embed,
     title: `🔍 搜尋 "${keyword}" 的結果`,
   };
-}
-
-/**
- * Builds search result pagination components with keyword encoded in custom IDs.
- */
-export function buildSearchComponents(
-  currentPage: number,
-  totalPages: number,
-  keyword: string,
-  products: Product[],
-): Array<{
-  type: number;
-  components: unknown[];
-}> {
-  const encodedKeyword = encodeKeyword(keyword);
-  const hasPrev = currentPage > 1;
-  const hasNext = currentPage < totalPages;
-
-  const buttons: Array<{
-    type: number;
-    customId: string;
-    label: string;
-    style: number;
-    disabled?: boolean;
-  }> = [];
-
-  if (hasPrev) {
-    buttons.push({
-      type: 2,
-      customId: `${BUTTON_SEARCH_PREV}${encodedKeyword}_${currentPage - 1}`,
-      label: '◀ 上一頁',
-      style: 1,
-    });
-  }
-
-  buttons.push({
-    type: 2,
-    customId: `${BUTTON_BACK_TO_SHOP}`,
-    label: '🏪 回商店',
-    style: 2,
-  });
-
-  if (hasNext) {
-    buttons.push({
-      type: 2,
-      customId: `${BUTTON_SEARCH_NEXT}${encodedKeyword}_${currentPage + 1}`,
-      label: '下一頁 ▶',
-      style: 1,
-    });
-  }
-
-  // Split products into chunks of 25 to comply with Discord select menu limits
-  const MAX_OPTIONS = 25;
-  const buildOption = (p: Product) => ({
-    label: p.name.length > 100 ? p.name.substring(0, 97) + '...' : p.name,
-    value: String(p.id),
-    description: p.fiatPriceTwd
-      ? `NT$${p.fiatPriceTwd}`
-      : p.currencyPrice
-        ? `${p.currencyPrice} 貨幣`
-        : '可購買',
-  });
-
-  const selectRows: Array<{ type: number; components: unknown[] }> = [];
-  for (let i = 0; i < products.length; i += MAX_OPTIONS) {
-    const chunk = products.slice(i, i + MAX_OPTIONS);
-    selectRows.push({
-      type: 1,
-      components: [
-        {
-          type: 3,
-          customId: i === 0 ? SELECT_SEARCH_BUY : `${SELECT_SEARCH_BUY}_${i / MAX_OPTIONS}`,
-          placeholder: '選擇要購買的商品',
-          maxValues: 1,
-          options: chunk.map(buildOption),
-        },
-      ],
-    });
-  }
-
-  return [
-    {
-      type: 1,
-      components: buttons,
-    },
-    ...selectRows,
-  ];
 }

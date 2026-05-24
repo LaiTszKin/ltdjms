@@ -241,9 +241,14 @@ export function configureContainer(options: ShopModuleOptions): void {
 
   const shopCommandHandler = new ShopCommandHandler(
     shopService,
-    fiatOrderService,
-    currencyPurchase,
     productService,
+    options.balanceService,
+    currencyPurchase,
+    fiatOrderService,
+    options.escortDispatchHandoffService,
+    adminNotification,
+    escortBuyerNotification,
+    discordRuntimeGateway,
   );
   container.registerInstance(SHOP_TOKENS.ShopCommandHandler, shopCommandHandler);
 

@@ -11,16 +11,25 @@ export interface DispatchOrderSnapshot {
   sourceReference?: string | null;
 }
 
-/** Service interface for auto-creating escort orders from fiat payments. */
+type HandoffResult = {
+  isOk: () => boolean;
+  getError: () => { message: string };
+  getValue: () => DispatchOrderSnapshot;
+};
+
+/** Service interface for auto-creating escort orders from shop purchases. */
 export interface EscortDispatchHandoffService {
   handoffFromFiatPayment(
     guildId: number,
     buyerUserId: number,
     product: import('./product-types.js').Product | null,
     sourceReference: string,
-  ): Promise<{
-    isOk: () => boolean;
-    getError: () => { message: string };
-    getValue: () => DispatchOrderSnapshot;
-  }>;
+  ): Promise<HandoffResult>;
+
+  handoffFromCurrencyPurchase(
+    guildId: number,
+    buyerUserId: number,
+    product: import('./product-types.js').Product | null,
+    sourceReference: string,
+  ): Promise<HandoffResult>;
 }
