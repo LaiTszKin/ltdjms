@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en" data-atlas-page="feature">
+<head>
+  <meta charset="utf-8">
+  <title>Administration</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..500&family=Geist:wght@300..700&family=JetBrains+Mono:wght@400..600&display=swap">
+  <link rel="stylesheet" href="../../assets/architecture.css">
+</head>
+<body>
+  <header class="feature-header">
+    <nav class="feature-breadcrumb"><a href="../../index.html">← Atlas</a></nav>
+    <h1>Administration</h1>
+    <p class="feature-depends">Depends on: <a href="../guild-economy/index.html">guild-economy</a>, <a href="../shop-payment/index.html">shop-payment</a>, <a href="../escort-dispatch/index.html">escort-dispatch</a>, <a href="../ai-chat-agent/index.html">ai-chat-agent</a></p>
+  </header>
+  <main class="feature-main">
+    <section class="feature-story"><p>管理員透過管理面板設定貨幣經濟參數、管理商品與兌換碼、配置 AI 與護航規則。一般成員透過會員面板查餘額、交易記錄與歷史。</p></section>
+    <section class="feature-submodules" aria-label="Submodules">
+      <h2>Submodules</h2>
+      <ul class="submodule-nav">
+      <li class="submodule-card">
+        <a class="submodule-card__link" href="admin-panel-interaction.html">
+          <span class="submodule-card__name">admin-panel-interaction</span>
+          <span class="submodule-card__kind submodule-card__kind--api">API</span>
+        </a>
+        <p class="submodule-card__role">管理面板指令、按鈕、Modal，含產品管理、AI 設定、護航設定子面板</p>
+      </li>
+      <li class="submodule-card">
+        <a class="submodule-card__link" href="user-panel-interaction.html">
+          <span class="submodule-card__name">user-panel-interaction</span>
+          <span class="submodule-card__kind submodule-card__kind--api">API</span>
+        </a>
+        <p class="submodule-card__role">已遷移至 @ltdjms/user-panel；1:1 對齊 Java user_panel_* customId 與 embed 結構</p>
+      </li>
+      <li class="submodule-card">
+        <a class="submodule-card__link" href="panel-service.html">
+          <span class="submodule-card__name">panel-service</span>
+          <span class="submodule-card__kind submodule-card__kind--service">Service</span>
+        </a>
+        <p class="submodule-card__role">面板業務邏輯 Facades，彙整經濟、AI、派遣、商品設定與即時事件更新</p>
+      </li>
+      <li class="submodule-card">
+        <a class="submodule-card__link" href="notifications.html">
+          <span class="submodule-card__name">notifications</span>
+          <span class="submodule-card__kind submodule-card__kind--service">Service</span>
+        </a>
+        <p class="submodule-card__role">跨模組通知：買家付款成功 DM、管理員新訂單通知、護航/售後私訊</p>
+      </li>
+      </ul>
+    </section>
+    <section class="feature-edges" aria-label="Intra-feature edges">
+      <h2>Intra-feature edges</h2>
+      <ul class="feature-edges__list">
+        <li class="feature-edges__item feature-edges__item--call"><span class="feature-edges__endpoints">admin-panel-interaction → panel-service</span><span class="feature-edges__kind">call</span><span class="feature-edges__label">委派管理操作</span></li>
+        <li class="feature-edges__item feature-edges__item--call"><span class="feature-edges__endpoints">user-panel-interaction → panel-service</span><span class="feature-edges__kind">call</span><span class="feature-edges__label">會員資訊查詢</span></li>
+        <li class="feature-edges__item feature-edges__item--call"><span class="feature-edges__endpoints">panel-service → notifications</span><span class="feature-edges__kind">call</span><span class="feature-edges__label">觸發訂單/付款通知</span></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

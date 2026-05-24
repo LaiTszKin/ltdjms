@@ -1,0 +1,203 @@
+slug: administration
+title: Administration
+story: 管理員透過管理面板設定貨幣經濟參數、管理商品與兌換碼、配置 AI 與護航規則。一般成員透過會員面板查餘額、交易記錄與歷史。
+dependsOn:
+  - guild-economy
+  - shop-payment
+  - escort-dispatch
+  - ai-chat-agent
+submodules:
+  - slug: admin-panel-interaction
+    kind: api
+    role: 管理面板指令、按鈕、Modal，含產品管理、AI 設定、護航設定子面板
+    functions:
+      - name: handleAdminPanel
+        in: guildId, userId
+        out: AdminPanelEmbed
+        side: io
+        purpose: 顯示管理面板主選單（9 功能按鈕）
+      - name: handleBalanceMgmt
+        in: guildId, userId, mode, amount
+        out: BalanceAdjustmentResult
+        side: io
+        purpose: 管理員增減成員貨幣餘額
+      - name: handleGameConfig
+        in: guildId, gameType, field, value
+        out: DiceGameConfig
+        side: io
+        purpose: 設定骰子遊戲參數（token 範圍/獎勵倍率）
+      - name: handleProductCRUD
+        in: guildId, action, productData
+        out: Product | void
+        side: io
+        purpose: 管理商品目錄（建立/編輯/刪除/檢視）
+      - name: handleAIConfig
+        in: guildId, channelId, action
+        out: AIChannelRestriction
+        side: io
+        purpose: 管理 AI 頻道白名單與 Agent 開關
+      - name: handleAfterSalesStaff
+        in: guildId, userId, action
+        out: void
+        side: io
+        purpose: 新增/移除 guild 售後人員
+    variables:
+      - name: adminSessionState
+        type: AdminPanelSessionState
+        scope: instance
+        purpose: 管理員當前面板 view（MAIN/PRODUCT_LIST/DETAIL/CODE_LIST）+ 中繼資料
+      - name: escortPricingState
+        type: EscortPricingPanelState
+        scope: instance
+        purpose: 護航定價編輯階段狀態（選擇選項→輸入價格→確認）
+    dataflow: []
+    errors:
+      - name: ErrUnauthorizedAccess
+        when: 非管理員（無 ADMINISTRATOR 權限）嘗試使用 /admin-panel
+        means: Ephemeral 拒絕訊息，不顯示面板
+      - name: ErrSessionExpired
+        when: AdminPanelSession TTL 到期，面板按鈕失效
+        means: Ephemeral 提示重新開啟 /admin-panel
+  - slug: user-panel-interaction
+    kind: api
+    role: 已遷移至 @ltdjms/user-panel；1:1 對齊 Java user_panel_* customId 與 embed 結構
+    functions:
+      - name: handleUserPanel
+        in: guildId, userId
+        out: UserPanelEmbed
+        side: io
+        purpose: 顯示會員面板：貨幣餘額＋代幣餘額＋歷史按鈕
+      - name: handleHistoryPage
+        in: guildId, userId, historyType, page
+        out: HistoryPageEmbed
+        side: io
+        purpose: 分頁瀏覽貨幣/代幣/兌換記錄
+      - name: handleRedeemModal
+        in: guildId, userId, code
+        out: RedemptionResult
+        side: io
+        purpose: 處理使用者輸入的兌換碼（開 Modal → 送出）
+      - name: buildHistoryView
+        in: historyType, page, TransactionPage
+        out: EmbedView, ButtonView[]
+        side: pure
+        purpose: UserPanelHistoryViewFactory 集中建構 history embed 與分頁按鈕
+    variables:
+      - name: userPanelCustomIds
+        type: UserPanelConstants
+        scope: instance
+        purpose: Java 對齊的 user_panel_* customId 常數表
+    dataflow:
+      - SlashCommand /user-panel → UserPanelService.getUserPanelView
+      - Button user_panel_* → UserPanelButtonHandler → HistoryViewFactory
+      - DomainEvent → UserPanelUpdateListener → editOriginal embed
+    errors:
+      - name: ErrPanelSessionExpired
+        when: UserPanelSession 15min TTL 到期
+        means: Ephemeral 提示重新開啟 /user-panel
+      - name: ErrInvalidRedeemCode
+        when: 兌換碼格式不符（非 16 碼大寫英數）
+        means: Modal 上顯示格式錯誤提示
+  - slug: panel-service
+    kind: service
+    role: 面板業務邏輯 Facades，彙整經濟、AI、派遣、商品設定與即時事件更新
+    functions:
+      - name: getAdminPanelView
+        in: guildId
+        out: AdminPanelViewModel
+        side: io
+        purpose: 彙整 guild 所有可設定參數（貨幣/代幣/AI/護航）供管理面板顯示
+      - name: getUserPanelView
+        in: guildId, userId
+        out: UserPanelView
+        side: io
+        purpose: 彙整成員的貨幣/代幣餘額與名稱圖示
+      - name: handleLiveUpdate
+        in: DomainEvent
+        out: void
+        side: io
+        purpose: 監聽 BalanceChangedEvent / GameTokenChangedEvent / CurrencyConfigChangedEvent 等，更新面板
+    variables:
+      - name: sessionManager
+        type: PanelSessionManager
+        scope: instance
+        purpose: 管理使用者面板 session（15min TTL），支援 guild 級批量更新
+      - name: adminSessionManager
+        type: AdminPanelSessionManager
+        scope: instance
+        purpose: 管理管理面板 session，支援個別面板更新與過期清理
+    dataflow:
+      - step: 管理面板：接收 admin-panel-interaction 請求 → 委派對應 Facade（Currency/Game/AI/Dispatch）→ 回覆結果 embed
+        fn: getAdminPanelView
+      - step: >-
+          會員面板：彙整 MemberInfoFacade（BalanceService + GameTokenService + RedemptionService）→ 回覆
+          UserPanelEmbed
+        fn: getUserPanelView
+      - step: 領域事件驅動更新：event-bus 推送 DomainEvent → panelUpdateListener.updatePanelsByGuild() 更新所有活躍面板
+        fn: handleLiveUpdate
+    errors:
+      - name: ErrFacadeAggregationFailed
+        when: 彙整 MemberInfoFacade 時底層 BalanceService/GameTokenService 任一失敗
+        means: 面板顯示部分資料，缺失欄位顯示「載入失敗」
+  - slug: notifications
+    kind: service
+    role: 跨模組通知：買家付款成功 DM、管理員新訂單通知、護航/售後私訊
+    functions:
+      - name: notifyBuyerPaymentSuccess
+        in: userId, productName, orderNumber
+        out: void
+        side: network
+        purpose: 法幣付款成功後 DM 買家訂單確認與商品資訊
+      - name: notifyAdminNewFiatOrder
+        in: guildId, orderNumber, productName
+        out: void
+        side: network
+        purpose: 新法幣訂單需手動處理時 DM 通知管理員
+      - name: notifyEscortNewOrder
+        in: escortUserId, orderNumber, optionInfo
+        out: void
+        side: network
+        purpose: 新派遣單 DM 通知護航人員
+      - name: notifyCustomerOrderUpdate
+        in: customerUserId, orderNumber, newStatus
+        out: void
+        side: network
+        purpose: 派遣單狀態變更時 DM 通知客戶
+      - name: notifyAfterSalesStaff
+        in: guildId, orderNumber
+        out: void
+        side: network
+        purpose: 售後請求發生時 DM 通知所有在線售後人員
+    variables:
+      - name: discordRuntime
+        type: DiscordRuntimeGateway
+        scope: instance
+        purpose: Discord API 抽象，用於發送 DM／Embed／按鈕
+      - name: adminCache
+        type: Set<Long>
+        scope: call
+        purpose: 去重管理員 user ID，掃描 guild 成員 ADMINISTRATOR 權限
+    dataflow: []
+    errors:
+      - name: ErrDiscordDMFailed
+        when: DiscordRuntimeGateway.sendDM 失敗（使用者關閉私訊／bot 無共用 guild）
+        means: log error，不中斷主流程
+      - name: ErrNoAdminFound
+        when: guild 中不存在 ADMINISTRATOR 權限成員（不應發生）
+        means: log warning，跳過管理員通知
+edges:
+  - id: e-xzgwfu
+    from: admin-panel-interaction
+    to: panel-service
+    kind: call
+    label: 委派管理操作
+  - id: e-ejuqec
+    from: user-panel-interaction
+    to: panel-service
+    kind: call
+    label: 會員資訊查詢
+  - id: e-j8lbve
+    from: panel-service
+    to: notifications
+    kind: call
+    label: 觸發訂單/付款通知

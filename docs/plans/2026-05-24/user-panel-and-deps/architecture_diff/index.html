@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en" data-atlas-page="macro">
+<head>
+  <meta charset="utf-8">
+  <title>LTDJMS — Discord Bot 專案架構</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..500&family=Geist:wght@300..700&family=JetBrains+Mono:wght@400..600&display=swap">
+  <link rel="stylesheet" href="assets/architecture.css">
+</head>
+<body>
+  <header class="atlas-header">
+    <h1>LTDJMS — Discord Bot 專案架構</h1>
+    <p class="atlas-summary">基於 Java/JDA 的 Discord bot，在單一 guild 內承載經濟互動、商品交易、護航協作與 AI 頻道治理。涵蓋 guild 貨幣與遊戲代幣的雙軌經濟系統、商品商店與法幣付款（ECPay）、護航派單狀態機、AI 聊天與 Agent 工具執行、以及管理面板。掃描範圍：src/main/java/ltdjms/discord/ 下所有業務模組與共用基礎設施。</p>
+  </header>
+  <main class="atlas-main">
+    <section class="atlas-canvas" aria-label="Macro architecture diagram">
+      <div class="atlas-canvas__toolbar" role="toolbar" aria-label="Diagram controls">
+        <button type="button" data-pan-zoom="zoom-in" aria-label="Zoom in">+</button>
+        <button type="button" data-pan-zoom="zoom-out" aria-label="Zoom out">−</button>
+        <button type="button" data-pan-zoom="fit" aria-label="Reset view">Fit</button>
+      </div>
+      <div class="atlas-canvas__viewport" data-pan-zoom-viewport>
+<svg class="atlas-svg" viewBox="0 0 9455 1783" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Project architecture atlas" data-atlas-svg="macro">
+  <defs>
+    <marker id="arrow-call" class="m-arrow m-arrow--call" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" /></marker>
+    <marker id="arrow-return" class="m-arrow m-arrow--return" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" /></marker>
+    <marker id="arrow-data-row" class="m-arrow m-arrow--data-row" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" /></marker>
+    <marker id="arrow-failure" class="m-arrow m-arrow--failure" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" /></marker>
+  </defs>
+  <g transform="translate(24,24)">
+    <g class="m-cluster" data-feature="guild-economy">
+      <rect class="m-cluster__bg" x="8290.00" y="719.82" width="1082.00" height="369.40" rx="14" ry="14" />
+      <text class="m-cluster__title" x="8831.00" y="745.82" text-anchor="middle">Guild Economy</text>
+    </g>
+    <g class="m-cluster" data-feature="shop-payment">
+      <rect class="m-cluster__bg" x="55.00" y="1015.53" width="2321.00" height="409.30" rx="14" ry="14" />
+      <text class="m-cluster__title" x="1215.50" y="1041.53" text-anchor="middle">Shop &amp; Payment</text>
+    </g>
+    <g class="m-cluster" data-feature="escort-dispatch">
+      <rect class="m-cluster__bg" x="8138.00" y="1269.84" width="1087.00" height="339.55" rx="14" ry="14" />
+      <text class="m-cluster__title" x="8681.50" y="1295.84" text-anchor="middle">Escort Dispatch</text>
+    </g>
+    <g class="m-cluster" data-feature="ai-chat-agent">
+      <rect class="m-cluster__bg" x="4560.00" y="411.73" width="1909.00" height="499.63" rx="14" ry="14" />
+      <text class="m-cluster__title" x="5514.50" y="437.73" text-anchor="middle">AI Chat &amp; Agent</text>
+    </g>
+    <g class="m-cluster" data-feature="administration">
+      <rect class="m-cluster__bg" x="2604.00" y="567.41" width="1640.00" height="306.00" rx="14" ry="14" />
+      <text class="m-cluster__title" x="3424.00" y="593.41" text-anchor="middle">Administration</text>
+    </g>
+    <g class="m-cluster" data-feature="shared-infrastructure">
+      <rect class="m-cluster__bg" x="6828.00" y="307.90" width="1105.00" height="509.50" rx="14" ry="14" />
+      <text class="m-cluster__title" x="7380.50" y="333.90" text-anchor="middle">Shared Infrastructure</text>
+    </g>
+    <g class="m-cluster" data-feature="user-panel">
+      <rect class="m-cluster__bg" x="1476.00" y="688.53" width="905.00" height="295.00" rx="14" ry="14" />
+      <text class="m-cluster__title" x="1928.50" y="714.53" text-anchor="middle">User Panel</text>
+    </g>
+    <a class="m-node m-node--api" href="features/guild-economy/economy-interaction.html" data-feature="guild-economy" data-submodule="economy-interaction" tabindex="0" aria-label="economy-interaction — Discord 指令處理層：貨幣設定、擲骰遊戲、交易查詢 — open sub-module page">
+      <title>economy-interaction — Discord 指令處理層：貨幣設定、擲骰遊戲、交易查詢</title>
+      <rect x="9000.00" y="934.82" width="310.00" height="94.00" rx="10" ry="10" />
+      <text class="m-node__title" x="9155.00" y="964.82" text-anchor="middle">economy-interaction</text>
+      <text class="m-node__kind" x="9155.00" y="980.82" text-anchor="middle">API</text>
+      <text class="m-node__role" x="9155.00" y="1000.82" text-anchor="middle">Discord 指令處理層：貨幣設定、擲骰遊戲、交易查詢</text>
+    </a>
+    <a class="m-node m-node--service" href="features/guild-economy/economy-service.html" data-feature="guild-economy" data-submodule="economy-service" tabindex="0" aria-label="economy-service — 雙軌經濟核心邏輯：貨幣帳戶、代幣帳戶、交易記錄、遊戲獎勵結算 — open sub-module page">
+      <title>economy-service — 雙軌經濟核心邏輯：貨幣帳戶、代幣帳戶、交易記錄、遊戲獎勵結算</title>
+      <rect x="8326.00" y="947.05" width="377.00" height="94.00" rx="10" ry="10" />
+      <text class="m-node__title" x="8514.50" y="977.05" text-anchor="middle">economy-service</text>
+      <text class="m-node__kind" x="8514.50" y="993.05" text-anchor="middle">service</text>
+      <text class="m-node__role" x="8514.50" y="1013.05" text-anchor="middle">雙軌經濟核心邏輯：貨幣帳戶、代幣帳戶、交易記錄、遊戲獎勵結算</text>
+    </a>
+    <a class="m-node m-node--db" href="features/guild-economy/economy-db.html" data-feature="guild-economy" data-submodule="economy-db" tabindex="0" aria-label="economy-db — guild_currency_config / member_currency_account / game_token_account / dice_game_config / transaction 資料表 — open sub-module page">
+      <title>economy-db — guild_currency_config / member_currency_account / game_token_account / dice_game_config / transaction 資料表</title>
+      <rect x="9000.00" y="792.82" width="356.00" height="126.00" rx="10" ry="10" />
+      <text class="m-node__title" x="9178.00" y="822.82" text-anchor="middle">economy-db</text>
+      <text class="m-node__kind" x="9178.00" y="838.82" text-anchor="middle">database</text>
+      <text class="m-node__role" x="9178.00" y="858.82" text-anchor="middle">guild_currency_config / member_currency_account /</text>
+      <text class="m-node__role" x="9178.00" y="874.82" text-anchor="middle">game_token_account / dice_game_config / transaction 資</text>
+      <text class="m-node__role" x="9178.00" y="890.82" text-anchor="middle">料表</text>
+    </a>
+    <a class="m-node m-node--api" href="features/shop-payment/shop-interaction.html" data-feature="shop-payment" data-submodule="shop-interaction" tabindex="0" aria-label="shop-interaction — 商店瀏覽、搜尋、購買流程處理（含按鈕、選單、Modal 互動） — open sub-module page">
+      <title>shop-interaction — 商店瀏覽、搜尋、購買流程處理（含按鈕、選單、Modal 互動）</title>
+      <rect x="71.00" y="1269.63" width="355.00" height="94.00" rx="10" ry="10" />
+      <text class="m-node__title" x="248.50" y="1299.63" text-anchor="middle">shop-interaction</text>
+      <text class="m-node__kind" x="248.50" y="1315.63" text-anchor="middle">API</text>
+      <text class="m-node__role" x="248.50" y="1335.63" text-anchor="middle">商店瀏覽、搜尋、購買流程處理（含按鈕、選單、Modal 互動）</text>
+    </a>
+    <a class="m-node m-node--service" href="features/shop-payment/product-catalog-service.html" data-feature="shop-payment" data-submodule="product-catalog-service" tabindex="0" aria-label="product-catalog-service — 商品定義 CRUD、兌換碼產生與驗證、跨模組獎勵派送引擎 — open sub-module page">
+      <title>product-catalog-service — 商品定義 CRUD、兌換碼產生與驗證、跨模組獎勵派送引擎</title>
+      <rect x="1367.00" y="1169.36" width="326.00" height="94.00" rx="10" ry="10" />
+      <text class="m-node__title" x="1530.00" y="1199.36" text-anchor="middle">product-catalog-service</text>
+      <text class="m-node__kind" x="1530.00" y="1215.36" text-anchor="middle">service</text>
+      <text class="m-node__role" x="1530.00" y="1235.36" text-anchor="middle">商品定義 CRUD、兌換碼產生與驗證、跨模組獎勵派送引擎</text>
+    </a>
+    <a class="m-node m-node--service" href="features/shop-payment/fiat-payment-service.html" data-feature="shop-payment" data-submodule="fiat-payment-service" tabindex="0" aria-label="fiat-payment-service — ECPay 法幣付款整合、CVS 超商繳費碼、回撥 HTTP Server、付款後處理 Worker、對帳 — open sub-module page">
+      <title>fiat-payment-service — ECPay 法幣付款整合、CVS 超商繳費碼、回撥 HTTP Server、付款後處理 Worker、對帳</title>
+      <rect x="578.00" y="1182.53" width="478.00" height="94.00" rx="10" ry="10" />
+      <text class="m-node__title" x="817.00" y="1212.53" text-anchor="middle">fiat-payment-service</text>
+      <text class="m-node__kind" x="817.00" y="1228.53" text-anchor="middle">service</text>
+      <text class="m-node__role" x="817.00" y="1248.53" text-anchor="middle">ECPay 法幣付款整合、CVS 超商繳費碼、回撥 HTTP Server、付款後處理 Worker、對帳</text>
+    </a>
+    <a class="m-node m-node--db" href="features/shop-payment/shop-db.html" data-feature="shop-payment" data-submodule="shop-db" tabindex="0" aria-label="shop-db — product / fiat_order / redemption_code / product_redemption_transaction 資料表 — open sub-module page">
+      <title>shop-db — product / fiat_order / redemption_code / product_redemption_transaction 資料表</title>
+      <rect x="1862.00" y="1134.66" width="498.00" height="94.00" rx="10" ry="10" />
+      <text class="m-node__title" x="2111.00" y="1164.66" text-anchor="middle">shop-db</text>
+      <text class="m-node__kind" x="2111.00" y="1180.66" text-anchor="middle">database</text>
+      <text class="m-node__role" x="2111.00" y="1200.66" text-anchor="middle">product / fiat_order / redemption_code / product_redemption_transaction 資料表</text>
+    </a>
+    <a class="m-node m-node--api" href="features/escort-dispatch/dispatch-interaction.html" data-feature="escort-dispatch" data-submodule="dispatch-interaction" tabindex="0" aria-label="dispatch-interaction — 派遣面板指令、私訊流程、狀態轉換按鈕處理 — open sub-module page">
+      <title>dispatch-interaction — 派遣面板指令、私訊流程、狀態轉換按鈕處理</title>
+      <rect x="8926.00" y="1484.84" width="262.00" height="94.00" rx="10" ry="10" />
+      <text class="m-node__title" x="9057.00" y="1514.84" text-anchor="middle">dispatch-interaction</text>
+      <text class="m-node__kind" x="9057.00" y="1530.84" text-anchor="middle">API</text>
+      <text class="m-node__role" x="9057.00" y="1550.84" text-anchor="middle">派遣面板指令、私訊流程、狀態轉換按鈕處理</text>
+    </a>
+    <a class="m-node m-node--service" href="features/escort-dispatch/dispatch-service.html" data-feature="escort-dispatch" data-submodule="dispatch-service" tabindex="0" aria-label="dispatch-service — 訂單狀態機（7 階段）、自動超時完成、跨模組 Handoff、售後人員管理、護航選項定價 — open sub-module page">
+      <title>dispatch-service — 訂單狀態機（7 階段）、自動超時完成、跨模組 Handoff、售後人員管理、護航選項定價</title>
+      <rect x="8154.00" y="1497.39" width="481.00" height="94.00" rx="10" ry="10" />
+      <text class="m-node__title" x="8394.50" y="1527.39" text-anchor="middle">dispatch-service</text>
+      <text class="m-node__kind" x="8394.50" y="1543.39" text-anchor="middle">service</text>
+      <text class="m-node__role" x="8394.50" y="1563.39" text-anchor="middle">訂單狀態機（7 階段）、自動超時完成、跨模組 Handoff、售後人員管理、護航選項定價</text>
+    </a>
+    <a class="m-node m-node--db" href="features/escort-dispatch/dispatch-db.html" data-feature="escort-dispatch" data-submodule="dispatch-db" tabindex="0" aria-label="dispatch-db — escort_dispatch_order / guild_escort_option_price / dispatch_after_sales_staff 資料表 — open sub-module page">
+      <title>dispatch-db — escort_dispatch_order / guild_escort_option_price / dispatch_after_sales_staff 資料表</title>
+      <rect x="8919.00" y="1342.84" width="290.00" height="126.00" rx="10" ry="10" />
+      <text class="m-node__title" x="9064.00" y="1372.84" text-anchor="middle">dispatch-db</text>
+      <text class="m-node__kind" x="9064.00" y="1388.84" text-anchor="middle">database</text>
+      <text class="m-node__role" x="9064.00" y="1408.84" text-anchor="middle">escort_dispatch_order /</text>
+      <text class="m-node__role" x="9064.00" y="1424.84" text-anchor="middle">guild_escort_option_price /</text>
+      <text class="m-node__role" x="9064.00" y="1440.84" text-anchor="middle">dispatch_after_sales_staff 資料表</text>
+    </a>
+    <a class="m-node m-node--api" href="features/ai-chat-agent/ai-mention-interaction.html" data-feature="ai-chat-agent" data-submodule="ai-mention-interaction" tabindex="0" aria-label="ai-mention-interaction — @bot 提及監聽、AI 聊天 vs Agent 路由決策、串流回覆輸出 — open sub-module page">
+      <title>ai-mention-interaction — @bot 提及監聽、AI 聊天 vs Agent 路由決策、串流回覆輸出</title>
+      <rect x="5269.00" y="689.35" width="338.00" height="94.00" rx="10" ry="10" />
+      <text class="m-node__title" x="5438.00" y="719.35" text-anchor="middle">ai-mention-interaction</text>
+      <text class="m-node__kind" x="5438.00" y="735.35" text-anchor="middle">API</text>
+      <text class="m-node__role" x="5438.00" y="755.35" text-anchor="middle">@bot 提及監聽、AI 聊天 vs Agent 路由決策、串流回覆輸出</text>
+    </a>
+    <a class="m-node m-node--service" href="features/ai-chat-agent/ai-chat-service.html" data-feature="ai-chat-agent" data-submodule="ai-chat-service" tabindex="0" aria-label="ai-chat-service — AI 串流回覆（LangChain4j）、頻道白名單檢查、提示詞系統提示載入 — open sub-module page">
+      <title>ai-chat-service — AI 串流回覆（LangChain4j）、頻道白名單檢查、提示詞系統提示載入</title>
+      <rect x="4576.00" y="622.10" width="394.00" height="94.00" rx="10" ry="10" />
+      <text class="m-node__title" x="4773.00" y="652.10" text-anchor="middle">ai-chat-service</text>
+      <text class="m-node__kind" x="4773.00" y="668.10" text-anchor="middle">service</text>
+      <text class="m-node__role" x="4773.00" y="688.10" text-anchor="middle">AI 串流回覆（LangChain4j）、頻道白名單檢查、提示詞系統提示載入</text>
+    </a>
+    <a class="m-node m-node--service" href="features/ai-chat-agent/ai-agent-service.html" data-feature="ai-chat-agent" data-submodule="ai-agent-service" tabindex="0" aria-label="ai-agent-service — Agent 工具執行（17 個 Discord 管理工具）、對話記憶、工具審計日誌 — open sub-module page">
+      <title>ai-agent-service — Agent 工具執行（17 個 Discord 管理工具）、對話記憶、工具審計日誌</title>
+      <rect x="5310.50" y="518.35" width="399.00" height="94.00" rx="10" ry="10" />
+      <text class="m-node__title" x="5510.00" y="548.35" text-anchor="middle">ai-agent-service</text>
+      <text class="m-node__kind" x="5510.00" y="564.35" text-anchor="middle">service</text>
+      <text class="m-node__role" x="5510.00" y="584.35" text-anchor="middle">Agent 工具執行（17 個 Discord 管理工具）、對話記憶、工具審計日誌</text>
+    </a>
+    <a class="m-node m-node--pure-fn" href="features/ai-chat-agent/markdown-validation.html" data-feature="ai-chat-agent" data-submodule="markdown-validation" tabindex="0" aria-label="markdown-validation — AI 回覆 Markdown 語法校驗與自動修正管線（CommonMark 解析器 + 13 道 Regex 修復） — open sub-module page">
+      <title>markdown-validation — AI 回覆 Markdown 語法校驗與自動修正管線（CommonMark 解析器 + 13 道 Regex 修復）</title>
+      <rect x="5269.00" y="799.35" width="482.00" height="94.00" rx="10" ry="10" />
+      <text class="m-node__title" x="5510.00" y="829.35" text-anchor="middle">markdown-validation</text>
+      <text class="m-node__kind" x="5510.00" y="845.35" text-anchor="middle">pure function</text>
+      <text class="m-node__role" x="5510.00" y="865.35" text-anchor="middle">AI 回覆 Markdown 語法校驗與自動修正管線（CommonMark 解析器 + 13 道 Regex 修復）</text>
+    </a>
+    <a class="m-node m-node--db" href="features/ai-chat-agent/ai-db.html" data-feature="ai-chat-agent" data-submodule="ai-db" tabindex="0" aria-label="ai-db — ai_channel_restriction / ai_agent_channel_config / tool_execution_log 資料表 — open sub-module page">
+      <title>ai-db — ai_channel_restriction / ai_agent_channel_config / tool_execution_log 資料表</title>
+      <rect x="5963.00" y="534.02" width="490.00" height="94.00" rx="10" ry="10" />
+      <text class="m-node__title" x="6208.00" y="564.02" text-anchor="middle">ai-db</text>
+      <text class="m-node__kind" x="6208.00" y="580.02" text-anchor="middle">database</text>
+      <text class="m-node__role" x="6208.00" y="600.02" text-anchor="middle">ai_channel_restriction / ai_agent_channel_config / tool_execution_log 資料表</text>
+    </a>
+    <a class="m-node m-node--api" href="features/administration/admin-panel-interaction.html" data-feature="administration" data-submodule="admin-panel-interaction" tabindex="0" aria-label="admin-panel-interaction — 管理面板指令、按鈕、Modal，含產品管理、AI 設定、護航設定子面板 — open sub-module page">
+      <title>admin-panel-interaction — 管理面板指令、按鈕、Modal，含產品管理、AI 設定、護航設定子面板</title>
+      <rect x="2668.00" y="640.41" width="391.00" height="94.00" rx="10" ry="10" />
+      <text class="m-node__title" x="2863.50" y="670.41" text-anchor="middle">admin-panel-interaction</text>
+      <text class="m-node__kind" x="2863.50" y="686.41" text-anchor="middle">API</text>
+      <text class="m-node__role" x="2863.50" y="706.41" text-anchor="middle">管理面板指令、按鈕、Modal，含產品管理、AI 設定、護航設定子面板</text>
+    </a>
+    <a class="m-node m-node--api" href="features/administration/user-panel-interaction.html" data-feature="administration" data-submodule="user-panel-interaction" tabindex="0" aria-label="user-panel-interaction — 已遷移至 @ltdjms/user-panel；1:1 對齊 Java user_panel_* customId 與 embed 結構 — open sub-module page">
+      <title>user-panel-interaction — 已遷移至 @ltdjms/user-panel；1:1 對齊 Java user_panel_* customId 與 embed 結構</title>
+      <rect x="2620.00" y="750.41" width="487.00" height="94.00" rx="10" ry="10" />
+      <text class="m-node__title" x="2863.50" y="780.41" text-anchor="middle">user-panel-interaction</text>
+      <text class="m-node__kind" x="2863.50" y="796.41" text-anchor="middle">API</text>
+      <text class="m-node__role" x="2863.50" y="816.41" text-anchor="middle">已遷移至 @ltdjms/user-panel；1:1 對齊 Java user_panel_* customId 與 embed 結構</text>
+    </a>
+    <a class="m-node m-node--service" href="features/administration/panel-service.html" data-feature="administration" data-submodule="panel-service" tabindex="0" aria-label="panel-service — 面板業務邏輯 Facades，彙整經濟、AI、派遣、商品設定與即時事件更新 — open sub-module page">
+      <title>panel-service — 面板業務邏輯 Facades，彙整經濟、AI、派遣、商品設定與即時事件更新</title>
+      <rect x="3249.00" y="715.91" width="403.00" height="94.00" rx="10" ry="10" />
+      <text class="m-node__title" x="3450.50" y="745.91" text-anchor="middle">panel-service</text>
+      <text class="m-node__kind" x="3450.50" y="761.91" text-anchor="middle">service</text>
+      <text class="m-node__role" x="3450.50" y="781.91" text-anchor="middle">面板業務邏輯 Facades，彙整經濟、AI、派遣、商品設定與即時事件更新</text>
+    </a>
+    <a class="m-node m-node--service" href="features/administration/notifications.html" data-feature="administration" data-submodule="notifications" tabindex="0" aria-label="notifications — 跨模組通知：買家付款成功 DM、管理員新訂單通知、護航/售後私訊 — open sub-module page">
+      <title>notifications — 跨模組通知：買家付款成功 DM、管理員新訂單通知、護航/售後私訊</title>
+      <rect x="3852.00" y="742.04" width="376.00" height="94.00" rx="10" ry="10" />
+      <text class="m-node__title" x="4040.00" y="772.04" text-anchor="middle">notifications</text>
+      <text class="m-node__kind" x="4040.00" y="788.04" text-anchor="middle">service</text>
+      <text class="m-node__role" x="4040.00" y="808.04" text-anchor="middle">跨模組通知：買家付款成功 DM、管理員新訂單通知、護航/售後私訊</text>
+    </a>
+    <a class="m-node m-node--external" href="features/shared-infrastructure/discord-api.html" data-feature="shared-infrastructure" data-submodule="discord-api" tabindex="0" aria-label="discord-api — Discord JDA 抽象層：domain 介面、JDA adapter、mock 實作、Embed/Button/SelectMenu 工具 — open sub-module page">
+      <title>discord-api — Discord JDA 抽象層：domain 介面、JDA adapter、mock 實作、Embed/Button/SelectMenu 工具</title>
+      <rect x="6942.40" y="632.90" width="285.00" height="126.00" rx="10" ry="10" />
+      <text class="m-node__title" x="7084.90" y="662.90" text-anchor="middle">discord-api</text>
+      <text class="m-node__kind" x="7084.90" y="678.90" text-anchor="middle">external</text>
+      <text class="m-node__role" x="7084.90" y="698.90" text-anchor="middle">Discord JDA 抽象層：domain 介面、JDA</text>
+      <text class="m-node__role" x="7084.90" y="714.90" text-anchor="middle">adapter、mock 實作、</text>
+      <text class="m-node__role" x="7084.90" y="730.90" text-anchor="middle">Embed/Button/SelectMenu 工具</text>
+    </a>
+    <a class="m-node m-node--service" href="features/shared-infrastructure/event-bus.html" data-feature="shared-infrastructure" data-submodule="event-bus" tabindex="0" aria-label="event-bus — 同步領域事件匯流排：DomainEventPublisher + Consumer 註冊，支援快取失效、面板即時更新 — open sub-module page">
+      <title>event-bus — 同步領域事件匯流排：DomainEventPublisher + Consumer 註冊，支援快取失效、面板即時更新</title>
+      <rect x="6900.67" y="380.90" width="279.00" height="126.00" rx="10" ry="10" />
+      <text class="m-node__title" x="7040.17" y="410.90" text-anchor="middle">event-bus</text>
+      <text class="m-node__kind" x="7040.17" y="426.90" text-anchor="middle">service</text>
+      <text class="m-node__role" x="7040.17" y="446.90" text-anchor="middle">同步領域事件匯流排：DomainEventPublisher</text>
+      <text class="m-node__role" x="7040.17" y="462.90" text-anchor="middle">+ Consumer 註冊，支援快取失效、面板即時更</text>
+      <text class="m-node__role" x="7040.17" y="478.90" text-anchor="middle">新</text>
+    </a>
+    <a class="m-node m-node--service" href="features/shared-infrastructure/cache-layer.html" data-feature="shared-infrastructure" data-submodule="cache-layer" tabindex="0" aria-label="cache-layer — Redis 快取抽象（CacheService），用於餘額/代幣快取（300s TTL）及 Agent 設定快取（1h TTL） — open sub-module page">
+      <title>cache-layer — Redis 快取抽象（CacheService），用於餘額/代幣快取（300s TTL）及 Agent 設定快取（1h TTL）</title>
+      <rect x="7607.00" y="549.90" width="290.00" height="126.00" rx="10" ry="10" />
+      <text class="m-node__title" x="7752.00" y="579.90" text-anchor="middle">cache-layer</text>
+      <text class="m-node__kind" x="7752.00" y="595.90" text-anchor="middle">service</text>
+      <text class="m-node__role" x="7752.00" y="615.90" text-anchor="middle">Redis 快取抽象（CacheService），用於餘額/代</text>
+      <text class="m-node__role" x="7752.00" y="631.90" text-anchor="middle">幣快取（300s TTL）及 Agent 設定快取（1h TTL</text>
+      <text class="m-node__role" x="7752.00" y="647.90" text-anchor="middle">）</text>
+    </a>
+    <a class="m-node m-node--service" href="features/shared-infrastructure/di-container.html" data-feature="shared-infrastructure" data-submodule="di-container" tabindex="0" aria-label="di-container — Dagger 依賴注入模組組裝，提供 RepositoryModule / ServiceModule 分層綁定 — open sub-module page">
+      <title>di-container — Dagger 依賴注入模組組裝，提供 RepositoryModule / ServiceModule 分層綁定</title>
+      <rect x="6844.00" y="522.90" width="449.00" height="94.00" rx="10" ry="10" />
+      <text class="m-node__title" x="7068.50" y="552.90" text-anchor="middle">di-container</text>
+      <text class="m-node__kind" x="7068.50" y="568.90" text-anchor="middle">service</text>
+      <text class="m-node__role" x="7068.50" y="588.90" text-anchor="middle">Dagger 依賴注入模組組裝，提供 RepositoryModule / ServiceModule 分層綁定</text>
+    </a>
+    <a class="m-node m-node--api" href="features/user-panel/panel-interaction.html" data-feature="user-panel" data-submodule="panel-interaction" tabindex="0" aria-label="panel-interaction — 會員個人面板 Discord 互動：/user-panel、按鈕、Modal、分頁 — open sub-module page">
+      <title>panel-interaction — 會員個人面板 Discord 互動：/user-panel、按鈕、Modal、分頁</title>
+      <rect x="1492.00" y="816.53" width="368.00" height="94.00" rx="10" ry="10" />
+      <text class="m-node__title" x="1676.00" y="846.53" text-anchor="middle">panel-interaction</text>
+      <text class="m-node__kind" x="1676.00" y="862.53" text-anchor="middle">API</text>
+      <text class="m-node__role" x="1676.00" y="882.53" text-anchor="middle">會員個人面板 Discord 互動：/user-panel、按鈕、Modal、分頁</text>
+    </a>
+    <a class="m-node m-node--service" href="features/user-panel/panel-service.html" data-feature="user-panel" data-submodule="panel-service" tabindex="0" aria-label="panel-service — MemberInfoFacade、UserPanelService、session 與資料聚合 — open sub-module page">
+      <title>panel-service — MemberInfoFacade、UserPanelService、session 與資料聚合</title>
+      <rect x="2002.00" y="761.53" width="363.00" height="94.00" rx="10" ry="10" />
+      <text class="m-node__title" x="2183.50" y="791.53" text-anchor="middle">panel-service</text>
+      <text class="m-node__kind" x="2183.50" y="807.53" text-anchor="middle">service</text>
+      <text class="m-node__role" x="2183.50" y="827.53" text-anchor="middle">MemberInfoFacade、UserPanelService、session 與資料聚合</text>
+    </a>
+    <a class="m-node m-node--service" href="features/user-panel/panel-session.html" data-feature="user-panel" data-submodule="panel-session" tabindex="0" aria-label="panel-session — PanelSessionManager 15min TTL 與 Redis 快取 — open sub-module page">
+      <title>panel-session — PanelSessionManager 15min TTL 與 Redis 快取</title>
+      <rect x="2002.00" y="871.53" width="287.00" height="94.00" rx="10" ry="10" />
+      <text class="m-node__title" x="2145.50" y="901.53" text-anchor="middle">panel-session</text>
+      <text class="m-node__kind" x="2145.50" y="917.53" text-anchor="middle">service</text>
+      <text class="m-node__role" x="2145.50" y="937.53" text-anchor="middle">PanelSessionManager 15min TTL 與 Redis 快取</text>
+    </a>
+    <g class="m-edge m-edge--call m-edge--cross" data-edge="e-eq4hb7">
+      <path d="M426.00,1316.63 L456.00,1316.63 L456.00,1328.83 L2391.00,1328.83 L2391.00,1198.03 L8083.00,1198.03 L8083.00,994.05 L8326.00,994.05" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="4477.00" y="1216.03" text-anchor="middle">
+        <tspan x="4477.00">貨幣扣款購買</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call m-edge--cross" data-edge="e-grlykf">
+      <path d="M1693.00,1225.76 L1713.00,1225.76 L1713.00,1339.83 L2401.00,1339.83 L2401.00,1308.19 L8093.00,1308.19 L8093.00,1004.05 L8316.00,1004.05 L8316.00,1003.45 L8326.00,1003.45" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="4491.00" y="1326.19" text-anchor="middle">
+        <tspan x="4491.00">貨幣/代幣獎勵派送</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call m-edge--cross" data-edge="e-uu0dn6">
+      <path d="M1056.00,1263.10 L1066.00,1263.10 L1066.00,1394.83 L4385.00,1394.83 L4385.00,1566.19 L8073.00,1566.19 L8073.00,1553.79 L8154.00,1553.79" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="7996.00" y="1584.19" text-anchor="middle">
+        <tspan x="7996.00">法幣付款成功→自動派遣</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call m-edge--cross" data-edge="e-cioa3m">
+      <path d="M3652.00,751.16 L3682.00,751.16 L3682.00,707.91 L4279.00,707.91 L4279.00,167.90 L8255.00,167.90 L8255.00,964.05 L8316.00,964.05 L8316.00,965.85 L8326.00,965.85" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="4350.50" y="185.90" text-anchor="middle">
+        <tspan x="4350.50">貨幣/代幣管理與查詢</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call m-edge--cross" data-edge="e-x791qu">
+      <path d="M3652.00,727.66 L3662.00,727.66 L3662.00,684.41 L4259.00,684.41 L4259.00,557.41 L2401.00,557.41 L2401.00,341.91 L30.00,341.91 L30.00,1144.86 L1357.00,1144.86 L1357.00,1185.03 L1367.00,1185.03" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="2475.00" y="575.41" text-anchor="middle">
+        <tspan x="2475.00">商品管理與兌換碼產生</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call m-edge--cross" data-edge="e-k1luxm">
+      <path d="M3652.00,798.16 L3662.00,798.16 L3662.00,846.04 L4425.00,846.04 L4425.00,1480.19 L8073.00,1480.19 L8073.00,1516.19 L8154.00,1516.19" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="7993.50" y="1498.19" text-anchor="middle">
+        <tspan x="7993.50">護航設定與售後人員管理</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call m-edge--cross" data-edge="e-dw1qkt">
+      <path d="M3652.00,774.66 L3702.00,774.66 L3702.00,731.04 L4374.00,731.04 L4374.00,622.91 L4505.00,622.91 L4505.00,669.10 L4576.00,669.10" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="4439.50" y="640.91" text-anchor="middle">
+        <tspan x="4439.50">AI 頻道白名單設定</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call m-edge--cross" data-edge="e-xy49n7">
+      <path d="M3652.00,762.91 L3692.00,762.91 L3692.00,719.66 L4364.00,719.66 L4364.00,611.73 L4480.00,611.73 L4480.00,565.35 L5310.50,565.35" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="4422.00" y="601.73" text-anchor="middle">
+        <tspan x="4422.00">Agent 啟用切換</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call m-edge--cross" data-edge="e-e0ewop">
+      <path d="M7227.40,686.90 L7323.00,686.90 L7323.00,538.90 L8160.00,538.90 L8160.00,120.90 L8275.00,120.90 L8275.00,921.55 L8990.00,921.55 L8990.00,953.62 L9000.00,953.62" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="8217.50" y="138.90" text-anchor="middle">
+        <tspan x="8217.50">JDA Event 派發</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call m-edge--cross" data-edge="e-6u75kt">
+      <path d="M7227.40,722.90 L7313.00,722.90 L7313.00,783.90 L7958.00,783.90 L7958.00,1055.54 L2411.00,1055.54 L2411.00,678.53 L40.00,678.53 L40.00,1316.63 L71.00,1316.63" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="6870.50" y="1073.54" text-anchor="middle">
+        <tspan x="6870.50">JDA Event 派發</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call m-edge--cross" data-edge="e-xxrg1y">
+      <path d="M7227.40,704.90 L7323.00,704.90 L7323.00,769.40 L7968.00,769.40 L7968.00,1442.69 L8083.00,1442.69 L8083.00,1481.84 L8901.00,1481.84 L8901.00,1508.34 L8926.00,1508.34" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="8025.50" y="1460.69" text-anchor="middle">
+        <tspan x="8025.50">JDA Event 派發</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call m-edge--cross" data-edge="e-2nap9y">
+      <path d="M7227.40,740.90 L7303.00,740.90 L7303.00,798.40 L7948.00,798.40 L7948.00,1019.54 L4545.00,1019.54 L4545.00,772.35 L5251.00,772.35 L5251.00,759.85 L5269.00,759.85" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="6870.50" y="1037.54" text-anchor="middle">
+        <tspan x="6870.50">JDA Event 派發</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call m-edge--cross" data-edge="e-xzxf69">
+      <path d="M7227.40,668.90 L7313.00,668.90 L7313.00,524.40 L7978.00,524.40 L7978.00,203.90 L2569.00,203.90 L2569.00,687.41 L2668.00,687.41" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="6745.50" y="221.90" text-anchor="middle">
+        <tspan x="6745.50">JDA Event 派發</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call m-edge--cross" data-edge="e-9orgqk">
+      <path d="M7227.40,650.90 L7303.00,650.90 L7303.00,504.40 L7958.00,504.40 L7958.00,275.90 L2579.00,275.90 L2579.00,797.41 L2620.00,797.41" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="6583.50" y="265.90" text-anchor="middle">
+        <tspan x="6583.50">JDA Event 派發</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call m-edge--cross" data-edge="e-zd0f36">
+      <path d="M7179.67,422.90 L7303.00,422.90 L7303.00,385.90 L7948.00,385.90 L7948.00,286.90 L2589.00,286.90 L2589.00,854.41 L3239.00,854.41 L3239.00,786.41 L3249.00,786.41" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="6688.00" y="304.90" text-anchor="middle">
+        <tspan x="6688.00">領域事件驅動面板即時更新</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call m-edge--cross" data-edge="e-mcyh07">
+      <path d="M7897.00,612.90 L8245.00,612.90 L8245.00,974.05 L8316.00,974.05 L8316.00,975.25 L8326.00,975.25" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="8077.00" y="602.90" text-anchor="middle">
+        <tspan x="8077.00">餘額/代幣快取（300s TTL）</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call m-edge--cross" data-edge="e-8vnyj8">
+      <path d="M7897.00,581.40 L7907.00,581.40 L7907.00,514.40 L7968.00,514.40 L7968.00,239.90 L4545.00,239.90 L4545.00,541.85 L5310.50,541.85" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="6717.00" y="257.90" text-anchor="middle">
+        <tspan x="6717.00">Agent 設定快取（1h TTL）</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call m-edge--cross" data-edge="e-sh27ca">
+      <path d="M1056.00,1236.24 L1086.00,1236.24 L1086.00,1361.83 L4415.00,1361.83 L4415.00,1394.19 L8113.00,1394.19 L8113.00,1024.05 L8316.00,1024.05 L8316.00,1022.25 L8326.00,1022.25" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="4504.50" y="1412.19" text-anchor="middle">
+        <tspan x="4504.50">法幣付款完成後獎勵派送</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call m-edge--cross" data-edge="e-nek8hi">
+      <path d="M1056.00,1195.96 L1066.00,1195.96 L1066.00,1099.53 L2401.00,1099.53 L2401.00,1008.54 L6813.00,1008.54 L6813.00,733.70 L6942.40,733.70" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="4485.00" y="998.54" text-anchor="middle">
+        <tspan x="4485.00">DM 買家付款資訊</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call m-edge--cross" data-edge="e-t51w8w">
+      <path d="M4228.00,789.04 L4435.00,789.04 L4435.00,943.35 L6773.00,943.35 L6773.00,708.50 L6942.40,708.50" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="4618.50" y="961.35" text-anchor="middle">
+        <tspan x="4618.50">發送 Discord DM 通知</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call m-edge--cross" data-edge="e-a0jw0t">
+      <path d="M5709.50,588.85 L5771.00,588.85 L5771.00,658.10 L6942.40,658.10" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="6628.00" y="648.10" text-anchor="middle">
+        <tspan x="6628.00">Agent 工具執行 JDA Discord 操作</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call m-edge--cross" data-edge="e-xj2jag">
+      <path d="M426.00,1347.96 L436.00,1347.96 L436.00,1405.83 L4375.00,1405.83 L4375.00,1602.19 L8073.00,1602.19 L8073.00,1572.59 L8154.00,1572.59" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="8010.00" y="1620.19" text-anchor="middle">
+        <tspan x="8010.00">貨幣購買自動派遣</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call m-edge--cross" data-edge="e-143ipt">
+      <path d="M9188.00,1531.84 L9250.00,1531.84 L9250.00,1688.19 L20.00,1688.19 L20.00,1158.20 L1347.00,1158.20 L1347.00,1200.70 L1367.00,1200.70" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="8213.50" y="1706.19" text-anchor="middle">
+        <tspan x="8213.50">讀取護航選項目錄供選單顯示</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call m-edge--cross" data-edge="e-798orc">
+      <path d="M8635.00,1572.59 L8645.00,1572.59 L8645.00,1590.09 L9240.00,1590.09 L9240.00,1638.19 L30.00,1638.19 L30.00,1171.53 L1337.00,1171.53 L1337.00,1216.36 L1367.00,1216.36" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="8250.00" y="1656.19" text-anchor="middle">
+        <tspan x="8250.00">EscortOptionPricingService 讀取目錄定</tspan>
+        <tspan x="8250.00" dy="14">價</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call m-edge--cross" data-edge="e-9gd5ls">
+      <path d="M4970.00,669.10 L4980.00,669.10 L4980.00,674.98 L6773.00,674.98 L6773.00,683.30 L6942.40,683.30" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="6648.50" y="692.98" text-anchor="middle">
+        <tspan x="6648.50">串流回覆經 DiscordRuntimeGateway 傳送</tspan>
+        <tspan x="6648.50" dy="14">至 Discord</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call m-edge--cross" data-edge="e-fl37bc">
+      <path d="M8703.00,1025.39 L8713.00,1025.39 L8713.00,1070.22 L9387.00,1070.22 L9387.00,73.00 L6803.00,73.00 L6803.00,481.70 L6900.67,481.70" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="8373.00" y="35.00" text-anchor="middle">
+        <tspan x="8373.00">發佈 BalanceChangedEvent /</tspan>
+        <tspan x="8373.00" dy="14">GameTokenChangedEvent /</tspan>
+        <tspan x="8373.00" dy="14">CurrencyConfigChangedEvent</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call m-edge--cross" data-edge="e-ytpwke">
+      <path d="M1693.00,1188.16 L1703.00,1188.16 L1703.00,1088.53 L2391.00,1088.53 L2391.00,396.41 L6576.00,396.41 L6576.00,456.50 L6900.67,456.50" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="4392.00" y="414.41" text-anchor="middle">
+        <tspan x="4392.00">發佈 ProductChangedEvent /</tspan>
+        <tspan x="4392.00" dy="14">RedemptionCodesGeneratedEvent /</tspan>
+        <tspan x="4392.00" dy="14">ProductRedemptionCompletedEvent</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call m-edge--cross" data-edge="e-wozlnp">
+      <path d="M4970.00,633.85 L4980.00,633.85 L4980.00,495.73 L6566.00,495.73 L6566.00,360.41 L6773.00,360.41 L6773.00,431.30 L6900.67,431.30" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="6669.50" y="378.41" text-anchor="middle">
+        <tspan x="6669.50">發佈 AIMessageEvent 供審計日誌</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call m-edge--cross" data-edge="e-q6ugm7">
+      <path d="M5709.50,541.85 L5761.00,541.85 L5761.00,484.73 L6523.00,484.73 L6523.00,349.41 L6813.00,349.41 L6813.00,406.10 L6900.67,406.10" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="6648.00" y="339.41" text-anchor="middle">
+        <tspan x="6648.00">發佈 ToolExecution 開始/完成事件供審計</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--failure m-edge--cross" data-edge="e-vjni42">
+      <path d="M426.00,1332.30 L446.00,1332.30 L446.00,1372.83 L4405.00,1372.83 L4405.00,1430.19 L8123.00,1430.19 L8123.00,1034.05 L8316.00,1034.05 L8316.00,1031.65 L8326.00,1031.65" fill="none" marker-end="url(#arrow-failure)" />
+      <text class="m-edge__label" x="4552.00" y="1448.19" text-anchor="middle">
+        <tspan x="4552.00">ErrInsufficientBalance→貨幣扣款失敗，</tspan>
+        <tspan x="4552.00" dy="14">中止購買</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--failure m-edge--cross" data-edge="e-5jogr4">
+      <path d="M1693.00,1244.56 L1703.00,1244.56 L1703.00,1350.83 L2391.00,1350.83 L2391.00,1344.19 L8103.00,1344.19 L8103.00,1014.05 L8316.00,1014.05 L8316.00,1012.85 L8326.00,1012.85" fill="none" marker-end="url(#arrow-failure)" />
+      <text class="m-edge__label" x="4531.00" y="1362.19" text-anchor="middle">
+        <tspan x="4531.00">Reward 派送失敗→兌換 rollback（</tspan>
+        <tspan x="4531.00" dy="14">clearRedeemedIfMatches）</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--failure m-edge--cross" data-edge="e-tpx7gx">
+      <path d="M1056.00,1249.67 L1076.00,1249.67 L1076.00,1383.83 L4395.00,1383.83 L4395.00,1516.19 L8073.00,1516.19 L8073.00,1534.99 L8154.00,1534.99" fill="none" marker-end="url(#arrow-failure)" />
+      <text class="m-edge__label" x="7944.00" y="1534.19" text-anchor="middle">
+        <tspan x="7944.00">handoffFromFiatPayment 失敗→釋放 claim</tspan>
+        <tspan x="7944.00" dy="14">，下週期重試</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--failure m-edge--cross" data-edge="e-8onmci">
+      <path d="M7897.00,644.40 L8235.00,644.40 L8235.00,984.05 L8316.00,984.05 L8316.00,984.65 L8326.00,984.65" fill="none" marker-end="url(#arrow-failure)" />
+      <text class="m-edge__label" x="8111.50" y="662.40" text-anchor="middle">
+        <tspan x="8111.50">ErrCacheUnavailable→降級直接查資料庫</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--failure m-edge--cross" data-edge="e-7cvlq9">
+      <path d="M3652.00,739.41 L3672.00,739.41 L3672.00,696.16 L4269.00,696.16 L4269.00,156.90 L8265.00,156.90 L8265.00,954.05 L8316.00,954.05 L8316.00,956.45 L8326.00,956.45" fill="none" marker-end="url(#arrow-failure)" />
+      <text class="m-edge__label" x="6675.00" y="132.90" text-anchor="middle">
+        <tspan x="6675.00">ErrFacadeAggregationFailed→面板顯示部</tspan>
+        <tspan x="6675.00" dy="14">分資料</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call" data-edge="e-18pz26">
+      <path d="M9000.00,991.22 L8980.00,991.22 L8980.00,998.22 L8713.00,998.22 L8713.00,994.05 L8703.00,994.05" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="8851.50" y="1016.22" text-anchor="middle">
+        <tspan x="8851.50">委派業務邏輯</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call" data-edge="e-6xj3m1">
+      <path d="M8703.00,962.72 L8713.00,962.72 L8713.00,855.82 L9000.00,855.82" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="8851.50" y="873.82" text-anchor="middle">
+        <tspan x="8851.50">讀寫貨幣/代幣帳戶</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--return" data-edge="e-ille99">
+      <path d="M8703.00,1009.72 L8723.00,1009.72 L8723.00,1034.22 L8980.00,1034.22 L8980.00,1010.02 L9000.00,1010.02" fill="none" marker-end="url(#arrow-return)" />
+      <text class="m-edge__label" x="8851.50" y="1052.22" text-anchor="middle">
+        <tspan x="8851.50">BalanceView / GameResult</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--failure" data-edge="e-t7ywiw">
+      <path d="M8703.00,978.39 L8723.00,978.39 L8723.00,948.22 L8980.00,948.22 L8980.00,972.42 L9000.00,972.42" fill="none" marker-end="url(#arrow-failure)" />
+      <text class="m-edge__label" x="8851.50" y="966.22" text-anchor="middle">
+        <tspan x="8851.50">ErrInsufficientBalance 回傳，購買/遊戲</tspan>
+        <tspan x="8851.50" dy="14">流程中斷</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call" data-edge="e-sfy2u5">
+      <path d="M426.00,1300.96 L436.00,1300.96 L436.00,1292.53 L1337.00,1292.53 L1337.00,1247.70 L1367.00,1247.70" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="817.00" y="1310.53" text-anchor="middle">
+        <tspan x="817.00">商品查詢與購買</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call" data-edge="e-k3dm3i">
+      <path d="M426.00,1285.30 L436.00,1285.30 L436.00,1229.53 L578.00,1229.53" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="508.00" y="1247.53" text-anchor="middle">
+        <tspan x="508.00">建立法幣訂單</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call" data-edge="e-stzw97">
+      <path d="M1056.00,1209.39 L1076.00,1209.39 L1076.00,1110.53 L1723.00,1110.53 L1723.00,1202.00 L1844.00,1202.00 L1844.00,1197.33 L1862.00,1197.33" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="1530.00" y="1128.53" text-anchor="middle">
+        <tspan x="1530.00">讀寫法幣訂單</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call" data-edge="e-tf7hxu">
+      <path d="M1693.00,1206.96 L1713.00,1206.96 L1713.00,1166.00 L1862.00,1166.00" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="1783.50" y="1184.00" text-anchor="middle">
+        <tspan x="1783.50">讀寫商品/兌換碼</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call" data-edge="e-3lkynb">
+      <path d="M1056.00,1222.81 L1337.00,1222.81 L1337.00,1232.03 L1367.00,1232.03" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="1211.50" y="1240.81" text-anchor="middle">
+        <tspan x="1211.50">法幣付款完成後經 ProductRewardService</tspan>
+        <tspan x="1211.50" dy="14">發放獎勵</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call" data-edge="e-bacx43">
+      <path d="M8926.00,1555.34 L8901.00,1555.34 L8901.00,1552.99 L8645.00,1552.99 L8645.00,1553.79 L8635.00,1553.79" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="8777.00" y="1570.99" text-anchor="middle">
+        <tspan x="8777.00">委派派遣業務</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call" data-edge="e-m19qs9">
+      <path d="M8635.00,1516.19 L8645.00,1516.19 L8645.00,1405.84 L8919.00,1405.84" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="8777.00" y="1423.84" text-anchor="middle">
+        <tspan x="8777.00">讀寫派遣訂單</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--failure" data-edge="e-gw9gav">
+      <path d="M8635.00,1534.99 L8645.00,1534.99 L8645.00,1531.84 L8926.00,1531.84" fill="none" marker-end="url(#arrow-failure)" />
+      <text class="m-edge__label" x="8777.00" y="1507.84" text-anchor="middle">
+        <tspan x="8777.00">ErrInvalidStateTransition 回傳，操作</tspan>
+        <tspan x="8777.00" dy="14">被拒絕</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call" data-edge="e-6bh9qi">
+      <path d="M5269.00,736.35 L4990.00,736.35 L4990.00,692.60 L4970.00,692.60" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="5125.50" y="754.35" text-anchor="middle">
+        <tspan x="5125.50">路由至 AI 聊天</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call" data-edge="e-33cm2i">
+      <path d="M4970.00,645.60 L4990.00,645.60 L4990.00,594.35 L5251.00,594.35 L5251.00,588.85 L5310.50,588.85" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="5125.50" y="612.35" text-anchor="middle">
+        <tspan x="5125.50">Agent 模式啟用時路由至工具執行</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call" data-edge="e-6qkcsb">
+      <path d="M4970.00,704.35 L4980.00,704.35 L4980.00,846.35 L5269.00,846.35" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="5125.50" y="864.35" text-anchor="middle">
+        <tspan x="5125.50">串流回覆 Markdown 校驗</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call" data-edge="e-dxigb4">
+      <path d="M4970.00,657.35 L4980.00,657.35 L4980.00,653.35 L5761.00,653.35 L5761.00,631.93 L5945.00,631.93 L5945.00,596.68 L5963.00,596.68" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="5510.00" y="643.35" text-anchor="middle">
+        <tspan x="5510.00">讀寫頻道白名單</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call" data-edge="e-my4xly">
+      <path d="M5709.50,565.35 L5771.00,565.35 L5771.00,543.93 L5945.00,543.93 L5945.00,565.35 L5963.00,565.35" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="5858.00" y="561.93" text-anchor="middle">
+        <tspan x="5858.00">讀寫 Agent 設定與工具日誌</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--failure" data-edge="e-awmvrw">
+      <path d="M4970.00,680.85 L5000.00,680.85 L5000.00,724.98 L5251.00,724.98 L5251.00,712.85 L5269.00,712.85" fill="none" marker-end="url(#arrow-failure)" />
+      <text class="m-edge__label" x="5125.50" y="700.98" text-anchor="middle">
+        <tspan x="5125.50">ErrAIServiceUnavailable→回覆 Discord</tspan>
+        <tspan x="5125.50" dy="14">錯誤訊息</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call" data-edge="e-xzgwfu">
+      <path d="M3059.00,687.41 L3229.00,687.41 L3229.00,739.41 L3249.00,739.41" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="3177.00" y="705.41" text-anchor="middle">
+        <tspan x="3177.00">委派管理操作</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call" data-edge="e-ejuqec">
+      <path d="M3107.00,797.41 L3229.00,797.41 L3229.00,762.91 L3249.00,762.91" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="3177.00" y="815.41" text-anchor="middle">
+        <tspan x="3177.00">會員資訊查詢</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call" data-edge="e-j8lbve">
+      <path d="M3652.00,786.41 L3662.00,786.41 L3662.00,789.04 L3852.00,789.04" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="3768.00" y="807.04" text-anchor="middle">
+        <tspan x="3768.00">觸發訂單/付款通知</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call" data-edge="e-1lx4cy">
+      <path d="M7179.67,464.90 L7333.00,464.90 L7333.00,612.90 L7607.00,612.90" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="7461.00" y="630.90" text-anchor="middle">
+        <tspan x="7461.00">AgentConfigCacheInvalidationListener</tspan>
+        <tspan x="7461.00" dy="14">監聽變更事件→失效快取</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call" data-edge="e-c4yla8">
+      <path d="M1860.00,847.86 L1870.00,847.86 L1870.00,808.53 L2002.00,808.53" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="1931.00" y="798.53" text-anchor="middle">
+        <tspan x="1931.00">查詢面板資料</tspan>
+      </text>
+    </g>
+    <g class="m-edge m-edge--call" data-edge="e-3bds4s">
+      <path d="M1860.00,879.20 L1870.00,879.20 L1870.00,918.53 L2002.00,918.53" fill="none" marker-end="url(#arrow-call)" />
+      <text class="m-edge__label" x="1931.00" y="936.53" text-anchor="middle">
+        <tspan x="1931.00">session 讀寫</tspan>
+      </text>
+    </g>
+  </g>
+</svg>
+      </div>
+      <ol class="atlas-legend" aria-label="Edge legend">
+        <li><span class="legend-swatch legend-swatch--call"></span>call</li>
+        <li><span class="legend-swatch legend-swatch--return"></span>return</li>
+        <li><span class="legend-swatch legend-swatch--data-row"></span>data-row</li>
+        <li><span class="legend-swatch legend-swatch--failure"></span>failure</li>
+      </ol>
+    </section>
+    <section class="atlas-index" aria-label="Submodule index">
+      <h2>Submodule index</h2>
+      <ul class="atlas-submodule-index">
+        <li class="atlas-submodule-index__item">
+          <a href="features/guild-economy/economy-interaction.html">
+            <span class="atlas-submodule-index__feature">Guild Economy</span>
+            <span class="atlas-submodule-index__sub">economy-interaction</span>
+            <span class="atlas-submodule-index__kind atlas-submodule-index__kind--api">API</span>
+          </a>
+          <p class="atlas-submodule-index__role">Discord 指令處理層：貨幣設定、擲骰遊戲、交易查詢</p>
+        </li>
+        <li class="atlas-submodule-index__item">
+          <a href="features/guild-economy/economy-service.html">
+            <span class="atlas-submodule-index__feature">Guild Economy</span>
+            <span class="atlas-submodule-index__sub">economy-service</span>
+            <span class="atlas-submodule-index__kind atlas-submodule-index__kind--service">Service</span>
+          </a>
+          <p class="atlas-submodule-index__role">雙軌經濟核心邏輯：貨幣帳戶、代幣帳戶、交易記錄、遊戲獎勵結算</p>
+        </li>
+        <li class="atlas-submodule-index__item">
+          <a href="features/guild-economy/economy-db.html">
+            <span class="atlas-submodule-index__feature">Guild Economy</span>
+            <span class="atlas-submodule-index__sub">economy-db</span>
+            <span class="atlas-submodule-index__kind atlas-submodule-index__kind--db">DB</span>
+          </a>
+          <p class="atlas-submodule-index__role">guild_currency_config / member_currency_account / game_token_account / dice_game_config / transaction 資料表</p>
+        </li>
+        <li class="atlas-submodule-index__item">
+          <a href="features/shop-payment/shop-interaction.html">
+            <span class="atlas-submodule-index__feature">Shop &amp; Payment</span>
+            <span class="atlas-submodule-index__sub">shop-interaction</span>
+            <span class="atlas-submodule-index__kind atlas-submodule-index__kind--api">API</span>
+          </a>
+          <p class="atlas-submodule-index__role">商店瀏覽、搜尋、購買流程處理（含按鈕、選單、Modal 互動）</p>
+        </li>
+        <li class="atlas-submodule-index__item">
+          <a href="features/shop-payment/product-catalog-service.html">
+            <span class="atlas-submodule-index__feature">Shop &amp; Payment</span>
+            <span class="atlas-submodule-index__sub">product-catalog-service</span>
+            <span class="atlas-submodule-index__kind atlas-submodule-index__kind--service">Service</span>
+          </a>
+          <p class="atlas-submodule-index__role">商品定義 CRUD、兌換碼產生與驗證、跨模組獎勵派送引擎</p>
+        </li>
+        <li class="atlas-submodule-index__item">
+          <a href="features/shop-payment/fiat-payment-service.html">
+            <span class="atlas-submodule-index__feature">Shop &amp; Payment</span>
+            <span class="atlas-submodule-index__sub">fiat-payment-service</span>
+            <span class="atlas-submodule-index__kind atlas-submodule-index__kind--service">Service</span>
+          </a>
+          <p class="atlas-submodule-index__role">ECPay 法幣付款整合、CVS 超商繳費碼、回撥 HTTP Server、付款後處理 Worker、對帳</p>
+        </li>
+        <li class="atlas-submodule-index__item">
+          <a href="features/shop-payment/shop-db.html">
+            <span class="atlas-submodule-index__feature">Shop &amp; Payment</span>
+            <span class="atlas-submodule-index__sub">shop-db</span>
+            <span class="atlas-submodule-index__kind atlas-submodule-index__kind--db">DB</span>
+          </a>
+          <p class="atlas-submodule-index__role">product / fiat_order / redemption_code / product_redemption_transaction 資料表</p>
+        </li>
+        <li class="atlas-submodule-index__item">
+          <a href="features/escort-dispatch/dispatch-interaction.html">
+            <span class="atlas-submodule-index__feature">Escort Dispatch</span>
+            <span class="atlas-submodule-index__sub">dispatch-interaction</span>
+            <span class="atlas-submodule-index__kind atlas-submodule-index__kind--api">API</span>
+          </a>
+          <p class="atlas-submodule-index__role">派遣面板指令、私訊流程、狀態轉換按鈕處理</p>
+        </li>
+        <li class="atlas-submodule-index__item">
+          <a href="features/escort-dispatch/dispatch-service.html">
+            <span class="atlas-submodule-index__feature">Escort Dispatch</span>
+            <span class="atlas-submodule-index__sub">dispatch-service</span>
+            <span class="atlas-submodule-index__kind atlas-submodule-index__kind--service">Service</span>
+          </a>
+          <p class="atlas-submodule-index__role">訂單狀態機（7 階段）、自動超時完成、跨模組 Handoff、售後人員管理、護航選項定價</p>
+        </li>
+        <li class="atlas-submodule-index__item">
+          <a href="features/escort-dispatch/dispatch-db.html">
+            <span class="atlas-submodule-index__feature">Escort Dispatch</span>
+            <span class="atlas-submodule-index__sub">dispatch-db</span>
+            <span class="atlas-submodule-index__kind atlas-submodule-index__kind--db">DB</span>
+          </a>
+          <p class="atlas-submodule-index__role">escort_dispatch_order / guild_escort_option_price / dispatch_after_sales_staff 資料表</p>
+        </li>
+        <li class="atlas-submodule-index__item">
+          <a href="features/ai-chat-agent/ai-mention-interaction.html">
+            <span class="atlas-submodule-index__feature">AI Chat &amp; Agent</span>
+            <span class="atlas-submodule-index__sub">ai-mention-interaction</span>
+            <span class="atlas-submodule-index__kind atlas-submodule-index__kind--api">API</span>
+          </a>
+          <p class="atlas-submodule-index__role">@bot 提及監聽、AI 聊天 vs Agent 路由決策、串流回覆輸出</p>
+        </li>
+        <li class="atlas-submodule-index__item">
+          <a href="features/ai-chat-agent/ai-chat-service.html">
+            <span class="atlas-submodule-index__feature">AI Chat &amp; Agent</span>
+            <span class="atlas-submodule-index__sub">ai-chat-service</span>
+            <span class="atlas-submodule-index__kind atlas-submodule-index__kind--service">Service</span>
+          </a>
+          <p class="atlas-submodule-index__role">AI 串流回覆（LangChain4j）、頻道白名單檢查、提示詞系統提示載入</p>
+        </li>
+        <li class="atlas-submodule-index__item">
+          <a href="features/ai-chat-agent/ai-agent-service.html">
+            <span class="atlas-submodule-index__feature">AI Chat &amp; Agent</span>
+            <span class="atlas-submodule-index__sub">ai-agent-service</span>
+            <span class="atlas-submodule-index__kind atlas-submodule-index__kind--service">Service</span>
+          </a>
+          <p class="atlas-submodule-index__role">Agent 工具執行（17 個 Discord 管理工具）、對話記憶、工具審計日誌</p>
+        </li>
+        <li class="atlas-submodule-index__item">
+          <a href="features/ai-chat-agent/markdown-validation.html">
+            <span class="atlas-submodule-index__feature">AI Chat &amp; Agent</span>
+            <span class="atlas-submodule-index__sub">markdown-validation</span>
+            <span class="atlas-submodule-index__kind atlas-submodule-index__kind--pure-fn">Pure fn</span>
+          </a>
+          <p class="atlas-submodule-index__role">AI 回覆 Markdown 語法校驗與自動修正管線（CommonMark 解析器 + 13 道 Regex 修復）</p>
+        </li>
+        <li class="atlas-submodule-index__item">
+          <a href="features/ai-chat-agent/ai-db.html">
+            <span class="atlas-submodule-index__feature">AI Chat &amp; Agent</span>
+            <span class="atlas-submodule-index__sub">ai-db</span>
+            <span class="atlas-submodule-index__kind atlas-submodule-index__kind--db">DB</span>
+          </a>
+          <p class="atlas-submodule-index__role">ai_channel_restriction / ai_agent_channel_config / tool_execution_log 資料表</p>
+        </li>
+        <li class="atlas-submodule-index__item">
+          <a href="features/administration/admin-panel-interaction.html">
+            <span class="atlas-submodule-index__feature">Administration</span>
+            <span class="atlas-submodule-index__sub">admin-panel-interaction</span>
+            <span class="atlas-submodule-index__kind atlas-submodule-index__kind--api">API</span>
+          </a>
+          <p class="atlas-submodule-index__role">管理面板指令、按鈕、Modal，含產品管理、AI 設定、護航設定子面板</p>
+        </li>
+        <li class="atlas-submodule-index__item">
+          <a href="features/administration/user-panel-interaction.html">
+            <span class="atlas-submodule-index__feature">Administration</span>
+            <span class="atlas-submodule-index__sub">user-panel-interaction</span>
+            <span class="atlas-submodule-index__kind atlas-submodule-index__kind--api">API</span>
+          </a>
+          <p class="atlas-submodule-index__role">已遷移至 @ltdjms/user-panel；1:1 對齊 Java user_panel_* customId 與 embed 結構</p>
+        </li>
+        <li class="atlas-submodule-index__item">
+          <a href="features/administration/panel-service.html">
+            <span class="atlas-submodule-index__feature">Administration</span>
+            <span class="atlas-submodule-index__sub">panel-service</span>
+            <span class="atlas-submodule-index__kind atlas-submodule-index__kind--service">Service</span>
+          </a>
+          <p class="atlas-submodule-index__role">面板業務邏輯 Facades，彙整經濟、AI、派遣、商品設定與即時事件更新</p>
+        </li>
+        <li class="atlas-submodule-index__item">
+          <a href="features/administration/notifications.html">
+            <span class="atlas-submodule-index__feature">Administration</span>
+            <span class="atlas-submodule-index__sub">notifications</span>
+            <span class="atlas-submodule-index__kind atlas-submodule-index__kind--service">Service</span>
+          </a>
+          <p class="atlas-submodule-index__role">跨模組通知：買家付款成功 DM、管理員新訂單通知、護航/售後私訊</p>
+        </li>
+        <li class="atlas-submodule-index__item">
+          <a href="features/shared-infrastructure/discord-api.html">
+            <span class="atlas-submodule-index__feature">Shared Infrastructure</span>
+            <span class="atlas-submodule-index__sub">discord-api</span>
+            <span class="atlas-submodule-index__kind atlas-submodule-index__kind--external">External</span>
+          </a>
+          <p class="atlas-submodule-index__role">Discord JDA 抽象層：domain 介面、JDA adapter、mock 實作、Embed/Button/SelectMenu 工具</p>
+        </li>
+        <li class="atlas-submodule-index__item">
+          <a href="features/shared-infrastructure/event-bus.html">
+            <span class="atlas-submodule-index__feature">Shared Infrastructure</span>
+            <span class="atlas-submodule-index__sub">event-bus</span>
+            <span class="atlas-submodule-index__kind atlas-submodule-index__kind--service">Service</span>
+          </a>
+          <p class="atlas-submodule-index__role">同步領域事件匯流排：DomainEventPublisher + Consumer 註冊，支援快取失效、面板即時更新</p>
+        </li>
+        <li class="atlas-submodule-index__item">
+          <a href="features/shared-infrastructure/cache-layer.html">
+            <span class="atlas-submodule-index__feature">Shared Infrastructure</span>
+            <span class="atlas-submodule-index__sub">cache-layer</span>
+            <span class="atlas-submodule-index__kind atlas-submodule-index__kind--service">Service</span>
+          </a>
+          <p class="atlas-submodule-index__role">Redis 快取抽象（CacheService），用於餘額/代幣快取（300s TTL）及 Agent 設定快取（1h TTL）</p>
+        </li>
+        <li class="atlas-submodule-index__item">
+          <a href="features/shared-infrastructure/di-container.html">
+            <span class="atlas-submodule-index__feature">Shared Infrastructure</span>
+            <span class="atlas-submodule-index__sub">di-container</span>
+            <span class="atlas-submodule-index__kind atlas-submodule-index__kind--service">Service</span>
+          </a>
+          <p class="atlas-submodule-index__role">Dagger 依賴注入模組組裝，提供 RepositoryModule / ServiceModule 分層綁定</p>
+        </li>
+        <li class="atlas-submodule-index__item">
+          <a href="features/user-panel/panel-interaction.html">
+            <span class="atlas-submodule-index__feature">User Panel</span>
+            <span class="atlas-submodule-index__sub">panel-interaction</span>
+            <span class="atlas-submodule-index__kind atlas-submodule-index__kind--api">API</span>
+          </a>
+          <p class="atlas-submodule-index__role">會員個人面板 Discord 互動：/user-panel、按鈕、Modal、分頁</p>
+        </li>
+        <li class="atlas-submodule-index__item">
+          <a href="features/user-panel/panel-service.html">
+            <span class="atlas-submodule-index__feature">User Panel</span>
+            <span class="atlas-submodule-index__sub">panel-service</span>
+            <span class="atlas-submodule-index__kind atlas-submodule-index__kind--service">Service</span>
+          </a>
+          <p class="atlas-submodule-index__role">MemberInfoFacade、UserPanelService、session 與資料聚合</p>
+        </li>
+        <li class="atlas-submodule-index__item">
+          <a href="features/user-panel/panel-session.html">
+            <span class="atlas-submodule-index__feature">User Panel</span>
+            <span class="atlas-submodule-index__sub">panel-session</span>
+            <span class="atlas-submodule-index__kind atlas-submodule-index__kind--service">Service</span>
+          </a>
+          <p class="atlas-submodule-index__role">PanelSessionManager 15min TTL 與 Redis 快取</p>
+        </li>
+      </ul>
+    </section>
+  </main>
+  <script src="assets/viewer.client.js" defer></script>
+</body>
+</html>
