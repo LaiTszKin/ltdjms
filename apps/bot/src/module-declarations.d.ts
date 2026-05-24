@@ -25,9 +25,26 @@ declare module '@ltdjms/ai' {
 
 declare module '@ltdjms/admin' {
   export function configureAdminContainer(): void;
+  export function disposeAdminContainer(): void;
   export const ADMIN_TOKENS: Record<string, symbol>;
+  export interface SlashCommandDefinition {
+    name: string;
+    description: string;
+    options?: unknown[];
+    defaultMemberPermissions?: string | null;
+    nameLocalizations?: Record<string, string>;
+    descriptionLocalizations?: Record<string, string>;
+  }
   export const SlashCommandRegistrar: {
+    getCoreDefinitions(): SlashCommandDefinition[];
     registerAll(
+      applicationId: string,
+      restPut: (route: string, body: unknown) => Promise<unknown>,
+      guildId?: string,
+      definitions?: SlashCommandDefinition[],
+    ): Promise<{ success: boolean; message: string }>;
+    registerDefinitions(
+      definitions: SlashCommandDefinition[],
       applicationId: string,
       restPut: (route: string, body: unknown) => Promise<unknown>,
       guildId?: string,

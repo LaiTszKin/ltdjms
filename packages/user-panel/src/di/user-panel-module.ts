@@ -155,6 +155,15 @@ export function registerUserPanelHandlers(registrar: UserPanelHandlerRegistrar):
  */
 export function disposeUserPanelContainer(): void {
   try {
+    const listener = container.resolve<UserPanelUpdateListener>(
+      USER_PANEL_TOKENS.UserPanelUpdateListener,
+    );
+    listener.dispose();
+  } catch {
+    // Update listener not registered
+  }
+
+  try {
     const mgr = container.resolve<PanelSessionManager>(USER_PANEL_TOKENS.PanelSessionManager);
     mgr.stopCleanupInterval();
   } catch {

@@ -2,7 +2,7 @@
  * zh-TW strings for the user panel package.
  */
 export const ZhTwStrings = {
-  sessionExpired: '面板已過期，請重新執行指令',
+  sessionExpired: '面板已過期，請重新執行 /user-panel',
   unexpectedError: '發生未預期的錯誤，請聯絡管理員',
 
   userPanelTitle: '個人面板',

@@ -53,6 +53,7 @@ export { initializeContainer, container, TOKENS, type TokenMap } from './infra/d
 
 // Utils
 export { processWithConcurrencyLimit } from './utils/concurrency.js';
+export { groupSessionsByChannel } from './utils/panel-session-groups.js';
 export { safeSnowflakeToNumber } from './utils/snowflake.js';
 
 // Session

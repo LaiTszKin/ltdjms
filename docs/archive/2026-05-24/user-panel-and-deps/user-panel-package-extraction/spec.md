@@ -72,7 +72,7 @@
 **THEN** `@ltdjms/user-panel` 透過 `src/index.ts` 導出 DI module 與必要類型
 
 **Requirements**:
-- [x] R4.1 `index.ts` 導出 `configureUserPanelContainer`、`USER_PANEL_TOKENS`
+- [x] R4.1 `index.ts` 導出 `configureUserPanelContainer`；`USER_PANEL_TOKENS` 僅透過 `@ltdjms/user-panel/testing` 供測試使用
 - [x] R4.2 admin 不再直接 import user-panel 內部路徑
 
 ## Error and Edge Cases

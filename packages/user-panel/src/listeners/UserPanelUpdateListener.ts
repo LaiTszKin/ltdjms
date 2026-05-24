@@ -1,13 +1,16 @@
 import type { DomainEvent } from '@ltdjms/shared';
-import { type DiscordRuntimeGateway, processWithConcurrencyLimit } from '@ltdjms/shared';
+import {
+  type DiscordRuntimeGateway,
+  groupSessionsByChannel,
+  processWithConcurrencyLimit,
+} from '@ltdjms/shared';
 import type { BalanceChangedEvent } from '@ltdjms/economy';
 import type { GameTokenChangedEvent } from '@ltdjms/games';
-import { type Client, type TextChannel, EmbedBuilder } from 'discord.js';
+import { type Client, type TextChannel, EmbedBuilder, DiscordAPIError } from 'discord.js';
 import { PanelSessionManager } from '../session/PanelSessionManager.js';
 import { UserPanelService } from '../services/UserPanelService.js';
 import { UserPanelEmbedBuilder } from '../services/UserPanelEmbedBuilder.js';
 import { USER_PANEL_FOOTER_PUSH_UPDATE } from '../constants/UserPanelConstants.js';
-import type { PanelSessionData } from '../session/types.js';
 
 const EVENT_TYPES = {
   BALANCE_CHANGED: 'balance_changed',
@@ -25,7 +28,9 @@ export class UserPanelUpdateListener {
 
   private static readonly MAX_CONCURRENCY = 3;
 
-  private readonly debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private readonly guildDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private readonly userDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private readonly updateChains = new Map<string, Promise<void>>();
 
   constructor(
     private readonly sessionManager: PanelSessionManager,
@@ -33,6 +38,19 @@ export class UserPanelUpdateListener {
     private readonly discordGateway: DiscordRuntimeGateway,
     private readonly embedBuilder: UserPanelEmbedBuilder = new UserPanelEmbedBuilder(),
   ) {}
+
+  dispose(): void {
+    for (const timer of this.guildDebounceTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.guildDebounceTimers.clear();
+
+    for (const timer of this.userDebounceTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.userDebounceTimers.clear();
+    this.updateChains.clear();
+  }
 
   async onEvent(event: DomainEvent): Promise<void> {
     if (!this.isRelevantEvent(event)) return;
@@ -46,43 +64,79 @@ export class UserPanelUpdateListener {
 
     if (event.eventType === EVENT_TYPES.BALANCE_CHANGED) {
       const userId = String((event as BalanceChangedEvent).userId);
-      await this.updateUserPanel(guildId, userId);
+      this.scheduleDebouncedUserUpdate(guildId, userId);
       return;
     }
 
     if (event.eventType === EVENT_TYPES.GAME_TOKEN_CHANGED) {
       const userId = String((event as GameTokenChangedEvent).userId);
-      await this.updateUserPanel(guildId, userId);
+      this.scheduleDebouncedUserUpdate(guildId, userId);
     }
   }
 
+  private sessionKey(guildId: string, userId: string): string {
+    return `${guildId}:${userId}`;
+  }
+
   private scheduleDebouncedGuildUpdate(guildId: string): void {
-    const existing = this.debounceTimers.get(guildId);
+    const existing = this.guildDebounceTimers.get(guildId);
     if (existing) clearTimeout(existing);
 
     const timer = setTimeout(() => {
-      this.debounceTimers.delete(guildId);
+      this.guildDebounceTimers.delete(guildId);
       this.updateAllGuildPanels(guildId).catch((err) => {
         console.error(`[UserPanelUpdateListener] Error in guild update for ${guildId}:`, err);
       });
     }, UserPanelUpdateListener.DEBOUNCE_MS);
 
-    this.debounceTimers.set(guildId, timer);
+    this.guildDebounceTimers.set(guildId, timer);
+  }
+
+  private scheduleDebouncedUserUpdate(guildId: string, userId: string): void {
+    const key = this.sessionKey(guildId, userId);
+    const existing = this.userDebounceTimers.get(key);
+    if (existing) clearTimeout(existing);
+
+    const timer = setTimeout(() => {
+      this.userDebounceTimers.delete(key);
+      this.runSerializedUpdate(guildId, userId, () => this.updateUserPanel(guildId, userId)).catch(
+        (err) => {
+          console.error(
+            `[UserPanelUpdateListener] Error in user update for ${guildId}/${userId}:`,
+            err,
+          );
+        },
+      );
+    }, UserPanelUpdateListener.DEBOUNCE_MS);
+
+    this.userDebounceTimers.set(key, timer);
+  }
+
+  private runSerializedUpdate(
+    guildId: string,
+    userId: string,
+    updateFn: () => Promise<void>,
+  ): Promise<void> {
+    const key = this.sessionKey(guildId, userId);
+    const previous = this.updateChains.get(key) ?? Promise.resolve();
+    const next = previous
+      .then(updateFn)
+      .catch((err) => {
+        console.error(`[UserPanelUpdateListener] Serialized update failed for ${key}:`, err);
+      })
+      .finally(() => {
+        if (this.updateChains.get(key) === next) {
+          this.updateChains.delete(key);
+        }
+      });
+
+    this.updateChains.set(key, next);
+    return next;
   }
 
   private async updateAllGuildPanels(guildId: string): Promise<void> {
     const sessions = this.sessionManager.getAllForGuild(guildId);
-    const channelGroupMap = new Map<string, PanelSessionData[]>();
-
-    for (const session of sessions) {
-      if (!session.channelId || !session.messageId) continue;
-      const group = channelGroupMap.get(session.channelId);
-      if (group) {
-        group.push(session);
-      } else {
-        channelGroupMap.set(session.channelId, [session]);
-      }
-    }
+    const channelGroupMap = groupSessionsByChannel(sessions);
 
     if (channelGroupMap.size === 0) return;
 
@@ -98,11 +152,15 @@ export class UserPanelUpdateListener {
         const textChannel = channel as TextChannel;
 
         for (const session of groupSessions) {
-          try {
-            await this.editSessionPanel(textChannel, guildId, session.userId);
-          } catch {
-            toRemove.push({ guildId: session.guildId, userId: session.userId });
-          }
+          await this.runSerializedUpdate(guildId, session.userId, async () => {
+            try {
+              await this.editSessionPanel(textChannel, guildId, session.userId);
+            } catch (err) {
+              if (this.shouldRemoveSession(err)) {
+                toRemove.push({ guildId: session.guildId, userId: session.userId });
+              }
+            }
+          });
         }
       },
       UserPanelUpdateListener.MAX_CONCURRENCY,
@@ -123,8 +181,15 @@ export class UserPanelUpdateListener {
       if (!channel?.isTextBased()) return;
 
       await this.editSessionPanel(channel as TextChannel, guildId, userId);
-    } catch {
-      this.sessionManager.removeSession(guildId, userId);
+    } catch (err) {
+      if (this.shouldRemoveSession(err)) {
+        this.sessionManager.removeSession(guildId, userId);
+      } else {
+        console.warn(
+          `[UserPanelUpdateListener] Transient error updating panel for ${guildId}/${userId}:`,
+          err,
+        );
+      }
     }
   }
 
@@ -156,6 +221,25 @@ export class UserPanelUpdateListener {
 
     const message = await textChannel.messages.fetch(session.messageId);
     await message.edit({ embeds: [embed] });
+  }
+
+  private shouldRemoveSession(err: unknown): boolean {
+    const code = this.extractDiscordErrorCode(err);
+    if (code === undefined) return false;
+    return [10003, 10008, 50001, 50013].includes(code);
+  }
+
+  private extractDiscordErrorCode(err: unknown): number | undefined {
+    if (err instanceof DiscordAPIError) {
+      return typeof err.code === 'number' ? err.code : Number(err.code);
+    }
+
+    if (typeof err === 'object' && err !== null && 'code' in err) {
+      const code = Number((err as { code: unknown }).code);
+      return Number.isNaN(code) ? undefined : code;
+    }
+
+    return undefined;
   }
 
   private isRelevantEvent(event: DomainEvent): boolean {

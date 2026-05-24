@@ -19,6 +19,8 @@
 | `src/main/java/ltdjms/discord/shared/EnvironmentConfig.java` | 所有環境變數與預設值的事實來源 |
 | `src/main/java/ltdjms/discord/shared/di/AppComponent.java` | Dagger 組裝全貌 |
 | `src/main/java/ltdjms/discord/shared/di/EventModule.java` | 事件管線的核心 wiring |
+| `packages/user-panel/src/di/user-panel-module.ts` | TypeScript 個人面板 DI（`configureUserPanelContainer`） |
+| `apps/bot/src/main.ts` | TypeScript bot 啟動順序與 handler 註冊 |
 
 ## 高風險區域
 
@@ -27,6 +29,8 @@
 - `src/main/java/ltdjms/discord/panel/commands/`
 - `src/main/java/ltdjms/discord/panel/services/`
 - `src/main/java/ltdjms/discord/discord/`
+- `packages/user-panel/` — TypeScript 個人面板（slash、button、modal、即時更新）
+- `packages/admin/src/panel/` — TypeScript 管理面板
 
 原因：
 

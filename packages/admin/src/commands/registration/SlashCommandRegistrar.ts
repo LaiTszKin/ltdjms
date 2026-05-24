@@ -1,6 +1,5 @@
 import { CommandLocalizations } from '@ltdjms/shared';
 import { AdminPanelSlashCommand } from '../../panel/admin/definitions/AdminPanelSlashCommand.js';
-import { UserPanelSlashCommand } from '@ltdjms/user-panel';
 import {
   BalanceSlashCommand,
   AdjustBalanceSlashCommand,
@@ -34,24 +33,12 @@ const ShopSlashCommand: SlashCommandDefinition = {
   descriptionLocalizations: CommandLocalizations.COMMAND_DESCRIPTION_LOCALIZATIONS['shop'],
 };
 
-/** /redeem-code — redeem a code (available to all members). */
-const RedeemCodeSlashCommand: SlashCommandDefinition = {
-  name: 'redeem-code',
-  description: '輸入兌換碼',
-  defaultMemberPermissions: null,
-  nameLocalizations: { 'zh-TW': '兌換碼' },
-  descriptionLocalizations: { 'zh-TW': '輸入兌換碼來兌換商品' },
-};
-
 /**
- * Aggregate of all slash command definitions across all packages.
- * Used by the registration script to bulk-register commands with Discord API.
+ * Core slash command definitions owned by admin and downstream packages (economy, shop, dispatch).
+ * User-panel commands are composed at the app layer to avoid admin → user-panel coupling.
  */
-const ALL_COMMAND_DEFINITIONS: SlashCommandDefinition[] = [
-  // Admin commands
+const CORE_COMMAND_DEFINITIONS: SlashCommandDefinition[] = [
   AdminPanelSlashCommand,
-  UserPanelSlashCommand,
-  // Economy commands
   BalanceSlashCommand,
   AdjustBalanceSlashCommand,
   DiceGame1SlashCommand,
@@ -60,10 +47,7 @@ const ALL_COMMAND_DEFINITIONS: SlashCommandDefinition[] = [
   DiceGame1ConfigSlashCommand,
   DiceGame2ConfigSlashCommand,
   CurrencyConfigSlashCommand,
-  // Shop commands
   ShopSlashCommand,
-  RedeemCodeSlashCommand,
-  // Dispatch commands
   DispatchPanelSlashCommand,
 ];
 
@@ -73,26 +57,44 @@ const ALL_COMMAND_DEFINITIONS: SlashCommandDefinition[] = [
  */
 export class SlashCommandRegistrar {
   /**
-   * Returns all command definitions that should be registered.
+   * Returns admin-owned command definitions (excludes user-panel package commands).
    */
-  static getAllDefinitions(): SlashCommandDefinition[] {
-    return [...ALL_COMMAND_DEFINITIONS];
+  static getCoreDefinitions(): SlashCommandDefinition[] {
+    return [...CORE_COMMAND_DEFINITIONS];
   }
 
   /**
-   * Registers all commands globally via the provided REST client.
+   * Returns all command definitions that should be registered.
+   * @deprecated Prefer app-layer composition via getAllSlashCommandDefinitions().
+   */
+  static getAllDefinitions(): SlashCommandDefinition[] {
+    return [...CORE_COMMAND_DEFINITIONS];
+  }
+
+  /**
+   * Registers commands globally via the provided REST client.
    * Typically called with discord.js REST.put().
-   * @param applicationId - Discord application ID
-   * @param restPut - Function that calls REST.put() with the given route and body
-   * @param guildId - Optional guild ID for development (guild-specific registration)
    */
   static async registerAll(
     applicationId: string,
     restPut: (route: string, body: unknown) => Promise<unknown>,
     guildId?: string,
+    definitions: SlashCommandDefinition[] = CORE_COMMAND_DEFINITIONS,
+  ): Promise<{ success: boolean; message: string }> {
+    return SlashCommandRegistrar.registerDefinitions(definitions, applicationId, restPut, guildId);
+  }
+
+  /**
+   * Registers the given command definitions with the Discord API.
+   */
+  static async registerDefinitions(
+    definitions: SlashCommandDefinition[],
+    applicationId: string,
+    restPut: (route: string, body: unknown) => Promise<unknown>,
+    guildId?: string,
   ): Promise<{ success: boolean; message: string }> {
     try {
-      const definitions = ALL_COMMAND_DEFINITIONS.map((def) => ({
+      const payload = definitions.map((def) => ({
         name: def.name,
         name_localizations: def.nameLocalizations ?? {},
         description: def.description,
@@ -105,7 +107,7 @@ export class SlashCommandRegistrar {
         ? `/applications/${applicationId}/guilds/${guildId}/commands`
         : `/applications/${applicationId}/commands`;
 
-      const result = await restPut(route, definitions);
+      const result = await restPut(route, payload);
       const count = Array.isArray(result) ? result.length : 0;
 
       return {

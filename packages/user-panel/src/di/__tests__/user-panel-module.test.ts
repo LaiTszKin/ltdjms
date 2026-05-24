@@ -4,6 +4,8 @@ import {
   TOKENS,
   initializeContainer,
   DomainEventPublisher,
+  Err,
+  DomainError,
   type DiscordRuntimeGateway,
 } from '@ltdjms/shared';
 import { ECONOMY_TOKENS } from '@ltdjms/economy';
@@ -62,7 +64,7 @@ function registerEconomyShopMocks(): void {
     }),
   });
   container.registerInstance(SHOP_TOKENS.RedemptionService, {
-    redeemCode: async () => ({ isErr: () => true, getError: () => new Error('mock') }),
+    redeemCode: vi.fn().mockResolvedValue(new Err(DomainError.redeemCodeInvalid('mock'))),
   });
 }
 

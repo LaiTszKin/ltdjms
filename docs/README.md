@@ -65,7 +65,7 @@ docs/
 
 ### 互動式架構圖（Architecture Atlas）
 
-- `resources/project-architecture/index.html` — 以 SVG 互動圖呈現 6 個功能模塊與 22 個子模塊的邊界關係，每個子模塊有獨立的 I/O、變數、資料流與錯誤頁面。使用瀏覽器直接開啟。
+- `resources/project-architecture/index.html` — 以 SVG 互動圖呈現 7 個功能模塊（含 `@ltdjms/user-panel`）與子模塊邊界，每個子模塊有獨立的 I/O、變數、資料流與錯誤頁面。使用瀏覽器直接開啟。
 
 ### 補充與深度參考
 

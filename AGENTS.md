@@ -6,14 +6,17 @@
 - `make test` — 執行單元測試。
 - `make test-integration` — 執行 `mvn verify` 等級的整合驗證。
 - `make verify` — clean 後跑完整驗證流程。
-- `make format` — 用 Spotless 格式化程式碼。
+- `make format` — 用 Prettier 格式化 TypeScript 程式碼。
 - `make format-check` — 檢查格式是否符合規範。
+- `make lint` — 用 ESLint 檢查 TypeScript 程式碼。
 - `make start-dev` — 建置並啟動 bot、PostgreSQL、Redis。
 - `make logs` — 追蹤 Docker Compose 日誌。
-- `make db-up` — 只啟動 PostgreSQL 供本機 JVM 使用。
+- `make db-up` — 只啟動 PostgreSQL。
 - `make setup-env` — 互動式建立或更新部署用 `.env`。
 - `make update-env` — 以 `.env.example` 非互動同步缺漏欄位並保留既有值。
-- `java -jar target/ltdjms-*.jar` — 在完成 build 後本機直接啟動 bot。
+- `RUN_ECPAY_E2E=true make test` — 含 ECPay Stage API E2E 測試。
+- `pnpm vitest run --project @ltdjms/economy -t "should conserve"` — 執行單一測試名稱。
+- `npx tsx apps/bot/scripts/register-slash-commands.ts [--guild-id <id>]` — 向 Discord API 註冊 slash commands。
 
 ## Project Business Goals
 
@@ -51,7 +54,7 @@ LTDJMS 的目標是在單一 Discord bot 內承載 guild 的經濟互動、商�
 - `code-organization.md` — 模組獨立性、Handler 薄度、Facade 模式
 
 ### Architecture Atlas
-- `resources/project-architecture/index.html` — 互動式 SVG 架構圖（6 功能模塊 × 22 子模塊），含跨模組邊界與子模組細節頁面
+- `resources/project-architecture/index.html` — 互動式 SVG 架構圖（7 功能模塊，含獨立 `@ltdjms/user-panel`），含跨模組邊界與子模組細節頁面
 
 ### Root Documents
 - `README.md` — 專案簡介、快速啟動、核心能力

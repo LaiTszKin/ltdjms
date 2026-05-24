@@ -24,14 +24,12 @@ export type { AdminPanelSessionData } from './session/index.js';
 // ============================================================
 // DI
 // ============================================================
-export {
-  configureAdminContainer,
-  disposeAdminContainer,
-  startAdminSlashCommandListener,
-  ADMIN_TOKENS,
-} from './di/index.js';
+export { configureAdminContainer, disposeAdminContainer, ADMIN_TOKENS } from './di/index.js';
 
 // ============================================================
 // Commands
 // ============================================================
-export { SlashCommandRegistrar } from './commands/registration/SlashCommandRegistrar.js';
+export {
+  SlashCommandRegistrar,
+  type SlashCommandDefinition,
+} from './commands/registration/SlashCommandRegistrar.js';

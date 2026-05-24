@@ -33,5 +33,5 @@
 
 ## Sign-off
 - [x] `make verify`（build + test + lint + format-check）
-- [ ] architecture diff validate
+- [x] architecture diff validate
 - [x] admin 中 user-panel shim 已移除；handler 註冊移至 `apps/bot/src/main.ts`

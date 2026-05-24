@@ -6,6 +6,7 @@ export {
 } from './di/user-panel-module.js';
 
 export { UserPanelSlashCommand } from './definitions/UserPanelSlashCommand.js';
+export { RedeemCodeSlashCommand } from './definitions/RedeemCodeSlashCommand.js';
 
 export type { PanelSessionData } from './session/types.js';
 

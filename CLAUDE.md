@@ -15,6 +15,7 @@
 - `make update-env` — 以 `.env.example` 非互動同步缺漏欄位並保留既有值。
 - `RUN_ECPAY_E2E=true make test` — 含 ECPay Stage API E2E 測試。
 - `pnpm vitest run --project @ltdjms/economy -t "should conserve"` — 執行單一測試名稱。
+- `npx tsx apps/bot/scripts/register-slash-commands.ts [--guild-id <id>]` — 向 Discord API 註冊 slash commands。
 
 ## Project Business Goals
 
@@ -52,7 +53,7 @@ LTDJMS 的目標是在單一 Discord bot 內承載 guild 的經濟互動、商�
 - `code-organization.md` — 模組獨立性、Handler 薄度、Facade 模式
 
 ### Architecture Atlas
-- `resources/project-architecture/index.html` — 互動式 SVG 架構圖（6 功能模塊 × 22 子模塊），含跨模組邊界與子模組細節頁面
+- `resources/project-architecture/index.html` — 互動式 SVG 架構圖（7 功能模塊，含獨立 `@ltdjms/user-panel`），含跨模組邊界與子模組細節頁面
 
 ### Root Documents
 - `README.md` — 專案簡介、快速啟動、核心能力

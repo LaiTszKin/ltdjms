@@ -1,5 +1,9 @@
 import type { DomainEvent } from '@ltdjms/shared';
-import { type DiscordRuntimeGateway, processWithConcurrencyLimit } from '@ltdjms/shared';
+import {
+  type DiscordRuntimeGateway,
+  groupSessionsByChannel,
+  processWithConcurrencyLimit,
+} from '@ltdjms/shared';
 import {
   type Client,
   type TextChannel,
@@ -9,7 +13,7 @@ import {
   ButtonStyle,
 } from 'discord.js';
 import { AdminPanelSessionManager } from '../../session/AdminPanelSessionManager.js';
-import { AdminPanelViewState, type AdminPanelSessionData } from '../../session/types.js';
+import { AdminPanelViewState } from '../../session/types.js';
 import { CurrencyManagementFacade } from '../../facades/CurrencyManagementFacade.js';
 import { DispatchManagementFacade } from '../../facades/DispatchManagementFacade.js';
 import { AdminPanelViewFactory } from '../admin/views/AdminPanelViewFactory.js';
@@ -153,18 +157,7 @@ export class AdminPanelUpdateListener {
       this.shouldUpdateForViewState(event, s.viewState),
     );
 
-    // Group by channelId so channel.fetch is done once per unique channel.
-    // Also skips sessions without a channelId or messageId.
-    const channelGroupMap = new Map<string, AdminPanelSessionData[]>();
-    for (const session of relevantSessions) {
-      if (!session.channelId || !session.messageId) continue;
-      const group = channelGroupMap.get(session.channelId);
-      if (group) {
-        group.push(session);
-      } else {
-        channelGroupMap.set(session.channelId, [session]);
-      }
-    }
+    const channelGroupMap = groupSessionsByChannel(relevantSessions);
 
     if (channelGroupMap.size === 0) return;
 

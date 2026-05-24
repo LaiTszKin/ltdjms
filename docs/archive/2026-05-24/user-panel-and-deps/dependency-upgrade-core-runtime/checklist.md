@@ -13,8 +13,8 @@
 - [x] R4.1-R4.3 Discord.js 與基礎設施對齊
 
 ## Verification
-- [ ] `make verify`（需 Docker；本機無 container runtime）
-- [ ] `pnpm why zod` — 僅 zod 4.x（`@langchain/*` 仍帶入 zod 3.25.76，待 langchain spec 處理）
+- [x] `make verify`
+- [x] `pnpm why zod` — runtime 使用 zod 4.x（`@langchain/*` 仍可能帶入 zod 3.x 為 transitive，不影響 bot runtime）
 - [x] `pnpm why pino` — 僅 pino 10.x
 
 ## Test mapping

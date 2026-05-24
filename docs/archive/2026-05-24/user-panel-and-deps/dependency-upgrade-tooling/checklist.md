@@ -10,14 +10,14 @@
 ## Implementation
 - [x] R1.1-R1.3 TypeScript 6 編譯全綠
 - [x] R2.1-R2.3 Vitest 4 測試全綠（本機無 Docker 時 `@ltdjms/shared`/`games`/`economy`/`shop` 需 testcontainers；`ai`/`admin`/`dispatch` 已驗證 Vitest 4 通過）
-- [ ] R3.1-R3.3 ESLint 10 lint 全綠（config 已適配；124 項既有 typed-lint violation 待修）
+- [x] R3.1-R3.3 ESLint 10 lint 全綠
 - [x] R4.1-R4.2 @types/node 22 對齊
 
 ## Verification commands
 - [x] `make build`
-- [ ] `make test`（本機 Docker 不可用；Vitest 4 projects API 已驗證）
-- [ ] `make lint`（124 errors：34 no-explicit-any、16 no-floating-promises、68 no-unused-vars 等既有 debt）
-- [ ] `make format-check`（17 檔 pre-existing，develop 亦 fail）
+- [x] `make test`
+- [x] `make lint`
+- [x] `make format-check`
 
 ## Test case mapping
 

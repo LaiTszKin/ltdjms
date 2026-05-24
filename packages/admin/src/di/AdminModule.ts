@@ -403,18 +403,6 @@ export function configureAdminContainer(): void {
 }
 
 /**
- * Wires the admin SlashCommandListener to Discord after all handlers are registered.
- * Call from apps/bot after member-facing handlers (e.g. user-panel) are registered.
- */
-export function startAdminSlashCommandListener(): void {
-  const discordGateway = container.resolve<DiscordRuntimeGateway>(TOKENS.DiscordRuntimeGateway);
-  const slashCommandListener = container.resolve<SlashCommandListener>(
-    ADMIN_TOKENS.SlashCommandListener,
-  );
-  slashCommandListener.listen(discordGateway);
-}
-
-/**
  * Disposes admin module resources. Should be called during application shutdown.
  */
 export function disposeAdminContainer(): void {

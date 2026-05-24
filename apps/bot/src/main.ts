@@ -45,6 +45,7 @@ import {
   registerUserPanelHandlers,
   type UserPanelHandlerRegistrar,
 } from '@ltdjms/user-panel';
+import { getAllSlashCommandDefinitions } from './slash-command-definitions.js';
 import {
   configureAdminContainer,
   ADMIN_TOKENS,
@@ -68,14 +69,17 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
  * 8. Economy module
  * 9. Dispatch module
  * 10. Shop module (with ProductRewardService adapter)
- * 11. AI module
+ * 11. Games module
  * 12. Create discord.js Client + login
  * 13. Publish ready to DiscordRuntimeGateway
- * 14. Admin module (wires interactionCreate via DI)
- * 15. Wire AI message listener
- * 16. Register slash commands with Discord API
- * 17. Start background services (scheduler, callback server)
- * 18. Register shutdown hook
+ * 14. User panel module (configure + register handlers)
+ * 15. AI module
+ * 16. Admin module (configure handlers)
+ * 17. Wire SlashCommandListener (register user-panel handlers + listen)
+ * 18. Wire AI message listener
+ * 19. Register slash commands with Discord API (app-layer composer)
+ * 20. Start background services (scheduler, callback server)
+ * 21. Register shutdown hook
  */
 export async function main(): Promise<void> {
   // 1. Config + Logger
@@ -230,6 +234,7 @@ export async function main(): Promise<void> {
   configureAdminContainer();
   logger.info('Admin module initialized');
 
+  // 17. Register user-panel handlers and wire SlashCommandListener
   const slashCommandListener = container.resolve<UserPanelHandlerRegistrar>(
     ADMIN_TOKENS.SlashCommandListener,
   ) as UserPanelHandlerRegistrar & {
@@ -239,13 +244,14 @@ export async function main(): Promise<void> {
   slashCommandListener.listen(runtimeGateway);
   logger.info('User panel handlers registered');
 
-  // 16. Wire AI message listener
+  // 18. Wire AI message listener
   const aiListener = container.resolve<AIChatMentionListener>(AI_TOKENS.AIChatMentionListener);
   client.on('messageCreate', (msg) => aiListener.onMessageCreate(msg));
 
-  // 17. Register slash commands with Discord API
+  // 19. Register slash commands with Discord API
   if (client.user) {
-    const result = await SlashCommandRegistrar.registerAll(
+    const result = await SlashCommandRegistrar.registerDefinitions(
+      getAllSlashCommandDefinitions(),
       client.user.id,
       async (route: string, body: unknown) => {
         return client.rest.put(route as `/${string}`, { body });
@@ -254,7 +260,7 @@ export async function main(): Promise<void> {
     logger.info({ result }, 'Slash commands registered');
   }
 
-  // 18. Start background services
+  // 20. Start background services
   const scheduler = container.resolve<FiatOrderProcessingScheduler>(
     SHOP_TOKENS.FiatOrderProcessingScheduler,
   );

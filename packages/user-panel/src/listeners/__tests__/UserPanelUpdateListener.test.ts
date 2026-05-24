@@ -72,6 +72,10 @@ describe('UserPanelUpdateListener (UT-205/UT-206)', () => {
     await vi.advanceTimersByTimeAsync(UserPanelUpdateListener.DEBOUNCE_MS);
   }
 
+  async function flushDebouncedUpdates(): Promise<void> {
+    await vi.advanceTimersByTimeAsync(UserPanelUpdateListener.DEBOUNCE_MS);
+  }
+
   it('should embed-only update on balance_changed with push footer', async () => {
     vi.mocked(userPanelService.getUserPanelView).mockResolvedValue(ok(panelView(2000, 50)));
 
@@ -81,6 +85,7 @@ describe('UserPanelUpdateListener (UT-205/UT-206)', () => {
       userId,
       newBalance: 2000,
     });
+    await flushDebouncedUpdates();
 
     expect(userPanelService.getUserPanelView).toHaveBeenCalledWith(guildId, userId);
     expect(editMock).toHaveBeenCalledTimes(1);
@@ -102,6 +107,7 @@ describe('UserPanelUpdateListener (UT-205/UT-206)', () => {
       userId,
       newTokens: 999,
     });
+    await flushDebouncedUpdates();
 
     expect(editMock).toHaveBeenCalledTimes(1);
     const payload = editMock.mock.calls[0][0];
@@ -182,6 +188,74 @@ describe('UserPanelUpdateListener (UT-205/UT-206)', () => {
       userId,
       newBalance: 123,
     });
+    await flushDebouncedUpdates();
+
+    expect(editMock).not.toHaveBeenCalled();
+  });
+
+  it('should coalesce rapid balance_changed events into one edit per user', async () => {
+    vi.mocked(userPanelService.getUserPanelView).mockResolvedValue(ok(panelView(100, 5)));
+
+    await listener.onEvent({
+      eventType: 'balance_changed',
+      guildId,
+      userId,
+      newBalance: 100,
+    });
+    await listener.onEvent({
+      eventType: 'balance_changed',
+      guildId,
+      userId,
+      newBalance: 200,
+    });
+    await flushDebouncedUpdates();
+
+    expect(editMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('should remove session on unknown message but keep it on transient errors', async () => {
+    vi.mocked(userPanelService.getUserPanelView).mockResolvedValue(ok(panelView(100, 5)));
+
+    const unknownMessageError = Object.assign(new Error('Unknown Message'), { code: 10008 });
+    editMock.mockRejectedValueOnce(unknownMessageError);
+    await listener.onEvent({
+      eventType: 'balance_changed',
+      guildId,
+      userId,
+      newBalance: 100,
+    });
+    await flushDebouncedUpdates();
+    expect(sessionManager.peekSession(guildId, userId)).toBeNull();
+
+    sessionManager.createSession(guildId, userId);
+    const restored = sessionManager.getSession(guildId, userId);
+    if (restored) {
+      restored.channelId = 'channel-1';
+      restored.messageId = 'message-1';
+    }
+
+    editMock.mockRejectedValueOnce(new Error('upstream timeout'));
+    await listener.onEvent({
+      eventType: 'balance_changed',
+      guildId,
+      userId,
+      newBalance: 200,
+    });
+    await flushDebouncedUpdates();
+    expect(sessionManager.peekSession(guildId, userId)).not.toBeNull();
+  });
+
+  it('should not run debounced callbacks after dispose', async () => {
+    vi.mocked(userPanelService.getUserPanelView).mockResolvedValue(ok(panelView(100, 5)));
+
+    await listener.onEvent({
+      eventType: 'balance_changed',
+      guildId,
+      userId,
+      newBalance: 100,
+    });
+    listener.dispose();
+    await flushDebouncedUpdates();
 
     expect(editMock).not.toHaveBeenCalled();
   });

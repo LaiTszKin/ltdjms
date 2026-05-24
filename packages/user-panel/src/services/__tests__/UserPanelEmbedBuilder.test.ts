@@ -63,6 +63,12 @@ describe('UserPanelEmbedBuilder', () => {
       expect(embed.fields[0].value).toContain('1,234,567');
       expect(embed.fields[1].value).toContain('999');
     });
+
+    it('should use push-update footer when provided', () => {
+      const view = createView();
+      const embed = builder.buildPanelEmbed(view, TEST_USER_MENTION, oracle.embed.footerPushUpdate);
+      expect(embed.footer).toBe(oracle.embed.footerPushUpdate);
+    });
   });
 
   describe('UT-202 buildPanelComponents', () => {
