@@ -21,7 +21,6 @@ export function resolveRestrictionChannelId(channel: Channel): string {
 export function resolveCategoryId(channel: Channel): string | null {
   let targetChannel = channel;
 
-  // If thread, use parent channel
   if (channel.isThread()) {
     const parent = channel.parent;
     if (parent) {
@@ -31,12 +30,10 @@ export function resolveCategoryId(channel: Channel): string | null {
     }
   }
 
-  // If the channel itself is a category, return its ID
   if (targetChannel.type === ChannelType.GuildCategory) {
     return targetChannel.id;
   }
 
-  // Otherwise get the parent category
   if ('parentId' in targetChannel && targetChannel.parentId) {
     return targetChannel.parentId;
   }
@@ -50,7 +47,8 @@ export function resolveCategoryId(channel: Channel): string | null {
  * 2. Channel/category allowlisted → AI_CHAT_ROUTE
  * 3. Otherwise → DENY
  *
- * Thread channels inherit their parent channel's settings.
+ * Agent config uses the message channel ID; allowlist uses restrictionChannelId
+ * (thread parent). Agent config unavailable → fail closed (DENY).
  */
 export class AIChatMentionRoutingDecision {
   constructor(
@@ -59,73 +57,58 @@ export class AIChatMentionRoutingDecision {
   ) {}
 
   /**
-   * Decides the route for a given channel.
+   * Decides the route for a mention in a channel.
    *
    * @param guildId - The guild ID
-   * @param restrictionChannelId - The resolved channel ID for restrictions (thread → parent)
+   * @param channelId - The message channel ID (for agent config lookup)
+   * @param restrictionChannelId - Resolved channel ID for allowlist (thread → parent)
    * @param categoryId - The category ID (if any)
    */
   async decide(
     guildId: string,
+    channelId: string,
     restrictionChannelId: string,
     categoryId: string | null,
   ): Promise<Decision> {
-    // Track whether agent config was unavailable
-    let agentConfigUnavailable = false;
-
-    // Priority 1: Check Agent config (uses restrictionChannelId for thread inheritance)
+    let agentEnabled: boolean | null = null;
     try {
-      const enabled = await this.agentConfigService.isAgentEnabledAsync(
-        guildId,
-        restrictionChannelId,
-      );
-
-      if (enabled) {
-        return {
-          route: Route.AGENT_ROUTE,
-          source: Source.AGENT_CONFIG,
-          detail: `Agent enabled for channel ${restrictionChannelId}`,
-        };
-      }
+      agentEnabled = await this.agentConfigService.isAgentEnabledAsync(guildId, channelId);
     } catch {
-      // Agent config unavailable (Redis/DB failure) — don't treat as AGENT_ROUTE
-      agentConfigUnavailable = true;
+      agentEnabled = null;
     }
 
-    // Priority 2: Check channel/category allowlist with matched source
-    const allowResult = await this.channelRestrictionService.isChannelAllowedWithSource(
+    if (agentEnabled === null) {
+      return {
+        route: Route.DENY,
+        source: Source.AGENT_CONFIG_UNAVAILABLE,
+        detail: 'agent config service unavailable',
+      };
+    }
+
+    if (agentEnabled) {
+      return {
+        route: Route.AGENT_ROUTE,
+        source: Source.AGENT_ENABLED,
+      };
+    }
+
+    const allowed = await this.channelRestrictionService.isChannelAllowed(
       guildId,
       restrictionChannelId,
       categoryId ?? undefined,
     );
 
-    if (allowResult === 'channel') {
+    if (allowed) {
       return {
         route: Route.AI_CHAT_ROUTE,
-        source: Source.CHANNEL_ALLOWLIST,
-        detail: `Channel ${restrictionChannelId} is allowlisted`,
-      };
-    }
-    if (allowResult === 'category') {
-      return {
-        route: Route.AI_CHAT_ROUTE,
-        source: Source.CATEGORY_ALLOWLIST,
-        detail: `Category ${categoryId} is allowlisted`,
+        source: Source.AI_ALLOWLIST,
       };
     }
 
-    // Priority 3: Deny
-    if (agentConfigUnavailable) {
-      return {
-        route: Route.DENY,
-        source: Source.AGENT_CONFIG_UNAVAILABLE,
-        detail: `Agent config unavailable and channel ${restrictionChannelId} is not allowlisted`,
-      };
-    }
     return {
       route: Route.DENY,
-      source: Source.NO_ALLOWLIST,
-      detail: `Channel ${restrictionChannelId} is not allowlisted and agent is not enabled`,
+      source: Source.AI_ALLOWLIST_DENIED,
+      detail: 'allowlist denied',
     };
   }
 }

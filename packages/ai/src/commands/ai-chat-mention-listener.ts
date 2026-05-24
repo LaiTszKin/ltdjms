@@ -1,4 +1,4 @@
-import { type Message } from 'discord.js';
+import { type Message, type TextChannel } from 'discord.js';
 import {
   type AIChatService,
   type StreamingResponseHandler,
@@ -13,60 +13,9 @@ import {
 } from '../services/routing/routing-decision.js';
 import { DomainError } from '@ltdjms/shared';
 import { MessageSplitter } from '../services/MessageSplitter.js';
+import { ReasoningMessageTracker } from './reasoning-message-tracker.js';
 
-/**
- * Tracks reasoning messages for cleanup after streaming completes.
- * Matches Java ReasoningMessageTracker.
- */
-class ReasoningMessageTracker {
-  private initialMessage: Message | null = null;
-  private reasoningMessages: Message[] = [];
-  private deletionRequested = false;
-
-  setInitialMessage(message: Message): void {
-    this.initialMessage = message;
-  }
-
-  addReasoningMessage(message: Message): void {
-    this.reasoningMessages.push(message);
-  }
-
-  /**
-   * Deletes only reasoning messages, keeping the initial message intact.
-   */
-  async deleteReasoningMessages(): Promise<void> {
-    await Promise.allSettled(
-      this.reasoningMessages.map((msg) =>
-        msg.delete().catch(() => {
-          // Ignore deletion failures
-        }),
-      ),
-    );
-  }
-
-  /**
-   * Deletes all tracked reasoning messages.
-   */
-  async deleteAll(): Promise<void> {
-    if (this.deletionRequested) return;
-    this.deletionRequested = true;
-
-    const toDelete: Message[] = [];
-
-    if (this.initialMessage) {
-      toDelete.push(this.initialMessage);
-    }
-    toDelete.push(...this.reasoningMessages);
-
-    await Promise.allSettled(
-      toDelete.map((msg) =>
-        msg.delete().catch(() => {
-          // Ignore deletion failures
-        }),
-      ),
-    );
-  }
-}
+const SPOILER_PREFIX = '-# ';
 
 /**
  * Listens for @bot mentions and routes them to the AI chat/agent system.
@@ -80,59 +29,62 @@ export class AIChatMentionListener {
     private readonly aiChatService: AIChatService,
     private readonly botUserId: string,
     private readonly showReasoning: boolean = false,
+    private readonly enableMarkdownValidation: boolean = true,
     private readonly streamingBypassValidation: boolean = false,
   ) {}
 
-  /**
-   * Handles a message creation event (discord.js messageCreate).
-   * Filters non-bot mentions, self-messages, and DMs.
-   */
   async onMessageCreate(message: Message): Promise<void> {
     try {
-      // Filter self-messages
       if (message.author.id === this.botUserId) return;
-
-      // Filter DM
       if (!message.guild) return;
 
-      // Check if bot is mentioned
       const botMentioned = message.mentions.has(this.botUserId);
       if (!botMentioned) return;
 
-      // Get user message (default to "你好" if only mention)
       const userMessage = this.extractUserMessage(message);
-
-      // Get routing parameters
       const guildId = message.guild.id;
       const channelId = message.channel.id;
       const restrictionChannelId = resolveRestrictionChannelId(message.channel);
-
-      // Resolve category ID (thread -> parent channel -> category)
       const categoryId = resolveCategoryId(message.channel);
 
-      // Get routing decision
       const decision: Decision = await this.routingDecision.decide(
         guildId,
+        channelId,
         restrictionChannelId,
         categoryId,
       );
 
-      // DENY — silent return
       if (decision.route === Route.DENY) {
         return;
       }
 
-      // Route to appropriate handler
+      const thinkingMsg = await message.reply(':thought_balloon: AI 正在思考...');
+      const streamProcessed = this.enableMarkdownValidation && !this.streamingBypassValidation;
+
       if (decision.route === Route.AGENT_ROUTE) {
-        await this.handleAgentStreamingResponse(message, guildId, channelId, userMessage);
-      } else {
-        await this.handleChatStreamingResponse(message, guildId, channelId, userMessage);
+        await this.handleAgentStreamingResponse(
+          message,
+          guildId,
+          channelId,
+          userMessage,
+          thinkingMsg,
+          streamProcessed,
+        );
+        return;
       }
+
+      await this.handleChatStreamingResponse(
+        message,
+        guildId,
+        channelId,
+        userMessage,
+        thinkingMsg,
+        streamProcessed,
+      );
     } catch (error) {
       console.error(
         `[AIChatMentionListener] Error handling message: ${error instanceof Error ? error.message : String(error)}`,
       );
-
       try {
         await message.reply('抱歉，處理你的請求時發生了錯誤。請稍後再試。');
       } catch {
@@ -141,41 +93,19 @@ export class AIChatMentionListener {
     }
   }
 
-  /**
-   * Safely sends a message to the channel if it's text-based.
-   * Returns null if the channel cannot be sent to.
-   */
-  private async sendToChannel(message: Message, content: string): Promise<Message | null> {
-    try {
-      if (message.channel.isTextBased()) {
-        return (await (message.channel as { send: (c: string) => Promise<Message> }).send(
-          content,
-        )) as Message;
-      }
-    } catch {
-      // Ignore send failures
-    }
-    return null;
-  }
-
-  /**
-   * Handles Agent-mode streaming response.
-   * CONTENT chunks are buffered and sent after tool execution completes.
-   * Reasoning messages are deleted on completion.
-   */
   private async handleAgentStreamingResponse(
     message: Message,
     guildId: string,
     channelId: string,
     userMessage: string,
+    thinkingMsg: Message,
+    streamProcessed: boolean,
   ): Promise<void> {
     const tracker = new ReasoningMessageTracker();
+    tracker.setInitialMessage(thinkingMsg);
     const pendingContent: string[] = [];
     let completionProcessed = false;
-
-    // Send initial "thinking" message
-    const thinkingMsg = await message.reply(':thought_balloon: AI 正在思考...');
-    tracker.setInitialMessage(thinkingMsg);
+    let isFirstChunk = true;
 
     const handler: StreamingResponseHandler = {
       onChunk: async (
@@ -185,95 +115,71 @@ export class AIChatMentionListener {
         chunkType?: StreamChunkType,
       ) => {
         if (error) {
-          const errorMsg = this.mapErrorToUserMessage(error);
-          thinkingMsg.edit(errorMsg).catch(() => {});
+          await thinkingMsg.edit(this.mapErrorToUserMessage(error)).catch(() => {});
           return;
         }
 
         const type = chunkType ?? StreamChunkType.CONTENT;
-
-        switch (type) {
-          case StreamChunkType.REASONING:
-            if (this.showReasoning && chunk) {
-              // Send reasoning as spoiler
-              const msg = await this.sendToChannel(message, `-# ||${chunk}||`);
-              if (msg) tracker.addReasoningMessage(msg);
-            }
-            break;
-
-          case StreamChunkType.TOOL_INTENT:
-            // Show tool execution status to the user as a compact note
-            if (chunk) {
-              await this.sendToChannel(message, `-# ${chunk}`);
-            }
-            break;
-
-          case StreamChunkType.CONTENT:
-            if (chunk) {
-              pendingContent.push(chunk);
-            }
-            break;
-        }
-
-        if (isComplete && !completionProcessed) {
-          completionProcessed = true;
-
-          // Delete reasoning messages first, then edit thinking message with final content
-          await tracker.deleteReasoningMessages();
-          if (pendingContent.length === 0) {
-            thinkingMsg.edit(':question: AI 沒有產生回應').catch(() => {});
-            return;
-          }
-
-          if (this.streamingBypassValidation) {
-            // Content was not pre-paginated — split with MessageSplitter
-            const fullContent = pendingContent.join('');
-            const pages = this.splitter.split(fullContent);
-            // P2-41: Fallback for empty split result with non-empty content
-            if (pages.length === 0 && fullContent) {
-              thinkingMsg.edit(fullContent).catch(() => {});
-            } else {
-              thinkingMsg.edit(pages[0]).catch(() => {});
-              for (let i = 1; i < pages.length; i++) {
-                await this.sendToChannel(message, pages[i]);
+        if (chunk) {
+          if (type === StreamChunkType.REASONING) {
+            if (this.showReasoning) {
+              const formatted = this.formatAsSpoiler(chunk);
+              if (isFirstChunk) {
+                await thinkingMsg.edit(formatted).catch(() => {});
+                isFirstChunk = false;
+              } else {
+                const msg = await this.sendToChannel(message, formatted);
+                if (msg) tracker.addReasoningMessage(msg);
               }
             }
-          } else {
-            // Content already paginated by markdown validation pipeline
-            thinkingMsg.edit(pendingContent[0]).catch(() => {});
-            for (let i = 1; i < pendingContent.length; i++) {
-              await this.sendToChannel(message, pendingContent[i]);
-            }
+          } else if (type === StreamChunkType.TOOL_INTENT) {
+            await this.sendToolIntentMessage(message, chunk);
+          } else if (type === StreamChunkType.CONTENT && chunk.trim()) {
+            pendingContent.push(chunk);
           }
         }
+
+        if (!isComplete || completionProcessed) {
+          return;
+        }
+        completionProcessed = true;
+
+        await tracker.deleteAll(async () => {
+          if (pendingContent.length === 0) {
+            await this.sendToChannel(message, ':question: AI 沒有產生回應');
+            return;
+          }
+          await this.sendAgentFinalContent(message, pendingContent, streamProcessed);
+        });
       },
     };
 
-    await this.aiChatService.generateStreamingResponse(
+    await this.aiChatService.generateStreamingResponseWithId(
       guildId,
       channelId,
       message.author.id,
       userMessage,
+      message.id,
       handler,
-      true, // agentEnabled — loads agent prompts and enables tool-calling model
+      true,
     );
   }
 
-  /**
-   * Handles Chat-mode (non-Agent) streaming response.
-   * CONTENT chunks are sent in real-time.
-   */
   private async handleChatStreamingResponse(
     message: Message,
     guildId: string,
     channelId: string,
     userMessage: string,
+    thinkingMsg: Message,
+    streamProcessed: boolean,
   ): Promise<void> {
-    // Send initial thinking message
-    const thinkingMsg = await message.reply(':thought_balloon: AI 正在思考...');
     const tracker = new ReasoningMessageTracker();
     tracker.setInitialMessage(thinkingMsg);
-    let hasSentFirstContent = false;
+    const contentBuffer: string[] = [];
+    let completed = false;
+    let isFirstChunk = true;
+    let hasReasoning = false;
+    const firstContentSent = { value: false };
 
     const handler: StreamingResponseHandler = {
       onChunk: async (
@@ -283,59 +189,64 @@ export class AIChatMentionListener {
         chunkType?: StreamChunkType,
       ) => {
         if (error) {
-          const errorMsg = this.mapErrorToUserMessage(error);
-          thinkingMsg.edit(errorMsg).catch(() => {});
+          await thinkingMsg.edit(this.mapErrorToUserMessage(error)).catch(() => {});
           return;
         }
 
-        const type = chunkType ?? StreamChunkType.CONTENT;
+        if (chunk && chunk.trim()) {
+          const type = chunkType ?? StreamChunkType.CONTENT;
 
-        // Handle REASONING chunks (P2-12)
-        if (type === StreamChunkType.REASONING) {
-          if (this.showReasoning && chunk) {
-            const msg = await this.sendToChannel(message, `-# ||${chunk}||`);
-            if (msg) tracker.addReasoningMessage(msg);
-          }
-          if (isComplete) {
-            await tracker.deleteReasoningMessages();
-          }
-          return;
-        }
-
-        if (type !== StreamChunkType.CONTENT || !chunk) {
-          if (isComplete) {
-            await tracker.deleteReasoningMessages();
-          }
-          return;
-        }
-
-        if (this.streamingBypassValidation) {
-          // Buffer mode: collect all chunks
-          if (isComplete) {
-            await tracker.deleteReasoningMessages();
-            // Replace thinking message with final content (split if needed)
-            const pages = this.splitter.split(chunk);
-            // P2-41: Fallback for empty split result with non-empty content
-            if (pages.length === 0 && chunk) {
-              thinkingMsg.edit(chunk).catch(() => {});
-            } else if (pages.length > 0) {
-              thinkingMsg.edit(pages[0]).catch(() => {});
-              for (let i = 1; i < pages.length; i++) {
-                await this.sendToChannel(message, pages[i]);
-              }
+          if (type === StreamChunkType.REASONING) {
+            if (!this.showReasoning) {
+              return;
+            }
+            const formatted = this.formatAsSpoiler(chunk);
+            hasReasoning = true;
+            if (isFirstChunk) {
+              await thinkingMsg.edit(formatted).catch(() => {});
+              isFirstChunk = false;
+            } else {
+              const msg = await this.sendToChannel(message, formatted);
+              if (msg) tracker.addReasoningMessage(msg);
+            }
+          } else if (type === StreamChunkType.CONTENT) {
+            if (streamProcessed) {
+              const allowEditThinking = !(this.showReasoning && hasReasoning);
+              await this.sendStreamingContentChunk(
+                message,
+                thinkingMsg,
+                chunk,
+                firstContentSent,
+                allowEditThinking,
+              );
+            } else {
+              contentBuffer.push(chunk);
             }
           }
+        }
+
+        if (!isComplete || completed) {
+          return;
+        }
+        completed = true;
+
+        if (streamProcessed) {
+          if (!firstContentSent.value) {
+            await thinkingMsg.edit(':question: AI 沒有產生回應').catch(() => {});
+          }
+          return;
+        }
+
+        const fullContent = contentBuffer.join('').trim();
+        if (!fullContent) {
+          await thinkingMsg.edit(':question: AI 沒有產生回應').catch(() => {});
+          return;
+        }
+
+        if (this.showReasoning && hasReasoning) {
+          await this.sendBufferedContent(message, null, fullContent);
         } else {
-          // Real-time mode: edit thinking message with content
-          if (!hasSentFirstContent) {
-            thinkingMsg.edit(chunk).catch(() => {});
-            hasSentFirstContent = true;
-          } else {
-            await this.sendToChannel(message, chunk);
-          }
-          if (isComplete) {
-            await tracker.deleteReasoningMessages();
-          }
+          await this.sendBufferedContent(message, thinkingMsg, fullContent);
         }
       },
     };
@@ -349,41 +260,133 @@ export class AIChatMentionListener {
     );
   }
 
-  /**
-   * Extracts user message content, stripping bot mention.
-   */
-  private extractUserMessage(message: Message): string {
-    let content = message.content;
-    // Remove bot mention
-    content = content.replace(/<@!?(\d+)>/g, '').trim();
-
-    // Default to "你好" if only mention
-    if (!content) {
-      return '你好';
+  private async sendBufferedContent(
+    message: Message,
+    thinkingMessage: Message | null,
+    content: string,
+  ): Promise<void> {
+    const parts = this.splitter.split(content);
+    if (parts.length === 0) {
+      return;
     }
 
-    return content;
+    if (thinkingMessage) {
+      await thinkingMessage.edit(parts[0]).catch(() => {});
+    } else {
+      await this.sendToChannel(message, parts[0]);
+    }
+    for (let i = 1; i < parts.length; i++) {
+      await this.sendToChannel(message, parts[i]);
+    }
   }
 
-  /**
-   * Maps DomainError to user-friendly Chinese error message.
-   */
+  private async sendToolIntentMessage(message: Message, content: string): Promise<void> {
+    for (const part of this.splitter.split(content)) {
+      if (part.trim()) {
+        await this.sendToChannel(message, part);
+      }
+    }
+  }
+
+  private async sendAgentFinalContent(
+    message: Message,
+    finalContentChunks: string[],
+    streamProcessed: boolean,
+  ): Promise<void> {
+    if (!streamProcessed) {
+      const fullContent = finalContentChunks.join('').trim();
+      if (!fullContent) {
+        await this.sendToChannel(message, ':question: AI 沒有產生回應');
+        return;
+      }
+      await this.sendBufferedContent(message, null, fullContent);
+      return;
+    }
+
+    let sent = false;
+    for (const chunk of finalContentChunks) {
+      if (!chunk?.trim()) {
+        continue;
+      }
+      await this.sendMessageWithLimit(message, chunk);
+      sent = true;
+    }
+    if (!sent) {
+      await this.sendToChannel(message, ':question: AI 沒有產生回應');
+    }
+  }
+
+  private async sendMessageWithLimit(message: Message, content: string): Promise<void> {
+    if (content.length <= 2000) {
+      await this.sendToChannel(message, content);
+      return;
+    }
+    for (const part of this.splitter.split(content)) {
+      if (part.trim()) {
+        await this.sendToChannel(message, part);
+      }
+    }
+  }
+
+  private async sendStreamingContentChunk(
+    message: Message,
+    thinkingMessage: Message,
+    chunk: string,
+    firstContentSent: { value: boolean },
+    allowEditThinking: boolean,
+  ): Promise<void> {
+    if (!firstContentSent.value) {
+      firstContentSent.value = true;
+      if (allowEditThinking) {
+        await thinkingMessage.edit(chunk).catch(() => {});
+        return;
+      }
+    }
+    await this.sendToChannel(message, chunk);
+  }
+
+  private formatAsSpoiler(content: string): string {
+    if (!content) {
+      return content;
+    }
+    if (content.startsWith(SPOILER_PREFIX)) {
+      return content;
+    }
+    return SPOILER_PREFIX + content;
+  }
+
+  private extractUserMessage(message: Message): string {
+    const content = message.content.replace(/<@!?(\d+)>/g, '').trim();
+    return content || '你好';
+  }
+
   private mapErrorToUserMessage(error: DomainError): string {
     switch (error.category) {
       case 'AI_SERVICE_AUTH_FAILED':
-        return ':x: AI 服務認證失敗，請聯繫管理員檢查設定。';
+        return ':x: AI 服務認證失敗，請聯絡管理員';
       case 'AI_SERVICE_RATE_LIMITED':
-        return ':hourglass: AI 服務目前忙碌中，請稍後再試。';
+        return ':timer: AI 服務暫時忙碌，請稍後再試';
       case 'AI_SERVICE_TIMEOUT':
-        return ':alarm_clock: AI 服務請求逾時，請稍後再試。';
+        return ':hourglass: AI 服務連線逾時，請稍後再試';
       case 'AI_SERVICE_UNAVAILABLE':
-        return ':warning: AI 服務目前無法使用，請稍後再試。';
+        return ':warning: AI 服務暫時無法使用';
       case 'AI_RESPONSE_EMPTY':
-        return ':question: AI 沒有產生回應。';
+        return ':question: AI 沒有產生回應';
       case 'AI_RESPONSE_INVALID':
-        return ':warning: AI 回應格式異常，請重新嘗試。';
+        return ':warning: AI 回應格式錯誤';
       default:
-        return `:x: 發生錯誤：${error.message}`;
+        return `:warning: 發生錯誤：${error.message}`;
     }
+  }
+
+  private async sendToChannel(message: Message, content: string): Promise<Message | null> {
+    try {
+      if (message.channel.isTextBased()) {
+        return await (message.channel as TextChannel).send(content);
+      }
+    } catch {
+      // Ignore send failures
+    }
+    return null;
   }
 }

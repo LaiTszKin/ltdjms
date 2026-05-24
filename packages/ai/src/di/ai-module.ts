@@ -361,6 +361,7 @@ export function initializeAIModule(): void {
     aiChatService,
     runtimeGateway.selfUserId(),
     aiConfig.showReasoning,
+    aiConfig.enableMarkdownValidation,
     aiConfig.streamingBypassValidation,
   );
   container.registerInstance(AI_TOKENS.AIChatMentionListener, listener);

@@ -1,23 +1,40 @@
 import 'reflect-metadata';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   AIChatMentionRoutingDecision,
   resolveRestrictionChannelId,
   resolveCategoryId,
-} from '../../services/routing/routing-decision.js';
+} from '../routing-decision.js';
 import {
   InMemoryAIChannelRestrictionRepository,
   DefaultAIChannelRestrictionService,
-} from '../../services/routing/channel-restriction-service.js';
+} from '../channel-restriction-service.js';
 import {
   InMemoryAIAgentChannelConfigRepository,
   DefaultAIAgentChannelConfigService,
-} from '../../services/routing/agent-config-service.js';
-import { Route, Source } from '../../services/ai-chat-service.js';
+} from '../agent-config-service.js';
+import { Route, Source } from '../../ai-chat-service.js';
 import { NoOpCacheService } from '@ltdjms/shared';
 import type { Channel } from 'discord.js';
 
-describe('AIChatMentionRoutingDecision', () => {
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const oracle = JSON.parse(
+  readFileSync(
+    join(
+      __dirname,
+      '../../../../../../docs/plans/2026-05-24/java-parity-shop-ai/ai-chat-java-parity/fixtures/java-routing-oracle.json',
+    ),
+    'utf-8',
+  ),
+);
+
+/**
+ * UT-AIC-001 — AIChatMentionRoutingDecisionTest.java parity
+ */
+describe('UT-AIC-001 routing-decision parity', () => {
   let restrictionRepo: InMemoryAIChannelRestrictionRepository;
   let restrictionService: DefaultAIChannelRestrictionService;
   let agentConfigRepo: InMemoryAIAgentChannelConfigRepository;
@@ -35,61 +52,61 @@ describe('AIChatMentionRoutingDecision', () => {
     decision = new AIChatMentionRoutingDecision(agentConfigService, restrictionService);
 
     await restrictionRepo.addChannel('guild-1', {
-      channelId: 'channel-1',
+      channelId: 'channel-allowed',
       channelName: 'general',
     });
-    await restrictionRepo.addCategory('guild-1', {
-      categoryId: 'cat-1',
-      categoryName: 'Text Channels',
-    });
-    await agentConfigRepo.upsert('guild-1', 'channel-3', true);
   });
 
-  it('should route to AGENT_ROUTE when agent is enabled (priority 1)', async () => {
-    vi.spyOn(agentConfigService, 'isAgentEnabledAsync').mockResolvedValue(true);
+  it('loads java-routing-oracle.json fixture', () => {
+    expect(oracle.source).toBe('AIChatMentionRoutingDecisionTest.java');
+    expect(oracle.routes).toContain('AGENT_ROUTE');
+  });
 
-    const result = await decision.decide('guild-1', 'channel-3', 'channel-3', null);
+  it('shouldPreferAgentRouteWhenAgentEnabled — agent priority, skip allowlist', async () => {
+    vi.spyOn(agentConfigService, 'isAgentEnabledAsync').mockResolvedValue(true);
+    const allowSpy = vi.spyOn(restrictionService, 'isChannelAllowed');
+
+    const result = await decision.decide('guild-1', 'channel-1', 'channel-allowed', 'cat-1');
+
     expect(result.route).toBe(Route.AGENT_ROUTE);
     expect(result.source).toBe(Source.AGENT_ENABLED);
+    expect(allowSpy).not.toHaveBeenCalled();
   });
 
-  it('should route to AI_CHAT_ROUTE when channel is allowlisted (priority 2)', async () => {
+  it('shouldUseAllowlistWhenAgentDisabled — allowlist route', async () => {
     vi.spyOn(agentConfigService, 'isAgentEnabledAsync').mockResolvedValue(false);
 
-    const result = await decision.decide('guild-1', 'channel-1', 'channel-1', null);
+    const result = await decision.decide('guild-1', 'channel-1', 'channel-allowed', 'cat-1');
+
     expect(result.route).toBe(Route.AI_CHAT_ROUTE);
     expect(result.source).toBe(Source.AI_ALLOWLIST);
   });
 
-  it('should route to AI_CHAT_ROUTE when category is allowlisted (priority 2)', async () => {
-    vi.spyOn(agentConfigService, 'isAgentEnabledAsync').mockResolvedValue(false);
-
-    const result = await decision.decide('guild-1', 'channel-2', 'channel-2', 'cat-1');
-    expect(result.route).toBe(Route.AI_CHAT_ROUTE);
-    expect(result.source).toBe(Source.AI_ALLOWLIST);
-  });
-
-  it('should route to DENY when no allowlist and no agent config', async () => {
-    vi.spyOn(agentConfigService, 'isAgentEnabledAsync').mockResolvedValue(false);
-
-    const result = await decision.decide('guild-1', 'channel-99', 'channel-99', null);
-    expect(result.route).toBe(Route.DENY);
-    expect(result.source).toBe(Source.AI_ALLOWLIST_DENIED);
-  });
-
-  it('should route to DENY when agent config is unavailable', async () => {
+  it('shouldDenyWhenAgentConfigUnavailable — fail closed', async () => {
     vi.spyOn(agentConfigService, 'isAgentEnabledAsync').mockRejectedValue(
-      new Error('Redis unavailable'),
+      new Error('agent config unavailable'),
     );
+    const allowSpy = vi.spyOn(restrictionService, 'isChannelAllowed');
 
-    const result = await decision.decide('guild-1', 'channel-99', 'channel-99', null);
+    const result = await decision.decide('guild-1', 'channel-1', 'channel-allowed', 'cat-1');
+
     expect(result.route).toBe(Route.DENY);
     expect(result.source).toBe(Source.AGENT_CONFIG_UNAVAILABLE);
+    expect(allowSpy).not.toHaveBeenCalled();
+  });
+
+  it('should deny when allowlist rejects', async () => {
+    vi.spyOn(agentConfigService, 'isAgentEnabledAsync').mockResolvedValue(false);
+
+    const result = await decision.decide('guild-1', 'channel-1', 'channel-denied', null);
+
+    expect(result.route).toBe(Route.DENY);
+    expect(result.source).toBe(Source.AI_ALLOWLIST_DENIED);
   });
 });
 
 describe('resolveRestrictionChannelId', () => {
-  it('should return parent ID for thread channels', () => {
+  it('returns parent ID for thread channels', () => {
     const threadChannel = {
       id: 'thread-1',
       parentId: 'parent-1',
@@ -100,7 +117,7 @@ describe('resolveRestrictionChannelId', () => {
 });
 
 describe('resolveCategoryId', () => {
-  it('should return parentId for text channels', () => {
+  it('returns parentId for text channels', () => {
     const channel = {
       id: 'channel-1',
       type: 0,

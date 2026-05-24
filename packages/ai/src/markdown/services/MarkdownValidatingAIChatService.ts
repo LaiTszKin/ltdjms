@@ -1,21 +1,22 @@
-import { type Result, type DomainError, ok } from '@ltdjms/shared';
+import { type Result, type DomainError, ok, DomainError as DE } from '@ltdjms/shared';
 import {
   type AIChatService,
   type StreamingResponseHandler,
   StreamChunkType,
 } from '../../services/ai-chat-service.js';
+import { MessageSplitter } from '../../services/MessageSplitter.js';
 import { AIServiceConfig } from '../../config/ai-service-config.js';
 import { DiscordMarkdownSanitizer } from './DiscordMarkdownSanitizer.js';
 import { MarkdownAutoFixer } from '../autofix/MarkdownAutoFixer.js';
 import { CommonMarkValidator } from '../validation/CommonMarkValidator.js';
 import { DiscordMarkdownPaginator } from './DiscordMarkdownPaginator.js';
-import { applyMarkdownPipeline } from './markdown-pipeline.js';
+import { DiscordMarkdownStreamProcessor } from './DiscordMarkdownStreamProcessor.js';
+import { MarkdownHeadingSegmenter } from './MarkdownHeadingSegmenter.js';
 
 /**
  * Decorator that wraps an AIChatService with Markdown validation pipeline.
  * Matches Java MarkdownValidatingAIChatService.
  *
- * Only active when config.enableMarkdownValidation is true.
  * REASONING and TOOL_INTENT chunks pass through unmodified.
  */
 export class MarkdownValidatingAIChatService implements AIChatService {
@@ -37,17 +38,22 @@ export class MarkdownValidatingAIChatService implements AIChatService {
     userId: string,
     userMessage: string,
   ): Promise<Result<string[], DomainError>> {
-    const result = await this.delegate.generateResponse(guildId, channelId, userId, userMessage);
-
-    if (result.isErr()) return result;
-
     if (!this.config.enableMarkdownValidation) {
+      return this.delegate.generateResponse(guildId, channelId, userId, userMessage);
+    }
+
+    const result = await this.delegate.generateResponse(guildId, channelId, userId, userMessage);
+    if (result.isErr()) {
       return result;
     }
 
-    const responses = result.getValue();
-    const validated = await Promise.all(responses.map((r) => this.applyPipeline(r)));
-    return ok(validated.flat());
+    const fullResponse = result.getValue().join('\n');
+    const processor = this.buildStreamProcessor();
+    const pages = [...processor.onChunk(fullResponse), ...processor.flush()];
+    if (pages.length === 0) {
+      return ok(new MessageSplitter().split(fullResponse));
+    }
+    return ok(pages);
   }
 
   async generateStreamingResponse(
@@ -59,7 +65,7 @@ export class MarkdownValidatingAIChatService implements AIChatService {
     agentEnabled?: boolean,
     messageId?: string,
   ): Promise<void> {
-    if (!this.config.enableMarkdownValidation) {
+    if (!this.config.enableMarkdownValidation || this.config.streamingBypassValidation) {
       return this.delegate.generateStreamingResponse(
         guildId,
         channelId,
@@ -71,15 +77,18 @@ export class MarkdownValidatingAIChatService implements AIChatService {
       );
     }
 
-    const wrappedHandler = this.createValidatingHandler(handler);
-    return this.delegate.generateStreamingResponse(
-      guildId,
-      channelId,
-      userId,
-      userMessage,
-      wrappedHandler,
-      agentEnabled,
-      messageId,
+    return this.streamWithValidation(
+      (streamHandler) =>
+        this.delegate.generateStreamingResponse(
+          guildId,
+          channelId,
+          userId,
+          userMessage,
+          streamHandler,
+          agentEnabled,
+          messageId,
+        ),
+      handler,
     );
   }
 
@@ -92,7 +101,7 @@ export class MarkdownValidatingAIChatService implements AIChatService {
     handler: StreamingResponseHandler,
     agentEnabled?: boolean,
   ): Promise<void> {
-    if (!this.config.enableMarkdownValidation) {
+    if (!this.config.enableMarkdownValidation || this.config.streamingBypassValidation) {
       return this.delegate.generateStreamingResponseWithId(
         guildId,
         channelId,
@@ -104,15 +113,18 @@ export class MarkdownValidatingAIChatService implements AIChatService {
       );
     }
 
-    const wrappedHandler = this.createValidatingHandler(handler);
-    return this.delegate.generateStreamingResponseWithId(
-      guildId,
-      channelId,
-      userId,
-      userMessage,
-      messageId,
-      wrappedHandler,
-      agentEnabled,
+    return this.streamWithValidation(
+      (streamHandler) =>
+        this.delegate.generateStreamingResponseWithId(
+          guildId,
+          channelId,
+          userId,
+          userMessage,
+          messageId,
+          streamHandler,
+          agentEnabled,
+        ),
+      handler,
     );
   }
 
@@ -123,76 +135,30 @@ export class MarkdownValidatingAIChatService implements AIChatService {
     history: Array<{ role: string; content: string }>,
     handler: StreamingResponseHandler,
   ): Promise<void> {
-    if (!this.config.enableMarkdownValidation) {
+    if (!this.config.enableMarkdownValidation || this.config.streamingBypassValidation) {
       return this.delegate.generateWithHistory(guildId, channelId, userId, history, handler);
     }
 
-    const wrappedHandler = this.createValidatingHandler(handler);
-    return this.delegate.generateWithHistory(guildId, channelId, userId, history, wrappedHandler);
+    const originalPrompt = this.extractLastUserMessage(history);
+    if (!originalPrompt || originalPrompt.trim().length === 0) {
+      void handler.onChunk('', true, DE.invalidInput('No user message found in history'));
+      return;
+    }
+
+    return this.streamWithValidation(
+      (streamHandler) =>
+        this.delegate.generateWithHistory(guildId, channelId, userId, history, streamHandler),
+      handler,
+    );
   }
 
-  /**
-   * Creates a validating handler that incrementally processes CONTENT chunks
-   * at paragraph/heading boundaries while the stream is still producing content (P3-15).
-   * Completed paragraphs are flushed through the pipeline and emitted early,
-   * reducing time-to-first-byte compared to buffering all content before processing.
-   */
-  private createValidatingHandler(handler: StreamingResponseHandler): StreamingResponseHandler {
-    // Buffer for accumulating CONTENT chunks
-    let pendingContent = '';
+  private async streamWithValidation(
+    delegateCall: (handler: StreamingResponseHandler) => Promise<void>,
+    handler: StreamingResponseHandler,
+  ): Promise<void> {
+    const processor = this.buildStreamProcessor();
 
-    /**
-     * Finds the last natural boundary for incremental processing.
-     * Returns the index of the last complete paragraph/heading boundary,
-     * or 0 if no boundary is found.
-     */
-    const findBoundary = (content: string): number => {
-      // Find the last paragraph boundary (double newline)
-      const lastParaBreak = content.lastIndexOf('\n\n');
-      if (lastParaBreak > 0) {
-        return lastParaBreak + 2; // Include the \n\n separator
-      }
-      return 0;
-    };
-
-    /**
-     * Flushes completed content through the validation pipeline
-     * and forwards validated pages via onChunk.
-     * Only processes content up to the last natural boundary;
-     * incomplete content stays in the buffer.
-     */
-    const flushContent = async (isComplete: boolean, _error: DomainError | null): Promise<void> => {
-      if (!pendingContent) return;
-
-      // Determine how much content is ready to process
-      let readyContent: string;
-      if (isComplete) {
-        // On completion, process everything remaining
-        readyContent = pendingContent;
-        pendingContent = '';
-      } else {
-        // Find boundary and only process completed paragraphs
-        const boundary = findBoundary(pendingContent);
-        if (boundary <= 0) return; // No completed section yet
-        readyContent = pendingContent.slice(0, boundary);
-        pendingContent = pendingContent.slice(boundary);
-      }
-
-      if (!readyContent) return;
-
-      if (this.config.streamingBypassValidation) {
-        void handler.onChunk(readyContent, false, null, StreamChunkType.CONTENT);
-        return;
-      }
-
-      const validated = await this.applyPipeline(readyContent);
-      for (let i = 0; i < validated.length; i++) {
-        const pageIsComplete = isComplete && i === validated.length - 1 && !pendingContent;
-        void handler.onChunk(validated[i], pageIsComplete, null, StreamChunkType.CONTENT);
-      }
-    };
-
-    return {
+    await delegateCall({
       onChunk: async (
         chunk: string,
         isComplete: boolean,
@@ -200,50 +166,64 @@ export class MarkdownValidatingAIChatService implements AIChatService {
         chunkType?: StreamChunkType,
       ) => {
         if (error) {
-          void handler.onChunk(chunk, isComplete, error, chunkType);
+          void handler.onChunk('', true, error, StreamChunkType.CONTENT);
           return;
         }
 
         const type = chunkType ?? StreamChunkType.CONTENT;
-
-        // REASONING and TOOL_INTENT pass through unmodified
-        if (type !== StreamChunkType.CONTENT) {
+        if (type === StreamChunkType.REASONING || type === StreamChunkType.TOOL_INTENT) {
           void handler.onChunk(chunk, isComplete, null, type);
           return;
         }
 
-        if (this.config.streamingBypassValidation) {
-          void handler.onChunk(chunk, isComplete, null, StreamChunkType.CONTENT);
-          return;
-        }
-
-        // Accumulate CONTENT chunks
         if (chunk) {
-          pendingContent += chunk;
+          const pages = processor.onChunk(chunk);
+          this.emitPages(handler, pages, false);
         }
 
         if (isComplete) {
-          await flushContent(true, null);
-        } else {
-          // Incremental flush: process completed paragraph/heading boundaries
-          await flushContent(false, null);
+          const remaining = processor.flush();
+          this.emitPages(handler, remaining, true);
+          if (remaining.length === 0) {
+            void handler.onChunk('', true, null, StreamChunkType.CONTENT);
+          }
         }
       },
-    };
+    });
   }
 
-  /**
-   * Applies the full pipeline to a markdown string.
-   * Pipeline: Sanitize → AutoFix → Validate → Paginate
-   * 委派給共用工具函數 applyMarkdownPipeline（P2-4）。
-   */
-  private async applyPipeline(markdown: string): Promise<string[]> {
-    return applyMarkdownPipeline(
-      markdown,
-      this.sanitizer,
-      this.autoFixer,
+  private emitPages(
+    handler: StreamingResponseHandler,
+    pages: string[],
+    isComplete: boolean,
+  ): void {
+    if (!pages.length) {
+      return;
+    }
+    for (let i = 0; i < pages.length; i++) {
+      const isLast = isComplete && i === pages.length - 1;
+      void handler.onChunk(pages[i], isLast, null, StreamChunkType.CONTENT);
+    }
+  }
+
+  private buildStreamProcessor(): DiscordMarkdownStreamProcessor {
+    return new DiscordMarkdownStreamProcessor(
+      new MarkdownHeadingSegmenter(),
       this.validator,
+      this.autoFixer,
+      this.sanitizer,
       this.paginator,
     );
+  }
+
+  private extractLastUserMessage(
+    history: Array<{ role: string; content: string }>,
+  ): string | null {
+    for (let i = history.length - 1; i >= 0; i--) {
+      if (history[i].role === 'user') {
+        return history[i].content;
+      }
+    }
+    return null;
   }
 }
