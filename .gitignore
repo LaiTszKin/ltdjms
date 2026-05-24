@@ -58,6 +58,9 @@ dist/
 # Playwright MCP
 .playwright-mcp/
 
+# Apollo Toolkit (local CLI cache)
+.apollo-toolkit/
+
 # Vite
 .vite/
 
