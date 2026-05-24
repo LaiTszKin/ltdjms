@@ -1,0 +1,34 @@
+{
+  "source": "AIChatMentionRoutingDecisionTest.java",
+  "routes": ["AGENT_ROUTE", "AI_CHAT_ROUTE", "DENY"],
+  "sources": [
+    "AGENT_ENABLED",
+    "AI_ALLOWLIST",
+    "AGENT_CONFIG_UNAVAILABLE",
+    "THREAD_AGENT_INHERIT",
+    "THREAD_ALLOWLIST_INHERIT",
+    "DENY_NOT_ALLOWED"
+  ],
+  "cases": [
+    {
+      "name": "agent_enabled_priority",
+      "agentEnabled": true,
+      "expectedRoute": "AGENT_ROUTE",
+      "expectedSource": "AGENT_ENABLED",
+      "skipAllowlistCheck": true
+    },
+    {
+      "name": "agent_disabled_allowlist",
+      "agentEnabled": false,
+      "channelAllowed": true,
+      "expectedRoute": "AI_CHAT_ROUTE",
+      "expectedSource": "AI_ALLOWLIST"
+    },
+    {
+      "name": "agent_config_unavailable_fail_closed",
+      "agentConfigThrows": true,
+      "expectedRoute": "DENY",
+      "expectedSource": "AGENT_CONFIG_UNAVAILABLE"
+    }
+  ]
+}

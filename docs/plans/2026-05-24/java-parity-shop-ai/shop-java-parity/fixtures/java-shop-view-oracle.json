@@ -1,0 +1,62 @@
+{
+  "source": "ShopViewTest.java",
+  "scenarios": {
+    "emptyShop": {
+      "title": "🏪 商店",
+      "description": "目前沒有可購買的商品",
+      "componentRows": 0
+    },
+    "browseSingleProduct": {
+      "title": "🏪 商店",
+      "descriptionContains": ["**1. 測試商品**", "💰 價格：100 貨幣"],
+      "footer": "共 1 個商品",
+      "pagination": {
+        "rows": 2,
+        "prevDisabledOnFirstPage": true,
+        "nextDisabledOnLastPage": true,
+        "buyButtonId": "shop_buy",
+        "searchButtonId": "shop_search"
+      }
+    },
+    "browseMultiPage": {
+      "footer": "第 2 / 5 頁",
+      "pagination": {
+        "prevEnabled": true,
+        "nextEnabled": true
+      }
+    },
+    "browseNoProducts": {
+      "paginationRows": 1,
+      "noBuySearchRow": true
+    },
+    "buyMenu": {
+      "selectId": "shop_buy_select",
+      "dualPriceDescriptionContains": ["100", "NT$500"]
+    },
+    "paymentChoice": {
+      "title": "🛒 選擇支付方式",
+      "descriptionContains": ["貨幣購買", "法幣下單"],
+      "buttons": ["shop_pay_currency_", "shop_pay_fiat_"]
+    },
+    "searchModal": {
+      "id": "shop_search_modal"
+    },
+    "searchResults": {
+      "rows": 3,
+      "selectRow": 0,
+      "paginationPrefix": ["shop_sprev_", "shop_snext_"],
+      "backButtonId": "shop_back"
+    },
+    "confirmPurchase": {
+      "title": "💰 確認購買",
+      "sufficientBalance": {
+        "descriptionContains": ["**商品：** 測試商品", "**價格：** 100 貨幣", "**您的餘額：** 500 貨幣", "**購買後餘額：** 400 貨幣"]
+      },
+      "insufficientBalance": {
+        "descriptionContains": ["⚠️ **餘額不足！**"]
+      },
+      "confirmButtonPrefix": "shop_confirm_purchase_",
+      "cancelButtonId": "shop_cancel_purchase"
+    }
+  }
+}

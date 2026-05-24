@@ -1,0 +1,34 @@
+{
+  "source": "LangChain4jAIChatServiceTest.java, MessageSplitterTest.java, MessageChunkAccumulatorTest.java",
+  "chunkTypes": ["REASONING", "CONTENT", "TOOL_INTENT"],
+  "reasoningPrefix": "-# ",
+  "messageSplitLimit": 1980,
+  "cases": [
+    {
+      "name": "short_message_no_split",
+      "input": "這是一則短訊息",
+      "expectedParts": 1
+    },
+    {
+      "name": "forced_split_at_limit",
+      "inputLength": 2000,
+      "expectedMinParts": 1,
+      "maxPartLength": 1980
+    },
+    {
+      "name": "reasoning_stream_format",
+      "chunkType": "REASONING",
+      "displayPrefix": "-# "
+    },
+    {
+      "name": "tool_intent_immediate_send",
+      "chunkType": "TOOL_INTENT",
+      "buffered": false
+    },
+    {
+      "name": "content_buffered_until_complete",
+      "chunkType": "CONTENT",
+      "buffered": true
+    }
+  ]
+}

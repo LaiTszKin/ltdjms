@@ -1,0 +1,27 @@
+{
+  "source": "ToolExecutionInterceptorTest.java",
+  "parameterRedaction": {
+    "contains": ["\"redacted\":true", "\"sha256\""],
+    "mustNotContainRawValues": true
+  },
+  "resultRedaction": {
+    "contains": ["\"redacted\":true"],
+    "mustNotContainRawResult": true
+  },
+  "emptyParametersSummary": "{\"redacted\":true,\"entryCount\":0,\"keys\":[]}",
+  "serializationFailureFallback": {
+    "parameters": "{\"redacted\":true,\"entryCount\":0,\"keys\":[]}",
+    "executionResult": "{\"redacted\":true,\"type\":\"text\"}"
+  },
+  "successMessageContains": ["✅", "執行成功"],
+  "failureMessageContains": ["❌", "執行失敗"],
+  "events": {
+    "started": "LangChain4jToolExecutionStartedEvent",
+    "completed": "LangChain4jToolExecutedEvent"
+  },
+  "noContextBehavior": {
+    "completedReturnsOriginal": true,
+    "noDbSave": true,
+    "noEventPublish": true
+  }
+}

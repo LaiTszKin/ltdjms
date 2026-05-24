@@ -1,0 +1,39 @@
+{
+  "source": "CommonMarkValidatorTest_*, MarkdownAutoFixerTest, DiscordMarkdownPaginatorTest",
+  "errorTypes": [
+    "UNBALANCED_EMPHASIS",
+    "UNBALANCED_CODE_FENCE",
+    "UNBALANCED_INLINE_CODE",
+    "UNBALANCED_LINK",
+    "UNBALANCED_HEADING",
+    "UNBALANCED_LIST",
+    "DISCORD_INVALID_SPOILER",
+    "DISCORD_INVALID_MENTION"
+  ],
+  "autofixOrder": [
+    "code_fence",
+    "inline_code",
+    "emphasis",
+    "link",
+    "heading",
+    "list",
+    "spoiler"
+  ],
+  "cases": [
+    {
+      "name": "unbalanced_bold_autofix",
+      "input": "hello **world",
+      "expectValidAfterAutofix": true
+    },
+    {
+      "name": "discord_spoiler_prefix",
+      "input": "reasoning text",
+      "streamPrefix": "-# "
+    },
+    {
+      "name": "paginator_respects_limit",
+      "maxChunkLength": 1980,
+      "preserveCodeBlocks": true
+    }
+  ]
+}

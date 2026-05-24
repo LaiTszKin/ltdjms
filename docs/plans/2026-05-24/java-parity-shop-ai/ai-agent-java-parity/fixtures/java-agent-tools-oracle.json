@@ -1,0 +1,91 @@
+{
+  "source": "AIAgentTools.java, LangChain4j*Tool.java",
+  "toolCount": 17,
+  "tools": [
+    {
+      "name": "create_channel",
+      "method": "createChannel",
+      "requiredParams": ["name"]
+    },
+    {
+      "name": "create_category",
+      "method": "createCategory",
+      "requiredParams": ["name"]
+    },
+    {
+      "name": "create_role",
+      "method": "createRole",
+      "requiredParams": ["name"]
+    },
+    {
+      "name": "list_channels",
+      "method": "listChannels",
+      "requiredParams": []
+    },
+    {
+      "name": "list_categories",
+      "method": "listCategories",
+      "requiredParams": []
+    },
+    {
+      "name": "list_roles",
+      "method": "listRoles",
+      "requiredParams": []
+    },
+    {
+      "name": "get_channel_permissions",
+      "method": "getChannelPermissions",
+      "requiredParams": ["channelId"]
+    },
+    {
+      "name": "get_category_permissions",
+      "method": "getCategoryPermissions",
+      "requiredParams": ["categoryId"]
+    },
+    {
+      "name": "get_role_permissions",
+      "method": "getRolePermissions",
+      "requiredParams": ["roleId"]
+    },
+    {
+      "name": "modify_channel_permissions",
+      "method": "modifyChannelPermissions",
+      "requiredParams": ["channelId", "permissions"]
+    },
+    {
+      "name": "modify_category_permissions",
+      "method": "modifyCategoryPermissions",
+      "requiredParams": ["categoryId", "permissions"]
+    },
+    {
+      "name": "modify_role_permissions",
+      "method": "modifyRolePermissions",
+      "requiredParams": ["roleId", "permissions"]
+    },
+    {
+      "name": "send_messages",
+      "method": "sendMessages",
+      "requiredParams": []
+    },
+    {
+      "name": "search_messages",
+      "method": "searchMessages",
+      "requiredParams": ["keywords"]
+    },
+    {
+      "name": "manage_message",
+      "method": "manageMessage",
+      "requiredParams": ["messageId", "action"]
+    },
+    {
+      "name": "move_channel",
+      "method": "moveChannel",
+      "requiredParams": ["channelId", "targetCategoryId"]
+    },
+    {
+      "name": "delete_discord_resource",
+      "method": "deleteDiscordResource",
+      "requiredParams": ["resourceType", "resourceId"]
+    }
+  ]
+}

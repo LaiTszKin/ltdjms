@@ -1,0 +1,63 @@
+{
+  "source": "ShopServiceTest.java",
+  "pageSize": 5,
+  "inputPageIndex": "0-based (getShopPage guildId, pageIndex)",
+  "outputCurrentPage": "1-based",
+  "cases": [
+    {
+      "name": "first_page_with_products",
+      "inputPageIndex": 0,
+      "totalProducts": 2,
+      "expected": {
+        "isEmpty": false,
+        "productCount": 2,
+        "currentPage": 1,
+        "totalPages": 1,
+        "hasNextPage": false,
+        "hasPreviousPage": false
+      }
+    },
+    {
+      "name": "empty_catalog",
+      "inputPageIndex": 0,
+      "totalProducts": 0,
+      "expected": {
+        "isEmpty": true,
+        "productCount": 0,
+        "currentPage": 1,
+        "totalPages": 0
+      }
+    },
+    {
+      "name": "many_products_pagination",
+      "inputPageIndex": 0,
+      "totalProducts": 20,
+      "expected": {
+        "currentPage": 1,
+        "totalPages": 4,
+        "hasNextPage": true,
+        "hasPreviousPage": false
+      }
+    },
+    {
+      "name": "page_clamp_beyond_total",
+      "inputPageIndex": 4,
+      "totalProducts": 3,
+      "expected": {
+        "currentPage": 1,
+        "totalPages": 1
+      }
+    },
+    {
+      "name": "specific_page",
+      "inputPageIndex": 1,
+      "totalProducts": 20,
+      "expected": {
+        "currentPage": 2,
+        "totalPages": 4,
+        "hasNextPage": true,
+        "hasPreviousPage": true
+      }
+    }
+  ]
+}

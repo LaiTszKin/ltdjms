@@ -1,0 +1,23 @@
+{
+  "source": "ShopView.java, ShopSelectMenuHandler.java",
+  "constants": {
+    "MODAL_SEARCH": "shop_search_modal",
+    "BUTTON_PREV_PAGE": "shop_prev_",
+    "BUTTON_NEXT_PAGE": "shop_next_",
+    "BUTTON_BUY": "shop_buy",
+    "SELECT_BUY_PRODUCT": "shop_buy_select",
+    "BUTTON_SEARCH": "shop_search",
+    "BUTTON_PAY_WITH_CURRENCY": "shop_pay_currency_",
+    "BUTTON_PAY_WITH_FIAT": "shop_pay_fiat_",
+    "BUTTON_BACK_TO_SHOP": "shop_back",
+    "SELECT_SEARCH_BUY": "shop_search_buy_select",
+    "BUTTON_SEARCH_PREV": "shop_sprev_",
+    "BUTTON_SEARCH_NEXT": "shop_snext_",
+    "BUTTON_CONFIRM_PURCHASE": "shop_confirm_purchase_",
+    "BUTTON_CANCEL_PURCHASE": "shop_cancel_purchase"
+  },
+  "modalFields": {
+    "searchKeyword": "keyword"
+  },
+  "pageSize": 5
+}
