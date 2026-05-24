@@ -1,7 +1,5 @@
 package ltdjms.discord.panel.services;
 
-import java.time.Instant;
-
 import ltdjms.discord.membership.domain.MembershipTier;
 
 /**
@@ -28,7 +26,7 @@ public record UserPanelView(
   private static final String GAME_TOKEN_ICON = "🎮";
   private static final String GAME_TOKEN_NAME = "遊戲代幣";
   private static final String NONE_TIER_HINT =
-      "完成一筆 NT$500 以上護航法幣訂單即可升級青銅";
+      "尚未達標（需完成 M≥500 護航法幣單）\n" + "完成一筆 NT$500 以上護航法幣訂單即可升級青銅";
 
   /**
    * Gets the embed title for the user panel.
@@ -69,8 +67,7 @@ public record UserPanelView(
 
     ltdjms.discord.membership.domain.MembershipTier tier = membershipSummary.tier();
     String tierName = ltdjms.discord.membership.domain.MembershipTierLabels.displayName(tier);
-    String discount =
-        ltdjms.discord.membership.domain.MembershipTierLabels.discountLabel(tier);
+    String discount = ltdjms.discord.membership.domain.MembershipTierLabels.discountLabel(tier);
 
     StringBuilder builder = new StringBuilder();
     builder.append("**等級：**").append(tierName).append('\n');

@@ -1,8 +1,8 @@
 package ltdjms.discord.membership.services;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +14,7 @@ import ltdjms.discord.membership.domain.MembershipTier;
 import ltdjms.discord.membership.domain.MembershipTierConfig;
 import ltdjms.discord.membership.persistence.MembershipSpendRepository;
 import ltdjms.discord.membership.persistence.MembershipTokenGrantRepository;
+import ltdjms.discord.membership.persistence.PendingMembershipGrant;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 
@@ -21,6 +22,7 @@ import ltdjms.discord.shared.Result;
 public class MembershipTokenGrantService {
 
   private static final Logger LOG = LoggerFactory.getLogger(MembershipTokenGrantService.class);
+  static final int PENDING_GRANT_BATCH_LIMIT = 100;
 
   private final MembershipTokenGrantRepository grantRepository;
   private final MembershipSpendRepository spendRepository;
@@ -39,13 +41,32 @@ public class MembershipTokenGrantService {
   }
 
   /**
+   * Retries token grants for settled periods that were not recorded due to transient failures.
+   *
+   * @return number of grants successfully completed
+   */
+  public int retryPendingGrants() {
+    List<PendingMembershipGrant> pending =
+        grantRepository.findPendingGrants(PENDING_GRANT_BATCH_LIMIT);
+    int completed = 0;
+    for (PendingMembershipGrant grant : pending) {
+      if (grantForSettlement(grant.discordUserId(), grant.settlementPeriodEnd(), grant.tier())) {
+        completed++;
+      }
+    }
+    return completed;
+  }
+
+  /**
    * Idempotently grants tokens for a completed settlement period.
    *
    * @param discordUserId Discord user snowflake
    * @param settlementPeriodEnd exclusive end of the settled period
    * @param tier tier after settlement
+   * @return {@code true} when grant completed or already recorded, {@code false} on retryable
+   *     failure
    */
-  public void grantForSettlement(
+  public boolean grantForSettlement(
       long discordUserId, Instant settlementPeriodEnd, MembershipTier tier) {
     Objects.requireNonNull(settlementPeriodEnd, "settlementPeriodEnd must not be null");
     Objects.requireNonNull(tier, "tier must not be null");
@@ -56,24 +77,25 @@ public class MembershipTokenGrantService {
           "Skipping membership token grant for userId={}, tier={}: zero grant amount",
           discordUserId,
           tier);
-      return;
+      return true;
     }
 
-    if (grantRepository.hasGrantForPeriod(discordUserId, settlementPeriodEnd)) {
+    if (!grantRepository.tryClaimGrantLog(discordUserId, settlementPeriodEnd, tier, tokens)) {
       LOG.debug(
           "Skipping duplicate membership token grant: userId={}, periodEnd={}",
           discordUserId,
           settlementPeriodEnd);
-      return;
+      return true;
     }
 
-    Optional<Long> guildIdOpt = spendRepository.findMostRecentGuildId(discordUserId);
+    var guildIdOpt = spendRepository.findMostRecentGuildId(discordUserId);
     if (guildIdOpt.isEmpty()) {
       LOG.warn(
           "Cannot grant membership tokens: no spend guild for userId={}, periodEnd={}",
           discordUserId,
           settlementPeriodEnd);
-      return;
+      grantRepository.releaseGrantClaim(discordUserId, settlementPeriodEnd);
+      return false;
     }
 
     long guildId = guildIdOpt.get();
@@ -87,7 +109,8 @@ public class MembershipTokenGrantService {
           tier,
           tokens,
           adjustResult.getError().message());
-      return;
+      grantRepository.releaseGrantClaim(discordUserId, settlementPeriodEnd);
+      return false;
     }
 
     GameTokenService.TokenAdjustmentResult adjustment = adjustResult.getValue();
@@ -99,8 +122,6 @@ public class MembershipTokenGrantService {
         GameTokenTransaction.Source.MEMBERSHIP_GRANT,
         String.format("會員結算贈幣 (%s)", tier.name()));
 
-    grantRepository.insertGrantLog(discordUserId, settlementPeriodEnd, tier, tokens);
-
     LOG.info(
         "Granted membership tokens: userId={}, guildId={}, periodEnd={}, tier={}, tokens={}",
         discordUserId,
@@ -108,5 +129,6 @@ public class MembershipTokenGrantService {
         settlementPeriodEnd,
         tier,
         tokens);
+    return true;
   }
 }

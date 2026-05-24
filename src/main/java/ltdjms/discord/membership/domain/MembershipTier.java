@@ -22,7 +22,9 @@ public enum MembershipTier {
     this.monthlyTokenGrant = monthlyTokenGrant;
   }
 
-  /** Monthly catalog list-price M threshold in TWD; {@code NONE} and {@code BRONZE} use 0 and 500. */
+  /**
+   * Monthly catalog list-price M threshold in TWD; {@code NONE} and {@code BRONZE} use 0 and 500.
+   */
   public long thresholdListPriceTwd() {
     return thresholdListPriceTwd;
   }

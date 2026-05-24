@@ -220,3 +220,19 @@ CREATE TABLE IF NOT EXISTS membership_spend_entry (
 );
 
 CREATE INDEX IF NOT EXISTS idx_mse_user_paid ON membership_spend_entry (discord_user_id, paid_at);
+
+-- Idempotent log for monthly membership token grants at settlement
+CREATE TABLE IF NOT EXISTS membership_token_grant_log (
+    id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    discord_user_id       BIGINT NOT NULL,
+    settlement_period_end TIMESTAMPTZ NOT NULL,
+    tier                  VARCHAR(16) NOT NULL,
+    tokens_granted        INT NOT NULL,
+    created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (discord_user_id, settlement_period_end)
+);
+
+-- fiat_order membership columns (see V030/V032 migrations)
+-- ALTER TABLE fiat_order ADD COLUMN list_price_twd BIGINT;
+-- ALTER TABLE fiat_order ADD COLUMN charged_amount_twd BIGINT;
+-- ALTER TABLE fiat_order ADD COLUMN membership_tier_at_order VARCHAR(16);

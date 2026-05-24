@@ -9,18 +9,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ltdjms.discord.membership.domain.GlobalMemberMembership;
+import ltdjms.discord.membership.domain.MembershipPeriodBounds;
 import ltdjms.discord.membership.domain.MembershipTier;
 import ltdjms.discord.membership.domain.MembershipTierEvaluator;
-import ltdjms.discord.shared.events.MembershipTierChangedEvent;
 import ltdjms.discord.membership.persistence.MembershipRepository;
 import ltdjms.discord.membership.persistence.MembershipSpendRepository;
 import ltdjms.discord.shared.events.DomainEventPublisher;
+import ltdjms.discord.shared.events.MembershipTierChangedEvent;
 
 /** Computes settlement-period spend and recalculates global membership tiers. */
 public class MembershipSettlementService {
 
   private static final Logger LOG = LoggerFactory.getLogger(MembershipSettlementService.class);
-  private static final Instant EPOCH = Instant.EPOCH;
 
   private final MembershipRepository membershipRepository;
   private final MembershipSpendRepository membershipSpendRepository;
@@ -48,7 +48,8 @@ public class MembershipSettlementService {
    * @return {@code true} when settlement was applied, {@code false} when skipped
    */
   public boolean settle(long discordUserId) {
-    Optional<GlobalMemberMembership> membershipOpt = membershipRepository.findByUserId(discordUserId);
+    Optional<GlobalMemberMembership> membershipOpt =
+        membershipRepository.findByUserId(discordUserId);
     if (membershipOpt.isEmpty()) {
       return false;
     }
@@ -61,10 +62,12 @@ public class MembershipSettlementService {
       return false;
     }
 
-    Instant periodStart = resolvePeriodStart(membership);
+    Instant periodStart = MembershipPeriodBounds.resolvePeriodStart(membership);
     long avgM =
         membershipSpendRepository.sumListPriceInPeriod(discordUserId, periodStart, periodEnd);
-    MembershipTier previousTier = membership.currentTier();
+    MembershipTier previousTier =
+        MembershipTierEvaluator.effectiveTier(
+            membership.currentTier(), membership.hasQualifyingBronzeOrder());
     MembershipTier newTier =
         MembershipTierEvaluator.resolveTier(avgM, membership.hasQualifyingBronzeOrder());
 
@@ -74,7 +77,7 @@ public class MembershipSettlementService {
       settlementDay = MembershipJoinService.clampDayOfMonth(settlementDay);
     }
 
-    Instant settledAt = now;
+    Instant settledAt = periodEnd;
     Instant newNextSettlement =
         MembershipJoinService.advanceNextSettlementAt(
             settlementDay, periodEnd, MembershipJoinService.SETTLEMENT_ZONE);
@@ -89,8 +92,7 @@ public class MembershipSettlementService {
 
     if (newTier != previousTier) {
       eventPublisher.publish(
-          new MembershipTierChangedEvent(
-              discordUserId, previousTier, newTier, avgM, settledAt));
+          new MembershipTierChangedEvent(discordUserId, previousTier, newTier, avgM, settledAt));
     }
 
     tokenGrantService.grantForSettlement(discordUserId, periodEnd, newTier);
@@ -103,15 +105,5 @@ public class MembershipSettlementService {
         avgM,
         newNextSettlement);
     return true;
-  }
-
-  private static Instant resolvePeriodStart(GlobalMemberMembership membership) {
-    if (membership.lastSettlementAt() != null) {
-      return membership.lastSettlementAt();
-    }
-    if (membership.earliestGuildJoinAt() != null) {
-      return membership.earliestGuildJoinAt();
-    }
-    return EPOCH;
   }
 }

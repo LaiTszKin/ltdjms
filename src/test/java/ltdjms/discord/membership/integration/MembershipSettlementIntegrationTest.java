@@ -11,6 +11,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import ltdjms.discord.currency.integration.PostgresIntegrationTestBase;
+import ltdjms.discord.gametoken.persistence.JdbcGameTokenAccountRepository;
+import ltdjms.discord.gametoken.persistence.JdbcGameTokenTransactionRepository;
+import ltdjms.discord.gametoken.services.GameTokenService;
+import ltdjms.discord.gametoken.services.GameTokenTransactionService;
 import ltdjms.discord.membership.domain.GlobalMemberMembership;
 import ltdjms.discord.membership.domain.MembershipTier;
 import ltdjms.discord.membership.persistence.JdbcMembershipRepository;
@@ -21,10 +25,6 @@ import ltdjms.discord.membership.persistence.MembershipSpendRepository;
 import ltdjms.discord.membership.services.MembershipJoinService;
 import ltdjms.discord.membership.services.MembershipSettlementService;
 import ltdjms.discord.membership.services.MembershipTokenGrantService;
-import ltdjms.discord.gametoken.persistence.JdbcGameTokenAccountRepository;
-import ltdjms.discord.gametoken.persistence.JdbcGameTokenTransactionRepository;
-import ltdjms.discord.gametoken.services.GameTokenService;
-import ltdjms.discord.gametoken.services.GameTokenTransactionService;
 import ltdjms.discord.shared.cache.DefaultCacheKeyGenerator;
 import ltdjms.discord.shared.cache.NoOpCacheService;
 import ltdjms.discord.shared.events.DomainEventPublisher;
@@ -44,6 +44,7 @@ class MembershipSettlementIntegrationTest extends PostgresIntegrationTestBase {
   private MembershipSpendRepository spendRepository;
   private MembershipTokenGrantService tokenGrantService;
   private MembershipSettlementService settlementService;
+  private GameTokenService gameTokenService;
   private RecordingEventPublisher eventPublisher;
 
   @BeforeEach
@@ -54,7 +55,7 @@ class MembershipSettlementIntegrationTest extends PostgresIntegrationTestBase {
     var grantRepository = new JdbcMembershipTokenGrantRepository(dataSource);
     var accountRepository = new JdbcGameTokenAccountRepository(dataSource);
     var transactionRepository = new JdbcGameTokenTransactionRepository(dataSource);
-    GameTokenService gameTokenService =
+    gameTokenService =
         new GameTokenService(
             accountRepository,
             eventPublisher,
@@ -80,15 +81,28 @@ class MembershipSettlementIntegrationTest extends PostgresIntegrationTestBase {
 
     assertThat(settlementService.settle(TEST_USER_ID)).isTrue();
 
-    GlobalMemberMembership settled =
-        membershipRepository.findByUserId(TEST_USER_ID).orElseThrow();
+    GlobalMemberMembership settled = membershipRepository.findByUserId(TEST_USER_ID).orElseThrow();
     assertThat(settled.currentTier()).isEqualTo(MembershipTier.SILVER);
-    assertThat(settled.lastSettlementAt()).isEqualTo(SETTLE_NOW);
+    assertThat(settled.lastSettlementAt()).isEqualTo(PERIOD_END);
     assertThat(settled.nextSettlementAt()).isEqualTo(NEXT_SETTLEMENT);
     assertThat(eventPublisher.tierChanges()).hasSize(1);
     assertThat(eventPublisher.tierChanges().get(0).previous()).isEqualTo(MembershipTier.BRONZE);
     assertThat(eventPublisher.tierChanges().get(0).current()).isEqualTo(MembershipTier.SILVER);
     assertThat(eventPublisher.tierChanges().get(0).periodAvgListPriceM()).isEqualTo(15_000L);
+  }
+
+  @Test
+  @DisplayName("should include spend paid between period end and settle execution")
+  void shouldIncludeSpendBetweenPeriodEndAndSettleExecution() {
+    seedMembership(MembershipTier.BRONZE, true);
+    insertSpend(14_000L, Instant.parse("2026-03-20T10:00:00Z"));
+    insertSpend(1_000L, Instant.parse("2026-04-15T02:00:00+08:00"));
+
+    assertThat(settlementService.settle(TEST_USER_ID)).isTrue();
+
+    GlobalMemberMembership settled = membershipRepository.findByUserId(TEST_USER_ID).orElseThrow();
+    assertThat(settled.currentTier()).isEqualTo(MembershipTier.SILVER);
+    assertThat(settled.lastSettlementAt()).isEqualTo(PERIOD_END);
   }
 
   @Test
@@ -102,10 +116,24 @@ class MembershipSettlementIntegrationTest extends PostgresIntegrationTestBase {
 
     assertThat(settlementService.settle(TEST_USER_ID)).isTrue();
 
-    GlobalMemberMembership settled =
-        membershipRepository.findByUserId(TEST_USER_ID).orElseThrow();
+    GlobalMemberMembership settled = membershipRepository.findByUserId(TEST_USER_ID).orElseThrow();
     assertThat(settled.currentTier()).isEqualTo(MembershipTier.BRONZE);
     assertThat(settled.nextSettlementAt()).isEqualTo(NEXT_SETTLEMENT);
+  }
+
+  @Test
+  @DisplayName("should grant game tokens after settlement to SILVER")
+  void shouldGrantTokensAfterSettlement() {
+    seedMembership(MembershipTier.BRONZE, true);
+    insertSpend(15_000L, Instant.parse("2026-04-01T10:00:00Z"));
+
+    assertThat(settlementService.settle(TEST_USER_ID)).isTrue();
+
+    assertThat(gameTokenService.getBalance(TEST_GUILD_ID, TEST_USER_ID)).isEqualTo(100L);
+    assertThat(
+            new JdbcMembershipTokenGrantRepository(dataSource)
+                .hasGrantForPeriod(TEST_USER_ID, PERIOD_END))
+        .isTrue();
   }
 
   @Test

@@ -17,18 +17,22 @@ public class MembershipSettlementScheduler {
 
   private static final Logger LOG = LoggerFactory.getLogger(MembershipSettlementScheduler.class);
   private static final long SETTLEMENT_INTERVAL_SECONDS = 3600L;
+  static final int SETTLEMENT_BATCH_LIMIT = 100;
 
   private final MembershipRepository membershipRepository;
   private final MembershipSettlementService settlementService;
+  private final MembershipTokenGrantService tokenGrantService;
   private final Clock clock;
   private ScheduledExecutorService executorService;
 
   public MembershipSettlementScheduler(
       MembershipRepository membershipRepository,
       MembershipSettlementService settlementService,
+      MembershipTokenGrantService tokenGrantService,
       Clock clock) {
     this.membershipRepository = Objects.requireNonNull(membershipRepository);
     this.settlementService = Objects.requireNonNull(settlementService);
+    this.tokenGrantService = Objects.requireNonNull(tokenGrantService);
     this.clock = Objects.requireNonNull(clock);
   }
 
@@ -53,7 +57,9 @@ public class MembershipSettlementScheduler {
 
   void runSettlement() {
     try {
-      List<Long> dueUserIds = membershipRepository.findDueForSettlement(clock.instant());
+      tokenGrantService.retryPendingGrants();
+      List<Long> dueUserIds =
+          membershipRepository.findDueForSettlement(clock.instant(), SETTLEMENT_BATCH_LIMIT);
       for (long userId : dueUserIds) {
         try {
           settlementService.settle(userId);

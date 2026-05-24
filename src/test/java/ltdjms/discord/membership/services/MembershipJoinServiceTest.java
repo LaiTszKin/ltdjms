@@ -2,11 +2,13 @@ package ltdjms.discord.membership.services;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -36,8 +38,10 @@ class MembershipJoinServiceTest {
 
   @BeforeEach
   void setUp() {
-    Clock clock = Clock.fixed(Instant.parse("2026-03-15T08:00:00Z"), ZONE);
-    service = new MembershipJoinService(membershipRepository, clock);
+    service =
+        new MembershipJoinService(
+            membershipRepository,
+            java.time.Clock.fixed(Instant.parse("2026-03-15T08:00:00Z"), ZONE));
   }
 
   @Nested
@@ -51,19 +55,14 @@ class MembershipJoinServiceTest {
       GlobalMemberMembership created = GlobalMemberMembership.createNew(TEST_USER_ID);
 
       when(membershipRepository.findOrCreate(TEST_USER_ID)).thenReturn(created);
-      when(membershipRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+      when(membershipRepository.mergeEarliestGuildJoin(
+              eq(TEST_USER_ID), eq(joinedAt), eq(15), eq(zonedInstant(2024, 4, 15, 0, 0))))
+          .thenReturn(true);
 
       service.onMemberJoin(TEST_USER_ID, joinedAt);
 
-      ArgumentCaptor<GlobalMemberMembership> captor =
-          ArgumentCaptor.forClass(GlobalMemberMembership.class);
-      verify(membershipRepository).save(captor.capture());
-
-      GlobalMemberMembership saved = captor.getValue();
-      assertThat(saved.earliestGuildJoinAt()).isEqualTo(joinedAt);
-      assertThat(saved.settlementDayOfMonth()).isEqualTo(15);
-      assertThat(saved.nextSettlementAt())
-          .isEqualTo(zonedInstant(2024, 4, 15, 0, 0));
+      verify(membershipRepository)
+          .mergeEarliestGuildJoin(TEST_USER_ID, joinedAt, 15, zonedInstant(2024, 4, 15, 0, 0));
     }
 
     @Test
@@ -84,6 +83,8 @@ class MembershipJoinServiceTest {
               earliest);
 
       when(membershipRepository.findOrCreate(TEST_USER_ID)).thenReturn(existing);
+      when(membershipRepository.mergeEarliestGuildJoin(anyLong(), any(), anyInt(), any()))
+          .thenReturn(false);
 
       service.onMemberJoin(TEST_USER_ID, laterJoin);
 
@@ -108,18 +109,14 @@ class MembershipJoinServiceTest {
               existingEarliest);
 
       when(membershipRepository.findOrCreate(TEST_USER_ID)).thenReturn(existing);
-      when(membershipRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+      when(membershipRepository.mergeEarliestGuildJoin(
+              eq(TEST_USER_ID), eq(earlierJoin), eq(10), any()))
+          .thenReturn(true);
 
       service.onMemberJoin(TEST_USER_ID, earlierJoin);
 
-      ArgumentCaptor<GlobalMemberMembership> captor =
-          ArgumentCaptor.forClass(GlobalMemberMembership.class);
-      verify(membershipRepository).save(captor.capture());
-
-      GlobalMemberMembership saved = captor.getValue();
-      assertThat(saved.earliestGuildJoinAt()).isEqualTo(earlierJoin);
-      assertThat(saved.settlementDayOfMonth()).isEqualTo(10);
-      assertThat(saved.nextSettlementAt()).isEqualTo(zonedInstant(2024, 7, 1, 0, 0));
+      verify(membershipRepository)
+          .mergeEarliestGuildJoin(eq(TEST_USER_ID), eq(earlierJoin), eq(10), any());
     }
 
     @Test
@@ -129,18 +126,16 @@ class MembershipJoinServiceTest {
       GlobalMemberMembership created = GlobalMemberMembership.createNew(TEST_USER_ID);
 
       when(membershipRepository.findOrCreate(TEST_USER_ID)).thenReturn(created);
-      when(membershipRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+      when(membershipRepository.mergeEarliestGuildJoin(
+              eq(TEST_USER_ID), eq(joinedAt), eq(28), eq(zonedInstant(2024, 2, 28, 0, 0))))
+          .thenReturn(true);
 
       service.onMemberJoin(TEST_USER_ID, joinedAt);
 
-      ArgumentCaptor<GlobalMemberMembership> captor =
-          ArgumentCaptor.forClass(GlobalMemberMembership.class);
-      verify(membershipRepository).save(captor.capture());
-
-      GlobalMemberMembership saved = captor.getValue();
-      assertThat(saved.settlementDayOfMonth()).isEqualTo(28);
-      assertThat(saved.nextSettlementAt())
-          .isEqualTo(zonedInstant(2024, 2, 28, 0, 0));
+      ArgumentCaptor<Instant> nextCaptor = ArgumentCaptor.forClass(Instant.class);
+      verify(membershipRepository)
+          .mergeEarliestGuildJoin(eq(TEST_USER_ID), eq(joinedAt), eq(28), nextCaptor.capture());
+      assertThat(nextCaptor.getValue()).isEqualTo(zonedInstant(2024, 2, 28, 0, 0));
     }
   }
 
@@ -173,8 +168,7 @@ class MembershipJoinServiceTest {
     void shouldScheduleNextMonthWhenJoinOnAnchorDay() {
       Instant joinedAt = zonedInstant(2024, 3, 15, 14, 30);
 
-      Instant next =
-          MembershipJoinService.computeNextSettlementAt(15, joinedAt, ZONE);
+      Instant next = MembershipJoinService.computeNextSettlementAt(15, joinedAt, ZONE);
 
       assertThat(next).isEqualTo(zonedInstant(2024, 4, 15, 0, 0));
     }
@@ -184,8 +178,7 @@ class MembershipJoinServiceTest {
     void shouldScheduleSameMonthWhenJoinBeforeAnchorDay() {
       Instant joinedAt = zonedInstant(2024, 3, 10, 8, 0);
 
-      Instant next =
-          MembershipJoinService.computeNextSettlementAt(15, joinedAt, ZONE);
+      Instant next = MembershipJoinService.computeNextSettlementAt(15, joinedAt, ZONE);
 
       assertThat(next).isEqualTo(zonedInstant(2024, 3, 15, 0, 0));
     }
@@ -195,8 +188,7 @@ class MembershipJoinServiceTest {
     void shouldScheduleNextMonthWhenJoinAfterAnchorDay() {
       Instant joinedAt = zonedInstant(2024, 3, 20, 8, 0);
 
-      Instant next =
-          MembershipJoinService.computeNextSettlementAt(15, joinedAt, ZONE);
+      Instant next = MembershipJoinService.computeNextSettlementAt(15, joinedAt, ZONE);
 
       assertThat(next).isEqualTo(zonedInstant(2024, 4, 15, 0, 0));
     }

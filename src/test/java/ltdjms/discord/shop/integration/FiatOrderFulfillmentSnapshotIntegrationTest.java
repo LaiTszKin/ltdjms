@@ -31,12 +31,13 @@ import ltdjms.discord.currency.domain.CurrencyTransaction;
 import ltdjms.discord.dispatch.domain.EscortDispatchOrder;
 import ltdjms.discord.dispatch.services.EscortDispatchHandoffService;
 import ltdjms.discord.gametoken.domain.GameTokenTransaction;
+import ltdjms.discord.membership.persistence.JdbcMembershipRepository;
+import ltdjms.discord.membership.services.MembershipPricingService;
+import ltdjms.discord.membership.services.MembershipSpendServiceFixtures;
 import ltdjms.discord.product.domain.Product;
 import ltdjms.discord.product.persistence.JdbcProductRepository;
 import ltdjms.discord.product.services.ProductRewardService;
 import ltdjms.discord.product.services.ProductService;
-import ltdjms.discord.membership.persistence.JdbcMembershipRepository;
-import ltdjms.discord.membership.services.MembershipPricingService;
 import ltdjms.discord.redemption.persistence.JdbcRedemptionCodeRepository;
 import ltdjms.discord.shared.DatabaseMigrationRunner;
 import ltdjms.discord.shared.DomainError;
@@ -45,6 +46,7 @@ import ltdjms.discord.shared.events.DomainEventPublisher;
 import ltdjms.discord.shop.domain.FiatOrder;
 import ltdjms.discord.shop.persistence.JdbcFiatOrderRepository;
 import ltdjms.discord.shop.services.EcpayCvsPaymentService;
+import ltdjms.discord.shop.services.EscortOrderBuyerNotificationService;
 import ltdjms.discord.shop.services.FiatOrderBuyerNotificationService;
 import ltdjms.discord.shop.services.FiatOrderPostPaymentWorker;
 import ltdjms.discord.shop.services.FiatOrderService;
@@ -72,6 +74,7 @@ class FiatOrderFulfillmentSnapshotIntegrationTest {
   @Mock private EscortDispatchHandoffService escortDispatchHandoffService;
   @Mock private ShopAdminNotificationService adminNotificationService;
   @Mock private FiatOrderBuyerNotificationService buyerNotificationService;
+  @Mock private EscortOrderBuyerNotificationService escortOrderBuyerNotificationService;
 
   private HikariDataSource dataSource;
   private ProductService productService;
@@ -95,17 +98,16 @@ class FiatOrderFulfillmentSnapshotIntegrationTest {
         new MembershipPricingService(new JdbcMembershipRepository(dataSource));
     fiatOrderService =
         new FiatOrderService(
-            productService,
-            ecpayCvsPaymentService,
-            fiatOrderRepository,
-            membershipPricingService);
+            productService, ecpayCvsPaymentService, fiatOrderRepository, membershipPricingService);
     worker =
         new FiatOrderPostPaymentWorker(
             fiatOrderRepository,
             productRewardService,
             escortDispatchHandoffService,
             adminNotificationService,
-            buyerNotificationService);
+            buyerNotificationService,
+            escortOrderBuyerNotificationService,
+            MembershipSpendServiceFixtures.noop());
   }
 
   @AfterEach

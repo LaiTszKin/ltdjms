@@ -11,6 +11,7 @@ import ltdjms.discord.shared.events.BalanceChangedEvent;
 import ltdjms.discord.shared.events.CurrencyConfigChangedEvent;
 import ltdjms.discord.shared.events.DomainEvent;
 import ltdjms.discord.shared.events.GameTokenChangedEvent;
+import ltdjms.discord.shared.events.MembershipTierChangedEvent;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 
 /** Listener for domain events that triggers real-time updates for active user panels. */
@@ -36,7 +37,34 @@ public class UserPanelUpdateListener implements Consumer<DomainEvent> {
       updateUserPanel(e.guildId(), e.userId());
     } else if (event instanceof CurrencyConfigChangedEvent e) {
       updateAllGuildPanels(e.guildId());
+    } else if (event instanceof MembershipTierChangedEvent e) {
+      updatePanelsForUser(e.userId());
     }
+  }
+
+  private void updatePanelsForUser(long userId) {
+    LOG.debug("Updating user panels for userId={} due to membership tier change", userId);
+    sessionManager.updatePanelsByUser(
+        userId,
+        ctx -> {
+          Result<UserPanelView, DomainError> result =
+              userPanelService.getUserPanelView(ctx.guildId(), ctx.userId());
+          if (result.isOk()) {
+            UserPanelView view = result.getValue();
+            MessageEmbed embed =
+                UserPanelEmbedBuilder.buildPanelEmbed(view, ctx.userMention(), UPDATE_FOOTER);
+            ctx.hook()
+                .editOriginalEmbeds(embed)
+                .queue(
+                    msg -> LOG.trace("Updated panel message for userId={}", ctx.userId()),
+                    error ->
+                        LOG.warn(
+                            "Failed to edit panel message for userId={}", ctx.userId(), error));
+          } else {
+            LOG.warn(
+                "Failed to fetch user panel view during membership update: {}", result.getError());
+          }
+        });
   }
 
   private void updateAllGuildPanels(long guildId) {

@@ -1,12 +1,13 @@
 package ltdjms.discord.membership.di;
 
 import java.time.Clock;
-
 import javax.inject.Singleton;
 import javax.sql.DataSource;
 
 import dagger.Module;
 import dagger.Provides;
+import ltdjms.discord.gametoken.services.GameTokenService;
+import ltdjms.discord.gametoken.services.GameTokenTransactionService;
 import ltdjms.discord.membership.listeners.GuildMemberJoinListener;
 import ltdjms.discord.membership.persistence.JdbcMembershipRepository;
 import ltdjms.discord.membership.persistence.JdbcMembershipSpendRepository;
@@ -22,8 +23,6 @@ import ltdjms.discord.membership.services.MembershipSpendService;
 import ltdjms.discord.membership.services.MembershipTokenGrantService;
 import ltdjms.discord.product.domain.EscortOptionCatalogRepository;
 import ltdjms.discord.shared.events.DomainEventPublisher;
-import ltdjms.discord.gametoken.services.GameTokenService;
-import ltdjms.discord.gametoken.services.GameTokenTransactionService;
 
 /** Dagger module providing membership repository dependencies. */
 @Module
@@ -50,14 +49,15 @@ public class MembershipModule {
 
   @Provides
   @Singleton
-  public Clock provideMembershipClock() {
+  @SettlementClock
+  public Clock provideSettlementClock() {
     return Clock.system(MembershipJoinService.SETTLEMENT_ZONE);
   }
 
   @Provides
   @Singleton
   public MembershipJoinService provideMembershipJoinService(
-      MembershipRepository membershipRepository, Clock clock) {
+      MembershipRepository membershipRepository, @SettlementClock Clock clock) {
     return new MembershipJoinService(membershipRepository, clock);
   }
 
@@ -103,13 +103,9 @@ public class MembershipModule {
       MembershipSpendRepository membershipSpendRepository,
       MembershipTokenGrantService tokenGrantService,
       DomainEventPublisher eventPublisher,
-      Clock clock) {
+      @SettlementClock Clock clock) {
     return new MembershipSettlementService(
-        membershipRepository,
-        membershipSpendRepository,
-        tokenGrantService,
-        eventPublisher,
-        clock);
+        membershipRepository, membershipSpendRepository, tokenGrantService, eventPublisher, clock);
   }
 
   @Provides
@@ -117,7 +113,9 @@ public class MembershipModule {
   public MembershipSettlementScheduler provideMembershipSettlementScheduler(
       MembershipRepository membershipRepository,
       MembershipSettlementService settlementService,
-      Clock clock) {
-    return new MembershipSettlementScheduler(membershipRepository, settlementService, clock);
+      MembershipTokenGrantService tokenGrantService,
+      @SettlementClock Clock clock) {
+    return new MembershipSettlementScheduler(
+        membershipRepository, settlementService, tokenGrantService, clock);
   }
 }

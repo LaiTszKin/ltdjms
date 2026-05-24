@@ -17,6 +17,10 @@ public class PanelSessionManager {
   /** Data class holding session context for panel updates. */
   public record SessionContext(InteractionHook hook, String userMention, long userId) {}
 
+  /** Session context including guild ID for cross-guild user updates. */
+  public record UserSessionContext(
+      InteractionHook hook, String userMention, long guildId, long userId) {}
+
   private static final Logger LOG = LoggerFactory.getLogger(PanelSessionManager.class);
   // 15 minutes TTL (interaction tokens expire after 15 mins)
   private static final long TTL_SECONDS = 15 * 60;
@@ -119,6 +123,39 @@ public class PanelSessionManager {
               try {
                 long userId = Long.parseLong(key.substring(guildPrefix.length()));
                 consumer.accept(new SessionContext(session.hook(), session.userMention(), userId));
+              } catch (Exception e) {
+                LOG.warn("Failed to update session for key={}. Removing session.", key, e);
+                return true;
+              }
+              return false;
+            });
+  }
+
+  /**
+   * Updates all open panels for a user across guilds. Used when global membership state changes.
+   *
+   * @param userId Discord user ID
+   * @param consumer action to perform on each matching session
+   */
+  public void updatePanelsByUser(long userId, Consumer<UserSessionContext> consumer) {
+    String userSuffix = ":" + userId;
+    sessions
+        .entrySet()
+        .removeIf(
+            entry -> {
+              String key = entry.getKey();
+              if (!key.endsWith(userSuffix)) {
+                return false;
+              }
+              PanelSession session = entry.getValue();
+              if (isExpired(session)) {
+                LOG.debug("Removed expired session for key={}", key);
+                return true;
+              }
+              try {
+                long guildId = Long.parseLong(key.substring(0, key.length() - userSuffix.length()));
+                consumer.accept(
+                    new UserSessionContext(session.hook(), session.userMention(), guildId, userId));
               } catch (Exception e) {
                 LOG.warn("Failed to update session for key={}. Removing session.", key, e);
                 return true;

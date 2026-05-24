@@ -79,12 +79,10 @@ class MembershipSpendRecordingIntegrationTest {
     catalogRepository = new JdbcEscortOptionCatalogRepository(dataSource);
 
     catalogRepository.save(
-        EscortOptionCatalog.create(
-            "CONF_DAM_300W", "包本單", "機密護", "不限", "目標", 3500L));
+        EscortOptionCatalog.create("CONF_DAM_300W", "包本單", "機密護", "不限", "目標", 3500L));
 
     MembershipSpendService membershipSpendService =
-        new MembershipSpendService(
-            spendRepository, membershipRepository, catalogRepository);
+        new MembershipSpendService(spendRepository, membershipRepository, catalogRepository);
 
     worker =
         new FiatOrderPostPaymentWorker(
@@ -107,21 +105,17 @@ class MembershipSpendRecordingIntegrationTest {
   @Test
   @DisplayName("should record escort fiat spend once and mark bronze qualifying order")
   void shouldRecordSpendIdempotently() {
-    Product product =
-        createAutoEscortProduct(123456789L, "法幣護航商品", null, 3150L, "CONF_DAM_300W");
+    Product product = createAutoEscortProduct(123456789L, "法幣護航商品", null, 3150L, "CONF_DAM_300W");
     FiatOrder order =
         savePaidOrder(
-            123456789L,
-            987654321L,
-            product.id(),
-            product.name(),
-            "FD260411000001",
-            3150L);
+            123456789L, 987654321L, product.id(), product.name(), "FD260411000001", 3150L);
 
     worker.processPendingOrders();
     worker.processPendingOrders();
 
-    assertThat(spendRepository.sumListPriceInPeriod(order.buyerUserId(), PAID_AT.minusSeconds(1), PAID_AT.plusSeconds(1)))
+    assertThat(
+            spendRepository.sumListPriceInPeriod(
+                order.buyerUserId(), PAID_AT.minusSeconds(1), PAID_AT.plusSeconds(1)))
         .isEqualTo(3500L);
     assertThat(
             membershipRepository
@@ -129,7 +123,8 @@ class MembershipSpendRecordingIntegrationTest {
                 .orElseThrow()
                 .hasQualifyingBronzeOrder())
         .isTrue();
-    assertThat(fiatOrderRepository.findByOrderNumber(order.orderNumber()).orElseThrow().isFulfilled())
+    assertThat(
+            fiatOrderRepository.findByOrderNumber(order.orderNumber()).orElseThrow().isFulfilled())
         .isTrue();
   }
 

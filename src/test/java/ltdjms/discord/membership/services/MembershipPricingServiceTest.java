@@ -61,6 +61,35 @@ class MembershipPricingServiceTest {
   }
 
   @Test
+  @DisplayName("escort 連結商品套用折扣（EscortProductRules 共用判定）")
+  void shouldDiscountEscortLinkedProduct() {
+    Product product = escortFiatProduct(3500L);
+    when(membershipRepository.findByUserId(USER_ID))
+        .thenReturn(Optional.of(membershipWithTier(MembershipTier.SILVER)));
+
+    EscortPriceQuote quote = service.quoteEscortPrice(USER_ID, product, GUILD_ID);
+
+    assertThat(quote.chargedPriceTwd()).isEqualTo(3150L);
+    assertThat(quote.appliedTier()).isEqualTo(MembershipTier.SILVER);
+  }
+
+  @Test
+  @DisplayName("qualifying bronze flag 使 NONE tier 立即享有青銅折扣")
+  void shouldApplyBronzeDiscountForQualifyingFlag() {
+    Product product = escortFiatProduct(3500L);
+    Instant now = Instant.now();
+    GlobalMemberMembership membership =
+        new GlobalMemberMembership(
+            USER_ID, MembershipTier.NONE, null, null, null, null, true, now, now);
+    when(membershipRepository.findByUserId(USER_ID)).thenReturn(Optional.of(membership));
+
+    EscortPriceQuote quote = service.quoteEscortPrice(USER_ID, product, GUILD_ID);
+
+    assertThat(quote.appliedTier()).isEqualTo(MembershipTier.BRONZE);
+    assertThat(quote.chargedPriceTwd()).isEqualTo(3325L);
+  }
+
+  @Test
   @DisplayName("白銀會員 escort 法幣商品 9 折")
   void shouldApplySilverDiscountToEscortFiatProduct() {
     Product product = escortFiatProduct(3500L);
@@ -138,7 +167,6 @@ class MembershipPricingServiceTest {
 
   private static GlobalMemberMembership membershipWithTier(MembershipTier tier) {
     Instant now = Instant.now();
-    return new GlobalMemberMembership(
-        USER_ID, tier, null, null, null, null, false, now, now);
+    return new GlobalMemberMembership(USER_ID, tier, null, null, null, null, false, now, now);
   }
 }

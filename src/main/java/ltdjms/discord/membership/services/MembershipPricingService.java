@@ -4,7 +4,9 @@ import java.math.BigDecimal;
 import java.util.Objects;
 
 import ltdjms.discord.membership.domain.MembershipTier;
+import ltdjms.discord.membership.domain.MembershipTierEvaluator;
 import ltdjms.discord.membership.persistence.MembershipRepository;
+import ltdjms.discord.product.domain.EscortProductRules;
 import ltdjms.discord.product.domain.Product;
 
 /** Applies membership tier discounts to escort-linked shop products at payment time. */
@@ -31,20 +33,18 @@ public class MembershipPricingService {
     long listFiat = product.hasFiatPriceTwd() ? product.fiatPriceTwd() : 0L;
     long listCurrency = product.hasCurrencyPrice() ? product.currencyPrice() : 0L;
 
-    if (!isEscortLinked(product)) {
+    if (!EscortProductRules.isEscortLinked(product)) {
       return new EscortPriceQuote(
-          listFiat,
-          listFiat,
-          listCurrency,
-          listCurrency,
-          MembershipTier.NONE,
-          BigDecimal.ZERO);
+          listFiat, listFiat, listCurrency, listCurrency, MembershipTier.NONE, BigDecimal.ZERO);
     }
 
     MembershipTier tier =
         membershipRepository
             .findByUserId(userId)
-            .map(membership -> membership.currentTier())
+            .map(
+                membership ->
+                    MembershipTierEvaluator.effectiveTier(
+                        membership.currentTier(), membership.hasQualifyingBronzeOrder()))
             .orElse(MembershipTier.NONE);
 
     BigDecimal discountRate = tier.discountRate();
@@ -54,15 +54,10 @@ public class MembershipPricingService {
     }
 
     long chargedFiat = listFiat > 0 ? applyDiscount(listFiat, discountRate) : 0L;
-    long chargedCurrency =
-        listCurrency > 0 ? applyDiscount(listCurrency, discountRate) : 0L;
+    long chargedCurrency = listCurrency > 0 ? applyDiscount(listCurrency, discountRate) : 0L;
 
     return new EscortPriceQuote(
         listFiat, chargedFiat, listCurrency, chargedCurrency, tier, discountRate);
-  }
-
-  private static boolean isEscortLinked(Product product) {
-    return product.shouldAutoCreateEscortOrder();
   }
 
   static long applyDiscount(long listPrice, BigDecimal discountRate) {

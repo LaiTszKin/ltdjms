@@ -25,14 +25,6 @@ public record GlobalMemberMembership(
   public static GlobalMemberMembership createNew(long discordUserId) {
     Instant now = Instant.now();
     return new GlobalMemberMembership(
-        discordUserId,
-        MembershipTier.NONE,
-        null,
-        null,
-        null,
-        null,
-        false,
-        now,
-        now);
+        discordUserId, MembershipTier.NONE, null, null, null, null, false, now, now);
   }
 }

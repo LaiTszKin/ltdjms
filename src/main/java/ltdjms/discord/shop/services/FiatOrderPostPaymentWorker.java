@@ -32,48 +32,6 @@ public class FiatOrderPostPaymentWorker {
   private final MembershipSpendService membershipSpendService;
   private final Clock clock;
 
-  /**
-   * @deprecated Prefer the 6-parameter constructor with an injected {@link
-   *     EscortOrderBuyerNotificationService}. This convenience constructor creates its own
-   *     instance, bypassing dependency injection, and should only be used for backward
-   *     compatibility with existing integration tests.
-   */
-  @Deprecated
-  public FiatOrderPostPaymentWorker(
-      FiatOrderRepository fiatOrderRepository,
-      ProductRewardService productRewardService,
-      EscortDispatchHandoffService escortDispatchHandoffService,
-      ShopAdminNotificationService adminNotificationService,
-      FiatOrderBuyerNotificationService buyerNotificationService) {
-    this(
-        fiatOrderRepository,
-        productRewardService,
-        escortDispatchHandoffService,
-        adminNotificationService,
-        buyerNotificationService,
-        new EscortOrderBuyerNotificationService(),
-        MembershipSpendService.noop(),
-        Clock.systemUTC());
-  }
-
-  public FiatOrderPostPaymentWorker(
-      FiatOrderRepository fiatOrderRepository,
-      ProductRewardService productRewardService,
-      EscortDispatchHandoffService escortDispatchHandoffService,
-      ShopAdminNotificationService adminNotificationService,
-      FiatOrderBuyerNotificationService buyerNotificationService,
-      EscortOrderBuyerNotificationService escortOrderBuyerNotificationService) {
-    this(
-        fiatOrderRepository,
-        productRewardService,
-        escortDispatchHandoffService,
-        adminNotificationService,
-        buyerNotificationService,
-        escortOrderBuyerNotificationService,
-        MembershipSpendService.noop(),
-        Clock.systemUTC());
-  }
-
   public FiatOrderPostPaymentWorker(
       FiatOrderRepository fiatOrderRepository,
       ProductRewardService productRewardService,

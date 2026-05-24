@@ -25,23 +25,29 @@ class MembershipSettlementSchedulerTest {
 
   @Mock private MembershipRepository membershipRepository;
   @Mock private MembershipSettlementService settlementService;
+  @Mock private MembershipTokenGrantService tokenGrantService;
 
   private MembershipSettlementScheduler scheduler;
 
   @BeforeEach
   void setUp() {
     Clock clock = Clock.fixed(NOW, MembershipJoinService.SETTLEMENT_ZONE);
-    scheduler = new MembershipSettlementScheduler(membershipRepository, settlementService, clock);
+    scheduler =
+        new MembershipSettlementScheduler(
+            membershipRepository, settlementService, tokenGrantService, clock);
   }
 
   @Test
   @DisplayName("should settle each due user and isolate failures")
   void shouldSettleDueUsers() {
-    when(membershipRepository.findDueForSettlement(NOW)).thenReturn(List.of(1L, 2L));
+    when(membershipRepository.findDueForSettlement(
+            NOW, MembershipSettlementScheduler.SETTLEMENT_BATCH_LIMIT))
+        .thenReturn(List.of(1L, 2L));
     doThrow(new RuntimeException("boom")).when(settlementService).settle(1L);
 
     scheduler.runSettlement();
 
+    verify(tokenGrantService).retryPendingGrants();
     verify(settlementService).settle(1L);
     verify(settlementService).settle(2L);
   }

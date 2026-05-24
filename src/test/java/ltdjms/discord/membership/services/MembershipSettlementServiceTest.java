@@ -24,10 +24,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import ltdjms.discord.membership.domain.GlobalMemberMembership;
 import ltdjms.discord.membership.domain.MembershipTier;
-import ltdjms.discord.shared.events.MembershipTierChangedEvent;
 import ltdjms.discord.membership.persistence.MembershipRepository;
 import ltdjms.discord.membership.persistence.MembershipSpendRepository;
 import ltdjms.discord.shared.events.DomainEventPublisher;
+import ltdjms.discord.shared.events.MembershipTierChangedEvent;
 
 @ExtendWith(MockitoExtension.class)
 class MembershipSettlementServiceTest {
@@ -104,16 +104,14 @@ class MembershipSettlementServiceTest {
     @Test
     @DisplayName("should upgrade to SILVER when avgM=15000 with bronze flag")
     void shouldUpgradeToSilver() {
-      GlobalMemberMembership membership =
-          membershipDue(MembershipTier.BRONZE, true, PERIOD_END);
+      GlobalMemberMembership membership = membershipDue(MembershipTier.BRONZE, true, PERIOD_END);
       when(membershipRepository.findByUserId(TEST_USER_ID)).thenReturn(Optional.of(membership));
-      when(membershipSpendRepository.sumListPriceInPeriod(
-              TEST_USER_ID, PERIOD_START, PERIOD_END))
+      when(membershipSpendRepository.sumListPriceInPeriod(TEST_USER_ID, PERIOD_START, PERIOD_END))
           .thenReturn(15_000L);
       when(membershipRepository.saveSettlementResult(
               eq(TEST_USER_ID),
               eq(MembershipTier.SILVER),
-              eq(NOW),
+              eq(PERIOD_END),
               eq(NEXT_SETTLEMENT),
               eq(PERIOD_END)))
           .thenReturn(true);
@@ -133,16 +131,14 @@ class MembershipSettlementServiceTest {
     @Test
     @DisplayName("should downgrade from GOLD to SILVER when avgM drops to 20000")
     void shouldDowngradeFromGoldToSilver() {
-      GlobalMemberMembership membership =
-          membershipDue(MembershipTier.GOLD, true, PERIOD_END);
+      GlobalMemberMembership membership = membershipDue(MembershipTier.GOLD, true, PERIOD_END);
       when(membershipRepository.findByUserId(TEST_USER_ID)).thenReturn(Optional.of(membership));
-      when(membershipSpendRepository.sumListPriceInPeriod(
-              TEST_USER_ID, PERIOD_START, PERIOD_END))
+      when(membershipSpendRepository.sumListPriceInPeriod(TEST_USER_ID, PERIOD_START, PERIOD_END))
           .thenReturn(20_000L);
       when(membershipRepository.saveSettlementResult(
               eq(TEST_USER_ID),
               eq(MembershipTier.SILVER),
-              eq(NOW),
+              eq(PERIOD_END),
               eq(NEXT_SETTLEMENT),
               eq(PERIOD_END)))
           .thenReturn(true);
@@ -152,26 +148,20 @@ class MembershipSettlementServiceTest {
       verify(eventPublisher)
           .publish(
               new MembershipTierChangedEvent(
-                  TEST_USER_ID,
-                  MembershipTier.GOLD,
-                  MembershipTier.SILVER,
-                  20_000L,
-                  NOW));
+                  TEST_USER_ID, MembershipTier.GOLD, MembershipTier.SILVER, 20_000L, PERIOD_END));
     }
 
     @Test
     @DisplayName("should keep BRONZE floor when avgM=0 but has qualifying bronze order")
     void shouldKeepBronzeFloor() {
-      GlobalMemberMembership membership =
-          membershipDue(MembershipTier.SILVER, true, PERIOD_END);
+      GlobalMemberMembership membership = membershipDue(MembershipTier.SILVER, true, PERIOD_END);
       when(membershipRepository.findByUserId(TEST_USER_ID)).thenReturn(Optional.of(membership));
-      when(membershipSpendRepository.sumListPriceInPeriod(
-              TEST_USER_ID, PERIOD_START, PERIOD_END))
+      when(membershipSpendRepository.sumListPriceInPeriod(TEST_USER_ID, PERIOD_START, PERIOD_END))
           .thenReturn(0L);
       when(membershipRepository.saveSettlementResult(
               eq(TEST_USER_ID),
               eq(MembershipTier.BRONZE),
-              eq(NOW),
+              eq(PERIOD_END),
               eq(NEXT_SETTLEMENT),
               eq(PERIOD_END)))
           .thenReturn(true);
@@ -181,26 +171,20 @@ class MembershipSettlementServiceTest {
       verify(eventPublisher)
           .publish(
               new MembershipTierChangedEvent(
-                  TEST_USER_ID,
-                  MembershipTier.SILVER,
-                  MembershipTier.BRONZE,
-                  0L,
-                  NOW));
+                  TEST_USER_ID, MembershipTier.SILVER, MembershipTier.BRONZE, 0L, PERIOD_END));
     }
 
     @Test
     @DisplayName("should not publish event when tier unchanged")
     void shouldNotPublishWhenTierUnchanged() {
-      GlobalMemberMembership membership =
-          membershipDue(MembershipTier.SILVER, true, PERIOD_END);
+      GlobalMemberMembership membership = membershipDue(MembershipTier.SILVER, true, PERIOD_END);
       when(membershipRepository.findByUserId(TEST_USER_ID)).thenReturn(Optional.of(membership));
-      when(membershipSpendRepository.sumListPriceInPeriod(
-              TEST_USER_ID, PERIOD_START, PERIOD_END))
+      when(membershipSpendRepository.sumListPriceInPeriod(TEST_USER_ID, PERIOD_START, PERIOD_END))
           .thenReturn(15_000L);
       when(membershipRepository.saveSettlementResult(
               eq(TEST_USER_ID),
               eq(MembershipTier.SILVER),
-              eq(NOW),
+              eq(PERIOD_END),
               eq(NEXT_SETTLEMENT),
               eq(PERIOD_END)))
           .thenReturn(true);
@@ -212,16 +196,14 @@ class MembershipSettlementServiceTest {
     @Test
     @DisplayName("should not publish when concurrent settlement already applied")
     void shouldNotPublishWhenSaveSkipped() {
-      GlobalMemberMembership membership =
-          membershipDue(MembershipTier.BRONZE, true, PERIOD_END);
+      GlobalMemberMembership membership = membershipDue(MembershipTier.BRONZE, true, PERIOD_END);
       when(membershipRepository.findByUserId(TEST_USER_ID)).thenReturn(Optional.of(membership));
-      when(membershipSpendRepository.sumListPriceInPeriod(
-              TEST_USER_ID, PERIOD_START, PERIOD_END))
+      when(membershipSpendRepository.sumListPriceInPeriod(TEST_USER_ID, PERIOD_START, PERIOD_END))
           .thenReturn(15_000L);
       when(membershipRepository.saveSettlementResult(
               eq(TEST_USER_ID),
               eq(MembershipTier.SILVER),
-              eq(NOW),
+              eq(PERIOD_END),
               eq(NEXT_SETTLEMENT),
               eq(PERIOD_END)))
           .thenReturn(false);
@@ -233,8 +215,9 @@ class MembershipSettlementServiceTest {
 
   private static GlobalMemberMembership membershipDue(
       MembershipTier tier, boolean bronzeFlag, Instant nextSettlement) {
-    Instant created = ZonedDateTime.of(2026, 1, 15, 0, 0, 0, 0, MembershipJoinService.SETTLEMENT_ZONE)
-        .toInstant();
+    Instant created =
+        ZonedDateTime.of(2026, 1, 15, 0, 0, 0, 0, MembershipJoinService.SETTLEMENT_ZONE)
+            .toInstant();
     return new GlobalMemberMembership(
         TEST_USER_ID,
         tier,

@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import ltdjms.discord.currency.persistence.RepositoryException;
 import ltdjms.discord.membership.domain.GlobalMemberMembership;
 import ltdjms.discord.membership.domain.MembershipTier;
+import ltdjms.discord.membership.services.MembershipJoinService;
 
 /** JDBC implementation of {@link MembershipRepository}. */
 public class JdbcMembershipRepository implements MembershipRepository {
@@ -63,20 +64,27 @@ public class JdbcMembershipRepository implements MembershipRepository {
                   .orElseThrow(
                       () ->
                           new RepositoryException(
-                              "Membership not found after insert: discordUserId="
-                                  + discordUserId));
+                              "Membership not found after insert: discordUserId=" + discordUserId));
             });
   }
 
   @Override
   public List<Long> findDueForSettlement(Instant before) {
+    return findDueForSettlement(before, Integer.MAX_VALUE);
+  }
+
+  @Override
+  public List<Long> findDueForSettlement(Instant before, int limit) {
     String sql =
         "SELECT discord_user_id FROM global_member_membership"
-            + " WHERE next_settlement_at IS NOT NULL AND next_settlement_at <= ?";
+            + " WHERE next_settlement_at IS NOT NULL AND next_settlement_at <= ?"
+            + " ORDER BY next_settlement_at"
+            + " LIMIT ?";
 
     try (Connection conn = dataSource.getConnection();
         PreparedStatement stmt = conn.prepareStatement(sql)) {
       stmt.setTimestamp(1, Timestamp.from(before));
+      stmt.setInt(2, limit);
 
       try (ResultSet rs = stmt.executeQuery()) {
         List<Long> userIds = new ArrayList<>();
@@ -88,6 +96,72 @@ public class JdbcMembershipRepository implements MembershipRepository {
     } catch (SQLException e) {
       LOG.error("Failed to find memberships due for settlement before={}", before, e);
       throw new RepositoryException("Failed to find memberships due for settlement", e);
+    }
+  }
+
+  @Override
+  public boolean mergeEarliestGuildJoin(
+      long discordUserId, Instant joinedAt, int settlementDay, Instant nextSettlementAt) {
+    String sql =
+        "UPDATE global_member_membership SET"
+            + " earliest_guild_join_at = LEAST(COALESCE(earliest_guild_join_at, ?), ?),"
+            + " settlement_day_of_month = CASE"
+            + " WHEN earliest_guild_join_at IS NULL OR ? < earliest_guild_join_at THEN ?"
+            + " ELSE settlement_day_of_month END,"
+            + " next_settlement_at = CASE"
+            + " WHEN next_settlement_at IS NULL"
+            + " AND (earliest_guild_join_at IS NULL OR ? < earliest_guild_join_at) THEN ?"
+            + " ELSE next_settlement_at END,"
+            + " updated_at = ?"
+            + " WHERE discord_user_id = ?"
+            + " AND (earliest_guild_join_at IS NULL OR ? < earliest_guild_join_at)";
+
+    try (Connection conn = dataSource.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(sql)) {
+      Instant now = Instant.now();
+      stmt.setTimestamp(1, Timestamp.from(joinedAt));
+      stmt.setTimestamp(2, Timestamp.from(joinedAt));
+      stmt.setTimestamp(3, Timestamp.from(joinedAt));
+      stmt.setShort(4, (short) settlementDay);
+      stmt.setTimestamp(5, Timestamp.from(joinedAt));
+      stmt.setTimestamp(6, Timestamp.from(nextSettlementAt));
+      stmt.setTimestamp(7, Timestamp.from(now));
+      stmt.setLong(8, discordUserId);
+      stmt.setTimestamp(9, Timestamp.from(joinedAt));
+
+      return stmt.executeUpdate() == 1;
+    } catch (SQLException e) {
+      LOG.error("Failed to merge earliest guild join for discordUserId={}", discordUserId, e);
+      throw new RepositoryException("Failed to merge earliest guild join", e);
+    }
+  }
+
+  @Override
+  public boolean ensureSettlementAnchor(long discordUserId, Instant anchorFrom, int settlementDay) {
+    String sql =
+        "UPDATE global_member_membership SET"
+            + " earliest_guild_join_at = COALESCE(earliest_guild_join_at, ?),"
+            + " settlement_day_of_month = COALESCE(settlement_day_of_month, ?),"
+            + " next_settlement_at = COALESCE(next_settlement_at, ?),"
+            + " updated_at = ?"
+            + " WHERE discord_user_id = ? AND next_settlement_at IS NULL";
+
+    try (Connection conn = dataSource.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(sql)) {
+      Instant nextSettlement =
+          MembershipJoinService.computeNextSettlementAt(
+              settlementDay, anchorFrom, MembershipJoinService.SETTLEMENT_ZONE);
+      Instant now = Instant.now();
+      stmt.setTimestamp(1, Timestamp.from(anchorFrom));
+      stmt.setShort(2, (short) settlementDay);
+      stmt.setTimestamp(3, Timestamp.from(nextSettlement));
+      stmt.setTimestamp(4, Timestamp.from(now));
+      stmt.setLong(5, discordUserId);
+
+      return stmt.executeUpdate() == 1;
+    } catch (SQLException e) {
+      LOG.error("Failed to ensure settlement anchor for discordUserId={}", discordUserId, e);
+      throw new RepositoryException("Failed to ensure settlement anchor", e);
     }
   }
 
@@ -159,7 +233,8 @@ public class JdbcMembershipRepository implements MembershipRepository {
       int affected = stmt.executeUpdate();
       if (affected != 1) {
         throw new RepositoryException(
-            "Expected 1 row updated for discordUserId=" + membership.discordUserId()
+            "Expected 1 row updated for discordUserId="
+                + membership.discordUserId()
                 + ", got "
                 + affected);
       }

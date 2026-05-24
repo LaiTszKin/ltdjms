@@ -21,8 +21,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import ltdjms.discord.dispatch.domain.EscortDispatchOrder;
 import ltdjms.discord.dispatch.services.EscortDispatchHandoffService;
-import ltdjms.discord.product.domain.Product;
 import ltdjms.discord.membership.services.MembershipSpendService;
+import ltdjms.discord.product.domain.Product;
 import ltdjms.discord.product.services.ProductRewardService;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
@@ -203,8 +203,8 @@ class FiatOrderPostPaymentWorkerTest {
         "FD260411000001",
         "CVS123456",
         1200L,
-            null,
-            null,
+        null,
+        null,
         FiatOrder.Status.PAID,
         "1",
         "付款成功",

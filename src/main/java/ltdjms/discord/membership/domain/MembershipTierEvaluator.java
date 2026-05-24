@@ -1,5 +1,7 @@
 package ltdjms.discord.membership.domain;
 
+import java.util.Objects;
+
 /** Pure tier resolution from settlement-period average list-price M. */
 public final class MembershipTierEvaluator {
 
@@ -34,5 +36,21 @@ public final class MembershipTierEvaluator {
     }
 
     return MembershipTier.NONE;
+  }
+
+  /**
+   * Returns the tier used for pricing and UI before the next settlement recalculation.
+   *
+   * @param currentTier persisted tier from the last settlement
+   * @param hasQualifyingBronzeOrder whether the user has a permanent bronze qualifying order
+   * @return effective tier, at least {@link MembershipTier#BRONZE} when the flag is set
+   */
+  public static MembershipTier effectiveTier(
+      MembershipTier currentTier, boolean hasQualifyingBronzeOrder) {
+    Objects.requireNonNull(currentTier, "currentTier must not be null");
+    if (hasQualifyingBronzeOrder && currentTier == MembershipTier.NONE) {
+      return MembershipTier.BRONZE;
+    }
+    return currentTier;
   }
 }

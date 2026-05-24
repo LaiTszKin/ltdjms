@@ -53,23 +53,27 @@ class MembershipTokenGrantServiceTest {
   @Test
   @DisplayName("should skip grant for NONE tier")
   void shouldSkipNoneTier() {
-    service.grantForSettlement(TEST_USER_ID, PERIOD_END, MembershipTier.NONE);
+    assertThat(service.grantForSettlement(TEST_USER_ID, PERIOD_END, MembershipTier.NONE)).isTrue();
 
-    verify(grantRepository, never()).hasGrantForPeriod(anyLong(), any());
+    verify(grantRepository, never()).tryClaimGrantLog(anyLong(), any(), any(), anyInt());
     verify(gameTokenService, never()).tryAdjustTokens(anyLong(), anyLong(), anyLong());
   }
 
   @Test
   @DisplayName("should grant GOLD tokens once per settlement period")
   void shouldGrantGoldTokensIdempotently() {
-    when(grantRepository.hasGrantForPeriod(TEST_USER_ID, PERIOD_END)).thenReturn(false, true);
-    when(spendRepository.findMostRecentGuildId(TEST_USER_ID)).thenReturn(Optional.of(TEST_GUILD_ID));
+    when(grantRepository.tryClaimGrantLog(TEST_USER_ID, PERIOD_END, MembershipTier.GOLD, 200))
+        .thenReturn(true, false);
+    when(spendRepository.findMostRecentGuildId(TEST_USER_ID))
+        .thenReturn(Optional.of(TEST_GUILD_ID));
     when(gameTokenService.tryAdjustTokens(TEST_GUILD_ID, TEST_USER_ID, 200))
         .thenReturn(
-            Result.ok(new GameTokenService.TokenAdjustmentResult(TEST_GUILD_ID, TEST_USER_ID, 0, 200, 200)));
+            Result.ok(
+                new GameTokenService.TokenAdjustmentResult(
+                    TEST_GUILD_ID, TEST_USER_ID, 0, 200, 200)));
 
-    service.grantForSettlement(TEST_USER_ID, PERIOD_END, MembershipTier.GOLD);
-    service.grantForSettlement(TEST_USER_ID, PERIOD_END, MembershipTier.GOLD);
+    assertThat(service.grantForSettlement(TEST_USER_ID, PERIOD_END, MembershipTier.GOLD)).isTrue();
+    assertThat(service.grantForSettlement(TEST_USER_ID, PERIOD_END, MembershipTier.GOLD)).isTrue();
 
     verify(gameTokenService, times(1)).tryAdjustTokens(TEST_GUILD_ID, TEST_USER_ID, 200);
     verify(gameTokenTransactionService)
@@ -80,21 +84,23 @@ class MembershipTokenGrantServiceTest {
             eq(200L),
             eq(GameTokenTransaction.Source.MEMBERSHIP_GRANT),
             eq("會員結算贈幣 (GOLD)"));
-    verify(grantRepository).insertGrantLog(TEST_USER_ID, PERIOD_END, MembershipTier.GOLD, 200);
+    verify(grantRepository, never()).insertGrantLog(anyLong(), any(), any(), anyInt());
   }
 
   @Test
-  @DisplayName("should log and skip when token adjustment fails")
-  void shouldSkipWhenAdjustmentFails() {
-    when(grantRepository.hasGrantForPeriod(TEST_USER_ID, PERIOD_END)).thenReturn(false);
-    when(spendRepository.findMostRecentGuildId(TEST_USER_ID)).thenReturn(Optional.of(TEST_GUILD_ID));
+  @DisplayName("should release claim and allow retry when token adjustment fails")
+  void shouldReleaseClaimWhenAdjustmentFails() {
+    when(grantRepository.tryClaimGrantLog(TEST_USER_ID, PERIOD_END, MembershipTier.GOLD, 200))
+        .thenReturn(true);
+    when(spendRepository.findMostRecentGuildId(TEST_USER_ID))
+        .thenReturn(Optional.of(TEST_GUILD_ID));
     when(gameTokenService.tryAdjustTokens(TEST_GUILD_ID, TEST_USER_ID, 200))
         .thenReturn(Result.err(DomainError.persistenceFailure("db down", null)));
 
-    service.grantForSettlement(TEST_USER_ID, PERIOD_END, MembershipTier.GOLD);
+    assertThat(service.grantForSettlement(TEST_USER_ID, PERIOD_END, MembershipTier.GOLD)).isFalse();
 
     verify(gameTokenTransactionService, never())
         .recordTransaction(anyLong(), anyLong(), anyLong(), anyLong(), any(), any());
-    verify(grantRepository, never()).insertGrantLog(anyLong(), any(), any(), anyInt());
+    verify(grantRepository).releaseGrantClaim(TEST_USER_ID, PERIOD_END);
   }
 }

@@ -37,15 +37,16 @@ class JdbcMembershipSpendRepositoryIntegrationTest extends PostgresIntegrationTe
 
     assertThat(first).isTrue();
     assertThat(second).isFalse();
-    assertThat(spendRepository.sumListPriceInPeriod(USER_ID, PAID_AT.minusSeconds(1), PAID_AT.plusSeconds(1)))
+    assertThat(
+            spendRepository.sumListPriceInPeriod(
+                USER_ID, PAID_AT.minusSeconds(1), PAID_AT.plusSeconds(1)))
         .isEqualTo(3500L);
   }
 
   @Test
   @DisplayName("should sum list prices within period bounds")
   void shouldSumWithinPeriod() {
-    spendRepository.insertIfAbsent(
-        USER_ID, 123L, 500L, "A", "FIAT_ORDER", "ORDER-1", PAID_AT);
+    spendRepository.insertIfAbsent(USER_ID, 123L, 500L, "A", "FIAT_ORDER", "ORDER-1", PAID_AT);
     spendRepository.insertIfAbsent(
         USER_ID, 123L, 800L, "B", "FIAT_ORDER", "ORDER-2", PAID_AT.plusSeconds(3600));
 

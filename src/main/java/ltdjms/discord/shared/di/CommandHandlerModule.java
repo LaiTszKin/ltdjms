@@ -1,5 +1,6 @@
 package ltdjms.discord.shared.di;
 
+import java.time.Clock;
 import java.util.function.Consumer;
 import javax.inject.Provider;
 import javax.inject.Singleton;
@@ -28,6 +29,10 @@ import ltdjms.discord.gametoken.services.DiceGame1Service;
 import ltdjms.discord.gametoken.services.DiceGame2Service;
 import ltdjms.discord.gametoken.services.GameTokenService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService;
+import ltdjms.discord.membership.di.SettlementClock;
+import ltdjms.discord.membership.persistence.MembershipRepository;
+import ltdjms.discord.membership.persistence.MembershipSpendRepository;
+import ltdjms.discord.membership.services.MembershipSpendService;
 import ltdjms.discord.panel.commands.AdminPanelButtonHandler;
 import ltdjms.discord.panel.commands.AdminPanelCommandHandler;
 import ltdjms.discord.panel.commands.AdminProductPanelHandler;
@@ -40,10 +45,6 @@ import ltdjms.discord.panel.services.AdminPanelUpdateListener;
 import ltdjms.discord.panel.services.CurrencyManagementFacade;
 import ltdjms.discord.panel.services.GameConfigManagementFacade;
 import ltdjms.discord.panel.services.GameTokenManagementFacade;
-import java.time.Clock;
-
-import ltdjms.discord.membership.persistence.MembershipRepository;
-import ltdjms.discord.membership.persistence.MembershipSpendRepository;
 import ltdjms.discord.panel.services.MemberInfoFacade;
 import ltdjms.discord.panel.services.PanelSessionManager;
 import ltdjms.discord.panel.services.ProductRedemptionUpdateListener;
@@ -51,7 +52,6 @@ import ltdjms.discord.panel.services.UserPanelService;
 import ltdjms.discord.panel.services.UserPanelUpdateListener;
 import ltdjms.discord.product.domain.EscortOptionCatalogRepository;
 import ltdjms.discord.product.domain.ProductRepository;
-import ltdjms.discord.membership.services.MembershipSpendService;
 import ltdjms.discord.product.services.ProductRewardService;
 import ltdjms.discord.product.services.ProductService;
 import ltdjms.discord.redemption.services.ProductRedemptionTransactionService;
@@ -174,7 +174,7 @@ public class CommandHandlerModule {
       ProductRedemptionTransactionService productRedemptionTransactionService,
       MembershipRepository membershipRepository,
       MembershipSpendRepository membershipSpendRepository,
-      Clock clock) {
+      @SettlementClock Clock clock) {
     return new MemberInfoFacade(
         balanceService,
         gameTokenService,

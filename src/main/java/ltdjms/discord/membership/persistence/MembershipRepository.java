@@ -16,8 +16,31 @@ public interface MembershipRepository {
 
   GlobalMemberMembership save(GlobalMemberMembership membership);
 
-  /** Returns Discord user IDs whose {@code next_settlement_at} is due on or before {@code before}. */
+  /**
+   * Returns Discord user IDs whose {@code next_settlement_at} is due on or before {@code before}.
+   */
   List<Long> findDueForSettlement(Instant before);
+
+  /**
+   * Returns Discord user IDs whose {@code next_settlement_at} is due on or before {@code before},
+   * up to {@code limit} rows.
+   */
+  List<Long> findDueForSettlement(Instant before, int limit);
+
+  /**
+   * Atomically records an earlier guild join when {@code joinedAt} is before the stored value.
+   *
+   * @return {@code true} when the row was updated
+   */
+  boolean mergeEarliestGuildJoin(
+      long discordUserId, Instant joinedAt, int settlementDay, Instant nextSettlementAt);
+
+  /**
+   * Initializes settlement anchors from the first spend when join tracking was never recorded.
+   *
+   * @return {@code true} when anchors were set
+   */
+  boolean ensureSettlementAnchor(long discordUserId, Instant anchorFrom, int settlementDay);
 
   /**
    * Applies settlement updates only when {@code expectedNextSettlementAt} still matches the row.

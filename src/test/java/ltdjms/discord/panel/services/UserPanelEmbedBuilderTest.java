@@ -9,7 +9,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import ltdjms.discord.membership.domain.MembershipTier;
-
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
@@ -128,8 +127,7 @@ class UserPanelEmbedBuilderTest {
     MessageEmbed embed = UserPanelEmbedBuilder.buildPanelEmbed(view, TEST_USER_MENTION);
 
     MessageEmbed.Field membershipField = embed.getFields().get(2);
-    assertThat(membershipField.getValue())
-        .contains("完成一筆 NT$500 以上護航法幣訂單即可升級青銅");
+    assertThat(membershipField.getValue()).contains("完成一筆 NT$500 以上護航法幣訂單即可升級青銅");
   }
 
   @Test

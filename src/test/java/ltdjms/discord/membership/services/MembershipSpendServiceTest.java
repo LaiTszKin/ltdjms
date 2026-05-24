@@ -2,6 +2,7 @@ package ltdjms.discord.membership.services;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -10,14 +11,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
-import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -58,7 +57,7 @@ class MembershipSpendServiceTest {
     void shouldUseCatalogPrice() {
       Product product = escortProduct("CONF_DAM_300W", 900L);
       when(catalogRepository.findByCode("CONF_DAM_300W"))
-          .thenReturn(Optional.of(catalogEntry("CONF_DAM_300W", 3500L)));
+          .thenReturn(java.util.Optional.of(catalogEntry("CONF_DAM_300W", 3500L)));
 
       assertThat(service.resolveListPriceM(product, GUILD_ID)).isEqualTo(3500L);
     }
@@ -67,7 +66,7 @@ class MembershipSpendServiceTest {
     @DisplayName("should fallback to product fiat price when catalog code is missing")
     void shouldFallbackWhenCatalogMissing() {
       Product product = escortProduct("MISSING_CODE", 1200L);
-      when(catalogRepository.findByCode("MISSING_CODE")).thenReturn(Optional.empty());
+      when(catalogRepository.findByCode("MISSING_CODE")).thenReturn(java.util.Optional.empty());
 
       assertThat(service.resolveListPriceM(product, GUILD_ID)).isEqualTo(1200L);
     }
@@ -78,7 +77,7 @@ class MembershipSpendServiceTest {
       Product product =
           Product.create(GUILD_ID, "護航商品", "desc", null, null, null, 800L, true, "AUTO_ONLY");
 
-      when(catalogRepository.findByCode("AUTO_ONLY")).thenReturn(Optional.empty());
+      when(catalogRepository.findByCode("AUTO_ONLY")).thenReturn(java.util.Optional.empty());
 
       assertThat(service.resolveListPriceM(product, GUILD_ID)).isEqualTo(800L);
     }
@@ -94,26 +93,24 @@ class MembershipSpendServiceTest {
       Product product = escortProduct("CONF_DAM_300W", 900L);
       FiatOrder order = paidEscortOrder(product, 900L);
       when(catalogRepository.findByCode("CONF_DAM_300W"))
-          .thenReturn(Optional.of(catalogEntry("CONF_DAM_300W", 3500L)));
-      when(spendRepository.insertIfAbsent(
+          .thenReturn(java.util.Optional.of(catalogEntry("CONF_DAM_300W", 3500L)));
+      when(membershipRepository.findOrCreate(BUYER_ID))
+          .thenReturn(GlobalMemberMembership.createNew(BUYER_ID));
+      when(spendRepository.insertSpendAndQualifyBronzeIfThreshold(
               BUYER_ID,
               GUILD_ID,
               3500L,
               "CONF_DAM_300W",
               MembershipSpendService.SOURCE_TYPE_FIAT_ORDER,
               order.orderNumber(),
-              PAID_AT))
+              PAID_AT,
+              MembershipTier.BRONZE.thresholdListPriceTwd()))
           .thenReturn(true);
-      when(membershipRepository.findOrCreate(BUYER_ID))
-          .thenReturn(GlobalMemberMembership.createNew(BUYER_ID));
-      when(membershipRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
       service.recordFiatEscortPayment(order, product);
 
-      ArgumentCaptor<GlobalMemberMembership> captor =
-          ArgumentCaptor.forClass(GlobalMemberMembership.class);
-      verify(membershipRepository).save(captor.capture());
-      assertThat(captor.getValue().hasQualifyingBronzeOrder()).isTrue();
+      verify(membershipRepository).findOrCreate(BUYER_ID);
+      verify(membershipRepository).ensureSettlementAnchor(eq(BUYER_ID), eq(PAID_AT), eq(11));
     }
 
     @Test
@@ -122,20 +119,23 @@ class MembershipSpendServiceTest {
       Product product = escortProduct("SMALL", 400L);
       FiatOrder order = paidEscortOrder(product, 400L);
       when(catalogRepository.findByCode("SMALL"))
-          .thenReturn(Optional.of(catalogEntry("SMALL", 400L)));
-      when(spendRepository.insertIfAbsent(
+          .thenReturn(java.util.Optional.of(catalogEntry("SMALL", 400L)));
+      when(membershipRepository.findOrCreate(BUYER_ID))
+          .thenReturn(GlobalMemberMembership.createNew(BUYER_ID));
+      when(spendRepository.insertSpendAndQualifyBronzeIfThreshold(
               eq(BUYER_ID),
               eq(GUILD_ID),
               eq(400L),
               eq("SMALL"),
               eq(MembershipSpendService.SOURCE_TYPE_FIAT_ORDER),
               eq(order.orderNumber()),
-              eq(PAID_AT)))
+              eq(PAID_AT),
+              eq(MembershipTier.BRONZE.thresholdListPriceTwd())))
           .thenReturn(true);
 
       service.recordFiatEscortPayment(order, product);
 
-      verify(membershipRepository, never()).save(any());
+      verify(membershipRepository).ensureSettlementAnchor(BUYER_ID, PAID_AT, 11);
     }
 
     @Test
@@ -144,21 +144,24 @@ class MembershipSpendServiceTest {
       Product product = escortProduct("CONF_DAM_300W", 3500L);
       FiatOrder order = paidEscortOrder(product, 3500L);
       when(catalogRepository.findByCode("CONF_DAM_300W"))
-          .thenReturn(Optional.of(catalogEntry("CONF_DAM_300W", 3500L)));
-      when(spendRepository.insertIfAbsent(
+          .thenReturn(java.util.Optional.of(catalogEntry("CONF_DAM_300W", 3500L)));
+      when(membershipRepository.findOrCreate(BUYER_ID))
+          .thenReturn(GlobalMemberMembership.createNew(BUYER_ID));
+      when(spendRepository.insertSpendAndQualifyBronzeIfThreshold(
               eq(BUYER_ID),
               eq(GUILD_ID),
               eq(3500L),
               eq("CONF_DAM_300W"),
               eq(MembershipSpendService.SOURCE_TYPE_FIAT_ORDER),
               eq(order.orderNumber()),
-              eq(PAID_AT)))
+              eq(PAID_AT),
+              eq(MembershipTier.BRONZE.thresholdListPriceTwd())))
           .thenReturn(false);
 
       service.recordFiatEscortPayment(order, product);
 
-      verify(membershipRepository, never()).findOrCreate(anyLong());
-      verify(membershipRepository, never()).save(any());
+      verify(membershipRepository, never())
+          .ensureSettlementAnchor(anyLong(), any(Instant.class), anyInt());
     }
 
     @Test
@@ -170,8 +173,8 @@ class MembershipSpendServiceTest {
       service.recordFiatEscortPayment(order, product);
 
       verify(spendRepository, never())
-          .insertIfAbsent(
-              anyLong(), anyLong(), anyLong(), any(), anyString(), anyString(), any());
+          .insertSpendAndQualifyBronzeIfThreshold(
+              anyLong(), anyLong(), anyLong(), any(), anyString(), anyString(), any(), anyLong());
     }
 
     @Test
@@ -180,32 +183,15 @@ class MembershipSpendServiceTest {
       Product product = escortProduct("CONF_DAM_300W", 3500L);
       FiatOrder order = paidEscortOrder(product, 3500L);
       when(catalogRepository.findByCode("CONF_DAM_300W"))
-          .thenReturn(Optional.of(catalogEntry("CONF_DAM_300W", 3500L)));
-      when(spendRepository.insertIfAbsent(
-              anyLong(), anyLong(), anyLong(), any(), anyString(), anyString(), any()))
+          .thenReturn(java.util.Optional.of(catalogEntry("CONF_DAM_300W", 3500L)));
+      when(membershipRepository.findOrCreate(BUYER_ID))
+          .thenReturn(GlobalMemberMembership.createNew(BUYER_ID));
+      when(spendRepository.insertSpendAndQualifyBronzeIfThreshold(
+              anyLong(), anyLong(), anyLong(), any(), anyString(), anyString(), any(), anyLong()))
           .thenThrow(new RuntimeException("db down"));
 
       org.junit.jupiter.api.Assertions.assertDoesNotThrow(
           () -> service.recordFiatEscortPayment(order, product));
-    }
-  }
-
-  @Nested
-  @DisplayName("isEscortLinked")
-  class IsEscortLinkedTests {
-
-    @Test
-    @DisplayName("should detect auto escort products")
-    void shouldDetectAutoEscort() {
-      Product product = escortProduct("CONF_DAM_300W", 1200L);
-      assertThat(MembershipSpendService.isEscortLinked(product)).isTrue();
-    }
-
-    @Test
-    @DisplayName("should reject plain fiat products")
-    void shouldRejectPlainFiatProduct() {
-      Product product = Product.createWithFiatPriceTwd(GUILD_ID, "一般商品", "desc", 500L);
-      assertThat(MembershipSpendService.isEscortLinked(product)).isFalse();
     }
   }
 

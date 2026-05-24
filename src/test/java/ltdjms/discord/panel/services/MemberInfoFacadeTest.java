@@ -158,7 +158,8 @@ class MemberInfoFacadeTest {
 
       assertThat(summary.tier()).isEqualTo(MembershipTier.SILVER);
       assertThat(summary.periodSpendListPriceM()).isEqualTo(20_000L);
-      assertThat(summary.nextTierThresholdM()).isEqualTo(MembershipTier.GOLD.thresholdListPriceTwd());
+      assertThat(summary.nextTierThresholdM())
+          .isEqualTo(MembershipTier.GOLD.thresholdListPriceTwd());
       assertThat(summary.nextSettlementAt()).isEqualTo(membership.nextSettlementAt());
     }
   }

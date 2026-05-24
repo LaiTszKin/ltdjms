@@ -6,12 +6,11 @@ import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ltdjms.discord.membership.domain.GlobalMemberMembership;
 import ltdjms.discord.membership.domain.MembershipTier;
 import ltdjms.discord.membership.persistence.MembershipRepository;
 import ltdjms.discord.membership.persistence.MembershipSpendRepository;
-import ltdjms.discord.product.domain.EscortOptionCatalog;
 import ltdjms.discord.product.domain.EscortOptionCatalogRepository;
+import ltdjms.discord.product.domain.EscortProductRules;
 import ltdjms.discord.product.domain.Product;
 import ltdjms.discord.shop.domain.FiatOrder;
 
@@ -35,101 +34,6 @@ public class MembershipSpendService {
     this.catalogRepository = Objects.requireNonNull(catalogRepository);
   }
 
-  /** No-op instance for legacy worker constructors that omit membership spend recording. */
-  public static MembershipSpendService noop() {
-    return new MembershipSpendService(
-        new MembershipSpendRepository() {
-          @Override
-          public boolean insertIfAbsent(
-              long discordUserId,
-              long guildId,
-              long listPriceTwd,
-              String escortOptionCode,
-              String sourceType,
-              String sourceReference,
-              Instant paidAt) {
-            return false;
-          }
-
-          @Override
-          public long sumListPriceInPeriod(long discordUserId, Instant from, Instant to) {
-            return 0L;
-          }
-
-          @Override
-          public java.util.Optional<Long> findMostRecentGuildId(long discordUserId) {
-            return java.util.Optional.empty();
-          }
-        },
-        new MembershipRepository() {
-          @Override
-          public java.util.Optional<GlobalMemberMembership> findByUserId(long discordUserId) {
-            return java.util.Optional.empty();
-          }
-
-          @Override
-          public GlobalMemberMembership findOrCreate(long discordUserId) {
-            return GlobalMemberMembership.createNew(discordUserId);
-          }
-
-          @Override
-          public GlobalMemberMembership save(GlobalMemberMembership membership) {
-            return membership;
-          }
-
-          @Override
-          public java.util.List<Long> findDueForSettlement(java.time.Instant before) {
-            return java.util.List.of();
-          }
-
-          @Override
-          public boolean saveSettlementResult(
-              long discordUserId,
-              ltdjms.discord.membership.domain.MembershipTier newTier,
-              java.time.Instant lastSettlementAt,
-              java.time.Instant newNextSettlementAt,
-              java.time.Instant expectedNextSettlementAt) {
-            return false;
-          }
-        },
-        new EscortOptionCatalogRepository() {
-          @Override
-          public java.util.List<EscortOptionCatalog> findAll() {
-            return java.util.List.of();
-          }
-
-          @Override
-          public java.util.Optional<EscortOptionCatalog> findByCode(String code) {
-            return java.util.Optional.empty();
-          }
-
-          @Override
-          public EscortOptionCatalog save(EscortOptionCatalog catalog) {
-            return catalog;
-          }
-
-          @Override
-          public EscortOptionCatalog update(EscortOptionCatalog catalog) {
-            return catalog;
-          }
-
-          @Override
-          public boolean deleteByCode(String code) {
-            return false;
-          }
-
-          @Override
-          public boolean existsByCode(String code) {
-            return false;
-          }
-
-          @Override
-          public long count() {
-            return 0L;
-          }
-        });
-  }
-
   /**
    * Records catalog list price M for a paid escort-linked fiat order. Best-effort: failures are
    * logged and do not propagate to callers.
@@ -139,7 +43,7 @@ public class MembershipSpendService {
       if (!order.isPaid()) {
         return;
       }
-      if (!isEscortLinked(product)) {
+      if (!EscortProductRules.isEscortLinked(product)) {
         return;
       }
       if (order.paidAt() == null) {
@@ -158,22 +62,24 @@ public class MembershipSpendService {
         return;
       }
 
+      membershipRepository.findOrCreate(order.buyerUserId());
+
       boolean inserted =
-          spendRepository.insertIfAbsent(
+          spendRepository.insertSpendAndQualifyBronzeIfThreshold(
               order.buyerUserId(),
               order.guildId(),
               listPriceM,
               product.escortOptionCode(),
               SOURCE_TYPE_FIAT_ORDER,
               order.orderNumber(),
-              order.paidAt());
+              order.paidAt(),
+              MembershipTier.BRONZE.thresholdListPriceTwd());
 
-      if (inserted && listPriceM >= MembershipTier.BRONZE.thresholdListPriceTwd()) {
-        markQualifyingBronzeOrder(order.buyerUserId());
+      if (inserted) {
+        ensureSettlementAnchor(order.buyerUserId(), order.paidAt());
       }
     } catch (Exception e) {
-      LOG.error(
-          "Failed to record membership spend for orderNumber={}", order.orderNumber(), e);
+      LOG.error("Failed to record membership spend for orderNumber={}", order.orderNumber(), e);
     }
   }
 
@@ -204,28 +110,10 @@ public class MembershipSpendService {
     return fallbackListPrice(product);
   }
 
-  static boolean isEscortLinked(Product product) {
-    return product.shouldAutoCreateEscortOrder()
-        || (product.escortOptionCode() != null && !product.escortOptionCode().isBlank());
-  }
-
-  private void markQualifyingBronzeOrder(long discordUserId) {
-    GlobalMemberMembership membership = membershipRepository.findOrCreate(discordUserId);
-    if (membership.hasQualifyingBronzeOrder()) {
-      return;
-    }
-
-    membershipRepository.save(
-        new GlobalMemberMembership(
-            membership.discordUserId(),
-            membership.currentTier(),
-            membership.earliestGuildJoinAt(),
-            membership.settlementDayOfMonth(),
-            membership.lastSettlementAt(),
-            membership.nextSettlementAt(),
-            true,
-            membership.createdAt(),
-            membership.updatedAt()));
+  private void ensureSettlementAnchor(long discordUserId, Instant paidAt) {
+    int settlementDay =
+        MembershipJoinService.clampDayOfMonth(paidAt, MembershipJoinService.SETTLEMENT_ZONE);
+    membershipRepository.ensureSettlementAnchor(discordUserId, paidAt, settlementDay);
   }
 
   private static long fallbackListPrice(Product product) {

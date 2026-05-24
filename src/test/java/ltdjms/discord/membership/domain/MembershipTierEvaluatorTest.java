@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.math.BigDecimal;
 import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
@@ -23,7 +22,8 @@ class MembershipTierEvaluatorTest {
 
   static List<TierEvaluatorCase> fixtureCases() throws IOException {
     try (InputStream is =
-        MembershipTierEvaluatorTest.class.getResourceAsStream("/membership/tier-evaluator-cases.json")) {
+        MembershipTierEvaluatorTest.class.getResourceAsStream(
+            "/membership/tier-evaluator-cases.json")) {
       if (is == null) {
         throw new IllegalStateException("tier-evaluator-cases.json not found on classpath");
       }
@@ -43,8 +43,7 @@ class MembershipTierEvaluatorTest {
   @MethodSource("fixtureCases")
   @DisplayName("should resolve tier from fixture cases")
   void shouldResolveTierFromFixtures(TierEvaluatorCase testCase) {
-    MembershipTier tier =
-        MembershipTierEvaluator.resolveTier(testCase.avgM(), testCase.bronze());
+    MembershipTier tier = MembershipTierEvaluator.resolveTier(testCase.avgM(), testCase.bronze());
 
     assertThat(tier).isEqualTo(testCase.expected());
   }
@@ -52,9 +51,16 @@ class MembershipTierEvaluatorTest {
   @Test
   @DisplayName("should treat negative avgM as zero")
   void shouldTreatNegativeAvgMAsZero() {
-    assertThat(MembershipTierEvaluator.resolveTier(-100L, false))
-        .isEqualTo(MembershipTier.NONE);
-    assertThat(MembershipTierEvaluator.resolveTier(-100L, true))
+    assertThat(MembershipTierEvaluator.resolveTier(-100L, false)).isEqualTo(MembershipTier.NONE);
+    assertThat(MembershipTierEvaluator.resolveTier(-100L, true)).isEqualTo(MembershipTier.BRONZE);
+  }
+
+  @Test
+  @DisplayName("should promote NONE to BRONZE for effective tier when qualifying flag is set")
+  void shouldPromoteNoneToBronzeForEffectiveTier() {
+    assertThat(MembershipTierEvaluator.effectiveTier(MembershipTier.NONE, true))
         .isEqualTo(MembershipTier.BRONZE);
+    assertThat(MembershipTierEvaluator.effectiveTier(MembershipTier.SILVER, true))
+        .isEqualTo(MembershipTier.SILVER);
   }
 }

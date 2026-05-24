@@ -14,13 +14,15 @@ class MembershipTierConfigTest {
   void shouldExposeThresholds() {
     assertThat(MembershipTierConfig.thresholdListPriceTwd(MembershipTier.NONE)).isZero();
     assertThat(MembershipTierConfig.thresholdListPriceTwd(MembershipTier.BRONZE)).isEqualTo(500L);
-    assertThat(MembershipTierConfig.thresholdListPriceTwd(MembershipTier.SILVER)).isEqualTo(14_000L);
+    assertThat(MembershipTierConfig.thresholdListPriceTwd(MembershipTier.SILVER))
+        .isEqualTo(14_000L);
     assertThat(MembershipTierConfig.thresholdListPriceTwd(MembershipTier.GOLD)).isEqualTo(33_000L);
     assertThat(MembershipTierConfig.thresholdListPriceTwd(MembershipTier.PLATINUM))
         .isEqualTo(100_000L);
     assertThat(MembershipTierConfig.thresholdListPriceTwd(MembershipTier.DIAMOND))
         .isEqualTo(120_000L);
-    assertThat(MembershipTierConfig.thresholdListPriceTwd(MembershipTier.BLACK)).isEqualTo(250_000L);
+    assertThat(MembershipTierConfig.thresholdListPriceTwd(MembershipTier.BLACK))
+        .isEqualTo(250_000L);
   }
 
   @Test

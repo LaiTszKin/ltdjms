@@ -2,8 +2,6 @@ package ltdjms.discord.membership.services;
 
 import java.time.Clock;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Objects;
@@ -11,16 +9,12 @@ import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ltdjms.discord.membership.domain.GlobalMemberMembership;
 import ltdjms.discord.membership.persistence.MembershipRepository;
 
 /** Records earliest guild join and initializes per-member settlement anchors. */
 public class MembershipJoinService {
 
-  /**
-   * Settlement anchor dates are computed at midnight in Asia/Taipei, matching guild-local business
-   * operations.
-   */
+  /** Settlement anchor dates are computed at midnight in Asia/Taipei. */
   public static final ZoneId SETTLEMENT_ZONE = ZoneId.of("Asia/Taipei");
 
   private static final Logger LOG = LoggerFactory.getLogger(MembershipJoinService.class);
@@ -40,44 +34,28 @@ public class MembershipJoinService {
    * @param joinedAt time the member joined the guild
    */
   public void onMemberJoin(long discordUserId, Instant joinedAt) {
-    GlobalMemberMembership membership = membershipRepository.findOrCreate(discordUserId);
-    Instant earliest = membership.earliestGuildJoinAt();
-
-    if (earliest != null && !joinedAt.isBefore(earliest)) {
-      LOG.debug(
-          "Skipping join update for userId={}: joinedAt={} is not before earliest={}",
-          discordUserId,
-          joinedAt,
-          earliest);
-      return;
-    }
+    membershipRepository.findOrCreate(discordUserId);
 
     int settlementDay = clampDayOfMonth(joinedAt);
-    Instant nextSettlement =
-        membership.nextSettlementAt() == null
-            ? computeNextSettlement(settlementDay, joinedAt)
-            : membership.nextSettlementAt();
+    Instant nextSettlement = computeNextSettlement(settlementDay, joinedAt);
 
-    GlobalMemberMembership updated =
-        new GlobalMemberMembership(
-            membership.discordUserId(),
-            membership.currentTier(),
-            joinedAt,
-            settlementDay,
-            membership.lastSettlementAt(),
-            nextSettlement,
-            membership.hasQualifyingBronzeOrder(),
-            membership.createdAt(),
-            membership.updatedAt());
-
-    membershipRepository.save(updated);
-    LOG.info(
-        "Recorded earliest guild join for userId={}, earliest={}, settlementDay={},"
-            + " nextSettlement={}",
-        discordUserId,
-        joinedAt,
-        settlementDay,
-        nextSettlement);
+    boolean updated =
+        membershipRepository.mergeEarliestGuildJoin(
+            discordUserId, joinedAt, settlementDay, nextSettlement);
+    if (updated) {
+      LOG.info(
+          "Recorded earliest guild join for userId={}, earliest={}, settlementDay={},"
+              + " nextSettlement={}",
+          discordUserId,
+          joinedAt,
+          settlementDay,
+          nextSettlement);
+    } else {
+      LOG.debug(
+          "Skipping join update for userId={}: joinedAt={} is not before stored earliest",
+          discordUserId,
+          joinedAt);
+    }
   }
 
   static int clampDayOfMonth(Instant joinedAt, ZoneId zone) {
@@ -100,15 +78,15 @@ public class MembershipJoinService {
     return computeNextSettlementAt(settlementDay, joinedAt, clock.getZone());
   }
 
-  static Instant computeNextSettlementAt(int settlementDay, Instant joinedAt, ZoneId zone) {
+  public static Instant computeNextSettlementAt(int settlementDay, Instant joinedAt, ZoneId zone) {
     ZonedDateTime joinZoned = joinedAt.atZone(zone);
-    LocalDate joinDate = joinZoned.toLocalDate();
+    java.time.LocalDate joinDate = joinZoned.toLocalDate();
 
     ZonedDateTime candidate =
         resolveAnchorDate(joinDate.getYear(), joinDate.getMonthValue(), settlementDay, zone);
 
     if (!joinZoned.isBefore(candidate)) {
-      YearMonth nextMonth = YearMonth.from(joinDate).plusMonths(1);
+      java.time.YearMonth nextMonth = java.time.YearMonth.from(joinDate).plusMonths(1);
       candidate =
           resolveAnchorDate(nextMonth.getYear(), nextMonth.getMonthValue(), settlementDay, zone);
     }
@@ -119,15 +97,14 @@ public class MembershipJoinService {
   /** Advances the settlement anchor by one calendar month. */
   static Instant advanceNextSettlementAt(int settlementDay, Instant currentNext, ZoneId zone) {
     ZonedDateTime anchor = currentNext.atZone(zone);
-    YearMonth nextMonth = YearMonth.from(anchor.toLocalDate()).plusMonths(1);
-    return resolveAnchorDate(
-            nextMonth.getYear(), nextMonth.getMonthValue(), settlementDay, zone)
+    java.time.YearMonth nextMonth = java.time.YearMonth.from(anchor.toLocalDate()).plusMonths(1);
+    return resolveAnchorDate(nextMonth.getYear(), nextMonth.getMonthValue(), settlementDay, zone)
         .toInstant();
   }
 
   private static ZonedDateTime resolveAnchorDate(
       int year, int month, int settlementDay, ZoneId zone) {
-    LocalDate anchor = LocalDate.of(year, month, settlementDay);
+    java.time.LocalDate anchor = java.time.LocalDate.of(year, month, settlementDay);
     return anchor.atStartOfDay(zone);
   }
 }

@@ -103,6 +103,79 @@ public class JdbcMembershipSpendRepository implements MembershipSpendRepository 
   }
 
   @Override
+  public boolean insertSpendAndQualifyBronzeIfThreshold(
+      long discordUserId,
+      long guildId,
+      long listPriceTwd,
+      String escortOptionCode,
+      String sourceType,
+      String sourceReference,
+      Instant paidAt,
+      long bronzeThresholdListPriceTwd) {
+    String insertSql =
+        "INSERT INTO membership_spend_entry"
+            + " (discord_user_id, guild_id, list_price_twd, escort_option_code, source_type,"
+            + " source_reference, paid_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+            + " ON CONFLICT (source_type, source_reference) DO NOTHING";
+
+    String qualifySql =
+        "UPDATE global_member_membership SET"
+            + " has_qualifying_bronze_order = TRUE,"
+            + " current_tier = CASE WHEN current_tier = 'NONE' THEN 'BRONZE' ELSE current_tier END,"
+            + " updated_at = ?"
+            + " WHERE discord_user_id = ? AND has_qualifying_bronze_order = FALSE";
+
+    try (Connection conn = dataSource.getConnection()) {
+      conn.setAutoCommit(false);
+      try {
+        boolean inserted;
+        try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
+          insertStmt.setLong(1, discordUserId);
+          insertStmt.setLong(2, guildId);
+          insertStmt.setLong(3, listPriceTwd);
+          insertStmt.setString(4, escortOptionCode);
+          insertStmt.setString(5, sourceType);
+          insertStmt.setString(6, sourceReference);
+          insertStmt.setTimestamp(7, Timestamp.from(paidAt));
+          inserted = insertStmt.executeUpdate() == 1;
+        }
+
+        if (inserted && listPriceTwd >= bronzeThresholdListPriceTwd) {
+          try (PreparedStatement qualifyStmt = conn.prepareStatement(qualifySql)) {
+            qualifyStmt.setTimestamp(1, Timestamp.from(Instant.now()));
+            qualifyStmt.setLong(2, discordUserId);
+            qualifyStmt.executeUpdate();
+          }
+        }
+
+        conn.commit();
+        if (inserted) {
+          LOG.info(
+              "Recorded membership spend: userId={}, sourceType={}, sourceReference={},"
+                  + " listPriceTwd={}",
+              discordUserId,
+              sourceType,
+              sourceReference,
+              listPriceTwd);
+        }
+        return inserted;
+      } catch (SQLException e) {
+        conn.rollback();
+        throw e;
+      } finally {
+        conn.setAutoCommit(true);
+      }
+    } catch (SQLException e) {
+      LOG.error(
+          "Failed to insert membership spend with bronze flag: userId={}, sourceReference={}",
+          discordUserId,
+          sourceReference,
+          e);
+      throw new RepositoryException("Failed to insert membership spend entry", e);
+    }
+  }
+
+  @Override
   public Optional<Long> findMostRecentGuildId(long discordUserId) {
     String sql =
         "SELECT guild_id FROM membership_spend_entry"

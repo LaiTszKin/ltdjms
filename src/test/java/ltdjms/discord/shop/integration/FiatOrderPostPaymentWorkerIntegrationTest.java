@@ -25,6 +25,7 @@ import com.zaxxer.hikari.HikariDataSource;
 import ltdjms.discord.dispatch.domain.EscortDispatchOrder;
 import ltdjms.discord.dispatch.persistence.JdbcEscortDispatchOrderRepository;
 import ltdjms.discord.dispatch.services.EscortDispatchHandoffService;
+import ltdjms.discord.membership.services.MembershipSpendServiceFixtures;
 import ltdjms.discord.product.domain.Product;
 import ltdjms.discord.product.persistence.JdbcProductRepository;
 import ltdjms.discord.product.services.ProductRewardService;
@@ -35,6 +36,7 @@ import ltdjms.discord.shared.events.DomainEventPublisher;
 import ltdjms.discord.shop.domain.FiatOrder;
 import ltdjms.discord.shop.domain.FiatOrderRepository;
 import ltdjms.discord.shop.persistence.JdbcFiatOrderRepository;
+import ltdjms.discord.shop.services.EscortOrderBuyerNotificationService;
 import ltdjms.discord.shop.services.FiatOrderBuyerNotificationService;
 import ltdjms.discord.shop.services.FiatOrderPostPaymentWorker;
 import ltdjms.discord.shop.services.ShopAdminNotificationService;
@@ -78,7 +80,9 @@ class FiatOrderPostPaymentWorkerIntegrationTest {
             mock(ProductRewardService.class),
             new EscortDispatchHandoffService(dispatchRepository),
             adminNotificationService,
-            mock(FiatOrderBuyerNotificationService.class));
+            mock(FiatOrderBuyerNotificationService.class),
+            mock(EscortOrderBuyerNotificationService.class),
+            MembershipSpendServiceFixtures.noop());
   }
 
   @AfterEach

@@ -13,7 +13,9 @@ import ltdjms.discord.currency.services.CurrencyTransactionService;
 import ltdjms.discord.gametoken.services.GameTokenService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService;
 import ltdjms.discord.membership.domain.GlobalMemberMembership;
+import ltdjms.discord.membership.domain.MembershipPeriodBounds;
 import ltdjms.discord.membership.domain.MembershipTier;
+import ltdjms.discord.membership.domain.MembershipTierEvaluator;
 import ltdjms.discord.membership.domain.MembershipTierLabels;
 import ltdjms.discord.membership.persistence.MembershipRepository;
 import ltdjms.discord.membership.persistence.MembershipSpendRepository;
@@ -29,7 +31,6 @@ import ltdjms.discord.shared.Result;
 public class MemberInfoFacade {
 
   private static final Logger LOG = LoggerFactory.getLogger(MemberInfoFacade.class);
-  private static final Instant EPOCH = Instant.EPOCH;
 
   private final BalanceService balanceService;
   private final GameTokenService gameTokenService;
@@ -120,18 +121,22 @@ public class MemberInfoFacade {
 
     GlobalMemberMembership membership = membershipOpt.get();
     Instant now = clock.instant();
-    Instant periodStart = resolvePeriodStart(membership);
-    long periodSpendM = membershipSpendRepository.sumListPriceInPeriod(userId, periodStart, now);
+    MembershipPeriodBounds.Period period = MembershipPeriodBounds.currentPeriod(membership, now);
+    long periodSpendM =
+        membershipSpendRepository.sumListPriceInPeriod(
+            userId, period.startInclusive(), period.endExclusive());
+    MembershipTier effectiveTier =
+        MembershipTierEvaluator.effectiveTier(
+            membership.currentTier(), membership.hasQualifyingBronzeOrder());
 
-    long nextTierThresholdM =
-        MembershipTierLabels.nextTierThresholdM(membership.currentTier()).orElse(0L);
+    long nextTierThresholdM = MembershipTierLabels.nextTierThresholdM(effectiveTier).orElse(0L);
 
     return new MembershipPanelSummary(
-        membership.currentTier(),
+        effectiveTier,
         periodSpendM,
         nextTierThresholdM,
         membership.nextSettlementAt(),
-        membership.currentTier().discountRate());
+        effectiveTier.discountRate());
   }
 
   /**
@@ -204,17 +209,10 @@ public class MemberInfoFacade {
 
   private static MembershipPanelSummary noneSummary(Instant nextSettlementAt) {
     return new MembershipPanelSummary(
-        MembershipTier.NONE, 0L, MembershipTier.SILVER.thresholdListPriceTwd(), nextSettlementAt,
+        MembershipTier.NONE,
+        0L,
+        MembershipTier.SILVER.thresholdListPriceTwd(),
+        nextSettlementAt,
         MembershipTier.NONE.discountRate());
-  }
-
-  private static Instant resolvePeriodStart(GlobalMemberMembership membership) {
-    if (membership.lastSettlementAt() != null) {
-      return membership.lastSettlementAt();
-    }
-    if (membership.earliestGuildJoinAt() != null) {
-      return membership.earliestGuildJoinAt();
-    }
-    return EPOCH;
   }
 }
