@@ -229,5 +229,5 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: tsc --noEmit
-      - run: pnpm eslint --ignore-pattern 'dist/' 'packages/*/src/'
+      - run: pnpm eslint .
       - run: pnpm vitest run

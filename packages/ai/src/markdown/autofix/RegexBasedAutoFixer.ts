@@ -80,7 +80,7 @@ export class RegexBasedAutoFixer implements MarkdownAutoFixer {
     const lines = text.split('\n');
     let inCodeBlock = false;
     let fenceChar = '';
-    let result: string[] = [];
+    const result: string[] = [];
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];

@@ -350,7 +350,7 @@ export type ZhTwStringsType = typeof ZhTwStrings;
  * If a new category is added to DomainErrorCategory without adding its zh-TW
  * message, this line will cause a compile-time error.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 const _exhaustiveCategoryCheck: DomainErrorCategory extends keyof typeof ZhTwStrings.errorMapping
   ? true
   : false = true;

@@ -31,9 +31,9 @@
 **AND** 無新增 `@ts-ignore` 或 `@ts-expect-error` 以繞過型別錯誤
 
 **Requirements**:
-- [ ] R1.1 根與各 package `typescript` devDependency 更新至 `^6.0.3`
-- [ ] R1.2 根 `tsconfig.json` 與各 package tsconfig 適配 TS 6（含 `moduleResolution`、project references）
-- [ ] R1.3 `pnpm -r exec tsc --noEmit` 或 `make build` 全綠
+- [x] R1.1 根與各 package `typescript` devDependency 更新至 `^6.0.3`
+- [x] R1.2 根 `tsconfig.json` 與各 package tsconfig 適配 TS 6（含 `moduleResolution`、project references）
+- [x] R1.3 `pnpm -r exec tsc --noEmit` 或 `make build` 全綠
 
 ### Requirement 2: Vitest 4 升級
 **GIVEN** 測試目前使用 Vitest 3
@@ -42,9 +42,9 @@
 **AND** 測試覆蓋率與測試數量不減少
 
 **Requirements**:
-- [ ] R2.1 根與各 package `vitest` devDependency 更新至 `^4.1.7`
-- [ ] R2.2 `vitest.config.ts` 適配 Vitest 4 API（pool、projects、reporters 若有 breaking change）
-- [ ] R2.3 `make test` exit code 0
+- [x] R2.1 根與各 package `vitest` devDependency 更新至 `^4.1.7`
+- [x] R2.2 `vitest.config.ts` 適配 Vitest 4 API（pool、projects、reporters 若有 breaking change）
+- [ ] R2.3 `make test` exit code 0（本機需 Docker testcontainers；Vitest 4 非 DB 專案已驗證）
 
 ### Requirement 3: ESLint 10 + typescript-eslint 升級
 **GIVEN** ESLint 9 flat config 已存在
@@ -53,9 +53,9 @@
 **AND** 無停用核心規則以通過 lint
 
 **Requirements**:
-- [ ] R3.1 根 `eslint`、`typescript-eslint` devDependency 更新
-- [ ] R3.2 `eslint.config.mjs` 適配 ESLint 10 flat config API
-- [ ] R3.3 `make lint` exit code 0
+- [x] R3.1 根 `eslint`、`typescript-eslint` devDependency 更新
+- [x] R3.2 `eslint.config.mjs` 適配 ESLint 10 flat config API
+- [ ] R3.3 `make lint` exit code 0（124 項既有 typed-lint violation 待修）
 
 ### Requirement 4: Node 22 型別對齊
 **GIVEN** preparation spec 確立 Node 22 基線
@@ -63,13 +63,13 @@
 **THEN** 無 Node 型別相關編譯錯誤
 
 **Requirements**:
-- [ ] R4.1 所有 package `@types/node` 統一為 `^22.0.0`
-- [ ] R4.2 移除對 Node 20 特定型別的依賴假設
+- [x] R4.1 所有 package `@types/node` 統一為 `^22.0.0`
+- [x] R4.2 移除對 Node 20 特定型別的依賴假設
 
 ## Error and Edge Cases
-- [ ] Vitest 4 變更導致 PBT 測試 timeout — 調整 `testTimeout` 而非跳過測試
-- [ ] TypeScript 6 stricter checks 暴露既有 bug — 修復型別而非降級
-- [ ] ESLint 10 新規則誤報 — 僅對明確 false positive 使用 inline disable 並註明原因
+- [x] Vitest 4 變更導致 PBT 測試 timeout — 調整 `testTimeout` 而非跳過測試（現有 config 已含 30s timeout，無需變更）
+- [x] TypeScript 6 stricter checks 暴露既有 bug — 修復型別而非降級（已修 `apps/bot/tsconfig.json` references 與 Makefile bot build）
+- [ ] ESLint 10 新規則誤報 — 僅對明確 false positive 使用 inline disable 並註明原因（124 項 violation 為 develop 既有 debt，非 ESLint 10 新規則）
 
 ## Clarification Questions
 None — Node 22 基線由 preparation spec 定義。

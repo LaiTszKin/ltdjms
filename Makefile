@@ -9,8 +9,7 @@ build:
 	npx tsc --project packages/dispatch && \
 	npx tsc --project packages/ai && \
 	npx tsc --project packages/admin && \
-	npx tsc apps/bot/src/main.ts --outDir apps/bot/dist --declaration --sourceMap --skipLibCheck \
-		--strict --moduleResolution NodeNext --module NodeNext --target ES2022 --esModuleInterop
+	npx tsc --project apps/bot
 
 test:
 	pnpm vitest run --project @ltdjms/shared && \
@@ -37,7 +36,7 @@ format-check:
 	pnpm prettier --check "packages/*/src/**/*.ts"
 
 lint:
-	pnpm eslint --ignore-pattern 'dist/' 'packages/*/src/'
+	pnpm eslint .
 
 # Maven commands
 mvn-build:

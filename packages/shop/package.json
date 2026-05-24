@@ -24,9 +24,9 @@
   "devDependencies": {
     "@ltdjms/economy": "workspace:*",
     "@types/express": "^4.17.21",
-    "@types/node": "^20.0.0",
+    "@types/node": "^22.0.0",
     "@types/pg": "^8.11.0",
-    "typescript": "^5.5.0",
-    "vitest": "^3.0.0"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.7"
   }
 }
