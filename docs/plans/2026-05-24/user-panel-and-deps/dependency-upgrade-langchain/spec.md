@@ -33,9 +33,9 @@
 **AND** AI 相關測試全綠
 
 **Requirements**:
-- [ ] R1.1 bump `@langchain/core`、`@langchain/openai` 至 1.x latest
-- [ ] R1.2 修復 ChatOpenAI / Agent executor / tool schema 綁定 API
-- [ ] R1.3 `pnpm vitest run --project @ltdjms/ai` 全綠
+- [x] R1.1 bump `@langchain/core`、`@langchain/openai` 至 1.x latest
+- [x] R1.2 修復 ChatOpenAI / Agent executor / tool schema 綁定 API
+- [x] R1.3 `pnpm vitest run --project @ltdjms/ai` 全綠
 
 ### Requirement 2: Marked 18 遷移
 **GIVEN** Markdown 管線使用 marked 15
@@ -43,14 +43,14 @@
 **THEN** Discord embed 渲染結果與升級前一致（允許 whitespace 微差，不允許語意/連結遺失）
 
 **Requirements**:
-- [ ] R2.1 bump `marked@^18.0.4`
-- [ ] R2.2 修復 markdown parser/renderer 呼叫方式
-- [ ] R2.3 markdown 渲染 snapshot/單元測試全綠
+- [x] R2.1 bump `marked@^18.0.4`
+- [x] R2.2 修復 markdown parser/renderer 呼叫方式
+- [x] R2.3 markdown 渲染 snapshot/單元測試全綠
 
 ## Error and Edge Cases
-- [ ] OpenAI API response schema 變更 — 更新 zod validation（配合 zod 4）
-- [ ] LangChain tool call 格式變更 — 更新 Agent tool executor
-- [ ] marked async API — 確保 await 正確
+- [x] OpenAI API response schema 變更 — 更新 zod validation（配合 zod 4）
+- [x] LangChain tool call 格式變更 — 更新 Agent tool executor
+- [x] marked async API — 確保 await 正確
 
 ## Clarification Questions
 None
