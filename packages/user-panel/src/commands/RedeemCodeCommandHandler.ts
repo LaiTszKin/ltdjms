@@ -1,6 +1,6 @@
 import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
-import { type CommandHandler } from '../../../commands/infra/CommandHandler.js';
-import { RedemptionCodeHandler } from './RedemptionCodeHandler.js';
+import { type CommandHandler } from '../infra/CommandHandler.js';
+import { RedemptionCodeHandler } from '../handlers/RedemptionCodeHandler.js';
 
 /**
  * Handler for the /redeem-code slash command.

@@ -1,18 +1,16 @@
 import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import { type InteractionHandler } from '../../../commands/infra/CommandHandler.js';
-import { MemberInfoFacade } from '../../../facades/MemberInfoFacade.js';
-import { PanelSessionManager } from '../../../session/PanelSessionManager.js';
-import { ZhTwStrings } from '../../../i18n/zh-TW.js';
-import { Colors } from '../../../constants/colors.js';
-import { ensureDeferred } from '../../admin/BaseAdminHandler.js';
+import { type InteractionHandler } from '../infra/CommandHandler.js';
+import { MemberInfoFacade } from '../facades/MemberInfoFacade.js';
+import { PanelSessionManager } from '../session/PanelSessionManager.js';
+import { ZhTwStrings } from '../i18n/zh-TW.js';
+import { Colors } from '../constants/colors.js';
+import { ensureDeferred } from '../infra/ensureDeferred.js';
 
 const PAGE_SIZE = 10;
 
 /**
  * Handler for transaction history interactions (user_history_*).
- * Supports paginated view of currency, token, and redemption transactions.
- * Branches on full customId to distinguish types and prev/next navigation.
  */
 export class TransactionHistoryHandler implements InteractionHandler {
   readonly customIdPrefix = 'user_history';
@@ -36,13 +34,11 @@ export class TransactionHistoryHandler implements InteractionHandler {
 
     const fullCustomId = interaction.getCustomId();
 
-    // Parse: user_history_{type}, user_history_{type}_prev_{page}, user_history_{type}_next_{page}
     if (fullCustomId.startsWith('user_history_token')) {
       await this.showTokenHistory(interaction, guildId, userId, fullCustomId);
     } else if (fullCustomId.startsWith('user_history_redemption')) {
       await this.showRedemptionHistory(interaction, guildId, userId, fullCustomId);
     } else {
-      // Default and currency navigation: user_history_currency*
       await this.showCurrencyHistory(interaction, guildId, userId, fullCustomId);
     }
   }

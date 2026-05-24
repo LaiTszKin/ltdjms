@@ -6,17 +6,14 @@ import {
   TextInputStyle,
   ActionRowBuilder,
 } from 'discord.js';
-import { type InteractionHandler } from '../../../commands/infra/CommandHandler.js';
-import { MemberInfoFacade } from '../../../facades/MemberInfoFacade.js';
-import { PanelSessionManager } from '../../../session/PanelSessionManager.js';
-import { ZhTwStrings } from '../../../i18n/zh-TW.js';
-import { ensureDeferred } from '../../admin/BaseAdminHandler.js';
+import { type InteractionHandler } from '../infra/CommandHandler.js';
+import { MemberInfoFacade } from '../facades/MemberInfoFacade.js';
+import { PanelSessionManager } from '../session/PanelSessionManager.js';
+import { ZhTwStrings } from '../i18n/zh-TW.js';
+import { ensureDeferred } from '../infra/ensureDeferred.js';
 
 /**
  * Handler for redemption code interactions (user_redeem_*).
- * Supports inputting a code via modal and executing the redemption.
- * - user_redeem_code → shows a modal for code input
- * - user_redeem_submit → processes the redemption
  */
 export class RedemptionCodeHandler implements InteractionHandler {
   readonly customIdPrefix = 'user_redeem';
@@ -39,19 +36,16 @@ export class RedemptionCodeHandler implements InteractionHandler {
     const fullCustomId = interaction.getCustomId();
 
     if (fullCustomId === 'user_redeem_code') {
-      // Show the redeem modal (not deferred — modal must be shown before first reply)
       await this.showRedeemModal(interaction);
       return;
     }
 
     if (fullCustomId === 'user_redeem_submit') {
-      // Process the redemption
       await ensureDeferred(interaction);
       await this.processRedemption(interaction, guildId, userId);
       return;
     }
 
-    // Default: show redemption history as a preview
     await ensureDeferred(interaction);
 
     const result = await this.memberInfoFacade.getProductRedemptionTransactionPage(
@@ -86,10 +80,6 @@ export class RedemptionCodeHandler implements InteractionHandler {
     await interaction.editEmbed(embed);
   }
 
-  /**
-   * Builds a redeem code modal.
-   * Shared with RedeemCodeCommandHandler to avoid duplicate modal construction.
-   */
   static buildRedeemModal(): ModalBuilder {
     const modal = new ModalBuilder()
       .setCustomId('user_redeem_submit')
@@ -133,7 +123,6 @@ export class RedemptionCodeHandler implements InteractionHandler {
     if (result.isOk()) {
       const redemption = result.getValue();
 
-      // Fetch updated balance to reflect post-redemption state
       const memberSummary = await this.memberInfoFacade.getMemberSummary(guildId, userId);
       let description = ZhTwStrings.redeemSuccess.replace('{product}', redemption.product.name);
       if (memberSummary.isOk()) {

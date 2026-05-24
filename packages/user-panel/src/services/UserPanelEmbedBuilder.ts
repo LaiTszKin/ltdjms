@@ -1,17 +1,14 @@
-import { ZhTwStrings } from '../../i18n/zh-TW.js';
-import type { MemberPanelView } from '../../facades/MemberInfoFacade.js';
+import { ZhTwStrings } from '../i18n/zh-TW.js';
+import type { MemberPanelView } from '../facades/MemberInfoFacade.js';
 import type { CurrencyTransaction } from '@ltdjms/economy';
 import type { GameTokenTransaction } from '@ltdjms/games';
-import { Colors } from '../../constants/colors.js';
+import { Colors } from '../constants/colors.js';
 
 /**
  * User panel embed builder.
  * Matches Java UserPanelEmbedBuilder.
  */
 export class UserPanelEmbedBuilder {
-  /**
-   * Builds the user panel embed data.
-   */
   buildUserPanelEmbed(memberSummary: MemberPanelView): {
     title: string;
     description: string;
@@ -31,9 +28,6 @@ export class UserPanelEmbedBuilder {
     };
   }
 
-  /**
-   * Builds a currency transaction history embed.
-   */
   buildCurrencyHistoryEmbed(
     transactions: CurrencyTransaction[],
     page: number,
@@ -58,9 +52,6 @@ export class UserPanelEmbedBuilder {
     };
   }
 
-  /**
-   * Builds a token transaction history embed.
-   */
   buildTokenHistoryEmbed(
     transactions: GameTokenTransaction[],
     page: number,
@@ -85,9 +76,6 @@ export class UserPanelEmbedBuilder {
     };
   }
 
-  /**
-   * Builds a redemption history embed.
-   */
   buildRedemptionHistoryEmbed(
     redemptions: { code: string; createdAt: Date; productName: string }[],
     page: number,

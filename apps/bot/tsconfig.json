@@ -11,6 +11,7 @@
     { "path": "../../packages/games" },
     { "path": "../../packages/dispatch" },
     { "path": "../../packages/shop" },
+    { "path": "../../packages/user-panel" },
     { "path": "../../packages/ai" },
     { "path": "../../packages/admin" }
   ]

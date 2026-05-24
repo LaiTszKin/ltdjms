@@ -23,6 +23,7 @@
     "@ltdjms/shop": "workspace:*",
     "@ltdjms/ai": "workspace:*",
     "@ltdjms/games": "workspace:*",
+    "@ltdjms/user-panel": "workspace:*",
     "@ltdjms/admin": "workspace:*",
     "reflect-metadata": "^0.2.2",
     "discord.js": "^14.26.4",

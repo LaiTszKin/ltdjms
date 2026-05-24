@@ -4,20 +4,20 @@
 - Feature: user-panel-package-extraction
 
 ## Pre-implementation
-- [ ] deps upgrade specs 完成（建議）
-- [ ] preparation P2 Java oracle fixtures 已建立
+- [x] deps upgrade specs 完成（建議）
+- [x] preparation P2 Java oracle fixtures 已建立
 
 ## Implementation
-- [ ] R1.1-R1.4 package 骨架
-- [ ] R2.1-R2.5 程式碼遷移
-- [ ] R3.1-R3.4 DI 集成
-- [ ] R4.1-R4.2 public API
+- [x] R1.1-R1.4 package 骨架
+- [x] R2.1-R2.5 程式碼遷移
+- [x] R3.1-R3.4 DI 集成
+- [x] R4.1-R4.2 public API
 
 ## Verification
-- [ ] `make build`
-- [ ] `make test`
-- [ ] `packages/admin/src/panel/user/` 已移除或僅剩 shim
-- [ ] `grep -r "MemberInfoFacade" packages/admin/src` 無直接業務引用（shim 除外）
+- [x] `make build`
+- [x] `make test`
+- [x] `packages/admin/src/panel/user/` 已移除或僅剩 shim
+- [x] `grep -r "MemberInfoFacade" packages/admin/src` 無直接業務引用（shim 除外）
 
 ## Test mapping
 
@@ -29,5 +29,5 @@
 | SM-101 | R3.4 | 手動 `/user-panel` smoke |
 
 ## Sign-off
-- [ ] architecture diff 已 render + validate
-- [ ] coordination 允許 parity spec 開始
+- [x] architecture diff 已 render + validate
+- [x] coordination 允許 parity spec 開始

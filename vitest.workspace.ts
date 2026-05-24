@@ -7,5 +7,6 @@ export default defineWorkspace([
   'packages/shop',
   'packages/dispatch',
   'packages/ai',
+  'packages/user-panel',
   'packages/admin',
 ]);

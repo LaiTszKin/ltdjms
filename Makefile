@@ -6,6 +6,7 @@ build:
 	npx tsc --project packages/economy && \
 	npx tsc --project packages/games && \
 	npx tsc --project packages/shop && \
+	npx tsc --project packages/user-panel && \
 	npx tsc --project packages/dispatch && \
 	npx tsc --project packages/ai && \
 	npx tsc --project packages/admin && \

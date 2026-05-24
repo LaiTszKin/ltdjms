@@ -40,6 +40,10 @@ import {
   type AIChatMentionListener,
 } from '@ltdjms/ai';
 import {
+  configureUserPanelContainer,
+  disposeUserPanelContainer,
+} from '@ltdjms/user-panel';
+import {
   configureAdminContainer,
   ADMIN_TOKENS,
   SlashCommandRegistrar,
@@ -212,12 +216,15 @@ export async function main(): Promise<void> {
   runtimeGateway.publishReady(client);
   logger.info({ user: client.user?.tag }, 'Discord bot logged in successfully');
 
-  // 14. AI module — must be after publishReady (needs selfUserId via DiscordRuntimeGateway)
+  // 14. User panel module — after publishReady (needs DiscordRuntimeGateway)
+  configureUserPanelContainer();
+  logger.info('User panel module initialized');
+
+  // 15. AI module — must be after publishReady (needs selfUserId via DiscordRuntimeGateway)
   initializeAIModule();
   logger.info('AI module initialized');
 
-  // 15. Admin module — wires all handlers and interactionCreate via DI.
-  //     Must happen after client is ready (listen() calls requireReadyClient()).
+  // 16. Admin module — wires all handlers and interactionCreate via DI.
   configureAdminContainer();
   logger.info('Admin module initialized');
 
@@ -255,6 +262,7 @@ export async function main(): Promise<void> {
     scheduler.stop();
     await callbackServer.stop();
     disposeAdminContainer();
+    disposeUserPanelContainer();
     client.destroy();
     await cacheService.shutdown();
     await pool.end();

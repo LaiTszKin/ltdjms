@@ -1,5 +1,5 @@
 import { type CacheService } from '@ltdjms/shared';
-import { type PanelSessionData } from './types.js';
+import type { PanelSessionData } from './types.js';
 import { BaseSessionManager } from './BaseSessionManager.js';
 
 /**

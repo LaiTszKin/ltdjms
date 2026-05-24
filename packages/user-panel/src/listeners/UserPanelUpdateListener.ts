@@ -6,14 +6,11 @@ import type {
 } from '@ltdjms/economy';
 import type { GameTokenChangedEvent } from '@ltdjms/games';
 import { type Client, type TextChannel } from 'discord.js';
-import { PanelSessionManager } from '../../session/PanelSessionManager.js';
-import { MemberInfoFacade } from '../../facades/MemberInfoFacade.js';
-import { UserPanelEmbedBuilder } from '../user/UserPanelEmbedBuilder.js';
+import { PanelSessionManager } from '../session/PanelSessionManager.js';
+import { MemberInfoFacade } from '../facades/MemberInfoFacade.js';
+import { UserPanelEmbedBuilder } from '../services/UserPanelEmbedBuilder.js';
 import { EmbedBuilder } from 'discord.js';
 
-/**
- * Event type string constants for discrimination.
- */
 const EVENT_TYPES = {
   BALANCE_CHANGED: 'balance_changed',
   GAME_TOKEN_CHANGED: 'game_token_changed',
@@ -22,16 +19,11 @@ const EVENT_TYPES = {
 
 /**
  * Listens to domain events and updates active user panel sessions.
- * Uses eventType discriminant for type-safe event identification.
- * Events: BalanceChangedEvent, GameTokenChangedEvent, CurrencyConfigChangedEvent.
- * Matches Java UserPanelUpdateListener.
  */
 export class UserPanelUpdateListener {
-  /** Tracks last update timestamp per guildId:eventType for rate-limit protection. */
   private readonly lastUpdateTimestamps = new Map<string, number>();
   private cleanupCounter = 0;
 
-  /** Max entries in the throttle map before evicting oldest entries. */
   private static readonly MAX_THROTTLE_ENTRIES = 500;
 
   constructor(
@@ -41,22 +33,15 @@ export class UserPanelUpdateListener {
     private readonly embedBuilder?: UserPanelEmbedBuilder,
   ) {}
 
-  /**
-   * Handles a domain event and updates relevant user panels.
-   * This is called by DomainEventPublisher for each registered listener.
-   */
   async onEvent(event: DomainEvent): Promise<void> {
-    // Only handle events relevant to user panels
     if (!this.isRelevantEvent(event)) return;
 
     const guildId = String(event.guildId);
     const eventType = event.eventType;
 
-    // Rate-limit protection: skip if less than 200ms since last same-type update
     const throttleKey = `${guildId}:${eventType}`;
     if (this.shouldThrottle(throttleKey)) return;
 
-    // Get all active sessions for this guild
     const sessions = this.sessionManager.getAllForGuild(guildId);
 
     if (sessions.length === 0) {
@@ -66,7 +51,6 @@ export class UserPanelUpdateListener {
       return;
     }
 
-    // Determine affected user IDs based on event type
     let affectedUserIds: Set<string>;
 
     if (event.eventType === EVENT_TYPES.BALANCE_CHANGED) {
@@ -74,13 +58,11 @@ export class UserPanelUpdateListener {
     } else if (event.eventType === EVENT_TYPES.GAME_TOKEN_CHANGED) {
       affectedUserIds = new Set([String((event as GameTokenChangedEvent).userId)]);
     } else if (event.eventType === EVENT_TYPES.CURRENCY_CONFIG_CHANGED) {
-      // Currency config change affects all users in guild
       affectedUserIds = new Set(sessions.map((s) => s.userId));
     } else {
       affectedUserIds = new Set();
     }
 
-    // Update each affected session
     let updatedCount = 0;
     const toRemove: Array<{ guildId: string; userId: string }> = [];
 
@@ -88,7 +70,6 @@ export class UserPanelUpdateListener {
       if (!affectedUserIds.has(session.userId)) continue;
 
       try {
-        // Refresh data
         const result = await this.memberInfoFacade.getUserPanelView(guildId, session.userId);
 
         if (result.isErr()) {
@@ -102,7 +83,6 @@ export class UserPanelUpdateListener {
         const view = result.getValue();
         updatedCount++;
 
-        // Real-time push update: fetch the panel message and rebuild embed
         const channelId = session.channelId;
         const messageId = session.messageId;
         if (channelId && messageId) {
@@ -112,7 +92,6 @@ export class UserPanelUpdateListener {
             if (channel?.isTextBased()) {
               const message = await (channel as TextChannel).messages.fetch(messageId);
 
-              // Rebuild embed using UserPanelEmbedBuilder
               const embedBuilder = this.embedBuilder ?? new UserPanelEmbedBuilder();
               const embedData = embedBuilder.buildUserPanelEmbed(view);
               const embed = new EmbedBuilder()
@@ -122,8 +101,7 @@ export class UserPanelUpdateListener {
 
               await message.edit({ embeds: [embed] });
             }
-          } catch (fetchErr) {
-            // If the message or channel no longer exists, remove the session
+          } catch {
             console.log(
               `[UserPanelUpdateListener] Failed to fetch message ${messageId} in channel ${channelId}: removing session`,
             );
@@ -145,7 +123,6 @@ export class UserPanelUpdateListener {
       }
     }
 
-    // Clean up stale sessions
     for (const { guildId: gId, userId: uId } of toRemove) {
       this.sessionManager.removeSession(gId, uId);
     }
@@ -163,15 +140,12 @@ export class UserPanelUpdateListener {
     );
   }
 
-  /** Rate-limit: skip if less than minIntervalMs (default 200ms) since last update for same key. */
   private shouldThrottle(key: string, minIntervalMs = 200): boolean {
     const now = Date.now();
     const last = this.lastUpdateTimestamps.get(key) ?? 0;
     if (now - last < minIntervalMs) return true;
     this.lastUpdateTimestamps.set(key, now);
 
-    // Periodic cleanup: evict entries older than 60s every 50 calls;
-    // if still over capacity after time-based eviction, trim oldest entries.
     this.cleanupCounter++;
     if (this.cleanupCounter % 50 === 0) {
       const cutoff = now - 60_000;

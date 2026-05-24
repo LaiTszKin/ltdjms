@@ -1,6 +1,6 @@
 import { CommandLocalizations } from '@ltdjms/shared';
 import { AdminPanelSlashCommand } from '../../panel/admin/definitions/AdminPanelSlashCommand.js';
-import { UserPanelSlashCommand } from '../../panel/user/definitions/UserPanelSlashCommand.js';
+import { UserPanelSlashCommand } from '@ltdjms/user-panel';
 import {
   BalanceSlashCommand,
   AdjustBalanceSlashCommand,

@@ -26,6 +26,9 @@
     },
     {
       "path": "../ai"
+    },
+    {
+      "path": "../user-panel"
     }
   ],
   "exclude": [

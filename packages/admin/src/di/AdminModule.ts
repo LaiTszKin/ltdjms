@@ -4,7 +4,6 @@ import type {
   BalanceService,
   BalanceAdjustmentService,
   CurrencyConfigService,
-  CurrencyTransactionService,
 } from '@ltdjms/economy';
 import { ECONOMY_TOKENS } from '@ltdjms/economy';
 import type {
@@ -29,7 +28,6 @@ import type {
   ShopService,
   RedemptionCodeRepository,
   RedemptionCodeGenerator,
-  RedemptionTransactionService,
 } from '@ltdjms/shop';
 import { SHOP_TOKENS } from '@ltdjms/shop';
 import type { AIChannelRestrictionService, AIAgentChannelConfigService } from '@ltdjms/ai';
@@ -42,17 +40,22 @@ import type {
 } from '@ltdjms/dispatch';
 import { DISPATCH_TOKENS } from '@ltdjms/dispatch';
 import type { ShopCommandHandler } from '@ltdjms/shop';
+import {
+  USER_PANEL_TOKENS,
+  type UserPanelCommand,
+  type TransactionHistoryHandler,
+  type RedemptionCodeHandler,
+  type RedeemCodeCommandHandler,
+} from '@ltdjms/user-panel';
 
 // Facades
 import { CurrencyManagementFacade } from '../facades/CurrencyManagementFacade.js';
 import { AIConfigManagementFacade } from '../facades/AIConfigManagementFacade.js';
-import { MemberInfoFacade } from '../facades/MemberInfoFacade.js';
 import { DispatchManagementFacade } from '../facades/DispatchManagementFacade.js';
 import { ProductManagementFacade } from '../facades/ProductManagementFacade.js';
 
 // Session
 import { AdminPanelSessionManager } from '../session/AdminPanelSessionManager.js';
-import { PanelSessionManager } from '../session/PanelSessionManager.js';
 
 // Infra
 import type { CommandHandler, InteractionHandler } from '../commands/infra/CommandHandler.js';
@@ -73,26 +76,17 @@ import { EscortPricingHandler } from '../panel/admin/handlers/EscortPricingHandl
 import { EscortCatalogHandler } from '../panel/admin/handlers/EscortCatalogHandler.js';
 import { AdminProductPanelHandler } from '../panel/admin/product/AdminProductPanelHandler.js';
 
-// User panel
-import { UserPanelCommand } from '../panel/user/UserPanelCommand.js';
-import { TransactionHistoryHandler } from '../panel/user/handlers/TransactionHistoryHandler.js';
-import { RedemptionCodeHandler } from '../panel/user/handlers/RedemptionCodeHandler.js';
-import { RedeemCodeCommandHandler } from '../panel/user/handlers/RedeemCodeCommandHandler.js';
-
 // Listeners
 import { AdminPanelUpdateListener } from '../panel/listeners/AdminPanelUpdateListener.js';
-import { UserPanelUpdateListener } from '../panel/listeners/UserPanelUpdateListener.js';
 
 // Views
 import { AdminPanelViewFactory } from '../panel/admin/views/AdminPanelViewFactory.js';
 import { AdminPanelModalFactory } from '../panel/admin/views/AdminPanelModalFactory.js';
 import { AdminProductPanelViewFactory } from '../panel/admin/product/AdminProductPanelViewFactory.js';
 import { AdminProductPanelModalFactory } from '../panel/admin/product/AdminProductPanelModalFactory.js';
-import { UserPanelEmbedBuilder } from '../panel/user/UserPanelEmbedBuilder.js';
 
 /** Module-level handler references for DomainEventPublisher unregister support. */
 let _adminUpdateHandler: ((event: unknown) => void) | null = null;
-let _userUpdateHandler: ((event: unknown) => void) | null = null;
 
 /**
  * DI tokens for the admin module.
@@ -103,7 +97,6 @@ export const ADMIN_TOKENS = {
   GameTokenManagementFacade: Symbol('GameTokenManagementFacade'),
   GameConfigManagementFacade: Symbol('GameConfigManagementFacade'),
   AIConfigManagementFacade: Symbol('AIConfigManagementFacade'),
-  MemberInfoFacade: Symbol('MemberInfoFacade'),
   DispatchManagementFacade: Symbol('DispatchManagementFacade'),
 
   // Shop / Product facades
@@ -111,7 +104,6 @@ export const ADMIN_TOKENS = {
 
   // Session
   AdminPanelSessionManager: Symbol('AdminPanelSessionManager'),
-  PanelSessionManager: Symbol('PanelSessionManager'),
 
   // Infra
   SlashCommandListener: Symbol('SlashCommandListener'),
@@ -133,21 +125,14 @@ export const ADMIN_TOKENS = {
   EscortCatalogHandler: Symbol('EscortCatalogHandler'),
   AdminProductPanelHandler: Symbol('AdminProductPanelHandler'),
 
-  // User commands
-  UserPanelCommand: Symbol('UserPanelCommand'),
-  TransactionHistoryHandler: Symbol('TransactionHistoryHandler'),
-  RedemptionCodeHandler: Symbol('RedemptionCodeHandler'),
-
   // Listeners
   AdminPanelUpdateListener: Symbol('AdminPanelUpdateListener'),
-  UserPanelUpdateListener: Symbol('UserPanelUpdateListener'),
 
   // Views
   AdminPanelViewFactory: Symbol('AdminPanelViewFactory'),
   AdminPanelModalFactory: Symbol('AdminPanelModalFactory'),
   AdminProductPanelViewFactory: Symbol('AdminProductPanelViewFactory'),
   AdminProductPanelModalFactory: Symbol('AdminProductPanelModalFactory'),
-  UserPanelEmbedBuilder: Symbol('UserPanelEmbedBuilder'),
 };
 
 export function configureAdminContainer(): void {
@@ -172,21 +157,9 @@ export function configureAdminContainer(): void {
   // Session
   // ============================================================
 
-  let cacheService: import('@ltdjms/shared').CacheService | undefined;
-  try {
-    cacheService = container.resolve<import('@ltdjms/shared').CacheService>(TOKENS.CacheService);
-  } catch {
-    // CacheService not registered; session managers will use in-memory storage only
-  }
-
   const adminSessionManager = new AdminPanelSessionManager();
   container.registerInstance(ADMIN_TOKENS.AdminPanelSessionManager, adminSessionManager);
-
-  const panelSessionManager = new PanelSessionManager(cacheService);
-  container.registerInstance(ADMIN_TOKENS.PanelSessionManager, panelSessionManager);
-
   adminSessionManager.startCleanupInterval();
-  panelSessionManager.startCleanupInterval();
 
   // ============================================================
   // Views (stateless, no dependencies)
@@ -209,9 +182,6 @@ export function configureAdminContainer(): void {
     ADMIN_TOKENS.AdminProductPanelModalFactory,
     adminProductPanelModalFactory,
   );
-
-  const userPanelEmbedBuilder = new UserPanelEmbedBuilder();
-  container.registerInstance(ADMIN_TOKENS.UserPanelEmbedBuilder, userPanelEmbedBuilder);
 
   // ============================================================
   // Facades
@@ -262,30 +232,6 @@ export function configureAdminContainer(): void {
     eventPublisher,
   );
   container.registerInstance(ADMIN_TOKENS.AIConfigManagementFacade, aiConfigFacade);
-
-  const currencyTxService = container.resolve<CurrencyTransactionService>(
-    ECONOMY_TOKENS.CurrencyTransactionService,
-  );
-  const redemptionService = container.resolve<RedemptionService>(SHOP_TOKENS.RedemptionService);
-
-  let redemptionTxService: RedemptionTransactionService | undefined;
-  try {
-    redemptionTxService = container.resolve<RedemptionTransactionService>(
-      SHOP_TOKENS.RedemptionTransactionService,
-    );
-  } catch {
-    // RedemptionTransactionService not available
-  }
-
-  const memberInfoFacade = new MemberInfoFacade(
-    balanceService,
-    gameTokenService,
-    currencyTxService,
-    gameTokenTxService,
-    redemptionService,
-    redemptionTxService,
-  );
-  container.registerInstance(ADMIN_TOKENS.MemberInfoFacade, memberInfoFacade);
 
   const dispatchManagementFacade = new DispatchManagementFacade(
     container.resolve<DispatchAfterSalesStaffService>(
@@ -455,27 +401,21 @@ export function configureAdminContainer(): void {
   });
 
   // ============================================================
-  // User Panel Commands
+  // User Panel Commands (from @ltdjms/user-panel)
   // ============================================================
 
-  const userPanelCommand = new UserPanelCommand(
-    memberInfoFacade,
-    panelSessionManager,
-    userPanelEmbedBuilder,
+  slashCommandListener.registerCommand(
+    container.resolve<UserPanelCommand>(USER_PANEL_TOKENS.UserPanelCommand),
   );
-  container.registerInstance(ADMIN_TOKENS.UserPanelCommand, userPanelCommand);
-  slashCommandListener.registerCommand(userPanelCommand);
-
-  const txHistoryHandler = new TransactionHistoryHandler(memberInfoFacade, panelSessionManager);
-  container.registerInstance(ADMIN_TOKENS.TransactionHistoryHandler, txHistoryHandler);
-  slashCommandListener.registerInteractionHandler(txHistoryHandler);
-
-  const redeemHandler = new RedemptionCodeHandler(memberInfoFacade, panelSessionManager);
-  container.registerInstance(ADMIN_TOKENS.RedemptionCodeHandler, redeemHandler);
-  slashCommandListener.registerInteractionHandler(redeemHandler);
-
-  const redeemCmdHandler = new RedeemCodeCommandHandler();
-  slashCommandListener.registerCommand(redeemCmdHandler);
+  slashCommandListener.registerInteractionHandler(
+    container.resolve<TransactionHistoryHandler>(USER_PANEL_TOKENS.TransactionHistoryHandler),
+  );
+  slashCommandListener.registerInteractionHandler(
+    container.resolve<RedemptionCodeHandler>(USER_PANEL_TOKENS.RedemptionCodeHandler),
+  );
+  slashCommandListener.registerCommand(
+    container.resolve<RedeemCodeCommandHandler>(USER_PANEL_TOKENS.RedeemCodeCommandHandler),
+  );
 
   // ============================================================
   // Listeners (register with DomainEventPublisher)
@@ -499,37 +439,14 @@ export function configureAdminContainer(): void {
     });
   };
   eventPublisher.register(_adminUpdateHandler);
-
-  const userUpdateListener = new UserPanelUpdateListener(
-    panelSessionManager,
-    memberInfoFacade,
-    discordGateway,
-    userPanelEmbedBuilder,
-  );
-  container.registerInstance(ADMIN_TOKENS.UserPanelUpdateListener, userUpdateListener);
-  _userUpdateHandler = (event: unknown): void => {
-    userUpdateListener.onEvent(event as any).catch((err: unknown) => {
-      console.error('[UserPanelUpdateListener] Error:', err);
-    });
-  };
-  eventPublisher.register(_userUpdateHandler);
 }
 
 /**
  * Disposes admin module resources. Should be called during application shutdown.
- * Stops session cleanup intervals and unregisters domain event listeners
- * to prevent memory leaks.
  */
 export function disposeAdminContainer(): void {
   try {
     const mgr = container.resolve<AdminPanelSessionManager>(ADMIN_TOKENS.AdminPanelSessionManager);
-    mgr.stopCleanupInterval();
-  } catch {
-    // Session manager not registered; nothing to dispose
-  }
-
-  try {
-    const mgr = container.resolve<PanelSessionManager>(ADMIN_TOKENS.PanelSessionManager);
     mgr.stopCleanupInterval();
   } catch {
     // Session manager not registered; nothing to dispose
@@ -541,10 +458,6 @@ export function disposeAdminContainer(): void {
     if (_adminUpdateHandler) {
       publisher.unregister(_adminUpdateHandler);
       _adminUpdateHandler = null;
-    }
-    if (_userUpdateHandler) {
-      publisher.unregister(_userUpdateHandler);
-      _userUpdateHandler = null;
     }
   } catch {
     // DomainEventPublisher not available

@@ -3,14 +3,13 @@ import { Ok, Err, DomainError } from '@ltdjms/shared';
 import { MemberInfoFacade } from '../MemberInfoFacade.js';
 import type {
   BalanceService,
-  GameTokenService,
   CurrencyTransactionService,
-  GameTokenTransactionService,
   BalanceView,
-  CurrencyTransaction,
-  GameTokenTransaction,
-  TransactionPage,
 } from '@ltdjms/economy';
+import type {
+  GameTokenService,
+  GameTokenTransactionService,
+} from '@ltdjms/games';
 import type { RedemptionService } from '@ltdjms/shop';
 
 describe('MemberInfoFacade', () => {

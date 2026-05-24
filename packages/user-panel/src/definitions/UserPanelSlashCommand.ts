@@ -7,7 +7,7 @@ import { CommandLocalizations } from '@ltdjms/shared';
 export const UserPanelSlashCommand = {
   name: 'user-panel',
   description: '開啟用戶面板',
-  defaultMemberPermissions: null, // Available to all members
+  defaultMemberPermissions: null,
   nameLocalizations: CommandLocalizations.COMMAND_NAME_LOCALIZATIONS['user-panel'],
   descriptionLocalizations: CommandLocalizations.COMMAND_DESCRIPTION_LOCALIZATIONS['user-panel'],
 };
