@@ -4,7 +4,7 @@ import type {
   TransactionPage as EconomyTransactionPage,
 } from '@ltdjms/economy';
 import type { GameTokenTransaction, TransactionPage as GamesTransactionPage } from '@ltdjms/games';
-import { formatRedemptionSuccessMessage, type RedemptionResult } from '@ltdjms/shop';
+import type { RedemptionResult } from '@ltdjms/shop';
 import {
   MemberInfoFacade,
   type MemberPanelView,
@@ -12,9 +12,6 @@ import {
 } from '../facades/MemberInfoFacade.js';
 import { USER_PANEL_PAGE_SIZE } from '../constants/UserPanelConstants.js';
 import { type HistoryPageView } from './transaction-display.js';
-
-export type { RedemptionResult };
-export { formatRedemptionSuccessMessage };
 
 /**
  * Thin service layer for user panel operations. Mirrors Java UserPanelService.

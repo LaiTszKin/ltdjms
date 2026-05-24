@@ -5,6 +5,16 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "default": "./dist/testing/index.js"
+    }
+  },
   "scripts": {
     "build": "tsc",
     "test": "vitest run"
@@ -15,8 +25,7 @@
     "@ltdjms/games": "workspace:*",
     "@ltdjms/shop": "workspace:*",
     "discord.js": "^14.26.4",
-    "reflect-metadata": "^0.2.2",
-    "tsyringe": "^4.10.0"
+    "reflect-metadata": "^0.2.2"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

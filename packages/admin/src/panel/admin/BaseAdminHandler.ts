@@ -1,20 +1,12 @@
-import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
-import { type InteractionHandler } from '../../commands/infra/CommandHandler.js';
+import {
+  type DiscordInteraction,
+  type DiscordContext,
+  ensureDeferred,
+  type InteractionHandler,
+} from '@ltdjms/shared';
 import { AdminPanelSessionManager } from '../../session/AdminPanelSessionManager.js';
 import { type AdminPanelSessionData } from '../../session/types.js';
 import { BotErrorHandler } from '../../commands/infra/BotErrorHandler.js';
-
-/**
- * Ensures the interaction has been deferred.
- * Safe to call multiple times — the DiscordInteraction abstraction
- * checks isAcknowledged() before deferring.
- */
-export async function ensureDeferred(interaction: DiscordInteraction): Promise<void> {
-  if (!interaction.isAcknowledged()) {
-    interaction.makeEphemeral();
-    await interaction.deferReply();
-  }
-}
 
 /**
  * Abstract base class for admin panel interaction handlers.

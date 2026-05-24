@@ -6,7 +6,7 @@ import {
   DiscordJsContext,
 } from '@ltdjms/shared';
 import { type Client } from 'discord.js';
-import { type CommandHandler, type InteractionHandler } from './CommandHandler.js';
+import { type CommandHandler, type InteractionHandler } from '@ltdjms/shared';
 import { SlashCommandMetrics } from './SlashCommandMetrics.js';
 import { BotErrorHandler } from './BotErrorHandler.js';
 
@@ -25,6 +25,7 @@ export class SlashCommandListener {
   private readonly interactionHandlers = new Map<string, InteractionHandler>();
   private readonly metrics: SlashCommandMetrics;
   private readonly errorHandler: BotErrorHandler;
+  private listening = false;
 
   constructor(
     metrics?: SlashCommandMetrics,
@@ -77,6 +78,9 @@ export class SlashCommandListener {
    * Should be called once during DI setup after all handlers are registered.
    */
   listen(gateway: DiscordRuntimeGateway): void {
+    if (this.listening) return;
+    this.listening = true;
+
     const client = gateway.requireReadyClient() as Client;
     client.on('interactionCreate', (rawInteraction) => {
       void (async () => {

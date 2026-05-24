@@ -175,19 +175,6 @@ export class MemberInfoFacade {
   }
 
   /**
-   * Alias for getProductRedemptionTransactionPage.
-   * Provides a consistent naming convention for redemption history lookups.
-   */
-  async getRedemptionHistory(
-    guildId: string,
-    userId: string,
-    page: number = 1,
-    pageSize: number = 10,
-  ): Promise<Result<RedemptionTransactionPage, DomainError>> {
-    return this.getProductRedemptionTransactionPage(guildId, userId, page, pageSize);
-  }
-
-  /**
    * Gets a paginated page of product redemption transactions for a member.
    * Delegates to the RedemptionTransactionService layer.
    */

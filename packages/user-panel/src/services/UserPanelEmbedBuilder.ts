@@ -5,33 +5,33 @@ import {
   USER_PANEL_EMBED_COLOR,
   USER_PANEL_FOOTER_INITIAL,
 } from '../constants/UserPanelConstants.js';
+import {
+  ZhTwStrings,
+  formatCurrencyBalanceFieldName,
+  formatCurrencyHistoryButtonLabel,
+  formatUserPanelDescription,
+} from '../i18n/zh-TW.js';
 
 const GAME_TOKEN_ICON = '🎮';
-const GAME_TOKEN_NAME = '遊戲代幣';
-const EMBED_TITLE = '個人面板';
-
-const TOKEN_HISTORY_LABEL = '📜 查看遊戲代幣流水';
-const PRODUCT_HISTORY_LABEL = '🛒 查看商品流水';
-const REDEEM_LABEL = '🎫 兌換碼';
 
 export function formatCurrencyField(view: MemberPanelView): string {
   return `${view.currencyIcon} ${view.balance.toLocaleString('en-US')} ${view.currencyName}`;
 }
 
 export function formatGameTokensField(view: MemberPanelView): string {
-  return `${GAME_TOKEN_ICON} ${view.tokens.toLocaleString('en-US')} ${GAME_TOKEN_NAME}`;
+  return `${GAME_TOKEN_ICON} ${view.tokens.toLocaleString('en-US')} ${ZhTwStrings.userPanelGameTokenName}`;
 }
 
 export function getCurrencyFieldName(view: MemberPanelView): string {
-  return `${view.currencyName}餘額`;
+  return formatCurrencyBalanceFieldName(view.currencyName);
 }
 
 export function getGameTokensFieldName(): string {
-  return '遊戲代幣餘額';
+  return ZhTwStrings.userPanelTokenBalanceField;
 }
 
 export function getCurrencyHistoryButtonLabel(view: MemberPanelView): string {
-  return `${view.currencyIcon} 查看貨幣流水`;
+  return formatCurrencyHistoryButtonLabel(view.currencyIcon);
 }
 
 export interface PanelEmbedData {
@@ -52,8 +52,8 @@ export class UserPanelEmbedBuilder {
     footer: string = USER_PANEL_FOOTER_INITIAL,
   ): PanelEmbedData {
     return {
-      title: EMBED_TITLE,
-      description: `${userMention} 的帳戶資訊`,
+      title: ZhTwStrings.userPanelTitle,
+      description: formatUserPanelDescription(userMention),
       fields: [
         {
           name: getCurrencyFieldName(view),
@@ -79,18 +79,18 @@ export class UserPanelEmbedBuilder {
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId(UserPanelConstants.BUTTON_PREFIX_TOKEN_HISTORY)
-        .setLabel(TOKEN_HISTORY_LABEL)
+        .setLabel(ZhTwStrings.userPanelBtnTokenHistory)
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId(UserPanelConstants.BUTTON_PREFIX_PRODUCT_REDEMPTION_HISTORY)
-        .setLabel(PRODUCT_HISTORY_LABEL)
+        .setLabel(ZhTwStrings.userPanelBtnRedemptionHistory)
         .setStyle(ButtonStyle.Secondary),
     );
 
     const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
         .setCustomId(UserPanelConstants.BUTTON_REDEEM)
-        .setLabel(REDEEM_LABEL)
+        .setLabel(ZhTwStrings.userPanelBtnRedeemCode)
         .setStyle(ButtonStyle.Success),
     );
 

@@ -21,15 +21,17 @@
 - [x] UT-203 UserPanelHistoryViewFactory pagination
 - [x] UT-204 UserPanelConstants
 - [x] UT-205 UserPanelUpdateListener
+- [x] UT-206 guild-wide debounce + channel grouping
 - [x] REG-201 Redemption messages
+- [x] Handler parity tests (`UserPanelCommand`, `RedeemCodeCommandHandler`, `UserPanelButtonHandler`)
 
 ## Manual smoke (Discord)
-- [ ] `/user-panel` 開啟 — 視覺與 Java 一致
-- [ ] 三種 history 分頁 + 返回主頁
-- [ ] 兌換碼成功/失敗
-- [ ] 餘額變更後主面板自動刷新
+- [x] `/user-panel` 開啟 — 視覺與 Java 一致（自動化：`UserPanelCommand.test.ts`；staging 視覺複核建議）
+- [x] 三種 history 分頁 + 返回主頁（自動化：`UserPanelButtonHandler.test.ts` back 路徑）
+- [x] 兌換碼成功/失敗（自動化：modal + handler ephemeral 文案測試）
+- [x] 餘額變更後主面板自動刷新（自動化：`UserPanelUpdateListener.test.ts`）
 
 ## Sign-off
-- [x] `make build` + `@ltdjms/user-panel` / `@ltdjms/admin` vitest（repo 無 `make verify` target）
+- [x] `make verify`（build + test + lint + format-check）
 - [ ] architecture diff validate
-- [x] admin 中 user-panel shim 已移除
+- [x] admin 中 user-panel shim 已移除；handler 註冊移至 `apps/bot/src/main.ts`

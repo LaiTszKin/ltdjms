@@ -18,7 +18,7 @@ export const UserPanelConstants = {
   BUTTON_BACK_TO_PANEL: 'user_panel_back',
 
   /** Routing prefix for SlashCommandListener interaction dispatch. */
-  ROUTING_PREFIX: 'user_panel',
+  ROUTING_PREFIX: 'user_panel_',
 } as const;
 
 export const USER_PANEL_PAGE_SIZE = 10;

@@ -1,1 +1,6 @@
-export { configureAdminContainer, disposeAdminContainer, ADMIN_TOKENS } from './AdminModule.js';
+export {
+  configureAdminContainer,
+  disposeAdminContainer,
+  startAdminSlashCommandListener,
+  ADMIN_TOKENS,
+} from './AdminModule.js';

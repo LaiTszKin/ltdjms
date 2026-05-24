@@ -1,7 +1,6 @@
 import { CurrencyTransactionSource, type CurrencyTransaction } from '@ltdjms/economy';
 import { GameTokenTransactionSource, type GameTokenTransaction } from '@ltdjms/games';
 import type { RedemptionTransactionEntry } from '../facades/MemberInfoFacade.js';
-import { USER_PANEL_PAGE_SIZE } from '../constants/UserPanelConstants.js';
 
 const CURRENCY_SOURCE_LABELS: Record<CurrencyTransactionSource, string> = {
   [CurrencyTransactionSource.ADMIN_ADJUSTMENT]: '管理員調整',
@@ -81,17 +80,4 @@ export function hasPreviousPage(page: HistoryPageView): boolean {
 
 export function hasNextPage(page: HistoryPageView): boolean {
   return page.currentPage < page.totalPages;
-}
-
-export function formatPageIndicator(page: HistoryPageView): string {
-  return `第 ${page.currentPage}/${page.totalPages} 頁（共 ${page.totalCount} 筆）`;
-}
-
-export function emptyHistoryPage(pageSize: number = USER_PANEL_PAGE_SIZE): HistoryPageView {
-  return {
-    currentPage: 1,
-    totalPages: 1,
-    totalCount: 0,
-    pageSize,
-  };
 }

@@ -1,6 +1,5 @@
-import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
+import { type DiscordInteraction, type DiscordContext, type CommandHandler } from '@ltdjms/shared';
 import { EmbedBuilder } from 'discord.js';
-import { type CommandHandler } from '../infra/CommandHandler.js';
 import { PanelSessionManager } from '../session/PanelSessionManager.js';
 import {
   UserPanelEmbedBuilder,

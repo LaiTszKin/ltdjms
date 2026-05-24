@@ -2,7 +2,6 @@ export {
   configureUserPanelContainer,
   disposeUserPanelContainer,
   registerUserPanelHandlers,
-  USER_PANEL_TOKENS,
   type UserPanelHandlerRegistrar,
 } from './di/user-panel-module.js';
 

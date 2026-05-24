@@ -1,4 +1,9 @@
-import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
+import {
+  type DiscordInteraction,
+  type DiscordContext,
+  ensureDeferred,
+  type InteractionHandler,
+} from '@ltdjms/shared';
 import {
   EmbedBuilder,
   ModalBuilder,
@@ -7,7 +12,6 @@ import {
   ActionRowBuilder,
 } from 'discord.js';
 import { formatRedemptionSuccessMessage } from '@ltdjms/shop';
-import { type InteractionHandler } from '../infra/CommandHandler.js';
 import { UserPanelService } from '../services/UserPanelService.js';
 import { PanelSessionManager } from '../session/PanelSessionManager.js';
 import { ZhTwStrings } from '../i18n/zh-TW.js';
@@ -17,7 +21,6 @@ import {
 } from '../services/UserPanelEmbedBuilder.js';
 import { UserPanelHistoryViewFactory } from '../services/UserPanelHistoryViewFactory.js';
 import { UserPanelConstants } from '../constants/UserPanelConstants.js';
-import { ensureDeferred } from '../infra/ensureDeferred.js';
 
 /**
  * Handles user panel button and modal interactions (user_panel_*).
@@ -34,7 +37,7 @@ export class UserPanelButtonHandler implements InteractionHandler {
   async execute(interaction: DiscordInteraction, _context: DiscordContext): Promise<void> {
     const guildId = interaction.getGuildId();
     if (!guildId) {
-      await interaction.reply('此功能只能在伺服器中使用');
+      await interaction.reply(ZhTwStrings.guildOnly);
       return;
     }
 
@@ -80,15 +83,15 @@ export class UserPanelButtonHandler implements InteractionHandler {
         await this.showMainPanel(interaction, guildId, userId);
       }
     } catch {
-      await interaction.reply('發生錯誤，請稍後再試');
+      await interaction.reply(ZhTwStrings.genericError);
     }
   }
 
   static buildRedeemModal(): ModalBuilder {
     const codeInput = new TextInputBuilder()
       .setCustomId(UserPanelConstants.MODAL_REDEEM_CODE_FIELD)
-      .setLabel('兌換碼')
-      .setPlaceholder('請輸入 16 位數兌換碼')
+      .setLabel(ZhTwStrings.redeemCodeLabel)
+      .setPlaceholder(ZhTwStrings.redeemCodePlaceholder)
       .setStyle(TextInputStyle.Short)
       .setMinLength(16)
       .setMaxLength(20)
@@ -96,7 +99,7 @@ export class UserPanelButtonHandler implements InteractionHandler {
 
     return new ModalBuilder()
       .setCustomId(UserPanelConstants.MODAL_REDEEM)
-      .setTitle('兌換碼')
+      .setTitle(ZhTwStrings.redeemCodeModalTitle)
       .addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(codeInput));
   }
 
@@ -121,7 +124,7 @@ export class UserPanelButtonHandler implements InteractionHandler {
     const code = interaction.getTextInputValue(UserPanelConstants.MODAL_REDEEM_CODE_FIELD)?.trim();
     if (!code) {
       interaction.makeEphemeral();
-      await interaction.reply('❌ 兌換失敗：請輸入有效的兌換碼');
+      await interaction.reply(ZhTwStrings.redeemEmptyCode);
       return;
     }
 
@@ -129,11 +132,13 @@ export class UserPanelButtonHandler implements InteractionHandler {
 
     interaction.makeEphemeral();
     if (result.isErr()) {
-      await interaction.reply(`❌ 兌換失敗：${result.getError().message}`);
+      await interaction.reply(`${ZhTwStrings.redeemFailurePrefix}${result.getError().message}`);
       return;
     }
 
-    await interaction.reply(`✅ ${formatRedemptionSuccessMessage(result.getValue())}`);
+    await interaction.reply(
+      `${ZhTwStrings.redeemSuccessPrefix}${formatRedemptionSuccessMessage(result.getValue())}`,
+    );
   }
 
   private async showMainPanel(
@@ -145,7 +150,7 @@ export class UserPanelButtonHandler implements InteractionHandler {
 
     const result = await this.userPanelService.getUserPanelView(guildId, userId);
     if (result.isErr()) {
-      await interaction.reply('無法載入面板資料，請稍後再試');
+      await interaction.reply(ZhTwStrings.loadPanelFailed);
       return;
     }
 

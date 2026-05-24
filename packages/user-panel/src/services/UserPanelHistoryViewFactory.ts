@@ -10,12 +10,12 @@ import {
   formatCurrencyTransactionForDisplay,
   formatTokenTransactionForDisplay,
   formatProductRedemptionForDisplay,
-  formatPageIndicator,
   getShortTimestamp,
   hasNextPage,
   hasPreviousPage,
   type HistoryPageView,
 } from './transaction-display.js';
+import { ZhTwStrings, formatHistoryPageIndicator } from '../i18n/zh-TW.js';
 
 export interface HistoryEmbedData {
   title: string;
@@ -43,7 +43,7 @@ function buildPaginationButtons(pagePrefix: string, page: HistoryPageView): Butt
   const buttons: ButtonBuilder[] = [
     new ButtonBuilder()
       .setCustomId(UserPanelConstants.BUTTON_BACK_TO_PANEL)
-      .setLabel('🔙 返回主頁')
+      .setLabel(ZhTwStrings.historyBackBtn)
       .setStyle(ButtonStyle.Secondary),
   ];
 
@@ -51,7 +51,7 @@ function buildPaginationButtons(pagePrefix: string, page: HistoryPageView): Butt
     buttons.push(
       new ButtonBuilder()
         .setCustomId(`${pagePrefix}${page.currentPage - 1}`)
-        .setLabel('⬅️ 上一頁')
+        .setLabel(ZhTwStrings.historyPrevBtn)
         .setStyle(ButtonStyle.Secondary),
     );
   }
@@ -60,7 +60,7 @@ function buildPaginationButtons(pagePrefix: string, page: HistoryPageView): Butt
     buttons.push(
       new ButtonBuilder()
         .setCustomId(`${pagePrefix}${page.currentPage + 1}`)
-        .setLabel('下一頁 ➡️')
+        .setLabel(ZhTwStrings.historyNextBtn)
         .setStyle(ButtonStyle.Secondary),
     );
   }
@@ -79,10 +79,10 @@ export class UserPanelHistoryViewFactory {
       (tx) => `${getShortTimestamp(tx.createdAt)} ${formatTokenTransactionForDisplay(tx)}`,
     );
     return buildHistoryEmbed(
-      '📜 遊戲代幣流水',
-      '目前沒有任何遊戲代幣流水紀錄',
+      ZhTwStrings.historyTitleToken,
+      ZhTwStrings.historyEmptyToken,
       lines,
-      formatPageIndicator(page),
+      formatHistoryPageIndicator(page.currentPage, page.totalPages, page.totalCount),
     );
   }
 
@@ -93,10 +93,10 @@ export class UserPanelHistoryViewFactory {
       (tx) => `${getShortTimestamp(tx.createdAt)} ${formatCurrencyTransactionForDisplay(tx)}`,
     );
     return buildHistoryEmbed(
-      '💰 貨幣流水',
-      '目前沒有任何貨幣流水紀錄',
+      ZhTwStrings.historyTitleCurrency,
+      ZhTwStrings.historyEmptyCurrency,
       lines,
-      formatPageIndicator(page),
+      formatHistoryPageIndicator(page.currentPage, page.totalPages, page.totalCount),
     );
   }
 
@@ -107,10 +107,10 @@ export class UserPanelHistoryViewFactory {
       (item) => `${getShortTimestamp(item.createdAt)} ${formatProductRedemptionForDisplay(item)}`,
     );
     return buildHistoryEmbed(
-      '🛒 商品流水',
-      '目前沒有任何商品兌換紀錄',
+      ZhTwStrings.historyTitleRedemption,
+      ZhTwStrings.historyEmptyRedemption,
       lines,
-      formatPageIndicator(page),
+      formatHistoryPageIndicator(page.currentPage, page.totalPages, page.totalCount),
     );
   }
 

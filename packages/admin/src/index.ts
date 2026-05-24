@@ -24,7 +24,12 @@ export type { AdminPanelSessionData } from './session/index.js';
 // ============================================================
 // DI
 // ============================================================
-export { configureAdminContainer, disposeAdminContainer, ADMIN_TOKENS } from './di/index.js';
+export {
+  configureAdminContainer,
+  disposeAdminContainer,
+  startAdminSlashCommandListener,
+  ADMIN_TOKENS,
+} from './di/index.js';
 
 // ============================================================
 // Commands

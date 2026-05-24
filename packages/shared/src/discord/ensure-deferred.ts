@@ -1,4 +1,4 @@
-import { type DiscordInteraction } from '@ltdjms/shared';
+import { type DiscordInteraction } from './domain/discord-interaction.js';
 
 /**
  * Ensures the interaction has been deferred.

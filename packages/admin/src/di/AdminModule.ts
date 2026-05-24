@@ -29,7 +29,6 @@ import type {
 } from '@ltdjms/dispatch';
 import { DISPATCH_TOKENS } from '@ltdjms/dispatch';
 import type { ShopCommandHandler } from '@ltdjms/shop';
-import { registerUserPanelHandlers } from '@ltdjms/user-panel';
 
 // Facades
 import { CurrencyManagementFacade } from '../facades/CurrencyManagementFacade.js';
@@ -41,7 +40,7 @@ import { ProductManagementFacade } from '../facades/ProductManagementFacade.js';
 import { AdminPanelSessionManager } from '../session/AdminPanelSessionManager.js';
 
 // Infra
-import type { CommandHandler, InteractionHandler } from '../commands/infra/CommandHandler.js';
+import type { CommandHandler, InteractionHandler } from '@ltdjms/shared';
 import { SlashCommandListener } from '../commands/infra/SlashCommandListener.js';
 import { SlashCommandMetrics } from '../commands/infra/SlashCommandMetrics.js';
 import { BotErrorHandler } from '../commands/infra/BotErrorHandler.js';
@@ -70,6 +69,7 @@ import { AdminProductPanelModalFactory } from '../panel/admin/product/AdminProdu
 
 /** Module-level handler references for DomainEventPublisher unregister support. */
 let _adminUpdateHandler: ((event: unknown) => void) | null = null;
+let _adminConfigured = false;
 
 /**
  * DI tokens for the admin module.
@@ -119,6 +119,8 @@ export const ADMIN_TOKENS = {
 };
 
 export function configureAdminContainer(): void {
+  if (_adminConfigured) return;
+
   const eventPublisher = container.resolve<DomainEventPublisher>(TOKENS.DomainEventPublisher);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const logger: any = container.resolve<any>(TOKENS.Logger);
@@ -377,18 +379,10 @@ export function configureAdminContainer(): void {
   });
 
   // ============================================================
-  // User Panel Commands (from @ltdjms/user-panel)
-  // ============================================================
-
-  registerUserPanelHandlers(slashCommandListener);
-
-  // ============================================================
   // Listeners (register with DomainEventPublisher)
   // ============================================================
 
   const discordGateway = container.resolve<DiscordRuntimeGateway>(TOKENS.DiscordRuntimeGateway);
-
-  slashCommandListener.listen(discordGateway);
 
   const adminUpdateListener = new AdminPanelUpdateListener(
     adminSessionManager,
@@ -404,6 +398,20 @@ export function configureAdminContainer(): void {
     });
   };
   eventPublisher.register(_adminUpdateHandler);
+
+  _adminConfigured = true;
+}
+
+/**
+ * Wires the admin SlashCommandListener to Discord after all handlers are registered.
+ * Call from apps/bot after member-facing handlers (e.g. user-panel) are registered.
+ */
+export function startAdminSlashCommandListener(): void {
+  const discordGateway = container.resolve<DiscordRuntimeGateway>(TOKENS.DiscordRuntimeGateway);
+  const slashCommandListener = container.resolve<SlashCommandListener>(
+    ADMIN_TOKENS.SlashCommandListener,
+  );
+  slashCommandListener.listen(discordGateway);
 }
 
 /**
@@ -427,4 +435,6 @@ export function disposeAdminContainer(): void {
   } catch {
     // DomainEventPublisher not available
   }
+
+  _adminConfigured = false;
 }

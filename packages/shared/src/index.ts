@@ -97,3 +97,4 @@ export {
 } from './localization/index.js';
 
 export { type CommandHandler, type InteractionHandler } from './discord/command-handler.js';
+export { ensureDeferred } from './discord/ensure-deferred.js';

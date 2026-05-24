@@ -15,7 +15,6 @@
     "@ltdjms/economy": "workspace:*",
     "@ltdjms/games": "workspace:*",
     "@ltdjms/shop": "workspace:*",
-    "@ltdjms/user-panel": "workspace:*",
     "@ltdjms/dispatch": "workspace:*",
     "@ltdjms/ai": "workspace:*",
     "discord.js": "^14.26.4",

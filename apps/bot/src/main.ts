@@ -42,6 +42,8 @@ import {
 import {
   configureUserPanelContainer,
   disposeUserPanelContainer,
+  registerUserPanelHandlers,
+  type UserPanelHandlerRegistrar,
 } from '@ltdjms/user-panel';
 import {
   configureAdminContainer,
@@ -224,9 +226,18 @@ export async function main(): Promise<void> {
   initializeAIModule();
   logger.info('AI module initialized');
 
-  // 16. Admin module — wires all handlers and interactionCreate via DI.
+  // 16. Admin module — registers admin handlers (interaction listener wired after user-panel).
   configureAdminContainer();
   logger.info('Admin module initialized');
+
+  const slashCommandListener = container.resolve<UserPanelHandlerRegistrar>(
+    ADMIN_TOKENS.SlashCommandListener,
+  ) as UserPanelHandlerRegistrar & {
+    listen: (gateway: typeof runtimeGateway) => void;
+  };
+  registerUserPanelHandlers(slashCommandListener);
+  slashCommandListener.listen(runtimeGateway);
+  logger.info('User panel handlers registered');
 
   // 16. Wire AI message listener
   const aiListener = container.resolve<AIChatMentionListener>(AI_TOKENS.AIChatMentionListener);

@@ -5,7 +5,7 @@
     "currency": {
       "historyButtonId": "user_panel_currency_history",
       "pagePrefix": "user_panel_currency_page_",
-      "emptyTitle": "貨幣流水",
+      "emptyTitle": "💰 貨幣流水",
       "emptyDescription": "目前沒有任何貨幣流水紀錄"
     },
     "token": {
@@ -17,8 +17,8 @@
     "productRedemption": {
       "historyButtonId": "user_panel_product_redemption_history",
       "pagePrefix": "user_panel_product_redemption_page_",
-      "emptyTitle": "🛒 商品兌換流水",
-      "emptyDescription": "目前沒有任何商品兌換流水紀錄"
+      "emptyTitle": "🛒 商品流水",
+      "emptyDescription": "目前沒有任何商品兌換紀錄"
     }
   },
   "pagination": {

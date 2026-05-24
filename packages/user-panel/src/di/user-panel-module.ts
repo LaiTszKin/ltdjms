@@ -49,7 +49,6 @@ export interface UserPanelHandlerRegistrar {
  */
 export function configureUserPanelContainer(): void {
   if (_configured) return;
-  _configured = true;
 
   const eventPublisher = container.resolve<DomainEventPublisher>(TOKENS.DomainEventPublisher);
 
@@ -125,6 +124,8 @@ export function configureUserPanelContainer(): void {
       });
   };
   eventPublisher.register(_userUpdateHandler);
+
+  _configured = true;
 }
 
 /**
@@ -132,6 +133,12 @@ export function configureUserPanelContainer(): void {
  * Call after configureUserPanelContainer() and before listen().
  */
 export function registerUserPanelHandlers(registrar: UserPanelHandlerRegistrar): void {
+  if (!_configured) {
+    throw new Error(
+      'configureUserPanelContainer() must be called before registerUserPanelHandlers()',
+    );
+  }
+
   registrar.registerCommand(
     container.resolve<UserPanelCommand>(USER_PANEL_TOKENS.UserPanelCommand),
   );

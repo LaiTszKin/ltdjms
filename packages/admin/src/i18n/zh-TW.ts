@@ -257,19 +257,6 @@ export const ZhTwStrings = {
   escortCatalogUpdated: '已更新目錄項目「{name}」',
 
   // ============================================================
-  // User Panel
-  // ============================================================
-  userPanelTitle: '用戶面板',
-  userPanelBalance: '貨幣餘額：**{balance}** {currencyIcon}',
-  userPanelTokens: '遊戲代幣：**{tokens}** 個',
-  userPanelCurrencyName: '貨幣名稱：{name}',
-
-  userPanelBtnCurrencyHistory: '貨幣記錄',
-  userPanelBtnTokenHistory: '代幣記錄',
-  userPanelBtnRedemptionHistory: '兌換記錄',
-  userPanelBtnRedeemCode: '輸入兌換碼',
-
-  // ============================================================
   // Transaction History (shared between admin and user)
   // ============================================================
   historyTitleCurrency: '貨幣交易記錄',

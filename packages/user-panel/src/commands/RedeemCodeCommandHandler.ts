@@ -1,5 +1,4 @@
-import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
-import { type CommandHandler } from '../infra/CommandHandler.js';
+import { type DiscordInteraction, type DiscordContext, type CommandHandler } from '@ltdjms/shared';
 import { UserPanelButtonHandler } from '../handlers/UserPanelButtonHandler.js';
 
 /**

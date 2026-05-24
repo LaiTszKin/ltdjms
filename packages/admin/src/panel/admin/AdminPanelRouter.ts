@@ -1,5 +1,5 @@
 import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
-import { type InteractionHandler } from '../../commands/infra/CommandHandler.js';
+import { type InteractionHandler } from '@ltdjms/shared';
 import { AdminPanelSessionManager } from '../../session/AdminPanelSessionManager.js';
 import { ZhTwStrings } from '../../i18n/zh-TW.js';
 

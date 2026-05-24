@@ -26,6 +26,7 @@ export {
 } from './services/select-menu-util.js';
 
 export { type CommandHandler, type InteractionHandler } from './command-handler.js';
+export { ensureDeferred } from './ensure-deferred.js';
 
 // Mocks
 export { MockDiscordInteraction } from './mock/mock-discord-interaction.js';

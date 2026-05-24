@@ -4,7 +4,7 @@ import {
   type DiscordEmbedBuilder,
 } from '@ltdjms/shared';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import { type CommandHandler } from '../../commands/infra/CommandHandler.js';
+import { type CommandHandler } from '@ltdjms/shared';
 import { AdminPanelSessionManager } from '../../session/AdminPanelSessionManager.js';
 import { AdminPanelViewFactory } from './views/AdminPanelViewFactory.js';
 import { CurrencyManagementFacade } from '../../facades/CurrencyManagementFacade.js';
