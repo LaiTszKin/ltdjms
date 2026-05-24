@@ -30,9 +30,9 @@
 **AND** shop 測試全綠
 
 **Requirements**:
-- [ ] R1.1 bump express + @types/express
-- [ ] R1.2 修復 Express 5 API breaking changes（參考 [Express 5 migration guide](https://expressjs.com/en/guide/migrating-5.html)）
-- [ ] R1.3 `pnpm vitest run --project @ltdjms/shop` 全綠
+- [x] R1.1 bump express + @types/express
+- [x] R1.2 修復 Express 5 API breaking changes（參考 [Express 5 migration guide](https://expressjs.com/en/guide/migrating-5.html)）
+- [x] R1.3 `pnpm vitest run --project @ltdjms/shop` 全綠
 
 ### Requirement 2: Callback 契約不變
 **GIVEN** ECPay stage callback 測試存在
@@ -40,13 +40,13 @@
 **THEN** callback auth、body parsing、response status code 與升級前一致
 
 **Requirements**:
-- [ ] R2.1 callback route integration 測試全綠
-- [ ] R2.2 `RUN_ECPAY_E2E=true make test` 通過（若環境可用）
+- [x] R2.1 callback route integration 測試全綠
+- [x] R2.2 `RUN_ECPAY_E2E=true make test` 通過（若環境可用）— N/A：Docker runtime 不可用
 
 ## Error and Edge Cases
-- [ ] Express 5 移除 `app.del()` — 改用 `app.delete()`
-- [ ] wildcard route 語法變更 — 更新 route pattern
-- [ ] async error handler — 確保 unhandled rejection 仍進 error middleware
+- [x] Express 5 移除 `app.del()` — 改用 `app.delete()`（shop 未使用 `app.del()`）
+- [x] wildcard route 語法變更 — 更新 route pattern（shop 使用固定/設定路徑，無 wildcard）
+- [x] async error handler — 確保 unhandled rejection 仍進 error middleware（callback POST handler 以 try/catch 處理）
 
 ## References
 - [Express 5 Migration Guide](https://expressjs.com/en/guide/migrating-5.html)
