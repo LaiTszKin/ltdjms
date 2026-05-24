@@ -1,8 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ok, err, DomainError, MockDiscordContext } from '@ltdjms/shared';
-import {
-  normalizeEmbedForSnapshot,
-} from '../../../../shared/src/__tests__/parity/json-snapshot.js';
+import { normalizeEmbedForSnapshot } from '../../../../shared/src/__tests__/parity/json-snapshot.js';
 import { ShopCommandHandler } from '../shop-handler.js';
 import { ProductService } from '../../services/product-service.js';
 import oracle from '../../../../../docs/plans/2026-05-24/java-parity-shop-ai/shop-java-parity/fixtures/java-shop-view-oracle.json';

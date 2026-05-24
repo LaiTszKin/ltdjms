@@ -29,7 +29,7 @@ Date: 2026-05-24
 | CommonMarkValidatorTest_*.java | UT-AIC-010 | packages/ai/src/markdown/__tests__/validator.parity.test.ts |
 | MarkdownAutoFixerTest.java | UT-AIC-011 | packages/ai/src/markdown/__tests__/autofixer.parity.test.ts |
 | DiscordMarkdownPaginatorTest.java | UT-AIC-012 | packages/ai/src/markdown/__tests__/paginator.parity.test.ts |
-| DiscordMarkdownSanitizer.java parity | UT-AIC-015 | packages/ai/src/markdown/__tests__/sanitizer.parity.test.ts |
+| DiscordMarkdownSanitizer.java parity | UT-AIC-018 | packages/ai/src/markdown/__tests__/sanitizer.parity.test.ts |
 | LangChain4jExceptionMapperTest.java | UT-AIC-016 | packages/ai/src/services/__tests__/langchain-exception-mapper.parity.test.ts |
 | MarkdownValidatingAIChatServiceTest_*.java | UT-AIC-013 | packages/ai/src/markdown/__tests__/validating-chat-service.parity.test.ts |
 | ReasoningMessageTrackerTest.java | UT-AIC-014 | packages/ai/src/commands/__tests__/reasoning-tracker.parity.test.ts |

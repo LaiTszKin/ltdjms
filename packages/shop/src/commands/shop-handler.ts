@@ -258,13 +258,8 @@ export class ShopCommandHandler {
       return;
     }
 
-    const products = allProducts.slice(0, 25);
-    const buyRows = buildBuyMenu(products);
-    const suffix =
-      allProducts.length > products.length
-        ? `\n（顯示前 ${products.length} 項，共 ${allProducts.length} 項可購買商品）`
-        : '';
-    await this.replyWithMessageAndComponents(interaction, `請選擇要購買的商品${suffix}`, buyRows);
+    const buyRows = buildBuyMenu(allProducts);
+    await this.replyWithMessageAndComponents(interaction, '請選擇要購買的商品', buyRows);
   }
 
   private async editDeferredReply(interaction: DiscordInteraction, content: string): Promise<void> {
@@ -515,11 +510,12 @@ export class ShopCommandHandler {
     productId: number,
   ): Promise<void> {
     const inflightKey = this.buildFiatOrderInflightKey(guildId, userId, productId);
-    if (this.inflightFiatOrders.has(inflightKey)) {
+    const inflightSizeBefore = this.inflightFiatOrders.size;
+    this.inflightFiatOrders.add(inflightKey);
+    if (this.inflightFiatOrders.size === inflightSizeBefore) {
       await interaction.reply('⚠️ 這筆法幣訂單正在處理中，請稍候檢查互動結果。');
       return;
     }
-    this.inflightFiatOrders.add(inflightKey);
 
     await interaction.deferReply();
 

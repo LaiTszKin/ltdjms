@@ -233,4 +233,116 @@ describe('UT-AIC-006 langchain-chat-service parity', () => {
     expect(toolMessage?.content?.length).toBeLessThanOrEqual(DEFAULT_TOOL_RESULT_MAX_CHARS + 50);
     expect(toolMessage?.content).toContain('"truncated":true');
   });
+
+  it('publishes agent_completed after successful agent streaming', async () => {
+    async function* firstIteration() {
+      yield {
+        tool_call_chunks: [{ index: 0, name: 'list_channels', args: '{}', id: 'tc1' }],
+      };
+    }
+
+    async function* secondIteration() {
+      yield { content: 'done' };
+    }
+
+    const chatModel = createAgentChatModel([firstIteration(), secondIteration()]);
+    const toolMap = new Map([
+      [
+        'list_channels',
+        {
+          name: 'list_channels',
+          description: 'List channels',
+          schema: z.object({}),
+          execute: vi.fn().mockResolvedValue('ok'),
+        },
+      ],
+    ]);
+
+    const eventPublisher: DomainEventPublisher = {
+      publish: vi.fn(),
+      register: vi.fn(),
+      unregister: vi.fn(),
+      getLastPublishedEvent: vi.fn(),
+    };
+
+    const runtimeGateway = {
+      requireReadyClient: vi.fn().mockReturnValue({
+        guilds: {
+          cache: new Map([['g1', { id: 'g1' }]]),
+          fetch: vi.fn(),
+        },
+      }),
+      findGuildChannel: vi.fn().mockReturnValue(null),
+      findThreadChannel: vi.fn().mockReturnValue(null),
+    };
+
+    const service = new LangChainAIChatService(
+      baseConfig,
+      promptLoader,
+      chatModel,
+      toolMap,
+      undefined,
+      undefined,
+      runtimeGateway as never,
+      eventPublisher,
+    );
+
+    await service.generateStreamingResponse(
+      'g1',
+      'c1',
+      'u1',
+      'list channels',
+      { onChunk: async () => undefined },
+      true,
+    );
+
+    expect(eventPublisher.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'agent_completed',
+        finalResponse: 'done',
+      }),
+    );
+  });
+
+  it('reuses cached tool definitions across agent requests', async () => {
+    async function* mockStream() {
+      yield { content: 'ok' };
+    }
+
+    const chatModel = createAgentChatModel([mockStream(), mockStream()]);
+    const toolMap = new Map([
+      [
+        'list_channels',
+        {
+          name: 'list_channels',
+          description: 'List channels',
+          schema: z.object({}),
+          execute: vi.fn().mockResolvedValue('ok'),
+        },
+      ],
+    ]);
+
+    const service = new LangChainAIChatService(baseConfig, promptLoader, chatModel, toolMap);
+    const bindToolsSpy = vi.spyOn(chatModel, 'bindTools');
+
+    await service.generateStreamingResponse(
+      'g1',
+      'c1',
+      'u1',
+      'first',
+      { onChunk: async () => undefined },
+      true,
+    );
+    await service.generateStreamingResponse(
+      'g1',
+      'c1',
+      'u1',
+      'second',
+      { onChunk: async () => undefined },
+      true,
+    );
+
+    expect(bindToolsSpy).toHaveBeenCalledTimes(2);
+    expect(bindToolsSpy.mock.calls[0][0]).toBe(bindToolsSpy.mock.calls[1][0]);
+  });
 });

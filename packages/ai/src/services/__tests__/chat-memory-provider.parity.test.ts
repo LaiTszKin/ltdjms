@@ -66,4 +66,36 @@ describe('UT-AG-019 chat memory provider parity', () => {
     const memory = await provider.getMemory('100:200:300');
     expect(memory).toEqual([]);
   });
+
+  it('limits non-thread message-level memory to 10 messages', async () => {
+    const messages = Array.from({ length: 10 }, (_, index) => ({
+      id: String(index + 1),
+      author: { id: index % 2 === 0 ? '300' : '900' },
+      content: `message-${index + 1}`,
+    }));
+
+    const client = {
+      channels: {
+        cache: new Map([
+          [
+            '200',
+            {
+              isTextBased: () => true,
+              messages: {
+                fetch: vi.fn().mockResolvedValue(new Map(messages.map((msg) => [msg.id, msg]))),
+              },
+            },
+          ],
+        ]),
+        fetch: vi.fn(),
+      },
+    };
+
+    vi.mocked(runtimeGateway.requireReadyClient).mockReturnValue(client as never);
+    vi.mocked(runtimeGateway.selfUserId).mockReturnValue('900');
+
+    const memory = await provider.getMemory('100:200:300:4001');
+    expect(memory.length).toBeLessThanOrEqual(10);
+    expect(client.channels.cache.get('200').messages.fetch).toHaveBeenCalledWith({ limit: 10 });
+  });
 });

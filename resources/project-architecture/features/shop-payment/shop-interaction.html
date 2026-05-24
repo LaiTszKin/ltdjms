@@ -14,7 +14,7 @@
   <header class="submodule-header">
     <nav class="submodule-breadcrumb"><a href="../../index.html">← Atlas</a> · <a href="index.html">← Shop &amp; Payment</a></nav>
     <h1>shop-interaction <small class="submodule-kind submodule-kind--api">API</small></h1>
-    <p class="submodule-role">商店瀏覽、搜尋、購買流程處理（含按鈕、選單、Modal 互動）</p>
+    <p class="submodule-role">Shop browse/purchase 1:1 Java parity (/shop UI, confirm/fiat DM, escort handoff)</p>
   </header>
   <main class="submodule-main">
     <section class="sub-io" aria-label="Function I/O">
@@ -27,6 +27,8 @@
           <tr><td>handleBuySelect</td><td>productId, guildId, userId</td><td>PaymentMethodSelect</td><td>io</td><td>選擇商品後顯示付款方式選單（貨幣/法幣）</td></tr>
           <tr><td>handleCurrencyPurchase</td><td>productId, guildId, userId</td><td>PurchaseResult</td><td>tx</td><td>貨幣扣款購買：扣 Balance → grantReward → 通知</td></tr>
           <tr><td>handleFiatPurchase</td><td>productId, guildId, userId</td><td>FiatOrderResult (含繳費碼)</td><td>network</td><td>建立法幣訂單並產生 CVS 超商繳費碼</td></tr>
+          <tr><td>buildPurchaseConfirmEmbed</td><td>product, balance</td><td>EmbedView + confirm/cancel buttons</td><td>pure</td><td>Confirm step before currency purchase (Java ShopView parity).</td></tr>
+          <tr><td>getAllPurchasableProducts</td><td>guildId</td><td>Product[]</td><td>io</td><td>Full purchasable set for buy menu (not paginated slice).</td></tr>
         </tbody>
       </table>
     </section>
@@ -49,7 +51,7 @@
           <button type="button" data-pan-zoom="fit" aria-label="Reset view">Fit</button>
         </div>
         <div class="sub-dataflow__viewport" data-pan-zoom-viewport>
-          <svg class="sub-dataflow__svg" data-atlas-svg="sub-dataflow" viewBox="0 0 628 600" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Internal dataflow">
+          <svg class="sub-dataflow__svg" data-atlas-svg="sub-dataflow" viewBox="0 0 628 720" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Internal dataflow">
   <defs>
     <marker id="sub-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" /></marker>
   </defs>
@@ -86,6 +88,14 @@
     <text class="sub-dataflow__badge-text" x="42" y="537" text-anchor="middle">5</text>
     <rect class="sub-dataflow__box" x="80" y="496" width="520" height="72" rx="14" ry="14" />
     <text class="sub-dataflow__text" x="340" y="538" text-anchor="middle">回覆 Discord embed 或 DM 付款資訊</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="574" x2="340" y2="604" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="650" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="655" text-anchor="middle">6</text>
+    <rect class="sub-dataflow__box" x="80" y="612" width="520" height="76" rx="14" ry="14" />
+    <text class="sub-dataflow__text" x="340" y="646" text-anchor="middle">Select product → branch by price type → confirm OR payment</text>
+    <text class="sub-dataflow__text" x="340" y="666" text-anchor="middle">choice OR fiat defer+DM</text>
   </g>
 </svg>
         </div>

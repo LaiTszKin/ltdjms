@@ -22,6 +22,11 @@ submodules:
         out: void (串流)
         side: network
         purpose: 啟動 AI 串流回覆，處理 Reasoning/Content/ToolIntent 三種 chunk 輸出
+      - name: accumulateContentChunk
+        in: chunk
+        out: flushMessage?
+        side: pure
+        purpose: MessageChunkAccumulator parity for 1980-boundary streaming.
     variables:
       - name: routeDecision
         type: RouteDecision
@@ -250,6 +255,49 @@ submodules:
       - name: ErrChannelConfigNotFound
         when: guild 完全未設定 AI 頻道白名單或 Agent 設定
         means: 回傳 empty list，由呼叫方決定預設行為（全部拒絕）
+  - slug: markdown-stream-processor
+    kind: service
+    role: Incremental Discord markdown stream processing (Java DiscordMarkdownStreamProcessor parity)
+    functions:
+      - name: processStreamChunk
+        in: chunk, bufferState
+        out: flushSegments[]
+        side: pure
+        purpose: Segments streaming markdown at heading boundaries for Discord.
+    variables: []
+    dataflow: []
+    errors: []
+  - slug: langgraph-checkpoint
+    kind: db
+    role: LangGraph Postgres+Redis checkpoint for agent conversation persistence
+    functions:
+      - name: saveCheckpoint
+        in: threadId, state
+        out: void
+        side: write
+        purpose: Persist agent state to Postgres with optional Redis cache.
+    variables: []
+    dataflow: []
+    errors: []
+  - slug: tool-audit-log
+    kind: db
+    role: tool_execution_log persistence + domain events (Java ToolExecutionInterceptor parity)
+    functions:
+      - name: recordToolExecution
+        in: toolName, hashedParams, redactedResult
+        out: void
+        side: tx
+        purpose: Append-only audit row + publish domain events.
+    variables: []
+    dataflow: []
+    errors: []
+  - slug: agent-event-listeners
+    kind: api
+    role: Discord notifications for tool execution and agent completion
+    functions: []
+    variables: []
+    dataflow: []
+    errors: []
 edges:
   - id: e-6bh9qi
     from: ai-mention-interaction
@@ -281,3 +329,18 @@ edges:
     to: ai-mention-interaction
     kind: failure
     label: ErrAIServiceUnavailable→回覆 Discord 錯誤訊息
+  - id: e-chat-mdstream
+    from: ai-chat-service
+    to: markdown-stream-processor
+    kind: call
+    label: stream CONTENT through markdown processor
+  - id: e-agent-cp
+    from: ai-agent-service
+    to: langgraph-checkpoint
+    kind: call
+    label: read/write conversation checkpoint
+  - id: e-agent-audit
+    from: ai-agent-service
+    to: tool-audit-log
+    kind: call
+    label: audit each tool invocation

@@ -104,6 +104,18 @@ submodules:
       - name: ErrComponentNotBound
         when: Dagger 無法解析依賴（未在 Module 中提供）
         means: 啟動時拋出 RuntimeException，不應發生於執行期
+  - slug: parity-test-kit
+    kind: pure-fn
+    role: Vitest JSON snapshot helpers for Java oracle parity tests
+    functions:
+      - name: assertJsonParity
+        in: actual, oracle
+        out: void | AssertionError
+        side: pure
+        purpose: Normalizes and compares JSON structures against Java fixtures.
+    variables: []
+    dataflow: []
+    errors: []
 edges:
   - id: e-1lx4cy
     from: event-bus

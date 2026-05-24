@@ -6,7 +6,7 @@ dependsOn:
 submodules:
   - slug: shop-interaction
     kind: api
-    role: 商店瀏覽、搜尋、購買流程處理（含按鈕、選單、Modal 互動）
+    role: Shop browse/purchase 1:1 Java parity (/shop UI, confirm/fiat DM, escort handoff)
     functions:
       - name: handleShopBrowse
         in: guildId, page
@@ -33,6 +33,16 @@ submodules:
         out: FiatOrderResult (含繳費碼)
         side: network
         purpose: 建立法幣訂單並產生 CVS 超商繳費碼
+      - name: buildPurchaseConfirmEmbed
+        in: product, balance
+        out: EmbedView + confirm/cancel buttons
+        side: pure
+        purpose: Confirm step before currency purchase (Java ShopView parity).
+      - name: getAllPurchasableProducts
+        in: guildId
+        out: Product[]
+        side: io
+        purpose: Full purchasable set for buy menu (not paginated slice).
     variables:
       - name: inflightFiatOrders
         type: ConcurrentHashMap
@@ -48,6 +58,7 @@ submodules:
       - 貨幣付款：委派 CurrencyPurchaseService 驗證餘額→扣款→發放獎勵
       - 法幣付款：委派 FiatOrderService 建立 PENDING_PAYMENT 訂單並產生繳費碼
       - 回覆 Discord embed 或 DM 付款資訊
+      - Select product → branch by price type → confirm OR payment choice OR fiat defer+DM
     errors:
       - name: ErrProductNotFound
         when: productId 在資料庫中不存在

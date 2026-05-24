@@ -85,4 +85,38 @@ describe('UT-AG-026 conversation memory checkpoint integration', () => {
 
     expect(restored).toEqual(persistedMessages);
   });
+
+  it('uses hybrid redis cache when redis is available', async () => {
+    if (!CONNECTION_URL) {
+      throw new Error('__TEST_CONTAINER_URL is required (run with shared vitest globalSetup)');
+    }
+
+    const redisUrl = process.env.REDIS_URI ?? 'redis://127.0.0.1:6379';
+    pool = new Pool({ connectionString: CONNECTION_URL, max: 2 });
+    const conversationId = `agent-redis-${Date.now()}`;
+
+    let provider: LangGraphCheckpointProvider | undefined;
+    try {
+      provider = new LangGraphCheckpointProvider(pool, redisUrl);
+      await provider.initialize();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(`[UT-AG-026] Redis hybrid checkpoint skipped (${message})`);
+      return;
+    }
+
+    if (provider.isPostgresOnly()) {
+      console.warn('[UT-AG-026] Redis unavailable — hybrid path skipped');
+      await provider.shutdown();
+      return;
+    }
+
+    await provider.recordAgentTurn(conversationId);
+    await provider.shutdown();
+
+    const restarted = new LangGraphCheckpointProvider(pool, redisUrl);
+    await restarted.initialize();
+    expect(await restarted.getAgentTurnCount(conversationId)).toBe(1);
+    await restarted.shutdown();
+  });
 });

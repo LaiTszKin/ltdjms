@@ -52,6 +52,26 @@
       "name": "table_maps_to_discord_render_issue",
       "input": "| Name | Value |\n| --- | --- |\n| foo | bar |",
       "expectedErrorType": "DISCORD_RENDER_ISSUE"
+    },
+    {
+      "name": "heading_level_exceeded",
+      "input": "####### Too deep",
+      "expectedErrorType": "HEADING_LEVEL_EXCEEDED"
+    },
+    {
+      "name": "heading_contains_list_marker",
+      "input": "# - item in heading",
+      "expectedErrorType": "HEADING_CONTAINS_LIST_MARKER"
+    },
+    {
+      "name": "malformed_nested_list",
+      "input": "- outer\n   - inner",
+      "expectedErrorType": "MALFORMED_NESTED_LIST"
+    },
+    {
+      "name": "discord_render_issue_hr",
+      "input": "---",
+      "expectedErrorType": "DISCORD_RENDER_ISSUE"
     }
   ]
 }

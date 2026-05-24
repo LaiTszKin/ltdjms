@@ -131,6 +131,27 @@ export const AI_TOKENS = {
   AgentCompletionListener: Symbol('AgentCompletionListener'),
 };
 
+/** Single source of truth for the 17 agent tools registered in DI. */
+export const AGENT_TOOL_TOKENS = [
+  AI_TOKENS.CreateChannelTool,
+  AI_TOKENS.CreateCategoryTool,
+  AI_TOKENS.CreateRoleTool,
+  AI_TOKENS.ListChannelsTool,
+  AI_TOKENS.ListCategoriesTool,
+  AI_TOKENS.ListRolesTool,
+  AI_TOKENS.GetChannelPermissionsTool,
+  AI_TOKENS.GetCategoryPermissionsTool,
+  AI_TOKENS.GetRolePermissionsTool,
+  AI_TOKENS.ModifyChannelPermissionsTool,
+  AI_TOKENS.ModifyCategoryPermissionsTool,
+  AI_TOKENS.ModifyRolePermissionsTool,
+  AI_TOKENS.SendMessagesTool,
+  AI_TOKENS.SearchMessagesTool,
+  AI_TOKENS.ManageMessageTool,
+  AI_TOKENS.MoveChannelTool,
+  AI_TOKENS.DeleteDiscordResourceTool,
+] as const;
+
 let aiModuleInitialized = false;
 
 /**
@@ -252,25 +273,7 @@ export async function initializeAIModule(): Promise<void> {
   );
 
   // Build tool map for agent tool execution (P0-7)
-  const allTools = [
-    container.resolve(AI_TOKENS.CreateChannelTool),
-    container.resolve(AI_TOKENS.CreateCategoryTool),
-    container.resolve(AI_TOKENS.CreateRoleTool),
-    container.resolve(AI_TOKENS.ListChannelsTool),
-    container.resolve(AI_TOKENS.ListCategoriesTool),
-    container.resolve(AI_TOKENS.ListRolesTool),
-    container.resolve(AI_TOKENS.GetChannelPermissionsTool),
-    container.resolve(AI_TOKENS.GetCategoryPermissionsTool),
-    container.resolve(AI_TOKENS.GetRolePermissionsTool),
-    container.resolve(AI_TOKENS.ModifyChannelPermissionsTool),
-    container.resolve(AI_TOKENS.ModifyCategoryPermissionsTool),
-    container.resolve(AI_TOKENS.ModifyRolePermissionsTool),
-    container.resolve(AI_TOKENS.SendMessagesTool),
-    container.resolve(AI_TOKENS.SearchMessagesTool),
-    container.resolve(AI_TOKENS.ManageMessageTool),
-    container.resolve(AI_TOKENS.MoveChannelTool),
-    container.resolve(AI_TOKENS.DeleteDiscordResourceTool),
-  ];
+  const allTools = AGENT_TOOL_TOKENS.map((token) => container.resolve(token));
   const toolMap = new Map<
     string,
     {
@@ -328,7 +331,26 @@ export async function initializeAIModule(): Promise<void> {
 
   // ===== Agent event listeners =====
   const toolExecutionListener = new ToolExecutionListener(runtimeGateway, logger);
-  const agentCompletionListener = new AgentCompletionListener(runtimeGateway, logger);
+
+  // ===== Markdown Pipeline =====
+  // Register Markdown services before they are resolved by MarkdownValidatingAIChatService (P1-1)
+  container.registerInstance(AI_TOKENS.CommonMarkValidator, new CommonMarkValidator());
+  container.registerInstance(AI_TOKENS.RegexBasedAutoFixer, new RegexBasedAutoFixer());
+  container.registerInstance(AI_TOKENS.DiscordMarkdownSanitizer, new DiscordMarkdownSanitizer());
+  container.registerInstance(AI_TOKENS.DiscordMarkdownPaginator, new DiscordMarkdownPaginator());
+
+  const agentCompletionListener = new AgentCompletionListener(
+    runtimeGateway,
+    logger,
+    aiConfig.enableMarkdownValidation
+      ? {
+          validator: container.resolve(AI_TOKENS.CommonMarkValidator),
+          autoFixer: container.resolve(AI_TOKENS.RegexBasedAutoFixer),
+          sanitizer: container.resolve(AI_TOKENS.DiscordMarkdownSanitizer),
+          paginator: container.resolve(AI_TOKENS.DiscordMarkdownPaginator),
+        }
+      : undefined,
+  );
   container.registerInstance(AI_TOKENS.ToolExecutionListener, toolExecutionListener);
   container.registerInstance(AI_TOKENS.AgentCompletionListener, agentCompletionListener);
   eventPublisher.register((event) => toolExecutionListener.accept(event));
@@ -373,13 +395,6 @@ export async function initializeAIModule(): Promise<void> {
     checkpointProvider ?? undefined,
   );
   container.registerInstance(AI_TOKENS.LangChainAIChatService, langChainService);
-
-  // ===== Markdown Pipeline =====
-  // Register Markdown services before they are resolved by MarkdownValidatingAIChatService (P1-1)
-  container.registerInstance(AI_TOKENS.CommonMarkValidator, new CommonMarkValidator());
-  container.registerInstance(AI_TOKENS.RegexBasedAutoFixer, new RegexBasedAutoFixer());
-  container.registerInstance(AI_TOKENS.DiscordMarkdownSanitizer, new DiscordMarkdownSanitizer());
-  container.registerInstance(AI_TOKENS.DiscordMarkdownPaginator, new DiscordMarkdownPaginator());
 
   // Wrap with Markdown validation decorator if enabled
   let aiChatService: AIChatService;

@@ -1,8 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ok, MockDiscordContext } from '@ltdjms/shared';
+import {
+  normalizeEmbedForSnapshot,
+  assertEmbedParity,
+} from '../../../../shared/src/__tests__/parity/json-snapshot.js';
 import { ShopCommandHandler } from '../shop-handler.js';
 import { ShopService } from '../../services/shop.service.js';
 import { ProductService } from '../../services/product-service.js';
+import oracle from '../../../../../docs/plans/2026-05-24/java-parity-shop-ai/shop-java-parity/fixtures/java-shop-view-oracle.json';
 import {
   BUTTON_PREV_PAGE,
   BUTTON_BUY,
@@ -71,6 +76,31 @@ describe('UT-306 ShopCommandHandler parity', () => {
     expect(shopService.getShopPage).toHaveBeenCalledWith(guildIdNum, 0);
     expect(interaction.getReplyEmbedCount()).toBe(1);
     expect(interaction.getReplyComponents().length).toBeGreaterThan(0);
+  });
+
+  it('empty shop embed matches java-shop-view oracle', async () => {
+    vi.mocked(shopService.getShopPage).mockResolvedValue({
+      products: [],
+      currentPage: 1,
+      totalPages: 0,
+      isEmpty: () => true,
+      hasPreviousPage: () => false,
+      hasNextPage: () => false,
+      formatPageIndicator: () => '共 0 個商品',
+    });
+
+    const interaction = new ShopTestInteraction(guildId, userId, { interactionType: 'chatInput' });
+    await handler.execute(
+      interaction,
+      new MockDiscordContext(guildId, userId, '1', `<@${userId}>`),
+    );
+
+    const embed = interaction.getReplyEmbeds()[0];
+    assertEmbedParity(normalizeEmbedForSnapshot(embed), {
+      title: oracle.scenarios.emptyShop.title,
+      description: oracle.scenarios.emptyShop.description,
+      color: embed.color,
+    });
   });
 
   it('shows empty embed without components when catalog is empty', async () => {

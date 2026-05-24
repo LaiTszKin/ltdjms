@@ -98,4 +98,57 @@ describe('UT-AIC-015 channel restriction integration', () => {
     expect(await service.isChannelAllowed(guildId, channelId, categoryId)).toBe(true);
     expect(await service.isChannelAllowed(guildId, channelId, '9999')).toBe(false);
   });
+
+  it('deleteRemovedChannels prunes stale allowlist entries', async () => {
+    if (!CONNECTION_URL) {
+      throw new Error('__TEST_CONTAINER_URL is required (run with shared vitest globalSetup)');
+    }
+
+    const db = drizzle(pool!);
+    const repository = new DrizzleAIChannelRestrictionRepository(db);
+    const service = new DefaultAIChannelRestrictionService(repository);
+    const guildId = '123456789';
+
+    await service.addAllowedChannel(guildId, { channelId: '1001', channelName: 'keep' });
+    await service.addAllowedChannel(guildId, { channelId: '1002', channelName: 'drop' });
+
+    await service.deleteRemovedChannels(guildId, ['1001']);
+
+    expect(await service.isChannelAllowed(guildId, '1001')).toBe(true);
+    expect(await service.isChannelAllowed(guildId, '1002')).toBe(false);
+  });
+
+  it('deleteRemovedChannels with empty allowlist clears guild entries', async () => {
+    if (!CONNECTION_URL) {
+      throw new Error('__TEST_CONTAINER_URL is required (run with shared vitest globalSetup)');
+    }
+
+    const db = drizzle(pool!);
+    const repository = new DrizzleAIChannelRestrictionRepository(db);
+    const service = new DefaultAIChannelRestrictionService(repository);
+    const guildId = '123456789';
+
+    await service.addAllowedChannel(guildId, { channelId: '1001', channelName: 'general' });
+    await service.deleteRemovedChannels(guildId, []);
+
+    expect(await service.isChannelAllowed(guildId, '1001')).toBe(false);
+  });
+
+  it('keeps allowlists isolated across guilds', async () => {
+    if (!CONNECTION_URL) {
+      throw new Error('__TEST_CONTAINER_URL is required (run with shared vitest globalSetup)');
+    }
+
+    const db = drizzle(pool!);
+    const repository = new DrizzleAIChannelRestrictionRepository(db);
+    const service = new DefaultAIChannelRestrictionService(repository);
+
+    await service.addAllowedChannel('111', { channelId: '1001', channelName: 'guild-a' });
+    await service.addAllowedChannel('222', { channelId: '2001', channelName: 'guild-b' });
+
+    expect(await service.isChannelAllowed('111', '1001')).toBe(true);
+    expect(await service.isChannelAllowed('222', '2001')).toBe(true);
+    expect(await service.isChannelAllowed('111', '2001')).toBe(false);
+    expect(await service.isChannelAllowed('222', '1001')).toBe(false);
+  });
 });

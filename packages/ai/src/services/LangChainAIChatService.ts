@@ -67,6 +67,7 @@ interface RegisteredTool {
 export class LangChainAIChatService implements AIChatService {
   config: AIServiceConfig;
   private chatModel: ChatOpenAI;
+  private cachedToolDefinitions: DynamicStructuredTool[] | null = null;
 
   constructor(
     config: AIServiceConfig,
@@ -690,7 +691,10 @@ export class LangChainAIChatService implements AIChatService {
    */
   private buildToolDefinitions(): DynamicStructuredTool[] {
     if (!this.toolMap) return [];
-    return buildToolDefinitionsFromTools(Array.from(this.toolMap.values()));
+    if (!this.cachedToolDefinitions) {
+      this.cachedToolDefinitions = buildToolDefinitionsFromTools(Array.from(this.toolMap.values()));
+    }
+    return this.cachedToolDefinitions;
   }
 }
 

@@ -25,6 +25,7 @@
           <tr><td>handleMessageReceived</td><td>MessageReceivedEvent</td><td>void (路由決定)</td><td>io</td><td>監聽 guild 訊息，過濾非 @bot 提及、bot 自身、DM</td></tr>
           <tr><td>decideRouting</td><td>channelId, categoryId</td><td>RouteDecision (AGENT_ROUTE | AI_CHAT_ROUTE | DENY)</td><td>pure</td><td>Agent 啟用優先 → 頻道白名單 → 拒絕三元決策</td></tr>
           <tr><td>streamAiResponse</td><td>message, routeDecision, handler</td><td>void (串流)</td><td>network</td><td>啟動 AI 串流回覆，處理 Reasoning/Content/ToolIntent 三種 chunk 輸出</td></tr>
+          <tr><td>accumulateContentChunk</td><td>chunk</td><td>flushMessage?</td><td>pure</td><td>MessageChunkAccumulator parity for 1980-boundary streaming.</td></tr>
         </tbody>
       </table>
     </section>

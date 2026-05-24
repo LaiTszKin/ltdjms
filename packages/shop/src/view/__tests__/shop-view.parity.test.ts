@@ -122,6 +122,27 @@ describe('UT-304 ShopView buy/search/confirm parity', () => {
     expect(select.options[0].description).toContain('NT$500');
   });
 
+  it('buildBuyMenuShouldSplitIntoMultipleMenus when more than 25 products', () => {
+    const products = Array.from({ length: 30 }, (_, index) =>
+      createTestProduct({ id: index + 1, name: `Product ${index + 1}` }),
+    );
+    const rows = buildBuyMenu(products);
+
+    expect(rows).toHaveLength(2);
+    const firstSelect = rows[0].components[0] as {
+      customId: string;
+      options: Array<{ value: string }>;
+    };
+    const secondSelect = rows[1].components[0] as {
+      customId: string;
+      options: Array<{ value: string }>;
+    };
+    expect(firstSelect.customId).toBe(SELECT_BUY_PRODUCT);
+    expect(secondSelect.customId).toBe(SELECT_BUY_PRODUCT);
+    expect(firstSelect.options).toHaveLength(25);
+    expect(secondSelect.options).toHaveLength(5);
+  });
+
   it('payment choice embed and buttons match oracle', () => {
     const product = createTestProduct({ currencyPrice: 100, fiatPriceTwd: 500 });
     const embed = buildPaymentMethodChoiceEmbed(product);

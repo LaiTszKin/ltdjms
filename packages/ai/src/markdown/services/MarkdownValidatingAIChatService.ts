@@ -166,39 +166,43 @@ export class MarkdownValidatingAIChatService implements AIChatService {
         chunkType?: StreamChunkType,
       ) => {
         if (error) {
-          void handler.onChunk('', true, error, StreamChunkType.CONTENT);
+          await handler.onChunk('', true, error, StreamChunkType.CONTENT);
           return;
         }
 
         const type = chunkType ?? StreamChunkType.CONTENT;
         if (type === StreamChunkType.REASONING || type === StreamChunkType.TOOL_INTENT) {
-          void handler.onChunk(chunk, isComplete, null, type);
+          await handler.onChunk(chunk, isComplete, null, type);
           return;
         }
 
         if (chunk) {
           const pages = processor.onChunk(chunk);
-          this.emitPages(handler, pages, false);
+          await this.emitPages(handler, pages, false);
         }
 
         if (isComplete) {
           const remaining = processor.flush();
-          this.emitPages(handler, remaining, true);
+          await this.emitPages(handler, remaining, true);
           if (remaining.length === 0) {
-            void handler.onChunk('', true, null, StreamChunkType.CONTENT);
+            await handler.onChunk('', true, null, StreamChunkType.CONTENT);
           }
         }
       },
     });
   }
 
-  private emitPages(handler: StreamingResponseHandler, pages: string[], isComplete: boolean): void {
+  private async emitPages(
+    handler: StreamingResponseHandler,
+    pages: string[],
+    isComplete: boolean,
+  ): Promise<void> {
     if (!pages.length) {
       return;
     }
     for (let i = 0; i < pages.length; i++) {
       const isLast = isComplete && i === pages.length - 1;
-      void handler.onChunk(pages[i], isLast, null, StreamChunkType.CONTENT);
+      await handler.onChunk(pages[i], isLast, null, StreamChunkType.CONTENT);
     }
   }
 
