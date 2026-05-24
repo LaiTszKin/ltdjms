@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en" data-atlas-page="feature">
+<head>
+  <meta charset="utf-8">
+  <title>AI Chat &amp; Agent</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..500&family=Geist:wght@300..700&family=JetBrains+Mono:wght@400..600&display=swap">
+  <link rel="stylesheet" href="../../assets/architecture.css">
+</head>
+<body>
+  <header class="feature-header">
+    <nav class="feature-breadcrumb"><a href="../../index.html">← Atlas</a></nav>
+    <h1>AI Chat &amp; Agent</h1>
+    
+  </header>
+  <main class="feature-main">
+    <section class="feature-story"><p>成員在允許頻道提及 @bot 可獲得 AI 回覆或啟動 Agent 執行 Discord 管理工具。管理員可設定頻道白名單與 Agent 啟用。</p></section>
+    <section class="feature-submodules" aria-label="Submodules">
+      <h2>Submodules</h2>
+      <ul class="submodule-nav">
+      <li class="submodule-card">
+        <a class="submodule-card__link" href="ai-mention-interaction.html">
+          <span class="submodule-card__name">ai-mention-interaction</span>
+          <span class="submodule-card__kind submodule-card__kind--api">API</span>
+        </a>
+        <p class="submodule-card__role">@bot 提及監聽、AI 聊天 vs Agent 路由決策、串流回覆輸出</p>
+      </li>
+      <li class="submodule-card">
+        <a class="submodule-card__link" href="ai-chat-service.html">
+          <span class="submodule-card__name">ai-chat-service</span>
+          <span class="submodule-card__kind submodule-card__kind--service">Service</span>
+        </a>
+        <p class="submodule-card__role">AI 串流回覆（LangChain4j）、頻道白名單檢查、提示詞系統提示載入</p>
+      </li>
+      <li class="submodule-card">
+        <a class="submodule-card__link" href="ai-agent-service.html">
+          <span class="submodule-card__name">ai-agent-service</span>
+          <span class="submodule-card__kind submodule-card__kind--service">Service</span>
+        </a>
+        <p class="submodule-card__role">Agent 工具執行（17 個 Discord 管理工具）、對話記憶、工具審計日誌</p>
+      </li>
+      <li class="submodule-card">
+        <a class="submodule-card__link" href="markdown-validation.html">
+          <span class="submodule-card__name">markdown-validation</span>
+          <span class="submodule-card__kind submodule-card__kind--pure-fn">Pure fn</span>
+        </a>
+        <p class="submodule-card__role">AI 回覆 Markdown 語法校驗與自動修正管線（CommonMark 解析器 + 13 道 Regex 修復）</p>
+      </li>
+      <li class="submodule-card">
+        <a class="submodule-card__link" href="ai-db.html">
+          <span class="submodule-card__name">ai-db</span>
+          <span class="submodule-card__kind submodule-card__kind--db">DB</span>
+        </a>
+        <p class="submodule-card__role">ai_channel_restriction / ai_agent_channel_config / tool_execution_log 資料表</p>
+      </li>
+      <li class="submodule-card">
+        <a class="submodule-card__link" href="markdown-stream-processor.html">
+          <span class="submodule-card__name">markdown-stream-processor</span>
+          <span class="submodule-card__kind submodule-card__kind--service">Service</span>
+        </a>
+        <p class="submodule-card__role">Incremental Discord markdown stream processing (Java DiscordMarkdownStreamProcessor parity)</p>
+      </li>
+      <li class="submodule-card">
+        <a class="submodule-card__link" href="langgraph-checkpoint.html">
+          <span class="submodule-card__name">langgraph-checkpoint</span>
+          <span class="submodule-card__kind submodule-card__kind--db">DB</span>
+        </a>
+        <p class="submodule-card__role">LangGraph Postgres+Redis checkpoint for agent conversation persistence</p>
+      </li>
+      <li class="submodule-card">
+        <a class="submodule-card__link" href="tool-audit-log.html">
+          <span class="submodule-card__name">tool-audit-log</span>
+          <span class="submodule-card__kind submodule-card__kind--db">DB</span>
+        </a>
+        <p class="submodule-card__role">tool_execution_log persistence + domain events (Java ToolExecutionInterceptor parity)</p>
+      </li>
+      <li class="submodule-card">
+        <a class="submodule-card__link" href="agent-event-listeners.html">
+          <span class="submodule-card__name">agent-event-listeners</span>
+          <span class="submodule-card__kind submodule-card__kind--api">API</span>
+        </a>
+        <p class="submodule-card__role">Discord notifications for tool execution and agent completion</p>
+      </li>
+      </ul>
+    </section>
+    <section class="feature-edges" aria-label="Intra-feature edges">
+      <h2>Intra-feature edges</h2>
+      <ul class="feature-edges__list">
+        <li class="feature-edges__item feature-edges__item--call"><span class="feature-edges__endpoints">ai-mention-interaction → ai-chat-service</span><span class="feature-edges__kind">call</span><span class="feature-edges__label">路由至 AI 聊天</span></li>
+        <li class="feature-edges__item feature-edges__item--call"><span class="feature-edges__endpoints">ai-chat-service → ai-agent-service</span><span class="feature-edges__kind">call</span><span class="feature-edges__label">Agent 模式啟用時路由至工具執行</span></li>
+        <li class="feature-edges__item feature-edges__item--call"><span class="feature-edges__endpoints">ai-chat-service → markdown-validation</span><span class="feature-edges__kind">call</span><span class="feature-edges__label">串流回覆 Markdown 校驗</span></li>
+        <li class="feature-edges__item feature-edges__item--call"><span class="feature-edges__endpoints">ai-chat-service → ai-db</span><span class="feature-edges__kind">call</span><span class="feature-edges__label">讀寫頻道白名單</span></li>
+        <li class="feature-edges__item feature-edges__item--call"><span class="feature-edges__endpoints">ai-agent-service → ai-db</span><span class="feature-edges__kind">call</span><span class="feature-edges__label">讀寫 Agent 設定與工具日誌</span></li>
+        <li class="feature-edges__item feature-edges__item--failure"><span class="feature-edges__endpoints">ai-chat-service → ai-mention-interaction</span><span class="feature-edges__kind">failure</span><span class="feature-edges__label">ErrAIServiceUnavailable→回覆 Discord 錯誤訊息</span></li>
+        <li class="feature-edges__item feature-edges__item--call"><span class="feature-edges__endpoints">ai-chat-service → markdown-stream-processor</span><span class="feature-edges__kind">call</span><span class="feature-edges__label">stream CONTENT through markdown processor</span></li>
+        <li class="feature-edges__item feature-edges__item--call"><span class="feature-edges__endpoints">ai-agent-service → langgraph-checkpoint</span><span class="feature-edges__kind">call</span><span class="feature-edges__label">read/write conversation checkpoint</span></li>
+        <li class="feature-edges__item feature-edges__item--call"><span class="feature-edges__endpoints">ai-agent-service → tool-audit-log</span><span class="feature-edges__kind">call</span><span class="feature-edges__label">audit each tool invocation</span></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
