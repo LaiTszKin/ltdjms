@@ -16,9 +16,6 @@ Dockerfile*
 docker-compose*.yml
 .dockerignore
 
-# Lockfile — explicitly allowed for reproducible installs
-!pnpm-lock.yaml
-
 # Documentation
 *.md
 specs/

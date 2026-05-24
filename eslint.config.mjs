@@ -9,7 +9,6 @@ export default tseslint.config(
       '**/__tests__/**',
       '**/*.test.ts',
       'apps/**',
-      'Dockerfile.ts',
     ],
   },
   ...tseslint.configs.recommended,
