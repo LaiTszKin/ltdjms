@@ -44,6 +44,7 @@ export class DrizzleRedemptionTransactionService implements RedemptionTransactio
     hasNext: boolean;
     totalPages: number;
     currentPage: number;
+    totalCount: number;
   }> {
     const safePage = Math.max(1, page);
     const safePageSize = Math.max(1, pageSize);
@@ -78,6 +79,7 @@ export class DrizzleRedemptionTransactionService implements RedemptionTransactio
       hasNext: safePage < totalPages,
       totalPages,
       currentPage: safePage,
+      totalCount,
     };
   }
 }

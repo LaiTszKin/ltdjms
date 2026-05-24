@@ -1,106 +1,103 @@
-import { ZhTwStrings } from '../i18n/zh-TW.js';
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+} from 'discord.js';
 import type { MemberPanelView } from '../facades/MemberInfoFacade.js';
-import type { CurrencyTransaction } from '@ltdjms/economy';
-import type { GameTokenTransaction } from '@ltdjms/games';
-import { Colors } from '../constants/colors.js';
+import {
+  UserPanelConstants,
+  USER_PANEL_EMBED_COLOR,
+  USER_PANEL_FOOTER_INITIAL,
+} from '../constants/UserPanelConstants.js';
+
+const GAME_TOKEN_ICON = '🎮';
+const GAME_TOKEN_NAME = '遊戲代幣';
+const EMBED_TITLE = '個人面板';
+
+const TOKEN_HISTORY_LABEL = '📜 查看遊戲代幣流水';
+const PRODUCT_HISTORY_LABEL = '🛒 查看商品流水';
+const REDEEM_LABEL = '🎫 兌換碼';
+
+export function formatCurrencyField(view: MemberPanelView): string {
+  return `${view.currencyIcon} ${view.balance.toLocaleString('en-US')} ${view.currencyName}`;
+}
+
+export function formatGameTokensField(view: MemberPanelView): string {
+  return `${GAME_TOKEN_ICON} ${view.tokens.toLocaleString('en-US')} ${GAME_TOKEN_NAME}`;
+}
+
+export function getCurrencyFieldName(view: MemberPanelView): string {
+  return `${view.currencyName}餘額`;
+}
+
+export function getGameTokensFieldName(): string {
+  return '遊戲代幣餘額';
+}
+
+export function getCurrencyHistoryButtonLabel(view: MemberPanelView): string {
+  return `${view.currencyIcon} 查看貨幣流水`;
+}
+
+export interface PanelEmbedData {
+  title: string;
+  description: string;
+  fields: { name: string; value: string; inline: boolean }[];
+  color: number;
+  footer?: string;
+}
 
 /**
- * User panel embed builder.
- * Matches Java UserPanelEmbedBuilder.
+ * User panel embed builder. Mirrors Java UserPanelEmbedBuilder.
  */
 export class UserPanelEmbedBuilder {
-  buildUserPanelEmbed(memberSummary: MemberPanelView): {
-    title: string;
-    description: string;
-    fields: { name: string; value: string; inline: boolean }[];
-    color: number;
-  } {
+  buildPanelEmbed(
+    view: MemberPanelView,
+    userMention: string,
+    footer: string = USER_PANEL_FOOTER_INITIAL,
+  ): PanelEmbedData {
     return {
-      title: ZhTwStrings.userPanelTitle,
-      description: [
-        ZhTwStrings.userPanelBalance
-          .replace('{balance}', String(memberSummary.balance))
-          .replace('{currencyIcon}', memberSummary.currencyIcon),
-        ZhTwStrings.userPanelTokens.replace('{tokens}', String(memberSummary.tokens)),
-      ].join('\n'),
-      fields: [],
-      color: Colors.USER_PANEL,
+      title: EMBED_TITLE,
+      description: `${userMention} 的帳戶資訊`,
+      fields: [
+        {
+          name: getCurrencyFieldName(view),
+          value: formatCurrencyField(view),
+          inline: true,
+        },
+        {
+          name: getGameTokensFieldName(),
+          value: formatGameTokensField(view),
+          inline: true,
+        },
+      ],
+      color: USER_PANEL_EMBED_COLOR,
+      footer,
     };
   }
 
-  buildCurrencyHistoryEmbed(
-    transactions: CurrencyTransaction[],
-    page: number,
-    totalPages: number,
-  ): {
-    title: string;
-    description: string;
-    fields: { name: string; value: string; inline: boolean }[];
-    color: number;
-  } {
-    const fields = transactions.map((tx) => ({
-      name: new Date(tx.createdAt).toLocaleString('zh-TW'),
-      value: `${tx.amount > 0 ? '+' : ''}${tx.amount} | ${tx.description ?? ''}`,
-      inline: false,
-    }));
+  static buildPanelComponents(currencyHistoryLabel: string): ActionRowBuilder<ButtonBuilder>[] {
+    const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(UserPanelConstants.BUTTON_PREFIX_CURRENCY_HISTORY)
+        .setLabel(currencyHistoryLabel)
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId(UserPanelConstants.BUTTON_PREFIX_TOKEN_HISTORY)
+        .setLabel(TOKEN_HISTORY_LABEL)
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId(UserPanelConstants.BUTTON_PREFIX_PRODUCT_REDEMPTION_HISTORY)
+        .setLabel(PRODUCT_HISTORY_LABEL)
+        .setStyle(ButtonStyle.Secondary),
+    );
 
-    return {
-      title: ZhTwStrings.historyTitleCurrency,
-      description: `${ZhTwStrings.historyPageIndicator.replace('{current}', String(page)).replace('{total}', String(totalPages))}`,
-      fields,
-      color: Colors.HISTORY_CURRENCY,
-    };
-  }
+    const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(UserPanelConstants.BUTTON_REDEEM)
+        .setLabel(REDEEM_LABEL)
+        .setStyle(ButtonStyle.Success),
+    );
 
-  buildTokenHistoryEmbed(
-    transactions: GameTokenTransaction[],
-    page: number,
-    totalPages: number,
-  ): {
-    title: string;
-    description: string;
-    fields: { name: string; value: string; inline: boolean }[];
-    color: number;
-  } {
-    const fields = transactions.map((tx) => ({
-      name: new Date(tx.createdAt).toLocaleString('zh-TW'),
-      value: `${tx.amount > 0 ? '+' : ''}${tx.amount} 個 | ${tx.description ?? ''}`,
-      inline: false,
-    }));
-
-    return {
-      title: ZhTwStrings.historyTitleToken,
-      description: `${ZhTwStrings.historyPageIndicator.replace('{current}', String(page)).replace('{total}', String(totalPages))}`,
-      fields,
-      color: Colors.HISTORY_TOKEN,
-    };
-  }
-
-  buildRedemptionHistoryEmbed(
-    redemptions: { code: string; createdAt: Date; productName: string }[],
-    page: number,
-    totalPages: number,
-  ): {
-    title: string;
-    description: string;
-    fields: { name: string; value: string; inline: boolean }[];
-    color: number;
-  } {
-    const fields = redemptions.map((r) => {
-      const maskedCode =
-        r.code.length > 8 ? `${r.code.slice(0, 4)}****${r.code.slice(-4)}` : r.code;
-      return {
-        name: new Date(r.createdAt).toLocaleString('zh-TW'),
-        value: `${r.productName}\n兌換碼：${maskedCode}`,
-        inline: false,
-      };
-    });
-
-    return {
-      title: ZhTwStrings.historyTitleRedemption,
-      description: `${ZhTwStrings.historyPageIndicator.replace('{current}', String(page)).replace('{total}', String(totalPages))}`,
-      fields,
-      color: Colors.HISTORY_REDEMPTION,
-    };
+    return [row1, row2];
   }
 }

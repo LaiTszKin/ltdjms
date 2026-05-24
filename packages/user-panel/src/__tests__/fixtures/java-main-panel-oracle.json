@@ -1,0 +1,52 @@
+{
+  "embed": {
+    "title": "個人面板",
+    "descriptionPattern": "{userMention} 的帳戶資訊",
+    "color": 5793266,
+    "colorHex": "0x5865F2",
+    "fields": [
+      {
+        "index": 0,
+        "namePattern": "{currencyName}餘額",
+        "inline": true,
+        "valueContains": ["{currencyIcon}", "{formattedBalance}", "{currencyName}"]
+      },
+      {
+        "index": 1,
+        "name": "遊戲代幣餘額",
+        "inline": true,
+        "valueContains": ["🎮", "{gameTokens}"]
+      }
+    ],
+    "footerInitial": "點擊下方按鈕查看流水紀錄或兌換碼",
+    "footerPushUpdate": "資料已更新"
+  },
+  "buttons": {
+    "rows": [
+      [
+        {
+          "customId": "user_panel_currency_history",
+          "labelPattern": "{currencyIcon} 查看貨幣流水",
+          "style": "SECONDARY"
+        },
+        {
+          "customId": "user_panel_token_history",
+          "label": "📜 查看遊戲代幣流水",
+          "style": "SECONDARY"
+        },
+        {
+          "customId": "user_panel_product_redemption_history",
+          "label": "🛒 查看商品流水",
+          "style": "SECONDARY"
+        }
+      ],
+      [
+        {
+          "customId": "user_panel_redeem",
+          "label": "🎫 兌換碼",
+          "style": "SUCCESS"
+        }
+      ]
+    ]
+  }
+}

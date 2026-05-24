@@ -1,0 +1,18 @@
+{
+  "prefix": "user_panel_",
+  "buttons": {
+    "currencyHistory": "user_panel_currency_history",
+    "tokenHistory": "user_panel_token_history",
+    "productRedemptionHistory": "user_panel_product_redemption_history",
+    "currencyPagePrefix": "user_panel_currency_page_",
+    "tokenPagePrefix": "user_panel_token_page_",
+    "productRedemptionPagePrefix": "user_panel_product_redemption_page_",
+    "redeem": "user_panel_redeem",
+    "backToPanel": "user_panel_back"
+  },
+  "modals": {
+    "redeem": "user_panel_modal_redeem",
+    "redeemCodeField": "code"
+  },
+  "routingRule": "buttonId.startsWith('user_panel_') || modalId === 'user_panel_modal_redeem'"
+}

@@ -9,8 +9,6 @@ export type { ZhTwStringsType } from './i18n/index.js';
 export {
   CurrencyManagementFacade,
   AIConfigManagementFacade,
-  MemberInfoFacade,
-  type MemberPanelView,
   DispatchManagementFacade,
   ProductManagementFacade,
 } from './facades/index.js';

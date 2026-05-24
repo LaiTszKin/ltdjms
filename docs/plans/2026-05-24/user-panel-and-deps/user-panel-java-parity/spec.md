@@ -36,10 +36,10 @@
 **AND** SlashCommandListener 以 `user_panel_` 前綴路由
 
 **Requirements**:
-- [ ] R1.1 定義 `UserPanelConstants` 模組，mirror Java 常數
-- [ ] R1.2 合併 button handler 為單一 `UserPanelButtonHandler`（或等價 routing），prefix=`user_panel_`
-- [ ] R1.3 modal id=`user_panel_modal_redeem`
-- [ ] R1.4 parity 測試比對 `fixtures/java-custom-ids.json`
+- [x] R1.1 定義 `UserPanelConstants` 模組，mirror Java 常數
+- [x] R1.2 合併 button handler 為單一 `UserPanelButtonHandler`（或等價 routing），prefix=`user_panel_`
+- [x] R1.3 modal id=`user_panel_modal_redeem`
+- [x] R1.4 parity 測試比對 `fixtures/java-custom-ids.json`
 
 ### Requirement 2: 主面板 embed 1:1
 **GIVEN** Java `UserPanelEmbedBuilderTest` oracle
@@ -47,11 +47,11 @@
 **THEN** embed JSON 結構與 Java 一致（title、description、fields、footer、color）
 
 **Requirements**:
-- [ ] R2.1 description = `{userMention} 的帳戶資訊`
-- [ ] R2.2 field[0].name = `{currencyName}餘額`，field[1].name = `遊戲代幣餘額`
-- [ ] R2.3 footer = `點擊下方按鈕查看流水紀錄或兌換碼`（即時更新時使用較短 footer，對齊 Java）
-- [ ] R2.4 color = `0x5865F2`
-- [ ] R2.5 UT snapshot 測試對齊 `fixtures/java-main-panel-oracle.json`
+- [x] R2.1 description = `{userMention} 的帳戶資訊`
+- [x] R2.2 field[0].name = `{currencyName}餘額`，field[1].name = `遊戲代幣餘額`
+- [x] R2.3 footer = `點擊下方按鈕查看流水紀錄或兌換碼`（即時更新時使用較短 footer，對齊 Java）
+- [x] R2.4 color = `0x5865F2`
+- [x] R2.5 UT snapshot 測試對齊 `fixtures/java-main-panel-oracle.json`
 
 ### Requirement 3: 主面板 buttons 1:1
 **GIVEN** Java `buildPanelComponents`
@@ -59,9 +59,9 @@
 **THEN** row1: 貨幣/代幣/商品 history（SECONDARY）；row2: 兌換碼（SUCCESS）
 
 **Requirements**:
-- [ ] R3.1 貨幣 button label = `{currencyIcon} 查看貨幣流水`（動態）
-- [ ] R3.2 代幣 label = `📜 查看遊戲代幣流水`；商品 = `🛒 查看商品流水`；兌換 = `🎫 兌換碼`
-- [ ] R3.3 兩列 layout（3 buttons + 1 button）
+- [x] R3.1 貨幣 button label = `{currencyIcon} 查看貨幣流水`（動態）
+- [x] R3.2 代幣 label = `📜 查看遊戲代幣流水`；商品 = `🛒 查看商品流水`；兌換 = `🎫 兌換碼`
+- [x] R3.3 兩列 layout（3 buttons + 1 button）
 
 ### Requirement 4: 交易歷史分頁 1:1
 **GIVEN** Java `UserPanelHistoryViewFactory`
@@ -70,11 +70,11 @@
 **AND** pagination buttons 含 `🔙 返回主頁`（`user_panel_back`）+ 可選 prev/next
 
 **Requirements**:
-- [ ] R4.1 建立 `UserPanelHistoryViewFactory.ts` mirror Java
-- [ ] R4.2 分頁 customId：`user_panel_currency_page_{n}`、`user_panel_token_page_{n}`、`user_panel_product_redemption_page_{n}`
-- [ ] R4.3 page indicator = `第 {current}/{total} 頁（共 {count} 筆）`
-- [ ] R4.4 `user_panel_back` 返回主面板 embed + components
-- [ ] R4.5 parity 測試對齊 `fixtures/java-history-oracle.json`
+- [x] R4.1 建立 `UserPanelHistoryViewFactory.ts` mirror Java
+- [x] R4.2 分頁 customId：`user_panel_currency_page_{n}`、`user_panel_token_page_{n}`、`user_panel_product_redemption_page_{n}`
+- [x] R4.3 page indicator = `第 {current}/{total} 頁（共 {count} 筆）`
+- [x] R4.4 `user_panel_back` 返回主面板 embed + components
+- [x] R4.5 parity 測試對齊 `fixtures/java-history-oracle.json`
 
 ### Requirement 5: 兌換碼流程 1:1
 **GIVEN** Java redemption flow
@@ -82,10 +82,10 @@
 **THEN** 成功/失敗 ephemeral 訊息格式對齊 Java
 
 **Requirements**:
-- [ ] R5.1 button `user_panel_redeem` 開啟 modal
-- [ ] R5.2 modal field `code` SHORT, min 16 max 20, required
-- [ ] R5.3 成功 `✅ {formatSuccessMessage()}`；失敗 `❌ 兌換失敗：{error}`
-- [ ] R5.4 `/redeem-code` 不依賴既有 panel session（或自動建立 session）
+- [x] R5.1 button `user_panel_redeem` 開啟 modal
+- [x] R5.2 modal field `code` SHORT, min 16 max 20, required
+- [x] R5.3 成功 `✅ {formatSuccessMessage()}`；失敗 `❌ 兌換失敗：{error}`
+- [x] R5.4 `/redeem-code` 不依賴既有 panel session（或自動建立 session）
 
 ### Requirement 6: Session 與即時更新 1:1
 **GIVEN** Java `PanelSessionManager` 15min TTL
@@ -93,16 +93,16 @@
 **THEN** 開啟中的主面板 embed 自動更新；session 過期則移除
 
 **Requirements**:
-- [ ] R6.1 session 僅在初始 `/user-panel` 成功時 register（非 back/history 導航時）
-- [ ] R6.2 `UserPanelUpdateListener` 對 guild-wide currency config 更新所有 open panels
-- [ ] R6.3 更新僅 edit embed（不 refresh buttons），對齊 Java
-- [ ] R6.4 listener 單元測試覆蓋三種 event
+- [x] R6.1 session 僅在初始 `/user-panel` 成功時 register（非 back/history 導航時）
+- [x] R6.2 `UserPanelUpdateListener` 對 guild-wide currency config 更新所有 open panels
+- [x] R6.3 更新僅 edit embed（不 refresh buttons），對齊 Java
+- [x] R6.4 listener 單元測試覆蓋三種 event
 
 ## Error and Edge Cases
-- [ ] Session 過期時 button 點擊 — ephemeral 提示重新 `/user-panel`
-- [ ] 空交易歷史 — 各 type 空狀態文案對齊 Java
-- [ ] 無效兌換碼 — domain error mapping 對齊 Java 訊息
-- [ ] 分頁超出範圍 — clamp 至有效頁（對齊 Java TransactionPage）
+- [x] Session 過期時 button 點擊 — ephemeral 提示重新 `/user-panel`
+- [x] 空交易歷史 — 各 type 空狀態文案對齊 Java
+- [x] 無效兌換碼 — domain error mapping 對齊 Java 訊息
+- [x] 分頁超出範圍 — clamp 至有效頁（對齊 Java TransactionPage）
 
 ## Clarification Questions
 - **驗收粒度**：預設採 **structural parity test**（embed fields、customId、button styles/rows 逐欄位比對 Java oracle），不要求 Discord API 二進位級別完全一致，但 customId 需逐字一致。

@@ -1,0 +1,38 @@
+{
+  "pageIndicatorPattern": "第 {current}/{total} 頁（共 {count} 筆）",
+  "pageSize": 10,
+  "types": {
+    "currency": {
+      "historyButtonId": "user_panel_currency_history",
+      "pagePrefix": "user_panel_currency_page_",
+      "emptyTitle": "貨幣流水",
+      "emptyDescription": "目前沒有任何貨幣流水紀錄"
+    },
+    "token": {
+      "historyButtonId": "user_panel_token_history",
+      "pagePrefix": "user_panel_token_page_",
+      "emptyTitle": "📜 遊戲代幣流水",
+      "emptyDescription": "目前沒有任何遊戲代幣流水紀錄"
+    },
+    "productRedemption": {
+      "historyButtonId": "user_panel_product_redemption_history",
+      "pagePrefix": "user_panel_product_redemption_page_",
+      "emptyTitle": "🛒 商品兌換流水",
+      "emptyDescription": "目前沒有任何商品兌換流水紀錄"
+    }
+  },
+  "pagination": {
+    "backButtonId": "user_panel_back",
+    "backLabel": "🔙 返回主頁",
+    "prevLabel": "⬅️ 上一頁",
+    "nextLabel": "下一頁 ➡️",
+    "maxButtonsPerRow": 3,
+    "examplePage2of3": {
+      "buttonIds": [
+        "user_panel_back",
+        "user_panel_token_page_1",
+        "user_panel_token_page_3"
+      ]
+    }
+  }
+}

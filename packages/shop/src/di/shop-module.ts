@@ -102,6 +102,7 @@ export interface RedemptionTransactionService {
     hasNext: boolean;
     totalPages: number;
     currentPage: number;
+    totalCount: number;
   }>;
 }
 

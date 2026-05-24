@@ -43,8 +43,7 @@ import type { ShopCommandHandler } from '@ltdjms/shop';
 import {
   USER_PANEL_TOKENS,
   type UserPanelCommand,
-  type TransactionHistoryHandler,
-  type RedemptionCodeHandler,
+  type UserPanelButtonHandler,
   type RedeemCodeCommandHandler,
 } from '@ltdjms/user-panel';
 
@@ -408,10 +407,7 @@ export function configureAdminContainer(): void {
     container.resolve<UserPanelCommand>(USER_PANEL_TOKENS.UserPanelCommand),
   );
   slashCommandListener.registerInteractionHandler(
-    container.resolve<TransactionHistoryHandler>(USER_PANEL_TOKENS.TransactionHistoryHandler),
-  );
-  slashCommandListener.registerInteractionHandler(
-    container.resolve<RedemptionCodeHandler>(USER_PANEL_TOKENS.RedemptionCodeHandler),
+    container.resolve<UserPanelButtonHandler>(USER_PANEL_TOKENS.UserPanelButtonHandler),
   );
   slashCommandListener.registerCommand(
     container.resolve<RedeemCodeCommandHandler>(USER_PANEL_TOKENS.RedeemCodeCommandHandler),

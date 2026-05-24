@@ -23,6 +23,7 @@ export type { RedemptionCodeGenerator } from './services/redemption-code-generat
 
 export type { RedemptionService } from './services/redemption.service.js';
 export type { RedemptionResult } from './services/redemption.service.js';
+export { formatRedemptionSuccessMessage } from './services/redemption.service.js';
 
 export type { ShopCommandHandler } from './commands/shop-handler.js';
 

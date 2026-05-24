@@ -48,6 +48,7 @@ export interface RedemptionTransactionPage {
   readonly hasNext: boolean;
   readonly totalPages: number;
   readonly currentPage: number;
+  readonly totalCount: number;
 }
 
 /**
@@ -225,6 +226,7 @@ export class MemberInfoFacade {
         hasNext: txPage.hasNext,
         totalPages: txPage.totalPages,
         currentPage: txPage.currentPage,
+        totalCount: txPage.totalCount,
       });
     } catch (e) {
       return err(

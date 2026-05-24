@@ -1,34 +1,33 @@
 import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
-import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { EmbedBuilder } from 'discord.js';
 import { type CommandHandler } from '../infra/CommandHandler.js';
-import { MemberInfoFacade } from '../facades/MemberInfoFacade.js';
 import { PanelSessionManager } from '../session/PanelSessionManager.js';
-import { UserPanelEmbedBuilder } from '../services/UserPanelEmbedBuilder.js';
+import { UserPanelEmbedBuilder, getCurrencyHistoryButtonLabel } from '../services/UserPanelEmbedBuilder.js';
+import { UserPanelService } from '../services/UserPanelService.js';
 import { ZhTwStrings } from '../i18n/zh-TW.js';
 
 /**
  * /user-panel slash command handler.
  * Opens the user panel showing balance, tokens, and action buttons.
+ * Mirrors Java UserPanelCommandHandler.
  */
 export class UserPanelCommand implements CommandHandler {
   readonly commandName = 'user-panel';
 
   constructor(
-    private readonly memberInfoFacade: MemberInfoFacade,
+    private readonly userPanelService: UserPanelService,
     private readonly sessionManager: PanelSessionManager,
     private readonly embedBuilder: UserPanelEmbedBuilder,
   ) {}
 
-  async execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void> {
+  async execute(interaction: DiscordInteraction, _context: DiscordContext): Promise<void> {
     const guildId = interaction.getGuildId();
     const userId = interaction.getUserId();
-
-    this.sessionManager.createSession(guildId, userId);
 
     interaction.makeEphemeral();
     await interaction.deferReply();
 
-    const result = await this.memberInfoFacade.getUserPanelView(guildId, userId);
+    const result = await this.userPanelService.getUserPanelView(guildId, userId);
 
     if (result.isErr()) {
       await interaction.reply(ZhTwStrings.unexpectedError);
@@ -36,37 +35,20 @@ export class UserPanelCommand implements CommandHandler {
     }
 
     const view = result.getValue();
-
-    const embedData = this.embedBuilder.buildUserPanelEmbed(view);
+    const userMention = `<@${userId}>`;
+    const embedData = this.embedBuilder.buildPanelEmbed(view, userMention);
     const embed = new EmbedBuilder()
       .setTitle(embedData.title)
       .setDescription(embedData.description)
-      .setColor(embedData.color);
+      .addFields(embedData.fields)
+      .setColor(embedData.color)
+      .setFooter({ text: embedData.footer ?? '' });
 
-    const buttons = [
-      new ButtonBuilder()
-        .setCustomId('user_history_currency')
-        .setLabel(ZhTwStrings.userPanelBtnCurrencyHistory)
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId('user_history_token')
-        .setLabel(ZhTwStrings.userPanelBtnTokenHistory)
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId('user_history_redemption')
-        .setLabel(ZhTwStrings.userPanelBtnRedemptionHistory)
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId('user_redeem_code')
-        .setLabel(ZhTwStrings.userPanelBtnRedeemCode)
-        .setStyle(ButtonStyle.Primary),
-    ];
-
-    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(buttons);
-
-    const replyMeta = await interaction.replyWithComponents(embed, [row]);
+    const rows = UserPanelEmbedBuilder.buildPanelComponents(getCurrencyHistoryButtonLabel(view));
+    const replyMeta = await interaction.replyWithComponents(embed, rows);
 
     if (replyMeta) {
+      this.sessionManager.createSession(guildId, userId);
       const session = this.sessionManager.getSession(guildId, userId);
       if (session) {
         session.channelId = replyMeta.channelId;

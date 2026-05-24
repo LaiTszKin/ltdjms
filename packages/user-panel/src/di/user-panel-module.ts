@@ -16,10 +16,10 @@ import { SHOP_TOKENS } from '@ltdjms/shop';
 import { MemberInfoFacade } from '../facades/MemberInfoFacade.js';
 import { PanelSessionManager } from '../session/PanelSessionManager.js';
 import { UserPanelEmbedBuilder } from '../services/UserPanelEmbedBuilder.js';
+import { UserPanelService } from '../services/UserPanelService.js';
 import { UserPanelCommand } from '../commands/UserPanelCommand.js';
 import { RedeemCodeCommandHandler } from '../commands/RedeemCodeCommandHandler.js';
-import { TransactionHistoryHandler } from '../handlers/TransactionHistoryHandler.js';
-import { RedemptionCodeHandler } from '../handlers/RedemptionCodeHandler.js';
+import { UserPanelButtonHandler } from '../handlers/UserPanelButtonHandler.js';
 import { UserPanelUpdateListener } from '../listeners/UserPanelUpdateListener.js';
 
 /** Module-level handler reference for DomainEventPublisher unregister support. */
@@ -32,9 +32,9 @@ export const USER_PANEL_TOKENS = {
   MemberInfoFacade: Symbol('MemberInfoFacade'),
   PanelSessionManager: Symbol('PanelSessionManager'),
   UserPanelEmbedBuilder: Symbol('UserPanelEmbedBuilder'),
+  UserPanelService: Symbol('UserPanelService'),
   UserPanelCommand: Symbol('UserPanelCommand'),
-  TransactionHistoryHandler: Symbol('TransactionHistoryHandler'),
-  RedemptionCodeHandler: Symbol('RedemptionCodeHandler'),
+  UserPanelButtonHandler: Symbol('UserPanelButtonHandler'),
   RedeemCodeCommandHandler: Symbol('RedeemCodeCommandHandler'),
   UserPanelUpdateListener: Symbol('UserPanelUpdateListener'),
 };
@@ -89,18 +89,18 @@ export function configureUserPanelContainer(): void {
   );
   container.registerInstance(USER_PANEL_TOKENS.MemberInfoFacade, memberInfoFacade);
 
+  const userPanelService = new UserPanelService(memberInfoFacade);
+  container.registerInstance(USER_PANEL_TOKENS.UserPanelService, userPanelService);
+
   const userPanelCommand = new UserPanelCommand(
-    memberInfoFacade,
+    userPanelService,
     panelSessionManager,
     userPanelEmbedBuilder,
   );
   container.registerInstance(USER_PANEL_TOKENS.UserPanelCommand, userPanelCommand);
 
-  const txHistoryHandler = new TransactionHistoryHandler(memberInfoFacade, panelSessionManager);
-  container.registerInstance(USER_PANEL_TOKENS.TransactionHistoryHandler, txHistoryHandler);
-
-  const redeemHandler = new RedemptionCodeHandler(memberInfoFacade, panelSessionManager);
-  container.registerInstance(USER_PANEL_TOKENS.RedemptionCodeHandler, redeemHandler);
+  const userPanelButtonHandler = new UserPanelButtonHandler(userPanelService);
+  container.registerInstance(USER_PANEL_TOKENS.UserPanelButtonHandler, userPanelButtonHandler);
 
   const redeemCmdHandler = new RedeemCodeCommandHandler();
   container.registerInstance(USER_PANEL_TOKENS.RedeemCodeCommandHandler, redeemCmdHandler);
@@ -109,7 +109,7 @@ export function configureUserPanelContainer(): void {
 
   const userUpdateListener = new UserPanelUpdateListener(
     panelSessionManager,
-    memberInfoFacade,
+    userPanelService,
     discordGateway,
     userPanelEmbedBuilder,
   );

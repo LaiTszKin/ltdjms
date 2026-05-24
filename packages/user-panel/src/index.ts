@@ -17,8 +17,12 @@ export type { PanelSessionData } from './session/types.js';
 
 export type { CommandHandler, InteractionHandler } from './infra/CommandHandler.js';
 
+export { UserPanelConstants } from './constants/UserPanelConstants.js';
+
 export { UserPanelCommand } from './commands/UserPanelCommand.js';
 export { RedeemCodeCommandHandler } from './commands/RedeemCodeCommandHandler.js';
-export { TransactionHistoryHandler } from './handlers/TransactionHistoryHandler.js';
-export { RedemptionCodeHandler } from './handlers/RedemptionCodeHandler.js';
+export { UserPanelButtonHandler } from './handlers/UserPanelButtonHandler.js';
+export { UserPanelService } from './services/UserPanelService.js';
+export { UserPanelEmbedBuilder } from './services/UserPanelEmbedBuilder.js';
+export { UserPanelHistoryViewFactory } from './services/UserPanelHistoryViewFactory.js';
 export { UserPanelUpdateListener } from './listeners/UserPanelUpdateListener.js';
