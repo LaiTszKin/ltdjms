@@ -6,6 +6,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import javax.sql.DataSource;
 
@@ -64,6 +66,70 @@ public class JdbcMembershipRepository implements MembershipRepository {
                               "Membership not found after insert: discordUserId="
                                   + discordUserId));
             });
+  }
+
+  @Override
+  public List<Long> findDueForSettlement(Instant before) {
+    String sql =
+        "SELECT discord_user_id FROM global_member_membership"
+            + " WHERE next_settlement_at IS NOT NULL AND next_settlement_at <= ?";
+
+    try (Connection conn = dataSource.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(sql)) {
+      stmt.setTimestamp(1, Timestamp.from(before));
+
+      try (ResultSet rs = stmt.executeQuery()) {
+        List<Long> userIds = new ArrayList<>();
+        while (rs.next()) {
+          userIds.add(rs.getLong("discord_user_id"));
+        }
+        return userIds;
+      }
+    } catch (SQLException e) {
+      LOG.error("Failed to find memberships due for settlement before={}", before, e);
+      throw new RepositoryException("Failed to find memberships due for settlement", e);
+    }
+  }
+
+  @Override
+  public boolean saveSettlementResult(
+      long discordUserId,
+      MembershipTier newTier,
+      Instant lastSettlementAt,
+      Instant newNextSettlementAt,
+      Instant expectedNextSettlementAt) {
+    String sql =
+        "UPDATE global_member_membership SET current_tier = ?, last_settlement_at = ?,"
+            + " next_settlement_at = ?, updated_at = ?"
+            + " WHERE discord_user_id = ? AND next_settlement_at = ?";
+
+    try (Connection conn = dataSource.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(sql)) {
+      Instant now = Instant.now();
+      stmt.setString(1, newTier.name());
+      stmt.setTimestamp(2, Timestamp.from(lastSettlementAt));
+      stmt.setTimestamp(3, Timestamp.from(newNextSettlementAt));
+      stmt.setTimestamp(4, Timestamp.from(now));
+      stmt.setLong(5, discordUserId);
+      stmt.setTimestamp(6, Timestamp.from(expectedNextSettlementAt));
+
+      int affected = stmt.executeUpdate();
+      if (affected == 1) {
+        LOG.info(
+            "Settled membership: discordUserId={}, tier={}, nextSettlement={}",
+            discordUserId,
+            newTier,
+            newNextSettlementAt);
+        return true;
+      }
+      LOG.debug(
+          "Skipped settlement save for discordUserId={}: next_settlement_at no longer matches",
+          discordUserId);
+      return false;
+    } catch (SQLException e) {
+      LOG.error("Failed to save settlement for discordUserId={}", discordUserId, e);
+      throw new RepositoryException("Failed to save settlement result", e);
+    }
   }
 
   @Override

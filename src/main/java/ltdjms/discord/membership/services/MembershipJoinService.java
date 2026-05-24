@@ -116,6 +116,15 @@ public class MembershipJoinService {
     return candidate.toInstant();
   }
 
+  /** Advances the settlement anchor by one calendar month. */
+  static Instant advanceNextSettlementAt(int settlementDay, Instant currentNext, ZoneId zone) {
+    ZonedDateTime anchor = currentNext.atZone(zone);
+    YearMonth nextMonth = YearMonth.from(anchor.toLocalDate()).plusMonths(1);
+    return resolveAnchorDate(
+            nextMonth.getYear(), nextMonth.getMonthValue(), settlementDay, zone)
+        .toInstant();
+  }
+
   private static ZonedDateTime resolveAnchorDate(
       int year, int month, int settlementDay, ZoneId zone) {
     LocalDate anchor = LocalDate.of(year, month, settlementDay);

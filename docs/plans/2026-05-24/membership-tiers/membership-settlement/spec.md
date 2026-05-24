@@ -29,8 +29,8 @@
 **THEN** 對該用戶執行 settle
 
 **Requirements**:
-- [ ] R1.1 結算後 `last_settlement_at = now`，`next_settlement_at` 推進一個月
-- [ ] R1.2 無 spend 的週期 avgM=0；有 bronze flag 仍至少 BRONZE
+- [x] R1.1 結算後 `last_settlement_at = now`，`next_settlement_at` 推進一個月
+- [x] R1.2 無 spend 的週期 avgM=0；有 bronze flag 仍至少 BRONZE
 
 ### Requirement 2: 等級重算
 **GIVEN** avgM=15000、hasQualifyingBronzeOrder=true
@@ -38,8 +38,8 @@
 **THEN** current_tier=SILVER
 
 **Requirements**:
-- [ ] R2.1 avgM 從 GOLD 降到 12000 → tier 降為 SILVER
-- [ ] R2.2 tier 變更時發送 `MembershipTierChangedEvent`
+- [x] R2.1 avgM 從 GOLD 降到 12000 → tier 降為 SILVER
+- [x] R2.2 tier 變更時發送 `MembershipTierChangedEvent`
 
 ### Requirement 3: 週期定義
 **GIVEN** last_settlement_at=L, next settlement at N
@@ -47,9 +47,9 @@
 **THEN** sum M where `paid_at ∈ [L, N)`
 
 ## Error and Edge Cases
-- [ ] next_settlement_at null（未 join）→ skip
-- [ ] 並發雙 tick → claim 或 SELECT FOR UPDATE 避免雙重結算
-- [ ] settlement 失敗單用戶隔離，不阻斷 batch
+- [x] next_settlement_at null（未 join）→ skip
+- [x] 並發雙 tick → claim 或 SELECT FOR UPDATE 避免雙重結算
+- [x] settlement 失敗單用戶隔離，不阻斷 batch
 
 ## Clarification Questions
 None

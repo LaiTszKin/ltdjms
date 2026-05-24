@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import ltdjms.discord.aichat.commands.AIChatMentionListener;
 import ltdjms.discord.membership.listeners.GuildMemberJoinListener;
+import ltdjms.discord.membership.services.MembershipSettlementScheduler;
 import ltdjms.discord.discord.domain.DiscordRuntimeGateway;
 import ltdjms.discord.dispatch.commands.DispatchPanelInteractionHandler;
 import ltdjms.discord.panel.commands.AdminPanelButtonHandler;
@@ -40,6 +41,7 @@ public class DiscordCurrencyBot {
   private final AppComponent appComponent;
   private final EcpayCallbackHttpServer ecpayCallbackHttpServer;
   private final FiatOrderProcessingScheduler fiatOrderProcessingScheduler;
+  private final MembershipSettlementScheduler membershipSettlementScheduler;
 
   public DiscordCurrencyBot(EnvironmentConfig envConfig) throws InterruptedException {
     LOG.info("Starting LTDJ management system...");
@@ -73,6 +75,7 @@ public class DiscordCurrencyBot {
     GuildMemberJoinListener guildMemberJoinListener = appComponent.guildMemberJoinListener();
     this.ecpayCallbackHttpServer = appComponent.ecpayCallbackHttpServer();
     this.fiatOrderProcessingScheduler = appComponent.fiatOrderProcessingScheduler();
+    this.membershipSettlementScheduler = appComponent.membershipSettlementScheduler();
 
     // Build JDA with MESSAGE_CONTENT and GUILD_MEMBERS (privileged). GUILD_MEMBERS
     // requires Server Members Intent enabled in Discord Developer Portal.
@@ -106,6 +109,7 @@ public class DiscordCurrencyBot {
     // 啟動綠界付款回推監聽伺服器
     ecpayCallbackHttpServer.start();
     fiatOrderProcessingScheduler.start();
+    membershipSettlementScheduler.start();
 
     // Register slash commands globally
     slashCommandListener.registerCommands(jda);
@@ -143,6 +147,9 @@ public class DiscordCurrencyBot {
     }
     if (fiatOrderProcessingScheduler != null) {
       fiatOrderProcessingScheduler.stop();
+    }
+    if (membershipSettlementScheduler != null) {
+      membershipSettlementScheduler.stop();
     }
     if (jda != null) {
       jda.shutdown();

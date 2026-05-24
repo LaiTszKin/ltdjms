@@ -71,6 +71,21 @@ public class MembershipSpendService {
           public GlobalMemberMembership save(GlobalMemberMembership membership) {
             return membership;
           }
+
+          @Override
+          public java.util.List<Long> findDueForSettlement(java.time.Instant before) {
+            return java.util.List.of();
+          }
+
+          @Override
+          public boolean saveSettlementResult(
+              long discordUserId,
+              ltdjms.discord.membership.domain.MembershipTier newTier,
+              java.time.Instant lastSettlementAt,
+              java.time.Instant newNextSettlementAt,
+              java.time.Instant expectedNextSettlementAt) {
+            return false;
+          }
         },
         new EscortOptionCatalogRepository() {
           @Override

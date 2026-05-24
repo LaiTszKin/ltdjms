@@ -27,6 +27,7 @@ import ltdjms.discord.gametoken.services.GameTokenService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService;
 import ltdjms.discord.membership.di.MembershipModule;
 import ltdjms.discord.membership.listeners.GuildMemberJoinListener;
+import ltdjms.discord.membership.services.MembershipSettlementScheduler;
 import ltdjms.discord.panel.commands.AdminPanelButtonHandler;
 import ltdjms.discord.panel.commands.AdminProductPanelHandler;
 import ltdjms.discord.panel.commands.UserPanelButtonHandler;
@@ -173,4 +174,6 @@ public interface AppComponent {
 
   // Membership
   GuildMemberJoinListener guildMemberJoinListener();
+
+  MembershipSettlementScheduler membershipSettlementScheduler();
 }

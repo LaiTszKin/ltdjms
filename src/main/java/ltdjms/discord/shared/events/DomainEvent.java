@@ -16,7 +16,8 @@ public sealed interface DomainEvent
         AgentCompletedEvent,
         AgentFailedEvent,
         LangChain4jToolExecutionStartedEvent,
-        LangChain4jToolExecutedEvent {
+        LangChain4jToolExecutedEvent,
+        MembershipTierChangedEvent {
   /**
    * @return the Discord guild ID where the event occurred
    */
