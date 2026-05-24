@@ -7,9 +7,11 @@ import {
   type Unit,
   type CacheService,
   type DomainEventPublisher,
+  type DiscordRuntimeGateway,
 } from '@ltdjms/shared';
 import type { AIAgentChannelConfigChangedEvent } from '../../events/index.js';
 import type { AIAgentChannelConfig } from '../ai-chat-service.js';
+import { resolveEffectiveAgentChannelId } from '../memory/chat-memory-provider.js';
 
 // ===== Agent Config Repository Interface =====
 
@@ -113,7 +115,15 @@ export class DefaultAIAgentChannelConfigService implements AIAgentChannelConfigS
     private readonly repository: AIAgentChannelConfigRepository,
     private readonly cacheService: CacheService,
     private readonly eventPublisher?: DomainEventPublisher,
+    private readonly runtimeGateway?: DiscordRuntimeGateway,
   ) {}
+
+  private resolveEffectiveChannelId(guildId: string, channelId: string): string | null {
+    if (!this.runtimeGateway) {
+      return channelId;
+    }
+    return resolveEffectiveAgentChannelId(this.runtimeGateway, guildId, channelId);
+  }
 
   private buildCacheKey(guildId: string, channelId: string): string {
     return `${CACHE_KEY_PREFIX}${guildId}:${channelId}`;
@@ -130,7 +140,11 @@ export class DefaultAIAgentChannelConfigService implements AIAgentChannelConfigS
    * callers must resolve threads to parent channels before calling this method.
    */
   isAgentEnabled(guildId: string, channelId: string): boolean {
-    return this.localSyncCache.get(this.buildCacheKey(guildId, channelId)) ?? false;
+    const effectiveChannelId = this.resolveEffectiveChannelId(guildId, channelId);
+    if (effectiveChannelId === null) {
+      return false;
+    }
+    return this.localSyncCache.get(this.buildCacheKey(guildId, effectiveChannelId)) ?? false;
   }
 
   /**
@@ -140,7 +154,12 @@ export class DefaultAIAgentChannelConfigService implements AIAgentChannelConfigS
    * callers must resolve threads to parent channels before calling this method.
    */
   async isAgentEnabledAsync(guildId: string, channelId: string): Promise<boolean> {
-    const cacheKey = this.buildCacheKey(guildId, channelId);
+    const effectiveChannelId = this.resolveEffectiveChannelId(guildId, channelId);
+    if (effectiveChannelId === null) {
+      return false;
+    }
+
+    const cacheKey = this.buildCacheKey(guildId, effectiveChannelId);
 
     // Cache stampede protection: deduplicate concurrent lookups for the same key
     const pending = this.pendingFetches.get(cacheKey);
@@ -161,7 +180,7 @@ export class DefaultAIAgentChannelConfigService implements AIAgentChannelConfigS
     }
 
     // Stampede-protected DB lookup
-    const promise = this.fetchFromDb(guildId, channelId, cacheKey);
+    const promise = this.fetchFromDb(guildId, effectiveChannelId, cacheKey);
     this.pendingFetches.set(cacheKey, promise);
     try {
       return await promise;

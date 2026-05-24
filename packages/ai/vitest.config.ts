@@ -8,7 +8,7 @@ export default defineConfig({
   test: {
     include: ['src/**/*.test.ts'],
     testTimeout: 30000,
-    setupFiles: [],
+    setupFiles: ['./vitest.setup.ts'],
     globalSetup: [sharedTestSetup],
     globalTeardown: [sharedTestTeardown],
   },

@@ -8,6 +8,8 @@ import {
   primaryKey,
   index,
   uniqueIndex,
+  text,
+  jsonb,
 } from 'drizzle-orm/pg-core';
 
 /**
@@ -85,3 +87,35 @@ export type AiAllowedCategoryInsert = typeof aiAllowedCategory.$inferInsert;
 
 export type AiAgentChannelConfigSelect = typeof aiAgentChannelConfig.$inferSelect;
 export type AiAgentChannelConfigInsert = typeof aiAgentChannelConfig.$inferInsert;
+
+/**
+ * ai_tool_execution_log table (V011__ai_agent_tools.sql).
+ * Audit log for AI agent tool executions with redacted parameters/results.
+ */
+export const aiToolExecutionLog = pgTable(
+  'ai_tool_execution_log',
+  {
+    id: bigserial('id', { mode: 'number' }),
+    guildId: bigint('guild_id', { mode: 'number' }).notNull(),
+    channelId: bigint('channel_id', { mode: 'number' }).notNull(),
+    triggerUserId: bigint('trigger_user_id', { mode: 'number' }).notNull(),
+    toolName: varchar('tool_name', { length: 100 }).notNull(),
+    parameters: jsonb('parameters'),
+    executionResult: text('execution_result'),
+    errorMessage: text('error_message'),
+    status: varchar('status', { length: 20 }).notNull(),
+    executedAt: timestamp('executed_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.id] }),
+    guildIdx: index('idx_tool_log_guild').on(table.guildId),
+    channelIdx: index('idx_tool_log_channel').on(table.channelId),
+    userIdx: index('idx_tool_log_user').on(table.triggerUserId),
+    timeIdx: index('idx_tool_log_time').on(table.executedAt),
+    statusIdx: index('idx_tool_log_status').on(table.status),
+    guildTimeIdx: index('idx_tool_log_guild_time').on(table.guildId, table.executedAt),
+  }),
+);
+
+export type AiToolExecutionLogSelect = typeof aiToolExecutionLog.$inferSelect;
+export type AiToolExecutionLogInsert = typeof aiToolExecutionLog.$inferInsert;

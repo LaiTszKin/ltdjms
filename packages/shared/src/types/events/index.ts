@@ -82,6 +82,16 @@ export interface AIAgentChannelConfigChangedEvent extends DomainEvent {
   readonly changedAt: Date;
 }
 
+export interface AgentCompletedEvent extends DomainEvent {
+  readonly eventType: 'agent_completed';
+  readonly guildId: string;
+  readonly channelId: string;
+  readonly userId: string;
+  readonly conversationId: string;
+  readonly finalResponse: string;
+  readonly timestamp: Date;
+}
+
 export interface AgentFailedEvent extends DomainEvent {
   readonly eventType: 'agent_failed';
   readonly guildId: string;
@@ -89,6 +99,26 @@ export interface AgentFailedEvent extends DomainEvent {
   readonly userId: string;
   readonly conversationId: string;
   readonly reason: string;
+  readonly timestamp: Date;
+}
+
+export interface LangChain4jToolExecutionStartedEvent extends DomainEvent {
+  readonly eventType: 'langchain4j_tool_execution_started';
+  readonly guildId: string;
+  readonly channelId: string;
+  readonly userId: string;
+  readonly toolName: string;
+  readonly timestamp: Date;
+}
+
+export interface LangChain4jToolExecutedEvent extends DomainEvent {
+  readonly eventType: 'langchain4j_tool_executed';
+  readonly guildId: string;
+  readonly channelId: string;
+  readonly userId: string;
+  readonly toolName: string;
+  readonly result: string;
+  readonly success: boolean;
   readonly timestamp: Date;
 }
 

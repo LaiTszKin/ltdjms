@@ -36,10 +36,10 @@
 **THEN** 工具名稱/參數與 Java 一致；非管理員回傳繁中錯誤而非 throw
 
 **Requirements**:
-- [ ] R1.1 17 tools：create_channel, create_category, create_role, list_channels, list_categories, list_roles, get/modify *_permissions (×6), send_messages, search_messages, manage_message, move_channel, delete_discord_resource
-- [ ] R1.2 ToolCallerAuthorizationGuard：ADMINISTRATOR 或 guild owner
-- [ ] R1.3 zod-to-json-schema 生成 tool JSON schema；oracle 比對 `fixtures/java-agent-tools-oracle.json`
-- [ ] R1.4 Port 17× `LangChain4j*ToolTest.java`
+- [x] R1.1 17 tools：create_channel, create_category, create_role, list_channels, list_categories, list_roles, get/modify *_permissions (×6), send_messages, search_messages, manage_message, move_channel, delete_discord_resource
+- [x] R1.2 ToolCallerAuthorizationGuard：ADMINISTRATOR 或 guild owner
+- [x] R1.3 zod-to-json-schema 生成 tool JSON schema；oracle 比對 `fixtures/java-agent-tools-oracle.json`
+- [x] R1.4 Port 17× `LangChain4j*ToolTest.java`
 
 ### Requirement 2: ToolExecutionInterceptor 審計 1:1
 **GIVEN** 工具執行前後
@@ -47,9 +47,9 @@
 **THEN** 寫入 DB + 發佈 Started/Executed events；參數 redacted/hashed
 
 **Requirements**:
-- [ ] R2.1 Drizzle repository for `tool_execution_log`
-- [ ] R2.2 Port `ToolExecutionInterceptorTest.java`
-- [ ] R2.3 Integration: `ToolExecutionLogIntegrationTest.java` 等價
+- [x] R2.1 Drizzle repository for `tool_execution_log`
+- [x] R2.2 Port `ToolExecutionInterceptorTest.java`
+- [x] R2.3 Integration: `ToolExecutionLogIntegrationTest.java` 等價
 
 ### Requirement 3: 對話記憶 1:1
 **GIVEN** conversationId 格式 `guildId:threadId:userId` 或 message-level
@@ -57,9 +57,9 @@
 **THEN** Thread：Discord history ≤100 + tool history ≤50；非 Thread：≤10 messages
 
 **Requirements**:
-- [ ] R3.1 Port `SimplifiedChatMemoryProviderTest.java`
-- [ ] R3.2 Port `InMemoryToolCallHistoryTest.java`（擴充現有 test）
-- [ ] R3.3 search_messages / Discord URL redaction from cross-turn memory
+- [x] R3.1 Port `SimplifiedChatMemoryProviderTest.java`
+- [x] R3.2 Port `InMemoryToolCallHistoryTest.java`（擴充現有 test）
+- [x] R3.3 search_messages / Discord URL redaction from cross-turn memory
 
 ### Requirement 4: LangGraph checkpoint 持久化
 **GIVEN** Agent 多輪對話
@@ -67,10 +67,10 @@
 **THEN** Postgres 持久 + Redis cache（若 P5 Redis Stack 可用）；對齊 Java 3600s TTL 意圖
 
 **Requirements**:
-- [ ] R4.1 Wire PostgresSaver in ai-module DI
-- [ ] R4.2 Wire RedisSaver when Redis Stack available（else document Postgres-only）
-- [ ] R4.3 Integration test conversation survives process restart（Postgres path）
-- [ ] R4.4 外層保留 REASONING/TOOL_INTENT streaming（per external-deps PoC 結論）
+- [x] R4.1 Wire PostgresSaver in ai-module DI
+- [x] R4.2 Wire RedisSaver when Redis Stack available（else document Postgres-only）
+- [x] R4.3 Integration test conversation survives process restart（Postgres path）
+- [x] R4.4 外層保留 REASONING/TOOL_INTENT streaming（per external-deps PoC 結論）
 
 ### Requirement 5: Agent 頻道配置 1:1
 **GIVEN** guild channel Agent toggle
@@ -78,8 +78,8 @@
 **THEN** Redis `agent:config:{guildId}:{channelId}` TTL 3600；Thread 繼承父頻道
 
 **Requirements**:
-- [ ] R5.1 Port `DefaultAIAgentChannelConfigServiceTest.java`
-- [ ] R5.2 AgentConfigCacheInvalidationListener 對齊 Java
+- [x] R5.1 Port `DefaultAIAgentChannelConfigServiceTest.java`
+- [x] R5.2 AgentConfigCacheInvalidationListener 對齊 Java
 
 ### Requirement 6: Agent 串流 UX 1:1
 **GIVEN** AGENT_ROUTE
@@ -87,9 +87,9 @@
 **THEN** TOOL_INTENT before tool run；CONTENT buffered until complete；delete reasoning then send final
 
 **Requirements**:
-- [ ] R6.1 Align LangChainAIChatService agent branch with Java LangChain4jAIChatService
-- [ ] R6.2 Port `AIChatMentionListenerAgentConclusionTest.java` 等價
-- [ ] R6.3 maxIterations = 5
+- [x] R6.1 Align LangChainAIChatService agent branch with Java LangChain4jAIChatService
+- [x] R6.2 Port `AIChatMentionListenerAgentConclusionTest.java` 等價
+- [x] R6.3 maxIterations = 5
 
 ### Requirement 7: Discord 事件 listeners
 **GIVEN** tool start/complete, agent complete/fail events
@@ -97,16 +97,16 @@
 **THEN** Discord 通知格式對齊 Java
 
 **Requirements**:
-- [ ] R7.1 Port `ToolExecutionListener.java` → TS listener
-- [ ] R7.2 Port `AgentCompletionListener.java` → TS listener
-- [ ] R7.3 Port `ToolExecutionListenerTest.java`, `AgentCompletionListenerTest.java`
+- [x] R7.1 Port `ToolExecutionListener.java` → TS listener
+- [x] R7.2 Port `AgentCompletionListener.java` → TS listener
+- [x] R7.3 Port `ToolExecutionListenerTest.java`, `AgentCompletionListenerTest.java`
 
 ## Error and Edge Cases
-- [ ] 非管理員 tool call — 繁中「你沒有權限使用此工具」
-- [ ] member 不存在 — tool 回傳錯誤訊息
-- [ ] Redis 不可用 — agent config fallback DB；checkpoint Postgres-only
-- [ ] Tool 執行失敗 — redacted error 回傳 LLM
-- [ ] 並發同 channel tool calls — AsyncLocalStorage 隔離
+- [x] 非管理員 tool call — 繁中「你沒有權限使用此工具」
+- [x] member 不存在 — tool 回傳錯誤訊息
+- [x] Redis 不可用 — agent config fallback DB；checkpoint Postgres-only
+- [x] Tool 執行失敗 — redacted error 回傳 LLM
+- [x] 並發同 channel tool calls — AsyncLocalStorage 隔離
 
 ## Clarification Questions
 None（持久化採 LangGraph checkpoint 等價 Java 混合策略，不逐行 port deprecated Java class）

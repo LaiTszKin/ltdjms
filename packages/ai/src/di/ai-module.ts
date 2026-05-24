@@ -64,6 +64,16 @@ import { DiscordThreadHistoryProvider } from '../services/memory/chat-memory-pro
 import { SimplifiedChatMemoryProvider } from '../services/memory/chat-memory-provider.js';
 import { TokenEstimator } from '../services/memory/TokenEstimator.js';
 import { ToolExecutionInterceptor } from '../services/ToolExecutionInterceptor.js';
+import {
+  DrizzleToolExecutionLogRepository,
+  InMemoryToolExecutionLogRepository,
+  type ToolExecutionLogRepository,
+} from '../persistence/drizzle-tool-execution-log-repository.js';
+import {
+  createLangGraphCheckpointProvider,
+} from '../services/memory/langgraph-checkpoint-provider.js';
+import { ToolExecutionListener } from '../listeners/tool-execution-listener.js';
+import { AgentCompletionListener } from '../listeners/agent-completion-listener.js';
 
 // Markdown
 import { CommonMarkValidator } from '../markdown/validation/CommonMarkValidator.js';
@@ -118,6 +128,11 @@ export const AI_TOKENS = {
   ManageMessageTool: Symbol('ManageMessageTool'),
   MoveChannelTool: Symbol('MoveChannelTool'),
   DeleteDiscordResourceTool: Symbol('DeleteDiscordResourceTool'),
+  ToolExecutionLogRepository: Symbol('ToolExecutionLogRepository'),
+  ToolExecutionInterceptor: Symbol('ToolExecutionInterceptor'),
+  LangGraphCheckpointProvider: Symbol('LangGraphCheckpointProvider'),
+  ToolExecutionListener: Symbol('ToolExecutionListener'),
+  AgentCompletionListener: Symbol('AgentCompletionListener'),
 };
 
 /**
@@ -170,6 +185,7 @@ export function initializeAIModule(): void {
     agentConfigRepo,
     cacheService,
     eventPublisher,
+    runtimeGateway,
   );
   container.registerInstance<AIAgentChannelConfigService>(
     AI_TOKENS.AIAgentChannelConfigService,
@@ -279,11 +295,43 @@ export function initializeAIModule(): void {
     toolMap.set(registeredTool.name, registeredTool);
   }
 
-  // ===== AI Chat Service =====
-  // ToolExecutionInterceptor for observability (P0-8)
-  const toolExecutionInterceptor = new ToolExecutionInterceptor();
+  // ===== Tool execution audit =====
+  const toolLogRepo: ToolExecutionLogRepository = db
+    ? new DrizzleToolExecutionLogRepository(db)
+    : new InMemoryToolExecutionLogRepository();
+  container.registerInstance(AI_TOKENS.ToolExecutionLogRepository, toolLogRepo);
+
+  const toolExecutionInterceptor = new ToolExecutionInterceptor(
+    toolLogRepo,
+    eventPublisher,
+    logger,
+  );
+  container.registerInstance(AI_TOKENS.ToolExecutionInterceptor, toolExecutionInterceptor);
+
   const toolCallHistory = new InMemoryToolCallHistory();
   container.registerInstance(AI_TOKENS.InMemoryToolCallHistory, toolCallHistory);
+
+  // ===== LangGraph checkpoint (Postgres + optional Redis) =====
+  void createLangGraphCheckpointProvider(rawPool, envConfig.getRedisUri())
+    .then((provider) => {
+      if (provider) {
+        container.registerInstance(AI_TOKENS.LangGraphCheckpointProvider, provider);
+      }
+    })
+    .catch((error) => {
+      logger.warn(
+        { err: error instanceof Error ? error.message : String(error) },
+        'LangGraph checkpoint init failed — agent memory uses Discord thread history only',
+      );
+    });
+
+  // ===== Agent event listeners =====
+  const toolExecutionListener = new ToolExecutionListener(runtimeGateway, logger);
+  const agentCompletionListener = new AgentCompletionListener(runtimeGateway, logger);
+  container.registerInstance(AI_TOKENS.ToolExecutionListener, toolExecutionListener);
+  container.registerInstance(AI_TOKENS.AgentCompletionListener, agentCompletionListener);
+  eventPublisher.register((event) => toolExecutionListener.accept(event));
+  eventPublisher.register((event) => agentCompletionListener.accept(event));
 
   // ===== Shared ChatOpenAI Singleton =====
   // Single shared instance to avoid multiple HTTP agents/connection pools (P1-30, P2-11)

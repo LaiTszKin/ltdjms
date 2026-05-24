@@ -452,17 +452,13 @@ export class LangChainAIChatService implements AIChatService {
         // guild fetch failed — proceed with null guild (auth will fail gracefully)
       }
 
-      // P0-8: Interceptor lifecycle
-      const correlationId = this.interceptor?.onToolExecutionStarted(tc.name, args);
+      // P0-8: Interceptor lifecycle (Java API — no correlation ID)
+      this.interceptor?.onToolExecutionStarted(tc.name, args);
 
       try {
-        // Execute the tool's handler function
-        // Authorization is handled by each tool's own validateAdministrator() call (P2-10)
         if (!guild) {
           const noGuildMsg = `錯誤：無法取得伺服器資訊 (${guildId})`;
-          if (correlationId) {
-            this.interceptor?.onToolExecutionCompleted(correlationId, noGuildMsg);
-          }
+          this.interceptor?.onToolExecutionFailed(noGuildMsg);
           return noGuildMsg;
         }
         // P1-13: Per-tool execution timeout (30 seconds) with AbortController signal propagation (P3-5)
@@ -481,10 +477,8 @@ export class LangChainAIChatService implements AIChatService {
           clearTimeout(timer);
         }
 
-        // P0-8: Interceptor completion
-        if (correlationId) {
-          this.interceptor?.onToolExecutionCompleted(correlationId, result);
-        }
+        // P0-8: Interceptor completion (notification only; LLM gets original result)
+        this.interceptor?.onToolExecutionCompleted(result);
 
         // P0-9: Record in tool call history (use threadId/channelId as key)
         if (this.toolCallHistory) {
@@ -502,11 +496,9 @@ export class LangChainAIChatService implements AIChatService {
 
         return result;
       } catch (err) {
-        // P0-8: Interceptor failure
-        if (correlationId) {
-          this.interceptor?.onToolExecutionFailed(correlationId, err);
-        }
-        return `工具「${tc.name}」執行失敗：${err instanceof Error ? err.message : String(err)}`;
+        const message = err instanceof Error ? err.message : String(err);
+        this.interceptor?.onToolExecutionFailed(message);
+        return `工具「${tc.name}」執行失敗：${message}`;
       }
     });
   }

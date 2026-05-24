@@ -144,7 +144,7 @@ describe('InMemoryToolCallHistory', () => {
     );
 
     expect(redactionMode).toBe(RedactionMode.REDACTED);
-    expect(memorySummary).toContain('[REDACTED]');
+    expect(memorySummary).toContain('已從跨回合記憶隔離');
   });
 
   it('should redact Discord URLs in memory summaries', () => {

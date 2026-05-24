@@ -12,6 +12,10 @@ export {
   DomainErrorCategory,
   DomainError,
   type DomainEvent,
+  type AgentCompletedEvent,
+  type AgentFailedEvent,
+  type LangChain4jToolExecutionStartedEvent,
+  type LangChain4jToolExecutedEvent,
   OperationType,
 } from './types/index.js';
 

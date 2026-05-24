@@ -1,4 +1,5 @@
 import type { Client } from 'discord.js';
+import { ChannelType } from 'discord.js';
 import { ConversationIdBuilder } from './tool-call-history.js';
 import { InMemoryToolCallHistory } from './tool-call-history.js';
 import { ConversationIdStrategy } from '../ai-chat-service.js';
@@ -14,6 +15,10 @@ export interface ChatMemoryProvider {
   getMemory(memoryId: string): Promise<Array<{ role: string; content: string }>>;
 }
 
+function isNumericSnowflake(value: string | null | undefined): boolean {
+  return !!value && /^\d+$/.test(value);
+}
+
 /**
  * Fetches Discord thread message history for conversation memory.
  * Matches Java DiscordThreadHistoryProvider.
@@ -21,16 +26,6 @@ export interface ChatMemoryProvider {
 export class DiscordThreadHistoryProvider {
   constructor(private readonly runtimeGateway: DiscordRuntimeGateway) {}
 
-  /**
-   * Gets thread history for a specific user.
-   * Only returns the user's messages + bot replies for privacy isolation.
-   *
-   * @param guildId - The guild ID
-   * @param threadId - The thread channel ID
-   * @param userId - The user ID to filter messages for
-   * @param botUserId - The bot's user ID
-   * @returns Array of chat messages (USER or AI role)
-   */
   async getThreadHistory(
     guildId: string,
     threadId: string,
@@ -50,7 +45,6 @@ export class DiscordThreadHistoryProvider {
       const messages: Array<{ role: string; content: string }> = [];
 
       for (const [, msg] of fetched) {
-        // Privacy isolation: only include user's own messages and bot replies
         if (msg.author.id === userId) {
           messages.push({ role: 'user', content: msg.content });
         } else if (msg.author.id === botUserId) {
@@ -58,10 +52,8 @@ export class DiscordThreadHistoryProvider {
         }
       }
 
-      // Return in chronological order (discord.js returns newest first)
       return messages.reverse();
     } catch {
-      // Fetch failure → return empty array (don't block conversation)
       return [];
     }
   }
@@ -69,31 +61,29 @@ export class DiscordThreadHistoryProvider {
 
 /**
  * SimplifiedChatMemoryProvider for conversation memory.
- * Builds memory from Discord thread history + in-memory tool call history.
- * Matches Java SimplifiedChatMemoryProvider.
+ * Thread: Discord history ≤100 + tool history ≤50; non-thread: ≤10 messages.
  */
 export class SimplifiedChatMemoryProvider implements ChatMemoryProvider {
-  private readonly maxMessages: number;
+  private static readonly THREAD_MAX_MESSAGES = 100;
+  private static readonly NON_THREAD_MAX_MESSAGES = 10;
 
   constructor(
     private readonly threadHistoryProvider: DiscordThreadHistoryProvider,
     private readonly toolCallHistory: InMemoryToolCallHistory,
     private readonly runtimeGateway: DiscordRuntimeGateway,
     private readonly tokenEstimator: TokenEstimator,
-    maxMessages: number = 100,
+    maxMessages: number = SimplifiedChatMemoryProvider.THREAD_MAX_MESSAGES,
   ) {
-    this.maxMessages = maxMessages;
+    void maxMessages;
+    void tokenEstimator;
   }
 
-  /**
-   * Gets memory for a conversation ID.
-   *
-   * @param memoryId - The conversation ID
-   * @returns Promise resolving to an array of chat messages
-   */
   async getMemory(memoryId: string): Promise<Array<{ role: string; content: string }>> {
-    const strategy = ConversationIdBuilder.parseStrategy(memoryId);
+    if (!memoryId || typeof memoryId !== 'string' || memoryId.trim().length === 0) {
+      return [];
+    }
 
+    const strategy = ConversationIdBuilder.parseStrategy(memoryId);
     if (strategy === ConversationIdStrategy.THREAD_LEVEL) {
       return this.buildThreadLevelMemory(memoryId);
     }
@@ -101,52 +91,55 @@ export class SimplifiedChatMemoryProvider implements ChatMemoryProvider {
     return this.buildMessageLevelMemory(memoryId);
   }
 
-  /**
-   * Builds thread-level memory: Discord thread history + tool call history.
-   */
   private async buildThreadLevelMemory(
     conversationId: string,
   ): Promise<Array<{ role: string; content: string }>> {
-    const messages: Array<{ role: string; content: string }> = [];
-
     const guildId = ConversationIdBuilder.extractGuildId(conversationId);
     const threadId = ConversationIdBuilder.extractThreadId(conversationId);
     const userId = ConversationIdBuilder.extractUserId(conversationId);
 
-    if (!guildId || !threadId || !userId) {
-      return messages;
+    if (!isNumericSnowflake(guildId) || !isNumericSnowflake(threadId) || !isNumericSnowflake(userId)) {
+      return [];
     }
 
+    let botUserId: string;
     try {
-      // Get thread history (up to maxMessages)
-      const botUserId = this.runtimeGateway.selfUserId();
+      botUserId = this.runtimeGateway.selfUserId();
+      if (!botUserId) {
+        return [];
+      }
+    } catch {
+      return [];
+    }
+
+    const messages: Array<{ role: string; content: string }> = [];
+
+    try {
       const threadMessages = await this.threadHistoryProvider.getThreadHistory(
-        guildId,
-        threadId,
-        userId,
+        guildId!,
+        threadId!,
+        userId!,
         botUserId,
       );
-      messages.push(...threadMessages.slice(-this.maxMessages));
+      messages.push(...threadMessages.slice(-SimplifiedChatMemoryProvider.THREAD_MAX_MESSAGES));
 
-      // Append tool call history as system messages
-      const toolEntries = this.toolCallHistory.getToolCallMessages(threadId, userId);
+      const toolEntries = this.toolCallHistory.getToolCallMessages(threadId!, userId!);
       for (const entry of toolEntries) {
+        if (!entry.memorySummary?.trim()) {
+          continue;
+        }
         messages.push({
-          role: 'system',
-          content: `[工具: ${entry.toolName}] ${entry.memorySummary}`,
+          role: 'assistant',
+          content: entry.memorySummary,
         });
       }
     } catch {
-      // Thread fetch failure → return empty (don't block)
+      return [];
     }
 
     return messages;
   }
 
-  /**
-   * Builds message-level memory: up to 10 recent channel messages for non-thread conversations.
-   * Format: guildId:channelId:userId:messageId
-   */
   private async buildMessageLevelMemory(
     conversationId: string,
   ): Promise<Array<{ role: string; content: string }>> {
@@ -155,25 +148,26 @@ export class SimplifiedChatMemoryProvider implements ChatMemoryProvider {
     const channelId = parts.length >= 2 ? parts[1] : null;
     const userId = ConversationIdBuilder.extractUserId(conversationId);
 
-    if (!guildId || !channelId || !userId) {
+    if (!isNumericSnowflake(guildId) || !isNumericSnowflake(channelId) || !isNumericSnowflake(userId)) {
       return [];
     }
 
     try {
-      const client = this.runtimeGateway.requireReadyClient() as import('discord.js').Client;
+      const client = this.runtimeGateway.requireReadyClient() as Client;
       const channel =
-        client.channels.cache.get(channelId) ??
-        (await client.channels.fetch(channelId).catch(() => null));
+        client.channels.cache.get(channelId!) ??
+        (await client.channels.fetch(channelId!).catch(() => null));
       if (!channel || !channel.isTextBased()) {
         return [];
       }
 
       const botUserId = this.runtimeGateway.selfUserId();
-      const fetched = await channel.messages.fetch({ limit: 10 });
+      const fetched = await channel.messages.fetch({
+        limit: SimplifiedChatMemoryProvider.NON_THREAD_MAX_MESSAGES,
+      });
       const messages: Array<{ role: string; content: string }> = [];
 
       for (const [, msg] of fetched) {
-        // Privacy isolation: only include user's own messages and bot replies
         if (msg.author.id === userId) {
           messages.push({ role: 'user', content: msg.content });
         } else if (msg.author.id === botUserId) {
@@ -181,11 +175,39 @@ export class SimplifiedChatMemoryProvider implements ChatMemoryProvider {
         }
       }
 
-      // Return in chronological order (discord.js returns newest first)
       return messages.reverse();
     } catch {
-      // Fetch failure → return empty array (don't block conversation)
       return [];
     }
+  }
+}
+
+/** Resolves thread channels to parent channel ID for agent config inheritance. */
+export function resolveEffectiveAgentChannelId(
+  runtimeGateway: DiscordRuntimeGateway,
+  guildId: string,
+  channelId: string,
+): string | null {
+  try {
+    const channel =
+      runtimeGateway.findGuildChannel(guildId, channelId) ??
+      runtimeGateway.findThreadChannel(guildId, channelId);
+
+    if (!channel || typeof channel !== 'object') {
+      return null;
+    }
+
+    const typed = channel as { type?: ChannelType; parentId?: string | null };
+    if (
+      typed.type === ChannelType.PublicThread ||
+      typed.type === ChannelType.PrivateThread ||
+      typed.type === ChannelType.AnnouncementThread
+    ) {
+      return typed.parentId ?? null;
+    }
+
+    return channelId;
+  } catch {
+    return null;
   }
 }

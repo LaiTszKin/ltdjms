@@ -193,16 +193,13 @@ export class InMemoryToolCallHistory {
     parameters: Record<string, unknown>,
     result: string,
   ): { memorySummary: string; redactionMode: RedactionMode } {
-    // Check if this is a search operation (full redaction)
-    if (toolName === 'search_messages') {
-      const keyword = String(parameters.keywords ?? '');
+    if (toolName === 'search_messages' || toolName === 'searchMessages') {
       return {
-        memorySummary: `[REDACTED] 已搜尋關鍵字「${keyword}」的相關訊息`,
+        memorySummary: `工具「${toolName}」已執行，結果因敏感內容已從跨回合記憶隔離。`,
         redactionMode: RedactionMode.REDACTED,
       };
     }
 
-    // Check if result contains Discord URLs (redact those)
     const urlPattern = /https?:\/\/(?:www\.)?discord(?:app)?\.com\/[\w/-]+/gi;
     if (urlPattern.test(result)) {
       return {
@@ -211,11 +208,8 @@ export class InMemoryToolCallHistory {
       };
     }
 
-    // Normal entry
-    const truncatedResult = result.length > 200 ? result.slice(0, 200) + '...' : result;
-
     return {
-      memorySummary: truncatedResult,
+      memorySummary: `工具「${toolName}」已成功執行；完整結果不會保留於跨回合記憶。`,
       redactionMode: RedactionMode.NONE,
     };
   }
