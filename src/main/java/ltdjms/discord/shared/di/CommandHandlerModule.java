@@ -47,6 +47,7 @@ import ltdjms.discord.panel.services.UserPanelService;
 import ltdjms.discord.panel.services.UserPanelUpdateListener;
 import ltdjms.discord.product.domain.EscortOptionCatalogRepository;
 import ltdjms.discord.product.domain.ProductRepository;
+import ltdjms.discord.membership.services.MembershipSpendService;
 import ltdjms.discord.product.services.ProductRewardService;
 import ltdjms.discord.product.services.ProductService;
 import ltdjms.discord.redemption.services.ProductRedemptionTransactionService;
@@ -395,14 +396,16 @@ public class CommandHandlerModule {
       EscortDispatchHandoffService escortDispatchHandoffService,
       ShopAdminNotificationService shopAdminNotificationService,
       FiatOrderBuyerNotificationService fiatOrderBuyerNotificationService,
-      EscortOrderBuyerNotificationService escortOrderBuyerNotificationService) {
+      EscortOrderBuyerNotificationService escortOrderBuyerNotificationService,
+      MembershipSpendService membershipSpendService) {
     return new FiatOrderPostPaymentWorker(
         fiatOrderRepository,
         productRewardService,
         escortDispatchHandoffService,
         shopAdminNotificationService,
         fiatOrderBuyerNotificationService,
-        escortOrderBuyerNotificationService);
+        escortOrderBuyerNotificationService,
+        membershipSpendService);
   }
 
   @Provides

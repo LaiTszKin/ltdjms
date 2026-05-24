@@ -31,9 +31,9 @@
 **AND** 若 list_price_twd ≥ 500 則 `has_qualifying_bronze_order = true`
 
 **Requirements**:
-- [ ] R1.1 M 來源：`EscortOptionCatalog.priceTwd`（**非** guild override、**非**折後價）
-- [ ] R1.2 無 escortOptionCode 但 auto escort → 用 product.fiatPriceTwd 作 fallback M
-- [ ] R1.3 重複處理同一 orderNumber → no-op（idempotent）
+- [x] R1.1 M 來源：`EscortOptionCatalog.priceTwd`（**非** guild override、**非**折後價）
+- [x] R1.2 無 escortOptionCode 但 auto escort → 用 product.fiatPriceTwd 作 fallback M
+- [x] R1.3 重複處理同一 orderNumber → no-op（idempotent）
 
 ### Requirement 2: 不計入
 **GIVEN** 貨幣購買或非法幣訂單
@@ -41,8 +41,8 @@
 **THEN** 不寫 spend ledger
 
 ## Error and Edge Cases
-- [ ] catalog code 不存在 → log warn，fallback product.fiatPriceTwd
-- [ ] record 失敗不應 rollback 已完成的 fulfillment（best-effort + retry 或 dead letter log）
+- [x] catalog code 不存在 → log warn，fallback product.fiatPriceTwd
+- [x] record 失敗不應 rollback 已完成的 fulfillment（best-effort + retry 或 dead letter log）
 
 ## Clarification Questions
 None

@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import ltdjms.discord.dispatch.domain.EscortDispatchOrder;
 import ltdjms.discord.dispatch.services.EscortDispatchHandoffService;
+import ltdjms.discord.membership.services.MembershipSpendService;
 import ltdjms.discord.product.services.ProductRewardService;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
@@ -28,6 +29,7 @@ public class FiatOrderPostPaymentWorker {
   private final ShopAdminNotificationService adminNotificationService;
   private final FiatOrderBuyerNotificationService buyerNotificationService;
   private final EscortOrderBuyerNotificationService escortOrderBuyerNotificationService;
+  private final MembershipSpendService membershipSpendService;
   private final Clock clock;
 
   /**
@@ -50,6 +52,7 @@ public class FiatOrderPostPaymentWorker {
         adminNotificationService,
         buyerNotificationService,
         new EscortOrderBuyerNotificationService(),
+        MembershipSpendService.noop(),
         Clock.systemUTC());
   }
 
@@ -67,6 +70,26 @@ public class FiatOrderPostPaymentWorker {
         adminNotificationService,
         buyerNotificationService,
         escortOrderBuyerNotificationService,
+        MembershipSpendService.noop(),
+        Clock.systemUTC());
+  }
+
+  public FiatOrderPostPaymentWorker(
+      FiatOrderRepository fiatOrderRepository,
+      ProductRewardService productRewardService,
+      EscortDispatchHandoffService escortDispatchHandoffService,
+      ShopAdminNotificationService adminNotificationService,
+      FiatOrderBuyerNotificationService buyerNotificationService,
+      EscortOrderBuyerNotificationService escortOrderBuyerNotificationService,
+      MembershipSpendService membershipSpendService) {
+    this(
+        fiatOrderRepository,
+        productRewardService,
+        escortDispatchHandoffService,
+        adminNotificationService,
+        buyerNotificationService,
+        escortOrderBuyerNotificationService,
+        membershipSpendService,
         Clock.systemUTC());
   }
 
@@ -77,6 +100,7 @@ public class FiatOrderPostPaymentWorker {
       ShopAdminNotificationService adminNotificationService,
       FiatOrderBuyerNotificationService buyerNotificationService,
       EscortOrderBuyerNotificationService escortOrderBuyerNotificationService,
+      MembershipSpendService membershipSpendService,
       Clock clock) {
     this.fiatOrderRepository = Objects.requireNonNull(fiatOrderRepository);
     this.productRewardService = Objects.requireNonNull(productRewardService);
@@ -85,6 +109,7 @@ public class FiatOrderPostPaymentWorker {
     this.buyerNotificationService = Objects.requireNonNull(buyerNotificationService);
     this.escortOrderBuyerNotificationService =
         Objects.requireNonNull(escortOrderBuyerNotificationService);
+    this.membershipSpendService = Objects.requireNonNull(membershipSpendService);
     this.clock = Objects.requireNonNull(clock);
   }
 
@@ -155,6 +180,7 @@ public class FiatOrderPostPaymentWorker {
         fiatOrderRepository.markRewardGrantedIfNeeded(order.orderNumber(), Instant.now(clock));
       }
 
+      membershipSpendService.recordFiatEscortPayment(order, fulfillmentProduct);
       fiatOrderRepository.markFulfilledIfNeeded(order.orderNumber(), Instant.now(clock));
     } catch (Exception e) {
       fiatOrderRepository.releaseFulfillmentProcessing(order.orderNumber());

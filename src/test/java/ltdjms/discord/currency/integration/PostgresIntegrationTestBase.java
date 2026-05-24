@@ -67,6 +67,7 @@ public abstract class PostgresIntegrationTestBase {
       stmt.execute("TRUNCATE TABLE dice_game1_config CASCADE");
       stmt.execute("TRUNCATE TABLE dice_game2_config CASCADE");
       stmt.execute("TRUNCATE TABLE global_member_membership CASCADE");
+      stmt.execute("TRUNCATE TABLE membership_spend_entry CASCADE");
     }
   }
 

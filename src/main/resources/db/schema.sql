@@ -204,3 +204,19 @@ CREATE TRIGGER update_global_member_membership_updated_at
     BEFORE UPDATE ON global_member_membership
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
+
+-- Membership spend ledger for escort fiat payments (catalog list price M)
+CREATE TABLE IF NOT EXISTS membership_spend_entry (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    discord_user_id     BIGINT NOT NULL,
+    guild_id            BIGINT NOT NULL,
+    list_price_twd      BIGINT NOT NULL,
+    escort_option_code  VARCHAR(64),
+    source_type         VARCHAR(32) NOT NULL DEFAULT 'FIAT_ORDER',
+    source_reference    VARCHAR(128) NOT NULL,
+    paid_at             TIMESTAMPTZ NOT NULL,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (source_type, source_reference)
+);
+
+CREATE INDEX IF NOT EXISTS idx_mse_user_paid ON membership_spend_entry (discord_user_id, paid_at);

@@ -22,6 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import ltdjms.discord.dispatch.domain.EscortDispatchOrder;
 import ltdjms.discord.dispatch.services.EscortDispatchHandoffService;
 import ltdjms.discord.product.domain.Product;
+import ltdjms.discord.membership.services.MembershipSpendService;
 import ltdjms.discord.product.services.ProductRewardService;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
@@ -41,6 +42,7 @@ class FiatOrderPostPaymentWorkerTest {
   @Mock private ShopAdminNotificationService adminNotificationService;
   @Mock private FiatOrderBuyerNotificationService buyerNotificationService;
   @Mock private EscortOrderBuyerNotificationService escortOrderBuyerNotificationService;
+  @Mock private MembershipSpendService membershipSpendService;
 
   private FiatOrderPostPaymentWorker worker;
 
@@ -54,6 +56,7 @@ class FiatOrderPostPaymentWorkerTest {
             adminNotificationService,
             buyerNotificationService,
             escortOrderBuyerNotificationService,
+            membershipSpendService,
             Clock.fixed(NOW, ZoneOffset.UTC));
   }
 
@@ -103,6 +106,7 @@ class FiatOrderPostPaymentWorkerTest {
                     ltdjms.discord.currency.domain.CurrencyTransaction.Source.PRODUCT_REWARD,
                     ltdjms.discord.gametoken.domain.GameTokenTransaction.Source.PRODUCT_REWARD)));
     verify(fiatOrderRepository).markRewardGrantedIfNeeded(eq(order.orderNumber()), any());
+    verify(membershipSpendService).recordFiatEscortPayment(order, product);
     verify(fiatOrderRepository).markFulfilledIfNeeded(eq(order.orderNumber()), any());
     verify(fiatOrderRepository, never()).releaseFulfillmentProcessing(order.orderNumber());
   }
