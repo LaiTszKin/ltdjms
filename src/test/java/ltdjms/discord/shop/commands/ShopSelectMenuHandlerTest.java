@@ -3,6 +3,7 @@ package ltdjms.discord.shop.commands;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -23,8 +24,6 @@ import ltdjms.discord.currency.domain.BalanceView;
 import ltdjms.discord.currency.services.BalanceService;
 import ltdjms.discord.dispatch.domain.EscortDispatchOrder;
 import ltdjms.discord.dispatch.services.EscortDispatchHandoffService;
-import java.math.BigDecimal;
-
 import ltdjms.discord.membership.domain.MembershipTier;
 import ltdjms.discord.membership.services.EscortPriceQuote;
 import ltdjms.discord.membership.services.MembershipPricingService;
@@ -636,9 +635,7 @@ class ShopSelectMenuHandlerTest {
     verify(interactionHook)
         .editOriginal(
             ArgumentMatchers.<String>argThat(
-                msg ->
-                    msg.contains("法幣訂單已建立")
-                        && msg.contains("完整付款資訊也已私訊給你")));
+                msg -> msg.contains("法幣訂單已建立") && msg.contains("完整付款資訊也已私訊給你")));
   }
 
   // ========== ButtonInteraction 測試 (確認/取消購買) ==========
@@ -691,7 +688,9 @@ class ShopSelectMenuHandlerTest {
             100L,
             Instant.now(),
             Instant.now());
-    var purchaseResult = new CurrencyPurchaseService.PurchaseResult(product, 500L, 400L, 100L, noDiscountQuote(product), "");
+    var purchaseResult =
+        new CurrencyPurchaseService.PurchaseResult(
+            product, 500L, 400L, 100L, noDiscountQuote(product), "");
 
     when(buttonEvent.getComponentId()).thenReturn(buttonId);
     when(purchaseService.purchaseProduct(TEST_GUILD_ID, TEST_USER_ID, TEST_PRODUCT_ID))
@@ -721,7 +720,9 @@ class ShopSelectMenuHandlerTest {
             "escort-a",
             Instant.now(),
             Instant.now());
-    var purchaseResult = new CurrencyPurchaseService.PurchaseResult(product, 500L, 400L, 100L, noDiscountQuote(product), "");
+    var purchaseResult =
+        new CurrencyPurchaseService.PurchaseResult(
+            product, 500L, 400L, 100L, noDiscountQuote(product), "");
     EscortDispatchOrder dispatchOrder =
         EscortDispatchOrder.createAutoHandoff(
             "ESC-20260411-ABC123",
@@ -771,7 +772,9 @@ class ShopSelectMenuHandlerTest {
             "escort-a",
             Instant.now(),
             Instant.now());
-    var purchaseResult = new CurrencyPurchaseService.PurchaseResult(product, 500L, 400L, 100L, noDiscountQuote(product), "");
+    var purchaseResult =
+        new CurrencyPurchaseService.PurchaseResult(
+            product, 500L, 400L, 100L, noDiscountQuote(product), "");
     EscortDispatchOrder dispatchOrder =
         EscortDispatchOrder.createAutoHandoff(
             "ESC-20260411-ABC123",
@@ -817,7 +820,9 @@ class ShopSelectMenuHandlerTest {
             "escort-a",
             Instant.now(),
             Instant.now());
-    var purchaseResult = new CurrencyPurchaseService.PurchaseResult(product, 500L, 400L, 100L, noDiscountQuote(product), "");
+    var purchaseResult =
+        new CurrencyPurchaseService.PurchaseResult(
+            product, 500L, 400L, 100L, noDiscountQuote(product), "");
 
     when(buttonEvent.getComponentId()).thenReturn(buttonId);
     when(purchaseService.purchaseProduct(TEST_GUILD_ID, TEST_USER_ID, TEST_PRODUCT_ID))
@@ -852,7 +857,9 @@ class ShopSelectMenuHandlerTest {
             "escort-a",
             Instant.now(),
             Instant.now());
-    var purchaseResult = new CurrencyPurchaseService.PurchaseResult(product, 500L, 400L, 100L, noDiscountQuote(product), "");
+    var purchaseResult =
+        new CurrencyPurchaseService.PurchaseResult(
+            product, 500L, 400L, 100L, noDiscountQuote(product), "");
     EscortDispatchOrder dispatchOrder =
         EscortDispatchOrder.createAutoHandoff(
             "ESC-20260411-ABC123",

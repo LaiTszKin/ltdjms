@@ -2,7 +2,6 @@ package ltdjms.discord.shop.services;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -51,10 +50,7 @@ class FiatOrderServiceTest {
   void setUp() {
     service =
         new FiatOrderService(
-            productService,
-            ecpayCvsPaymentService,
-            fiatOrderRepository,
-            membershipPricingService);
+            productService, ecpayCvsPaymentService, fiatOrderRepository, membershipPricingService);
   }
 
   @Test
@@ -204,13 +200,7 @@ class FiatOrderServiceTest {
             Instant.now(),
             Instant.now());
     EscortPriceQuote quote =
-        new EscortPriceQuote(
-            3500L,
-            3150L,
-            0L,
-            0L,
-            MembershipTier.SILVER,
-            new BigDecimal("0.10"));
+        new EscortPriceQuote(3500L, 3150L, 0L, 0L, MembershipTier.SILVER, new BigDecimal("0.10"));
     when(productService.getProduct(TEST_PRODUCT_ID)).thenReturn(Optional.of(product));
     when(membershipPricingService.quoteEscortPrice(TEST_USER_ID, product, TEST_GUILD_ID))
         .thenReturn(quote);

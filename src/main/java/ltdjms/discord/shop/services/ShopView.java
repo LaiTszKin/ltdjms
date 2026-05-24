@@ -123,11 +123,13 @@ public class ShopView {
         "選擇要購買的商品",
         allProducts,
         (builder, product) ->
-            builder.addOption(product.name(), String.valueOf(product.id()), buildPriceDescription(product)));
+            builder.addOption(
+                product.name(), String.valueOf(product.id()), buildPriceDescription(product)));
   }
 
   /** Builds a payment method choice embed for products with both currency and fiat prices. */
-  public static MessageEmbed buildPaymentMethodChoiceEmbed(Product product, EscortPriceQuote quote) {
+  public static MessageEmbed buildPaymentMethodChoiceEmbed(
+      Product product, EscortPriceQuote quote) {
     StringBuilder sb = new StringBuilder();
     sb.append("**商品：** ").append(product.name()).append("\n\n");
     sb.append("**請選擇支付方式：**\n\n");
@@ -148,18 +150,12 @@ public class ShopView {
     if (product.hasCurrencyPrice()) {
       buttons.add(
           new ButtonView(
-              BUTTON_PAY_WITH_CURRENCY + product.id(),
-              "💰 貨幣購買",
-              ButtonStyle.SUCCESS,
-              false));
+              BUTTON_PAY_WITH_CURRENCY + product.id(), "💰 貨幣購買", ButtonStyle.SUCCESS, false));
     }
     if (product.hasFiatPriceTwd()) {
       buttons.add(
           new ButtonView(
-              BUTTON_PAY_WITH_FIAT + product.id(),
-              "💳 法幣下單",
-              ButtonStyle.PRIMARY,
-              false));
+              BUTTON_PAY_WITH_FIAT + product.id(), "💳 法幣下單", ButtonStyle.PRIMARY, false));
     }
     return List.of(DiscordComponentRenderer.buildActionRow(buttons));
   }
@@ -211,9 +207,7 @@ public class ShopView {
 
     rows.add(
         DiscordComponentRenderer.buildActionRow(
-            List.of(
-                new ButtonView(
-                    BUTTON_BACK_TO_SHOP, "返回商店", ButtonStyle.SECONDARY, false))));
+            List.of(new ButtonView(BUTTON_BACK_TO_SHOP, "返回商店", ButtonStyle.SECONDARY, false))));
 
     return rows;
   }
@@ -225,7 +219,8 @@ public class ShopView {
         "選擇要購買的商品",
         products,
         (builder, product) ->
-            builder.addOption(product.name(), String.valueOf(product.id()), buildPriceDescription(product)));
+            builder.addOption(
+                product.name(), String.valueOf(product.id()), buildPriceDescription(product)));
   }
 
   /** Builds an embed for purchase confirmation. */
@@ -265,15 +260,15 @@ public class ShopView {
 
   /** Encodes a keyword string for use in button IDs. */
   static String encodeKeyword(String keyword) {
-    return java.util.Base64.getEncoder().withoutPadding()
+    return java.util.Base64.getEncoder()
+        .withoutPadding()
         .encodeToString(keyword.getBytes(java.nio.charset.StandardCharsets.UTF_8));
   }
 
   /** Decodes a keyword string from a button ID. */
   public static String decodeKeyword(String encoded) {
     return new String(
-        java.util.Base64.getDecoder().decode(encoded),
-        java.nio.charset.StandardCharsets.UTF_8);
+        java.util.Base64.getDecoder().decode(encoded), java.nio.charset.StandardCharsets.UTF_8);
   }
 
   private static List<ButtonView> buildPaginationButtons(int currentPage, int totalPages) {

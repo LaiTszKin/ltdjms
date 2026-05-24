@@ -183,15 +183,16 @@ public final class DispatchPanelView {
               .build();
       rows.add(DiscordComponentRenderer.buildRow(emptySelect));
     } else {
-      List<StringSelectMenu> orderMenus = SelectMenuUtil.splitSelectMenu(
-          SELECT_PENDING_ORDER,
-          "選擇待派單訂單",
-          pendingOrders,
-          (builder, order) ->
-              builder.addOption(
-                  truncate(order.orderNumber() + "｜" + formatPendingOrderLabel(order), 100),
-                  order.orderNumber(),
-                  truncate(formatSourceSummary(order), 100)));
+      List<StringSelectMenu> orderMenus =
+          SelectMenuUtil.splitSelectMenu(
+              SELECT_PENDING_ORDER,
+              "選擇待派單訂單",
+              pendingOrders,
+              (builder, order) ->
+                  builder.addOption(
+                      truncate(order.orderNumber() + "｜" + formatPendingOrderLabel(order), 100),
+                      order.orderNumber(),
+                      truncate(formatSourceSummary(order), 100)));
       for (StringSelectMenu menu : orderMenus) {
         rows.add(DiscordComponentRenderer.buildRow(menu));
       }

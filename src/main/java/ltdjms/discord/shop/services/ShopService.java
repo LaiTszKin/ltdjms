@@ -81,10 +81,7 @@ public class ShopService {
         productRepository.findByGuildIdAndNameContaining(guildId, keyword, validPage, pageSize);
 
     LOG.debug(
-        "Search page {}: found {} products, totalPages={}",
-        validPage,
-        products.size(),
-        totalPages);
+        "Search page {}: found {} products, totalPages={}", validPage, products.size(), totalPages);
 
     return new ShopPage(products, validPage + 1, totalPages);
   }

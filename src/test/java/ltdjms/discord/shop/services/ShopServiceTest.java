@@ -232,8 +232,7 @@ class ShopServiceTest {
           List.of(
               createProduct(1L, "Apple", null, null, null),
               createProduct(2L, "Application", null, null, null));
-      when(productRepository.countByGuildIdAndNameContaining(TEST_GUILD_ID, "app"))
-          .thenReturn(2L);
+      when(productRepository.countByGuildIdAndNameContaining(TEST_GUILD_ID, "app")).thenReturn(2L);
       when(productRepository.findByGuildIdAndNameContaining(TEST_GUILD_ID, "app", 0, PAGE_SIZE))
           .thenReturn(products);
 
@@ -263,8 +262,7 @@ class ShopServiceTest {
     @Test
     @DisplayName("should clamp out-of-range page to valid range")
     void shouldClampOutOfRangePage() {
-      when(productRepository.countByGuildIdAndNameContaining(TEST_GUILD_ID, "test"))
-          .thenReturn(3L);
+      when(productRepository.countByGuildIdAndNameContaining(TEST_GUILD_ID, "test")).thenReturn(3L);
       when(productRepository.findByGuildIdAndNameContaining(TEST_GUILD_ID, "test", 0, PAGE_SIZE))
           .thenReturn(
               List.of(

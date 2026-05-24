@@ -65,7 +65,11 @@ class CurrencyPurchaseServiceTest {
             productRewardService,
             membershipPricingService);
     org.mockito.Mockito.lenient()
-        .when(membershipPricingService.quoteEscortPrice(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyLong()))
+        .when(
+            membershipPricingService.quoteEscortPrice(
+                org.mockito.ArgumentMatchers.anyLong(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.anyLong()))
         .thenAnswer(
             invocation -> {
               Product product = invocation.getArgument(1);

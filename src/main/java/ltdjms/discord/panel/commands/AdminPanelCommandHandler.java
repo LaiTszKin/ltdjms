@@ -49,8 +49,7 @@ public class AdminPanelCommandHandler implements SlashCommandListener.CommandHan
       AdminPanelButtonHandler.BUTTON_DISPATCH_AFTER_SALES_CONFIG;
   public static final String BUTTON_ESCORT_PRICING_CONFIG =
       AdminPanelButtonHandler.BUTTON_ESCORT_PRICING_CONFIG;
-  public static final String BUTTON_ESCORT_CATALOG =
-      AdminPanelButtonHandler.BUTTON_ESCORT_CATALOG;
+  public static final String BUTTON_ESCORT_CATALOG = AdminPanelButtonHandler.BUTTON_ESCORT_CATALOG;
 
   private final AdminPanelService adminPanelService;
   private final AdminPanelSessionManager adminPanelSessionManager;

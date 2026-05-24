@@ -22,13 +22,11 @@ import ltdjms.discord.shop.services.EscortOrderBuyerNotificationService;
 import ltdjms.discord.shop.services.FiatOrderService;
 import ltdjms.discord.shop.services.ShopAdminNotificationService;
 import ltdjms.discord.shop.services.ShopView;
-import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.InteractionHook;
-import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.buttons.ButtonStyle;
 
 /** Handles select menu and button interactions for shop purchase. */
@@ -123,12 +121,7 @@ public class ShopSelectMenuHandler extends ListenerAdapter {
                       .queue(
                           hook ->
                               processDeferredFiatOrder(
-                                  hook,
-                                  event.getUser(),
-                                  guildId,
-                                  userId,
-                                  productId,
-                                  inflightKey),
+                                  hook, event.getUser(), guildId, userId, productId, inflightKey),
                           failure -> inflightFiatOrders.remove(inflightKey));
                 } else {
                   event.reply("此商品暫無可用的購買方式").setEphemeral(true).queue();
@@ -245,8 +238,7 @@ public class ShopSelectMenuHandler extends ListenerAdapter {
     }
 
     try {
-      long productId =
-          Long.parseLong(buttonId.substring(ShopView.BUTTON_PAY_WITH_FIAT.length()));
+      long productId = Long.parseLong(buttonId.substring(ShopView.BUTTON_PAY_WITH_FIAT.length()));
       long guildId = event.getGuild().getIdLong();
       long userId = event.getUser().getIdLong();
 
@@ -270,7 +262,10 @@ public class ShopSelectMenuHandler extends ListenerAdapter {
 
   /** Shows purchase confirmation embed (edit from select interaction). */
   private void showPurchaseConfirmOnEdit(
-      StringSelectInteractionEvent event, Product product, long guildId, long userId,
+      StringSelectInteractionEvent event,
+      Product product,
+      long guildId,
+      long userId,
       long productId) {
     var balanceResult = balanceService.tryGetBalance(guildId, userId);
     long userBalance = balanceResult.isOk() ? balanceResult.getValue().balance() : 0;
@@ -288,10 +283,7 @@ public class ShopSelectMenuHandler extends ListenerAdapter {
                             ButtonStyle.SUCCESS,
                             false),
                         new ButtonView(
-                            BUTTON_CANCEL_PURCHASE,
-                            "取消",
-                            ButtonStyle.SECONDARY,
-                            false)))))
+                            BUTTON_CANCEL_PURCHASE, "取消", ButtonStyle.SECONDARY, false)))))
         .queue();
   }
 
@@ -314,10 +306,7 @@ public class ShopSelectMenuHandler extends ListenerAdapter {
                             ButtonStyle.SUCCESS,
                             false),
                         new ButtonView(
-                            BUTTON_CANCEL_PURCHASE,
-                            "取消",
-                            ButtonStyle.SECONDARY,
-                            false)))))
+                            BUTTON_CANCEL_PURCHASE, "取消", ButtonStyle.SECONDARY, false)))))
         .queue();
   }
 
@@ -369,8 +358,7 @@ public class ShopSelectMenuHandler extends ListenerAdapter {
                     failure);
                 completeDeferredFiatReply(
                     hook,
-                    buildFiatOrderInteractionMessage(
-                        order, false, "⚠️ 無法開啟私訊，請直接使用以下資訊付款。"),
+                    buildFiatOrderInteractionMessage(order, false, "⚠️ 無法開啟私訊，請直接使用以下資訊付款。"),
                     inflightKey);
               });
     } catch (Exception e) {

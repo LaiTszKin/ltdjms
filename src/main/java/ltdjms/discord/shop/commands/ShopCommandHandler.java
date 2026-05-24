@@ -52,8 +52,7 @@ public class ShopCommandHandler implements SlashCommandListener.CommandHandler {
                 shopPage.products(), shopPage.currentPage(), shopPage.totalPages(), guildId);
 
         components =
-            ShopView.buildShopComponents(
-                shopPage.currentPage(), shopPage.totalPages(), true);
+            ShopView.buildShopComponents(shopPage.currentPage(), shopPage.totalPages(), true);
       }
 
       event.replyEmbeds(embed).addComponents(components).setEphemeral(true).queue();

@@ -7,11 +7,12 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Escort order option catalog that reads from the database via {@link EscortOptionCatalogRepository}
- * with a fallback to built-in hardcoded data when the repository is unavailable.
+ * Escort order option catalog that reads from the database via {@link
+ * EscortOptionCatalogRepository} with a fallback to built-in hardcoded data when the repository is
+ * unavailable.
  *
- * <p>This class maintains backward compatibility — all public static API signatures remain unchanged
- * while the underlying data source transitions from hardcoded to database-driven.
+ * <p>This class maintains backward compatibility — all public static API signatures remain
+ * unchanged while the underlying data source transitions from hardcoded to database-driven.
  */
 public final class EscortOrderOptionCatalog {
 
@@ -40,7 +41,11 @@ public final class EscortOrderOptionCatalog {
             options.put(
                 cat.code(),
                 new EscortOrderOption(
-                    cat.code(), cat.type(), cat.level(), cat.mapScope(), cat.target(),
+                    cat.code(),
+                    cat.type(),
+                    cat.level(),
+                    cat.mapScope(),
+                    cat.target(),
                     cat.priceTwd()));
           }
           return Map.copyOf(options);

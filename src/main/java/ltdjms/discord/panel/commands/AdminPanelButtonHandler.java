@@ -17,13 +17,13 @@ import ltdjms.discord.discord.services.SelectMenuUtil;
 import ltdjms.discord.dispatch.services.EscortOptionPricingService;
 import ltdjms.discord.gametoken.domain.DiceGame1Config;
 import ltdjms.discord.gametoken.domain.DiceGame2Config;
-import ltdjms.discord.product.domain.EscortOptionCatalog;
 import ltdjms.discord.panel.components.PanelComponentRenderer;
 import ltdjms.discord.panel.services.AdminPanelService;
 import ltdjms.discord.panel.services.AdminPanelSessionManager;
 import ltdjms.discord.panel.services.AdminPanelSessionManager.AdminPanelView;
 import ltdjms.discord.panel.services.CurrencyManagementFacade;
 import ltdjms.discord.panel.services.GameTokenManagementFacade;
+import ltdjms.discord.product.domain.EscortOptionCatalog;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 import ltdjms.discord.shared.Unit;
@@ -103,7 +103,8 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
   public static final String BUTTON_ESCORT_CATALOG_REFRESH = "admin_escort_catalog_refresh";
   public static final String BUTTON_ESCORT_CATALOG_SELECT = "admin_escort_catalog_select";
   public static final String SELECT_ESCORT_CATALOG_ITEM = "admin_select_escort_catalog_item";
-  public static final String SELECT_ESCORT_CATALOG_ITEM_EXTRA = "admin_select_escort_catalog_item_extra";
+  public static final String SELECT_ESCORT_CATALOG_ITEM_EXTRA =
+      "admin_select_escort_catalog_item_extra";
   public static final String MODAL_ESCORT_CATALOG_CREATE = "admin_modal_escort_catalog_create";
   public static final String MODAL_ESCORT_CATALOG_EDIT = "admin_modal_escort_catalog_edit";
 
@@ -2607,7 +2608,10 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     String target = lines.length > 1 ? lines[1].trim() : "";
 
     // Validate
-    if (code.isBlank() || type.isBlank() || level.isBlank() || mapScope.isBlank()
+    if (code.isBlank()
+        || type.isBlank()
+        || level.isBlank()
+        || mapScope.isBlank()
         || target.isBlank()) {
       event.reply("❌ 所有欄位都必須填寫").setEphemeral(true).queue();
       return;
@@ -2657,32 +2661,28 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     }
 
     List<EscortOptionCatalog> items = result.getValue();
-    List<ActionRow> rows = SelectMenuUtil.buildSelectRows(
-        SELECT_ESCORT_CATALOG_ITEM,
-        "選擇要編輯或刪除的護航項目",
-        items,
-        (builder, item) -> {
-          String label = item.code();
-          if (label.length() > 100) {
-            label = label.substring(0, 97) + "...";
-          }
-          String description =
-              item.type() + " | " + item.mapScope() + " | NT$" + item.priceTwd();
-          if (description.length() > 100) {
-            description = description.substring(0, 97) + "...";
-          }
-          builder.addOption(label, item.code(), description);
-        });
+    List<ActionRow> rows =
+        SelectMenuUtil.buildSelectRows(
+            SELECT_ESCORT_CATALOG_ITEM,
+            "選擇要編輯或刪除的護航項目",
+            items,
+            (builder, item) -> {
+              String label = item.code();
+              if (label.length() > 100) {
+                label = label.substring(0, 97) + "...";
+              }
+              String description =
+                  item.type() + " | " + item.mapScope() + " | NT$" + item.priceTwd();
+              if (description.length() > 100) {
+                description = description.substring(0, 97) + "...";
+              }
+              builder.addOption(label, item.code(), description);
+            });
 
-    event
-        .reply("請選擇要編輯或刪除的護航項目：")
-        .addComponents(rows)
-        .setEphemeral(true)
-        .queue();
+    event.reply("請選擇要編輯或刪除的護航項目：").addComponents(rows).setEphemeral(true).queue();
   }
 
-  private void handleEscortCatalogItemSelect(
-      StringSelectInteractionEvent event, long guildId) {
+  private void handleEscortCatalogItemSelect(StringSelectInteractionEvent event, long guildId) {
     String selectedCode = event.getValues().get(0);
     String sessionKey = getSessionKey(event.getUser().getIdLong(), guildId);
 
@@ -2705,7 +2705,12 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     String details =
         String.format(
             "**%s**\n訂單類型：%s\n服務級別：%s\n服務範圍：%s\n目標說明：%s\n價格：NT$%,d",
-            item.code(), item.type(), item.level(), item.mapScope(), item.target(), item.priceTwd());
+            item.code(),
+            item.type(),
+            item.level(),
+            item.mapScope(),
+            item.target(),
+            item.priceTwd());
 
     event
         .editMessageEmbeds(
@@ -2715,15 +2720,9 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
             PanelComponentRenderer.buildActionRow(
                 List.of(
                     new ButtonView(
-                        BUTTON_ESCORT_CATALOG_EDIT,
-                        "✏️ 編輯此項目",
-                        ButtonStyle.PRIMARY,
-                        false),
+                        BUTTON_ESCORT_CATALOG_EDIT, "✏️ 編輯此項目", ButtonStyle.PRIMARY, false),
                     new ButtonView(
-                        BUTTON_ESCORT_CATALOG_DELETE,
-                        "🗑️ 刪除此項目",
-                        ButtonStyle.DANGER,
-                        false))))
+                        BUTTON_ESCORT_CATALOG_DELETE, "🗑️ 刪除此項目", ButtonStyle.DANGER, false))))
         .queue();
   }
 
@@ -2761,7 +2760,8 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     String sessionKey = getSessionKey(event.getUser().getIdLong(), guildId);
     CatalogItemState state = catalogItemStates.get(sessionKey);
 
-    String originalCode = state != null ? state.selectedCode : extractOriginalCode(event.getModalId());
+    String originalCode =
+        state != null ? state.selectedCode : extractOriginalCode(event.getModalId());
 
     String code = event.getValue("escort_cat_code").getAsString().trim();
     String type = event.getValue("escort_cat_type").getAsString().trim();
@@ -2775,7 +2775,10 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     String target = lines.length > 1 ? lines[1].trim() : "";
 
     // Validate
-    if (code.isBlank() || type.isBlank() || level.isBlank() || mapScope.isBlank()
+    if (code.isBlank()
+        || type.isBlank()
+        || level.isBlank()
+        || mapScope.isBlank()
         || target.isBlank()) {
       event.reply("❌ 所有欄位都必須填寫").setEphemeral(true).queue();
       return;
@@ -2831,10 +2834,7 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
       return;
     }
 
-    event
-        .reply("✅ 已刪除護航項目：`" + code + "`")
-        .setEphemeral(true)
-        .queue();
+    event.reply("✅ 已刪除護航項目：`" + code + "`").setEphemeral(true).queue();
 
     // Clear selection state and refresh
     catalogItemStates.remove(sessionKey);

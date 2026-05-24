@@ -320,11 +320,7 @@ final class AdminPanelViewFactory {
         String line =
             String.format(
                 "%d. **%s**\n訂單類型：%s / 服務範圍：%s / 服務價格：NT$%,d",
-                startIndex + i,
-                item.code(),
-                item.type(),
-                item.level(),
-                item.priceTwd());
+                startIndex + i, item.code(), item.type(), item.level(), item.priceTwd());
         fields.add(new EmbedView.FieldView("", line, false));
       }
     }

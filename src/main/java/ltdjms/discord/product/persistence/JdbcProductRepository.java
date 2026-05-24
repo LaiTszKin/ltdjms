@@ -461,16 +461,14 @@ public class JdbcProductRepository implements ProductRepository {
           size);
       return products;
     } catch (SQLException e) {
-      LOG.error(
-          "Failed to search products for guildId={}, keyword={}", guildId, keyword, e);
+      LOG.error("Failed to search products for guildId={}, keyword={}", guildId, keyword, e);
       throw new RepositoryException("Failed to search products", e);
     }
   }
 
   @Override
   public long countByGuildIdAndNameContaining(long guildId, String keyword) {
-    String sql =
-        "SELECT COUNT(*) FROM product WHERE guild_id = ? AND name ILIKE '%' || ? || '%'";
+    String sql = "SELECT COUNT(*) FROM product WHERE guild_id = ? AND name ILIKE '%' || ? || '%'";
 
     try (Connection conn = dataSource.getConnection();
         PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -485,8 +483,7 @@ public class JdbcProductRepository implements ProductRepository {
         return 0;
       }
     } catch (SQLException e) {
-      LOG.error(
-          "Failed to count search products for guildId={}, keyword={}", guildId, keyword, e);
+      LOG.error("Failed to count search products for guildId={}, keyword={}", guildId, keyword, e);
       throw new RepositoryException("Failed to count search products", e);
     }
   }

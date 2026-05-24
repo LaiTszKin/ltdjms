@@ -195,8 +195,7 @@ final class AdminPanelModalFactory {
 
     TextInput scopeTargetInput =
         TextInput.create("escort_cat_scope_target", "服務範圍 / 目標", TextInputStyle.PARAGRAPH)
-            .setPlaceholder(
-                "第一行：服務範圍，例如 機密大壩\n第二行：目標說明，例如 300 萬目標")
+            .setPlaceholder("第一行：服務範圍，例如 機密大壩\n第二行：目標說明，例如 300 萬目標")
             .setRequired(true)
             .setMinLength(1)
             .setMaxLength(500)
@@ -220,7 +219,9 @@ final class AdminPanelModalFactory {
         .build();
   }
 
-  /** Creates a modal for editing an existing escort catalog item, pre-filled with current values. */
+  /**
+   * Creates a modal for editing an existing escort catalog item, pre-filled with current values.
+   */
   static Modal createEscortCatalogEditModal(EscortOptionCatalog catalog) {
     String modalId = AdminPanelButtonHandler.MODAL_ESCORT_CATALOG_EDIT + ":" + catalog.code();
     String modalTitle = "編輯護航項目 - " + catalog.code();
@@ -257,8 +258,7 @@ final class AdminPanelModalFactory {
 
     TextInput scopeTargetInput =
         TextInput.create("escort_cat_scope_target", "服務範圍 / 目標", TextInputStyle.PARAGRAPH)
-            .setPlaceholder(
-                "第一行：服務範圍\n第二行：目標說明")
+            .setPlaceholder("第一行：服務範圍\n第二行：目標說明")
             .setValue(catalog.mapScope() + "\n" + catalog.target())
             .setRequired(true)
             .setMinLength(1)

@@ -191,16 +191,13 @@ class ShopButtonHandlerTest {
             Instant.now(),
             Instant.now());
     when(productService.getAllPurchasableProducts(TEST_GUILD_ID)).thenReturn(List.of(product));
-    when(replyAction.setComponents(
-            anyList()))
-        .thenReturn(replyAction);
+    when(replyAction.setComponents(anyList())).thenReturn(replyAction);
 
     handler.onButtonInteraction(event);
 
     verify(event).reply("請選擇要購買的商品");
     verify(replyAction).setEphemeral(true);
-    verify(replyAction)
-        .setComponents(anyList());
+    verify(replyAction).setComponents(anyList());
   }
 
   @Test

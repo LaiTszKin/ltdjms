@@ -12,10 +12,10 @@ import ltdjms.discord.currency.domain.GuildCurrencyConfig;
 import ltdjms.discord.dispatch.services.DispatchAfterSalesStaffService;
 import ltdjms.discord.dispatch.services.EscortOptionPricingService;
 import ltdjms.discord.gametoken.domain.DiceGame1Config;
+import ltdjms.discord.gametoken.domain.DiceGame2Config;
 import ltdjms.discord.product.domain.EscortOptionCatalog;
 import ltdjms.discord.product.domain.EscortOptionCatalogRepository;
 import ltdjms.discord.product.domain.ProductRepository;
-import ltdjms.discord.gametoken.domain.DiceGame2Config;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 import ltdjms.discord.shared.Unit;
@@ -429,8 +429,7 @@ public class AdminPanelService {
       String code, String type, String level, String mapScope, String target, long priceTwd) {
     try {
       if (escortOptionCatalogRepository.existsByCode(code.trim().toUpperCase())) {
-        return Result.err(
-            DomainError.invalidInput("護航選項代碼已存在：" + code.trim().toUpperCase()));
+        return Result.err(DomainError.invalidInput("護航選項代碼已存在：" + code.trim().toUpperCase()));
       }
       EscortOptionCatalog catalog =
           EscortOptionCatalog.create(
@@ -460,20 +459,17 @@ public class AdminPanelService {
       // If code changed, check uniqueness of new code
       if (!normalizedOriginalCode.equals(normalizedNewCode)
           && escortOptionCatalogRepository.existsByCode(normalizedNewCode)) {
-        return Result.err(
-            DomainError.invalidInput("護航選項代碼已存在：" + normalizedNewCode));
+        return Result.err(DomainError.invalidInput("護航選項代碼已存在：" + normalizedNewCode));
       }
 
       EscortOptionCatalog existing =
           escortOptionCatalogRepository.findByCode(normalizedOriginalCode).orElse(null);
       if (existing == null) {
-        return Result.err(
-            DomainError.invalidInput("護航選項不存在：" + normalizedOriginalCode));
+        return Result.err(DomainError.invalidInput("護航選項不存在：" + normalizedOriginalCode));
       }
 
       EscortOptionCatalog updated =
-          existing.withUpdatedDetails(
-              normalizedNewCode, type, level, mapScope, target, priceTwd);
+          existing.withUpdatedDetails(normalizedNewCode, type, level, mapScope, target, priceTwd);
       EscortOptionCatalog saved = escortOptionCatalogRepository.update(updated);
       LOG.info("Updated escort catalog item: code={}", saved.code());
       return Result.ok(saved);

@@ -7,10 +7,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ltdjms.discord.aichat.commands.AIChatMentionListener;
-import ltdjms.discord.membership.listeners.GuildMemberJoinListener;
-import ltdjms.discord.membership.services.MembershipSettlementScheduler;
 import ltdjms.discord.discord.domain.DiscordRuntimeGateway;
 import ltdjms.discord.dispatch.commands.DispatchPanelInteractionHandler;
+import ltdjms.discord.membership.listeners.GuildMemberJoinListener;
+import ltdjms.discord.membership.services.MembershipSettlementScheduler;
 import ltdjms.discord.panel.commands.AdminPanelButtonHandler;
 import ltdjms.discord.panel.commands.AdminProductPanelHandler;
 import ltdjms.discord.panel.commands.UserPanelButtonHandler;

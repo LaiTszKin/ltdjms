@@ -284,7 +284,8 @@ class ShopViewTest {
   void buildPurchaseConfirmEmbedShouldCreateConfirmationEmbed() {
     Product product = Product.createWithCurrencyPrice(TEST_GUILD_ID, "測試商品", null, 100L);
 
-    MessageEmbed embed = ShopView.buildPurchaseConfirmEmbed(product, 500L, quoteFor(product, 100L, 0L));
+    MessageEmbed embed =
+        ShopView.buildPurchaseConfirmEmbed(product, 500L, quoteFor(product, 100L, 0L));
 
     assertThat(embed.getTitle()).isEqualTo("💰 確認購買");
     assertThat(embed.getDescription()).contains("**商品：** 測試商品");
@@ -298,7 +299,8 @@ class ShopViewTest {
   void buildPurchaseConfirmEmbedShouldShowWarningWhenInsufficientBalance() {
     Product product = Product.createWithCurrencyPrice(TEST_GUILD_ID, "測試商品", null, 100L);
 
-    MessageEmbed embed = ShopView.buildPurchaseConfirmEmbed(product, 50L, quoteFor(product, 100L, 0L));
+    MessageEmbed embed =
+        ShopView.buildPurchaseConfirmEmbed(product, 50L, quoteFor(product, 100L, 0L));
 
     assertThat(embed.getDescription()).contains("⚠️ **餘額不足！**");
   }
@@ -313,6 +315,11 @@ class ShopViewTest {
     long listCurrency = product.hasCurrencyPrice() ? product.currencyPrice() : currency;
     long listFiat = product.hasFiatPriceTwd() ? product.fiatPriceTwd() : fiat;
     return new EscortPriceQuote(
-        listFiat, listFiat, listCurrency, listCurrency, MembershipTier.NONE, java.math.BigDecimal.ZERO);
+        listFiat,
+        listFiat,
+        listCurrency,
+        listCurrency,
+        MembershipTier.NONE,
+        java.math.BigDecimal.ZERO);
   }
 }

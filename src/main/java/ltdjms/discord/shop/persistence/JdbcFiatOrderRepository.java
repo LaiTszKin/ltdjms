@@ -27,9 +27,9 @@ public class JdbcFiatOrderRepository implements FiatOrderRepository {
   private static final String SELECT_COLUMNS =
       "id, guild_id, buyer_user_id, product_id, product_name, order_number, payment_no,"
           + " fulfillment_reward_type, fulfillment_reward_amount,"
-          + " fulfillment_auto_create_escort_order, fulfillment_escort_option_code,"
-          + " amount_twd, list_price_twd, charged_amount_twd, status, trade_status, payment_message,"
-          + " paid_at, expire_at, expired_at, terminal_reason, buyer_notified_at, reward_granted_at,"
+          + " fulfillment_auto_create_escort_order, fulfillment_escort_option_code, amount_twd,"
+          + " list_price_twd, charged_amount_twd, status, trade_status, payment_message, paid_at,"
+          + " expire_at, expired_at, terminal_reason, buyer_notified_at, reward_granted_at,"
           + " fulfilled_at, admin_notified_at, last_callback_payload, fulfillment_processing_at,"
           + " admin_notification_processing_at, reconciliation_processing_at,"
           + " reconciliation_attempt_count, reconciliation_next_attempt_at, created_at, updated_at";
@@ -50,8 +50,8 @@ public class JdbcFiatOrderRepository implements FiatOrderRepository {
             + " payment_message, paid_at, expire_at, expired_at, terminal_reason,"
             + " buyer_notified_at, reward_granted_at, fulfilled_at, admin_notified_at,"
             + " last_callback_payload, reconciliation_attempt_count,"
-            + " reconciliation_next_attempt_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?,"
-            + " ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id";
+            + " reconciliation_next_attempt_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?,"
+            + " ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id";
 
     try (Connection conn = dataSource.getConnection();
         PreparedStatement stmt = conn.prepareStatement(sql)) {

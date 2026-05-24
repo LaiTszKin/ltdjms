@@ -102,9 +102,7 @@ public record FiatOrder(
     if (chargedAmountTwd != null && chargedAmountTwd <= 0) {
       throw new IllegalArgumentException("chargedAmountTwd must be positive when provided");
     }
-    if (listPriceTwd != null
-        && chargedAmountTwd != null
-        && chargedAmountTwd > listPriceTwd) {
+    if (listPriceTwd != null && chargedAmountTwd != null && chargedAmountTwd > listPriceTwd) {
       throw new IllegalArgumentException("chargedAmountTwd must not exceed listPriceTwd");
     }
     if (status == Status.PENDING_PAYMENT && paidAt != null) {

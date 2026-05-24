@@ -77,8 +77,7 @@ public class DispatchModule {
   @Provides
   @Singleton
   public EscortOptionPricingService provideEscortOptionPricingService(
-      EscortOptionPriceRepository repository,
-      EscortOptionCatalogRepository catalogRepository) {
+      EscortOptionPriceRepository repository, EscortOptionCatalogRepository catalogRepository) {
     return new EscortOptionPricingService(repository, catalogRepository);
   }
 

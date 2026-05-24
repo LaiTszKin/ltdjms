@@ -8,7 +8,6 @@ import java.util.stream.IntStream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.selections.StringSelectMenu;
 
 @DisplayName("SelectMenuUtil 測試")
@@ -36,7 +35,9 @@ class SelectMenuUtilTest {
   void upTo25OptionsShouldReturnSingleMenu() {
     List<String> items = IntStream.range(0, 25).mapToObj(i -> "item" + i).toList();
 
-    var menus = SelectMenuUtil.splitSelectMenu(SELECT_ID, PLACEHOLDER, items, (b, item) -> b.addOption(item, item));
+    var menus =
+        SelectMenuUtil.splitSelectMenu(
+            SELECT_ID, PLACEHOLDER, items, (b, item) -> b.addOption(item, item));
 
     assertThat(menus).hasSize(1);
     assertThat(menus.get(0).getOptions()).hasSize(25);
@@ -48,7 +49,9 @@ class SelectMenuUtilTest {
   void moreThan25OptionsShouldSplit() {
     List<String> items = IntStream.range(0, 26).mapToObj(i -> "item" + i).toList();
 
-    var menus = SelectMenuUtil.splitSelectMenu(SELECT_ID, PLACEHOLDER, items, (b, item) -> b.addOption(item, item));
+    var menus =
+        SelectMenuUtil.splitSelectMenu(
+            SELECT_ID, PLACEHOLDER, items, (b, item) -> b.addOption(item, item));
 
     assertThat(menus).hasSize(2);
     assertThat(menus.get(0).getOptions()).hasSize(25);
@@ -62,7 +65,9 @@ class SelectMenuUtilTest {
   void exactly50OptionsShouldSplitEvenly() {
     List<String> items = IntStream.range(0, 50).mapToObj(i -> "item" + i).toList();
 
-    var menus = SelectMenuUtil.splitSelectMenu(SELECT_ID, PLACEHOLDER, items, (b, item) -> b.addOption(item, item));
+    var menus =
+        SelectMenuUtil.splitSelectMenu(
+            SELECT_ID, PLACEHOLDER, items, (b, item) -> b.addOption(item, item));
 
     assertThat(menus).hasSize(2);
     assertThat(menus.get(0).getOptions()).hasSize(25);
@@ -74,7 +79,9 @@ class SelectMenuUtilTest {
   void moreThan50OptionsShouldSplitIntoThree() {
     List<String> items = IntStream.range(0, 51).mapToObj(i -> "item" + i).toList();
 
-    var menus = SelectMenuUtil.splitSelectMenu(SELECT_ID, PLACEHOLDER, items, (b, item) -> b.addOption(item, item));
+    var menus =
+        SelectMenuUtil.splitSelectMenu(
+            SELECT_ID, PLACEHOLDER, items, (b, item) -> b.addOption(item, item));
 
     assertThat(menus).hasSize(3);
     assertThat(menus.get(0).getOptions()).hasSize(25);
@@ -87,9 +94,12 @@ class SelectMenuUtilTest {
   void itemContentShouldBeCorrect() {
     List<String> items = List.of("zero", "one", "two");
 
-    var menus = SelectMenuUtil.splitSelectMenu(
-        SELECT_ID, PLACEHOLDER, items,
-        (b, item) -> b.addOption("label:" + item, "value:" + item, "desc:" + item));
+    var menus =
+        SelectMenuUtil.splitSelectMenu(
+            SELECT_ID,
+            PLACEHOLDER,
+            items,
+            (b, item) -> b.addOption("label:" + item, "value:" + item, "desc:" + item));
 
     assertThat(menus).hasSize(1);
     var opts = menus.get(0).getOptions();
@@ -105,7 +115,9 @@ class SelectMenuUtilTest {
   void buildSelectRowsShouldReturnActionRows() {
     List<String> items = IntStream.range(0, 30).mapToObj(i -> "item" + i).toList();
 
-    var rows = SelectMenuUtil.buildSelectRows(SELECT_ID, PLACEHOLDER, items, (b, item) -> b.addOption(item, item));
+    var rows =
+        SelectMenuUtil.buildSelectRows(
+            SELECT_ID, PLACEHOLDER, items, (b, item) -> b.addOption(item, item));
 
     assertThat(rows).hasSize(2);
     assertThat(rows.get(0).getComponents()).hasSize(1);
@@ -120,8 +132,9 @@ class SelectMenuUtilTest {
   void customMaxOptionsShouldWork() {
     List<String> items = IntStream.range(0, 10).mapToObj(i -> "item" + i).toList();
 
-    var menus = SelectMenuUtil.splitSelectMenu(
-        SELECT_ID, PLACEHOLDER, items, (b, item) -> b.addOption(item, item), 3);
+    var menus =
+        SelectMenuUtil.splitSelectMenu(
+            SELECT_ID, PLACEHOLDER, items, (b, item) -> b.addOption(item, item), 3);
 
     assertThat(menus).hasSize(4); // 3 + 3 + 3 + 1
     assertThat(menus.get(0).getOptions()).hasSize(3);

@@ -72,7 +72,8 @@ class UserPanelServiceTest {
       BalanceView balanceView =
           new BalanceView(TEST_GUILD_ID, TEST_USER_ID, 500L, "Diamonds", "💎");
       Result<UserPanelView, DomainError> expectedResult =
-          Result.ok(new UserPanelView(TEST_GUILD_ID, TEST_USER_ID, 500L, "Diamonds", "💎", 0L, null));
+          Result.ok(
+              new UserPanelView(TEST_GUILD_ID, TEST_USER_ID, 500L, "Diamonds", "💎", 0L, null));
       when(memberInfoFacade.getUserPanelView(TEST_GUILD_ID, TEST_USER_ID))
           .thenReturn(expectedResult);
 
@@ -111,7 +112,8 @@ class UserPanelServiceTest {
     @DisplayName("should format embed title correctly")
     void shouldFormatEmbedTitleCorrectly() {
       // Given
-      UserPanelView view = new UserPanelView(TEST_GUILD_ID, TEST_USER_ID, 1000L, "Gold", "💰", 50L, null);
+      UserPanelView view =
+          new UserPanelView(TEST_GUILD_ID, TEST_USER_ID, 1000L, "Gold", "💰", 50L, null);
 
       // When
       String title = view.getEmbedTitle();
@@ -156,7 +158,8 @@ class UserPanelServiceTest {
     @DisplayName("should format zero balances correctly")
     void shouldFormatZeroBalancesCorrectly() {
       // Given
-      UserPanelView view = new UserPanelView(TEST_GUILD_ID, TEST_USER_ID, 0L, "Coins", "🪙", 0L, null);
+      UserPanelView view =
+          new UserPanelView(TEST_GUILD_ID, TEST_USER_ID, 0L, "Coins", "🪙", 0L, null);
 
       // When
       String currencyField = view.formatCurrencyField();
@@ -171,7 +174,8 @@ class UserPanelServiceTest {
     @DisplayName("should include currency name in currency field name")
     void shouldIncludeCurrencyNameInFieldName() {
       // Given - user has custom currency "星幣" with icon "✨"
-      UserPanelView view = new UserPanelView(TEST_GUILD_ID, TEST_USER_ID, 1000L, "星幣", "✨", 50L, null);
+      UserPanelView view =
+          new UserPanelView(TEST_GUILD_ID, TEST_USER_ID, 1000L, "星幣", "✨", 50L, null);
 
       // When
       String fieldName = view.getCurrencyFieldName();
@@ -185,7 +189,8 @@ class UserPanelServiceTest {
     @DisplayName("should return currency icon for button display")
     void shouldReturnCurrencyIconForButton() {
       // Given - user has custom currency with icon "✨"
-      UserPanelView view = new UserPanelView(TEST_GUILD_ID, TEST_USER_ID, 1000L, "星幣", "✨", 50L, null);
+      UserPanelView view =
+          new UserPanelView(TEST_GUILD_ID, TEST_USER_ID, 1000L, "星幣", "✨", 50L, null);
 
       // When
       String buttonLabel = view.getCurrencyHistoryButtonLabel();

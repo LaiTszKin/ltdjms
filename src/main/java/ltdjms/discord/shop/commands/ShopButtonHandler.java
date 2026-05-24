@@ -9,8 +9,8 @@ import ltdjms.discord.product.services.ProductService;
 import ltdjms.discord.shop.services.ShopService;
 import ltdjms.discord.shop.services.ShopView;
 import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
 
@@ -150,8 +150,7 @@ public class ShopButtonHandler extends ListenerAdapter {
           ShopView.buildShopEmbed(
               shopPage.products(), shopPage.currentPage(), shopPage.totalPages(), guildId);
       components =
-          ShopView.buildShopComponents(
-              shopPage.currentPage(), shopPage.totalPages(), true);
+          ShopView.buildShopComponents(shopPage.currentPage(), shopPage.totalPages(), true);
     }
 
     event.editMessageEmbeds(embed).setComponents(components).queue();

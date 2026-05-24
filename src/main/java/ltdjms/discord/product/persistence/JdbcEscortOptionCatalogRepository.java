@@ -50,8 +50,7 @@ public class JdbcEscortOptionCatalogRepository implements EscortOptionCatalogRep
 
   @Override
   public Optional<EscortOptionCatalog> findByCode(String code) {
-    String sql =
-        "SELECT " + SELECT_COLUMNS + " FROM escort_option_catalog WHERE code = ?";
+    String sql = "SELECT " + SELECT_COLUMNS + " FROM escort_option_catalog WHERE code = ?";
     try (Connection conn = dataSource.getConnection();
         PreparedStatement stmt = conn.prepareStatement(sql)) {
       stmt.setString(1, code);
@@ -62,8 +61,7 @@ public class JdbcEscortOptionCatalogRepository implements EscortOptionCatalogRep
       }
       return Optional.empty();
     } catch (SQLException e) {
-      throw new RepositoryException(
-          "Failed to find escort option catalog by code: " + code, e);
+      throw new RepositoryException("Failed to find escort option catalog by code: " + code, e);
     }
   }
 
@@ -83,8 +81,7 @@ public class JdbcEscortOptionCatalogRepository implements EscortOptionCatalogRep
       stmt.setLong(6, catalog.priceTwd());
       try (ResultSet rs = stmt.executeQuery()) {
         if (!rs.next()) {
-          throw new RepositoryException(
-              "Failed to get generated id for escort option catalog");
+          throw new RepositoryException("Failed to get generated id for escort option catalog");
         }
         return new EscortOptionCatalog(
             rs.getLong("id"),
@@ -98,8 +95,7 @@ public class JdbcEscortOptionCatalogRepository implements EscortOptionCatalogRep
             rs.getTimestamp("updated_at").toInstant());
       }
     } catch (SQLException e) {
-      throw new RepositoryException(
-          "Failed to save escort option catalog: " + catalog.code(), e);
+      throw new RepositoryException("Failed to save escort option catalog: " + catalog.code(), e);
     }
   }
 
@@ -135,8 +131,7 @@ public class JdbcEscortOptionCatalogRepository implements EscortOptionCatalogRep
             rs.getTimestamp("updated_at").toInstant());
       }
     } catch (SQLException e) {
-      throw new RepositoryException(
-          "Failed to update escort option catalog: " + catalog.code(), e);
+      throw new RepositoryException("Failed to update escort option catalog: " + catalog.code(), e);
     }
   }
 
@@ -148,8 +143,7 @@ public class JdbcEscortOptionCatalogRepository implements EscortOptionCatalogRep
       stmt.setString(1, code);
       return stmt.executeUpdate() > 0;
     } catch (SQLException e) {
-      throw new RepositoryException(
-          "Failed to delete escort option catalog: " + code, e);
+      throw new RepositoryException("Failed to delete escort option catalog: " + code, e);
     }
   }
 

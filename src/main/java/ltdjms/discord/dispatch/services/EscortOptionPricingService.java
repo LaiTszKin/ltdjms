@@ -10,7 +10,6 @@ import org.slf4j.LoggerFactory;
 import ltdjms.discord.dispatch.domain.EscortOptionPriceRepository;
 import ltdjms.discord.product.domain.EscortOptionCatalog;
 import ltdjms.discord.product.domain.EscortOptionCatalogRepository;
-import ltdjms.discord.product.domain.EscortOrderOptionCatalog;
 import ltdjms.discord.product.domain.EscortOrderOptionCatalog.EscortOrderOption;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
@@ -25,8 +24,7 @@ public class EscortOptionPricingService {
   private final EscortOptionCatalogRepository catalogRepository;
 
   public EscortOptionPricingService(
-      EscortOptionPriceRepository repository,
-      EscortOptionCatalogRepository catalogRepository) {
+      EscortOptionPriceRepository repository, EscortOptionCatalogRepository catalogRepository) {
     this.repository = repository;
     this.catalogRepository = catalogRepository;
   }
@@ -65,8 +63,7 @@ public class EscortOptionPricingService {
 
     EscortOptionCatalog cat = catalogRepository.findByCode(normalizedCode).orElse(null);
     if (cat == null) {
-      return Result.err(
-          DomainError.invalidInput("護航選項代碼無效，可用代碼：" + getSupportedCodes()));
+      return Result.err(DomainError.invalidInput("護航選項代碼無效，可用代碼：" + getSupportedCodes()));
     }
     EscortOrderOption option =
         new EscortOrderOption(
@@ -74,8 +71,7 @@ public class EscortOptionPricingService {
 
     try {
       repository.upsert(guildId, normalizedCode, priceTwd, updatedByUserId);
-      return Result.ok(
-          new OptionPriceView(normalizedCode, option, cat.priceTwd(), priceTwd, true));
+      return Result.ok(new OptionPriceView(normalizedCode, option, cat.priceTwd(), priceTwd, true));
     } catch (Exception e) {
       LOG.error(
           "Failed to update escort option price: guildId={}, optionCode={}, priceTwd={}",
@@ -93,8 +89,7 @@ public class EscortOptionPricingService {
     }
     String normalizedCode = optionCode.trim().toUpperCase();
     if (!catalogRepository.existsByCode(normalizedCode)) {
-      return Result.err(
-          DomainError.invalidInput("護航選項代碼無效，可用代碼：" + getSupportedCodes()));
+      return Result.err(DomainError.invalidInput("護航選項代碼無效，可用代碼：" + getSupportedCodes()));
     }
 
     try {
@@ -134,9 +129,8 @@ public class EscortOptionPricingService {
   }
 
   private String getSupportedCodes() {
-    return String.join(", ", catalogRepository.findAll().stream()
-        .map(EscortOptionCatalog::code)
-        .toList());
+    return String.join(
+        ", ", catalogRepository.findAll().stream().map(EscortOptionCatalog::code).toList());
   }
 
   public record OptionPriceView(

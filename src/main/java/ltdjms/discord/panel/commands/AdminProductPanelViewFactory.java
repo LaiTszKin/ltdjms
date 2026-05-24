@@ -317,35 +317,37 @@ final class AdminProductPanelViewFactory {
     List<ActionRow> rows = new ArrayList<>();
 
     if (!products.isEmpty()) {
-      rows.addAll(SelectMenuUtil.buildSelectRows(
-          AdminProductPanelHandler.SELECT_PRODUCT,
-          "選擇商品查看詳情",
-          products,
-          (builder, product) -> {
-            String label = product.name();
-            if (label.length() > 25) {
-              label = label.substring(0, 22) + "...";
-            }
-            String description = product.hasReward() ? product.formatReward() : "無自動獎勵";
-            if (description.length() > 50) {
-              description = description.substring(0, 47) + "...";
-            }
-            builder.addOption(label, String.valueOf(product.id()), description);
-          }));
+      rows.addAll(
+          SelectMenuUtil.buildSelectRows(
+              AdminProductPanelHandler.SELECT_PRODUCT,
+              "選擇商品查看詳情",
+              products,
+              (builder, product) -> {
+                String label = product.name();
+                if (label.length() > 25) {
+                  label = label.substring(0, 22) + "...";
+                }
+                String description = product.hasReward() ? product.formatReward() : "無自動獎勵";
+                if (description.length() > 50) {
+                  description = description.substring(0, 47) + "...";
+                }
+                builder.addOption(label, String.valueOf(product.id()), description);
+              }));
     }
 
-    rows.add(PanelComponentRenderer.buildActionRow(
-        List.of(
-            new ButtonView(
-                AdminProductPanelHandler.BUTTON_CREATE_PRODUCT,
-                "➕ 建立商品",
-                ButtonStyle.SUCCESS,
-                false),
-            new ButtonView(
-                AdminPanelButtonHandler.BUTTON_BACK,
-                "⬅️ 返回主選單",
-                ButtonStyle.SECONDARY,
-                false))));
+    rows.add(
+        PanelComponentRenderer.buildActionRow(
+            List.of(
+                new ButtonView(
+                    AdminProductPanelHandler.BUTTON_CREATE_PRODUCT,
+                    "➕ 建立商品",
+                    ButtonStyle.SUCCESS,
+                    false),
+                new ButtonView(
+                    AdminPanelButtonHandler.BUTTON_BACK,
+                    "⬅️ 返回主選單",
+                    ButtonStyle.SECONDARY,
+                    false))));
     return rows;
   }
 

@@ -68,9 +68,7 @@ public class FiatOrderService {
 
     Result<EcpayCvsPaymentService.CvsPaymentCode, DomainError> paymentResult =
         ecpayCvsPaymentService.generateCvsPaymentCode(
-            chargedAmountTwd,
-            product.name(),
-            String.format("Discord 商品下單 user:%d", userId));
+            chargedAmountTwd, product.name(), String.format("Discord 商品下單 user:%d", userId));
     if (paymentResult.isErr()) {
       return Result.err(paymentResult.getError());
     }
