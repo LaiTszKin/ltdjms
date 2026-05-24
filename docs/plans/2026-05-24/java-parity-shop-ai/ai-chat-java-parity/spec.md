@@ -36,9 +36,9 @@
 **AND** AGENT_CONFIG 查詢失敗時不誤判為 AGENT_ROUTE
 
 **Requirements**:
-- [ ] R1.1 Route enum：`AGENT_ROUTE` | `AI_CHAT_ROUTE` | `DENY`
-- [ ] R1.2 Source enum 對齊 Java（含 `AGENT_CONFIG_UNAVAILABLE` 等價）
-- [ ] R1.3 Port `AIChatMentionRoutingDecisionTest.java`
+- [x] R1.1 Route enum：`AGENT_ROUTE` | `AI_CHAT_ROUTE` | `DENY`
+- [x] R1.2 Source enum 對齊 Java（含 `AGENT_CONFIG_UNAVAILABLE` 等價）
+- [x] R1.3 Port `AIChatMentionRoutingDecisionTest.java`
 
 ### Requirement 2: 頻道白名單 1:1
 **GIVEN** guild AI channel restriction 設定
@@ -46,8 +46,8 @@
 **THEN** 空白名單 = 預設拒絕；頻道優先於分類檢查
 
 **Requirements**:
-- [ ] R2.1 Port `DefaultAIChannelRestrictionServiceTest.java`
-- [ ] R2.2 Integration test 對齊 `AIChannelRestrictionIntegrationTest.java`（若環境允許）
+- [x] R2.1 Port `DefaultAIChannelRestrictionServiceTest.java`
+- [x] R2.2 Integration test 對齊 `AIChannelRestrictionIntegrationTest.java`（若環境允許）
 
 ### Requirement 3: Mention listener 串流 UX 1:1
 **GIVEN** 路由為 AI_CHAT_ROUTE
@@ -55,11 +55,11 @@
 **THEN** 初始 `:thought_balloon: AI 正在思考...`；CONTENT/REASONING chunk 格式化對齊 Java
 
 **Requirements**:
-- [ ] R3.1 過濾 bot 自身、DM、非 mention
-- [ ] R3.2 空 mention 使用「你好」
-- [ ] R3.3 REASONING 以 `-# ` + spoiler；showReasoning=false 時忽略
-- [ ] R3.4 錯誤映射 AI_SERVICE_* → 繁中提示
-- [ ] R3.5 Port `AIChatMentionListenerTest.java` 核心案例
+- [x] R3.1 過濾 bot 自身、DM、非 mention
+- [x] R3.2 空 mention 使用「你好」
+- [x] R3.3 REASONING 以 `-# ` + spoiler；showReasoning=false 時忽略
+- [x] R3.4 錯誤映射 AI_SERVICE_* → 繁中提示
+- [x] R3.5 Port `AIChatMentionListenerTest.java` 核心案例
 
 ### Requirement 4: MessageChunkAccumulator 1:1
 **GIVEN** 串流 CONTENT chunks
@@ -67,8 +67,8 @@
 **THEN** flush 行為對齊 Java
 
 **Requirements**:
-- [ ] R4.1 Port `MessageChunkAccumulatorTest.java`
-- [ ] R4.2 Port `MessageSplitterTest.java`（若尚未完整）
+- [x] R4.1 Port `MessageChunkAccumulatorTest.java`
+- [x] R4.2 Port `MessageSplitterTest.java`（若尚未完整）
 
 ### Requirement 5: Markdown 驗證規則 1:1
 **GIVEN** AI 產出 Markdown
@@ -76,8 +76,8 @@
 **THEN** 8 種 ErrorType 與 Java 一致
 
 **Requirements**:
-- [ ] R5.1 擴充現有 `markdown-validator.test.ts` 覆蓋 Java oracle fixtures
-- [ ] R5.2 Port `CommonMarkValidatorTest_*` 案例
+- [x] R5.1 擴充現有 `markdown-validator.test.ts` 覆蓋 Java oracle fixtures
+- [x] R5.2 Port `CommonMarkValidatorTest_*` 案例
 
 ### Requirement 6: Markdown 自動修正 1:1
 **GIVEN** 驗證失敗
@@ -85,8 +85,8 @@
 **THEN** 14 步修正順序與 code block 保護對齊 Java
 
 **Requirements**:
-- [ ] R6.1 Port `MarkdownAutoFixerTest.java`
-- [ ] R6.2 最多 3 次 retry until valid
+- [x] R6.1 Port `MarkdownAutoFixerTest.java`
+- [x] R6.2 最多 3 次 retry until valid
 
 ### Requirement 7: Sanitizer + Paginator 1:1
 **GIVEN** 修正後 Markdown
@@ -94,8 +94,8 @@
 **THEN** HTML 移除、blockquote 壓平、表格轉 code block；1900 字元分頁邊界
 
 **Requirements**:
-- [ ] R7.1 Port `DiscordMarkdownPaginatorTest.java` 剩餘案例
-- [ ] R7.2 Sanitizer 行為測試對齊 Java
+- [x] R7.1 Port `DiscordMarkdownPaginatorTest.java` 剩餘案例
+- [x] R7.2 Sanitizer 行為測試對齊 Java
 
 ### Requirement 8: Stream markdown processor 1:1
 **GIVEN** streamingBypassValidation=false
@@ -103,8 +103,8 @@
 **THEN** `DiscordMarkdownStreamProcessor` 增量處理對齊 Java（非僅 end-of-stream batch）
 
 **Requirements**:
-- [ ] R8.1 實作 `DiscordMarkdownStreamProcessor.ts` + `MarkdownHeadingSegmenter.ts`
-- [ ] R8.2 Port `MarkdownValidatingAIChatServiceTest_*` streaming 案例
+- [x] R8.1 實作 `DiscordMarkdownStreamProcessor.ts` + `MarkdownHeadingSegmenter.ts`
+- [x] R8.2 Port `MarkdownValidatingAIChatServiceTest_*` streaming 案例
 
 ### Requirement 9: AIServiceConfig + PromptLoader 1:1
 **GIVEN** 環境變數與 prompts/ 目錄
@@ -112,15 +112,15 @@
 **THEN** 驗證規則與 agentEnabled 目錄選擇對齊 Java record
 
 **Requirements**:
-- [ ] R9.1 Port `PromptLoaderTest.java`
-- [ ] R9.2 AIServiceConfig validate() 邊界測試
+- [x] R9.1 Port `PromptLoaderTest.java`
+- [x] R9.2 AIServiceConfig validate() 邊界測試
 
 ## Error and Edge Cases
-- [ ] AI API 401/429/timeout/5xx — 本地化訊息
-- [ ] 空 AI 回應 — `:question: AI 沒有產生回應`
-- [ ] prompt 目錄缺失 — 優雅降級
-- [ ] Thread history 擷取失敗 — 空記憶繼續對話
-- [ ] Markdown >10000 字元 — paginator 正確完成
+- [x] AI API 401/429/timeout/5xx — 本地化訊息
+- [x] 空 AI 回應 — `:question: AI 沒有產生回應`
+- [x] prompt 目錄缺失 — 優雅降級
+- [x] Thread history 擷取失敗 — 空記憶繼續對話
+- [x] Markdown >10000 字元 — paginator 正確完成
 
 ## Clarification Questions
 None

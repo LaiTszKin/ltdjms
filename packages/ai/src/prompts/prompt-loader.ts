@@ -7,8 +7,19 @@ import { DomainError, ok, err, type Result } from '@ltdjms/shared';
  * Matches Java PromptSection record.
  */
 export interface PromptSection {
-  name: string;
+  title: string;
   content: string;
+}
+
+/** Formats a section as === TITLE === + content. Matches Java PromptSection.toFormattedString(). */
+export function formatPromptSection(section: PromptSection): string {
+  if (!section.title && !section.content) {
+    return '';
+  }
+  if (!section.content.trim()) {
+    return `=== ${section.title} ===`;
+  }
+  return `=== ${section.title} ===\n${section.content}`;
 }
 
 /**
@@ -22,65 +33,60 @@ export class SystemPrompt {
     this.sections = sections;
   }
 
-  /** Creates an empty SystemPrompt. */
   static empty(): SystemPrompt {
     return new SystemPrompt([]);
   }
 
-  /** Creates a SystemPrompt from sections. */
   static fromSections(sections: PromptSection[]): SystemPrompt {
     return new SystemPrompt(sections);
   }
 
-  /** Combines all sections with double newline separators. */
+  isEmpty(): boolean {
+    return this.sections.length === 0;
+  }
+
+  sectionCount(): number {
+    return this.sections.length;
+  }
+
+  /** Combines sections with === TITLE === separators. Matches Java toCombinedString(). */
   toCombinedString(): string {
-    return this.sections
-      .map((s) => s.content)
-      .filter((c) => c.length > 0)
-      .join('\n\n');
+    if (this.isEmpty()) {
+      return '';
+    }
+
+    const parts: string[] = [];
+    for (const section of this.sections) {
+      const formatted = formatPromptSection(section);
+      if (formatted) {
+        parts.push(formatted);
+      }
+    }
+    return parts.join('\n\n');
   }
 }
 
-/**
- * PromptLoader interface.
- *
- * IMPORTANT: Callers MUST check `isOk()` / `isErr()` before calling `getValue()`
- * or `getError()`. Calling `getValue()` on an Err result will throw.
- */
 export interface PromptLoader {
   loadPrompts(agentEnabled: boolean): Promise<Result<SystemPrompt, DomainError>>;
 }
 
 /**
- * Default PromptLoader implementation.
- * Reads .md files from the filesystem, sorted alphabetically.
- * Caches loaded prompts in memory to avoid filesystem reads on every call.
- * Call invalidateCache() to force reload (e.g., after admin panel prompt update).
+ * Default PromptLoader — loads system/ (required) and agent/ (optional) subdirectories.
  * Matches Java DefaultPromptLoader.
  */
 export class DefaultPromptLoader implements PromptLoader {
-  private readonly promptsDirPath: string;
-  private readonly maxFileSizeBytes: number;
   private cache: Map<string, { prompt: SystemPrompt; cachedAt: number }> = new Map();
-  private static readonly CACHE_TTL_MS = 300_000; // 5 minutes
+  private static readonly CACHE_TTL_MS = 300_000;
 
-  constructor(promptsDirPath: string, maxFileSizeBytes: number = 1_048_576) {
-    this.promptsDirPath = promptsDirPath;
-    this.maxFileSizeBytes = maxFileSizeBytes;
-  }
+  constructor(
+    private readonly promptsDirPath: string,
+    private readonly maxFileSizeBytes: number = 1_048_576,
+  ) {}
 
   invalidateCache(): void {
     this.cache.clear();
   }
 
-  /**
-   * Loads prompts from the filesystem.
-   * - Reads all .md files from `promptsDirPath`
-   * - If agentEnabled, additionally reads from `promptsDirPath/agent/`
-   * - Files are sorted alphabetically within each group
-   * - Directory not found: returns empty SystemPrompt with warning
-   * - File too large or read failure: logs warning and skips the file
-   */
   async loadPrompts(agentEnabled: boolean): Promise<Result<SystemPrompt, DomainError>> {
     const cacheKey = agentEnabled ? 'agent' : 'base';
     const cached = this.cache.get(cacheKey);
@@ -88,73 +94,84 @@ export class DefaultPromptLoader implements PromptLoader {
       return ok(cached.prompt);
     }
 
-    const sections: PromptSection[] = [];
-
-    // Load base prompts
-    const baseSections = await this.loadDirectory(this.promptsDirPath);
-    if (baseSections.isOk()) {
-      sections.push(...baseSections.getValue());
-    } else if (baseSections.getError().category !== 'PROMPT_DIR_NOT_FOUND') {
-      return err(baseSections.getError()) as Result<SystemPrompt, DomainError>;
+    const systemResult = await this.loadFromDirectory('system');
+    if (systemResult.isErr()) {
+      return systemResult;
     }
 
-    // Load agent prompts if enabled
+    let finalPrompt = systemResult.getValue();
     if (agentEnabled) {
-      const agentDir = join(this.promptsDirPath, 'agent');
-      const agentSections = await this.loadDirectory(agentDir);
-      if (agentSections.isOk()) {
-        sections.push(...agentSections.getValue());
-      } else if (agentSections.getError().category !== 'PROMPT_DIR_NOT_FOUND') {
-        return err(agentSections.getError()) as Result<SystemPrompt, DomainError>;
+      const agentResult = await this.loadFromDirectory('agent');
+      if (agentResult.isOk()) {
+        finalPrompt = SystemPrompt.fromSections([
+          ...finalPrompt.sections,
+          ...agentResult.getValue().sections,
+        ]);
       }
     }
 
-    const prompt = SystemPrompt.fromSections(sections);
-    this.cache.set(cacheKey, { prompt, cachedAt: Date.now() });
-    return ok(prompt);
+    this.cache.set(cacheKey, { prompt: finalPrompt, cachedAt: Date.now() });
+    return ok(finalPrompt);
   }
 
-  private async loadDirectory(dirPath: string): Promise<Result<PromptSection[], DomainError>> {
+  private async loadFromDirectory(subDir: string): Promise<Result<SystemPrompt, DomainError>> {
+    const targetDir = join(this.promptsDirPath, subDir);
+
     try {
-      await stat(dirPath);
+      const dirStat = await stat(targetDir);
+      if (!dirStat.isDirectory()) {
+        throw new Error('not a directory');
+      }
     } catch {
-      return err(DomainError.promptDirNotFound(`Prompt directory not found: ${dirPath}`));
+      if (subDir === 'system') {
+        return err(
+          DomainError.unexpectedFailure(`Required prompts directory not found: ${subDir}`),
+        );
+      }
+      return err(DomainError.unexpectedFailure(`Optional prompts directory not found: ${subDir}`));
     }
 
-    const entries = await readdir(dirPath, { withFileTypes: true });
+    const entries = await readdir(targetDir, { withFileTypes: true });
     const mdFiles = entries
-      .filter((e) => e.isFile() && e.name.endsWith('.md'))
+      .filter((e) => e.isFile() && e.name.endsWith('.md') && !e.name.startsWith('.'))
       .map((e) => e.name)
       .sort();
 
-    if (mdFiles.length === 0) {
-      return ok([]);
+    const sections: PromptSection[] = [];
+    for (const fileName of mdFiles) {
+      const filePath = join(targetDir, fileName);
+      try {
+        const fileStat = await stat(filePath);
+        if (fileStat.size > this.maxFileSizeBytes) {
+          console.warn(
+            `[prompt-loader] Prompt file too large: ${fileName} (${fileStat.size} bytes), skipping`,
+          );
+          continue;
+        }
+        const content = await readFile(filePath, 'utf-8');
+        sections.push({
+          title: normalizeTitle(fileName),
+          content,
+        });
+      } catch {
+        console.warn(`[prompt-loader] Failed to read prompt file: ${fileName}, skipping`);
+      }
     }
 
-    const filePromises = mdFiles.map(async (fileName) => {
-      const filePath = join(dirPath, fileName);
-
-      try {
-        const stats = await stat(filePath);
-        if (stats.size > this.maxFileSizeBytes) {
-          console.warn(
-            `[prompt-loader] Prompt file too large: ${fileName} (${stats.size} bytes, max ${this.maxFileSizeBytes}), skipping`,
-          );
-          return null;
-        }
-
-        const content = await readFile(filePath, 'utf-8');
-        const name = fileName.replace(/\.md$/, '');
-        return { name, content } as PromptSection;
-      } catch (_cause) {
-        console.warn(`[prompt-loader] Failed to read prompt file: ${fileName}, skipping`);
-        return null;
-      }
-    });
-
-    const results = await Promise.all(filePromises);
-    const sections: PromptSection[] = results.filter((r): r is PromptSection => r !== null);
-
-    return ok(sections);
+    sections.sort((a, b) => a.title.localeCompare(b.title));
+    return ok(SystemPrompt.fromSections(sections));
   }
+}
+
+/** Normalizes filename to section title. Matches Java normalizeTitle(). */
+export function normalizeTitle(fileName: string): string {
+  let title = fileName.endsWith('.md') ? fileName.slice(0, -3) : fileName;
+  if (!title.trim()) {
+    return 'UNTITLED';
+  }
+  title = title.replace(/-/g, ' ').replace(/_/g, ' ');
+  return title
+    .split('')
+    .map((c) => (c >= 'a' && c <= 'z' ? c.toUpperCase() : c))
+    .join('');
 }

@@ -199,42 +199,42 @@ export class DefaultAIChannelRestrictionService implements AIChannelRestrictionS
     channelId: string,
     categoryId?: string,
   ): Promise<ChannelAllowResult> {
-    const cacheKey = categoryId
-      ? `${guildId}:${channelId}:${categoryId}`
-      : `${guildId}:${channelId}`;
-    const cached = this.cache.get(cacheKey);
-    if (cached !== undefined) {
-      if (Date.now() < cached.expiresAt) {
-        return cached.value;
+    try {
+      const cacheKey = categoryId
+        ? `${guildId}:${channelId}:${categoryId}`
+        : `${guildId}:${channelId}`;
+      const cached = this.cache.get(cacheKey);
+      if (cached !== undefined) {
+        if (Date.now() < cached.expiresAt) {
+          return cached.value;
+        }
+        this.cache.delete(cacheKey);
       }
-      // Expired — remove and re-fetch
-      this.cache.delete(cacheKey);
+
+      const now = Date.now();
+      const ttl = this.cacheTtlMs;
+
+      const channelEntry = await this.repository.findChannel(guildId, channelId);
+      if (channelEntry) {
+        this.setCache(cacheKey, { value: 'channel' as const, expiresAt: now + ttl });
+        return 'channel';
+      }
+
+      if (categoryId) {
+        const categories = await this.repository.findAllowedCategories(guildId);
+        const categoryMatch = categories.some((c) => c.categoryId === categoryId);
+        this.setCache(cacheKey, {
+          value: categoryMatch ? ('category' as const) : (false as const),
+          expiresAt: now + ttl,
+        });
+        return categoryMatch ? 'category' : false;
+      }
+
+      this.setCache(cacheKey, { value: false as const, expiresAt: now + ttl });
+      return false;
+    } catch {
+      return false;
     }
-
-    const now = Date.now();
-    const ttl = this.cacheTtlMs;
-
-    // Check channel-level allowlist first (P2-16: direct query instead of loading all channels)
-    const channelEntry = await this.repository.findChannel(guildId, channelId);
-    if (channelEntry) {
-      this.setCache(cacheKey, { value: 'channel' as const, expiresAt: now + ttl });
-      return 'channel';
-    }
-
-    // Check category-level allowlist if categoryId provided
-    if (categoryId) {
-      const categories = await this.repository.findAllowedCategories(guildId);
-      const categoryMatch = categories.some((c) => c.categoryId === categoryId);
-      this.setCache(cacheKey, {
-        value: categoryMatch ? ('category' as const) : (false as const),
-        expiresAt: now + ttl,
-      });
-      return categoryMatch ? 'category' : false;
-    }
-
-    // Empty allowlist = default deny
-    this.setCache(cacheKey, { value: false as const, expiresAt: now + ttl });
-    return false;
   }
 
   async getAllowedChannels(guildId: string): Promise<Result<AllowedChannel[], DomainError>> {
