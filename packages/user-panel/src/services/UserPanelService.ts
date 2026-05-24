@@ -1,10 +1,17 @@
 import { type Result, type DomainError } from '@ltdjms/shared';
-import type { CurrencyTransaction, TransactionPage as EconomyTransactionPage } from '@ltdjms/economy';
+import type {
+  CurrencyTransaction,
+  TransactionPage as EconomyTransactionPage,
+} from '@ltdjms/economy';
 import type { GameTokenTransaction, TransactionPage as GamesTransactionPage } from '@ltdjms/games';
 import { formatRedemptionSuccessMessage, type RedemptionResult } from '@ltdjms/shop';
-import { MemberInfoFacade, type MemberPanelView, type RedemptionTransactionPage } from '../facades/MemberInfoFacade.js';
+import {
+  MemberInfoFacade,
+  type MemberPanelView,
+  type RedemptionTransactionPage,
+} from '../facades/MemberInfoFacade.js';
 import { USER_PANEL_PAGE_SIZE } from '../constants/UserPanelConstants.js';
-import { emptyHistoryPage, type HistoryPageView } from './transaction-display.js';
+import { type HistoryPageView } from './transaction-display.js';
 
 export type { RedemptionResult };
 export { formatRedemptionSuccessMessage };

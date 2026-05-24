@@ -1,4 +1,4 @@
-import type { Client, Guild, TextChannel, ThreadChannel } from 'discord.js';
+import type { Client } from 'discord.js';
 import { ConversationIdBuilder } from './tool-call-history.js';
 import { InMemoryToolCallHistory } from './tool-call-history.js';
 import { ConversationIdStrategy } from '../ai-chat-service.js';

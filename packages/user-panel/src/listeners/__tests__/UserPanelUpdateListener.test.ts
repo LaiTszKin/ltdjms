@@ -46,7 +46,11 @@ describe('UserPanelUpdateListener (UT-205)', () => {
       }),
     };
 
-    listener = new UserPanelUpdateListener(sessionManager, userPanelService, discordGateway as never);
+    listener = new UserPanelUpdateListener(
+      sessionManager,
+      userPanelService,
+      discordGateway as never,
+    );
 
     sessionManager.createSession(guildId, userId);
     const session = sessionManager.getSession(guildId, userId);

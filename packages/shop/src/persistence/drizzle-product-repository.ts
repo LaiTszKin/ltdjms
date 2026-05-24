@@ -60,20 +60,19 @@ export class DrizzleProductRepository implements ProductRepository {
   }
 
   async create(data: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Promise<Product> {
-    const insertData: Record<string, unknown> = {
-      guildId: Number(data.guildId),
-      name: data.name,
-      description: data.description,
-      rewardType: data.rewardType,
-      rewardAmount: data.rewardAmount != null ? BigInt(data.rewardAmount) : null,
-      currencyPrice: data.currencyPrice != null ? BigInt(data.currencyPrice) : null,
-      fiatPriceTwd: data.fiatPriceTwd != null ? BigInt(data.fiatPriceTwd) : null,
-      autoCreateEscortOrder: data.autoCreateEscortOrder,
-      escortOptionCode: data.escortOptionCode,
-    };
     const rows = await this.db
       .insert(productTable)
-      .values(insertData as any)
+      .values({
+        guildId: Number(data.guildId),
+        name: data.name,
+        description: data.description,
+        rewardType: data.rewardType,
+        rewardAmount: data.rewardAmount,
+        currencyPrice: data.currencyPrice,
+        fiatPriceTwd: data.fiatPriceTwd,
+        autoCreateEscortOrder: data.autoCreateEscortOrder,
+        escortOptionCode: data.escortOptionCode,
+      })
       .returning();
     return this.mapRow(rows[0] as Record<string, unknown>);
   }

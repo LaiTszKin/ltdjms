@@ -1,4 +1,5 @@
 import express from 'express';
+import type { Socket } from 'node:net';
 import type { EnvironmentConfig } from '@ltdjms/shared';
 import type { FiatPaymentCallbackService } from '../services/fiat-payment-callback.service.js';
 import pino from 'pino';
@@ -10,7 +11,7 @@ export class EcpayCallbackHttpServer {
   private server: http.Server | null = null;
   private started = false;
   /** Track active connections for graceful shutdown. */
-  private connections = new Set<any>();
+  private connections = new Set<Socket>();
 
   constructor(
     private readonly config: EnvironmentConfig,

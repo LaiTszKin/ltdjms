@@ -1,5 +1,8 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import type { CurrencyTransaction, TransactionPage as EconomyTransactionPage } from '@ltdjms/economy';
+import type {
+  CurrencyTransaction,
+  TransactionPage as EconomyTransactionPage,
+} from '@ltdjms/economy';
 import type { GameTokenTransaction, TransactionPage as GamesTransactionPage } from '@ltdjms/games';
 import type { RedemptionTransactionPage } from '../facades/MemberInfoFacade.js';
 import { UserPanelConstants, USER_PANEL_EMBED_COLOR } from '../constants/UserPanelConstants.js';
@@ -36,10 +39,7 @@ function buildHistoryEmbed(
   };
 }
 
-function buildPaginationButtons(
-  pagePrefix: string,
-  page: HistoryPageView,
-): ButtonBuilder[] {
+function buildPaginationButtons(pagePrefix: string, page: HistoryPageView): ButtonBuilder[] {
   const buttons: ButtonBuilder[] = [
     new ButtonBuilder()
       .setCustomId(UserPanelConstants.BUTTON_BACK_TO_PANEL)
@@ -72,7 +72,9 @@ function buildPaginationButtons(
  * History view factory for user panel sub-views. Mirrors Java UserPanelHistoryViewFactory.
  */
 export class UserPanelHistoryViewFactory {
-  static buildTokenHistoryEmbed(page: GamesTransactionPage<GameTokenTransaction>): HistoryEmbedData {
+  static buildTokenHistoryEmbed(
+    page: GamesTransactionPage<GameTokenTransaction>,
+  ): HistoryEmbedData {
     const lines = page.transactions.map(
       (tx) => `${getShortTimestamp(tx.createdAt)} ${formatTokenTransactionForDisplay(tx)}`,
     );

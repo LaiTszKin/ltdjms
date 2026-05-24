@@ -22,7 +22,6 @@ import {
   buildSearchResultEmbed,
   buildPaymentMethodChoiceEmbed,
   buildPaymentMethodChoiceComponents,
-  buildPurchaseConfirmEmbed,
   decodeKeyword,
   BUTTON_PREV_PAGE,
   BUTTON_NEXT_PAGE,
@@ -37,6 +36,14 @@ import {
   MODAL_SEARCH,
   SELECT_SEARCH_BUY,
 } from '../view/shop-view.js';
+
+type DiscordRawHook = {
+  editReply: (options: Record<string, unknown>) => Promise<unknown>;
+  reply?: (options: Record<string, unknown>) => Promise<unknown>;
+  showModal?: (modal: unknown) => Promise<void>;
+  values?: string[];
+  fields?: { getTextInputValue: (customId: string) => string | null };
+};
 
 /**
  * Handler for the /shop slash command and its associated component interactions.
@@ -122,7 +129,7 @@ export class ShopCommandHandler {
               .setRequired(true),
           ),
         );
-      await raw.showModal(modal);
+      await raw.showModal!(modal);
       return;
     }
 
@@ -429,8 +436,8 @@ export class ShopCommandHandler {
    * modals, select menu values, and editReply with components.
    * Once the shared layer extends DiscordInteraction, this can be removed.
    */
-  private getRaw(interaction: DiscordInteraction): any {
-    return interaction.getHook();
+  private getRaw(interaction: DiscordInteraction): DiscordRawHook {
+    return interaction.getHook() as DiscordRawHook;
   }
 
   /**

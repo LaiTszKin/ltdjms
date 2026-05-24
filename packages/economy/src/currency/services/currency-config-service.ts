@@ -14,7 +14,6 @@ import {
   DEFAULT_CURRENCY_NAME,
   DEFAULT_CURRENCY_ICON,
   MAX_CURRENCY_NAME_LENGTH,
-  MAX_CURRENCY_ICON_LENGTH,
 } from '../../domain/types.js';
 
 /**

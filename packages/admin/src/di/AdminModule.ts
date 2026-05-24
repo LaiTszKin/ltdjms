@@ -1,5 +1,5 @@
 import { container, TOKENS } from '@ltdjms/shared';
-import type { DomainEventPublisher, DiscordRuntimeGateway } from '@ltdjms/shared';
+import type { DomainEventPublisher, DiscordRuntimeGateway, DomainEvent } from '@ltdjms/shared';
 import type {
   BalanceService,
   BalanceAdjustmentService,
@@ -7,9 +7,6 @@ import type {
 } from '@ltdjms/economy';
 import { ECONOMY_TOKENS } from '@ltdjms/economy';
 import type {
-  DiceConfigService,
-  GameTokenService,
-  GameTokenTransactionService,
   DiceGame1Handler,
   DiceGame2Handler,
   DiceGame1ConfigHandler,
@@ -19,16 +16,8 @@ import type {
   GameTokenManagementFacade,
 } from '@ltdjms/games';
 import { GAMES_TOKENS } from '@ltdjms/games';
-import type {
-  BalanceHandler,
-  CurrencyConfigHandler,
-} from '@ltdjms/economy';
-import type {
-  RedemptionService,
-  ShopService,
-  RedemptionCodeRepository,
-  RedemptionCodeGenerator,
-} from '@ltdjms/shop';
+import type { BalanceHandler, CurrencyConfigHandler } from '@ltdjms/economy';
+import type { ShopService, RedemptionCodeRepository, RedemptionCodeGenerator } from '@ltdjms/shop';
 import { SHOP_TOKENS } from '@ltdjms/shop';
 import type { AIChannelRestrictionService, AIAgentChannelConfigService } from '@ltdjms/ai';
 import { AI_TOKENS } from '@ltdjms/ai';
@@ -40,12 +29,7 @@ import type {
 } from '@ltdjms/dispatch';
 import { DISPATCH_TOKENS } from '@ltdjms/dispatch';
 import type { ShopCommandHandler } from '@ltdjms/shop';
-import {
-  USER_PANEL_TOKENS,
-  type UserPanelCommand,
-  type UserPanelButtonHandler,
-  type RedeemCodeCommandHandler,
-} from '@ltdjms/user-panel';
+import { registerUserPanelHandlers } from '@ltdjms/user-panel';
 
 // Facades
 import { CurrencyManagementFacade } from '../facades/CurrencyManagementFacade.js';
@@ -201,17 +185,10 @@ export function configureAdminContainer(): void {
   );
   container.registerInstance(ADMIN_TOKENS.CurrencyManagementFacade, currencyFacade);
 
-  const gameTokenService = container.resolve<GameTokenService>(GAMES_TOKENS.GameTokenService as symbol);
-  const gameTokenTxService = container.resolve<GameTokenTransactionService>(
-    GAMES_TOKENS.GameTokenTransactionService as symbol,
-  );
-
   const tokenFacade = container.resolve<GameTokenManagementFacade>(
     GAMES_TOKENS.GameTokenManagementFacade as symbol,
   );
   container.registerInstance(ADMIN_TOKENS.GameTokenManagementFacade, tokenFacade);
-
-  const diceConfigService = container.resolve<DiceConfigService>(GAMES_TOKENS.DiceConfigService as symbol);
 
   const gameConfigFacade = container.resolve<GameConfigManagementFacade>(
     GAMES_TOKENS.GameConfigManagementFacade as symbol,
@@ -403,15 +380,7 @@ export function configureAdminContainer(): void {
   // User Panel Commands (from @ltdjms/user-panel)
   // ============================================================
 
-  slashCommandListener.registerCommand(
-    container.resolve<UserPanelCommand>(USER_PANEL_TOKENS.UserPanelCommand),
-  );
-  slashCommandListener.registerInteractionHandler(
-    container.resolve<UserPanelButtonHandler>(USER_PANEL_TOKENS.UserPanelButtonHandler),
-  );
-  slashCommandListener.registerCommand(
-    container.resolve<RedeemCodeCommandHandler>(USER_PANEL_TOKENS.RedeemCodeCommandHandler),
-  );
+  registerUserPanelHandlers(slashCommandListener);
 
   // ============================================================
   // Listeners (register with DomainEventPublisher)
@@ -430,7 +399,7 @@ export function configureAdminContainer(): void {
   );
   container.registerInstance(ADMIN_TOKENS.AdminPanelUpdateListener, adminUpdateListener);
   _adminUpdateHandler = (event: unknown): void => {
-    adminUpdateListener.onEvent(event as any).catch((err: unknown) => {
+    adminUpdateListener.onEvent(event as DomainEvent).catch((err: unknown) => {
       console.error('[AdminPanelUpdateListener] Error:', err);
     });
   };

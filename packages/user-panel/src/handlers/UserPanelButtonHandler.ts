@@ -9,7 +9,12 @@ import {
 import { formatRedemptionSuccessMessage } from '@ltdjms/shop';
 import { type InteractionHandler } from '../infra/CommandHandler.js';
 import { UserPanelService } from '../services/UserPanelService.js';
-import { UserPanelEmbedBuilder, getCurrencyHistoryButtonLabel } from '../services/UserPanelEmbedBuilder.js';
+import { PanelSessionManager } from '../session/PanelSessionManager.js';
+import { ZhTwStrings } from '../i18n/zh-TW.js';
+import {
+  UserPanelEmbedBuilder,
+  getCurrencyHistoryButtonLabel,
+} from '../services/UserPanelEmbedBuilder.js';
 import { UserPanelHistoryViewFactory } from '../services/UserPanelHistoryViewFactory.js';
 import { UserPanelConstants } from '../constants/UserPanelConstants.js';
 import { ensureDeferred } from '../infra/ensureDeferred.js';
@@ -21,7 +26,10 @@ import { ensureDeferred } from '../infra/ensureDeferred.js';
 export class UserPanelButtonHandler implements InteractionHandler {
   readonly customIdPrefix = UserPanelConstants.ROUTING_PREFIX;
 
-  constructor(private readonly userPanelService: UserPanelService) {}
+  constructor(
+    private readonly userPanelService: UserPanelService,
+    private readonly sessionManager: PanelSessionManager,
+  ) {}
 
   async execute(interaction: DiscordInteraction, _context: DiscordContext): Promise<void> {
     const guildId = interaction.getGuildId();
@@ -33,6 +41,15 @@ export class UserPanelButtonHandler implements InteractionHandler {
     const userId = interaction.getUserId();
     const customId = interaction.getCustomId();
 
+    if (customId !== UserPanelConstants.MODAL_REDEEM) {
+      const session = this.sessionManager.getSession(guildId, userId);
+      if (!session) {
+        interaction.makeEphemeral();
+        await interaction.reply(ZhTwStrings.sessionExpired);
+        return;
+      }
+    }
+
     try {
       if (customId === UserPanelConstants.MODAL_REDEEM) {
         await this.handleRedemptionModal(interaction, guildId, userId);
@@ -42,18 +59,12 @@ export class UserPanelButtonHandler implements InteractionHandler {
       if (customId === UserPanelConstants.BUTTON_PREFIX_TOKEN_HISTORY) {
         await this.showTokenHistoryPage(interaction, guildId, userId, 1);
       } else if (customId.startsWith(UserPanelConstants.BUTTON_PREFIX_TOKEN_PAGE)) {
-        const page = this.parsePageNumber(
-          customId,
-          UserPanelConstants.BUTTON_PREFIX_TOKEN_PAGE,
-        );
+        const page = this.parsePageNumber(customId, UserPanelConstants.BUTTON_PREFIX_TOKEN_PAGE);
         await this.showTokenHistoryPage(interaction, guildId, userId, page);
       } else if (customId === UserPanelConstants.BUTTON_PREFIX_CURRENCY_HISTORY) {
         await this.showCurrencyHistoryPage(interaction, guildId, userId, 1);
       } else if (customId.startsWith(UserPanelConstants.BUTTON_PREFIX_CURRENCY_PAGE)) {
-        const page = this.parsePageNumber(
-          customId,
-          UserPanelConstants.BUTTON_PREFIX_CURRENCY_PAGE,
-        );
+        const page = this.parsePageNumber(customId, UserPanelConstants.BUTTON_PREFIX_CURRENCY_PAGE);
         await this.showCurrencyHistoryPage(interaction, guildId, userId, page);
       } else if (customId === UserPanelConstants.BUTTON_REDEEM) {
         await this.openRedemptionModal(interaction);

@@ -2,18 +2,13 @@
 // Events
 // ============================================================
 
-export type {
-  BalanceChangedEvent,
-  CurrencyConfigChangedEvent,
-} from './events/index.js';
+export type { BalanceChangedEvent, CurrencyConfigChangedEvent } from './events/index.js';
 
 // ============================================================
 // Domain
 // ============================================================
 
-export {
-  CurrencyTransactionSource,
-} from './domain/types.js';
+export { CurrencyTransactionSource } from './domain/types.js';
 
 export type {
   GuildCurrencyConfig,

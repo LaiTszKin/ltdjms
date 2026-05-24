@@ -2,7 +2,6 @@ import { type Result, ok, err, DomainError, safeSnowflakeToNumber } from '@ltdjm
 import type {
   BalanceService,
   CurrencyTransactionService,
-  BalanceView,
   CurrencyTransaction,
 } from '@ltdjms/economy';
 import type {

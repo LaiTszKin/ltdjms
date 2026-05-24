@@ -1,20 +1,26 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { SchemaMigrationException } from '../infra/database/schema-migration-exception.js';
 
-const mockClient = {
-  query: vi.fn(),
-  release: vi.fn(),
-};
-
-const mockPoolInstance = {
-  connect: vi.fn(),
-  end: vi.fn().mockResolvedValue(undefined),
-  query: vi.fn(),
-  on: vi.fn(),
-};
+const { mockClient, mockPoolInstance } = vi.hoisted(() => {
+  const mockClient = {
+    query: vi.fn(),
+    release: vi.fn(),
+  };
+  const mockPoolInstance = {
+    connect: vi.fn(),
+    end: vi.fn().mockResolvedValue(undefined),
+    query: vi.fn(),
+    on: vi.fn(),
+  };
+  return { mockClient, mockPoolInstance };
+});
 
 vi.mock('pg', () => ({
-  Pool: vi.fn(() => mockPoolInstance),
+  Pool: class MockPool {
+    constructor(_config?: unknown) {
+      return mockPoolInstance;
+    }
+  },
 }));
 
 import { createDatabasePool } from '../infra/database/connection.js';
@@ -63,7 +69,6 @@ describe('createDatabasePool', () => {
       idleTimeoutMillis: 5000,
     });
 
-    // Advance past the 2s retry delay
     await vi.advanceTimersByTimeAsync(2000);
 
     const pool = await poolPromise;
@@ -83,7 +88,6 @@ describe('createDatabasePool', () => {
       idleTimeoutMillis: 5000,
     }).catch((err) => err);
 
-    // Advance past all retry delays (2s + 2s)
     await vi.advanceTimersByTimeAsync(4000);
 
     const err = await poolPromise;

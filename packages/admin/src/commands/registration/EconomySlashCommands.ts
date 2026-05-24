@@ -41,8 +41,7 @@ export const DiceGame1SlashCommand: SlashCommandDefinition = {
     {
       name: 'tokens',
       description: '要使用的代幣數量',
-      descriptionLocalizations:
-        CommandLocalizations.OPTION_DESCRIPTION_LOCALIZATIONS['tokens'],
+      descriptionLocalizations: CommandLocalizations.OPTION_DESCRIPTION_LOCALIZATIONS['tokens'],
       type: 4,
       required: true,
     },
@@ -60,8 +59,7 @@ export const DiceGame2SlashCommand: SlashCommandDefinition = {
     {
       name: 'tokens',
       description: '要使用的代幣數量',
-      descriptionLocalizations:
-        CommandLocalizations.OPTION_DESCRIPTION_LOCALIZATIONS['tokens'],
+      descriptionLocalizations: CommandLocalizations.OPTION_DESCRIPTION_LOCALIZATIONS['tokens'],
       type: 4,
       required: true,
     },

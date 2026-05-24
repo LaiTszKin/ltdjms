@@ -516,7 +516,7 @@ export class CommonMarkValidator implements MarkdownValidator {
  * MarkdownErrorFormatter for formatting validation errors into human-readable strings.
  */
 export class MarkdownErrorFormatter {
-  format(errors: MarkdownError[], originalContent?: string): string {
+  format(errors: MarkdownError[], _originalContent?: string): string {
     if (errors.length === 0) return '';
 
     const lines: string[] = ['Markdown 格式問題：'];

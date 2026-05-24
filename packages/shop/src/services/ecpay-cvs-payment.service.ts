@@ -3,7 +3,6 @@ import type { EnvironmentConfig } from '@ltdjms/shared';
 import { Result, ok, err, DomainError } from '@ltdjms/shared';
 import { Agent } from 'undici';
 import { fetchWithRetry } from './fetch-retry.js';
-import crypto from 'node:crypto';
 import pino from 'pino';
 
 const STAGE_ENDPOINT = 'https://ecpayment-stage.ecpay.com.tw/1.0.0/Cashier/GenPaymentCode';
@@ -119,10 +118,10 @@ export class EcpayCvsPaymentService {
         return err(DomainError.unexpectedFailure('綠界服務暫時不可用，請稍後再試'));
       }
 
-      const responseJson: any = await response.json();
-      const transCode = responseJson.TransCode ?? -1;
+      const responseJson = (await response.json()) as Record<string, unknown>;
+      const transCode = (responseJson.TransCode as number | undefined) ?? -1;
       if (transCode !== 1) {
-        const transMsg = responseJson.TransMsg ?? '未知錯誤';
+        const transMsg = (responseJson.TransMsg as string | undefined) ?? '未知錯誤';
         this.log.warn(
           { transCode, transMsg, merchantId, stageMode: this.config.getEcpayStageMode() },
           'ECPay transCode failed',
@@ -130,7 +129,7 @@ export class EcpayCvsPaymentService {
         return err(DomainError.unexpectedFailure(this.buildTransCodeFailureMessage(transMsg)));
       }
 
-      const encryptedResponseData: string = responseJson.Data ?? '';
+      const encryptedResponseData = String(responseJson.Data ?? '');
       if (!encryptedResponseData) {
         this.log.warn({ body: responseJson }, 'ECPay response data is empty');
         return err(DomainError.unexpectedFailure('綠界回傳資料不完整'));
@@ -144,25 +143,25 @@ export class EcpayCvsPaymentService {
         return err(DomainError.unexpectedFailure('綠界回傳資料解密失敗'));
       }
 
-      const dataNode: any = JSON.parse(decryptedJson);
-      const rtnCode = dataNode.RtnCode ?? -1;
+      const dataNode = JSON.parse(decryptedJson) as Record<string, unknown>;
+      const rtnCode = (dataNode.RtnCode as number | undefined) ?? -1;
       if (rtnCode !== 1) {
-        const rtnMsg = dataNode.RtnMsg ?? '未知錯誤';
+        const rtnMsg = (dataNode.RtnMsg as string | undefined) ?? '未知錯誤';
         this.log.warn({ rtnCode, rtnMsg }, 'ECPay business failed');
         return err(DomainError.unexpectedFailure(`綠界取號失敗：${rtnMsg}`));
       }
 
-      const orderInfo = dataNode.OrderInfo ?? {};
-      const orderNumber: string = orderInfo.MerchantTradeNo ?? '';
-      const cvsInfo = dataNode.CVSInfo ?? {};
-      const paymentNoVal: string = cvsInfo.PaymentNo ?? '';
-      const expireDateStr: string | null = cvsInfo.ExpireDate ?? null;
+      const orderInfo = (dataNode.OrderInfo as Record<string, unknown> | undefined) ?? {};
+      const orderNumber = String(orderInfo.MerchantTradeNo ?? '');
+      const cvsInfo = (dataNode.CVSInfo as Record<string, unknown> | undefined) ?? {};
+      const paymentNoVal = String(cvsInfo.PaymentNo ?? '');
+      const expireDateStr = cvsInfo.ExpireDate != null ? String(cvsInfo.ExpireDate) : null;
       const expireAt = this.resolveExpireAt(
         expireDateStr,
         requestAt,
         this.clampCvsExpireMinutes(this.config.getEcpayCvsExpireMinutes()),
       );
-      const paymentUrl: string | null = cvsInfo.PaymentURL ?? null;
+      const paymentUrl = cvsInfo.PaymentURL != null ? String(cvsInfo.PaymentURL) : null;
 
       if (!orderNumber || !paymentNoVal) {
         this.log.warn({ decryptedJson }, 'ECPay response missing orderNumber or paymentNo');
@@ -176,8 +175,9 @@ export class EcpayCvsPaymentService {
         expireAt,
         paymentUrl,
       });
-    } catch (e: any) {
-      if (e.name === 'TimeoutError' || e.name === 'AbortError') {
+    } catch (e: unknown) {
+      const errObj = e as { name?: string };
+      if (errObj.name === 'TimeoutError' || errObj.name === 'AbortError') {
         this.log.warn('ECPay request timeout');
         return err(DomainError.unexpectedFailure('綠界連線逾時，請稍後再試'));
       }

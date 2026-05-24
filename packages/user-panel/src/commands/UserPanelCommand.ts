@@ -2,7 +2,10 @@ import { type DiscordInteraction, type DiscordContext } from '@ltdjms/shared';
 import { EmbedBuilder } from 'discord.js';
 import { type CommandHandler } from '../infra/CommandHandler.js';
 import { PanelSessionManager } from '../session/PanelSessionManager.js';
-import { UserPanelEmbedBuilder, getCurrencyHistoryButtonLabel } from '../services/UserPanelEmbedBuilder.js';
+import {
+  UserPanelEmbedBuilder,
+  getCurrencyHistoryButtonLabel,
+} from '../services/UserPanelEmbedBuilder.js';
 import { UserPanelService } from '../services/UserPanelService.js';
 import { ZhTwStrings } from '../i18n/zh-TW.js';
 

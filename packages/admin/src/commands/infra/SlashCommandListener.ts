@@ -78,14 +78,19 @@ export class SlashCommandListener {
    */
   listen(gateway: DiscordRuntimeGateway): void {
     const client = gateway.requireReadyClient() as Client;
-    client.on('interactionCreate', async (rawInteraction) => {
-      this.logger?.info({ type: 'interactionCreate' }, 'Interaction received');
-      try {
-        await this.handleRawInteraction(rawInteraction);
-      } catch (err) {
-        this.logger?.error({ err }, '[SlashCommandListener] Unhandled error in interactionCreate');
-        console.error('[SlashCommandListener] Unhandled error in interactionCreate:', err);
-      }
+    client.on('interactionCreate', (rawInteraction) => {
+      void (async () => {
+        this.logger?.info({ type: 'interactionCreate' }, 'Interaction received');
+        try {
+          await this.handleRawInteraction(rawInteraction);
+        } catch (err) {
+          this.logger?.error(
+            { err },
+            '[SlashCommandListener] Unhandled error in interactionCreate',
+          );
+          console.error('[SlashCommandListener] Unhandled error in interactionCreate:', err);
+        }
+      })();
     });
   }
 

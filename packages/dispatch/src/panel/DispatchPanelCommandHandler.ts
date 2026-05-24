@@ -8,6 +8,10 @@ import {
 } from './DispatchPanelView.js';
 import { buildErrorEmbed } from './DispatchPanelMessageFactory.js';
 
+type DiscordRawHook = {
+  reply: (options: Record<string, unknown>) => Promise<unknown>;
+};
+
 /**
  * `/dispatch-panel` slash command handler.
  * Opens the escort dispatch management panel for the invoking user.
@@ -30,7 +34,7 @@ export class DispatchPanelCommandHandler {
       const view = buildModeSelectEmbed();
       const buttons = buildModeSelectActionRow();
       const payload = buildPanelReplyPayload(view, buttons);
-      const hook = interaction.getHook() as any;
+      const hook = interaction.getHook() as DiscordRawHook;
       await hook.reply({
         embeds: [payload.embed],
         components: payload.components,

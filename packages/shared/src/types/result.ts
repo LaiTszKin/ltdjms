@@ -6,7 +6,7 @@
 export type Result<T, E> = Ok<T, E> | Err<T, E>;
 
 export class Ok<T, E> {
-  readonly _tag: 'ok' = 'ok';
+  readonly _tag = 'ok' as const;
   constructor(readonly value: T) {
     if (value === null || value === undefined) {
       throw new Error('value must not be null or undefined');
@@ -47,7 +47,7 @@ export class Ok<T, E> {
 }
 
 export class Err<T, E> {
-  readonly _tag: 'err' = 'err';
+  readonly _tag = 'err' as const;
   constructor(readonly error: E) {
     if (error === null || error === undefined) {
       throw new Error('error must not be null or undefined');

@@ -1,4 +1,4 @@
-.PHONY: build test clean docker-build docker-up docker-down docker-logs db-up db-down docker-dev format format-check lint setup-env update-env db-create db-create-test mvn-build mvn-test mvn-format mvn-format-check mvn-lint mvn-clean mvn-coverage mvn-verify mvn-coverage-check mvn-test-integration
+.PHONY: build test verify clean docker-build docker-up docker-down docker-logs db-up db-down docker-dev format format-check lint setup-env update-env db-create db-create-test mvn-build mvn-test mvn-format mvn-format-check mvn-lint mvn-clean mvn-coverage mvn-verify mvn-coverage-check mvn-test-integration
 
 # TypeScript commands (default)
 build:
@@ -28,7 +28,10 @@ test:
 	pnpm vitest run --project @ltdjms/shop --exclude '**/*.pbt.test.ts' --exclude '**/*-e2e.test.ts' && \
 	for f in packages/shop/src/__tests__/*.pbt.test.ts; do \
 	  pnpm vitest run --project @ltdjms/shop "$$f" || exit 1; \
-	done
+	done && \
+	pnpm vitest run --project @ltdjms/user-panel
+
+verify: build test lint format-check
 
 format:
 	pnpm prettier --write "packages/*/src/**/*.ts" "*.ts" "*.mjs" "tsconfig.json" ".prettierrc"

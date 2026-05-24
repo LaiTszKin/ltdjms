@@ -146,7 +146,7 @@ export class DefaultPromptLoader implements PromptLoader {
         const content = await readFile(filePath, 'utf-8');
         const name = fileName.replace(/\.md$/, '');
         return { name, content } as PromptSection;
-      } catch (cause) {
+      } catch (_cause) {
         console.warn(`[prompt-loader] Failed to read prompt file: ${fileName}, skipping`);
         return null;
       }

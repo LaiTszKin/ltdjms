@@ -10,7 +10,7 @@ import {
   isExpired,
   getMaskedCode,
 } from '../domain/redemption-code.js';
-import { type Product, type RewardType, hasReward, formatReward } from '../domain/product-types.js';
+import { type Product, hasReward, formatReward } from '../domain/product-types.js';
 import { RedemptionCodeGenerator } from './redemption-code-generator.js';
 import pino from 'pino';
 
@@ -67,9 +67,9 @@ export class RedemptionService {
         userId: string,
         product: Product,
         code: RedemptionCode,
-      ): Promise<any>;
+      ): Promise<unknown>;
     },
-    private readonly eventPublisher: { publish(event: any): void },
+    private readonly eventPublisher: { publish(event: unknown): void },
     logger?: pino.Logger,
   ) {
     this.log = logger ?? pino({ level: 'warn' });

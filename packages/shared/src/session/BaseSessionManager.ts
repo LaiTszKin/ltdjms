@@ -1,5 +1,3 @@
-import { type CacheService } from '@ltdjms/shared';
-
 /**
  * Common session data fields required by BaseSessionManager.
  */
@@ -29,14 +27,12 @@ const DEFAULT_TTL_MS = 15 * 60 * 1000;
  * setContext, getContext and lifecycle management.
  *
  * Subclasses provide the key prefix and session data factory via abstract methods.
- * Optionally backed by a CacheService (Redis) for distributed session support.
+ * Matches Java PanelSessionManager TTL semantics (fixed window from createdAt).
  */
 export abstract class BaseSessionManager<T extends BaseSessionData> {
   /** In-memory session store. guildId:userId → session data. */
   protected readonly sessions = new Map<string, T>();
   private cleanupIntervalId: ReturnType<typeof setInterval> | null = null;
-
-  constructor(protected readonly cacheService?: CacheService) {}
 
   /**
    * Returns the session key prefix (e.g. 'admin_panel:' or 'user_panel:').
@@ -55,12 +51,10 @@ export abstract class BaseSessionManager<T extends BaseSessionData> {
   /**
    * Creates a new session.
    * Automatically replaces any existing session for the same guild+user.
-   * Optionally persists to cache when available.
    */
   createSession(guildId: string, userId: string): T {
     const key = this.buildKey(guildId, userId);
 
-    // Evict oldest session if at capacity before creating a new one
     if (this.sessions.size >= MAX_SESSIONS) {
       const oldestKey = this.sessions.keys().next().value;
       if (oldestKey) {
@@ -72,13 +66,6 @@ export abstract class BaseSessionManager<T extends BaseSessionData> {
 
     const session = this.createSessionData(guildId, userId);
     this.sessions.set(key, session);
-
-    // Try to persist to cache when available
-    if (this.cacheService) {
-      this.cacheService.put(key, session, DEFAULT_TTL_MS / 1000).catch(() => {
-        // Cache write failure is non-critical; in-memory fallback still works
-      });
-    }
 
     return session;
   }
@@ -99,6 +86,23 @@ export abstract class BaseSessionManager<T extends BaseSessionData> {
     }
 
     session.lastAccessedAt = Date.now();
+    return session;
+  }
+
+  /**
+   * Peeks at a session without updating lastAccessedAt.
+   * Used by push-update listeners to avoid extending TTL on background refresh.
+   */
+  peekSession(guildId: string, userId: string): T | null {
+    const key = this.buildKey(guildId, userId);
+    const session = this.sessions.get(key);
+    if (!session) return null;
+
+    if (this.isExpired(session)) {
+      this.sessions.delete(key);
+      return null;
+    }
+
     return session;
   }
 
@@ -125,17 +129,11 @@ export abstract class BaseSessionManager<T extends BaseSessionData> {
   }
 
   /**
-   * Removes a session from memory and optionally from cache.
+   * Removes a session from memory.
    */
   removeSession(guildId: string, userId: string): void {
     const key = this.buildKey(guildId, userId);
     this.sessions.delete(key);
-
-    if (this.cacheService) {
-      this.cacheService.invalidate(key).catch(() => {
-        // Cache invalidation failure is non-critical
-      });
-    }
   }
 
   /**
@@ -160,10 +158,10 @@ export abstract class BaseSessionManager<T extends BaseSessionData> {
   }
 
   /**
-   * Checks whether a session has expired.
+   * Checks whether a session has expired (fixed window from createdAt).
    */
   private isExpired(session: T): boolean {
-    return Date.now() - session.lastAccessedAt > DEFAULT_TTL_MS;
+    return Date.now() - session.createdAt > DEFAULT_TTL_MS;
   }
 
   /**
@@ -183,10 +181,6 @@ export abstract class BaseSessionManager<T extends BaseSessionData> {
 
   /**
    * Starts an interval-based cleanup of expired sessions.
-   * This is a memory optimization rather than a correctness mechanism,
-   * since {@link getSession} already checks TTL and discards expired sessions.
-   * Should be called during DI setup.
-   * @param intervalMs - cleanup interval in milliseconds (default 60 seconds)
    */
   startCleanupInterval(intervalMs: number = 60_000): void {
     if (this.cleanupIntervalId !== null) return;

@@ -14,7 +14,7 @@
   <header class="submodule-header">
     <nav class="submodule-breadcrumb"><a href="../../index.html">← Atlas</a> · <a href="index.html">← Administration</a></nav>
     <h1>user-panel-interaction <small class="submodule-kind submodule-kind--api">API</small></h1>
-    <p class="submodule-role">會員面板指令與按鈕：餘額查詢、交易記錄、兌換碼輸入</p>
+    <p class="submodule-role">已遷移至 @ltdjms/user-panel；1:1 對齊 Java user_panel_* customId 與 embed 結構</p>
   </header>
   <main class="submodule-main">
     <section class="sub-io" aria-label="Function I/O">
@@ -25,16 +25,56 @@
           <tr><td>handleUserPanel</td><td>guildId, userId</td><td>UserPanelEmbed</td><td>io</td><td>顯示會員面板：貨幣餘額＋代幣餘額＋歷史按鈕</td></tr>
           <tr><td>handleHistoryPage</td><td>guildId, userId, historyType, page</td><td>HistoryPageEmbed</td><td>io</td><td>分頁瀏覽貨幣/代幣/兌換記錄</td></tr>
           <tr><td>handleRedeemModal</td><td>guildId, userId, code</td><td>RedemptionResult</td><td>io</td><td>處理使用者輸入的兌換碼（開 Modal → 送出）</td></tr>
+          <tr><td>buildHistoryView</td><td>historyType, page, TransactionPage</td><td>EmbedView, ButtonView[]</td><td>pure</td><td>UserPanelHistoryViewFactory 集中建構 history embed 與分頁按鈕</td></tr>
         </tbody>
       </table>
     </section>
     <section class="sub-vars" aria-label="Variables">
       <h2>Variables</h2>
-      <p class="sub-section__empty">No variables recorded.</p>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Scope</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>userPanelCustomIds</td><td>UserPanelConstants</td><td>instance</td><td>Java 對齊的 user_panel_* customId 常數表</td></tr>
+        </tbody>
+      </table>
     </section>
     <section class="sub-dataflow" aria-label="Internal data flow">
       <h2>Internal data flow</h2>
-      <p class="sub-dataflow__empty">No internal dataflow steps recorded.</p>
+      <div class="sub-dataflow__canvas" data-pan-zoom-container>
+        <div class="sub-dataflow__toolbar" role="toolbar" aria-label="Diagram controls">
+          <button type="button" data-pan-zoom="zoom-in" aria-label="Zoom in">+</button>
+          <button type="button" data-pan-zoom="zoom-out" aria-label="Zoom out">−</button>
+          <button type="button" data-pan-zoom="fit" aria-label="Reset view">Fit</button>
+        </div>
+        <div class="sub-dataflow__viewport" data-pan-zoom-viewport>
+          <svg class="sub-dataflow__svg" data-atlas-svg="sub-dataflow" viewBox="0 0 628 372" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Internal dataflow">
+  <defs>
+    <marker id="sub-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" /></marker>
+  </defs>
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="68" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="73" text-anchor="middle">1</text>
+    <rect class="sub-dataflow__box" x="80" y="32" width="520" height="72" rx="14" ry="14" />
+    <text class="sub-dataflow__text" x="340" y="74" text-anchor="middle">SlashCommand /user-panel → UserPanelService.getUserPanelView</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="110" x2="340" y2="140" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="186" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="191" text-anchor="middle">2</text>
+    <rect class="sub-dataflow__box" x="80" y="148" width="520" height="76" rx="14" ry="14" />
+    <text class="sub-dataflow__text" x="340" y="182" text-anchor="middle">Button user_panel_* → UserPanelButtonHandler →</text>
+    <text class="sub-dataflow__text" x="340" y="202" text-anchor="middle">HistoryViewFactory</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="230" x2="340" y2="260" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="304" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="309" text-anchor="middle">3</text>
+    <rect class="sub-dataflow__box" x="80" y="268" width="520" height="72" rx="14" ry="14" />
+    <text class="sub-dataflow__text" x="340" y="310" text-anchor="middle">DomainEvent → UserPanelUpdateListener → editOriginal embed</text>
+  </g>
+</svg>
+        </div>
+      </div>
     </section>
     <section class="sub-errors" aria-label="Errors">
       <h2>Errors</h2>

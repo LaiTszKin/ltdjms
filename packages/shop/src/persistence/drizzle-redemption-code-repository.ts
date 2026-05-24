@@ -1,4 +1,4 @@
-import { eq, and, isNull, or, sql, gt, gte, lte } from 'drizzle-orm';
+import { eq, and, isNull, or, sql, gte } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { safeSnowflakeToNumber } from '@ltdjms/shared';
 import {
@@ -10,18 +10,18 @@ import { type RedemptionCode } from '../domain/redemption-code.js';
 import { redemptionCode as redemptionCodeTable } from './schema.js';
 import pino from 'pino';
 
-function mapRow(row: any): RedemptionCode {
+function mapRow(row: Record<string, unknown>): RedemptionCode {
   return {
     id: row.id != null ? Number(row.id) : null,
-    code: row.code,
-    productId: row.productId ?? null,
+    code: row.code as string,
+    productId: (row.productId as number | null) ?? null,
     guildId: Number(row.guildId),
-    expiresAt: row.expiresAt ?? null,
-    redeemedBy: row.redeemedBy ?? null,
-    redeemedAt: row.redeemedAt ?? null,
-    createdAt: row.createdAt,
-    invalidatedAt: row.invalidatedAt ?? null,
-    quantity: row.quantity ?? 1,
+    expiresAt: (row.expiresAt as Date | null) ?? null,
+    redeemedBy: row.redeemedBy != null ? Number(row.redeemedBy) : null,
+    redeemedAt: (row.redeemedAt as Date | null) ?? null,
+    createdAt: row.createdAt as Date,
+    invalidatedAt: (row.invalidatedAt as Date | null) ?? null,
+    quantity: (row.quantity as number | undefined) ?? 1,
   };
 }
 
@@ -228,7 +228,7 @@ export class DrizzleRedemptionCodeRepository implements RedemptionCodeRepository
     );
     const rows = result.rows;
     if (!rows || !rows.length) return createCodeStatsZero();
-    const r = rows[0] as any;
+    const r = rows[0] as Record<string, unknown>;
     return {
       totalCount: Number(r.total),
       redeemedCount: Number(r.redeemed),

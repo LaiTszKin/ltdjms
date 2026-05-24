@@ -1,0 +1,57 @@
+slug: user-panel
+title: User Panel
+story: ''
+dependsOn: []
+submodules:
+  - slug: panel-interaction
+    kind: api
+    role: 會員個人面板 Discord 互動：/user-panel、按鈕、Modal、分頁
+    functions:
+      - name: handleUserPanel
+        in: guildId, userId
+        out: UserPanelEmbed
+        side: io
+        purpose: 顯示個人面板主畫面
+      - name: handleHistoryPage
+        in: guildId, userId, historyType, page
+        out: HistoryPageEmbed
+        side: io
+        purpose: 分頁瀏覽交易記錄
+      - name: handleRedeemModal
+        in: guildId, userId, code
+        out: RedemptionResult
+        side: io
+        purpose: 兌換碼 Modal 提交
+    variables: []
+    dataflow: []
+    errors: []
+  - slug: panel-service
+    kind: service
+    role: MemberInfoFacade、UserPanelService、session 與資料聚合
+    functions:
+      - name: getUserPanelView
+        in: guildId, userId
+        out: UserPanelView
+        side: io
+        purpose: 聚合貨幣餘額與遊戲代幣
+    variables: []
+    dataflow: []
+    errors: []
+  - slug: panel-session
+    kind: service
+    role: PanelSessionManager 15min TTL 與 Redis 快取
+    functions: []
+    variables: []
+    dataflow: []
+    errors: []
+edges:
+  - id: e-c4yla8
+    from: panel-interaction
+    to: panel-service
+    kind: call
+    label: 查詢面板資料
+  - id: e-3bds4s
+    from: panel-interaction
+    to: panel-session
+    kind: call
+    label: session 讀寫

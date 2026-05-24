@@ -259,7 +259,7 @@ export function initializeAIModule(): void {
     {
       name: string;
       description: string;
-      schema: import('zod').ZodType<any>;
+      schema: import('zod').ZodType<unknown>;
       execute: (
         params: Record<string, unknown>,
         guild: import('discord.js').Guild,
@@ -270,7 +270,7 @@ export function initializeAIModule(): void {
     const registeredTool = tool as {
       name: string;
       description: string;
-      schema: import('zod').ZodType<any>;
+      schema: import('zod').ZodType<unknown>;
       execute: (
         params: Record<string, unknown>,
         guild: import('discord.js').Guild,

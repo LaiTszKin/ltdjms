@@ -1,4 +1,4 @@
-import { type Result, type DomainError, ok, err } from '@ltdjms/shared';
+import { type Result, type DomainError, ok } from '@ltdjms/shared';
 import {
   type AIChatService,
   type StreamingResponseHandler,
@@ -161,7 +161,7 @@ export class MarkdownValidatingAIChatService implements AIChatService {
      * Only processes content up to the last natural boundary;
      * incomplete content stays in the buffer.
      */
-    const flushContent = async (isComplete: boolean, error: DomainError | null): Promise<void> => {
+    const flushContent = async (isComplete: boolean, _error: DomainError | null): Promise<void> => {
       if (!pendingContent) return;
 
       // Determine how much content is ready to process
@@ -181,14 +181,14 @@ export class MarkdownValidatingAIChatService implements AIChatService {
       if (!readyContent) return;
 
       if (this.config.streamingBypassValidation) {
-        handler.onChunk(readyContent, false, null, StreamChunkType.CONTENT);
+        void handler.onChunk(readyContent, false, null, StreamChunkType.CONTENT);
         return;
       }
 
       const validated = await this.applyPipeline(readyContent);
       for (let i = 0; i < validated.length; i++) {
         const pageIsComplete = isComplete && i === validated.length - 1 && !pendingContent;
-        handler.onChunk(validated[i], pageIsComplete, null, StreamChunkType.CONTENT);
+        void handler.onChunk(validated[i], pageIsComplete, null, StreamChunkType.CONTENT);
       }
     };
 
@@ -200,7 +200,7 @@ export class MarkdownValidatingAIChatService implements AIChatService {
         chunkType?: StreamChunkType,
       ) => {
         if (error) {
-          handler.onChunk(chunk, isComplete, error, chunkType);
+          void handler.onChunk(chunk, isComplete, error, chunkType);
           return;
         }
 
@@ -208,12 +208,12 @@ export class MarkdownValidatingAIChatService implements AIChatService {
 
         // REASONING and TOOL_INTENT pass through unmodified
         if (type !== StreamChunkType.CONTENT) {
-          handler.onChunk(chunk, isComplete, null, type);
+          void handler.onChunk(chunk, isComplete, null, type);
           return;
         }
 
         if (this.config.streamingBypassValidation) {
-          handler.onChunk(chunk, isComplete, null, StreamChunkType.CONTENT);
+          void handler.onChunk(chunk, isComplete, null, StreamChunkType.CONTENT);
           return;
         }
 

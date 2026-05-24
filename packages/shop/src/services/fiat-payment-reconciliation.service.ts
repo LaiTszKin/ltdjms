@@ -121,7 +121,7 @@ export class FiatPaymentReconciliationService {
     tradeAmount: number;
     message: string | null;
   }): string {
-    const obj: Record<string, any> = {
+    const obj: Record<string, unknown> = {
       source: 'ECPAY_QUERY_TRADE_INFO',
       orderNumber: trade.orderNumber,
       tradeStatus: trade.tradeStatus,

@@ -39,7 +39,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
     super(sessionManager, errorHandler);
   }
 
-  async execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void> {
+  async execute(interaction: DiscordInteraction, _context: DiscordContext): Promise<void> {
     const guildId = interaction.getGuildId();
     const userId = interaction.getUserId();
 
@@ -466,7 +466,7 @@ export class AdminProductPanelHandler extends BaseAdminHandler {
       return;
     }
 
-    const note = interaction.getTextInputValue(ZhTwStrings.generateCodesNoteLabel).trim();
+    const _note = interaction.getTextInputValue(ZhTwStrings.generateCodesNoteLabel).trim();
     const daysStr = interaction.getTextInputValue(ZhTwStrings.generateCodesDaysLabel).trim();
 
     let expiresAt: Date | null = null;

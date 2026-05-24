@@ -1,20 +1,12 @@
 import { AdminPanelViewState, type AdminPanelSessionData } from './types.js';
-import { BaseSessionManager } from './BaseSessionManager.js';
+import { BaseSessionManager } from '@ltdjms/shared';
 
 /**
  * Manages admin panel sessions with in-memory storage only.
  * Each guild+user can have at most one active session.
  * Matches Java AdminPanelSessionManager.
- *
- * Differences from PanelSessionManager:
- * - Uses AdminPanelSessionData (with viewState and required context)
- * - No CacheService dependency (in-memory only)
  */
 export class AdminPanelSessionManager extends BaseSessionManager<AdminPanelSessionData> {
-  constructor() {
-    super(); // No cache service for admin panel sessions
-  }
-
   protected getKeyPrefix(): string {
     return 'admin_panel:';
   }

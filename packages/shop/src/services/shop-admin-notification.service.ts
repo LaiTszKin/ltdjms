@@ -228,7 +228,7 @@ export class ShopAdminNotificationService {
   private buildAdminEscortNotification(
     guildId: number,
     buyerUserId: number,
-    order: any,
+    order: DispatchOrderSnapshot,
     guildName?: string,
   ): string {
     const lines: string[] = [];
@@ -239,7 +239,7 @@ export class ShopAdminNotificationService {
       lines.push(`**伺服器：** \`${guildId}\``);
     }
     lines.push(`**買家：** <@${buyerUserId}>`);
-    lines.push(`**來源類型：** ${this.describeSourceType(order.sourceType)}`);
+    lines.push(`**來源類型：** ${this.describeSourceType(order.sourceType ?? null)}`);
     if (order.sourceReference) {
       lines.push(`**來源參考：** \`${order.sourceReference}\``);
     }

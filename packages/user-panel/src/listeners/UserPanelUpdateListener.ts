@@ -1,9 +1,6 @@
 import type { DomainEvent } from '@ltdjms/shared';
 import { type DiscordRuntimeGateway } from '@ltdjms/shared';
-import type {
-  BalanceChangedEvent,
-  CurrencyConfigChangedEvent,
-} from '@ltdjms/economy';
+import type { BalanceChangedEvent } from '@ltdjms/economy';
 import type { GameTokenChangedEvent } from '@ltdjms/games';
 import { type Client, type TextChannel, EmbedBuilder } from 'discord.js';
 import { PanelSessionManager } from '../session/PanelSessionManager.js';
@@ -59,7 +56,7 @@ export class UserPanelUpdateListener {
   }
 
   private async updateUserPanel(guildId: string, userId: string): Promise<void> {
-    const session = this.sessionManager.getSession(guildId, userId);
+    const session = this.sessionManager.peekSession(guildId, userId);
     if (!session?.channelId || !session.messageId) return;
 
     const result = await this.userPanelService.getUserPanelView(guildId, userId);

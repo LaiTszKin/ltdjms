@@ -1,4 +1,4 @@
-import { type Result, ok, err, DomainError, safeSnowflakeToNumber } from '@ltdjms/shared';
+import { type Result, err, DomainError, safeSnowflakeToNumber } from '@ltdjms/shared';
 import { CurrencyTransactionSource } from '@ltdjms/economy';
 import type {
   BalanceService,

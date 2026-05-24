@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DomainError, ok, okVoid, err, type Result, type Unit } from '@ltdjms/shared';
+import { DomainError, okVoid, err, type Result, type Unit } from '@ltdjms/shared';
 import type { EnvironmentConfig } from '@ltdjms/shared';
 
 /**

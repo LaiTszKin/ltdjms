@@ -53,7 +53,7 @@ export class GameTokenManagementFacade {
     userId: string,
     amount: number,
     reason: string,
-    actorId: string,
+    _actorId: string,
   ): Promise<Result<TokenAdjustmentResult, DomainError>> {
     const validation = this.validateTokenAmount(amount, false);
     if (validation) return validation;
@@ -74,8 +74,8 @@ export class GameTokenManagementFacade {
     guildId: string,
     userId: string,
     amount: number,
-    reason: string,
-    actorId: string,
+    _reason: string,
+    _actorId: string,
   ): Promise<Result<TokenAdjustmentResult, DomainError>> {
     if (!Number.isFinite(amount) || amount < 0) {
       return err(DomainError.invalidInput('設定代幣數量必須為非負整數'));

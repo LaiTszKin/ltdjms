@@ -75,4 +75,80 @@ describe('UserPanelHistoryViewFactory (UT-203)', () => {
     expect(embed.description).toContain('+10');
     expect(embed.footer).toContain('第 1/1 頁（共 1 筆）');
   });
+
+  it('should show empty currency history state with page indicator footer', () => {
+    const page = {
+      transactions: [],
+      currentPage: 1,
+      totalPages: 1,
+      totalCount: 0,
+      pageSize: oracle.pageSize,
+    };
+
+    const embed = UserPanelHistoryViewFactory.buildCurrencyHistoryEmbed(page);
+
+    expect(embed.title).toBe(oracle.types.currency.emptyTitle);
+    expect(embed.description).toBe(oracle.types.currency.emptyDescription);
+    expect(embed.footer).toBe(
+      oracle.pageIndicatorPattern
+        .replace('{current}', '1')
+        .replace('{total}', '1')
+        .replace('{count}', '0'),
+    );
+  });
+
+  it('should include currency pagination buttons on middle page', () => {
+    const page = {
+      transactions: [],
+      currentPage: 2,
+      totalPages: 3,
+      totalCount: 30,
+      pageSize: oracle.pageSize,
+    };
+
+    const row = UserPanelHistoryViewFactory.buildCurrencyPaginationButtons(page);
+    const buttonIds = row.components.map((c) => c.toJSON().custom_id);
+
+    expect(buttonIds[0]).toBe(UserPanelConstants.BUTTON_BACK_TO_PANEL);
+    expect(buttonIds[1]).toBe(`${UserPanelConstants.BUTTON_PREFIX_CURRENCY_PAGE}1`);
+    expect(buttonIds[2]).toBe(`${UserPanelConstants.BUTTON_PREFIX_CURRENCY_PAGE}3`);
+  });
+
+  it('should show empty product redemption history state with page indicator footer', () => {
+    const page = {
+      items: [],
+      currentPage: 1,
+      totalPages: 1,
+      totalCount: 0,
+      pageSize: oracle.pageSize,
+    };
+
+    const embed = UserPanelHistoryViewFactory.buildProductRedemptionHistoryEmbed(page);
+
+    expect(embed.title).toBe(oracle.types.productRedemption.emptyTitle);
+    expect(embed.description).toBe(oracle.types.productRedemption.emptyDescription);
+    expect(embed.footer).toBe(
+      oracle.pageIndicatorPattern
+        .replace('{current}', '1')
+        .replace('{total}', '1')
+        .replace('{count}', '0'),
+    );
+  });
+
+  it('should include product redemption pagination buttons on middle page', () => {
+    const page = {
+      items: [],
+      currentPage: 2,
+      totalPages: 3,
+      totalCount: 30,
+      pageSize: oracle.pageSize,
+    };
+
+    const row = UserPanelHistoryViewFactory.buildProductRedemptionPaginationButtons(page);
+    const buttonIds = row.components.map((c) => c.toJSON().custom_id);
+
+    expect(buttonIds[0]).toBe(UserPanelConstants.BUTTON_BACK_TO_PANEL);
+    expect(buttonIds[1]).toBe(`${UserPanelConstants.BUTTON_PREFIX_PRODUCT_REDEMPTION_PAGE}1`);
+    expect(buttonIds[2]).toBe(`${UserPanelConstants.BUTTON_PREFIX_PRODUCT_REDEMPTION_PAGE}3`);
+  });
 });

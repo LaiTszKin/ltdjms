@@ -37,8 +37,6 @@ export class DiscordMarkdownPaginator {
     let openCodeFence: string | null = null;
 
     while (remaining.length > 0) {
-      const previousLength = remaining.length;
-
       if (remaining.length <= this.maxLength) {
         // Close any open code fence
         if (openCodeFence) {

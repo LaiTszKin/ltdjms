@@ -37,16 +37,14 @@ describe('GameConfigManagementFacade PBT', () => {
             const min = Math.min(a, b - 1);
             const max = Math.max(min + 1, b);
             mock.findDice1Config = vi.fn().mockResolvedValue(null);
-            mock.upsertDice1Config = vi
-              .fn()
-              .mockResolvedValue({
-                guildId: Number(gId),
-                minTokensPerPlay: min,
-                maxTokensPerPlay: max,
-                rewardPerDiceValue: r,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-              });
+            mock.upsertDice1Config = vi.fn().mockResolvedValue({
+              guildId: Number(gId),
+              minTokensPerPlay: min,
+              maxTokensPerPlay: max,
+              rewardPerDiceValue: r,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            });
             expect(
               (
                 await facade.updateDiceGame1Config(String(gId), {
@@ -139,19 +137,17 @@ describe('GameConfigManagementFacade PBT', () => {
             const min = Math.min(a, b - 1);
             const max = Math.max(min + 1, b);
             mock.findDice2Config = vi.fn().mockResolvedValue(null);
-            mock.upsertDice2Config = vi
-              .fn()
-              .mockResolvedValue({
-                guildId: Number(gId),
-                minTokensPerPlay: min,
-                maxTokensPerPlay: max,
-                straightMultiplier: s,
-                baseMultiplier: base,
-                tripleLowBonus: low,
-                tripleHighBonus: high,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-              });
+            mock.upsertDice2Config = vi.fn().mockResolvedValue({
+              guildId: Number(gId),
+              minTokensPerPlay: min,
+              maxTokensPerPlay: max,
+              straightMultiplier: s,
+              baseMultiplier: base,
+              tripleLowBonus: low,
+              tripleHighBonus: high,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            });
             expect(
               (
                 await facade.updateDiceGame2Config(String(gId), {

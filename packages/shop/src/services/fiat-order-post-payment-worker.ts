@@ -9,10 +9,7 @@ import {
   isRewardGranted,
   toFulfillmentProduct,
 } from '../domain/fiat-order.js';
-import type {
-  DispatchOrderSnapshot,
-  EscortDispatchHandoffService,
-} from '../domain/escort-dispatch-handoff-service.js';
+import type { EscortDispatchHandoffService } from '../domain/escort-dispatch-handoff-service.js';
 import type {
   EscortOrderBuyerNotifier,
   AdminOrderNotifier,

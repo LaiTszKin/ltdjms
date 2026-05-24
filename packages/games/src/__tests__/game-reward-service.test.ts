@@ -16,10 +16,7 @@ describe('GameRewardService', () => {
     it('should return zero balances when reward is 0', async () => {
       const mockAdjustmentService = createMockBalanceAdjustmentService();
 
-      const service = new GameRewardService(
-        mockAdjustmentService as any,
-        {} as any,
-      );
+      const service = new GameRewardService(mockAdjustmentService as any, {} as any);
 
       const result = await service.creditReward(
         1,

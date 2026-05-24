@@ -20,11 +20,12 @@ export async function fetchWithRetry(
   for (let attempt = 1; ; attempt++) {
     try {
       return await fetch(url, init);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errObj = err as { cause?: { code?: string }; name?: string };
       const isRetryable =
-        (err?.cause?.code && RETRYABLE_CODES.has(err.cause.code)) ||
-        err?.name === 'TimeoutError' ||
-        err?.name === 'AbortError';
+        (errObj.cause?.code && RETRYABLE_CODES.has(errObj.cause.code)) ||
+        errObj.name === 'TimeoutError' ||
+        errObj.name === 'AbortError';
 
       if (!isRetryable || attempt >= maxRetries) {
         throw err;

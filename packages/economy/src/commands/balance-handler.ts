@@ -11,7 +11,7 @@ export class BalanceHandler {
 
   constructor(private readonly balanceService: BalanceService) {}
 
-  async execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void> {
+  async execute(interaction: DiscordInteraction, _context: DiscordContext): Promise<void> {
     interaction.makeEphemeral();
     const guildId = Number(interaction.getGuildId());
     const userId = interaction.getUserId();

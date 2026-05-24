@@ -6,7 +6,6 @@ import {
   bigserial,
   primaryKey,
   index,
-  uniqueIndex,
   check,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
@@ -74,7 +73,6 @@ export const currencyTransaction = pgTable(
     ),
   }),
 );
-
 
 // Type exports for select and insert — intentionally empty; domain types
 // are defined in domain/types.ts.

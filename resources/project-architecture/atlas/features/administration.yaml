@@ -60,7 +60,7 @@ submodules:
         means: Ephemeral 提示重新開啟 /admin-panel
   - slug: user-panel-interaction
     kind: api
-    role: 會員面板指令與按鈕：餘額查詢、交易記錄、兌換碼輸入
+    role: 已遷移至 @ltdjms/user-panel；1:1 對齊 Java user_panel_* customId 與 embed 結構
     functions:
       - name: handleUserPanel
         in: guildId, userId
@@ -77,8 +77,20 @@ submodules:
         out: RedemptionResult
         side: io
         purpose: 處理使用者輸入的兌換碼（開 Modal → 送出）
-    variables: []
-    dataflow: []
+      - name: buildHistoryView
+        in: historyType, page, TransactionPage
+        out: EmbedView, ButtonView[]
+        side: pure
+        purpose: UserPanelHistoryViewFactory 集中建構 history embed 與分頁按鈕
+    variables:
+      - name: userPanelCustomIds
+        type: UserPanelConstants
+        scope: instance
+        purpose: Java 對齊的 user_panel_* customId 常數表
+    dataflow:
+      - SlashCommand /user-panel → UserPanelService.getUserPanelView
+      - Button user_panel_* → UserPanelButtonHandler → HistoryViewFactory
+      - DomainEvent → UserPanelUpdateListener → editOriginal embed
     errors:
       - name: ErrPanelSessionExpired
         when: UserPanelSession 15min TTL 到期

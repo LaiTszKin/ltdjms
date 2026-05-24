@@ -27,7 +27,7 @@ export class AdminPanelCommand implements CommandHandler {
     private readonly embedBuilder: DiscordEmbedBuilder,
   ) {}
 
-  async execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void> {
+  async execute(interaction: DiscordInteraction, _context: DiscordContext): Promise<void> {
     // Permission check (second layer)
     if (!this.hasAdminPermission(interaction)) {
       await interaction.reply(ZhTwStrings.permissionAdminRequired);

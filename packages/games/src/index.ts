@@ -9,9 +9,7 @@ export { GameType } from './events/index.js';
 // Domain
 // ============================================================
 
-export {
-  GameTokenTransactionSource,
-} from './domain/types.js';
+export { GameTokenTransactionSource } from './domain/types.js';
 
 export type {
   GameTokenAccount,
@@ -70,7 +68,10 @@ export type {
 
 export { GameConfigManagementFacade } from './facades/GameConfigManagementFacade.js';
 export { GameTokenManagementFacade } from './facades/GameTokenManagementFacade.js';
-export type { DiceGame1ConfigUpdate, DiceGame2ConfigUpdate } from './facades/GameConfigManagementFacade.js';
+export type {
+  DiceGame1ConfigUpdate,
+  DiceGame2ConfigUpdate,
+} from './facades/GameConfigManagementFacade.js';
 
 // ============================================================
 // DI

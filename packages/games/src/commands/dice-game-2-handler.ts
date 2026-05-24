@@ -49,10 +49,10 @@ export class DiceGame2Handler {
     const tokenCountStr = context.getOptionAsString('tokens');
     if (!tokenCountStr) {
       await interaction.reply(
-        DiceGameMessages.MISSING_TOKENS_ERROR.replace('{min}', String(config.minTokensPerPlay)).replace(
-          '{max}',
-          String(config.maxTokensPerPlay),
-        ),
+        DiceGameMessages.MISSING_TOKENS_ERROR.replace(
+          '{min}',
+          String(config.minTokensPerPlay),
+        ).replace('{max}', String(config.maxTokensPerPlay)),
       );
       return;
     }
@@ -60,10 +60,10 @@ export class DiceGame2Handler {
     const tokenCount = parseInt(tokenCountStr, 10);
     if (!Number.isFinite(tokenCount) || tokenCount <= 0) {
       await interaction.reply(
-        DiceGameMessages.MISSING_TOKENS_ERROR.replace('{min}', String(config.minTokensPerPlay)).replace(
-          '{max}',
-          String(config.maxTokensPerPlay),
-        ),
+        DiceGameMessages.MISSING_TOKENS_ERROR.replace(
+          '{min}',
+          String(config.minTokensPerPlay),
+        ).replace('{max}', String(config.maxTokensPerPlay)),
       );
       return;
     }
@@ -91,10 +91,10 @@ export class DiceGame2Handler {
       if (error.category === DomainErrorCategory.INSUFFICIENT_TOKENS) {
         const currentBalance = await this.gameTokenService.getBalance(guildId, userId);
         await interaction.reply(
-          DiceGameMessages.TOKEN_INSUFFICIENT_ERROR.replace('{required}', tokenCount.toLocaleString()).replace(
-            '{current}',
-            currentBalance.toLocaleString(),
-          ),
+          DiceGameMessages.TOKEN_INSUFFICIENT_ERROR.replace(
+            '{required}',
+            tokenCount.toLocaleString(),
+          ).replace('{current}', currentBalance.toLocaleString()),
         );
       } else {
         await interaction.reply(DiceGameMessages.UNEXPECTED_ERROR);
@@ -175,7 +175,7 @@ export class DiceGame2Handler {
       );
 
       await interaction.reply(parts.join('\n'));
-    } catch (error) {
+    } catch (_error) {
       // Spec says tokens are NOT refunded on game error/loss. (P1-4)
       await interaction.reply(DiceGameMessages.UNEXPECTED_ERROR);
     }

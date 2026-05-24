@@ -240,7 +240,7 @@ export class AdminPanelUpdateListener {
                 `guildId=${guildId}, userId=${session.userId}, viewState=${session.viewState}` +
                 `, channelId=${channelId}`,
             );
-          } catch (fetchErr) {
+          } catch (_fetchErr) {
             console.log(
               `[AdminPanelUpdateListener] Failed to fetch message ${session.messageId} in channel ${channelId}: removing session`,
             );

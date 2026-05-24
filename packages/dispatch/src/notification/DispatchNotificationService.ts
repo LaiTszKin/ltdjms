@@ -2,7 +2,7 @@ import { processWithConcurrencyLimit } from '@ltdjms/shared';
 import type { DiscordRuntimeGateway } from '@ltdjms/shared';
 import { type EscortDispatchOrder } from '../domain/index.js';
 import { type DispatchAfterSalesStaffService } from '../service/dispatch-after-sales-staff.service.js';
-import { COLOR_INFO, COLOR_WARNING, COLOR_ERROR } from '../constants.js';
+import { COLOR_INFO, COLOR_WARNING } from '../constants.js';
 
 /** Shape accepted by discord.js DMChannel.send() for embeds. */
 interface EmbedPayload {

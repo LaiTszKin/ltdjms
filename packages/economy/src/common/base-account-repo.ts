@@ -120,7 +120,7 @@ export class BaseAccountRepository<TAccount> {
       .set({
         [this.cfg.balanceFieldName]: sql`${this.cfg.table[this.cfg.balanceFieldName]} + ${delta}`,
         [this.cfg.updatedAtFieldName]: sql`NOW()`,
-      } as any)
+      } as Record<string, unknown>)
       .where(
         and(
           eq(this.cfg.table.guildId, guildId),
@@ -153,7 +153,7 @@ export class BaseAccountRepository<TAccount> {
         .set({
           [this.cfg.balanceFieldName]: sql`${this.cfg.table[this.cfg.balanceFieldName]} + ${delta}`,
           [this.cfg.updatedAtFieldName]: sql`NOW()`,
-        } as any)
+        } as Record<string, unknown>)
         .where(
           and(
             eq(this.cfg.table.guildId, guildId),
@@ -199,15 +199,15 @@ export class BaseAccountRepository<TAccount> {
         userId: safeSnowflakeToNumber(userId),
         [this.cfg.balanceFieldName]: newValue,
         ...this.cfg.defaultValues,
-      } as any)
+      } as Record<string, unknown>)
       .onConflictDoUpdate({
         target: [this.cfg.table.guildId, this.cfg.table.userId],
         set: {
           [this.cfg.balanceFieldName]: newValue,
           [this.cfg.updatedAtFieldName]: sql`NOW()`,
-        } as any,
+        } as Record<string, unknown>,
       })
-      .returning()) as unknown as any[];
+      .returning()) as Record<string, unknown>[];
 
     return this.cfg.mapToDomain(result[0]);
   }

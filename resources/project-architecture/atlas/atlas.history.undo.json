@@ -3,7 +3,7 @@
     "meta": {
       "title": "LTDJMS — Discord Bot 專案架構",
       "summary": "基於 Java/JDA 的 Discord bot，在單一 guild 內承載經濟互動、商品交易、護航協作與 AI 頻道治理。涵蓋 guild 貨幣與遊戲代幣的雙軌經濟系統、商品商店與法幣付款（ECPay）、護航派單狀態機、AI 聊天與 Agent 工具執行、以及管理面板。掃描範圍：src/main/java/ltdjms/discord/ 下所有業務模組與共用基礎設施。",
-      "updatedAt": "2026-05-19T16:16:02.027Z"
+      "updatedAt": "2026-05-24T12:18:29.285Z"
     },
     "actors": [
       {
@@ -1455,7 +1455,7 @@
           {
             "slug": "user-panel-interaction",
             "kind": "api",
-            "role": "會員面板指令與按鈕：餘額查詢、交易記錄、兌換碼輸入",
+            "role": "已遷移至 @ltdjms/user-panel；1:1 對齊 Java user_panel_* customId 與 embed 結構",
             "functions": [
               {
                 "name": "handleUserPanel",
@@ -1477,10 +1477,28 @@
                 "out": "RedemptionResult",
                 "side": "io",
                 "purpose": "處理使用者輸入的兌換碼（開 Modal → 送出）"
+              },
+              {
+                "name": "buildHistoryView",
+                "in": "historyType, page, TransactionPage",
+                "out": "EmbedView, ButtonView[]",
+                "side": "pure",
+                "purpose": "UserPanelHistoryViewFactory 集中建構 history embed 與分頁按鈕"
               }
             ],
-            "variables": [],
-            "dataflow": [],
+            "variables": [
+              {
+                "name": "userPanelCustomIds",
+                "type": "UserPanelConstants",
+                "scope": "instance",
+                "purpose": "Java 對齊的 user_panel_* customId 常數表"
+              }
+            ],
+            "dataflow": [
+              "SlashCommand /user-panel → UserPanelService.getUserPanelView",
+              "Button user_panel_* → UserPanelButtonHandler → HistoryViewFactory",
+              "DomainEvent → UserPanelUpdateListener → editOriginal embed"
+            ],
             "errors": [
               {
                 "name": "ErrPanelSessionExpired",
@@ -1819,6 +1837,87 @@
             "label": "AgentConfigCacheInvalidationListener 監聽變更事件→失效快取"
           }
         ]
+      },
+      {
+        "slug": "user-panel",
+        "title": "User Panel",
+        "story": "",
+        "dependsOn": [],
+        "submodules": [
+          {
+            "slug": "panel-interaction",
+            "kind": "api",
+            "role": "會員個人面板 Discord 互動：/user-panel、按鈕、Modal、分頁",
+            "functions": [
+              {
+                "name": "handleUserPanel",
+                "in": "guildId, userId",
+                "out": "UserPanelEmbed",
+                "side": "io",
+                "purpose": "顯示個人面板主畫面"
+              },
+              {
+                "name": "handleHistoryPage",
+                "in": "guildId, userId, historyType, page",
+                "out": "HistoryPageEmbed",
+                "side": "io",
+                "purpose": "分頁瀏覽交易記錄"
+              },
+              {
+                "name": "handleRedeemModal",
+                "in": "guildId, userId, code",
+                "out": "RedemptionResult",
+                "side": "io",
+                "purpose": "兌換碼 Modal 提交"
+              }
+            ],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          },
+          {
+            "slug": "panel-service",
+            "kind": "service",
+            "role": "MemberInfoFacade、UserPanelService、session 與資料聚合",
+            "functions": [
+              {
+                "name": "getUserPanelView",
+                "in": "guildId, userId",
+                "out": "UserPanelView",
+                "side": "io",
+                "purpose": "聚合貨幣餘額與遊戲代幣"
+              }
+            ],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          },
+          {
+            "slug": "panel-session",
+            "kind": "service",
+            "role": "PanelSessionManager 15min TTL 與 Redis 快取",
+            "functions": [],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          }
+        ],
+        "edges": [
+          {
+            "id": "e-c4yla8",
+            "from": "panel-interaction",
+            "to": "panel-service",
+            "kind": "call",
+            "label": "查詢面板資料"
+          },
+          {
+            "id": "e-3bds4s",
+            "from": "panel-interaction",
+            "to": "panel-session",
+            "kind": "call",
+            "label": "session 讀寫"
+          }
+        ]
       }
     ],
     "edges": [
@@ -1987,19 +2086,6 @@
         "to": {
           "feature": "administration",
           "submodule": "admin-panel-interaction"
-        },
-        "kind": "call",
-        "label": "JDA Event 派發"
-      },
-      {
-        "id": "e-9orgqk",
-        "from": {
-          "feature": "shared-infrastructure",
-          "submodule": "discord-api"
-        },
-        "to": {
-          "feature": "administration",
-          "submodule": "user-panel-interaction"
         },
         "kind": "call",
         "label": "JDA Event 派發"
@@ -2250,6 +2336,58 @@
         },
         "kind": "failure",
         "label": "ErrCacheUnavailable→降級直接查資料庫"
+      },
+      {
+        "id": "e-7cvlq9",
+        "from": {
+          "feature": "administration",
+          "submodule": "panel-service"
+        },
+        "to": {
+          "feature": "guild-economy",
+          "submodule": "economy-service"
+        },
+        "kind": "failure",
+        "label": "ErrFacadeAggregationFailed→面板顯示部分資料"
+      },
+      {
+        "id": "e-9orgqk",
+        "from": {
+          "feature": "shared-infrastructure",
+          "submodule": "discord-api"
+        },
+        "to": {
+          "feature": "user-panel",
+          "submodule": "panel-interaction"
+        },
+        "kind": "call",
+        "label": "JDA Event 派發"
+      },
+      {
+        "id": "e-oz8eqh",
+        "from": {
+          "feature": "shared-infrastructure",
+          "submodule": "event-bus"
+        },
+        "to": {
+          "feature": "user-panel",
+          "submodule": "panel-service"
+        },
+        "kind": "call",
+        "label": "領域事件驅動面板即時更新"
+      },
+      {
+        "id": "e-wa86qp",
+        "from": {
+          "feature": "user-panel",
+          "submodule": "panel-service"
+        },
+        "to": {
+          "feature": "guild-economy",
+          "submodule": "economy-service"
+        },
+        "kind": "call",
+        "label": "貨幣/代幣餘額與交易查詢"
       }
     ]
   }

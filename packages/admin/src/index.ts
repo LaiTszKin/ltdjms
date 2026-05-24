@@ -20,7 +20,6 @@ export { AgentMode } from './facades/agent-mode.js';
 // ============================================================
 export { AdminPanelViewState } from './session/index.js';
 export type { AdminPanelSessionData } from './session/index.js';
-export type { PanelSessionData } from '@ltdjms/user-panel';
 
 // ============================================================
 // DI

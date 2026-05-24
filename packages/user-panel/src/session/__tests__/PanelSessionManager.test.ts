@@ -1,5 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PanelSessionManager } from '../PanelSessionManager.js';
+
+const TTL_MS = 15 * 60 * 1000;
 
 describe('PanelSessionManager', () => {
   let manager: PanelSessionManager;
@@ -8,7 +10,12 @@ describe('PanelSessionManager', () => {
   const userId = '100';
 
   beforeEach(() => {
+    vi.useFakeTimers();
     manager = new PanelSessionManager();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   describe('createSession', () => {
@@ -35,6 +42,17 @@ describe('PanelSessionManager', () => {
     it('should return null for non-existent session', () => {
       expect(manager.getSession(guildId, '999')).toBeNull();
     });
+
+    it('should expire session after 15 minutes from createdAt even after peek/get refresh', () => {
+      manager.createSession(guildId, userId);
+
+      vi.advanceTimersByTime(TTL_MS - 1_000);
+      expect(manager.getSession(guildId, userId)).not.toBeNull();
+      expect(manager.peekSession(guildId, userId)).not.toBeNull();
+
+      vi.advanceTimersByTime(2_000);
+      expect(manager.getSession(guildId, userId)).toBeNull();
+    });
   });
 
   describe('getAllForGuild', () => {
@@ -58,9 +76,11 @@ describe('PanelSessionManager', () => {
   });
 
   describe('cleanupExpired', () => {
-    it('should handle cleanup', () => {
+    it('should remove expired sessions', () => {
       manager.createSession(guildId, userId);
-      expect(manager.cleanupExpired()).toBe(0);
+      vi.advanceTimersByTime(TTL_MS + 1);
+      expect(manager.cleanupExpired()).toBe(1);
+      expect(manager.getActiveSessionCount()).toBe(0);
     });
   });
 });

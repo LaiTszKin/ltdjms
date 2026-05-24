@@ -61,7 +61,7 @@ export class FiatPaymentCallbackService {
 
       const callbackPayload = this.truncateTo(JSON.stringify(bodyObj), 4000);
 
-      const { node: callbackNode, rawDecrypted } = this.parseCallbackNode(bodyObj, contentType);
+      const { node: callbackNode } = this.parseCallbackNode(bodyObj, contentType);
       const orderNumber = this.extractOrderNumber(callbackNode);
       if (!orderNumber || orderNumber.trim().length === 0) {
         this.log.warn({ payload: callbackPayload }, 'ECPay callback missing order number');
@@ -193,7 +193,7 @@ export class FiatPaymentCallbackService {
 
   private parseCallbackNode(
     bodyObj: Record<string, unknown>,
-    contentType: string | null,
+    _contentType: string | null,
   ): { node: EcpayCallbackPayload; rawDecrypted: string } {
     let encryptedData: string | null = null;
     if (bodyObj && bodyObj.Data !== null && bodyObj.Data !== undefined) {

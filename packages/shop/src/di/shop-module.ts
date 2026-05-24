@@ -16,7 +16,6 @@ import { DrizzleRedemptionTransactionService } from '../persistence/drizzle-rede
 import type { FiatOrderRepository } from '../domain/fiat-order-repository.js';
 import type { RedemptionCodeRepository } from '../domain/redemption-code-repository.js';
 import type { Product, ProductRepository } from '../domain/product-types.js';
-import type { FiatOrder } from '../domain/fiat-order.js';
 
 import { EcpayCvsPaymentService } from '../services/ecpay-cvs-payment.service.js';
 import { EcpayTradeQueryService } from '../services/ecpay-trade-query.service.js';
@@ -39,7 +38,6 @@ import { EcpayCallbackHttpServer } from '../web/ecpay-callback-server.js';
 import { type EscortDispatchHandoffService } from '../domain/escort-dispatch-handoff-service.js';
 import {
   type EscortOrderBuyerNotifier,
-  type AdminOrderNotifier,
   type ProductRewardGranter,
 } from '../domain/notification-interfaces.js';
 

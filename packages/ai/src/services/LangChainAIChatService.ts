@@ -14,7 +14,6 @@ import {
   type AIChatService,
   type StreamingResponseHandler,
   StreamChunkType,
-  type StreamChunk,
 } from './ai-chat-service.js';
 import { type Result, DomainError, ok, err, processWithConcurrencyLimit } from '@ltdjms/shared';
 import type { DiscordRuntimeGateway, DomainEventPublisher, DomainEvent } from '@ltdjms/shared';
@@ -44,7 +43,7 @@ interface AccumulatedToolCall {
 interface RegisteredTool {
   name: string;
   description: string;
-  schema: z.ZodType<any>;
+  schema: z.ZodType<unknown>;
   execute: (params: Record<string, unknown>, guild: Guild) => Promise<string>;
 }
 
@@ -208,7 +207,7 @@ export class LangChainAIChatService implements AIChatService {
     messageId?: string,
   ): Promise<void> {
     if (!userMessage || userMessage.trim().length === 0) {
-      handler.onChunk('', true, DomainError.aiResponseEmpty('No user message provided'));
+      void handler.onChunk('', true, DomainError.aiResponseEmpty('No user message provided'));
       return;
     }
 
@@ -286,7 +285,7 @@ export class LangChainAIChatService implements AIChatService {
             // For non-agent mode, emit CONTENT in real-time
             // For agent mode, accumulate content and emit after tool loop completes
             if (!agentEnabled) {
-              handler.onChunk(content, false, null, StreamChunkType.CONTENT);
+              void handler.onChunk(content, false, null, StreamChunkType.CONTENT);
             }
           }
 
@@ -295,7 +294,7 @@ export class LangChainAIChatService implements AIChatService {
           const reasoningContent = msg.reasoning_content as string | undefined;
           if (reasoningContent) {
             reasoningBuffer += reasoningContent;
-            handler.onChunk(reasoningContent, false, null, StreamChunkType.REASONING);
+            void handler.onChunk(reasoningContent, false, null, StreamChunkType.REASONING);
           }
         }
 
@@ -304,7 +303,7 @@ export class LangChainAIChatService implements AIChatService {
         if (toolCalls.length > 0) {
           // Emit TOOL_INTENT for each tool call so the listener can display them
           for (const tc of toolCalls) {
-            handler.onChunk(`使用工具：${tc.name}`, false, null, StreamChunkType.TOOL_INTENT);
+            void handler.onChunk(`使用工具：${tc.name}`, false, null, StreamChunkType.TOOL_INTENT);
           }
 
           // Add assistant message with tool_calls to message history
@@ -336,7 +335,7 @@ export class LangChainAIChatService implements AIChatService {
 
           // P2-8: Send accumulated content from this iteration before continuing
           if (agentEnabled && totalContent.length > sentContentLength) {
-            handler.onChunk(
+            void handler.onChunk(
               totalContent.slice(sentContentLength),
               false,
               null,
@@ -354,19 +353,23 @@ export class LangChainAIChatService implements AIChatService {
       }
 
       if (!totalContent && !reasoningBuffer) {
-        handler.onChunk('', true, DomainError.aiResponseEmpty('AI did not generate a response'));
+        void handler.onChunk(
+          '',
+          true,
+          DomainError.aiResponseEmpty('AI did not generate a response'),
+        );
         return;
       }
 
       // P2-8: Send remaining accumulated content with completion signal
       if (agentEnabled && totalContent) {
         const remaining = totalContent.slice(sentContentLength);
-        handler.onChunk(remaining, true, null, StreamChunkType.CONTENT);
+        void handler.onChunk(remaining, true, null, StreamChunkType.CONTENT);
       }
 
       // Final completion signal (used by non-agent mode)
       if (!agentEnabled) {
-        handler.onChunk('', true, null);
+        void handler.onChunk('', true, null);
       }
 
       // Publish AIMessageEvent after successful completion (INT-011)
@@ -397,7 +400,7 @@ export class LangChainAIChatService implements AIChatService {
       }
     } catch (error) {
       const domainError = this.exceptionMapper.map(error);
-      handler.onChunk('', true, domainError);
+      void handler.onChunk('', true, domainError);
     }
   }
 
@@ -573,7 +576,7 @@ export function buildToolDefinitionsFromTools(tools: unknown[]): DynamicStructur
     const t = tool as {
       name: string;
       description: string;
-      schema: z.ZodType<any>;
+      schema: z.ZodType<unknown>;
     };
     return new DynamicStructuredTool({
       name: t.name,

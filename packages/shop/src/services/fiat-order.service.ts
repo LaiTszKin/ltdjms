@@ -124,7 +124,7 @@ export class FiatOrderService {
         paymentUrl: paymentCode.paymentUrl,
         fulfillmentWarning: null,
       });
-    } catch (e: any) {
+    } catch (e: unknown) {
       this.log.error(
         { guildId, userId, productId, orderNumber: paymentCode.orderNumber, error: e },
         'Failed to persist fiat order',

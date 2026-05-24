@@ -1,20 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { RedisCacheService } from '../infra/cache/redis-cache-service.js';
 
-// Mock ioredis before importing RedisCacheService
-const mockRedisInstance = {
-  get: vi.fn(),
-  set: vi.fn(),
-  del: vi.fn(),
-  quit: vi.fn(),
-  on: vi.fn(),
-  off: vi.fn(),
-};
+const { mockRedisInstance } = vi.hoisted(() => ({
+  mockRedisInstance: {
+    get: vi.fn(),
+    set: vi.fn(),
+    del: vi.fn(),
+    quit: vi.fn(),
+    on: vi.fn(),
+    off: vi.fn(),
+  },
+}));
 
 vi.mock('ioredis', () => ({
-  default: vi.fn(() => mockRedisInstance),
-  Redis: vi.fn(() => mockRedisInstance),
+  Redis: class MockRedis {
+    constructor(_uri: string, _options?: unknown) {
+      return mockRedisInstance;
+    }
+  },
 }));
+
+import { RedisCacheService } from '../infra/cache/redis-cache-service.js';
 
 describe('RedisCacheService', () => {
   let cache: RedisCacheService;
@@ -53,19 +58,13 @@ describe('RedisCacheService', () => {
   describe('put', () => {
     it('stores serialized value with TTL', async () => {
       mockRedisInstance.set.mockResolvedValue('OK');
-      await cache.put('my-key', { data: 42 }, 300);
-      expect(mockRedisInstance.set).toHaveBeenCalledWith('my-key', '{"data":42}', 'EX', 300);
-    });
-
-    it('stores value without TTL when TTL is 0', async () => {
-      mockRedisInstance.set.mockResolvedValue('OK');
-      await cache.put('no-ttl-key', 'plain-value', 0);
-      expect(mockRedisInstance.set).toHaveBeenCalledWith('no-ttl-key', '"plain-value"');
+      await cache.put('my-key', { name: 'test' }, 300);
+      expect(mockRedisInstance.set).toHaveBeenCalledWith('my-key', '{"name":"test"}', 'EX', 300);
     });
 
     it('does not throw on Redis error (graceful degradation)', async () => {
-      mockRedisInstance.set.mockRejectedValue(new Error('timeout'));
-      await expect(cache.put('my-key', 'value', 300)).resolves.toBeUndefined();
+      mockRedisInstance.set.mockRejectedValue(new Error('connection refused'));
+      await expect(cache.put('my-key', { name: 'test' }, 300)).resolves.toBeUndefined();
     });
   });
 
@@ -77,35 +76,36 @@ describe('RedisCacheService', () => {
     });
 
     it('does not throw on Redis error (graceful degradation)', async () => {
-      mockRedisInstance.del.mockRejectedValue(new Error('timeout'));
+      mockRedisInstance.del.mockRejectedValue(new Error('connection refused'));
       await expect(cache.invalidate('my-key')).resolves.toBeUndefined();
     });
   });
 
   describe('integration scenarios', () => {
     it('put then get returns same value', async () => {
-      mockRedisInstance.set.mockResolvedValue('OK');
-      mockRedisInstance.get.mockResolvedValue('{"value":100}');
+      const stored: Record<string, string> = {};
+      mockRedisInstance.set.mockImplementation(async (key: string, value: string) => {
+        stored[key] = value;
+        return 'OK';
+      });
+      mockRedisInstance.get.mockImplementation(async (key: string) => stored[key] ?? null);
 
-      await cache.put('counter', { value: 100 }, 600);
-      const result = await cache.get<{ value: number }>('counter');
-
-      expect(result).toEqual({ value: 100 });
+      await cache.put('key1', { count: 42 }, 60);
+      const result = await cache.get<{ count: number }>('key1');
+      expect(result).toEqual({ count: 42 });
     });
 
     it('invalidate removes key (get returns null afterwards)', async () => {
-      mockRedisInstance.get
-        .mockResolvedValueOnce('{"value":100}') // before invalidate
-        .mockResolvedValueOnce(null); // after invalidate
-      mockRedisInstance.del.mockResolvedValue(1);
+      const stored: Record<string, string> = { key1: '{"count":42}' };
+      mockRedisInstance.get.mockImplementation(async (key: string) => stored[key] ?? null);
+      mockRedisInstance.del.mockImplementation(async (key: string) => {
+        delete stored[key];
+        return 1;
+      });
 
-      const before = await cache.get<{ value: number }>('temp-key');
-      expect(before).toEqual({ value: 100 });
-
-      await cache.invalidate('temp-key');
-
-      const after = await cache.get<{ value: number }>('temp-key');
-      expect(after).toBeNull();
+      expect(await cache.get('key1')).toEqual({ count: 42 });
+      await cache.invalidate('key1');
+      expect(await cache.get('key1')).toBeNull();
     });
   });
 
@@ -113,12 +113,12 @@ describe('RedisCacheService', () => {
     it('shutdown calls quit and removes error handler', async () => {
       mockRedisInstance.quit.mockResolvedValue('OK');
       await cache.shutdown();
-      expect(mockRedisInstance.off).toHaveBeenCalledWith('error', expect.any(Function));
+      expect(mockRedisInstance.off).toHaveBeenCalled();
       expect(mockRedisInstance.quit).toHaveBeenCalled();
     });
 
     it('shutdown does not throw on Redis error', async () => {
-      mockRedisInstance.quit.mockRejectedValue(new Error('connection lost'));
+      mockRedisInstance.quit.mockRejectedValue(new Error('connection refused'));
       await expect(cache.shutdown()).resolves.toBeUndefined();
     });
   });

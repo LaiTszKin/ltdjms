@@ -1,7 +1,17 @@
-import { container, TOKENS, type CacheService, type CacheKeyGenerator, type DomainEventPublisher } from '@ltdjms/shared';
+import {
+  container,
+  TOKENS,
+  type CacheService,
+  type CacheKeyGenerator,
+  type DomainEventPublisher,
+} from '@ltdjms/shared';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { type Pool } from 'pg';
-import { ECONOMY_TOKENS, type BalanceAdjustmentService, type CurrencyConfigService } from '@ltdjms/economy';
+import {
+  ECONOMY_TOKENS,
+  type BalanceAdjustmentService,
+  type CurrencyConfigService,
+} from '@ltdjms/economy';
 
 // Repositories
 import { DiceConfigRepository } from '../dice/repositories/dice-config-repo.js';
@@ -19,7 +29,10 @@ import { DiceConfigService } from '../dice/services/dice-config-service.js';
 // Command Handlers
 import { DiceGame1Handler } from '../commands/dice-game-1-handler.js';
 import { DiceGame2Handler } from '../commands/dice-game-2-handler.js';
-import { DiceGame1ConfigHandler, DiceGame2ConfigHandler } from '../commands/dice-config-handlers.js';
+import {
+  DiceGame1ConfigHandler,
+  DiceGame2ConfigHandler,
+} from '../commands/dice-config-handlers.js';
 import { GameTokenAdjustHandler } from '../commands/game-token-adjust-handler.js';
 
 // Facades

@@ -248,18 +248,16 @@ describe('EscortDispatchOrderService', () => {
   // ============================================================
   describe('createManualOpenOrder', () => {
     const mockCatalogRepo: EscortOptionCatalogRepository = {
-      findAll: vi
-        .fn()
-        .mockResolvedValue([
-          {
-            code: 'PVE-BASIC',
-            type: 'PVE',
-            level: 'BASIC',
-            mapScope: 'ANY',
-            target: 'Normal',
-            priceTwd: 1000,
-          },
-        ]),
+      findAll: vi.fn().mockResolvedValue([
+        {
+          code: 'PVE-BASIC',
+          type: 'PVE',
+          level: 'BASIC',
+          mapScope: 'ANY',
+          target: 'Normal',
+          priceTwd: 1000,
+        },
+      ]),
       findByCode: vi.fn().mockResolvedValue(null),
       existsByCode: vi.fn().mockResolvedValue(true),
       create: vi.fn(),

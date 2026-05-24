@@ -3,12 +3,6 @@ import {
   type EscortDispatchOrder,
   EscortDispatchOrderStatus,
   SourceType,
-  isPendingEscortConfirmation,
-  isConfirmed,
-  isPendingCustomerConfirmation,
-  isCompleted,
-  isAfterSalesRequested,
-  isAfterSalesInProgress,
 } from '../domain/index.js';
 import { COLOR_INFO, COLOR_WARNING, COLOR_ERROR } from '../constants.js';
 

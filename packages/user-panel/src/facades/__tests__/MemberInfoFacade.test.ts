@@ -1,15 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Ok, Err, DomainError } from '@ltdjms/shared';
 import { MemberInfoFacade } from '../MemberInfoFacade.js';
-import type {
-  BalanceService,
-  CurrencyTransactionService,
-  BalanceView,
-} from '@ltdjms/economy';
-import type {
-  GameTokenService,
-  GameTokenTransactionService,
-} from '@ltdjms/games';
+import type { BalanceService, CurrencyTransactionService, BalanceView } from '@ltdjms/economy';
+import type { GameTokenService, GameTokenTransactionService } from '@ltdjms/games';
 import type { RedemptionService } from '@ltdjms/shop';
 
 describe('MemberInfoFacade', () => {

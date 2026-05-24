@@ -33,7 +33,7 @@ export class GameSettingsHandler extends BaseAdminHandler {
     super(sessionManager, errorHandler);
   }
 
-  async execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void> {
+  async execute(interaction: DiscordInteraction, _context: DiscordContext): Promise<void> {
     const guildId = interaction.getGuildId();
     const userId = interaction.getUserId();
 

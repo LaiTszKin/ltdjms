@@ -55,6 +55,9 @@ export { initializeContainer, container, TOKENS, type TokenMap } from './infra/d
 export { processWithConcurrencyLimit } from './utils/concurrency.js';
 export { safeSnowflakeToNumber } from './utils/snowflake.js';
 
+// Session
+export { BaseSessionManager, type BaseSessionData } from './session/index.js';
+
 // Discord
 export {
   type DiscordInteraction,
@@ -92,3 +95,5 @@ export {
   type OptionName,
   type ChoiceValue,
 } from './localization/index.js';
+
+export { type CommandHandler, type InteractionHandler } from './discord/command-handler.js';

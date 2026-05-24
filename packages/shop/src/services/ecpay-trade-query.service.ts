@@ -93,8 +93,9 @@ export class EcpayTradeQueryService {
         tradeAmount: tradeAmt,
         message,
       });
-    } catch (e: any) {
-      if (e.name === 'TimeoutError' || e.name === 'AbortError') {
+    } catch (e: unknown) {
+      const errObj = e as { name?: string };
+      if (errObj.name === 'TimeoutError' || errObj.name === 'AbortError') {
         return err(DomainError.unexpectedFailure('綠界查單逾時'));
       }
       this.log.warn({ error: e, orderNumber }, 'Failed to query ECPay trade info');

@@ -1,7 +1,6 @@
 import { Result, ok, err, DomainError } from '@ltdjms/shared';
 import {
   type Product,
-  type RewardType,
   hasCurrencyPrice,
   hasReward,
   formatReward,

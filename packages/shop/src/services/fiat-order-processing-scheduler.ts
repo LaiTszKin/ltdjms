@@ -28,11 +28,11 @@ export class FiatOrderProcessingScheduler {
     this.started = true;
 
     setTimeout(() => {
-      this.runPostPayment();
+      void this.runPostPayment();
     }, POST_PAYMENT_INITIAL_DELAY_MS).unref();
 
     setTimeout(() => {
-      this.runReconciliation();
+      void this.runReconciliation();
     }, RECONCILIATION_INITIAL_DELAY_MS).unref();
 
     this.log.info('Started fiat order processing scheduler');
@@ -65,10 +65,9 @@ export class FiatOrderProcessingScheduler {
       this.postPaymentRunning = false;
       // Schedule next run directly (no intermediate schedulePostPayment)
       if (this.started) {
-        this.postPaymentTimer = setTimeout(
-          () => this.runPostPayment(),
-          POST_PAYMENT_INTERVAL_MS,
-        ).unref();
+        this.postPaymentTimer = setTimeout(() => {
+          void this.runPostPayment();
+        }, POST_PAYMENT_INTERVAL_MS).unref();
       }
     }
   }
@@ -87,10 +86,9 @@ export class FiatOrderProcessingScheduler {
       this.reconciliationRunning = false;
       // Schedule next run directly (no intermediate scheduleReconciliation)
       if (this.started) {
-        this.reconciliationTimer = setTimeout(
-          () => this.runReconciliation(),
-          RECONCILIATION_INTERVAL_MS,
-        ).unref();
+        this.reconciliationTimer = setTimeout(() => {
+          void this.runReconciliation();
+        }, RECONCILIATION_INTERVAL_MS).unref();
       }
     }
   }

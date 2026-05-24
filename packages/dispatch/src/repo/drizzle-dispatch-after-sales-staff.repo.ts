@@ -1,5 +1,5 @@
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { safeSnowflakeToNumber } from '@ltdjms/shared';
 import { dispatchAfterSalesStaff } from '../schema/dispatch-after-sales-staff.sql.js';
 import type { DispatchAfterSalesStaffRepo } from './dispatch-after-sales-staff.repo.js';

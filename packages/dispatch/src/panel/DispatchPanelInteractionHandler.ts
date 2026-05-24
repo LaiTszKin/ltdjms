@@ -17,7 +17,6 @@ import {
   isPendingEscortConfirmation,
   isConfirmed,
   isPendingCustomerConfirmation,
-  isCompleted,
   isAfterSalesRequested,
   isAfterSalesInProgress,
   isAfterSalesAssignee,
@@ -25,7 +24,6 @@ import {
 } from '../domain/index.js';
 import {
   embedViewToApiEmbed,
-  buttonsToComponents,
   buildPanelReplyPayload,
   buildModeSelectEmbed,
   buildModeSelectActionRow,
@@ -53,7 +51,7 @@ import {
   SELECT_ESCORT_OPTION_EXTRA,
   SELECT_PENDING_ORDER,
 } from './DispatchPanelView.js';
-import { COLOR_INFO, COLOR_WARNING, COLOR_ERROR } from '../constants.js';
+import { COLOR_INFO } from '../constants.js';
 import type { SelectOptionView } from './DispatchPanelView.js';
 import {
   buildOrderCreatedEmbed,
@@ -72,6 +70,13 @@ import {
   DispatchPanelSessionManager,
   type DispatchSessionState,
 } from './DispatchPanelSessionManager.js';
+
+type DiscordRawHook = {
+  reply: (options: Record<string, unknown>) => Promise<unknown>;
+  editReply: (options: Record<string, unknown>) => Promise<unknown>;
+  followUp: (options: Record<string, unknown>) => Promise<unknown>;
+  deferReply: (options: Record<string, unknown>) => Promise<unknown>;
+};
 
 // ============================================================
 // Interaction Handler
@@ -93,7 +98,7 @@ export class DispatchPanelInteractionHandler {
     private readonly gateway?: DiscordRuntimeGateway,
   ) {}
 
-  async execute(interaction: DiscordInteraction, context: DiscordContext): Promise<void> {
+  async execute(interaction: DiscordInteraction, _context: DiscordContext): Promise<void> {
     const guildId = interaction.getGuildId();
     const userId = interaction.getUserId();
     const customId = this.extractCustomId(interaction);
@@ -258,7 +263,7 @@ export class DispatchPanelInteractionHandler {
     }
 
     const embedPayload = embedViewToApiEmbed(view);
-    const hook = interaction.getHook() as any;
+    const hook = interaction.getHook() as DiscordRawHook;
     if (interaction.isAcknowledged()) {
       await hook.editReply({ embeds: [embedPayload], components });
     } else {
@@ -311,7 +316,7 @@ export class DispatchPanelInteractionHandler {
     }
 
     const embedPayload = embedViewToApiEmbed(view);
-    const hook = interaction.getHook() as any;
+    const hook = interaction.getHook() as DiscordRawHook;
     if (interaction.isAcknowledged()) {
       await hook.editReply({ embeds: [embedPayload], components });
     } else {
@@ -673,7 +678,7 @@ export class DispatchPanelInteractionHandler {
         ],
       };
       const payload = buildPanelReplyPayload(detailView, buttons);
-      const hook = interaction.getHook() as any;
+      const hook = interaction.getHook() as DiscordRawHook;
       const components = [
         { type: 1 as const, components: [memberSelectComponent] },
         assignActionRow,
@@ -798,7 +803,7 @@ export class DispatchPanelInteractionHandler {
     session.selectedEscortUserId = Number(selectedEscortId);
 
     // Acknowledge the select menu interaction with an ephemeral message
-    const hook = interaction.getHook() as any;
+    const hook = interaction.getHook() as DiscordRawHook;
     if (interaction.isAcknowledged()) {
       await hook.followUp({ content: `已選擇護航者：<@${selectedEscortId}>`, ephemeral: true });
     } else {
@@ -830,7 +835,7 @@ export class DispatchPanelInteractionHandler {
     }
 
     // 使用 raw hook 以支援 ephemeral defer（介面未暴露 ephemeral 參數）
-    const hook = interaction.getHook() as any;
+    const hook = interaction.getHook() as DiscordRawHook;
     await hook.deferReply({ ephemeral: true });
 
     const result = await this.dispatchOrderService.assignPendingOrder(
@@ -1087,7 +1092,7 @@ export class DispatchPanelInteractionHandler {
     buttons?: ButtonView[],
   ): Promise<void> {
     const payload = buildPanelReplyPayload(embedView, buttons);
-    const hook = interaction.getHook() as any;
+    const hook = interaction.getHook() as DiscordRawHook;
     if (interaction.isAcknowledged()) {
       await hook.editReply({ embeds: [payload.embed], components: payload.components });
     } else {

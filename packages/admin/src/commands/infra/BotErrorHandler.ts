@@ -1,4 +1,4 @@
-import { type DiscordInteraction, DomainError, DomainErrorCategory } from '@ltdjms/shared';
+import { type DiscordInteraction, DomainError } from '@ltdjms/shared';
 import { EmbedBuilder } from 'discord.js';
 import { ZhTwStrings } from '../../i18n/zh-TW.js';
 

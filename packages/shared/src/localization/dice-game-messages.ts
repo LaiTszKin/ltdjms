@@ -1,7 +1,8 @@
 export const DiceGameMessages = {
   // Game 1
   GAME_1_TITLE: '骰子遊戲結果',
-  GAME_1_RESULT: '骰子結果：{dice}\n\n總獎勵：{icon} {reward} {name}\n新餘額：{icon} {newBalance} {name}',
+  GAME_1_RESULT:
+    '骰子結果：{dice}\n\n總獎勵：{icon} {reward} {name}\n新餘額：{icon} {newBalance} {name}',
 
   // Game 2
   GAME_2_TITLE: '骰子遊戲2結果',

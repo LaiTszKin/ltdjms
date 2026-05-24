@@ -1,14 +1,9 @@
+import { type CommandHandler, type InteractionHandler } from '@ltdjms/shared';
 import { container, TOKENS } from '@ltdjms/shared';
-import type { DomainEventPublisher, DiscordRuntimeGateway, CacheService } from '@ltdjms/shared';
-import type {
-  BalanceService,
-  CurrencyTransactionService,
-} from '@ltdjms/economy';
+import type { DomainEventPublisher, DiscordRuntimeGateway } from '@ltdjms/shared';
+import type { BalanceService, CurrencyTransactionService } from '@ltdjms/economy';
 import { ECONOMY_TOKENS } from '@ltdjms/economy';
-import type {
-  GameTokenService,
-  GameTokenTransactionService,
-} from '@ltdjms/games';
+import type { GameTokenService, GameTokenTransactionService } from '@ltdjms/games';
 import { GAMES_TOKENS } from '@ltdjms/games';
 import type { RedemptionService, RedemptionTransactionService } from '@ltdjms/shop';
 import { SHOP_TOKENS } from '@ltdjms/shop';
@@ -24,6 +19,7 @@ import { UserPanelUpdateListener } from '../listeners/UserPanelUpdateListener.js
 
 /** Module-level handler reference for DomainEventPublisher unregister support. */
 let _userUpdateHandler: ((event: unknown) => void) | null = null;
+let _configured = false;
 
 /**
  * DI tokens for the user panel module.
@@ -40,20 +36,24 @@ export const USER_PANEL_TOKENS = {
 };
 
 /**
+ * Minimal registrar surface for wiring Discord slash commands and interactions.
+ */
+export interface UserPanelHandlerRegistrar {
+  registerCommand(handler: CommandHandler): void;
+  registerInteractionHandler(handler: InteractionHandler): void;
+}
+
+/**
  * Initializes the DI container with user panel services, handlers, and listeners.
  * Call after configureShopContainer().
  */
 export function configureUserPanelContainer(): void {
+  if (_configured) return;
+  _configured = true;
+
   const eventPublisher = container.resolve<DomainEventPublisher>(TOKENS.DomainEventPublisher);
 
-  let cacheService: CacheService | undefined;
-  try {
-    cacheService = container.resolve<CacheService>(TOKENS.CacheService);
-  } catch {
-    // CacheService not registered; session manager will use in-memory storage only
-  }
-
-  const panelSessionManager = new PanelSessionManager(cacheService);
+  const panelSessionManager = new PanelSessionManager();
   container.registerInstance(USER_PANEL_TOKENS.PanelSessionManager, panelSessionManager);
   panelSessionManager.startCleanupInterval();
 
@@ -61,7 +61,9 @@ export function configureUserPanelContainer(): void {
   container.registerInstance(USER_PANEL_TOKENS.UserPanelEmbedBuilder, userPanelEmbedBuilder);
 
   const balanceService = container.resolve<BalanceService>(ECONOMY_TOKENS.BalanceService);
-  const gameTokenService = container.resolve<GameTokenService>(GAMES_TOKENS.GameTokenService as symbol);
+  const gameTokenService = container.resolve<GameTokenService>(
+    GAMES_TOKENS.GameTokenService as symbol,
+  );
   const currencyTxService = container.resolve<CurrencyTransactionService>(
     ECONOMY_TOKENS.CurrencyTransactionService,
   );
@@ -99,7 +101,7 @@ export function configureUserPanelContainer(): void {
   );
   container.registerInstance(USER_PANEL_TOKENS.UserPanelCommand, userPanelCommand);
 
-  const userPanelButtonHandler = new UserPanelButtonHandler(userPanelService);
+  const userPanelButtonHandler = new UserPanelButtonHandler(userPanelService, panelSessionManager);
   container.registerInstance(USER_PANEL_TOKENS.UserPanelButtonHandler, userPanelButtonHandler);
 
   const redeemCmdHandler = new RedeemCodeCommandHandler();
@@ -116,11 +118,29 @@ export function configureUserPanelContainer(): void {
   container.registerInstance(USER_PANEL_TOKENS.UserPanelUpdateListener, userUpdateListener);
 
   _userUpdateHandler = (event: unknown): void => {
-    userUpdateListener.onEvent(event as import('@ltdjms/shared').DomainEvent).catch((err: unknown) => {
-      console.error('[UserPanelUpdateListener] Error:', err);
-    });
+    userUpdateListener
+      .onEvent(event as import('@ltdjms/shared').DomainEvent)
+      .catch((err: unknown) => {
+        console.error('[UserPanelUpdateListener] Error:', err);
+      });
   };
   eventPublisher.register(_userUpdateHandler);
+}
+
+/**
+ * Registers user panel slash commands and interaction handlers with the shared listener.
+ * Call after configureUserPanelContainer() and before listen().
+ */
+export function registerUserPanelHandlers(registrar: UserPanelHandlerRegistrar): void {
+  registrar.registerCommand(
+    container.resolve<UserPanelCommand>(USER_PANEL_TOKENS.UserPanelCommand),
+  );
+  registrar.registerInteractionHandler(
+    container.resolve<UserPanelButtonHandler>(USER_PANEL_TOKENS.UserPanelButtonHandler),
+  );
+  registrar.registerCommand(
+    container.resolve<RedeemCodeCommandHandler>(USER_PANEL_TOKENS.RedeemCodeCommandHandler),
+  );
 }
 
 /**
@@ -143,4 +163,6 @@ export function disposeUserPanelContainer(): void {
   } catch {
     // DomainEventPublisher not available
   }
+
+  _configured = false;
 }

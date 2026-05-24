@@ -14,7 +14,7 @@ export class LangChainExceptionMapper {
     }
 
     const message = error instanceof Error ? error.message : String(error);
-    const cause = error instanceof Error && error.cause ? error.cause : error;
+    const _cause = error instanceof Error && error.cause ? error.cause : error;
 
     // Check for specific error patterns
     if (this.isAuthError(error, message)) {

@@ -106,17 +106,15 @@ describe('GameTokenManagementFacade PBT', () => {
           async (gId, uId, cur, tgt) => {
             mockSvc.getBalance = vi.fn().mockResolvedValue(cur);
             const delta = tgt - cur;
-            mockSvc.tryAdjustTokens = vi
-              .fn()
-              .mockResolvedValue(
-                new Ok({
-                  guildId: gId,
-                  userId: String(uId),
-                  previousTokens: cur,
-                  newTokens: tgt,
-                  adjustment: delta,
-                }),
-              );
+            mockSvc.tryAdjustTokens = vi.fn().mockResolvedValue(
+              new Ok({
+                guildId: gId,
+                userId: String(uId),
+                previousTokens: cur,
+                newTokens: tgt,
+                adjustment: delta,
+              }),
+            );
             const r = await facade.setTokens(String(gId), String(uId), tgt, reason, actorId);
             expect(r.isOk()).toBe(true);
             if (delta === 0) {

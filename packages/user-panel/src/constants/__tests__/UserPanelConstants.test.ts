@@ -31,11 +31,11 @@ describe('UserPanelConstants (UT-204)', () => {
 
   it('should use user_panel routing prefix', () => {
     expect(UserPanelConstants.ROUTING_PREFIX).toBe(oracle.prefix.replace(/_$/, ''));
-    expect(UserPanelConstants.BUTTON_REDEEM.startsWith(`${UserPanelConstants.ROUTING_PREFIX}_`)).toBe(
-      true,
-    );
-    expect(UserPanelConstants.MODAL_REDEEM.startsWith(`${UserPanelConstants.ROUTING_PREFIX}_`)).toBe(
-      true,
-    );
+    expect(
+      UserPanelConstants.BUTTON_REDEEM.startsWith(`${UserPanelConstants.ROUTING_PREFIX}_`),
+    ).toBe(true);
+    expect(
+      UserPanelConstants.MODAL_REDEEM.startsWith(`${UserPanelConstants.ROUTING_PREFIX}_`),
+    ).toBe(true);
   });
 });
