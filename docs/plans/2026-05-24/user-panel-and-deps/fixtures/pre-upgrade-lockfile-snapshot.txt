@@ -1,0 +1,166 @@
+Legend: production dependency, optional only, dev only
+
+/Users/tszkinlai/Coding/ltdj/ltdjms (PRIVATE)
+
+devDependencies:
+@testcontainers/postgresql 12.0.0
+eslint 9.39.4
+fast-check 4.8.0
+prettier 3.8.3
+testcontainers 12.0.0
+tsx 4.22.2
+typescript 5.9.3
+typescript-eslint 8.59.4
+vitest 3.2.4
+
+@ltdjms/bot@0.1.0 /Users/tszkinlai/Coding/ltdj/ltdjms/apps/bot (PRIVATE)
+
+dependencies:
+@ltdjms/admin link:../../packages/admin
+@ltdjms/ai link:../../packages/ai
+@ltdjms/dispatch link:../../packages/dispatch
+@ltdjms/economy link:../../packages/economy
+@ltdjms/games link:../../packages/games
+@ltdjms/shared link:../../packages/shared
+@ltdjms/shop link:../../packages/shop
+discord.js 14.26.4
+drizzle-orm 0.42.0
+ioredis 5.10.1
+pg 8.21.0
+pino 9.14.0
+reflect-metadata 0.2.2
+tsyringe 4.10.0
+zod 3.25.76
+
+devDependencies:
+@types/node 20.19.41
+@types/pg 8.20.0
+typescript 5.9.3
+vitest 3.2.4
+
+@ltdjms/admin@0.1.0 /Users/tszkinlai/Coding/ltdj/ltdjms/packages/admin (PRIVATE)
+
+dependencies:
+@ltdjms/ai link:../ai
+@ltdjms/dispatch link:../dispatch
+@ltdjms/economy link:../economy
+@ltdjms/games link:../games
+@ltdjms/shared link:../shared
+@ltdjms/shop link:../shop
+discord.js 14.26.4
+reflect-metadata 0.2.2
+tsyringe 4.10.0
+zod 3.25.76
+
+devDependencies:
+@types/node 20.19.41
+drizzle-orm 0.42.0
+pg 8.21.0
+typescript 5.9.3
+vitest 3.2.4
+
+@ltdjms/ai@0.1.0 /Users/tszkinlai/Coding/ltdj/ltdjms/packages/ai (PRIVATE)
+
+dependencies:
+@langchain/core 0.3.80
+@langchain/openai 0.4.9
+@ltdjms/shared link:../shared
+discord.js 14.26.4
+drizzle-orm 0.42.0
+marked 15.0.12
+pg 8.21.0
+pino 9.14.0
+reflect-metadata 0.2.2
+tsyringe 4.10.0
+zod 3.25.76
+
+devDependencies:
+@types/node 20.19.41
+@types/pg 8.20.0
+typescript 5.9.3
+vitest 3.2.4
+
+@ltdjms/dispatch@0.1.0 /Users/tszkinlai/Coding/ltdj/ltdjms/packages/dispatch (PRIVATE)
+
+dependencies:
+@ltdjms/shared link:../shared
+drizzle-orm 0.42.0
+pg 8.21.0
+zod 3.25.76
+
+devDependencies:
+@types/node 20.19.41
+@types/pg 8.20.0
+reflect-metadata 0.2.2
+typescript 5.9.3
+vitest 3.2.4
+
+@ltdjms/economy@0.1.0 /Users/tszkinlai/Coding/ltdj/ltdjms/packages/economy (PRIVATE)
+
+dependencies:
+@ltdjms/shared link:../shared
+drizzle-orm 0.42.0
+pg 8.21.0
+reflect-metadata 0.2.2
+zod 3.25.76
+
+devDependencies:
+@types/node 20.19.41
+@types/pg 8.20.0
+typescript 5.9.3
+vitest 3.2.4
+
+@ltdjms/games@0.1.0 /Users/tszkinlai/Coding/ltdj/ltdjms/packages/games (PRIVATE)
+
+dependencies:
+@ltdjms/economy link:../economy
+@ltdjms/shared link:../shared
+drizzle-orm 0.42.0
+pg 8.21.0
+reflect-metadata 0.2.2
+
+devDependencies:
+@types/node 20.19.41
+@types/pg 8.20.0
+typescript 5.9.3
+vitest 3.2.4
+
+@ltdjms/shared@0.1.0 /Users/tszkinlai/Coding/ltdj/ltdjms/packages/shared (PRIVATE)
+
+dependencies:
+discord.js 14.26.4
+drizzle-orm 0.42.0
+ioredis 5.10.1
+pg 8.21.0
+pino 9.14.0
+tsyringe 4.10.0
+zod 3.25.76
+
+devDependencies:
+@types/node 20.19.41
+@types/pg 8.20.0
+drizzle-kit 0.30.6
+typescript 5.9.3
+vitest 3.2.4
+
+@ltdjms/shop@0.1.0 /Users/tszkinlai/Coding/ltdj/ltdjms/packages/shop (PRIVATE)
+
+dependencies:
+@ltdjms/shared link:../shared
+discord.js 14.26.4
+drizzle-orm 0.42.0
+express 4.22.2
+pg 8.21.0
+pino 9.14.0
+reflect-metadata 0.2.2
+tsyringe 4.10.0
+undici 8.3.0
+zod 3.25.76
+
+devDependencies:
+@ltdjms/economy link:../economy
+@types/express 4.17.25
+@types/node 20.19.41
+@types/pg 8.20.0
+typescript 5.9.3
+vitest 3.2.4
