@@ -128,4 +128,95 @@ describe('UT-AIC-013 validating-chat-service parity', () => {
 
     expect(chunks.some((c) => c.type === StreamChunkType.REASONING)).toBe(true);
   });
+
+  it('streaming CONTENT emits validated pages incrementally via decorator', async () => {
+    const emitted: Array<{ chunk: string; complete: boolean; type?: StreamChunkType }> = [];
+    const delegate = {
+      config,
+      generateStreamingResponse: vi.fn(
+        async (
+          _g: string,
+          _c: string,
+          _u: string,
+          _m: string,
+          handler: StreamingResponseHandler,
+        ) => {
+          await handler.onChunk(
+            '# Title\n\nFirst paragraph.',
+            false,
+            null,
+            StreamChunkType.CONTENT,
+          );
+          await handler.onChunk('\n\nSecond paragraph.', false, null, StreamChunkType.CONTENT);
+          await handler.onChunk('', true, null, StreamChunkType.CONTENT);
+        },
+      ),
+    } as unknown as AIChatService;
+
+    const service = new MarkdownValidatingAIChatService(
+      delegate,
+      new DiscordMarkdownSanitizer(),
+      new RegexBasedAutoFixer(),
+      new CommonMarkValidator(),
+      new DiscordMarkdownPaginator(),
+    );
+
+    await service.generateStreamingResponse('g', 'c', 'u', 'msg', {
+      onChunk: async (chunk, complete, _err, type) => {
+        if (chunk) {
+          emitted.push({ chunk, complete, type });
+        }
+      },
+    });
+
+    expect(emitted.length).toBeGreaterThan(0);
+    expect(emitted.every((entry) => entry.type === StreamChunkType.CONTENT)).toBe(true);
+    expect(emitted.some((entry) => entry.chunk.includes('Title'))).toBe(true);
+  });
+
+  it('streaming bypasses CONTENT validation when streamingBypassValidation is enabled', async () => {
+    const bypassConfig = AIServiceConfig.fromValues({
+      baseUrl: 'https://api.test.com/v1',
+      apiKey: 'key',
+      model: 'gpt-4o-mini',
+      enableMarkdownValidation: true,
+      streamingBypassValidation: true,
+    });
+
+    const validatorSpy = vi.spyOn(CommonMarkValidator.prototype, 'validate');
+    const delegate = {
+      config: bypassConfig,
+      generateStreamingResponse: vi.fn(
+        async (
+          _g: string,
+          _c: string,
+          _u: string,
+          _m: string,
+          handler: StreamingResponseHandler,
+        ) => {
+          await handler.onChunk('#Raw', false, null, StreamChunkType.CONTENT);
+          await handler.onChunk('', true, null, StreamChunkType.CONTENT);
+        },
+      ),
+    } as unknown as AIChatService;
+
+    const service = new MarkdownValidatingAIChatService(
+      delegate,
+      new DiscordMarkdownSanitizer(),
+      new RegexBasedAutoFixer(),
+      new CommonMarkValidator(),
+      new DiscordMarkdownPaginator(),
+    );
+
+    const chunks: string[] = [];
+    await service.generateStreamingResponse('g', 'c', 'u', 'msg', {
+      onChunk: async (chunk) => {
+        if (chunk) chunks.push(chunk);
+      },
+    });
+
+    expect(chunks).toEqual(['#Raw']);
+    expect(validatorSpy).not.toHaveBeenCalled();
+    validatorSpy.mockRestore();
+  });
 });

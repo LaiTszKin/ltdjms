@@ -77,6 +77,7 @@ import { CommonMarkValidator } from '../markdown/validation/CommonMarkValidator.
 import { RegexBasedAutoFixer } from '../markdown/autofix/RegexBasedAutoFixer.js';
 import { DiscordMarkdownSanitizer } from '../markdown/services/DiscordMarkdownSanitizer.js';
 import { DiscordMarkdownPaginator } from '../markdown/services/DiscordMarkdownPaginator.js';
+import type { MarkdownPipelineComponents } from '../markdown/services/markdown-pipeline-factory.js';
 
 // Commands
 import { AIChatMentionListener } from '../commands/ai-chat-mention-listener.js';
@@ -153,6 +154,11 @@ export const AGENT_TOOL_TOKENS = [
 ] as const;
 
 let aiModuleInitialized = false;
+let toolExecutionEventHandler: ((event: import('@ltdjms/shared').DomainEvent) => void) | null =
+  null;
+let agentCompletionEventHandler: ((event: import('@ltdjms/shared').DomainEvent) => void) | null =
+  null;
+let _agentConfigCacheInvalidationListener: AgentConfigCacheInvalidationListener | null = null;
 
 /**
  * Initializes the AI module in the tsyringe DI container.
@@ -339,22 +345,13 @@ export async function initializeAIModule(): Promise<void> {
   container.registerInstance(AI_TOKENS.DiscordMarkdownSanitizer, new DiscordMarkdownSanitizer());
   container.registerInstance(AI_TOKENS.DiscordMarkdownPaginator, new DiscordMarkdownPaginator());
 
-  const agentCompletionListener = new AgentCompletionListener(
-    runtimeGateway,
-    logger,
-    aiConfig.enableMarkdownValidation
-      ? {
-          validator: container.resolve(AI_TOKENS.CommonMarkValidator),
-          autoFixer: container.resolve(AI_TOKENS.RegexBasedAutoFixer),
-          sanitizer: container.resolve(AI_TOKENS.DiscordMarkdownSanitizer),
-          paginator: container.resolve(AI_TOKENS.DiscordMarkdownPaginator),
-        }
-      : undefined,
-  );
+  const agentCompletionListener = new AgentCompletionListener(logger);
   container.registerInstance(AI_TOKENS.ToolExecutionListener, toolExecutionListener);
   container.registerInstance(AI_TOKENS.AgentCompletionListener, agentCompletionListener);
-  eventPublisher.register((event) => toolExecutionListener.accept(event));
-  eventPublisher.register((event) => agentCompletionListener.accept(event));
+  toolExecutionEventHandler = (event) => toolExecutionListener.accept(event);
+  agentCompletionEventHandler = (event) => agentCompletionListener.accept(event);
+  eventPublisher.register(toolExecutionEventHandler);
+  eventPublisher.register(agentCompletionEventHandler);
 
   // ===== Shared ChatOpenAI Singleton =====
   // Single shared instance to avoid multiple HTTP agents/connection pools (P1-30, P2-11)
@@ -412,8 +409,24 @@ export async function initializeAIModule(): Promise<void> {
   container.registerInstance<AIChatService>(AI_TOKENS.AIChatService, aiChatService);
 
   // ===== Agent Config Cache Invalidation Listener =====
-  // Subscribes to AIAgentChannelConfigChangedEvent and invalidates cache entries
-  new AgentConfigCacheInvalidationListener(cacheService, eventPublisher);
+  _agentConfigCacheInvalidationListener = new AgentConfigCacheInvalidationListener(
+    cacheService,
+    eventPublisher,
+  );
+
+  const agentFinalMarkdownPipeline: MarkdownPipelineComponents | undefined =
+    aiConfig.enableMarkdownValidation
+      ? {
+          validator: container.resolve(AI_TOKENS.CommonMarkValidator) as CommonMarkValidator,
+          autoFixer: container.resolve(AI_TOKENS.RegexBasedAutoFixer) as RegexBasedAutoFixer,
+          sanitizer: container.resolve(
+            AI_TOKENS.DiscordMarkdownSanitizer,
+          ) as DiscordMarkdownSanitizer,
+          paginator: container.resolve(
+            AI_TOKENS.DiscordMarkdownPaginator,
+          ) as DiscordMarkdownPaginator,
+        }
+      : undefined;
 
   // ===== AIChatMentionListener =====
   const listener = new AIChatMentionListener(
@@ -423,7 +436,30 @@ export async function initializeAIModule(): Promise<void> {
     aiConfig.showReasoning,
     aiConfig.enableMarkdownValidation,
     aiConfig.streamingBypassValidation,
+    agentFinalMarkdownPipeline,
   );
   container.registerInstance(AI_TOKENS.AIChatMentionListener, listener);
   aiModuleInitialized = true;
+}
+
+/**
+ * Disposes AI module resources. Should be called during application shutdown.
+ */
+export function disposeAIModule(): void {
+  try {
+    const publisher = container.resolve<DomainEventPublisher>(TOKENS.DomainEventPublisher);
+    if (toolExecutionEventHandler) {
+      publisher.unregister(toolExecutionEventHandler);
+      toolExecutionEventHandler = null;
+    }
+    if (agentCompletionEventHandler) {
+      publisher.unregister(agentCompletionEventHandler);
+      agentCompletionEventHandler = null;
+    }
+  } catch {
+    // DomainEventPublisher not available
+  }
+
+  _agentConfigCacheInvalidationListener = null;
+  aiModuleInitialized = false;
 }

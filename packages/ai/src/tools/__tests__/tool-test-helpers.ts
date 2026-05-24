@@ -79,7 +79,7 @@ export function createMockAuthGuard(options?: { admin?: boolean }): ToolCallerAu
   const guard = new ToolCallerAuthorizationGuard();
   vi.spyOn(guard, 'validateAdministrator').mockImplementation(async (guild, toolName) => {
     if (options?.admin === false) {
-      return '你沒有權限使用此工具。';
+      return '你沒有權限使用此工具';
     }
     void guild;
     void toolName;

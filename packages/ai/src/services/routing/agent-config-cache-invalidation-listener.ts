@@ -1,7 +1,7 @@
 import { type DomainEventPublisher, type CacheService } from '@ltdjms/shared';
 import pino from 'pino';
 
-const CACHE_KEY_PREFIX = 'agent:config:';
+const CACHE_KEY_PREFIX = 'ai:agent:config:';
 
 /**
  * Listens for AIAgentChannelConfigChanged events and invalidates the

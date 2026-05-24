@@ -275,6 +275,42 @@ edges:
       submodule: event-bus
     kind: call
     label: 發佈 ToolExecution 開始/完成事件供審計
+  - id: e-chat-mdstream
+    from:
+      feature: ai-chat-agent
+      submodule: ai-chat-service
+    to:
+      feature: ai-chat-agent
+      submodule: markdown-stream-processor
+    kind: call
+    label: stream CONTENT through markdown processor
+  - id: e-agent-cp
+    from:
+      feature: ai-chat-agent
+      submodule: ai-agent-service
+    to:
+      feature: ai-chat-agent
+      submodule: langgraph-checkpoint
+    kind: call
+    label: read/write conversation checkpoint
+  - id: e-agent-audit
+    from:
+      feature: ai-chat-agent
+      submodule: ai-agent-service
+    to:
+      feature: ai-chat-agent
+      submodule: tool-audit-log
+    kind: call
+    label: audit each tool invocation
+  - id: e-agent-events
+    from:
+      feature: ai-chat-agent
+      submodule: ai-agent-service
+    to:
+      feature: ai-chat-agent
+      submodule: agent-event-listeners
+    kind: call
+    label: agent_completed / agent_failed observability
   - id: e-vjni42
     from:
       feature: shop-payment

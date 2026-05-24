@@ -109,7 +109,7 @@ beforeEach(async () => {
 
 // Pool is created per-test in beforeEach to avoid stale connections after resetDatabase
 
-describe('Shop Purchase PBT', () => {
+describe('REG-301 Shop Purchase PBT', () => {
   let pbtSeq = 0;
 
   it('purchase with sufficient balance deducts price', async () => {

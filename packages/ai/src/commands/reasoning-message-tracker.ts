@@ -42,7 +42,7 @@ export class ReasoningMessageTracker {
   /**
    * Deletes all tracked messages and invokes callback when complete.
    */
-  async deleteAll(completionCallback?: () => void): Promise<void> {
+  async deleteAll(completionCallback?: () => void | Promise<void>): Promise<void> {
     this.deletionRequested = true;
 
     const toDelete: Message[] = [];
@@ -53,22 +53,8 @@ export class ReasoningMessageTracker {
     this.reasoningMessages = [];
     this.initialMessage = null;
 
-    if (toDelete.length === 0) {
-      completionCallback?.();
-      return;
-    }
-
-    let deletedCount = 0;
-    const total = toDelete.length;
-    await Promise.allSettled(
-      toDelete.map(async (msg) => {
-        await this.deleteMessage(msg);
-        deletedCount++;
-        if (deletedCount === total) {
-          completionCallback?.();
-        }
-      }),
-    );
+    await Promise.allSettled(toDelete.map((msg) => this.deleteMessage(msg)));
+    await completionCallback?.();
   }
 
   private async deleteMessage(message: Message): Promise<void> {

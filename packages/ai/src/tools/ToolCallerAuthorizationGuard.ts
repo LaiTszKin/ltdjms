@@ -56,7 +56,7 @@ export class ToolCallerAuthorizationGuard {
         { userId, toolName, guildId: guild.id },
         'Non-admin user attempted to use tool',
       );
-      return '你沒有權限使用此工具。';
+      return '你沒有權限使用此工具';
     } catch {
       this.log.warn(
         { userId, toolName, guildId: guild.id },

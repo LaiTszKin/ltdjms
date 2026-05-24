@@ -15,7 +15,7 @@ import {
   type StreamingResponseHandler,
   StreamChunkType,
 } from './ai-chat-service.js';
-import { type Result, DomainError, ok, err, processWithConcurrencyLimit } from '@ltdjms/shared';
+import { type Result, DomainError, ok, err } from '@ltdjms/shared';
 import type {
   DiscordRuntimeGateway,
   DomainEventPublisher,
@@ -29,6 +29,7 @@ import type { PromptLoader } from '../prompts/prompt-loader.js';
 import { ToolExecutionContext } from '../tools/ToolExecutionContext.js';
 import { ToolExecutionInterceptor } from './ToolExecutionInterceptor.js';
 import { ConversationIdBuilder, InMemoryToolCallHistory } from './memory/tool-call-history.js';
+import { AGENT_NON_THREAD_MESSAGE_ID } from '../markdown/services/markdown-pipeline-factory.js';
 import type { ChatMemoryProvider } from './memory/chat-memory-provider.js';
 import type { LangGraphCheckpointProvider } from './memory/langgraph-checkpoint-provider.js';
 
@@ -240,7 +241,7 @@ export class LangChainAIChatService implements AIChatService {
       channelId,
       this.resolveThreadId(guildId, channelId),
       userId,
-      messageId ?? null,
+      agentEnabled ? AGENT_NON_THREAD_MESSAGE_ID : (messageId ?? null),
     );
 
     try {
@@ -356,12 +357,11 @@ export class LangChainAIChatService implements AIChatService {
             }),
           );
 
-          // Execute tools with bounded concurrency (max 3 parallel) and add results as ToolMessages (P2-12)
-          const results = await processWithConcurrencyLimit(
-            toolCalls,
-            (tc) => this.executeTool(guildId, channelId, userId, tc, channelId),
-            3,
-          );
+          // Execute tools sequentially to match Java LangChain4j behavior (P2-4)
+          const results: string[] = [];
+          for (const tc of toolCalls) {
+            results.push(await this.executeTool(guildId, channelId, userId, tc));
+          }
           for (let i = 0; i < toolCalls.length; i++) {
             messages.push(
               new ToolMessage({
@@ -562,7 +562,6 @@ export class LangChainAIChatService implements AIChatService {
     channelId: string,
     userId: string,
     tc: { name: string; args: string; id: string },
-    sourceId: string = '',
   ): Promise<string> {
     const tool = this.toolMap?.get(tc.name);
     if (!tool) {
@@ -614,9 +613,12 @@ export class LangChainAIChatService implements AIChatService {
         if (!this.toolCallHistory) {
           return;
         }
+        const threadId = this.resolveThreadId(guildId, channelId);
+        if (!threadId) {
+          return;
+        }
         const summary = InMemoryToolCallHistory.createMemorySummary(tc.name, args, result);
-        const historyKey = sourceId || channelId;
-        this.toolCallHistory.addToolCall(historyKey, userId, {
+        this.toolCallHistory.addToolCall(threadId, userId, {
           toolName: tc.name,
           parameters: args,
           memorySummary: summary.memorySummary,

@@ -15,8 +15,14 @@ import { DomainError } from '@ltdjms/shared';
 import { MessageSplitter } from '../services/MessageSplitter.js';
 import { MessageChunkAccumulator } from '../services/message-chunk-accumulator.js';
 import { ReasoningMessageTracker } from './reasoning-message-tracker.js';
+import {
+  AGENT_NON_THREAD_MESSAGE_ID,
+  type MarkdownPipelineComponents,
+  prepareAgentFinalPages,
+} from '../markdown/services/markdown-pipeline-factory.js';
 
 const SPOILER_PREFIX = '-# ';
+const EMPTY_RESPONSE_FALLBACK = ':question: AI 沒有產生回應';
 
 /**
  * Listens for @bot mentions and routes them to the AI chat/agent system.
@@ -32,6 +38,7 @@ export class AIChatMentionListener {
     private readonly showReasoning: boolean = false,
     private readonly enableMarkdownValidation: boolean = true,
     private readonly streamingBypassValidation: boolean = false,
+    private readonly agentFinalMarkdownPipeline?: MarkdownPipelineComponents,
   ) {}
 
   async onMessageCreate(message: Message): Promise<void> {
@@ -100,8 +107,10 @@ export class AIChatMentionListener {
     userMessage: string,
     thinkingMsg: Message,
   ): Promise<void> {
+    const streamProcessed = this.enableMarkdownValidation && !this.streamingBypassValidation;
     const tracker = new ReasoningMessageTracker();
     tracker.setInitialMessage(thinkingMsg);
+    const finalContentChunks: string[] = [];
     let completionProcessed = false;
     let isFirstChunk = true;
 
@@ -130,6 +139,10 @@ export class AIChatMentionListener {
                 if (msg) tracker.addReasoningMessage(msg);
               }
             }
+          } else if (type === StreamChunkType.CONTENT) {
+            if (chunk.trim()) {
+              finalContentChunks.push(chunk);
+            }
           } else if (type === StreamChunkType.TOOL_INTENT) {
             await this.sendToolIntentMessage(message, chunk);
           }
@@ -140,7 +153,9 @@ export class AIChatMentionListener {
         }
         completionProcessed = true;
 
-        await tracker.deleteAll(() => undefined);
+        await tracker.deleteAll(async () => {
+          await this.sendAgentFinalContent(message, finalContentChunks, streamProcessed);
+        });
       },
     };
 
@@ -149,10 +164,46 @@ export class AIChatMentionListener {
       channelId,
       message.author.id,
       userMessage,
-      message.id,
+      AGENT_NON_THREAD_MESSAGE_ID,
       handler,
       true,
     );
+  }
+
+  private async sendAgentFinalContent(
+    message: Message,
+    finalContentChunks: string[],
+    streamProcessed: boolean,
+  ): Promise<void> {
+    if (finalContentChunks.length === 0) {
+      await this.sendToChannel(message, EMPTY_RESPONSE_FALLBACK);
+      return;
+    }
+
+    const fullContent = finalContentChunks.join('').trim();
+    if (!fullContent) {
+      await this.sendToChannel(message, EMPTY_RESPONSE_FALLBACK);
+      return;
+    }
+
+    const pages = prepareAgentFinalPages(
+      fullContent,
+      streamProcessed,
+      this.agentFinalMarkdownPipeline,
+      this.splitter,
+    );
+
+    if (pages.length === 0) {
+      await this.sendToChannel(message, EMPTY_RESPONSE_FALLBACK);
+      return;
+    }
+
+    for (const page of pages) {
+      if (!page?.trim()) {
+        continue;
+      }
+      await this.sendToChannel(message, page);
+    }
   }
 
   private async handleChatStreamingResponse(
@@ -366,13 +417,9 @@ export class AIChatMentionListener {
   }
 
   private async sendToChannel(message: Message, content: string): Promise<Message | null> {
-    try {
-      if (message.channel.isTextBased()) {
-        return await (message.channel as TextChannel).send(content);
-      }
-    } catch {
-      // Ignore send failures
+    if (!message.channel.isTextBased()) {
+      return null;
     }
-    return null;
+    return (message.channel as TextChannel).send(content);
   }
 }

@@ -59,7 +59,7 @@ export type { MarkdownAutoFixer } from './markdown/autofix/MarkdownAutoFixer.js'
 export { AIChatMentionListener } from './commands/ai-chat-mention-listener.js';
 
 // DI
-export { initializeAIModule, AI_TOKENS } from './di/ai-module.js';
+export { initializeAIModule, disposeAIModule, AI_TOKENS } from './di/ai-module.js';
 export {
   LangGraphCheckpointProvider,
   type AgentCheckpointMessage,

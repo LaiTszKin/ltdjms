@@ -11,7 +11,7 @@ import type { PromptLoader } from '../../prompts/prompt-loader.js';
 import { SystemPrompt } from '../../prompts/prompt-loader.js';
 import { ok as resultOk } from '@ltdjms/shared';
 import type { ChatOpenAI } from '@langchain/openai';
-import type { DomainEventPublisher } from '@ltdjms/shared';
+import { AGENT_NON_THREAD_MESSAGE_ID } from '../../markdown/services/markdown-pipeline-factory.js';
 
 function createAgentChatModel(streams: Array<AsyncGenerator<Record<string, unknown>>>): ChatOpenAI {
   const model = {
@@ -300,8 +300,133 @@ describe('UT-AIC-006 langchain-chat-service parity', () => {
       expect.objectContaining({
         eventType: 'agent_completed',
         finalResponse: 'done',
+        conversationId: `g1:c1:u1:${AGENT_NON_THREAD_MESSAGE_ID}`,
       }),
     );
+  });
+
+  it('uses fixed -1 message id for agent conversationId regardless of mention message id', async () => {
+    async function* mockStream() {
+      yield { content: 'agent reply' };
+    }
+
+    const chatModel = createAgentChatModel([mockStream()]);
+    const checkpointProvider = {
+      getAgentMessages: vi.fn().mockResolvedValue([]),
+      recordAgentTurn: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const eventPublisher: DomainEventPublisher = {
+      publish: vi.fn(),
+      register: vi.fn(),
+      unregister: vi.fn(),
+      getLastPublishedEvent: vi.fn(),
+    };
+
+    const service = new LangChainAIChatService(
+      baseConfig,
+      promptLoader,
+      chatModel,
+      new Map(),
+      undefined,
+      undefined,
+      undefined,
+      eventPublisher,
+      undefined,
+      checkpointProvider as never,
+    );
+
+    await service.generateStreamingResponseWithId(
+      'g1',
+      'c1',
+      'u1',
+      'hello agent',
+      'mention-message-id',
+      { onChunk: async () => undefined },
+      true,
+    );
+
+    expect(checkpointProvider.recordAgentTurn).toHaveBeenCalledWith(
+      `g1:c1:u1:${AGENT_NON_THREAD_MESSAGE_ID}`,
+      expect.any(Array),
+    );
+  });
+
+  it('executes multiple tool calls sequentially in agent mode', async () => {
+    const executionOrder: string[] = [];
+
+    async function* firstIteration() {
+      yield {
+        tool_call_chunks: [
+          { index: 0, name: 'tool_a', args: '{}', id: 'tc-a' },
+          { index: 1, name: 'tool_b', args: '{}', id: 'tc-b' },
+        ],
+      };
+    }
+
+    async function* secondIteration() {
+      yield { content: 'done' };
+    }
+
+    const chatModel = createAgentChatModel([firstIteration(), secondIteration()]);
+    const toolMap = new Map([
+      [
+        'tool_a',
+        {
+          name: 'tool_a',
+          description: 'A',
+          schema: z.object({}),
+          execute: vi.fn(async () => {
+            executionOrder.push('tool_a');
+            return 'a';
+          }),
+        },
+      ],
+      [
+        'tool_b',
+        {
+          name: 'tool_b',
+          description: 'B',
+          schema: z.object({}),
+          execute: vi.fn(async () => {
+            executionOrder.push('tool_b');
+            return 'b';
+          }),
+        },
+      ],
+    ]);
+
+    const runtimeGateway = {
+      requireReadyClient: vi.fn().mockReturnValue({
+        guilds: {
+          cache: new Map([['g1', { id: 'g1' }]]),
+          fetch: vi.fn(),
+        },
+      }),
+      findGuildChannel: vi.fn().mockReturnValue({ isThread: () => false }),
+      findThreadChannel: vi.fn().mockReturnValue(null),
+    };
+
+    const service = new LangChainAIChatService(
+      baseConfig,
+      promptLoader,
+      chatModel,
+      toolMap,
+      undefined,
+      undefined,
+      runtimeGateway as never,
+    );
+
+    await service.generateStreamingResponse(
+      'g1',
+      'c1',
+      'u1',
+      'run tools',
+      { onChunk: async () => undefined },
+      true,
+    );
+
+    expect(executionOrder).toEqual(['tool_a', 'tool_b']);
   });
 
   it('reuses cached tool definitions across agent requests', async () => {

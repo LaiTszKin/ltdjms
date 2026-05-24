@@ -97,7 +97,7 @@ export interface AIAgentChannelConfigService {
 // ===== Default Implementation with Redis Cache =====
 
 const CACHE_TTL_SECONDS = 3600; // 1 hour
-const CACHE_KEY_PREFIX = 'agent:config:';
+const CACHE_KEY_PREFIX = 'ai:agent:config:';
 
 export class DefaultAIAgentChannelConfigService implements AIAgentChannelConfigService {
   /**

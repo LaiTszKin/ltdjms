@@ -1,10 +1,7 @@
 import 'reflect-metadata';
 import { describe, it, expect, vi } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { loadParityOracle } from '../../../../shared/src/__tests__/parity-oracle-loader.js';
 import { AIChatMentionListener } from '../../commands/ai-chat-mention-listener.js';
-import { AgentCompletionListener } from '../../listeners/agent-completion-listener.js';
 import {
   Route,
   Source,
@@ -16,15 +13,23 @@ import { MessageSplitter } from '../../services/MessageSplitter.js';
 import { MessageChunkAccumulator } from '../../services/message-chunk-accumulator.js';
 import type { Message, Guild, User, GuildTextBasedChannel } from 'discord.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const oracle = JSON.parse(
-  readFileSync(
-    join(
-      __dirname,
-      '../../../../../docs/plans/2026-05-24/java-parity-shop-ai/ai-chat-java-parity/fixtures/java-streaming-oracle.json',
-    ),
-    'utf-8',
-  ),
+const oracle = loadParityOracle<{
+  source: string;
+  messageSplitLimit: number;
+  reasoningPrefix: string;
+  cases: Array<{
+    name: string;
+    input?: string;
+    expectedParts?: number;
+    inputLength?: number;
+    expectedMinParts?: number;
+    maxPartLength?: number;
+    displayPrefix?: string;
+    buffered?: boolean;
+  }>;
+}>(
+  import.meta.url,
+  '../../../../../docs/plans/2026-05-24/java-parity-shop-ai/ai-chat-java-parity/fixtures/java-streaming-oracle.json',
 );
 
 /** UT-AG-524 / UT-524 — agent streaming path parity */
@@ -146,22 +151,6 @@ async function runAgentStreamingScenario(testCase: {
 
   if (testCase.name === 'tool_intent_immediate_send') {
     expect(sent.some((s) => s.includes('正在查詢') || s.includes('查詢'))).toBe(true);
-    expect(sent.some((s) => s.includes('最終回覆'))).toBe(false);
-
-    const completionListener = new AgentCompletionListener({
-      findGuildChannel: () => channel,
-      findThreadChannel: () => null,
-    } as never);
-    completionListener.accept({
-      eventType: 'agent_completed',
-      guildId: '123',
-      channelId: '456',
-      userId: '789',
-      conversationId: '123:456:789:111',
-      finalResponse: '最終回覆',
-      timestamp: new Date(),
-    });
-
     expect(sent.some((s) => s.includes('最終回覆'))).toBe(true);
     expect(thinkingMsg.delete).toHaveBeenCalled();
     return;

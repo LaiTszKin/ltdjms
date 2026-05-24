@@ -11,10 +11,18 @@ import { CommonMarkValidator } from '../../markdown/validation/CommonMarkValidat
 import { RegexBasedAutoFixer } from '../../markdown/autofix/RegexBasedAutoFixer.js';
 import { DiscordMarkdownSanitizer } from '../../markdown/services/DiscordMarkdownSanitizer.js';
 import { DiscordMarkdownPaginator } from '../../markdown/services/DiscordMarkdownPaginator.js';
+import { AGENT_NON_THREAD_MESSAGE_ID } from '../../markdown/services/markdown-pipeline-factory.js';
+
+const agentMarkdownPipeline = {
+  validator: new CommonMarkValidator(),
+  autoFixer: new RegexBasedAutoFixer(),
+  sanitizer: new DiscordMarkdownSanitizer(),
+  paginator: new DiscordMarkdownPaginator(),
+};
 
 /** UT-AIC-003 — AIChatMentionListenerAgentConclusionTest.java (agent streaming UX, no new tools) */
 describe('UT-AIC-003 mention-listener agent parity', () => {
-  it('should send TOOL_INTENT immediately and delegate final CONTENT to AgentCompletionListener', async () => {
+  it('should send TOOL_INTENT immediately and final CONTENT synchronously from mention listener', async () => {
     const routingDecision = {
       decide: vi.fn().mockResolvedValue({
         route: Route.AGENT_ROUTE,
@@ -32,6 +40,7 @@ describe('UT-AIC-003 mention-listener agent parity', () => {
       getLastPublishedEvent: vi.fn(),
     };
 
+    let capturedMessageId: string | undefined;
     let capturedHandler: StreamingResponseHandler | undefined;
     const aiChatService = {
       generateStreamingResponseWithId: vi.fn(
@@ -40,9 +49,10 @@ describe('UT-AIC-003 mention-listener agent parity', () => {
           _c: string,
           _u: string,
           _m: string,
-          _id: string,
+          messageId: string,
           handler: StreamingResponseHandler,
         ) => {
+          capturedMessageId = messageId;
           capturedHandler = handler;
           await handler.onChunk('正在查詢', false, null, StreamChunkType.TOOL_INTENT);
           await handler.onChunk('最終回覆', false, null, StreamChunkType.CONTENT);
@@ -52,7 +62,7 @@ describe('UT-AIC-003 mention-listener agent parity', () => {
             guildId: '123',
             channelId: '456',
             userId: '789',
-            conversationId: '123:456:789:111',
+            conversationId: '123:456:789:-1',
             finalResponse: '最終回覆',
             timestamp: new Date(),
           });
@@ -89,28 +99,79 @@ describe('UT-AIC-003 mention-listener agent parity', () => {
       false,
       true,
       false,
+      agentMarkdownPipeline,
     );
-    const completionListener = new AgentCompletionListener(
-      {
-        findGuildChannel: () => channel,
-        findThreadChannel: () => null,
-      } as never,
-      undefined,
-      {
-        validator: new CommonMarkValidator(),
-        autoFixer: new RegexBasedAutoFixer(),
-        sanitizer: new DiscordMarkdownSanitizer(),
-        paginator: new DiscordMarkdownPaginator(),
-      },
-    );
+    const completionListener = new AgentCompletionListener();
     await listener.onMessageCreate(message);
 
     expect(capturedHandler).toBeDefined();
+    expect(capturedMessageId).toBe(AGENT_NON_THREAD_MESSAGE_ID);
     expect(sent.some((s) => s.includes('正在查詢') || s.includes('查詢'))).toBe(true);
-    expect(sent.some((s) => s.includes('最終回覆'))).toBe(false);
+    expect(sent.some((s) => s.includes('最終回覆'))).toBe(true);
 
     completionListener.accept(publishedEvents[0] as never);
-    await vi.waitFor(() => expect(sent.some((s) => s.includes('最終回覆'))).toBe(true));
+    expect(sent.filter((s) => s.includes('最終回覆'))).toHaveLength(1);
+  });
+
+  it('should propagate channel.send failure when delivering agent final content', async () => {
+    const routingDecision = {
+      decide: vi.fn().mockResolvedValue({
+        route: Route.AGENT_ROUTE,
+        source: Source.AGENT_ENABLED,
+      }),
+    } as unknown as AIChatMentionRoutingDecision;
+
+    const aiChatService = {
+      generateStreamingResponseWithId: vi.fn(
+        async (
+          _g: string,
+          _c: string,
+          _u: string,
+          _m: string,
+          _id: string,
+          handler: StreamingResponseHandler,
+        ) => {
+          await handler.onChunk('最終回覆', false, null, StreamChunkType.CONTENT);
+          await handler.onChunk('', true, null, StreamChunkType.CONTENT);
+        },
+      ),
+    } as unknown as AIChatService;
+
+    const channel = {
+      id: '456',
+      isTextBased: () => true,
+      isThread: () => false,
+      send: vi.fn(async (content: string) => {
+        if (content.includes('最終回覆')) {
+          throw new Error('send failed');
+        }
+        return { delete: vi.fn() };
+      }),
+    } as unknown as GuildTextBasedChannel;
+
+    const thinkingMsg = { edit: vi.fn(), delete: vi.fn() };
+    const message = {
+      id: '111',
+      author: { id: '789', bot: false } as User,
+      guild: { id: '123' } as Guild,
+      channel,
+      content: '<@999> 請處理',
+      mentions: { has: (id: string) => id === '999' },
+      reply: vi.fn().mockResolvedValue(thinkingMsg),
+    } as unknown as Message;
+
+    const listener = new AIChatMentionListener(
+      routingDecision,
+      aiChatService,
+      '999',
+      false,
+      true,
+      false,
+      agentMarkdownPipeline,
+    );
+
+    await listener.onMessageCreate(message);
+    expect(message.reply).toHaveBeenCalledWith('抱歉，處理你的請求時發生了錯誤。請稍後再試。');
   });
 
   it('should surface agent errors only via mention listener thinking edit', async () => {
@@ -169,10 +230,7 @@ describe('UT-AIC-003 mention-listener agent parity', () => {
       true,
       false,
     );
-    const completionListener = new AgentCompletionListener({
-      findGuildChannel: () => channel,
-      findThreadChannel: () => null,
-    } as never);
+    const completionListener = new AgentCompletionListener();
 
     await listener.onMessageCreate(message);
     completionListener.accept({
@@ -180,7 +238,7 @@ describe('UT-AIC-003 mention-listener agent parity', () => {
       guildId: '123',
       channelId: '456',
       userId: '789',
-      conversationId: '123:456:789:111',
+      conversationId: '123:456:789:-1',
       reason: 'upstream down',
       timestamp: new Date(),
     });

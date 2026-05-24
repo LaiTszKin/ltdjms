@@ -65,7 +65,11 @@ export class MarkdownValidatingAIChatService implements AIChatService {
     agentEnabled?: boolean,
     messageId?: string,
   ): Promise<void> {
-    if (!this.config.enableMarkdownValidation || this.config.streamingBypassValidation) {
+    if (
+      !this.config.enableMarkdownValidation ||
+      this.config.streamingBypassValidation ||
+      agentEnabled
+    ) {
       return this.delegate.generateStreamingResponse(
         guildId,
         channelId,
@@ -101,7 +105,11 @@ export class MarkdownValidatingAIChatService implements AIChatService {
     handler: StreamingResponseHandler,
     agentEnabled?: boolean,
   ): Promise<void> {
-    if (!this.config.enableMarkdownValidation || this.config.streamingBypassValidation) {
+    if (
+      !this.config.enableMarkdownValidation ||
+      this.config.streamingBypassValidation ||
+      agentEnabled
+    ) {
       return this.delegate.generateStreamingResponseWithId(
         guildId,
         channelId,

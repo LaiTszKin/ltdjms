@@ -48,7 +48,7 @@ describe('UT-AG-001 create-channel tool parity', () => {
   it('rejects unauthorized caller', async () => {
     const tool = new CreateChannelTool(createMockAuthGuard({ admin: false }), permissionParser);
     const result = await withToolContext(() => tool.execute({ name: 'test' }, createMockGuild()));
-    expect(result).toBe('你沒有權限使用此工具。');
+    expect(result).toBe('你沒有權限使用此工具');
   });
 });
 
@@ -236,7 +236,7 @@ describe('UT-AG-010 modify-channel-permissions tool parity', () => {
     const result = await withToolContext(() =>
       tool.execute({ channelId: TEST_CHANNEL_ID }, createMockGuild()),
     );
-    expect(result).toBe('你沒有權限使用此工具。');
+    expect(result).toBe('你沒有權限使用此工具');
   });
 });
 
@@ -279,7 +279,7 @@ describe('UT-AG-011 modify-category-permissions tool parity', () => {
     const result = await withToolContext(() =>
       tool.execute({ categoryId: '1' }, createMockGuild()),
     );
-    expect(result).toBe('你沒有權限使用此工具。');
+    expect(result).toBe('你沒有權限使用此工具');
   });
 });
 
@@ -309,7 +309,7 @@ describe('UT-AG-012 modify-role-permissions tool parity', () => {
     const result = await withToolContext(() =>
       tool.execute({ roleId: TEST_ROLE_ID }, createMockGuild()),
     );
-    expect(result).toBe('你沒有權限使用此工具。');
+    expect(result).toBe('你沒有權限使用此工具');
   });
 });
 
@@ -337,7 +337,7 @@ describe('UT-AG-013 send-messages tool parity', () => {
     const result = await withToolContext(() =>
       tool.execute({ channelIds: [TEST_CHANNEL_ID], message: 'hi' }, createMockGuild()),
     );
-    expect(result).toBe('你沒有權限使用此工具。');
+    expect(result).toBe('你沒有權限使用此工具');
   });
 });
 
@@ -376,7 +376,7 @@ describe('UT-AG-014 search-messages tool parity', () => {
     const result = await withToolContext(() =>
       tool.execute({ keywords: 'hello' }, createMockGuild()),
     );
-    expect(result).toBe('你沒有權限使用此工具。');
+    expect(result).toBe('你沒有權限使用此工具');
   });
 });
 
@@ -409,7 +409,7 @@ describe('UT-AG-015 manage-message tool parity', () => {
     const result = await withToolContext(() =>
       tool.execute({ messageId: '1', action: 'delete' }, createMockGuild()),
     );
-    expect(result).toBe('你沒有權限使用此工具。');
+    expect(result).toBe('你沒有權限使用此工具');
   });
 });
 
@@ -444,7 +444,7 @@ describe('UT-AG-016 move-channel tool parity', () => {
     const result = await withToolContext(() =>
       tool.execute({ channelId: TEST_CHANNEL_ID, targetCategoryId: '1' }, createMockGuild()),
     );
-    expect(result).toBe('你沒有權限使用此工具。');
+    expect(result).toBe('你沒有權限使用此工具');
   });
 });
 
@@ -471,7 +471,7 @@ describe('UT-AG-017 delete-discord-resource tool parity', () => {
     const result = await withToolContext(() =>
       tool.execute({ resourceType: 'channel', resourceId: TEST_CHANNEL_ID }, createMockGuild()),
     );
-    expect(result).toBe('你沒有權限使用此工具。');
+    expect(result).toBe('你沒有權限使用此工具');
   });
 });
 

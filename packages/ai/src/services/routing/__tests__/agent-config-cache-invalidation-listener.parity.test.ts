@@ -22,7 +22,7 @@ describe('UT-AG-027 agent config cache invalidation listener', () => {
       timestamp: new Date(),
     });
 
-    expect(cacheService.invalidate).toHaveBeenCalledWith('agent:config:123:456');
+    expect(cacheService.invalidate).toHaveBeenCalledWith('ai:agent:config:123:456');
   });
 
   it('ignores unrelated domain events', () => {

@@ -84,4 +84,15 @@ describe('UT-301 ShopService pagination parity', () => {
     expect(result.isEmpty()).toBe(true);
     expect(result.totalPages).toBe(0);
   });
+
+  it('returns products in repository order (name ascending)', async () => {
+    repository.countByGuildId.mockResolvedValue(2);
+    repository.findByGuildIdPaginated.mockResolvedValue([
+      { ...createProduct(guildId, 'Alpha', null, null, null, 100, null), id: 1 },
+      { ...createProduct(guildId, 'Beta', null, null, null, 200, null), id: 2 },
+    ]);
+
+    const result = await shopService.getShopPage(guildId, 0);
+    expect(result.products.map((p) => p.name)).toEqual(['Alpha', 'Beta']);
+  });
 });

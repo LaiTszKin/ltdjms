@@ -61,7 +61,7 @@ describe('UT-AG-025 authorization guard parity', () => {
       { guildId: '1', channelId: '2', userId: TEST_USER_ID },
       async () => {
         const error = await guard.validateAdministrator(mockGuild({ admin: false }), 'TestTool');
-        expect(error).toBe('你沒有權限使用此工具。');
+        expect(error).toBe('你沒有權限使用此工具');
       },
     );
   });

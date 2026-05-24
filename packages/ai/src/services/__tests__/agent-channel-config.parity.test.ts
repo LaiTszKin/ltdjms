@@ -73,7 +73,7 @@ describe('UT-AG-021 agent channel config parity', () => {
     await repository.upsert(GUILD_ID, CHANNEL_ID, true);
     await service.isAgentEnabledAsync(GUILD_ID, CHANNEL_ID);
     expect(cacheService.put).toHaveBeenCalledWith(
-      `agent:config:${GUILD_ID}:${CHANNEL_ID}`,
+      `ai:agent:config:${GUILD_ID}:${CHANNEL_ID}`,
       'true',
       3600,
     );

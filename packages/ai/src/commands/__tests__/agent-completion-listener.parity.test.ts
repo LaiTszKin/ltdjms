@@ -1,36 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AgentCompletionListener } from '../../listeners/agent-completion-listener.js';
-import { CommonMarkValidator } from '../../markdown/validation/CommonMarkValidator.js';
-import { RegexBasedAutoFixer } from '../../markdown/autofix/RegexBasedAutoFixer.js';
-import { DiscordMarkdownSanitizer } from '../../markdown/services/DiscordMarkdownSanitizer.js';
-import { DiscordMarkdownPaginator } from '../../markdown/services/DiscordMarkdownPaginator.js';
-import type { DiscordRuntimeGateway } from '@ltdjms/shared';
 
-/** UT-AG-023 — AgentCompletionListenerTest.java */
+/** UT-AG-023 — AgentCompletionListenerTest.java (observability-only in TS) */
 describe('UT-AG-023 agent completion listener parity', () => {
-  let runtimeGateway: DiscordRuntimeGateway;
-  let send: ReturnType<typeof vi.fn>;
+  let infoSpy: ReturnType<typeof vi.spyOn>;
+  let warnSpy: ReturnType<typeof vi.spyOn>;
   let listener: AgentCompletionListener;
 
   beforeEach(() => {
-    send = vi.fn().mockResolvedValue(undefined);
-    const channel = {
-      isTextBased: () => true,
-      send,
-    };
-    runtimeGateway = {
-      findGuildChannel: vi.fn(() => null),
-      findThreadChannel: vi.fn(() => channel),
-    } as unknown as DiscordRuntimeGateway;
-    listener = new AgentCompletionListener(runtimeGateway, undefined, {
-      validator: new CommonMarkValidator(),
-      autoFixer: new RegexBasedAutoFixer(),
-      sanitizer: new DiscordMarkdownSanitizer(),
-      paginator: new DiscordMarkdownPaginator(),
-    });
+    listener = new AgentCompletionListener();
+    infoSpy = vi.spyOn(listener['logger'], 'info').mockImplementation(() => undefined);
+    warnSpy = vi.spyOn(listener['logger'], 'warn').mockImplementation(() => undefined);
   });
 
-  it('sends final response on agent completed event', async () => {
+  it('logs agent completed event without sending Discord messages', () => {
     listener.accept({
       eventType: 'agent_completed',
       guildId: '123',
@@ -40,37 +23,12 @@ describe('UT-AG-023 agent completion listener parity', () => {
       finalResponse: 'Test response',
       timestamp: new Date(),
     });
-    await vi.waitFor(() => expect(send).toHaveBeenCalledWith('Test response'));
+
+    expect(infoSpy).toHaveBeenCalled();
+    expect(warnSpy).not.toHaveBeenCalled();
   });
 
-  it('validates markdown before sending agent final response', async () => {
-    listener.accept({
-      eventType: 'agent_completed',
-      guildId: '123',
-      channelId: '456',
-      userId: '789',
-      conversationId: 'conv-123',
-      finalResponse: '#Heading without space',
-      timestamp: new Date(),
-    });
-    await vi.waitFor(() => expect(send).toHaveBeenCalled());
-    expect(send.mock.calls[0][0]).toContain('# Heading without space');
-  });
-
-  it('does not send duplicate Discord message on agent failed event', () => {
-    listener.accept({
-      eventType: 'agent_failed',
-      guildId: '123',
-      channelId: '456',
-      userId: '789',
-      conversationId: 'conv-123',
-      reason: 'API error',
-      timestamp: new Date(),
-    });
-    expect(send).not.toHaveBeenCalled();
-  });
-
-  it('sends fallback when final response is blank', async () => {
+  it('warns when agent completed with blank final response', () => {
     listener.accept({
       eventType: 'agent_completed',
       guildId: '123',
@@ -80,25 +38,27 @@ describe('UT-AG-023 agent completion listener parity', () => {
       finalResponse: '   \n\t  ',
       timestamp: new Date(),
     });
-    await vi.waitFor(() => expect(send).toHaveBeenCalledWith(':question: AI 沒有產生回應'));
+
+    expect(warnSpy).toHaveBeenCalled();
   });
 
-  it('ignores invalid channel id', async () => {
+  it('logs agent failed event without sending Discord messages', () => {
     listener.accept({
-      eventType: 'agent_completed',
+      eventType: 'agent_failed',
       guildId: '123',
-      channelId: 'invalid',
+      channelId: '456',
       userId: '789',
       conversationId: 'conv-123',
-      finalResponse: 'Test response',
+      reason: 'API error',
       timestamp: new Date(),
     });
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(send).not.toHaveBeenCalled();
+
+    expect(warnSpy).toHaveBeenCalled();
   });
 
   it('ignores null event gracefully', () => {
     listener.accept(null);
-    expect(send).not.toHaveBeenCalled();
+    expect(infoSpy).not.toHaveBeenCalled();
+    expect(warnSpy).not.toHaveBeenCalled();
   });
 });
