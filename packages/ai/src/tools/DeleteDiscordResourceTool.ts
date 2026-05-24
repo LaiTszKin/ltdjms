@@ -1,6 +1,7 @@
 import { ChannelType, type Guild } from 'discord.js';
 import { z } from 'zod';
 import { ToolCallerAuthorizationGuard } from './ToolCallerAuthorizationGuard.js';
+import { TOOL_DESCRIPTIONS } from './tool-descriptions.js';
 
 export const DeleteDiscordResourceParamsSchema = z.object({
   resourceType: z.enum(['channel', 'category', 'role']),
@@ -15,7 +16,7 @@ export type DeleteDiscordResourceParams = z.infer<typeof DeleteDiscordResourcePa
  */
 export class DeleteDiscordResourceTool {
   readonly name = 'delete_discord_resource';
-  readonly description = '刪除 Discord 資源（頻道/分類/身分組）';
+  readonly description = TOOL_DESCRIPTIONS.delete_discord_resource;
   readonly schema = DeleteDiscordResourceParamsSchema;
 
   constructor(private readonly authGuard: ToolCallerAuthorizationGuard) {}

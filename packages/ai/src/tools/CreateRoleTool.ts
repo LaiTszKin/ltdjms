@@ -1,6 +1,7 @@
 import { type Guild } from 'discord.js';
 import { z } from 'zod';
 import { ToolCallerAuthorizationGuard } from './ToolCallerAuthorizationGuard.js';
+import { TOOL_DESCRIPTIONS } from './tool-descriptions.js';
 import { parsePermissionNames } from './permission-modify-helper.js';
 
 export const CreateRoleParamsSchema = z.object({
@@ -19,7 +20,7 @@ export type CreateRoleParams = z.infer<typeof CreateRoleParamsSchema>;
  */
 export class CreateRoleTool {
   readonly name = 'create_role';
-  readonly description = '在伺服器中創建一個新的身分組';
+  readonly description = TOOL_DESCRIPTIONS.create_role;
   readonly schema = CreateRoleParamsSchema;
 
   constructor(private readonly authGuard: ToolCallerAuthorizationGuard) {}

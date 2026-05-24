@@ -1,6 +1,7 @@
 import { type Guild } from 'discord.js';
 import { z } from 'zod';
 import { ToolCallerAuthorizationGuard } from './ToolCallerAuthorizationGuard.js';
+import { TOOL_DESCRIPTIONS } from './tool-descriptions.js';
 
 export const SendMessagesParamsSchema = z.object({
   channelIds: z.array(z.string()).optional(),
@@ -16,7 +17,7 @@ export type SendMessagesParams = z.infer<typeof SendMessagesParamsSchema>;
  */
 export class SendMessagesTool {
   readonly name = 'send_messages';
-  readonly description = '發送訊息至指定的頻道';
+  readonly description = TOOL_DESCRIPTIONS.send_messages;
   readonly schema = SendMessagesParamsSchema;
 
   constructor(private readonly authGuard: ToolCallerAuthorizationGuard) {}

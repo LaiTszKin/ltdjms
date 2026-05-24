@@ -7,18 +7,7 @@ import { Route, Source, StreamChunkType } from '../../services/ai-chat-service.j
 import type { AIChatService, StreamingResponseHandler } from '../../services/ai-chat-service.js';
 import type { DomainEventPublisher } from '@ltdjms/shared';
 import type { Message, Guild, User, GuildTextBasedChannel } from 'discord.js';
-import { CommonMarkValidator } from '../../markdown/validation/CommonMarkValidator.js';
-import { RegexBasedAutoFixer } from '../../markdown/autofix/RegexBasedAutoFixer.js';
-import { DiscordMarkdownSanitizer } from '../../markdown/services/DiscordMarkdownSanitizer.js';
-import { DiscordMarkdownPaginator } from '../../markdown/services/DiscordMarkdownPaginator.js';
-import { AGENT_NON_THREAD_MESSAGE_ID } from '../../markdown/services/markdown-pipeline-factory.js';
-
-const agentMarkdownPipeline = {
-  validator: new CommonMarkValidator(),
-  autoFixer: new RegexBasedAutoFixer(),
-  sanitizer: new DiscordMarkdownSanitizer(),
-  paginator: new DiscordMarkdownPaginator(),
-};
+import { AGENT_NON_THREAD_MESSAGE_ID } from '../../services/conversation-constants.js';
 
 /** UT-AIC-003 — AIChatMentionListenerAgentConclusionTest.java (agent streaming UX, no new tools) */
 describe('UT-AIC-003 mention-listener agent parity', () => {
@@ -99,7 +88,6 @@ describe('UT-AIC-003 mention-listener agent parity', () => {
       false,
       true,
       false,
-      agentMarkdownPipeline,
     );
     const completionListener = new AgentCompletionListener();
     await listener.onMessageCreate(message);
@@ -167,7 +155,6 @@ describe('UT-AIC-003 mention-listener agent parity', () => {
       false,
       true,
       false,
-      agentMarkdownPipeline,
     );
 
     await listener.onMessageCreate(message);
@@ -245,5 +232,67 @@ describe('UT-AIC-003 mention-listener agent parity', () => {
 
     expect(thinkingMsg.edit).toHaveBeenCalled();
     expect(sent).toHaveLength(0);
+  });
+
+  it('should preserve formatted chunks in agent mode when markdown validation is enabled', async () => {
+    const routingDecision = {
+      decide: vi.fn().mockResolvedValue({
+        route: Route.AGENT_ROUTE,
+        source: Source.AGENT_ENABLED,
+      }),
+    } as unknown as AIChatMentionRoutingDecision;
+
+    const aiChatService = {
+      generateStreamingResponseWithId: vi.fn(
+        async (
+          _g: string,
+          _c: string,
+          _u: string,
+          _m: string,
+          _id: string,
+          handler: StreamingResponseHandler,
+        ) => {
+          await handler.onChunk('第一段落\n\n', false, null, StreamChunkType.CONTENT);
+          await handler.onChunk('- 條列重點', true, null, StreamChunkType.CONTENT);
+        },
+      ),
+    } as unknown as AIChatService;
+
+    const sent: string[] = [];
+    const channel = {
+      id: '456',
+      isTextBased: () => true,
+      isThread: () => false,
+      send: vi.fn(async (content: string) => {
+        sent.push(content);
+        return { delete: vi.fn() };
+      }),
+    } as unknown as GuildTextBasedChannel;
+
+    const thinkingMsg = { edit: vi.fn(), delete: vi.fn() };
+    const message = {
+      id: '111',
+      author: { id: '789', bot: false } as User,
+      guild: { id: '123' } as Guild,
+      channel,
+      content: '<@999> 請整理結果',
+      mentions: { has: (id: string) => id === '999' },
+      reply: vi.fn().mockResolvedValue(thinkingMsg),
+    } as unknown as Message;
+
+    const listener = new AIChatMentionListener(
+      routingDecision,
+      aiChatService,
+      '999',
+      false,
+      true,
+      false,
+    );
+
+    await listener.onMessageCreate(message);
+
+    expect(message.reply).toHaveBeenCalledWith(':thought_balloon: AI 正在思考...');
+    expect(sent).toEqual(['第一段落\n\n', '- 條列重點']);
+    expect(thinkingMsg.delete).toHaveBeenCalled();
   });
 });

@@ -1,6 +1,7 @@
 import { type Guild } from 'discord.js';
 import { z } from 'zod';
 import { ToolCallerAuthorizationGuard } from './ToolCallerAuthorizationGuard.js';
+import { TOOL_DESCRIPTIONS } from './tool-descriptions.js';
 
 /**
  * Lists all roles in the guild.
@@ -8,7 +9,7 @@ import { ToolCallerAuthorizationGuard } from './ToolCallerAuthorizationGuard.js'
  */
 export class ListRolesTool {
   readonly name = 'list_roles';
-  readonly description = '列出伺服器中的所有身分組';
+  readonly description = TOOL_DESCRIPTIONS.list_roles;
   readonly schema = z.object({});
 
   constructor(private readonly authGuard: ToolCallerAuthorizationGuard) {}

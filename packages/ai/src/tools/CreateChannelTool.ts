@@ -1,6 +1,7 @@
 import { ChannelType, type Guild } from 'discord.js';
 import { z } from 'zod';
 import { ToolCallerAuthorizationGuard } from './ToolCallerAuthorizationGuard.js';
+import { TOOL_DESCRIPTIONS } from './tool-descriptions.js';
 import { PermissionParser } from './PermissionParser.js';
 import { parseSnowflakeId } from './permission-modify-helper.js';
 
@@ -25,7 +26,7 @@ export type CreateChannelParams = z.infer<typeof CreateChannelParamsSchema>;
  */
 export class CreateChannelTool {
   readonly name = 'create_channel';
-  readonly description = '在伺服器中創建一個新的文字頻道';
+  readonly description = TOOL_DESCRIPTIONS.create_channel;
   readonly schema = CreateChannelParamsSchema;
 
   constructor(

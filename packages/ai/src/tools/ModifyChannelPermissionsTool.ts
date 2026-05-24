@@ -1,6 +1,7 @@
 import { ChannelType, OverwriteType, type Guild, type GuildChannel } from 'discord.js';
 import { z } from 'zod';
 import { ToolCallerAuthorizationGuard } from './ToolCallerAuthorizationGuard.js';
+import { TOOL_DESCRIPTIONS } from './tool-descriptions.js';
 import {
   applyAllowDenyChanges,
   escapeJson,
@@ -29,7 +30,7 @@ export type ModifyChannelPermissionsParams = z.infer<typeof ModifyChannelPermiss
  */
 export class ModifyChannelPermissionsTool {
   readonly name = 'modify_channel_permissions';
-  readonly description = '修改指定頻道的權限設定';
+  readonly description = TOOL_DESCRIPTIONS.modify_channel_permissions;
   readonly schema = ModifyChannelPermissionsParamsSchema;
 
   constructor(private readonly authGuard: ToolCallerAuthorizationGuard) {}

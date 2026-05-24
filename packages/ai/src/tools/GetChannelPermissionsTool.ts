@@ -1,6 +1,7 @@
 import { type Guild } from 'discord.js';
 import { z } from 'zod';
 import { ToolCallerAuthorizationGuard } from './ToolCallerAuthorizationGuard.js';
+import { TOOL_DESCRIPTIONS } from './tool-descriptions.js';
 
 export const GetChannelPermissionsParamsSchema = z.object({
   channelId: z.string(),
@@ -14,7 +15,7 @@ export type GetChannelPermissionsParams = z.infer<typeof GetChannelPermissionsPa
  */
 export class GetChannelPermissionsTool {
   readonly name = 'get_channel_permissions';
-  readonly description = '獲取指定頻道的權限設定';
+  readonly description = TOOL_DESCRIPTIONS.get_channel_permissions;
   readonly schema = GetChannelPermissionsParamsSchema;
 
   constructor(private readonly authGuard: ToolCallerAuthorizationGuard) {}

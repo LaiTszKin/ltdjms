@@ -80,6 +80,7 @@ declare module '@ltdjms/shop' {
 
 // ---- @ltdjms/ai ----
 declare module '@ltdjms/ai' {
+  export function disposeAIModule(): Promise<void>;
   export class AIChatMentionListener {
     onMessageCreate(message: unknown): Promise<void>;
   }

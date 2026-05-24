@@ -4,6 +4,7 @@ import {
   assertJsonParity,
   normalizeEmbedForSnapshot,
   normalizeValue,
+  toMatchJsonSchema,
 } from './json-snapshot.js';
 
 /** UT-ED-001: JSON snapshot parity helper */
@@ -53,5 +54,14 @@ describe('json-snapshot helper (UT-ED-001)', () => {
     };
 
     expect(() => assertEmbedParity(actual, oracle)).not.toThrow();
+  });
+
+  it('toMatchJsonSchema validates required object keys', () => {
+    expect(() =>
+      toMatchJsonSchema({ id: '1', name: 'test' }, { type: 'object', required: ['id', 'name'] }),
+    ).not.toThrow();
+    expect(() =>
+      toMatchJsonSchema({ id: '1' }, { type: 'object', required: ['id', 'name'] }),
+    ).toThrow();
   });
 });

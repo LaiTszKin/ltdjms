@@ -13,7 +13,7 @@ export interface ShopPage {
 
 export const PAGE_SIZE = 5;
 
-function formatPageIndicator(
+export function formatShopPageFooter(
   currentPage: number,
   totalPages: number,
   productCount: number,
@@ -39,7 +39,7 @@ function createShopPage(products: Product[], currentPage: number, totalPages: nu
       return currentPage < totalPages;
     },
     formatPageIndicator() {
-      return formatPageIndicator(currentPage, totalPages, products.length);
+      return formatShopPageFooter(currentPage, totalPages, products.length);
     },
   };
 }

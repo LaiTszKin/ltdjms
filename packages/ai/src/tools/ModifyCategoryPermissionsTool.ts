@@ -1,6 +1,7 @@
 import { ChannelType, OverwriteType, type Guild } from 'discord.js';
 import { z } from 'zod';
 import { ToolCallerAuthorizationGuard } from './ToolCallerAuthorizationGuard.js';
+import { TOOL_DESCRIPTIONS } from './tool-descriptions.js';
 import {
   applyAllowDenyChanges,
   escapeJson,
@@ -29,7 +30,7 @@ export type ModifyCategoryPermissionsParams = z.infer<typeof ModifyCategoryPermi
  */
 export class ModifyCategoryPermissionsTool {
   readonly name = 'modify_category_permissions';
-  readonly description = '修改指定分類的權限設定';
+  readonly description = TOOL_DESCRIPTIONS.modify_category_permissions;
   readonly schema = ModifyCategoryPermissionsParamsSchema;
 
   constructor(private readonly authGuard: ToolCallerAuthorizationGuard) {}

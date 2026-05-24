@@ -1,4 +1,4 @@
-import { type DomainEventPublisher, type CacheService } from '@ltdjms/shared';
+import { type DomainEvent, type DomainEventPublisher, type CacheService } from '@ltdjms/shared';
 import pino from 'pino';
 
 const CACHE_KEY_PREFIX = 'ai:agent:config:';
@@ -6,11 +6,10 @@ const CACHE_KEY_PREFIX = 'ai:agent:config:';
 /**
  * Listens for AIAgentChannelConfigChanged events and invalidates the
  * corresponding cache entry so subsequent reads are served from the DB.
- *
- * Register this listener with DomainEventPublisher during DI setup.
  */
 export class AgentConfigCacheInvalidationListener {
   private readonly logger: pino.Logger;
+  private eventHandler: ((event: DomainEvent) => void) | null = null;
 
   constructor(
     private readonly cacheService: CacheService,
@@ -18,12 +17,14 @@ export class AgentConfigCacheInvalidationListener {
     logger?: pino.Logger,
   ) {
     this.logger = logger ?? pino({ name: 'agent-config-cache-invalidation-listener' });
-    this.register();
   }
 
-  private register(): void {
-    this.eventPublisher.register((event) => {
-      // Exact event-type check: only respond to AIAgentChannelConfigChangedEvent
+  register(): void {
+    if (this.eventHandler) {
+      return;
+    }
+
+    this.eventHandler = (event) => {
       const candidate = event as unknown as Record<string, unknown>;
       if (
         candidate.eventType !== 'ai_agent_channel_config_changed' ||
@@ -39,9 +40,18 @@ export class AgentConfigCacheInvalidationListener {
       const cacheKey = `${CACHE_KEY_PREFIX}${guildId}:${channelId}`;
 
       this.cacheService.invalidate(cacheKey).catch(() => {
-        // Cache invalidation failure is non-fatal
         this.logger.warn({ cacheKey }, 'Failed to invalidate agent config cache');
       });
-    });
+    };
+
+    this.eventPublisher.register(this.eventHandler);
+  }
+
+  dispose(): void {
+    if (!this.eventHandler) {
+      return;
+    }
+    this.eventPublisher.unregister(this.eventHandler);
+    this.eventHandler = null;
   }
 }

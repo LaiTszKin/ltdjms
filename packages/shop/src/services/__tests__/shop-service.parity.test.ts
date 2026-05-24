@@ -85,6 +85,56 @@ describe('UT-301 ShopService pagination parity', () => {
     expect(result.totalPages).toBe(0);
   });
 
+  it('searchProducts returns empty page for null keyword', async () => {
+    const result = await shopService.searchProducts(guildId, null as unknown as string, 0);
+    expect(result.isEmpty()).toBe(true);
+    expect(result.totalPages).toBe(0);
+  });
+
+  it('searchProducts returns matching products', async () => {
+    const products = [
+      createProduct(guildId, 'Apple', null, null, null, 100, null),
+      createProduct(guildId, 'Application', null, null, null, 100, null),
+    ].map((product, index) => ({ ...product, id: index + 1 }));
+
+    repository.countByGuildIdAndNameContaining.mockResolvedValue(2);
+    repository.findByGuildIdAndNameContaining.mockResolvedValue(products);
+
+    const result = await shopService.searchProducts(guildId, 'app', 0);
+
+    expect(result.isEmpty()).toBe(false);
+    expect(result.products).toHaveLength(2);
+    expect(result.currentPage).toBe(1);
+    expect(result.totalPages).toBe(1);
+  });
+
+  it('searchProducts handles pagination correctly', async () => {
+    repository.countByGuildIdAndNameContaining.mockResolvedValue(12);
+    repository.findByGuildIdAndNameContaining.mockResolvedValue([
+      createProduct(guildId, 'Test 1', null, null, null, 100, null),
+    ]);
+
+    const result = await shopService.searchProducts(guildId, 'test', 0);
+
+    expect(result.totalPages).toBe(3);
+    expect(result.currentPage).toBe(1);
+    expect(result.hasNextPage()).toBe(true);
+  });
+
+  it('searchProducts clamps out-of-range page to valid range', async () => {
+    repository.countByGuildIdAndNameContaining.mockResolvedValue(3);
+    repository.findByGuildIdAndNameContaining.mockResolvedValue(
+      Array.from({ length: 3 }, (_, i) =>
+        createProduct(guildId, `Test ${i + 1}`, null, null, null, 100, null),
+      ).map((product, index) => ({ ...product, id: index + 1 })),
+    );
+
+    const result = await shopService.searchProducts(guildId, 'test', 10);
+
+    expect(result.currentPage).toBe(1);
+    expect(result.totalPages).toBe(1);
+  });
+
   it('returns products in repository order (name ascending)', async () => {
     repository.countByGuildId.mockResolvedValue(2);
     repository.findByGuildIdPaginated.mockResolvedValue([

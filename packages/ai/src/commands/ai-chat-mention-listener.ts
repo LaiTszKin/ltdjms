@@ -15,11 +15,8 @@ import { DomainError } from '@ltdjms/shared';
 import { MessageSplitter } from '../services/MessageSplitter.js';
 import { MessageChunkAccumulator } from '../services/message-chunk-accumulator.js';
 import { ReasoningMessageTracker } from './reasoning-message-tracker.js';
-import {
-  AGENT_NON_THREAD_MESSAGE_ID,
-  type MarkdownPipelineComponents,
-  prepareAgentFinalPages,
-} from '../markdown/services/markdown-pipeline-factory.js';
+import { AGENT_NON_THREAD_MESSAGE_ID } from '../services/conversation-constants.js';
+import { prepareAgentFinalPages } from '../markdown/services/markdown-pipeline-factory.js';
 
 const SPOILER_PREFIX = '-# ';
 const EMPTY_RESPONSE_FALLBACK = ':question: AI 沒有產生回應';
@@ -38,7 +35,6 @@ export class AIChatMentionListener {
     private readonly showReasoning: boolean = false,
     private readonly enableMarkdownValidation: boolean = true,
     private readonly streamingBypassValidation: boolean = false,
-    private readonly agentFinalMarkdownPipeline?: MarkdownPipelineComponents,
   ) {}
 
   async onMessageCreate(message: Message): Promise<void> {
@@ -180,29 +176,46 @@ export class AIChatMentionListener {
       return;
     }
 
-    const fullContent = finalContentChunks.join('').trim();
-    if (!fullContent) {
-      await this.sendToChannel(message, EMPTY_RESPONSE_FALLBACK);
+    if (!streamProcessed) {
+      const fullContent = finalContentChunks.join('').trim();
+      if (!fullContent) {
+        await this.sendToChannel(message, EMPTY_RESPONSE_FALLBACK);
+        return;
+      }
+
+      const pages = prepareAgentFinalPages(fullContent, this.splitter);
+      if (pages.length === 0) {
+        await this.sendToChannel(message, EMPTY_RESPONSE_FALLBACK);
+        return;
+      }
+
+      for (const page of pages) {
+        if (!page?.trim()) {
+          continue;
+        }
+        await this.sendToChannel(message, page);
+      }
       return;
     }
 
-    const pages = prepareAgentFinalPages(
-      fullContent,
-      streamProcessed,
-      this.agentFinalMarkdownPipeline,
-      this.splitter,
-    );
-
-    if (pages.length === 0) {
-      await this.sendToChannel(message, EMPTY_RESPONSE_FALLBACK);
-      return;
-    }
-
-    for (const page of pages) {
-      if (!page?.trim()) {
+    let sent = false;
+    for (const chunk of finalContentChunks) {
+      if (!chunk?.trim()) {
         continue;
       }
-      await this.sendToChannel(message, page);
+
+      const pages = this.splitter.split(chunk);
+      for (const page of pages) {
+        if (!page?.trim()) {
+          continue;
+        }
+        await this.sendToChannel(message, page);
+        sent = true;
+      }
+    }
+
+    if (!sent) {
+      await this.sendToChannel(message, EMPTY_RESPONSE_FALLBACK);
     }
   }
 

@@ -36,6 +36,7 @@ import {
 } from '@ltdjms/shop';
 import {
   initializeAIModule,
+  disposeAIModule,
   AI_TOKENS,
   type AIChatMentionListener,
 } from '@ltdjms/ai';
@@ -278,14 +279,7 @@ export async function main(): Promise<void> {
     logger.info('Shutting down...');
     scheduler.stop();
     await callbackServer.stop();
-    try {
-      const checkpointProvider = container.resolve<{ shutdown(): Promise<void> }>(
-        AI_TOKENS.LangGraphCheckpointProvider,
-      );
-      await checkpointProvider.shutdown();
-    } catch {
-      // Checkpoint provider is optional in dev/test environments.
-    }
+    await disposeAIModule();
     disposeAdminContainer();
     disposeUserPanelContainer();
     client.destroy();

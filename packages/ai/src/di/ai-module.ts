@@ -77,7 +77,6 @@ import { CommonMarkValidator } from '../markdown/validation/CommonMarkValidator.
 import { RegexBasedAutoFixer } from '../markdown/autofix/RegexBasedAutoFixer.js';
 import { DiscordMarkdownSanitizer } from '../markdown/services/DiscordMarkdownSanitizer.js';
 import { DiscordMarkdownPaginator } from '../markdown/services/DiscordMarkdownPaginator.js';
-import type { MarkdownPipelineComponents } from '../markdown/services/markdown-pipeline-factory.js';
 
 // Commands
 import { AIChatMentionListener } from '../commands/ai-chat-mention-listener.js';
@@ -413,20 +412,7 @@ export async function initializeAIModule(): Promise<void> {
     cacheService,
     eventPublisher,
   );
-
-  const agentFinalMarkdownPipeline: MarkdownPipelineComponents | undefined =
-    aiConfig.enableMarkdownValidation
-      ? {
-          validator: container.resolve(AI_TOKENS.CommonMarkValidator) as CommonMarkValidator,
-          autoFixer: container.resolve(AI_TOKENS.RegexBasedAutoFixer) as RegexBasedAutoFixer,
-          sanitizer: container.resolve(
-            AI_TOKENS.DiscordMarkdownSanitizer,
-          ) as DiscordMarkdownSanitizer,
-          paginator: container.resolve(
-            AI_TOKENS.DiscordMarkdownPaginator,
-          ) as DiscordMarkdownPaginator,
-        }
-      : undefined;
+  _agentConfigCacheInvalidationListener.register();
 
   // ===== AIChatMentionListener =====
   const listener = new AIChatMentionListener(
@@ -436,7 +422,6 @@ export async function initializeAIModule(): Promise<void> {
     aiConfig.showReasoning,
     aiConfig.enableMarkdownValidation,
     aiConfig.streamingBypassValidation,
-    agentFinalMarkdownPipeline,
   );
   container.registerInstance(AI_TOKENS.AIChatMentionListener, listener);
   aiModuleInitialized = true;
@@ -445,7 +430,7 @@ export async function initializeAIModule(): Promise<void> {
 /**
  * Disposes AI module resources. Should be called during application shutdown.
  */
-export function disposeAIModule(): void {
+export async function disposeAIModule(): Promise<void> {
   try {
     const publisher = container.resolve<DomainEventPublisher>(TOKENS.DomainEventPublisher);
     if (toolExecutionEventHandler) {
@@ -460,6 +445,17 @@ export function disposeAIModule(): void {
     // DomainEventPublisher not available
   }
 
+  _agentConfigCacheInvalidationListener?.dispose();
   _agentConfigCacheInvalidationListener = null;
+
+  try {
+    const checkpointProvider = container.resolve<{ shutdown(): Promise<void> }>(
+      AI_TOKENS.LangGraphCheckpointProvider,
+    );
+    await checkpointProvider.shutdown();
+  } catch {
+    // Checkpoint provider is optional in dev/test environments.
+  }
+
   aiModuleInitialized = false;
 }

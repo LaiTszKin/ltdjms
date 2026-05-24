@@ -60,7 +60,7 @@ export class DrizzleProductRepository implements ProductRepository {
       .select()
       .from(productTable)
       .where(eq(productTable.guildId, guildId))
-      .orderBy(asc(productTable.name), asc(productTable.id))
+      .orderBy(asc(productTable.name))
       .offset(page * size)
       .limit(size);
     return rows.map((r) => this.mapRow(r));
@@ -84,7 +84,7 @@ export class DrizzleProductRepository implements ProductRepository {
       .select()
       .from(productTable)
       .where(and(eq(productTable.guildId, guildId), ilike(productTable.name, `%${keyword}%`)))
-      .orderBy(asc(productTable.name), asc(productTable.id))
+      .orderBy(asc(productTable.name))
       .offset(page * size)
       .limit(size);
     return rows.map((r) => this.mapRow(r));

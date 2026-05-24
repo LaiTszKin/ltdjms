@@ -29,7 +29,7 @@ import type { PromptLoader } from '../prompts/prompt-loader.js';
 import { ToolExecutionContext } from '../tools/ToolExecutionContext.js';
 import { ToolExecutionInterceptor } from './ToolExecutionInterceptor.js';
 import { ConversationIdBuilder, InMemoryToolCallHistory } from './memory/tool-call-history.js';
-import { AGENT_NON_THREAD_MESSAGE_ID } from '../markdown/services/markdown-pipeline-factory.js';
+import { AGENT_NON_THREAD_MESSAGE_ID } from './conversation-constants.js';
 import type { ChatMemoryProvider } from './memory/chat-memory-provider.js';
 import type { LangGraphCheckpointProvider } from './memory/langgraph-checkpoint-provider.js';
 

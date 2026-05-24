@@ -92,3 +92,40 @@ export function assertJsonParity(actual: unknown, oracle: unknown): void {
 export function assertEmbedParity(actual: unknown, oracle: unknown): void {
   expect(normalizeEmbedForSnapshot(actual)).toEqual(normalizeEmbedForSnapshot(oracle));
 }
+
+type JsonSchemaShape = {
+  type?: string;
+  required?: string[];
+  properties?: Record<string, JsonSchemaShape>;
+};
+
+/**
+ * Asserts that a value satisfies a minimal JSON Schema shape (type + required keys).
+ * Used by external-deps parity tests where full schema validation is not required.
+ */
+export function toMatchJsonSchema(actual: unknown, schema: JsonSchemaShape): void {
+  if (schema.type) {
+    if (schema.type === 'object') {
+      expect(actual).toBeTypeOf('object');
+      expect(actual).not.toBeNull();
+    } else if (schema.type === 'array') {
+      expect(Array.isArray(actual)).toBe(true);
+    } else {
+      expect(typeof actual).toBe(schema.type);
+    }
+  }
+
+  if (schema.required?.length && typeof actual === 'object' && actual !== null) {
+    for (const key of schema.required) {
+      expect(actual as JsonRecord).toHaveProperty(key);
+    }
+  }
+
+  if (schema.properties && typeof actual === 'object' && actual !== null) {
+    for (const [key, nestedSchema] of Object.entries(schema.properties)) {
+      if (key in (actual as JsonRecord)) {
+        toMatchJsonSchema((actual as JsonRecord)[key], nestedSchema);
+      }
+    }
+  }
+}

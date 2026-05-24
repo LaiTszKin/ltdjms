@@ -2,37 +2,24 @@
 
 - **Spec**: java-parity-shop-ai (external-deps-adoption, shop-java-parity, ai-chat-java-parity, ai-agent-java-parity)
 - **Date**: 2026-05-24
-- **Reviewer**: QA Agent (fresh review)
+- **Reviewer**: QA Agent
 - **Result**: NOT PASS
 
 ---
 
-## 業務需求判定
+## 業務需求驗收摘要
 
-**本次變更是否滿足規劃中的業務要求：部分滿足，尚不能簽核 PASS。**
+本 batch 以 Java bot 為唯一 oracle，目標是 Shop、AI Chat、AI Agent 三模組在 Discord 互動與後端行為 1:1 對齊，並引入已批准外部依賴。`make verify` 全綠；`aplt architecture validate` 通過。
 
-| 子 spec | 判定 | 證據 | 缺口 / 不確定性 |
-|---------|------|------|----------------|
-| external-deps-adoption | ✅ 滿足 | `make verify` 全綠；UT-ED-001、POC-ED-001…005 存在；LangGraph/zod/robojs/supertest 已安裝 | `toMatchJsonSchema()` helper 未實作（spec 文字 vs `assertJsonParity` 實際交付） |
-| shop-java-parity | ⚠️ 近乎滿足 | UT-301…308、customId/embed/purchase parity 測試全綠；buy menu >25 split 已修 | 分頁/搜尋商品排序 `ORDER BY id` 與 Java `ORDER BY name` 不一致，多頁 catalog 邊界會偏移 |
-| ai-chat-java-parity | ⚠️ 近乎滿足 | routing、markdown、listener、stream processor 單元測試對齊 oracle | R8.2 缺少 `MarkdownValidatingAIChatService` 串流 CONTENT 增量整合測試 |
-| ai-agent-java-parity | ❌ 未完全滿足 | 17 tools、interceptor、checkpoint、listeners 已實作且多數有 parity 測試 | Agent 非 Thread 對話 ID 以 `messageId` 分段，與 Java `-1` 語意不同，多輪記憶/checkpoint 無法跨 mention 累積 |
-| batch 整合 | ⚠️ 近乎滿足 | `make verify` + `apltk architecture validate` 通過；atlas 五個 submodule 已 merge | Agent 最終回覆 fire-and-forget 事件鏈存在可靠性缺口 |
+| 需求域 | 判定 | 證據 | 缺口 / 不確定性 |
+|--------|------|------|----------------|
+| external-deps-adoption R1–R6 | **PASS** | LangGraph/zod/@robojs/mock/supertest 已安裝；PoC 測試通過；`assertJsonParity` 可用 | `toMatchJsonSchema()` helper 未交付（P3） |
+| shop-java-parity R1–R6 | **PASS（附註）** | customId、embed、分頁契約、browse/purchase 流程、parity 測試全綠 | `searchProducts` 僅部分 port Java 測試（P2）；分頁 `ORDER BY` 多 id tie-breaker（P3） |
+| ai-chat-java-parity R1–R9 | **部分 PASS** | 路由、白名單、串流 UX、markdown 管線、PromptLoader 均有 oracle 測試 | Agent 最終回覆在 validation 啟用時與 Java 語意相反（P1）；若干 edge case 缺 listener 測試（P2） |
+| ai-agent-java-parity R1–R7 | **部分 PASS** | 17 工具 schema、interceptor、checkpoint、agent streaming、listeners 已實作 | 工具 `@Tool` 描述未 1:1（P1）；Java tool 測試僅 shallow port（P1）；`ManageMessageTool`/`SearchMessagesTool` 行為偏離 Java（P1）；AgentCompletionListener 與 spec R7.2 不一致（P2） |
+| batch 整合 | **PASS** | `make verify`；atlas OK | AI module dispose 未接入 app shutdown（P1 架構） |
 
-**簽核依據：** 無幻覺代碼；效能維度無 P0/P1；但存在 **2 項 P1**（Agent 對話 ID parity、Agent 完成交付可靠性）及數項 P2 parity 偏移，不符合「所有需求已正確滿足、架構無重大缺陷」的 PASS 條件。
-
----
-
-## 六維度審查摘要
-
-| 維度 | 結果 | 摘要 |
-|------|------|------|
-| 無幻覺代碼 | ✅ PASS | import、Discord.js、LangChain API、oracle fixture 路徑均可解析；parity 宣稱有對應測試 |
-| 無冗余代碼 | ⚠️ P2/P3 | DI 大量 register-only token、`ShopPageHelper` 死碼、markdown pipeline 三處組裝、REASONING 分支重複 |
-| spec 實作偏移 | ❌ P1/P2 | Agent conversationId、shop 排序、parallel tools、agent markdown bypass、事件驅動 final delivery |
-| spec 實作遺漏 | ⚠️ P2/P3 | R8.2 串流 decorator 整合測試缺失；REG-301 無可 grep ID；部分 edge case 僅 mapper 層測試 |
-| 架構瑕疵 | ❌ P1/P2 | Agent 完成 fire-and-forget；listener 直連 markdown 管線；無 `disposeAIModule` |
-| 性能隱患 | ✅ PASS | 無 P0/P1；markdown 串流 CPU、uncached catalog/history 為已知 P2 優化項 |
+**結論**：核心 browse/purchase、AI 路由、markdown 驗證、17 工具 schema 與審計已達可用水準，但 Agent 最終回覆 markdown 語意、兩個 Discord 工具行為、工具描述/測試深度仍與 Java oracle 存在 P1 差距，尚不符合 batch 1:1 簽核條件。
 
 ---
 
@@ -40,44 +27,49 @@
 
 ### P0 — 嚴重缺陷
 
-（無）
+| # | 問題描述 | 影響 | 檔案 | 行數 |
+|---|--------|------|------|------|
+| — | 無 | — | — | — |
 
 ### P1 — 重要問題
 
 | # | 問題描述 | 影響 | 檔案 | 行數 |
 |---|--------|------|------|------|
-| 1 | Agent 非 Thread 對話 ID 使用 Discord `message.id`，Java 固定 `-1` | 同一頻道同一使用者的多次 @mention 在 TS 各自獨立 checkpoint/memory；Java 跨 mention 累積上下文。違反 ai-agent R3.1/R4.1–R4.3 parity | `packages/ai/src/commands/ai-chat-mention-listener.ts` | L147–155 |
-| | | | `packages/ai/src/services/LangChainAIChatService.ts` | L238–244 |
-| | | | `src/main/java/.../LangChain4jAIChatService.java` | L883–890 |
-| 2 | Agent 完成後最終回覆經 event bus fire-and-forget 發送 | `AIChatMentionListener` 已同步刪除 thinking 訊息；若 `AgentCompletionListener.handleAgentCompleted` 的 `channel.send` 失敗，使用者看不到回覆且上游已回 success | `packages/ai/src/listeners/agent-completion-listener.ts` | L43–46, L55–77 |
-| | | | `packages/ai/src/commands/ai-chat-mention-listener.ts` | L138–144 |
+| 1 | Agent 最終回覆在 `streamProcessed=true` 時執行完整 markdown pipeline 並合併 chunks，Java 則逐 chunk 原樣送出 | 預設 production 設定下 Agent 回覆可能被 autofix/sanitize/paginate，與 Java 使用者可見輸出不一致 | `packages/ai/src/commands/ai-chat-mention-listener.ts`<br>`packages/ai/src/markdown/services/markdown-pipeline-factory.ts` | L173–206<br>L35–55 |
+| 2 | `ManageMessageTool` 未指定 `channelId` 時掃描 guild 全部文字頻道；Java 僅解析 current channel | 大型 guild O(N) REST 呼叫、429 風險、可能 tool timeout | `packages/ai/src/tools/ManageMessageTool.ts` | L33–75 |
+| 3 | `SearchMessagesTool` 預設搜尋前 10 頻道且 5 路並行 fetch；Java 預設 current channel、sequential 分頁掃描 | 並發/API 行為與 Java 不同；預設 scan 100 vs Java 200 | `packages/ai/src/tools/SearchMessagesTool.ts` | L32–89 |
+| 4 | 17 工具 `@Tool` 描述為 TS 單行摘要，未對齊 Java 多段落 `@Tool("""...""")` 描述 | LLM tool-calling 行為可能偏離 Java；oracle fixture 亦未含 description | `packages/ai/src/tools/*.ts` | 各工具 class |
+| 5 | checklist 宣稱 port 17× Java tool tests，TS 僅 ~29 cases vs Java ~173 | 錯誤路徑、權限、validation edge cases 覆蓋不足 | `packages/ai/src/tools/__tests__/agent-tools.parity.test.ts` | 全檔 |
+| 6 | `AgentConfigCacheInvalidationListener` 建構時自註冊 event handler，`disposeAIModule()` 無法 unregister | 重複 init 會累積 handler，cache 可能被多次清除 | `packages/ai/src/services/routing/agent-config-cache-invalidation-listener.ts`<br>`packages/ai/src/di/ai-module.ts` | L24–45<br>L411–465 |
+| 7 | `disposeAIModule()` 已 export 但 `apps/bot/src/main.ts` shutdown 未呼叫 | AI event listener 與 checkpoint 生命週期不對稱 admin/user-panel | `packages/ai/src/di/ai-module.ts`<br>`apps/bot/src/main.ts` | L448–465<br>L277–295 |
 
 ### P2 — 一般問題
 
 | # | 問題描述 | 影響 | 檔案 | 行數 |
 |---|--------|------|------|------|
-| 1 | Shop 分頁/搜尋查詢 `ORDER BY id`，Java 為 `ORDER BY name` | 多頁商店列表與搜尋結果順序、分頁邊界與 Java 不一致 | `packages/shop/src/persistence/drizzle-product-repository.ts` | L58–65, L77–88 |
-| 2 | 缺少 R8.2：`MarkdownValidatingAIChatService.generateStreamingResponse` CONTENT 增量驗證整合測試 | checklist R8.2/UT-407 已勾選，但僅測 processor 單元與 REASONING passthrough，未驗證 decorator 串流路徑 | `packages/ai/src/markdown/__tests__/validating-chat-service.parity.test.ts` | L44–130 |
-| 3 | Agent 路由雙重 markdown 管線：decorator 處理 CONTENT 但 listener 忽略，final 再由 `AgentCompletionListener` 重跑 | 死算力、兩路邏輯易漂移；違反分層（listener 不應組裝 markdown pipeline） | `packages/ai/src/commands/ai-chat-mention-listener.ts` | L120–136 |
-| | | | `packages/ai/src/listeners/agent-completion-listener.ts` | L94–110 |
-| | | | `packages/ai/src/di/ai-module.ts` | L342–352 |
-| 4 | Agent 工具並行執行（concurrency 3），Java LangChain4j 順序執行 | 多工具 turn 的副作用順序、rate limit 行為可能不同 | `packages/ai/src/services/LangChainAIChatService.ts` | L359–364 |
-| 5 | Agent 最終 markdown 未尊重 `streamingBypassValidation` | chat 路徑 bypass 時跳過增量驗證；agent final 仍走完整 validator pipeline | `packages/ai/src/di/ai-module.ts` | L342–352 |
-| | | | `packages/ai/src/commands/ai-chat-mention-listener.ts` | L63 |
-| 6 | 事件 listener 註冊模式不一致，無 AI module dispose | inline lambda 註冊無法 unregister；`AgentConfigCacheInvalidationListener` 建構後即丟棄；與 admin/user-panel dispose 模式不對稱 | `packages/ai/src/di/ai-module.ts` | L356–357, L416 |
-| 7 | `ShopPageHelper` 死碼 + 分頁邏輯重複 | `createShopPage` 內聯重複 helper 方法；browse/search 重複 count/clamp/fetch 區塊 | `packages/shop/src/services/shop.service.ts` | L14–51, L85–124 |
+| 1 | `AgentCompletionListener` 改為 log-only，未 port Java Discord 送訊邏輯；spec R7.2/R7.3 仍要求 port | spec/checklist 與實作意圖不一致；若恢復 Java listener 行為可能與 mention listener 雙送 | `packages/ai/src/listeners/agent-completion-listener.ts` | L5–55 |
+| 2 | TS `LangChainAIChatService` 發佈 `AgentCompletedEvent`/`AgentFailedEvent`，Java production 無對應 publish | 事件架構不對稱；未來 listener 變更可能引入重複送訊 | `packages/ai/src/services/LangChainAIChatService.ts` | L407–418 |
+| 3 | LangGraph Redis checkpoint `defaultTTL` 單位為**分鐘**，程式傳 3600 實際 ~60 小時 | 與 Java 3600 秒 TTL 意圖不符；Redis cache 過長佔用 | `packages/ai/src/services/memory/langgraph-checkpoint-provider.ts` | L23–24, L74–77 |
+| 4 | `ShopService.searchProducts` 僅測 blank keyword；Java 有 matching/pagination/clamp 5 cases | search 分頁 parity 缺回歸保護 | `packages/shop/src/services/__tests__/shop-service.parity.test.ts` | L82–86 |
+| 5 | Markdown pipeline 組裝分散三處（factory、decorator、ai-module） | chat/agent 路徑 drift 風險 | `packages/ai/src/markdown/services/MarkdownValidatingAIChatService.ts`<br>`packages/ai/src/di/ai-module.ts` | L217–224<br>L417–428 |
+| 6 | Shop handler 所有 catch 僅回傳 generic 文案、無 structured log | 生產環境 browse/purchase 失敗難以診斷 | `packages/shop/src/commands/shop-handler.ts` | L106–108 等 |
+| 7 | 貨幣購買後 escort/admin 通知 fire-and-forget | 通知失敗靜默；與 fiat worker await 模式不一致 | `packages/shop/src/commands/shop-handler.ts` | L473–480 |
+| 8 | 多項 ai-chat edge case 有實作但缺 listener/integration 測試 | 空回應、timeout/5xx、prompt 降級、thread history 失敗 | `packages/ai/src/commands/__tests__/mention-listener*.parity.test.ts` | — |
+| 9 | Agent config Redis fallback DB 路徑無測試 | cache 故障時行為無回歸保護 | `packages/ai/src/services/__tests__/agent-channel-config.parity.test.ts` | — |
+| 10 | Memory 上限（thread ≤100、tool ≤50）有常數但 parity test 未 assert 截斷 | R3.1 邊界無自動驗證 | `packages/ai/src/services/memory/chat-memory-provider.ts` | L67, L154 |
 
 ### P3 — 建議改善
 
 | # | 問題描述 | 影響 | 檔案 | 行數 |
 |---|--------|------|------|------|
-| 1 | Agent config Redis key `agent:config:` vs Java `ai:agent:config:` | TS-only 部署無影響；Java/TS 共用 Redis 時 cache 不互通 | `packages/ai/src/services/agent-config-service.ts` | ~L100 |
-| 2 | 非 Thread 路徑仍寫入 tool call history，Java 僅 Thread | 內部狀態差異，目前 message-level memory 未消費 | `packages/ai/src/services/LangChainAIChatService.ts` | L613–626 |
-| 3 | 權限拒絕訊息標點：TS 有句號、Java 無 | 極 minor UI 文案差異 | `packages/ai/src/tools/ToolCallerAuthorizationGuard.ts` | ~L59 |
-| 4 | REG-301 無可 grep 測試 ID | checklist 不可稽核 | shop PBT 檔案 | — |
-| 5 | parity 測試 oracle loader 重複 | 可維護性 | 多個 `*.parity.test.ts` | — |
-| 6 | `packages/ai/src/tools/index.ts` barrel 無引用 | 死 export | `packages/ai/src/tools/index.ts` | 全檔 |
-| 7 | Atlas `atlas.index.yaml` 缺少新 submodule 跨 feature edges | 文件完整性 | `resources/project-architecture/atlas/atlas.index.yaml` | — |
+| 1 | 分頁查詢 `ORDER BY name, id` 多 tie-breaker；Java 僅 `ORDER BY name` | 同名商品時頁界/buy menu 順序可能不同 | `packages/shop/src/persistence/drizzle-product-repository.ts` | L58–65 |
+| 2 | 缺 Java `shouldPreserveFormattedChunksInAgentMode` 等價測試 | 掩蓋 P1-1 agent final 行為 drift | `packages/ai/src/commands/__tests__/mention-listener-agent.parity.test.ts` | — |
+| 3 | `ShopPage.formatPageIndicator()` 未在 production 使用；footer 邏輯與 view 重複 | 維護 drift 風險 | `packages/shop/src/services/shop.service.ts`<br>`packages/shop/src/view/shop-view.ts` | L16–25<br>L156–159 |
+| 4 | `toMatchJsonSchema()` helper 未交付 | external-deps spec 範圍不完整 | `packages/shared/src/__tests__/parity/json-snapshot.ts` | — |
+| 5 | checklist UT-401/502 與程式碼 UT-AIC/UT-AG ID 不一致 | 審計 traceability 困難 | 各 parity test 檔 | — |
+| 6 | 五個 AI parity test 重複 oracle loader；`loadParityOracle` 未全面採用 | 測試維護成本 | `packages/shared/src/__tests__/parity-oracle-loader.ts` | — |
+| 7 | `AGENT_NON_THREAD_MESSAGE_ID` 放在 markdown factory 模組 | 關注點耦合 | `packages/ai/src/markdown/services/markdown-pipeline-factory.ts` | L16–17 |
+| 8 | Shop handler 單檔 monolith（coordination 允許暫時） | 合併衝突與可讀性 | `packages/shop/src/commands/shop-handler.ts` | 全檔 |
 
 ---
 
@@ -85,100 +77,145 @@
 
 ### P1 修復
 
-#### P1-1: Agent conversationId 對齊 Java（非 Thread 使用 `-1`）
+#### P1-1: Agent 最終回覆對齊 Java `sendAgentFinalContent`
 
-- **涉及檔案**：`packages/ai/src/commands/ai-chat-mention-listener.ts` > `handleAgentStreamingResponse`（L147–155）；`packages/ai/src/services/LangChainAIChatService.ts` > `generateStreamingResponseWithId`（L238–244）
-- **根因**：TS mention listener 將 Discord `message.id` 傳入 `ConversationIdBuilder`，形成 message-level ID；Java `buildConversationId` 對 agent 固定 `messageId = -1`，非 Thread 為 channel+user 級別。
-- **修復方案**：Agent 路徑（`agentEnabled=true`）建構 conversationId 時忽略 mention messageId，改傳 `-1` 或等價常數（與 Java `ConversationIdBuilder.build(..., -1)` 一致）。Chat 路徑可保留現有 message-level 行為若 spec 允許。
-- **驗證方式**：新增/更新 parity 測試：同一 channel+user 連續兩次 agent mention 應共用 checkpoint；`conversation-memory.integration.test.ts` 覆蓋非 Thread 跨 turn 保留。
+- **涉及檔案**：`packages/ai/src/commands/ai-chat-mention-listener.ts` > `sendAgentFinalContent`（L173–206）；`packages/ai/src/markdown/services/markdown-pipeline-factory.ts` > `prepareAgentFinalPages`（L35–55）
+- **根因**：Java 在 `streamProcessed=true` 時逐 chunk 原樣送出（僅 2000 字元 split）；`streamProcessed=false` 才 join 後走 buffered path。TS 一律 join 並在 `streamProcessed=true` 時跑完整 markdown pipeline。
+- **修復方案**：
+  1. 當 `streamProcessed=true`：逐 `finalContentChunks` 迭代，每 chunk 經 `MessageSplitter.split()` 後送出，不合併、不跑 validator/sanitizer。
+  2. 當 `streamProcessed=false`：join 後 split 或走 `sendBufferedContent` 等價邏輯。
+  3. 移除或限縮 `prepareAgentFinalPages` 在 agent path 的 markdown pipeline 分支。
+- **驗證方式**：port Java `AIChatMentionListenerAgentConclusionTest.shouldPreserveFormattedChunksInAgentMode`；在 `enableMarkdownValidation=true` 下 assert 多 chunk 分段保留。
 
-#### P1-2: Agent 最終回覆交付改為可 await 的可靠路徑
+#### P1-2: ManageMessageTool 預設 current channel
 
-- **涉及檔案**：`packages/ai/src/listeners/agent-completion-listener.ts` > `accept` / `handleAgentCompleted`（L43–77）；`packages/ai/src/commands/ai-chat-mention-listener.ts`（L138–144）；`packages/ai/src/services/LangChainAIChatService.ts`（agent_completed 發佈點）
-- **根因**：完成流程拆成 sync 刪 thinking + async event listener send；`void handleAgentCompleted(...)` 失敗不向上游傳播。
-- **修復方案（擇一，建議 A）**：
-  - **A（Java 形狀）**：在 `AIChatMentionListener` 內 buffer agent CONTENT，`isComplete` 時於 `deleteAll` callback 同步發送 final（恢復 Java `sendAgentFinalContent` 語意）；`AgentCompletionListener` 僅做 observability 或移除 final send 職責。
-  - **B（保留事件）**：`generateStreamingResponseWithId` 在 publish `agent_completed` 後 await listener promise；或改為直接 await `handleAgentCompleted` 再 return。
-- **驗證方式**：`mention-listener-agent.parity.test.ts` / `agent-completion-listener.parity.test.ts` 模擬 `channel.send` 失敗時上游應 reject 或 fallback；手動 smoke 確認 thinking 刪除後必有 final 或錯誤提示。
+- **涉及檔案**：`packages/ai/src/tools/ManageMessageTool.ts` > `execute`（L33–75）
+- **根因**：TS 省略 `channelId` 時遍歷 guild 全部文字頻道；Java `resolveChannelId(explicit, currentChannelId)` 回退 current channel。
+- **修復方案**：從 `ToolExecutionContext` 取得 current channelId；未指定時僅查該頻道；無 current channel 時回傳 Java 等價錯誤。
+- **驗證方式**：新增 parity test 對照 `LangChain4jManageMessageToolTest` 的 default-channel cases。
+
+#### P1-3: SearchMessagesTool 對齊 Java sequential + defaults
+
+- **涉及檔案**：`packages/ai/src/tools/SearchMessagesTool.ts` > `execute`（L32–89）
+- **根因**：TS 5 路並行、預設 10 頻道、單次 fetch limit 100；Java sequential、預設 current channel、`DEFAULT_SCAN_PER_CHANNEL=200`、分頁 batch fetch。
+- **修復方案**：移除 parallel worker pool；未指定 `channelIds` 時用 current channel；defaults 改為 `maxResultsPerChannel=20`、`maxMessagesToScan=200`；實作 paginated history fetch（batch 100）至 scan 上限。
+- **驗證方式**：port Java `LangChain4jSearchMessagesToolTest` 核心案例。
+
+#### P1-4: 工具描述 1:1 對齊 Java
+
+- **涉及檔案**：`packages/ai/src/tools/*.ts`；`docs/plans/.../fixtures/java-agent-tools-oracle.json`
+- **根因**：oracle 僅含 name/schema；TS 描述為簡化單行。
+- **修復方案**：從 Java `@Tool` 原文提取 description 寫入各 TS tool class；擴充 oracle 含 `description` 欄；`tool-schema.parity.test.ts` assert description match。
+- **驗證方式**：oracle snapshot 比對 17 工具 description。
+
+#### P1-5: 深化 17 tool parity tests
+
+- **涉及檔案**：`packages/ai/src/tools/__tests__/agent-tools.parity.test.ts` 及 per-tool test 檔
+- **根因**：僅 success + unauthorized 兩路徑；Java 每 tool ~10–20 cases。
+- **修復方案**：按 `java-test-mapping.md` 逐 tool port validation/permission/timeout/error format cases；優先高風險工具（permissions、delete_discord_resource）。
+- **驗證方式**：case count 對照 Java `@Test` 方法數；`make test` 全綠。
+
+#### P1-6: AgentConfigCacheInvalidationListener 可 dispose
+
+- **涉及檔案**：`agent-config-cache-invalidation-listener.ts`；`ai-module.ts`
+- **根因**：匿名 closure 自註冊，`disposeAIModule` 僅 null ref。
+- **修復方案**：暴露 `register()`/`dispose()` 或保存 handler ref 供 `eventPublisher.unregister()`；與 `ToolExecutionListener` 模式一致。
+- **驗證方式**：unit test 驗證 dispose 後不再收到 invalidation event。
+
+#### P1-7: 接入 AI module shutdown
+
+- **涉及檔案**：`apps/bot/src/main.ts`；`packages/ai/src/di/ai-module.ts`
+- **根因**：shutdown 只 dispose admin/user-panel；AI listener 與 checkpoint 分散 teardown。
+- **修復方案**：在 graceful shutdown 呼叫 `disposeAIModule()`；合併 checkpoint shutdown 至 module dispose。
+- **驗證方式**：integration test 或手動 restart 確認 listener 不重複觸發。
 
 ### P2 修復
 
-#### P2-1: Shop 商品排序對齊 Java
+#### P2-1: 釐清 AgentCompletionListener 契約
 
-- **涉及檔案**：`packages/shop/src/persistence/drizzle-product-repository.ts` > `findByGuildIdPaginated`、`findByGuildIdAndNameContaining`（L58–88）
-- **根因**：Drizzle 使用 `orderBy(asc(productTable.id))`；Java `JdbcProductRepository` 使用 `ORDER BY name ASC`。
-- **修復方案**：兩個 paginated 查詢改為 `orderBy(asc(productTable.name))`（必要時 secondary sort by id 穩定 tie-break）。
-- **驗證方式**：擴充 `shop-service.parity.test.ts` oracle 或新增 ordering 測試；多商品 fixture 驗證 page 1/2 順序。
+- **涉及檔案**：`packages/ai/src/listeners/agent-completion-listener.ts`；spec R7.2
+- **根因**：刻意改為 observability-only 以修 fire-and-forget；與 spec「Port AgentCompletionListener.java」衝突。
+- **修復方案**：二選一並更新 spec/checklist：(A) 維持 mention listener 為唯一 delivery owner，修訂 spec R7.2 為 log-only + 移除 Java Discord 送訊要求；(B) 恢復 listener 送訊但移除 mention listener 重複 path 並停止 publish 若 Java 無 event。
+- **驗證方式**：文件 + 測試與選定契約一致；無 double-send。
 
-#### P2-2: 補齊 R8.2 串流 decorator 整合測試
+#### P2-2: Agent event publish 對齊
 
-- **涉及檔案**：`packages/ai/src/markdown/__tests__/validating-chat-service.parity.test.ts`
-- **根因**：現有測試只直接測 `DiscordMarkdownStreamProcessor` 與 REASONING passthrough，未走 `generateStreamingResponse` 的 CONTENT 增量路徑。
-- **修復方案**：mock delegate 依序 emit 多個 CONTENT chunk；assert decorator 多次呼叫 processor 並增量 emit pages（對照 Java `MarkdownValidationIntegrationTest.StreamingResponseTests`）。
-- **驗證方式**：新測試通過且覆蓋 `streamingBypassValidation=true` 時 delegate 直通案例。
+- **涉及檔案**：`LangChainAIChatService.ts`（L407–418）
+- **根因**：TS-only side effect。
+- **修復方案**：若採 P2-1(A)，保留 publish 供 observability 但文件化；若採 (B)，對齊 Java 是否 publish。
+- **驗證方式**：event listener 測試 + 手動 agent 完成無重複訊息。
 
-#### P2-3: 統一 Agent markdown 單一出口
+#### P2-3: Redis checkpoint TTL 單位修正
 
-- **涉及檔案**：`packages/ai/src/di/ai-module.ts`、`AgentCompletionListener`、`MarkdownValidatingAIChatService`
-- **根因**：Agent route 在 decorator 與 completion listener 各建一套 pipeline。
-- **修復方案**：Agent 路徑 bypass `MarkdownValidatingAIChatService` 串流 decorator；final pages 只在一處（listener 或 mention listener）經 shared factory 組裝；抽出 `buildMarkdownStreamProcessor()` 共用。
-- **驗證方式**：parity 測試確認 final output 與 Java oracle 一致；單元測試確認僅一條 pipeline 被 invoke。
+- **涉及檔案**：`langgraph-checkpoint-provider.ts`（L23–24, L74–77）
+- **根因**：`RedisSaver.defaultTTL` 單位為分鐘（library source: `ttlSeconds = defaultTTL * 60`）。
+- **修復方案**：改 `defaultTTL: 60`（= 3600 秒）；常數改名 `CHECKPOINT_CACHE_TTL_MINUTES` 或註解標明單位。
+- **驗證方式**：Redis integration test assert key TTL ≈ 3600s。
 
-#### P2-4: Agent 工具執行改順序或對齊 Java
+#### P2-4: Shop searchProducts parity tests
 
-- **涉及檔案**：`packages/ai/src/services/LangChainAIChatService.ts` > agent loop（L359–364）
-- **根因**：`processWithConcurrencyLimit(..., 3)` 允許並行。
-- **修復方案**：改為 sequential `for...of` 執行 tool calls，或 concurrency=1；若保留並行需在 spec 明確記載偏差理由。
-- **驗證方式**：多 tool turn parity 測試 assert 執行順序與 Java 一致。
+- **涉及檔案**：`shop-service.parity.test.ts`；`java-shop-service-oracle.json`
+- **根因**：oracle 缺 search cases；測試僅 blank keyword。
+- **修復方案**：擴充 oracle 含 matching/pagination/clamp；port Java `SearchProductsTests` 5 cases。
+- **驗證方式**：vitest shop-service parity 全綠。
 
-#### P2-5: Agent final 尊重 streamingBypassValidation
+#### P2-5: 統一 markdown pipeline 組裝
 
-- **涉及檔案**：`packages/ai/src/di/ai-module.ts`（L342–352）、`AgentCompletionListener.prepareFinalPages`
-- **根因**：注入 markdown pipeline 僅看 `enableMarkdownValidation`。
-- **修復方案**：`streamingBypassValidation=true` 時 agent final 跳過 validator，僅 splitter/sanitize 或直接 split。
-- **驗證方式**：config 矩陣測試（validation on + bypass on）assert 無 validator 呼叫。
+- **涉及檔案**：`MarkdownValidatingAIChatService.ts`；`ai-module.ts`
+- **根因**：`buildMarkdownStreamProcessor` 存在但 decorator 仍 inline 組裝。
+- **修復方案**：decorator 改用 factory；ai-module 共用同一 helper 建立 pipeline components。
+- **驗證方式**：現有 markdown parity tests 無 regression。
 
-#### P2-6: 統一 AI 事件 listener 生命週期
+#### P2-6: Shop handler observability
 
-- **涉及檔案**：`packages/ai/src/di/ai-module.ts`
-- **根因**：inline register、無 dispose。
-- **修復方案**：export `disposeAIModule()` 保存 handler ref 並 unregister；`AgentConfigCacheInvalidationListener` 實例保留至 dispose。
-- **驗證方式**：雙次 init 測試 listener 不重複觸發。
+- **涉及檔案**：`shop-handler.ts`
+- **根因**：catch 無 log。
+- **修復方案**：注入 logger；catch 記錄 error + interaction context；escort notify 改 await 或 `.catch(log)`。
+- **驗證方式**：手動觸發失敗路徑確認 log 輸出。
 
-#### P2-7: 精簡 ShopService 分頁重複
+#### P2-7–P2-10: Edge case 測試補強
 
-- **涉及檔案**：`packages/shop/src/services/shop.service.ts`
-- **根因**：helper 死碼 + browse/search 重複邏輯。
-- **修復方案**：抽出 `fetchPage(countFn, fetchFn, pageIndex, size)`；移除未使用的 `ShopPageHelper` 或改由 `ShopPage` 委派。
-- **驗證方式**：現有 UT-301 維持綠。
+- **修復方案**：為空 AI 回應、timeout/503 listener 映射、prompt load 失敗降級、thread history throw、agent config Redis fallback、memory 截斷上限各增 1 測試。
+- **驗證方式**：對應 spec edge case checklist 可 grep 到 test name。
 
 ### P3 改善
 
-#### P3-1: Agent Redis key 對齊 Java（可選）
+#### P3-1: 移除分頁 id tie-breaker
 
-- **涉及檔案**：`agent-config-service.ts`、`agent-config-cache-invalidation-listener.ts`
-- **修復方案**：若需跨 runtime 共用 cache，改 key prefix 為 `ai:agent:config:`；否則在 spec 註明 TS-only key 為 intentional。
-- **驗證方式**：config cache integration 測試更新 expected key。
+- **修復方案**：`orderBy(asc(productTable.name))` 與 Java JDBC 一致。
+- **驗證方式**：shop-service ordering parity test 更新。
 
-#### P3-2 ~ P3-7
+#### P3-2: Agent chunk preservation test
 
-- 對應上表：tool history 條件寫入、文案標點、REG-301 標記、oracle loader 抽取、刪除 dead barrel、補 atlas.index edges——依優先級在後續 cleanup PR 處理。
+- **修復方案**：port `shouldPreserveFormattedChunksInAgentMode`（亦為 P1-1 驗證）。
+
+#### P3-3: Shop footer 共用 helper
+
+- **修復方案**：extract `formatShopPageFooter`；view 與 service 共用。
+
+#### P3-4: 交付 `toMatchJsonSchema` 或修訂 spec
+
+- **修復方案**：實作 helper 或從 external-deps spec 移除該項。
+
+#### P3-5: 統一 test traceability ID
+
+- **修復方案**：checklist 改用 UT-AIC/UT-AG 或 test describe 加 checklist alias。
+
+#### P3-6–P3-8: 測試/結構清理
+
+- **修復方案**：全面採用 `loadParityOracle`；搬移 `AGENT_NON_THREAD_MESSAGE_ID` 至 routing/memory 模組；shop handler 拆分可留 post-batch。
 
 ---
 
-## 驗證狀態
+## 簽核判定
 
-| 檢查項 | 狀態 |
-|--------|------|
-| `make verify` | ✅ 通過（2026-05-24 複審） |
-| `apltk architecture validate` | ✅ 通過 |
-| Architecture Atlas merge（5 submodules） | ✅ 已 merge 至 `resources/project-architecture/` |
-| 六維度無 P0/P1 阻擋項 | ❌ 存在 P1 #1、#2 |
+| 維度 | 結果 |
+|------|------|
+| 幻覺代碼 | PASS — 無虛構 API/import |
+| 冗余代碼 | 有 P2/P3 改善項，不阻擋 |
+| spec 實作偏移 | **FAIL** — P1 agent final、P1 兩工具、P2 listener 契約 |
+| spec 實作遺漏 | **FAIL** — P1 工具描述/測試深度、P2 search/edge tests |
+| 架構瑕疵 | **FAIL** — P1 listener dispose / shutdown 缺口 |
+| 性能隱患 | **FAIL** — P1 ManageMessage/SearchMessages 非 parity 退化 |
 
----
-
-## 結論
-
-Batch 在 Shop UI/購買流程、AI Chat markdown/routing、17 Agent tools、外部依賴 PoC 方面已達 substantial parity，`make verify` 與 architecture validate 全綠。但 **Agent 非 Thread 對話 ID** 與 **Agent 完成交付可靠性** 兩項 P1 仍偏離 Java oracle 與 spec 意圖，加上 shop 排序與 R8.2 測試缺口等 P2 問題，**本次 QA 判定為 NOT PASS**。
-
-建議優先修復 P1-1、P1-2，再處理 P2-1、P2-2，完成後重新執行 `/qa` 簽核。
+**最終結果：NOT PASS** — 需先關閉 P1-1 至 P1-5（行為 parity）與 P1-6/P1-7（生命週期），再複審。

@@ -13,9 +13,6 @@ export interface MarkdownPipelineComponents {
   paginator: DiscordMarkdownPaginator;
 }
 
-/** Agent non-thread conversations use a fixed message id, matching Java ConversationIdBuilder.build(..., -1). */
-export const AGENT_NON_THREAD_MESSAGE_ID = '-1';
-
 export function buildMarkdownStreamProcessor(
   pipeline: MarkdownPipelineComponents,
 ): DiscordMarkdownStreamProcessor {
@@ -29,28 +26,16 @@ export function buildMarkdownStreamProcessor(
 }
 
 /**
- * Prepares Discord message pages for agent final content.
- * When streamProcessed is false (validation bypassed/disabled), only splits raw text.
+ * Prepares Discord message pages for agent final content when streamProcessed is false.
+ * Agent mode with streamProcessed=true sends chunks raw (Java sendAgentFinalContent parity).
  */
 export function prepareAgentFinalPages(
   finalResponse: string,
-  streamProcessed: boolean,
-  pipeline?: MarkdownPipelineComponents,
   splitter: MessageSplitter = new MessageSplitter(),
 ): string[] {
   const trimmed = finalResponse.trim();
   if (!trimmed) {
     return [];
   }
-
-  if (!streamProcessed || !pipeline) {
-    return splitter.split(trimmed);
-  }
-
-  const processor = buildMarkdownStreamProcessor(pipeline);
-  const pages = [...processor.onChunk(trimmed), ...processor.flush()];
-  if (pages.length === 0) {
-    return splitter.split(trimmed);
-  }
-  return pages;
+  return splitter.split(trimmed);
 }

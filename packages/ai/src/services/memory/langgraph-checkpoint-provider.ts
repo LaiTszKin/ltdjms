@@ -20,8 +20,8 @@ export interface AgentCheckpointMessage {
   content: string;
 }
 
-/** LangGraph checkpoint TTL — aligns with Java RedisPostgresChatMemoryStore 3600s intent. */
-export const CHECKPOINT_CACHE_TTL_SECONDS = 3600;
+/** LangGraph Redis cache TTL — RedisSaver.defaultTTL is in minutes (3600s = 60 min). */
+export const CHECKPOINT_CACHE_TTL_MINUTES = 60;
 
 const ConversationState = Annotation.Root({
   turnCount: Annotation<number>(),
@@ -72,7 +72,7 @@ export class LangGraphCheckpointProvider {
     if (this.redisUrl) {
       try {
         this.redisSaver = await RedisSaver.fromUrl(this.redisUrl, {
-          defaultTTL: CHECKPOINT_CACHE_TTL_SECONDS,
+          defaultTTL: CHECKPOINT_CACHE_TTL_MINUTES,
           refreshOnRead: true,
         });
         this.logger.info('LangGraph checkpoint: Postgres authoritative + Redis cache (3600s TTL)');

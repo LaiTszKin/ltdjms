@@ -12,7 +12,8 @@ describe('UT-AG-027 agent config cache invalidation listener', () => {
     };
     const eventPublisher = new DomainEventPublisher();
 
-    new AgentConfigCacheInvalidationListener(cacheService, eventPublisher);
+    const listener = new AgentConfigCacheInvalidationListener(cacheService, eventPublisher);
+    listener.register();
 
     eventPublisher.publish({
       eventType: 'ai_agent_channel_config_changed',
@@ -33,11 +34,35 @@ describe('UT-AG-027 agent config cache invalidation listener', () => {
     };
     const eventPublisher = new DomainEventPublisher();
 
-    new AgentConfigCacheInvalidationListener(cacheService, eventPublisher);
+    const listener = new AgentConfigCacheInvalidationListener(cacheService, eventPublisher);
+    listener.register();
 
     eventPublisher.publish({
       eventType: 'shop_order_created',
       guildId: '123',
+      timestamp: new Date(),
+    });
+
+    expect(cacheService.invalidate).not.toHaveBeenCalled();
+  });
+
+  it('stops receiving events after dispose', async () => {
+    const cacheService: CacheService = {
+      get: vi.fn(),
+      put: vi.fn(),
+      invalidate: vi.fn().mockResolvedValue(undefined),
+    };
+    const eventPublisher = new DomainEventPublisher();
+
+    const listener = new AgentConfigCacheInvalidationListener(cacheService, eventPublisher);
+    listener.register();
+    listener.dispose();
+
+    eventPublisher.publish({
+      eventType: 'ai_agent_channel_config_changed',
+      guildId: '123',
+      channelId: '456',
+      agentEnabled: true,
       timestamp: new Date(),
     });
 

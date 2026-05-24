@@ -28,6 +28,7 @@ import {
   createTextChannelMock,
   withToolContext,
 } from './tool-test-helpers.js';
+import { ToolExecutionContext } from '../ToolExecutionContext.js';
 
 const permissionParser = new PermissionParser();
 
@@ -343,32 +344,66 @@ describe('UT-AG-013 send-messages tool parity', () => {
 
 /** UT-AG-014 */
 describe('UT-AG-014 search-messages tool parity', () => {
-  it('finds matching messages successfully', async () => {
-    const guild = createMockGuild();
-    const channel = {
+  function createSearchChannel(messages: Array<{ id: string; content: string }>) {
+    return {
       ...createTextChannelMock('general'),
       isTextBased: () => true,
       isSendable: () => true,
       messages: {
-        fetch: vi.fn().mockResolvedValue({
-          filter: () => ({
-            first: () => [
+        fetch: vi.fn().mockResolvedValue(
+          new Map(
+            messages.map((msg) => [
+              msg.id,
               {
-                id: 'msg-1',
-                content: 'hello world',
+                id: msg.id,
+                content: msg.content,
                 author: { tag: 'user#1' },
                 createdAt: new Date('2024-01-01T00:00:00Z'),
               },
-            ],
-          }),
-        }),
+            ]),
+          ),
+        ),
       },
     };
+  }
+
+  it('finds matching messages successfully', async () => {
+    const guild = createMockGuild();
+    const channel = createSearchChannel([{ id: 'msg-1', content: 'hello world' }]);
     guild.channels.cache.set(channel.id, channel as never);
 
     const tool = new SearchMessagesTool(createMockAuthGuard());
     const result = await withToolContext(() => tool.execute({ keywords: 'hello' }, guild));
     expect(result).toContain('hello');
+  });
+
+  it('uses current channel when channelIds missing', async () => {
+    const guild = createMockGuild();
+    const channel = createSearchChannel([{ id: 'msg-1', content: 'keyword match' }]);
+    guild.channels.cache.set(TEST_CHANNEL_ID, channel as never);
+
+    const tool = new SearchMessagesTool(createMockAuthGuard());
+    const result = await withToolContext(() => tool.execute({ keywords: 'keyword' }, guild));
+    expect(result).toContain('keyword match');
+    expect(channel.messages.fetch).toHaveBeenCalled();
+  });
+
+  it('returns error when keywords blank', async () => {
+    const tool = new SearchMessagesTool(createMockAuthGuard());
+    const result = await withToolContext(() =>
+      tool.execute({ keywords: '   ' }, createMockGuild()),
+    );
+    expect(result).toBe('keywords 不能為空');
+  });
+
+  it('requires all keywords to match', async () => {
+    const guild = createMockGuild();
+    const channel = createSearchChannel([{ id: 'msg-1', content: 'hello world' }]);
+    guild.channels.cache.set(TEST_CHANNEL_ID, channel as never);
+
+    const tool = new SearchMessagesTool(createMockAuthGuard());
+    const result = await withToolContext(() => tool.execute({ keywords: 'hello missing' }, guild));
+    expect(result).toContain('未找到');
   });
 
   it('rejects unauthorized caller', async () => {
@@ -402,6 +437,38 @@ describe('UT-AG-015 manage-message tool parity', () => {
       tool.execute({ messageId: 'msg-1', action: 'delete', channelId: TEST_CHANNEL_ID }, guild),
     );
     expect(result).toContain('已成功刪除');
+  });
+
+  it('uses current channel when channelId omitted', async () => {
+    const guild = createMockGuild();
+    const channel = {
+      ...createTextChannelMock('general'),
+      isTextBased: () => true,
+      isSendable: () => true,
+      messages: {
+        fetch: vi.fn().mockResolvedValue({
+          pinned: false,
+          delete: vi.fn().mockResolvedValue(undefined),
+        }),
+      },
+    };
+    guild.channels.cache.set(TEST_CHANNEL_ID, channel as never);
+
+    const tool = new ManageMessageTool(createMockAuthGuard());
+    const result = await withToolContext(() =>
+      tool.execute({ messageId: 'msg-1', action: 'delete' }, guild),
+    );
+    expect(result).toContain('已成功刪除');
+    expect(channel.messages.fetch).toHaveBeenCalledWith('msg-1');
+  });
+
+  it('returns error when current channel unavailable', async () => {
+    const tool = new ManageMessageTool(createMockAuthGuard());
+    const result = await ToolExecutionContext.run(
+      { guildId: TEST_GUILD_ID, channelId: '', userId: TEST_USER_ID },
+      () => tool.execute({ messageId: 'msg-1', action: 'delete' }, createMockGuild()),
+    );
+    expect(result).toBe('無效的 channelId，且當前頻道不可用');
   });
 
   it('rejects unauthorized caller', async () => {

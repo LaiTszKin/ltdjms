@@ -1,6 +1,7 @@
 import { type Guild } from 'discord.js';
 import { z } from 'zod';
 import { ToolCallerAuthorizationGuard } from './ToolCallerAuthorizationGuard.js';
+import { TOOL_DESCRIPTIONS } from './tool-descriptions.js';
 
 export const MoveChannelParamsSchema = z.object({
   channelId: z.string(),
@@ -15,7 +16,7 @@ export type MoveChannelParams = z.infer<typeof MoveChannelParamsSchema>;
  */
 export class MoveChannelTool {
   readonly name = 'move_channel';
-  readonly description = '移動頻道至指定分類';
+  readonly description = TOOL_DESCRIPTIONS.move_channel;
   readonly schema = MoveChannelParamsSchema;
 
   constructor(private readonly authGuard: ToolCallerAuthorizationGuard) {}

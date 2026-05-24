@@ -109,6 +109,10 @@ describe('UT-AG-501 tool schema oracle parity', () => {
           }
         }
       }
+
+      if ('description' in expected && typeof expected.description === 'string') {
+        expect(tool!.description).toBe(expected.description);
+      }
     });
   }
 

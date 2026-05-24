@@ -1,6 +1,7 @@
 import { ChannelType, type Guild } from 'discord.js';
 import { z } from 'zod';
 import { ToolCallerAuthorizationGuard } from './ToolCallerAuthorizationGuard.js';
+import { TOOL_DESCRIPTIONS } from './tool-descriptions.js';
 import { PermissionParser } from './PermissionParser.js';
 import { type PermissionSetting } from '../services/ai-chat-service.js';
 
@@ -28,7 +29,7 @@ export type CreateCategoryParams = z.infer<typeof CreateCategoryParamsSchema>;
  */
 export class CreateCategoryTool {
   readonly name = 'create_category';
-  readonly description = '在伺服器中創建一個新的分類';
+  readonly description = TOOL_DESCRIPTIONS.create_category;
   readonly schema = CreateCategoryParamsSchema;
 
   constructor(

@@ -10,8 +10,7 @@ import { DiscordMarkdownSanitizer } from './DiscordMarkdownSanitizer.js';
 import { MarkdownAutoFixer } from '../autofix/MarkdownAutoFixer.js';
 import { CommonMarkValidator } from '../validation/CommonMarkValidator.js';
 import { DiscordMarkdownPaginator } from './DiscordMarkdownPaginator.js';
-import { DiscordMarkdownStreamProcessor } from './DiscordMarkdownStreamProcessor.js';
-import { MarkdownHeadingSegmenter } from './MarkdownHeadingSegmenter.js';
+import { buildMarkdownStreamProcessor } from './markdown-pipeline-factory.js';
 
 /**
  * Decorator that wraps an AIChatService with Markdown validation pipeline.
@@ -214,14 +213,13 @@ export class MarkdownValidatingAIChatService implements AIChatService {
     }
   }
 
-  private buildStreamProcessor(): DiscordMarkdownStreamProcessor {
-    return new DiscordMarkdownStreamProcessor(
-      new MarkdownHeadingSegmenter(),
-      this.validator,
-      this.autoFixer,
-      this.sanitizer,
-      this.paginator,
-    );
+  private buildStreamProcessor() {
+    return buildMarkdownStreamProcessor({
+      validator: this.validator,
+      autoFixer: this.autoFixer,
+      sanitizer: this.sanitizer,
+      paginator: this.paginator,
+    });
   }
 
   private extractLastUserMessage(history: Array<{ role: string; content: string }>): string | null {

@@ -20,6 +20,7 @@ declare module '@ltdjms/shop' {
 
 declare module '@ltdjms/ai' {
   export function initializeAIModule(): Promise<void>;
+  export function disposeAIModule(): Promise<void>;
   export const AI_TOKENS: Record<string, symbol>;
 }
 

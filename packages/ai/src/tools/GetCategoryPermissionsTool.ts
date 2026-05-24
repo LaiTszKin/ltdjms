@@ -1,6 +1,7 @@
 import { ChannelType, type Guild } from 'discord.js';
 import { z } from 'zod';
 import { ToolCallerAuthorizationGuard } from './ToolCallerAuthorizationGuard.js';
+import { TOOL_DESCRIPTIONS } from './tool-descriptions.js';
 
 export const GetCategoryPermissionsParamsSchema = z.object({
   categoryId: z.string(),
@@ -14,7 +15,7 @@ export type GetCategoryPermissionsParams = z.infer<typeof GetCategoryPermissions
  */
 export class GetCategoryPermissionsTool {
   readonly name = 'get_category_permissions';
-  readonly description = '獲取指定分類的權限設定';
+  readonly description = TOOL_DESCRIPTIONS.get_category_permissions;
   readonly schema = GetCategoryPermissionsParamsSchema;
 
   constructor(private readonly authGuard: ToolCallerAuthorizationGuard) {}

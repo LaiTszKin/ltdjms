@@ -11,7 +11,7 @@ import type { PromptLoader } from '../../prompts/prompt-loader.js';
 import { SystemPrompt } from '../../prompts/prompt-loader.js';
 import { ok as resultOk } from '@ltdjms/shared';
 import type { ChatOpenAI } from '@langchain/openai';
-import { AGENT_NON_THREAD_MESSAGE_ID } from '../../markdown/services/markdown-pipeline-factory.js';
+import { AGENT_NON_THREAD_MESSAGE_ID } from '../../services/conversation-constants.js';
 
 function createAgentChatModel(streams: Array<AsyncGenerator<Record<string, unknown>>>): ChatOpenAI {
   const model = {

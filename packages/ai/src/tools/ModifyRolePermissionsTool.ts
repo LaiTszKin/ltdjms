@@ -1,6 +1,7 @@
 import { type Guild } from 'discord.js';
 import { z } from 'zod';
 import { ToolCallerAuthorizationGuard } from './ToolCallerAuthorizationGuard.js';
+import { TOOL_DESCRIPTIONS } from './tool-descriptions.js';
 import {
   escapeJson,
   normalizeOptionalName,
@@ -25,7 +26,7 @@ export type ModifyRolePermissionsParams = z.infer<typeof ModifyRolePermissionsPa
  */
 export class ModifyRolePermissionsTool {
   readonly name = 'modify_role_permissions';
-  readonly description = '修改指定身分組的權限設定';
+  readonly description = TOOL_DESCRIPTIONS.modify_role_permissions;
   readonly schema = ModifyRolePermissionsParamsSchema;
 
   constructor(private readonly authGuard: ToolCallerAuthorizationGuard) {}

@@ -7,7 +7,7 @@ import {
   formatFiatPriceTwd,
   formatReward,
 } from '../domain/product-types.js';
-import { PAGE_SIZE } from '../services/shop.service.js';
+import { PAGE_SIZE, formatShopPageFooter } from '../services/shop.service.js';
 
 const EMBED_COLOR_PRIMARY = 0x5865f2;
 const EMBED_COLOR_DANGER = 0xed4245;
@@ -153,10 +153,9 @@ export function buildShopEmbed(
     sb.push('\n');
   }
 
-  const footer: { text: string } =
-    totalPages > 1
-      ? { text: `第 ${currentPage} / ${totalPages} 頁` }
-      : { text: `共 ${products.length} 個商品` };
+  const footer: { text: string } = {
+    text: formatShopPageFooter(currentPage, totalPages, products.length),
+  };
 
   return {
     title: '🏪 商店',

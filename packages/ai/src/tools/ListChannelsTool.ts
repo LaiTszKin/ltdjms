@@ -1,6 +1,7 @@
 import { ChannelType, type Guild } from 'discord.js';
 import { z } from 'zod';
 import { ToolCallerAuthorizationGuard } from './ToolCallerAuthorizationGuard.js';
+import { TOOL_DESCRIPTIONS } from './tool-descriptions.js';
 
 export const ListChannelsParamsSchema = z.object({
   type: z.enum(['text', 'voice', 'category', 'forum', 'media', 'stage']).optional(),
@@ -23,7 +24,7 @@ const CHANNEL_TYPE_MAP: Record<string, ChannelType> = {
  */
 export class ListChannelsTool {
   readonly name = 'list_channels';
-  readonly description = '列出伺服器中的所有頻道，可按類型篩選';
+  readonly description = TOOL_DESCRIPTIONS.list_channels;
   readonly schema = ListChannelsParamsSchema;
 
   constructor(private readonly authGuard: ToolCallerAuthorizationGuard) {}

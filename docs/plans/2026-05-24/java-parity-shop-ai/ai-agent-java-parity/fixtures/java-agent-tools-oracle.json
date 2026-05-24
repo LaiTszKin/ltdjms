@@ -5,173 +5,363 @@
     {
       "name": "create_channel",
       "method": "createChannel",
-      "requiredParams": ["name"],
+      "requiredParams": [
+        "name"
+      ],
       "properties": {
-        "name": { "type": "string" },
-        "categoryId": { "type": "string" },
+        "name": {
+          "type": "string"
+        },
+        "categoryId": {
+          "type": "string"
+        },
         "permissions": {
           "type": "array",
           "items": {
             "type": "object",
             "properties": {
-              "roleId": { "type": "string" },
-              "allowSet": { "type": "array", "items": { "type": "string" } },
-              "denySet": { "type": "array", "items": { "type": "string" } },
-              "permissionSet": { "type": "string" }
+              "roleId": {
+                "type": "string"
+              },
+              "allowSet": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "denySet": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "permissionSet": {
+                "type": "string"
+              }
             },
-            "required": ["roleId"]
+            "required": [
+              "roleId"
+            ]
           }
         }
-      }
+      },
+      "description": "創建一個新的 Discord 文字頻道。\n使用場景：\n- 當用戶要求創建新頻道時使用此工具\n- 適用於各類文字頻道需求（公告、聊天、公告等）\n- 可以指定將頻道創建在特定類別下\n參數說明：\n- name：頻道名稱，不能為空且不超過 100 字符\n- categoryId：可選參數，指定頻道所屬的類別 ID。如果提供，頻道將創建在該類別下\n- permissions：可選參數，用於設置特定角色的訪問權限\n注意事項：\n- 創建後頻道默認繼承類別權限\n- 如未指定權限，所有成員默認可訪問\n- 如果指定的 categoryId 不存在，將返回錯誤"
     },
     {
       "name": "create_category",
       "method": "createCategory",
-      "requiredParams": ["name"],
+      "requiredParams": [
+        "name"
+      ],
       "properties": {
-        "name": { "type": "string" },
-        "permissions": { "type": "array" }
-      }
+        "name": {
+          "type": "string"
+        },
+        "permissions": {
+          "type": "array"
+        }
+      },
+      "description": "創建一個新的 Discord 類別（頻道分組）。\n使用場景：\n- 當用戶需要組織頻道結構時使用\n- 適用於將相關頻道分類管理（如「活動區」「公告區」等）\n參數說明：\n- name：類別名稱，不能為空且不超過 100 字符\n- permissions：可選參數，用於設置類別的訪問權限\n注意事項：\n- 類別本身不是頻道，是頻道的容器\n- 創建後可以將頻道移入此類別\n- 類別權限會被其中的頻道繼承"
     },
     {
       "name": "create_role",
       "method": "createRole",
-      "requiredParams": ["name"],
+      "requiredParams": [
+        "name"
+      ],
       "properties": {
-        "name": { "type": "string" },
-        "color": { "type": "string" },
-        "permissions": { "type": "array", "items": { "type": "string" } },
-        "hoist": { "type": "boolean" },
-        "mentionable": { "type": "boolean" }
-      }
+        "name": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "permissions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "hoist": {
+          "type": "boolean"
+        },
+        "mentionable": {
+          "type": "boolean"
+        }
+      },
+      "description": "創建新的 Discord 身分組（角色）。\n使用場景：\n- 當需要創建新的角色分組時使用\n- 設置特定權限的角色時使用\n返回資訊：\n- 新創建角色的完整資訊\n- 包括角色 ID（可用於後續操作）"
     },
     {
       "name": "list_channels",
       "method": "listChannels",
       "requiredParams": [],
-      "properties": {}
+      "properties": {},
+      "description": "獲取 Discord 伺服器中的頻道列表資訊。\n使用場景：\n- 當用戶詢問有哪些頻道時使用\n- 需要查看伺服器頻道結構時使用\n- 檢查特定頻道是否存在時使用\n返回資訊：\n- 頻道數量\n- 每個頻道的 ID、名稱和類型\n支援的頻道類型：\n- text：文字頻道\n- voice：語音頻道\n- category：類別\n- forum：論壇頻道\n- media：媒體頻道\n- stage：舞台頻道\n重要：\n- 所有頻道 ID 以「字串」形式返回，避免 JSON 數字溢位造成精度損失"
     },
     {
       "name": "list_categories",
       "method": "listCategories",
       "requiredParams": [],
-      "properties": {}
+      "properties": {},
+      "description": "獲取 Discord 伺服器中的類別列表資訊。\n使用場景：\n- 當用戶詢問有哪些類別時使用\n- 創建頻道前需要了解可用的類別 ID 時使用\n- 需要檢查特定類別是否存在時使用\n返回資訊：\n- 類別數量\n- 每個類別的 ID 和名稱\n應用提示：\n- 所有 ID 以「字串」形式返回（避免數字精度損失）\n- 類別用於組織和管理頻道\n- 創建頻道時可以指定將其放置在特定類別下"
     },
     {
       "name": "list_roles",
       "method": "listRoles",
       "requiredParams": [],
-      "properties": {}
+      "properties": {},
+      "description": "獲取 Discord 伺服器中的角色列表資訊。\n使用場景：\n- 當用戶詢問有哪些角色時使用\n- 創建頻道或類別前需要了解可用的角色 ID 時使用\n- 需要檢查特定角色是否存在時使用\n返回資訊：\n- 角色數量\n- 每個角色的 ID 和名稱\n排序規則：\n- 角色按權限等級從高到低排序\n- @everyone 角色固定排在最後（等級最低）\n應用提示：\n- 角色 ID 用於設置頻道/類別權限\n- 創建私密頻道時需要指定允許訪問的角色 ID"
     },
     {
       "name": "get_channel_permissions",
       "method": "getChannelPermissions",
-      "requiredParams": ["channelId"],
+      "requiredParams": [
+        "channelId"
+      ],
       "properties": {
-        "channelId": { "type": "string" }
-      }
+        "channelId": {
+          "type": "string"
+        }
+      },
+      "description": "獲取 Discord 頻道的權限覆寫資訊。\n使用場景：\n- 當用戶詢問特定頻道的權限設定時使用\n- 需要查看哪些角色或成員有特殊權限時使用\n- 檢查頻道的訪問控制設定時使用\n返回資訊：\n- 權限覆寫總數\n- 每個覆寫的類型（角色/成員）、ID、允許的權限、拒絕的權限\n重要：\n- 所有 ID 以「字串」形式返回，避免 JSON 數字溢位造成精度損失\n- 返回的權限覆寫包含角色和成員兩種類型"
     },
     {
       "name": "get_category_permissions",
       "method": "getCategoryPermissions",
-      "requiredParams": ["categoryId"],
+      "requiredParams": [
+        "categoryId"
+      ],
       "properties": {
-        "categoryId": { "type": "string" }
-      }
+        "categoryId": {
+          "type": "string"
+        }
+      },
+      "description": "獲取 Discord 類別的權限覆寫資訊。\n使用場景：\n- 當用戶詢問特定類別的權限設定時使用\n- 需要查看哪些角色或成員有特殊權限時使用\n- 檢查類別的訪問控制設定時使用\n返回資訊：\n- 權限覆寫總數\n- 每個覆寫的類型（角色/成員）、ID、允許的權限、拒絕的權限\n重要：\n- 所有 ID 以「字串」形式返回，避免 JSON 數字溢位造成精度損失\n- 返回的權限覆寫包含角色和成員兩種類型"
     },
     {
       "name": "get_role_permissions",
       "method": "getRolePermissions",
-      "requiredParams": ["roleId"],
+      "requiredParams": [
+        "roleId"
+      ],
       "properties": {
-        "roleId": { "type": "string" }
-      }
+        "roleId": {
+          "type": "string"
+        }
+      },
+      "description": "讀取 Discord 角色的伺服器層級權限。\n使用場景：\n- 當需要查看角色擁有的權限時使用\n- 權限審查或問題排查時使用\n返回資訊：\n- 角色基本資訊\n- 完整的伺服器層級權限列表\n- 是否為管理員角色"
     },
     {
       "name": "modify_channel_permissions",
       "method": "modifyChannelSettings",
-      "requiredParams": ["channelId"],
+      "requiredParams": [
+        "channelId"
+      ],
       "properties": {
-        "channelId": { "type": "string" },
-        "targetId": { "type": "string" },
-        "targetType": { "type": "string", "enum": ["member", "role"] },
-        "allowToAdd": { "type": "array", "items": { "type": "string" } },
-        "allowToRemove": { "type": "array", "items": { "type": "string" } },
-        "denyToAdd": { "type": "array", "items": { "type": "string" } },
-        "denyToRemove": { "type": "array", "items": { "type": "string" } },
-        "newName": { "type": "string" }
-      }
+        "channelId": {
+          "type": "string"
+        },
+        "targetId": {
+          "type": "string"
+        },
+        "targetType": {
+          "type": "string",
+          "enum": [
+            "member",
+            "role"
+          ]
+        },
+        "allowToAdd": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "allowToRemove": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "denyToAdd": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "denyToRemove": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "newName": {
+          "type": "string"
+        }
+      },
+      "description": "修改 Discord 頻道的權限覆寫設定。\n使用場景：\n- 當需要為特定用戶或角色添加或移除頻道權限時使用\n- 當需要重新命名頻道時使用\n- 需要修改現有權限覆寫時使用\n- 批量修改多個權限時使用\n- 當用戶要求「禁止」、「不允許」、「拒絕」某個權限時使用\n返回資訊：\n- 修改是否成功\n- 是否更新了頻道名稱\n- 修改前後的權限對比\n- 頻道和目標資訊\n權限系統概念（重要）：\nDiscord 權限系統有三種狀態：\n1. 明確允許（✓）：使用 allowToAdd 添加，該角色/用戶擁有此權限\n2. 明確拒絕（✗）：使用 denyToAdd 添加，該角色/用戶被禁止此權限（會覆蓋角色層級權限）\n3. 中立（/）：不設置，使用角色層級的預設權限\n參數使用指南：\n- allowToAdd: 當用戶說「允許」、「給予」、「添加」權限時使用\n- allowToRemove: 當用戶說「移除允許」（但不完全禁止）時使用\n- denyToAdd: 當用戶說「禁止」、「不允許」、「拒絕」、「阻止」權限時使用（這是積極禁止）\n- denyToRemove: 當用戶說「恢復」、「不再拒絕」權限時使用\n關鍵差異：\n- 「不授予」權限：不設置 allowToAdd（保持中立），但仍會使用角色層級權限\n- 「禁止」權限：設置 denyToAdd（明確拒絕），會覆蓋角色層級權限\n使用範例：\n- 「禁止普通成員發言」→ denyToAdd: [\"MESSAGE_SEND\"]（而非 allowToRemove）\n- 「只允許管理員發言」→ denyToAdd: [\"MESSAGE_SEND\"] for @everyone\n- 「允許管理員發言」→ allowToAdd: [\"MESSAGE_SEND\"] for 管理員角色\n重要限制：\n- 同一權限不能同時存在於「允許」和「拒絕」集合中\n- 拒絕權限優級高於允許權限"
     },
     {
       "name": "modify_category_permissions",
       "method": "modifyCategorySettings",
-      "requiredParams": ["categoryId"],
+      "requiredParams": [
+        "categoryId"
+      ],
       "properties": {
-        "categoryId": { "type": "string" },
-        "targetId": { "type": "string" },
-        "targetType": { "type": "string", "enum": ["member", "role"] },
-        "allowToAdd": { "type": "array", "items": { "type": "string" } },
-        "allowToRemove": { "type": "array", "items": { "type": "string" } },
-        "denyToAdd": { "type": "array", "items": { "type": "string" } },
-        "denyToRemove": { "type": "array", "items": { "type": "string" } },
-        "newName": { "type": "string" }
-      }
+        "categoryId": {
+          "type": "string"
+        },
+        "targetId": {
+          "type": "string"
+        },
+        "targetType": {
+          "type": "string",
+          "enum": [
+            "member",
+            "role"
+          ]
+        },
+        "allowToAdd": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "allowToRemove": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "denyToAdd": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "denyToRemove": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "newName": {
+          "type": "string"
+        }
+      },
+      "description": "修改 Discord 類別的權限覆寫設定。\n使用場景：\n- 當需要為特定用戶或角色添加或移除類別權限時使用\n- 當需要重新命名類別時使用\n- 需要修改現有類別權限覆寫時使用\n- 批量修改多個權限時使用\n返回資訊：\n- 修改是否成功\n- 是否更新了類別名稱\n- 修改前後的權限對比\n- 類別和目標資訊\n重要限制：\n- 同一權限不能同時存在於「允許」和「拒絕」集合中\n- 拒絕權限優級高於允許權限"
     },
     {
       "name": "modify_role_permissions",
       "method": "modifyRoleSettings",
-      "requiredParams": ["roleId"],
+      "requiredParams": [
+        "roleId"
+      ],
       "properties": {
-        "roleId": { "type": "string" },
-        "newName": { "type": "string" },
-        "permissionsToAdd": { "type": "array", "items": { "type": "string" } },
-        "permissionsToRemove": { "type": "array", "items": { "type": "string" } }
-      }
+        "roleId": {
+          "type": "string"
+        },
+        "newName": {
+          "type": "string"
+        },
+        "permissionsToAdd": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "permissionsToRemove": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "修改 Discord 角色的伺服器層級權限。\n使用場景：\n- 當需要添加或移除角色的伺服器權限時使用\n- 當需要重新命名角色時使用\n- 調整角色權限等級時使用\n注意：\n- 這會修改角色本身的基本權限\n- 不是修改頻道層級的權限覆寫\n- 權限修改是基於現有權限的增量操作"
     },
     {
       "name": "send_messages",
       "method": "sendMessages",
       "requiredParams": [],
       "properties": {
-        "channelIds": { "type": "array", "items": { "type": "string" } },
-        "message": { "type": "string" }
-      }
+        "channelIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "description": "發送訊息到一個或多個 Discord 頻道。\n使用場景：\n- 需要同時通知多個頻道時\n- 需要在指定頻道批次發送訊息時\n參數說明：\n- channelIds：目標頻道 ID 列表（可省略，省略時使用當前頻道）\n- message：單則訊息內容\n- messages：多則訊息內容列表\n規則：\n- 至少需要提供 message 或 messages 其中之一\n- 若 message 與 messages 同時提供，會合併後依序發送\n- 會將每則訊息發送到每個目標頻道"
     },
     {
       "name": "search_messages",
       "method": "searchMessages",
-      "requiredParams": ["keywords"],
+      "requiredParams": [
+        "keywords"
+      ],
       "properties": {
-        "keywords": { "type": "string" }
-      }
+        "keywords": {
+          "type": "string"
+        }
+      },
+      "description": "在一個或多個 Discord 頻道中搜尋訊息。\n使用場景：\n- 需要查找包含特定關鍵字的歷史訊息\n- 需要快速回顧多個頻道的討論內容\n參數說明：\n- keywords：搜尋關鍵字（可用空白分隔多個詞）\n- channelIds：要搜尋的頻道 ID 列表（可省略，省略時使用當前頻道）\n- maxResultsPerChannel：每個頻道回傳的最大匹配數（預設 20）\n- maxMessagesToScan：每個頻道最多掃描多少筆訊息（預設 200）"
     },
     {
       "name": "manage_message",
       "method": "manageMessage",
-      "requiredParams": ["messageId", "action"],
+      "requiredParams": [
+        "messageId",
+        "action"
+      ],
       "properties": {
-        "messageId": { "type": "string" },
-        "action": { "type": "string" },
-        "channelId": { "type": "string" }
-      }
+        "messageId": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string"
+        },
+        "channelId": {
+          "type": "string"
+        }
+      },
+      "description": "管理指定訊息，可執行 pin、delete、edit 三種操作。\n使用場景：\n- pin：釘選指定訊息\n- delete：刪除指定訊息\n- edit：編輯指定訊息內容\n參數說明：\n- messageId：目標訊息 ID（必要）\n- action：操作類型，必須是 pin/delete/edit\n- channelId：訊息所在頻道 ID（可省略，省略時使用當前頻道）\n- newContent：只有 action=edit 時需要提供\n- editMode：僅 action=edit 時可選，replace（覆寫）、append（附加到原文後）、prepend（附加到原文前）、diff（套用 unified diff）"
     },
     {
       "name": "move_channel",
       "method": "moveChannel",
-      "requiredParams": ["channelId", "targetCategoryId"],
+      "requiredParams": [
+        "channelId",
+        "targetCategoryId"
+      ],
       "properties": {
-        "channelId": { "type": "string" },
-        "targetCategoryId": { "type": "string" }
-      }
+        "channelId": {
+          "type": "string"
+        },
+        "targetCategoryId": {
+          "type": "string"
+        }
+      },
+      "description": "將指定頻道移動到另一個類別。\n使用場景：\n- 重整伺服器頻道結構\n- 將既有頻道改放到其他分類底下\n參數說明：\n- channelId：要移動的頻道 ID（字串）\n- targetCategoryId：目標類別 ID（字串）\n注意事項：\n- 只有可分類的頻道可移動（如文字、語音、論壇等）\n- 類別本身不可作為被移動對象"
     },
     {
       "name": "delete_discord_resource",
       "method": "deleteDiscordResource",
-      "requiredParams": ["resourceType", "resourceId"],
+      "requiredParams": [
+        "resourceType",
+        "resourceId"
+      ],
       "properties": {
-        "resourceType": { "type": "string" },
-        "resourceId": { "type": "string" }
-      }
+        "resourceType": {
+          "type": "string"
+        },
+        "resourceId": {
+          "type": "string"
+        }
+      },
+      "description": "刪除 Discord 伺服器資源。\n支援資源類型：\n- channel：刪除一般頻道（文字/語音/論壇等）\n- category：刪除類別（必須先清空類別內頻道）\n- role：刪除身分組\n參數說明：\n- resourceType：資源類型（channel/category/role）\n- resourceId：要刪除的資源 ID（字串）\n注意事項：\n- category 若仍包含頻道，會拒絕刪除並提示先清空\n- @everyone 與受管理身分組（managed role）不可刪除"
     }
   ]
 }

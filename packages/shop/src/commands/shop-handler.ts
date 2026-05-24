@@ -51,6 +51,7 @@ import {
   BUTTON_CONFIRM_PURCHASE,
   BUTTON_CANCEL_PURCHASE,
 } from '../view/shop-view.js';
+import pino from 'pino';
 
 interface DiscordUserLike {
   id: string;
@@ -71,6 +72,7 @@ export class ShopCommandHandler {
   readonly commandName = 'shop';
   /** Process-local only; multi-instance deployments have no cross-process dedup. */
   readonly inflightFiatOrders = new Set<string>();
+  private readonly log = pino({ name: 'shop-handler' });
 
   constructor(
     private readonly shopService: ShopService,
@@ -103,7 +105,8 @@ export class ShopCommandHandler {
       const embed = buildShopEmbed(shopPage.products, shopPage.currentPage, shopPage.totalPages);
       const components = buildShopComponents(shopPage.currentPage, shopPage.totalPages, true);
       await interaction.replyWithComponents(embed, components);
-    } catch {
+    } catch (error) {
+      this.log.error({ err: error, guildId }, 'Shop browse failed');
       await interaction.reply('發生錯誤，請稍後再試');
     }
   }
@@ -440,6 +443,8 @@ export class ShopCommandHandler {
       return;
     }
 
+    const userId = interaction.getUserId();
+
     try {
       if (customId === BUTTON_CANCEL_PURCHASE) {
         await interaction.reply('已取消購買');
@@ -447,7 +452,6 @@ export class ShopCommandHandler {
       }
 
       const productId = parseInt(customId.replace(BUTTON_CONFIRM_PURCHASE, ''), 10);
-      const userId = interaction.getUserId();
       const purchaseResult = await this.currencyPurchaseService.purchaseProduct(
         guildId,
         userId,
@@ -484,7 +488,8 @@ export class ShopCommandHandler {
       }
 
       await interaction.reply(successMessage);
-    } catch {
+    } catch (error) {
+      this.log.error({ err: error, guildId, userId }, 'Currency purchase failed');
       await interaction.reply('發生錯誤，請稍後再試');
     }
   }
