@@ -1,5 +1,7 @@
 package ltdjms.discord.shop.services;
 
+import java.util.Objects;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -7,6 +9,8 @@ import ltdjms.discord.currency.domain.CurrencyTransaction;
 import ltdjms.discord.currency.services.BalanceAdjustmentService;
 import ltdjms.discord.currency.services.BalanceService;
 import ltdjms.discord.currency.services.CurrencyTransactionService;
+import ltdjms.discord.membership.services.EscortPriceQuote;
+import ltdjms.discord.membership.services.MembershipPricingService;
 import ltdjms.discord.product.domain.Product;
 import ltdjms.discord.product.services.ProductRewardService;
 import ltdjms.discord.product.services.ProductService;
@@ -23,18 +27,23 @@ public class CurrencyPurchaseService {
   private final BalanceAdjustmentService balanceAdjustmentService;
   private final CurrencyTransactionService transactionService;
   private final ProductRewardService productRewardService;
+  private final MembershipPricingService membershipPricingService;
 
   public CurrencyPurchaseService(
       ProductService productService,
       BalanceService balanceService,
       BalanceAdjustmentService balanceAdjustmentService,
       CurrencyTransactionService transactionService,
-      ProductRewardService productRewardService) {
+      ProductRewardService productRewardService,
+      MembershipPricingService membershipPricingService) {
     this.productService = productService;
     this.balanceService = balanceService;
     this.balanceAdjustmentService = balanceAdjustmentService;
     this.transactionService = transactionService;
     this.productRewardService = productRewardService;
+    this.membershipPricingService =
+        Objects.requireNonNull(
+            membershipPricingService, "membershipPricingService must not be null");
   }
 
   /**
@@ -60,7 +69,8 @@ public class CurrencyPurchaseService {
       return Result.err(DomainError.invalidInput("此商品不可用貨幣購買"));
     }
 
-    long price = product.currencyPrice();
+    EscortPriceQuote quote = membershipPricingService.quoteEscortPrice(userId, product, guildId);
+    long price = quote.chargedCurrencyPrice();
 
     var balanceResult = balanceService.tryGetBalance(guildId, userId);
     if (balanceResult.isErr()) {
@@ -126,7 +136,8 @@ public class CurrencyPurchaseService {
         price);
 
     PurchaseResult result =
-        new PurchaseResult(product, currentBalance, finalBalance, price, rewardMessage.toString());
+        new PurchaseResult(
+            product, currentBalance, finalBalance, price, quote, rewardMessage.toString());
     return Result.ok(result);
   }
 
@@ -170,13 +181,18 @@ public class CurrencyPurchaseService {
 
   /** Result of a product purchase operation. */
   public record PurchaseResult(
-      Product product, long previousBalance, long newBalance, long price, String rewardMessage) {
+      Product product,
+      long previousBalance,
+      long newBalance,
+      long price,
+      EscortPriceQuote priceQuote,
+      String rewardMessage) {
     /** Formats the result as a success message. */
     public String formatSuccessMessage() {
       StringBuilder sb = new StringBuilder();
       sb.append("✅ 購買成功！\n\n");
       sb.append("**商品：** ").append(product.name()).append("\n");
-      sb.append("**價格：** ").append(String.format("%,d", price)).append(" 貨幣\n");
+      sb.append("**價格：** ").append(priceQuote.formatCurrencyPriceLine()).append("\n");
       sb.append("**購買前餘額：** ").append(String.format("%,d", previousBalance)).append(" 貨幣\n");
       sb.append("**購買後餘額：** ").append(String.format("%,d", newBalance)).append(" 貨幣");
 

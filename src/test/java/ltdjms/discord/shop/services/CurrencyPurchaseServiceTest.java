@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Optional;
 
@@ -19,6 +20,9 @@ import ltdjms.discord.currency.domain.BalanceView;
 import ltdjms.discord.currency.services.BalanceAdjustmentService;
 import ltdjms.discord.currency.services.BalanceService;
 import ltdjms.discord.currency.services.CurrencyTransactionService;
+import ltdjms.discord.membership.domain.MembershipTier;
+import ltdjms.discord.membership.services.EscortPriceQuote;
+import ltdjms.discord.membership.services.MembershipPricingService;
 import ltdjms.discord.product.domain.Product;
 import ltdjms.discord.product.services.ProductRewardService;
 import ltdjms.discord.product.services.ProductService;
@@ -46,6 +50,8 @@ class CurrencyPurchaseServiceTest {
 
   @Mock private ProductRewardService productRewardService;
 
+  @Mock private MembershipPricingService membershipPricingService;
+
   private CurrencyPurchaseService purchaseService;
 
   @BeforeEach
@@ -56,7 +62,18 @@ class CurrencyPurchaseServiceTest {
             balanceService,
             balanceAdjustmentService,
             transactionService,
-            productRewardService);
+            productRewardService,
+            membershipPricingService);
+    org.mockito.Mockito.lenient()
+        .when(membershipPricingService.quoteEscortPrice(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyLong()))
+        .thenAnswer(
+            invocation -> {
+              Product product = invocation.getArgument(1);
+              long currency = product.hasCurrencyPrice() ? product.currencyPrice() : 0L;
+              long fiat = product.hasFiatPriceTwd() ? product.fiatPriceTwd() : 0L;
+              return new EscortPriceQuote(
+                  fiat, fiat, currency, currency, MembershipTier.NONE, BigDecimal.ZERO);
+            });
   }
 
   @Nested
@@ -493,7 +510,8 @@ class CurrencyPurchaseServiceTest {
       // Given
       Product product = createCurrencyProduct(TEST_PRODUCT_ID);
       CurrencyPurchaseService.PurchaseResult result =
-          new CurrencyPurchaseService.PurchaseResult(product, 1000L, 500L, TEST_CURRENCY_PRICE, "");
+          new CurrencyPurchaseService.PurchaseResult(
+              product, 1000L, 500L, TEST_CURRENCY_PRICE, noDiscountQuote(product), "");
 
       // When
       String message = result.formatSuccessMessage();
@@ -523,7 +541,12 @@ class CurrencyPurchaseServiceTest {
               Instant.now());
       CurrencyPurchaseService.PurchaseResult result =
           new CurrencyPurchaseService.PurchaseResult(
-              product, 1000L, 600L, TEST_CURRENCY_PRICE, "\n\n獲得獎勵: 100 貨幣");
+              product,
+              1000L,
+              600L,
+              TEST_CURRENCY_PRICE,
+              noDiscountQuote(product),
+              "\n\n獲得獎勵: 100 貨幣");
 
       // When
       String message = result.formatSuccessMessage();
@@ -532,6 +555,13 @@ class CurrencyPurchaseServiceTest {
       assertThat(message).contains("購買成功");
       assertThat(message).contains("獲得獎勵: 100 貨幣");
     }
+  }
+
+  private static EscortPriceQuote noDiscountQuote(Product product) {
+    long fiat = product.hasFiatPriceTwd() ? product.fiatPriceTwd() : 0L;
+    long currency = product.hasCurrencyPrice() ? product.currencyPrice() : 0L;
+    return new EscortPriceQuote(
+        fiat, fiat, currency, currency, MembershipTier.NONE, BigDecimal.ZERO);
   }
 
   private Product createCurrencyProduct(long productId) {

@@ -203,6 +203,8 @@ class FiatOrderPostPaymentWorkerTest {
         "FD260411000001",
         "CVS123456",
         1200L,
+            null,
+            null,
         FiatOrder.Status.PAID,
         "1",
         "付款成功",

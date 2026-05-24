@@ -31,9 +31,9 @@
 **AND** fiat_order.list_price_twd=3500, charged_amount_twd=3150
 
 **Requirements**:
-- [ ] R1.1 NONE/無 tier 折扣 → 原價
-- [ ] R1.2 折扣僅當 `product.shouldAutoCreateEscortOrder()` 或 escortOptionCode 非空
-- [ ] R1.3 callback `TradeAmt` 必須等於建立時 amount（已在 order 凍結）
+- [x] R1.1 NONE/無 tier 折扣 → 原價
+- [x] R1.2 折扣僅當 `product.shouldAutoCreateEscortOrder()` 或 escortOptionCode 非空
+- [x] R1.3 callback `TradeAmt` 必須等於建立時 amount（已在 order 凍結）
 
 ### Requirement 2: 貨幣折扣
 **GIVEN** 黃金會員購買 escort-linked 貨幣商品
@@ -41,7 +41,7 @@
 **THEN** 扣除折後 currencyPrice
 
 **Requirements**:
-- [ ] R2.1 折後價 = round(listCurrency * (1-d))
+- [x] R2.1 折後價 = round(listCurrency * (1-d))
 
 ### Requirement 3: UI
 **GIVEN** 會員瀏覽 shop 確認頁
@@ -49,8 +49,8 @@
 **THEN** embed 顯示「會員價 NT$xxx（原價 NT$yyy）」
 
 ## Error and Edge Cases
-- [ ] 無 membership 記錄 → tier NONE → 無折扣
-- [ ] 四捨五入規則：TWD 整數、currency long 一致
+- [x] 無 membership 記錄 → tier NONE → 無折扣
+- [x] 四捨五入規則：TWD 整數、currency long 一致
 
 ## Clarification Questions
 None

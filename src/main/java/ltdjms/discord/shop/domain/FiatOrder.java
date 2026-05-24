@@ -19,6 +19,8 @@ public record FiatOrder(
     String orderNumber,
     String paymentNo,
     long amountTwd,
+    Long listPriceTwd,
+    Long chargedAmountTwd,
     Status status,
     String tradeStatus,
     String paymentMessage,
@@ -94,6 +96,17 @@ public record FiatOrder(
     if (amountTwd <= 0) {
       throw new IllegalArgumentException("amountTwd must be positive");
     }
+    if (listPriceTwd != null && listPriceTwd <= 0) {
+      throw new IllegalArgumentException("listPriceTwd must be positive when provided");
+    }
+    if (chargedAmountTwd != null && chargedAmountTwd <= 0) {
+      throw new IllegalArgumentException("chargedAmountTwd must be positive when provided");
+    }
+    if (listPriceTwd != null
+        && chargedAmountTwd != null
+        && chargedAmountTwd > listPriceTwd) {
+      throw new IllegalArgumentException("chargedAmountTwd must not exceed listPriceTwd");
+    }
     if (status == Status.PENDING_PAYMENT && paidAt != null) {
       throw new IllegalArgumentException("paidAt must be null when status is PENDING_PAYMENT");
     }
@@ -130,6 +143,8 @@ public record FiatOrder(
       String orderNumber,
       String paymentNo,
       long amountTwd,
+      Long listPriceTwd,
+      Long chargedAmountTwd,
       Instant expireAt) {
     Instant now = Instant.now();
     return new FiatOrder(
@@ -145,6 +160,8 @@ public record FiatOrder(
         orderNumber,
         paymentNo,
         amountTwd,
+        listPriceTwd,
+        chargedAmountTwd,
         Status.PENDING_PAYMENT,
         null,
         null,
@@ -183,6 +200,8 @@ public record FiatOrder(
         null,
         orderNumber,
         paymentNo,
+        amountTwd,
+        amountTwd,
         amountTwd,
         expireAt);
   }

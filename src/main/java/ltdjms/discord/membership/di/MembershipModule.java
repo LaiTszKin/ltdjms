@@ -13,6 +13,7 @@ import ltdjms.discord.membership.persistence.JdbcMembershipSpendRepository;
 import ltdjms.discord.membership.persistence.MembershipRepository;
 import ltdjms.discord.membership.persistence.MembershipSpendRepository;
 import ltdjms.discord.membership.services.MembershipJoinService;
+import ltdjms.discord.membership.services.MembershipPricingService;
 import ltdjms.discord.membership.services.MembershipSpendService;
 import ltdjms.discord.product.domain.EscortOptionCatalogRepository;
 
@@ -50,6 +51,13 @@ public class MembershipModule {
   public GuildMemberJoinListener provideGuildMemberJoinListener(
       MembershipJoinService membershipJoinService) {
     return new GuildMemberJoinListener(membershipJoinService);
+  }
+
+  @Provides
+  @Singleton
+  public MembershipPricingService provideMembershipPricingService(
+      MembershipRepository membershipRepository) {
+    return new MembershipPricingService(membershipRepository);
   }
 
   @Provides

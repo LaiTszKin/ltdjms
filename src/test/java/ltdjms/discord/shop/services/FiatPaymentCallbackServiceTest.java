@@ -144,6 +144,8 @@ class FiatPaymentCallbackServiceTest {
         ORDER_NUMBER,
         "ABC123456789",
         1200L,
+            null,
+            null,
         FiatOrder.Status.PAID,
         "1",
         "付款成功",

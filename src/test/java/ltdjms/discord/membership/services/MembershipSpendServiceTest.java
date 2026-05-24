@@ -238,6 +238,8 @@ class MembershipSpendServiceTest {
         "FD260411000001",
         "CVS123456",
         chargedAmount,
+        null,
+        null,
         FiatOrder.Status.PAID,
         "1",
         "付款成功",

@@ -32,6 +32,8 @@ import com.zaxxer.hikari.HikariDataSource;
 import ltdjms.discord.product.domain.Product;
 import ltdjms.discord.product.persistence.JdbcProductRepository;
 import ltdjms.discord.product.services.ProductService;
+import ltdjms.discord.membership.persistence.JdbcMembershipRepository;
+import ltdjms.discord.membership.services.MembershipPricingService;
 import ltdjms.discord.redemption.persistence.JdbcRedemptionCodeRepository;
 import ltdjms.discord.shared.DatabaseMigrationRunner;
 import ltdjms.discord.shared.DomainError;
@@ -111,7 +113,10 @@ class EcpayFiatPaymentE2EIntegrationTest {
     EcpayCvsPaymentService paymentService = new EcpayCvsPaymentService(config);
     FiatOrderService fiatOrderService =
         new FiatOrderService(
-            productService, paymentService, new JdbcFiatOrderRepository(dataSource));
+            productService,
+            paymentService,
+            new JdbcFiatOrderRepository(dataSource),
+            new MembershipPricingService(new JdbcMembershipRepository(dataSource)));
 
     Result<Product, DomainError> productResult =
         productService.createProduct(
