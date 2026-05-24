@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ltdjms.discord.aichat.commands.AIChatMentionListener;
+import ltdjms.discord.membership.listeners.GuildMemberJoinListener;
 import ltdjms.discord.discord.domain.DiscordRuntimeGateway;
 import ltdjms.discord.dispatch.commands.DispatchPanelInteractionHandler;
 import ltdjms.discord.panel.commands.AdminPanelButtonHandler;
@@ -69,6 +70,7 @@ public class DiscordCurrencyBot {
     ShopButtonHandler shopButtonHandler = appComponent.shopButtonHandler();
     ShopSelectMenuHandler shopSelectMenuHandler = appComponent.shopSelectMenuHandler();
     AIChatMentionListener aiChatMentionListener = appComponent.aiChatMentionListener();
+    GuildMemberJoinListener guildMemberJoinListener = appComponent.guildMemberJoinListener();
     this.ecpayCallbackHttpServer = appComponent.ecpayCallbackHttpServer();
     this.fiatOrderProcessingScheduler = appComponent.fiatOrderProcessingScheduler();
 
@@ -83,7 +85,8 @@ public class DiscordCurrencyBot {
             dispatchPanelInteractionHandler,
             shopButtonHandler,
             shopSelectMenuHandler,
-            aiChatMentionListener);
+            aiChatMentionListener,
+            guildMemberJoinListener);
 
     this.jda =
         JDABuilder.createLight(envConfig.getDiscordBotToken())
@@ -182,7 +185,8 @@ public class DiscordCurrencyBot {
       DispatchPanelInteractionHandler dispatchPanelInteractionHandler,
       ShopButtonHandler shopButtonHandler,
       ShopSelectMenuHandler shopSelectMenuHandler,
-      AIChatMentionListener aiChatMentionListener) {
+      AIChatMentionListener aiChatMentionListener,
+      GuildMemberJoinListener guildMemberJoinListener) {
     return List.of(
         slashCommandListener,
         userPanelButtonHandler,
@@ -191,6 +195,7 @@ public class DiscordCurrencyBot {
         dispatchPanelInteractionHandler,
         shopButtonHandler,
         shopSelectMenuHandler,
-        aiChatMentionListener);
+        aiChatMentionListener,
+        guildMemberJoinListener);
   }
 }

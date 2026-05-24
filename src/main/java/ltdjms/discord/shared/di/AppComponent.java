@@ -26,6 +26,7 @@ import ltdjms.discord.gametoken.services.DiceGame1Service;
 import ltdjms.discord.gametoken.services.GameTokenService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService;
 import ltdjms.discord.membership.di.MembershipModule;
+import ltdjms.discord.membership.listeners.GuildMemberJoinListener;
 import ltdjms.discord.panel.commands.AdminPanelButtonHandler;
 import ltdjms.discord.panel.commands.AdminProductPanelHandler;
 import ltdjms.discord.panel.commands.UserPanelButtonHandler;
@@ -169,4 +170,7 @@ public interface AppComponent {
 
   // Slash Command Listener
   SlashCommandListener slashCommandListener();
+
+  // Membership
+  GuildMemberJoinListener guildMemberJoinListener();
 }

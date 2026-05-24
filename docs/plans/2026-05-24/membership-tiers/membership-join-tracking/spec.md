@@ -30,9 +30,9 @@
 **AND** `settlement_day_of_month = 15`
 
 **Requirements**:
-- [ ] R1.1 已存在更早 join 日 → 不更新 earliest
-- [ ] R1.2 新 join 日更晚 → 只更新若 earliest 為 null
-- [ ] R1.3 join 日為 31 號 → settlement_day_of_month = 28
+- [x] R1.1 已存在更早 join 日 → 不更新 earliest
+- [x] R1.2 新 join 日更晚 → 只更新若 earliest 為 null
+- [x] R1.3 join 日為 31 號 → settlement_day_of_month = 28
 
 ### Requirement 2: 結算日初始化
 **GIVEN** 新用戶首次 join
@@ -40,11 +40,11 @@
 **THEN** `next_settlement_at` = 下一個 settlement_day 的 00:00 UTC（或 Asia/Taipei，與專案 clock 一致）
 
 **Requirements**:
-- [ ] R2.1 已存在 next_settlement_at → join 不覆寫（除非為 null）
+- [x] R2.1 已存在 next_settlement_at → join 不覆寫（除非為 null）
 
 ## Error and Edge Cases
-- [ ] Bot 無 GUILD_MEMBERS intent → log error + preparation 阻擋部署
-- [ ] 並發雙 guild join → earliest 仍正確（DB transaction）
+- [x] Bot 無 GUILD_MEMBERS intent → log error + preparation 阻擋部署
+- [x] 並發雙 guild join → earliest 仍正確（DB transaction）
 
 ## Clarification Questions
 None
