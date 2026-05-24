@@ -8,6 +8,9 @@ import {
   BUTTON_BUY,
   BUTTON_SEARCH,
   BUTTON_BACK_TO_SHOP,
+  BUTTON_SEARCH_PREV,
+  BUTTON_SEARCH_NEXT,
+  encodeKeyword,
 } from '../../view/shop-view.js';
 import {
   ShopTestInteraction,
@@ -216,5 +219,54 @@ describe('UT-307 ShopButtonHandler browse/search parity', () => {
     );
 
     expect(shopService.getShopPage).toHaveBeenCalledWith(guildIdNum, 0);
+  });
+
+  it('search pagination converts shop_snext customId to 0-based searchProducts page', async () => {
+    const product = createTestProduct({ guildId: guildIdNum, name: 'PagedProduct' });
+    vi.mocked(shopService.searchProducts).mockResolvedValue({
+      products: [product],
+      currentPage: 2,
+      totalPages: 3,
+      isEmpty: () => false,
+      hasPreviousPage: () => true,
+      hasNextPage: () => true,
+      formatPageIndicator: () => '第 2 / 3 頁',
+    });
+
+    const keyword = 'keyword';
+    const customId = `${BUTTON_SEARCH_NEXT}${encodeKeyword(keyword)}_2`;
+    const interaction = new ShopTestInteraction(guildId, userId, { customId });
+    await handler.handleInteraction(
+      interaction,
+      new MockDiscordContext(guildId, userId, '1', `<@${userId}>`),
+      customId,
+    );
+
+    expect(shopService.searchProducts).toHaveBeenCalledWith(guildIdNum, keyword, 1);
+    expect(interaction.getEditedComponents().length).toBeGreaterThan(0);
+  });
+
+  it('search pagination shop_sprev uses encoded keyword and page index', async () => {
+    const product = createTestProduct({ guildId: guildIdNum, name: 'PagedProduct' });
+    vi.mocked(shopService.searchProducts).mockResolvedValue({
+      products: [product],
+      currentPage: 1,
+      totalPages: 3,
+      isEmpty: () => false,
+      hasPreviousPage: () => false,
+      hasNextPage: () => true,
+      formatPageIndicator: () => '第 1 / 3 頁',
+    });
+
+    const keyword = 'find me';
+    const customId = `${BUTTON_SEARCH_PREV}${encodeKeyword(keyword)}_1`;
+    const interaction = new ShopTestInteraction(guildId, userId, { customId });
+    await handler.handleInteraction(
+      interaction,
+      new MockDiscordContext(guildId, userId, '1', `<@${userId}>`),
+      customId,
+    );
+
+    expect(shopService.searchProducts).toHaveBeenCalledWith(guildIdNum, keyword, 0);
   });
 });

@@ -15,11 +15,20 @@ function isCheckpointSetupAlreadyApplied(error: unknown): boolean {
 
 type CheckpointSaver = PostgresSaver | RedisSaver;
 
+export interface AgentCheckpointMessage {
+  role: string;
+  content: string;
+}
+
 /** LangGraph checkpoint TTL — aligns with Java RedisPostgresChatMemoryStore 3600s intent. */
 export const CHECKPOINT_CACHE_TTL_SECONDS = 3600;
 
 const ConversationState = Annotation.Root({
   turnCount: Annotation<number>(),
+  messages: Annotation<AgentCheckpointMessage[]>({
+    reducer: (_current, next) => next,
+    default: () => [],
+  }),
 });
 
 /**
@@ -29,7 +38,9 @@ const ConversationState = Annotation.Root({
 export class LangGraphCheckpointProvider {
   private postgresSaver: PostgresSaver | null = null;
   private redisSaver: RedisSaver | null = null;
-  private activeSaver: CheckpointSaver | null = null;
+  private postgresApp: ReturnType<LangGraphCheckpointProvider['buildConversationGraph']> | null =
+    null;
+  private redisApp: ReturnType<LangGraphCheckpointProvider['buildConversationGraph']> | null = null;
   private readonly logger: pino.Logger;
 
   constructor(
@@ -57,7 +68,6 @@ export class LangGraphCheckpointProvider {
         throw error;
       }
     }
-    this.activeSaver = this.postgresSaver;
 
     if (this.redisUrl) {
       try {
@@ -80,10 +90,10 @@ export class LangGraphCheckpointProvider {
   }
 
   getCheckpointer(): CheckpointSaver {
-    if (!this.activeSaver) {
+    if (!this.postgresSaver) {
       throw new Error('LangGraphCheckpointProvider not initialized — call initialize() first');
     }
-    return this.activeSaver;
+    return this.postgresSaver;
   }
 
   isPostgresOnly(): boolean {
@@ -91,28 +101,101 @@ export class LangGraphCheckpointProvider {
   }
 
   /** Minimal graph for checkpoint roundtrip / restart survival tests. */
-  buildConversationGraph() {
-    const checkpointer = this.getCheckpointer();
+  buildConversationGraph(checkpointer: CheckpointSaver = this.getCheckpointer()) {
     return new StateGraph(ConversationState)
-      .addNode('increment', (state) => ({ turnCount: (state.turnCount ?? 0) + 1 }))
+      .addNode('increment', (state) => ({
+        turnCount: (state.turnCount ?? 0) + 1,
+        messages: state.messages ?? [],
+      }))
       .addEdge(START, 'increment')
       .addEdge('increment', END)
       .compile({ checkpointer });
   }
 
-  /** Records one agent turn for the given conversation thread (Postgres authoritative). */
-  async recordAgentTurn(conversationId: string): Promise<void> {
-    const app = this.buildConversationGraph();
-    const config = { configurable: { thread_id: conversationId } };
-    await app.invoke({}, config);
+  private getPostgresApp() {
+    if (!this.postgresApp) {
+      this.postgresApp = this.buildConversationGraph(this.getCheckpointer());
+    }
+    return this.postgresApp;
+  }
+
+  private getRedisApp() {
+    if (!this.redisSaver) {
+      return null;
+    }
+    if (!this.redisApp) {
+      this.redisApp = this.buildConversationGraph(this.redisSaver);
+    }
+    return this.redisApp;
+  }
+
+  private threadConfig(conversationId: string) {
+    return { configurable: { thread_id: conversationId } };
+  }
+
+  private async readState(conversationId: string) {
+    const config = this.threadConfig(conversationId);
+
+    if (this.redisSaver) {
+      try {
+        const redisApp = this.getRedisApp();
+        if (redisApp) {
+          const redisSnapshot = await redisApp.getState(config);
+          if (
+            (redisSnapshot.values.turnCount ?? 0) > 0 ||
+            (redisSnapshot.values.messages?.length ?? 0) > 0
+          ) {
+            return redisSnapshot;
+          }
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.debug(
+          { err: message },
+          'Redis checkpoint read miss — falling back to Postgres',
+        );
+      }
+    }
+
+    const postgresApp = this.getPostgresApp();
+    return postgresApp.getState(config);
+  }
+
+  /** Records one agent turn and optional message snapshot for the conversation thread. */
+  async recordAgentTurn(
+    conversationId: string,
+    messages: AgentCheckpointMessage[] = [],
+  ): Promise<void> {
+    const config = this.threadConfig(conversationId);
+    const payload = { messages };
+
+    const postgresApp = this.getPostgresApp();
+    await postgresApp.invoke(payload, config);
+
+    const redisApp = this.getRedisApp();
+    if (redisApp) {
+      try {
+        await redisApp.invoke(payload, config);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.warn(
+          { err: message },
+          'Redis checkpoint write failed — Postgres remains authoritative',
+        );
+      }
+    }
   }
 
   /** Returns persisted agent turn count for the conversation thread. */
   async getAgentTurnCount(conversationId: string): Promise<number> {
-    const app = this.buildConversationGraph();
-    const config = { configurable: { thread_id: conversationId } };
-    const snapshot = await app.getState(config);
+    const snapshot = await this.readState(conversationId);
     return snapshot.values.turnCount ?? 0;
+  }
+
+  /** Returns persisted agent message snapshot for restart hydration. */
+  async getAgentMessages(conversationId: string): Promise<AgentCheckpointMessage[]> {
+    const snapshot = await this.readState(conversationId);
+    return snapshot.values.messages ?? [];
   }
 
   async shutdown(): Promise<void> {
@@ -120,7 +203,8 @@ export class LangGraphCheckpointProvider {
     await redis?.close?.();
     this.redisSaver = null;
     this.postgresSaver = null;
-    this.activeSaver = null;
+    this.postgresApp = null;
+    this.redisApp = null;
   }
 }
 

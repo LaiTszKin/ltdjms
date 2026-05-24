@@ -1,22 +1,14 @@
-import { type Guild, PermissionFlagsBits } from 'discord.js';
+import { type Guild } from 'discord.js';
 import { z } from 'zod';
 import { ToolCallerAuthorizationGuard } from './ToolCallerAuthorizationGuard.js';
+import { parsePermissionNames } from './permission-modify-helper.js';
 
 export const CreateRoleParamsSchema = z.object({
   name: z.string().min(1).max(100),
   color: z.string().optional(),
-  permissions: z
-    .array(
-      z.object({
-        id: z.string(),
-        type: z.enum(['role', 'member']),
-        allow: z.string().optional(),
-        deny: z.string().optional(),
-        allowSet: z.array(z.string()).optional(),
-        denySet: z.array(z.string()).optional(),
-      }),
-    )
-    .optional(),
+  permissions: z.array(z.string()).optional(),
+  hoist: z.boolean().optional(),
+  mentionable: z.boolean().optional(),
 });
 
 export type CreateRoleParams = z.infer<typeof CreateRoleParamsSchema>;
@@ -37,55 +29,23 @@ export class CreateRoleTool {
     if (authError) return authError;
 
     try {
-      const roleOptions: Record<string, unknown> = {
-        name: params.name,
+      let colorInt = 0;
+      if (params.color?.trim()) {
+        const parsed = Number.parseInt(params.color.trim(), 16);
+        if (!Number.isNaN(parsed)) {
+          colorInt = parsed;
+        }
+      }
+
+      const permissionBits = parsePermissionNames(params.permissions);
+      const role = await guild.roles.create({
+        name: params.name.trim(),
+        color: colorInt,
+        permissions: permissionBits,
+        hoist: params.hoist ?? false,
+        mentionable: params.mentionable ?? false,
         reason: '透過 AI Agent 創建身分組',
-      };
-
-      if (params.color) {
-        roleOptions.color = params.color;
-      }
-
-      const role = await guild.roles.create(roleOptions);
-
-      // Apply permissions after role creation (P1-25 fix)
-      if (params.permissions && params.permissions.length > 0) {
-        let allowBits = BigInt(0);
-        let denyBits = BigInt(0);
-
-        for (const perm of params.permissions) {
-          if (perm.allow) {
-            allowBits |= BigInt(perm.allow);
-          }
-          if (perm.deny) {
-            denyBits |= BigInt(perm.deny);
-          }
-          if (perm.allowSet) {
-            for (const name of perm.allowSet) {
-              const key = name.toUpperCase() as keyof typeof PermissionFlagsBits;
-              const bit = PermissionFlagsBits[key];
-              if (bit !== undefined) allowBits |= bit;
-            }
-          }
-          if (perm.denySet) {
-            for (const name of perm.denySet) {
-              const key = name.toUpperCase() as keyof typeof PermissionFlagsBits;
-              const bit = PermissionFlagsBits[key];
-              if (bit !== undefined) denyBits |= bit;
-            }
-          }
-        }
-
-        // Start from default permissions, apply allow and deny
-        let finalPerms = role.permissions;
-        if (allowBits > BigInt(0)) {
-          finalPerms = finalPerms.add(allowBits);
-        }
-        if (denyBits > BigInt(0)) {
-          finalPerms = finalPerms.remove(denyBits);
-        }
-        await role.setPermissions(finalPerms, '透過 AI Agent 設定身分組權限');
-      }
+      });
 
       return `已成功創建身分組「${role.name}」(ID: ${role.id})`;
     } catch (error) {

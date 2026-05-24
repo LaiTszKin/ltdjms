@@ -36,9 +36,9 @@ describe('UT-AG-018 tool execution interceptor parity', () => {
     );
   }
 
-  it('publishes started event when context is set', () => {
-    withContext(() => {
-      interceptor.onToolExecutionStarted('list_channels', {});
+  it('publishes started event when context is set', async () => {
+    await withContext(async () => {
+      await interceptor.runTracked('list_channels', {}, async () => 'ok');
     });
     expect(eventPublisher.publish).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -80,9 +80,12 @@ describe('UT-AG-018 tool execution interceptor parity', () => {
   });
 
   it('stores empty parameter summary for null parameters', async () => {
-    withContext(() => {
-      interceptor.onToolExecutionStarted('testTool', null as unknown as Record<string, unknown>);
-      interceptor.onToolExecutionCompleted('Success');
+    await withContext(async () => {
+      await interceptor.runTracked(
+        'testTool',
+        null as unknown as Record<string, unknown>,
+        async () => 'Success',
+      );
     });
 
     const logs = await repository.findByChannelId(TEST_CHANNEL_ID, 1);
@@ -94,11 +97,10 @@ describe('UT-AG-018 tool execution interceptor parity', () => {
       forceJsonFailure: true,
     });
 
-    withContext(() => {
-      failingInterceptor.onToolExecutionStarted('testTool', { key: 'value' });
-      const result = failingInterceptor.onToolExecutionCompleted('Success');
-      expect(result).toContain('✅');
-    });
+    const result = await withContext(async () =>
+      failingInterceptor.runTracked('testTool', { key: 'value' }, async () => 'Success'),
+    );
+    expect(result).toBe('Success');
 
     const logs = await repository.findByChannelId(TEST_CHANNEL_ID, 1);
     expect(logs.getValue()[0].parameters).toBe(auditOracle.serializationFailureFallback.parameters);
@@ -125,10 +127,9 @@ describe('UT-AG-018 tool execution interceptor parity', () => {
     expect(saved.errorMessage).not.toContain('Permission denied');
   });
 
-  it('cleans context after success', () => {
-    withContext(() => {
-      interceptor.onToolExecutionStarted('testTool', {});
-      interceptor.onToolExecutionCompleted('Success');
+  it('cleans context after success', async () => {
+    await withContext(async () => {
+      await interceptor.runTracked('testTool', {}, async () => 'Success');
     });
     const second = interceptor.onToolExecutionCompleted('Another');
     expect(second).toBe('Another');

@@ -22,8 +22,9 @@ describe('UT-AIC-010 validator parity', () => {
   const validator = new CommonMarkValidator();
   const fixer = new RegexBasedAutoFixer();
 
-  it('loads java-markdown-oracle.json error types', () => {
-    expect(oracle.errorTypes).toContain('UNBALANCED_EMPHASIS');
+  it('matches Java ErrorType enum from oracle', () => {
+    expect(Object.values(ErrorType)).toEqual(oracle.errorTypes);
+    expect(oracle.errorTypes).toHaveLength(9);
   });
 
   for (const testCase of oracle.cases) {
@@ -31,6 +32,18 @@ describe('UT-AIC-010 validator parity', () => {
       it(`matches oracle case: ${testCase.name}`, () => {
         const fixed = fixer.autoFix(testCase.input);
         expect(isValid(validator.validate(fixed))).toBe(true);
+      });
+    }
+
+    if (testCase.expectedErrorType && testCase.input) {
+      it(`maps oracle case ${testCase.name} to ${testCase.expectedErrorType}`, () => {
+        const result = validator.validate(testCase.input);
+        expect(isInvalid(result)).toBe(true);
+        if (isInvalid(result)) {
+          expect(
+            result.errors.some((error) => error.errorType === testCase.expectedErrorType),
+          ).toBe(true);
+        }
       });
     }
   }

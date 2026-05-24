@@ -4,6 +4,7 @@ import { ConversationIdBuilder } from './tool-call-history.js';
 import { InMemoryToolCallHistory } from './tool-call-history.js';
 import { ConversationIdStrategy } from '../ai-chat-service.js';
 import type { DiscordRuntimeGateway } from '@ltdjms/shared';
+import { TokenEstimator } from './TokenEstimator.js';
 
 /**
  * Interface for conversation memory providers.
@@ -65,6 +66,8 @@ export class DiscordThreadHistoryProvider {
 export class SimplifiedChatMemoryProvider implements ChatMemoryProvider {
   private static readonly THREAD_MAX_MESSAGES = 100;
   private static readonly NON_THREAD_MAX_MESSAGES = 10;
+  private static readonly MAX_CONTEXT_TOKENS = 12000;
+  private readonly tokenEstimator = new TokenEstimator();
 
   constructor(
     private readonly threadHistoryProvider: DiscordThreadHistoryProvider,
@@ -73,6 +76,20 @@ export class SimplifiedChatMemoryProvider implements ChatMemoryProvider {
     maxMessages: number = SimplifiedChatMemoryProvider.THREAD_MAX_MESSAGES,
   ) {
     void maxMessages;
+  }
+
+  private trimToTokenBudget(
+    messages: Array<{ role: string; content: string }>,
+  ): Array<{ role: string; content: string }> {
+    let totalTokens = this.tokenEstimator.estimateMessageTokens(messages);
+    const trimmed = [...messages];
+
+    while (totalTokens > SimplifiedChatMemoryProvider.MAX_CONTEXT_TOKENS && trimmed.length > 1) {
+      trimmed.shift();
+      totalTokens = this.tokenEstimator.estimateMessageTokens(trimmed);
+    }
+
+    return trimmed;
   }
 
   async getMemory(memoryId: string): Promise<Array<{ role: string; content: string }>> {
@@ -138,7 +155,7 @@ export class SimplifiedChatMemoryProvider implements ChatMemoryProvider {
       return [];
     }
 
-    return messages;
+    return this.trimToTokenBudget(messages);
   }
 
   private async buildMessageLevelMemory(
@@ -180,7 +197,7 @@ export class SimplifiedChatMemoryProvider implements ChatMemoryProvider {
         }
       }
 
-      return messages.reverse();
+      return this.trimToTokenBudget(messages.reverse());
     } catch {
       return [];
     }

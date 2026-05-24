@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import oracle from '../../../../../docs/plans/2026-05-24/java-parity-shop-ai/ai-agent-java-parity/fixtures/java-agent-tools-oracle.json';
 import auditOracle from '../../../../../docs/plans/2026-05-24/java-parity-shop-ai/ai-agent-java-parity/fixtures/java-tool-audit-oracle.json';
-import { zodSchemaToJsonSchema } from '../../tools/tool-schema.js';
+import { zodTypeToJsonSchema } from '../../tools/tool-schema.js';
 import { PermissionParser } from '../../tools/PermissionParser.js';
 import { CreateChannelTool } from '../../tools/CreateChannelTool.js';
 import { CreateCategoryTool } from '../../tools/CreateCategoryTool.js';
@@ -35,8 +35,8 @@ function createAllAgentToolInstances() {
     new GetChannelPermissionsTool(authGuard),
     new GetCategoryPermissionsTool(authGuard),
     new GetRolePermissionsTool(authGuard),
-    new ModifyChannelPermissionsTool(authGuard, permissionParser),
-    new ModifyCategoryPermissionsTool(authGuard, permissionParser),
+    new ModifyChannelPermissionsTool(authGuard),
+    new ModifyCategoryPermissionsTool(authGuard),
     new ModifyRolePermissionsTool(authGuard),
     new SendMessagesTool(authGuard),
     new SearchMessagesTool(authGuard),
@@ -65,12 +65,49 @@ describe('UT-AG-501 tool schema oracle parity', () => {
       const tool = allTools.find((t) => t.name === expected.name);
       expect(tool, `missing tool ${expected.name}`).toBeDefined();
 
-      const jsonSchema = zodSchemaToJsonSchema(tool!.schema);
+      const jsonSchema = zodTypeToJsonSchema(tool!.schema);
       expect(jsonSchema.type).toBe('object');
 
       const required = (jsonSchema.required as string[] | undefined) ?? [];
       for (const param of expected.requiredParams) {
         expect(required, `${expected.name} missing required ${param}`).toContain(param);
+      }
+
+      if ('properties' in expected && expected.properties) {
+        const schemaProps = (jsonSchema.properties ?? {}) as Record<
+          string,
+          Record<string, unknown>
+        >;
+        for (const [propName, propOracle] of Object.entries(expected.properties)) {
+          expect(schemaProps, `${expected.name} missing property ${propName}`).toHaveProperty(
+            propName,
+          );
+          const actualProp = schemaProps[propName];
+          expect(actualProp.type).toBe(propOracle.type);
+          if ('items' in propOracle && propOracle.items) {
+            const actualItems = actualProp.items as Record<string, unknown>;
+            const oracleItems = propOracle.items as Record<string, unknown>;
+            if (oracleItems.type) {
+              expect(actualItems.type).toBe(oracleItems.type);
+            }
+            if (oracleItems.properties) {
+              for (const [nestedName, nestedOracle] of Object.entries(
+                oracleItems.properties as Record<string, Record<string, unknown>>,
+              )) {
+                expect(actualItems.properties as Record<string, unknown>).toHaveProperty(
+                  nestedName,
+                );
+                expect(
+                  (actualItems.properties as Record<string, Record<string, unknown>>)[nestedName]
+                    .type,
+                ).toBe(nestedOracle.type);
+              }
+            }
+          }
+          if ('enum' in propOracle) {
+            expect(actualProp.enum).toEqual(propOracle.enum);
+          }
+        }
       }
     });
   }

@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { describe, it, expect, vi } from 'vitest';
 import { AIChatMentionListener } from '../ai-chat-mention-listener.js';
+import { AgentCompletionListener } from '../../listeners/agent-completion-listener.js';
 import { AIChatMentionRoutingDecision } from '../../services/routing/routing-decision.js';
 import { Route, Source, StreamChunkType } from '../../services/ai-chat-service.js';
 import type { AIChatService, StreamingResponseHandler } from '../../services/ai-chat-service.js';
@@ -8,7 +9,7 @@ import type { Message, Guild, User, GuildTextBasedChannel } from 'discord.js';
 
 /** UT-AIC-003 — AIChatMentionListenerAgentConclusionTest.java (agent streaming UX, no new tools) */
 describe('UT-AIC-003 mention-listener agent parity', () => {
-  it('should send TOOL_INTENT immediately and finalize CONTENT after completion', async () => {
+  it('should send TOOL_INTENT immediately and delegate final CONTENT to AgentCompletionListener', async () => {
     const routingDecision = {
       decide: vi.fn().mockResolvedValue({
         route: Route.AGENT_ROUTE,
@@ -69,6 +70,22 @@ describe('UT-AIC-003 mention-listener agent parity', () => {
 
     expect(capturedHandler).toBeDefined();
     expect(sent.some((s) => s.includes('正在查詢') || s.includes('查詢'))).toBe(true);
+    expect(sent.some((s) => s.includes('最終回覆'))).toBe(false);
+
+    const completionListener = new AgentCompletionListener({
+      findGuildChannel: () => channel,
+      findThreadChannel: () => null,
+    } as never);
+    completionListener.accept({
+      eventType: 'agent_completed',
+      guildId: '123',
+      channelId: '456',
+      userId: '789',
+      conversationId: '123:456:789:111',
+      finalResponse: '最終回覆',
+      timestamp: new Date(),
+    });
+
     expect(sent.some((s) => s.includes('最終回覆'))).toBe(true);
   });
 });

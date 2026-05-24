@@ -258,8 +258,24 @@ export class ShopCommandHandler {
       return;
     }
 
-    const buyRows = buildBuyMenu(allProducts);
-    await this.replyWithMessageAndComponents(interaction, '請選擇要購買的商品', buyRows);
+    const products = allProducts.slice(0, 25);
+    const buyRows = buildBuyMenu(products);
+    const suffix =
+      allProducts.length > products.length
+        ? `\n（顯示前 ${products.length} 項，共 ${allProducts.length} 項可購買商品）`
+        : '';
+    await this.replyWithMessageAndComponents(interaction, `請選擇要購買的商品${suffix}`, buyRows);
+  }
+
+  private async editDeferredReply(interaction: DiscordInteraction, content: string): Promise<void> {
+    const raw = interaction.getHook() as {
+      editReply?: (options: Record<string, unknown> | string) => Promise<unknown>;
+    } | null;
+    if (raw?.editReply) {
+      await raw.editReply({ content });
+      return;
+    }
+    await interaction.reply(content);
   }
 
   private async replyWithMessageAndComponents(
@@ -511,7 +527,7 @@ export class ShopCommandHandler {
       await this.processDeferredFiatOrder(interaction, guildId, userId, productId, inflightKey);
     } catch {
       this.inflightFiatOrders.delete(inflightKey);
-      await interaction.reply('發生錯誤，請稍後再試');
+      await this.editDeferredReply(interaction, '發生錯誤，請稍後再試');
     }
   }
 
@@ -525,7 +541,7 @@ export class ShopCommandHandler {
     const orderResult = await this.fiatOrderService.createFiatOnlyOrder(guildId, userId, productId);
     if (orderResult.isErr()) {
       this.inflightFiatOrders.delete(inflightKey);
-      await interaction.reply(`下單失敗：${orderResult.getError().message}`);
+      await this.editDeferredReply(interaction, `下單失敗：${orderResult.getError().message}`);
       return;
     }
 
@@ -538,7 +554,7 @@ export class ShopCommandHandler {
     );
 
     this.inflightFiatOrders.delete(inflightKey);
-    await interaction.reply(message);
+    await this.editDeferredReply(interaction, message);
   }
 
   private async trySendFiatOrderDm(userId: string, order: FiatOrderResult): Promise<boolean> {

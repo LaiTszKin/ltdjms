@@ -1,28 +1,41 @@
 {
-  "source": "CommonMarkValidatorTest_*, MarkdownAutoFixerTest, DiscordMarkdownPaginatorTest",
+  "source": "MarkdownValidator.ErrorType, CommonMarkValidatorTest_*, MarkdownAutoFixerTest, DiscordMarkdownPaginatorTest",
   "errorTypes": [
-    "UNBALANCED_EMPHASIS",
-    "UNBALANCED_CODE_FENCE",
-    "UNBALANCED_INLINE_CODE",
-    "UNBALANCED_LINK",
-    "UNBALANCED_HEADING",
-    "UNBALANCED_LIST",
-    "DISCORD_INVALID_SPOILER",
-    "DISCORD_INVALID_MENTION"
+    "MALFORMED_LIST",
+    "UNCLOSED_CODE_BLOCK",
+    "HEADING_LEVEL_EXCEEDED",
+    "HEADING_FORMAT",
+    "HEADING_CONTAINS_LIST_MARKER",
+    "MALFORMED_NESTED_LIST",
+    "MALFORMED_TABLE",
+    "ESCAPE_CHARACTER_MISSING",
+    "DISCORD_RENDER_ISSUE"
   ],
   "autofixOrder": [
-    "code_fence",
-    "inline_code",
-    "emphasis",
-    "link",
-    "heading",
-    "list",
-    "spoiler"
+    "fixUnclosedCodeBlocks",
+    "fixHeadingLevelExceeded",
+    "fixInlineHeadings",
+    "fixHeadingFormat",
+    "fixHeadingContainsListMarker",
+    "fixHeadingInlineListItems",
+    "fixEmbeddedLists",
+    "fixInlineListMarkersInListLines",
+    "fixListFormat",
+    "normalizeUnorderedListMarkers",
+    "fixNestedListIndentation",
+    "fixDiscordUnderlineBold",
+    "fixTaskList",
+    "fixHorizontalRules"
   ],
   "cases": [
     {
-      "name": "unbalanced_bold_autofix",
-      "input": "hello **world",
+      "name": "heading_format_missing_space",
+      "input": "#This is a heading\n##Another heading",
+      "expectValidAfterAutofix": true
+    },
+    {
+      "name": "unclosed_code_block",
+      "input": "```\nconsole.log('hello');\nSome text after",
       "expectValidAfterAutofix": true
     },
     {
@@ -32,8 +45,13 @@
     },
     {
       "name": "paginator_respects_limit",
-      "maxChunkLength": 1980,
+      "maxChunkLength": 1900,
       "preserveCodeBlocks": true
+    },
+    {
+      "name": "table_maps_to_discord_render_issue",
+      "input": "| Name | Value |\n| --- | --- |\n| foo | bar |",
+      "expectedErrorType": "DISCORD_RENDER_ISSUE"
     }
   ]
 }

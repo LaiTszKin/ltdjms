@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { AIChatMentionListener } from '../../commands/ai-chat-mention-listener.js';
+import { AgentCompletionListener } from '../../listeners/agent-completion-listener.js';
 import {
   Route,
   Source,
@@ -145,6 +146,22 @@ async function runAgentStreamingScenario(testCase: {
 
   if (testCase.name === 'tool_intent_immediate_send') {
     expect(sent.some((s) => s.includes('正在查詢') || s.includes('查詢'))).toBe(true);
+    expect(sent.some((s) => s.includes('最終回覆'))).toBe(false);
+
+    const completionListener = new AgentCompletionListener({
+      findGuildChannel: () => channel,
+      findThreadChannel: () => null,
+    } as never);
+    completionListener.accept({
+      eventType: 'agent_completed',
+      guildId: '123',
+      channelId: '456',
+      userId: '789',
+      conversationId: '123:456:789:111',
+      finalResponse: '最終回覆',
+      timestamp: new Date(),
+    });
+
     expect(sent.some((s) => s.includes('最終回覆'))).toBe(true);
     expect(thinkingMsg.delete).toHaveBeenCalled();
     return;

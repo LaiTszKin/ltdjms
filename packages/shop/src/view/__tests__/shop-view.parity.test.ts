@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
+  assertEmbedParity,
+  normalizeEmbedForSnapshot,
+} from '../../../../shared/src/__tests__/parity/json-snapshot.js';
+import {
   MODAL_SEARCH,
   BUTTON_PREV_PAGE,
   BUTTON_NEXT_PAGE,
@@ -58,8 +62,11 @@ describe('UT-302 ShopView embed + modal parity', () => {
 
   it('empty shop embed matches oracle', () => {
     const embed = buildEmptyShopEmbed();
-    expect(embed.title).toBe(oracle.scenarios.emptyShop.title);
-    expect(embed.description).toBe(oracle.scenarios.emptyShop.description);
+    assertEmbedParity(normalizeEmbedForSnapshot(embed), {
+      title: oracle.scenarios.emptyShop.title,
+      description: oracle.scenarios.emptyShop.description,
+      color: embed.color,
+    });
   });
 
   it('browse single product embed matches oracle', () => {
@@ -141,6 +148,19 @@ describe('UT-304 ShopView buy/search/confirm parity', () => {
       customId: oracle.scenarios.searchResults.backButtonId,
       label: '返回商店',
     });
+  });
+
+  it('search pagination disables prev on first page and next on last page', () => {
+    const product = createTestProduct({ name: 'PagedProduct' });
+    const firstPage = buildSearchResultComponents(1, 3, 'keyword', [product])[1]
+      .components as Array<{ disabled: boolean }>;
+    const lastPage = buildSearchResultComponents(3, 3, 'keyword', [product])[1]
+      .components as Array<{ disabled: boolean }>;
+
+    expect(firstPage[0].disabled).toBe(true);
+    expect(firstPage[1].disabled).toBe(false);
+    expect(lastPage[0].disabled).toBe(false);
+    expect(lastPage[1].disabled).toBe(true);
   });
 
   it('confirm purchase embed sufficient and insufficient balance', () => {

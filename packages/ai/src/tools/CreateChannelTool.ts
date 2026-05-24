@@ -2,22 +2,19 @@ import { ChannelType, type Guild } from 'discord.js';
 import { z } from 'zod';
 import { ToolCallerAuthorizationGuard } from './ToolCallerAuthorizationGuard.js';
 import { PermissionParser } from './PermissionParser.js';
-import { type PermissionSetting } from '../services/ai-chat-service.js';
+import { parseSnowflakeId } from './permission-modify-helper.js';
+
+const ChannelPermissionSettingSchema = z.object({
+  roleId: z.string(),
+  allowSet: z.array(z.string()).optional(),
+  denySet: z.array(z.string()).optional(),
+  permissionSet: z.string().optional(),
+});
 
 export const CreateChannelParamsSchema = z.object({
   name: z.string().min(1).max(100),
-  permissions: z
-    .array(
-      z.object({
-        id: z.string(),
-        type: z.enum(['role', 'member']),
-        allow: z.string().optional(),
-        deny: z.string().optional(),
-        allowSet: z.array(z.string()).optional(),
-        denySet: z.array(z.string()).optional(),
-      }),
-    )
-    .optional(),
+  categoryId: z.string().optional(),
+  permissions: z.array(ChannelPermissionSettingSchema).optional(),
 });
 
 export type CreateChannelParams = z.infer<typeof CreateChannelParamsSchema>;
@@ -41,13 +38,29 @@ export class CreateChannelTool {
     if (authError) return authError;
 
     try {
+      const categoryId = parseSnowflakeId(params.categoryId);
+      if (params.categoryId && !categoryId) {
+        return '類別 ID 格式無效，請以字串提供完整的類別 ID';
+      }
+
+      const parent =
+        categoryId !== null
+          ? (guild.channels.cache.get(categoryId) ??
+            (await guild.channels.fetch(categoryId).catch(() => null)))
+          : null;
+
+      if (categoryId && (!parent || parent.type !== ChannelType.GuildCategory)) {
+        return '找不到指定的類別';
+      }
+
       const permissionOverwrites = params.permissions
-        ? this.permissionParser.parse(params.permissions as PermissionSetting[])
+        ? this.permissionParser.parseChannelPermissionSettings(params.permissions)
         : undefined;
 
       const channel = await guild.channels.create({
         name: params.name,
         type: ChannelType.GuildText,
+        parent: parent?.id,
         permissionOverwrites,
         reason: '透過 AI Agent 創建頻道',
       });

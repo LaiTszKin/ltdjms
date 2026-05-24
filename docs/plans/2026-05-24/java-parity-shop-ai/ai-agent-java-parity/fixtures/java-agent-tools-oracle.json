@@ -5,87 +5,173 @@
     {
       "name": "create_channel",
       "method": "createChannel",
-      "requiredParams": ["name"]
+      "requiredParams": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "permissions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "roleId": { "type": "string" },
+              "allowSet": { "type": "array", "items": { "type": "string" } },
+              "denySet": { "type": "array", "items": { "type": "string" } },
+              "permissionSet": { "type": "string" }
+            },
+            "required": ["roleId"]
+          }
+        }
+      }
     },
     {
       "name": "create_category",
       "method": "createCategory",
-      "requiredParams": ["name"]
+      "requiredParams": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "permissions": { "type": "array" }
+      }
     },
     {
       "name": "create_role",
       "method": "createRole",
-      "requiredParams": ["name"]
+      "requiredParams": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "color": { "type": "string" },
+        "permissions": { "type": "array", "items": { "type": "string" } },
+        "hoist": { "type": "boolean" },
+        "mentionable": { "type": "boolean" }
+      }
     },
     {
       "name": "list_channels",
       "method": "listChannels",
-      "requiredParams": []
+      "requiredParams": [],
+      "properties": {}
     },
     {
       "name": "list_categories",
       "method": "listCategories",
-      "requiredParams": []
+      "requiredParams": [],
+      "properties": {}
     },
     {
       "name": "list_roles",
       "method": "listRoles",
-      "requiredParams": []
+      "requiredParams": [],
+      "properties": {}
     },
     {
       "name": "get_channel_permissions",
       "method": "getChannelPermissions",
-      "requiredParams": ["channelId"]
+      "requiredParams": ["channelId"],
+      "properties": {
+        "channelId": { "type": "string" }
+      }
     },
     {
       "name": "get_category_permissions",
       "method": "getCategoryPermissions",
-      "requiredParams": ["categoryId"]
+      "requiredParams": ["categoryId"],
+      "properties": {
+        "categoryId": { "type": "string" }
+      }
     },
     {
       "name": "get_role_permissions",
       "method": "getRolePermissions",
-      "requiredParams": ["roleId"]
+      "requiredParams": ["roleId"],
+      "properties": {
+        "roleId": { "type": "string" }
+      }
     },
     {
       "name": "modify_channel_permissions",
-      "method": "modifyChannelPermissions",
-      "requiredParams": ["channelId", "permissions"]
+      "method": "modifyChannelSettings",
+      "requiredParams": ["channelId"],
+      "properties": {
+        "channelId": { "type": "string" },
+        "targetId": { "type": "string" },
+        "targetType": { "type": "string", "enum": ["member", "role"] },
+        "allowToAdd": { "type": "array", "items": { "type": "string" } },
+        "allowToRemove": { "type": "array", "items": { "type": "string" } },
+        "denyToAdd": { "type": "array", "items": { "type": "string" } },
+        "denyToRemove": { "type": "array", "items": { "type": "string" } },
+        "newName": { "type": "string" }
+      }
     },
     {
       "name": "modify_category_permissions",
-      "method": "modifyCategoryPermissions",
-      "requiredParams": ["categoryId", "permissions"]
+      "method": "modifyCategorySettings",
+      "requiredParams": ["categoryId"],
+      "properties": {
+        "categoryId": { "type": "string" },
+        "targetId": { "type": "string" },
+        "targetType": { "type": "string", "enum": ["member", "role"] },
+        "allowToAdd": { "type": "array", "items": { "type": "string" } },
+        "allowToRemove": { "type": "array", "items": { "type": "string" } },
+        "denyToAdd": { "type": "array", "items": { "type": "string" } },
+        "denyToRemove": { "type": "array", "items": { "type": "string" } },
+        "newName": { "type": "string" }
+      }
     },
     {
       "name": "modify_role_permissions",
-      "method": "modifyRolePermissions",
-      "requiredParams": ["roleId", "permissions"]
+      "method": "modifyRoleSettings",
+      "requiredParams": ["roleId"],
+      "properties": {
+        "roleId": { "type": "string" },
+        "newName": { "type": "string" },
+        "permissionsToAdd": { "type": "array", "items": { "type": "string" } },
+        "permissionsToRemove": { "type": "array", "items": { "type": "string" } }
+      }
     },
     {
       "name": "send_messages",
       "method": "sendMessages",
-      "requiredParams": []
+      "requiredParams": [],
+      "properties": {
+        "channelIds": { "type": "array", "items": { "type": "string" } },
+        "message": { "type": "string" }
+      }
     },
     {
       "name": "search_messages",
       "method": "searchMessages",
-      "requiredParams": ["keywords"]
+      "requiredParams": ["keywords"],
+      "properties": {
+        "keywords": { "type": "string" }
+      }
     },
     {
       "name": "manage_message",
       "method": "manageMessage",
-      "requiredParams": ["messageId", "action"]
+      "requiredParams": ["messageId", "action"],
+      "properties": {
+        "messageId": { "type": "string" },
+        "action": { "type": "string" },
+        "channelId": { "type": "string" }
+      }
     },
     {
       "name": "move_channel",
       "method": "moveChannel",
-      "requiredParams": ["channelId", "targetCategoryId"]
+      "requiredParams": ["channelId", "targetCategoryId"],
+      "properties": {
+        "channelId": { "type": "string" },
+        "targetCategoryId": { "type": "string" }
+      }
     },
     {
       "name": "delete_discord_resource",
       "method": "deleteDiscordResource",
-      "requiredParams": ["resourceType", "resourceId"]
+      "requiredParams": ["resourceType", "resourceId"],
+      "properties": {
+        "resourceType": { "type": "string" },
+        "resourceId": { "type": "string" }
+      }
     }
   ]
 }

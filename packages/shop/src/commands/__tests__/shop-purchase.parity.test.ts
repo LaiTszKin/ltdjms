@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ok, err, DomainError, MockDiscordContext } from '@ltdjms/shared';
+import {
+  normalizeEmbedForSnapshot,
+} from '../../../../shared/src/__tests__/parity/json-snapshot.js';
 import { ShopCommandHandler } from '../shop-handler.js';
 import { ProductService } from '../../services/product-service.js';
+import oracle from '../../../../../docs/plans/2026-05-24/java-parity-shop-ai/shop-java-parity/fixtures/java-shop-view-oracle.json';
 import {
   SELECT_BUY_PRODUCT,
   BUTTON_PAY_WITH_CURRENCY,
@@ -107,6 +111,11 @@ describe('UT-308 ShopSelectMenuHandler purchase parity', () => {
 
     expect(interaction.getEditEmbedCount()).toBe(1);
     expect(interaction.getEditedComponents()[0]).toBeDefined();
+    const embed = normalizeEmbedForSnapshot(interaction.getEditedEmbeds()[0]);
+    expect(embed.title).toBe(oracle.scenarios.confirmPurchase.title);
+    for (const fragment of oracle.scenarios.confirmPurchase.sufficientBalance.descriptionContains) {
+      expect(String(embed.description)).toContain(fragment);
+    }
   });
 
   it('cancel purchase replies with cancel message', async () => {
@@ -271,7 +280,20 @@ describe('UT-308 ShopSelectMenuHandler purchase parity', () => {
       fiatPriceTwd: 1200,
     });
     vi.mocked(productService.getProduct).mockResolvedValue(product);
-    handler.inflightFiatOrders.add(`${guildIdNum}:${userId}:${productId}`);
+    vi.mocked(fiatOrderService.createFiatOnlyOrder).mockResolvedValue(
+      ok({
+        product,
+        orderNumber: 'FD260409000003',
+        paymentNo: 'ABC000000003',
+        expireDate: '2026/04/12 23:59:59',
+        paymentUrl: 'https://example.com/pay',
+        fulfillmentWarning: null,
+      }),
+    );
+
+    const inflightKey = `${guildIdNum}:${userId}:${productId}`;
+    handler.inflightFiatOrders.add(inflightKey);
+    expect(handler.inflightFiatOrders.has(inflightKey)).toBe(true);
 
     const interaction = new ShopTestInteraction(guildId, userId, {
       customId: SELECT_BUY_PRODUCT,

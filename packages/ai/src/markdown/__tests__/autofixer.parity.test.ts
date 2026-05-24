@@ -22,8 +22,10 @@ describe('UT-AIC-011 autofixer parity', () => {
   const fixer = new RegexBasedAutoFixer();
   const validator = new CommonMarkValidator();
 
-  it('loads autofix order from oracle', () => {
-    expect(oracle.autofixOrder[0]).toBe('code_fence');
+  it('loads 14-step autofix order from oracle', () => {
+    expect(oracle.autofixOrder).toHaveLength(14);
+    expect(oracle.autofixOrder[0]).toBe('fixUnclosedCodeBlocks');
+    expect(oracle.autofixOrder[13]).toBe('fixHorizontalRules');
   });
 
   for (const testCase of oracle.cases) {

@@ -17,12 +17,13 @@ import {
 } from './ai-chat-service.js';
 import { type Result, DomainError, ok, err, processWithConcurrencyLimit } from '@ltdjms/shared';
 import type {
-  AgentCompletedEvent,
-  AgentFailedEvent,
   DiscordRuntimeGateway,
   DomainEventPublisher,
   DomainEvent,
+  AgentCompletedEvent,
+  AgentFailedEvent,
 } from '@ltdjms/shared';
+import type { AgentCheckpointMessage } from './memory/langgraph-checkpoint-provider.js';
 import { LangChainExceptionMapper } from './LangChainExceptionMapper.js';
 import type { PromptLoader } from '../prompts/prompt-loader.js';
 import { ToolExecutionContext } from '../tools/ToolExecutionContext.js';
@@ -219,9 +220,19 @@ export class LangChainAIChatService implements AIChatService {
     messageId?: string,
   ): Promise<void> {
     if (!userMessage || userMessage.trim().length === 0) {
-      void handler.onChunk('', true, DomainError.aiResponseEmpty('No user message provided'));
+      await handler.onChunk('', true, DomainError.aiResponseEmpty('No user message provided'));
       return;
     }
+
+    let chunkChain = Promise.resolve();
+    const dispatchChunk = (
+      chunk: string,
+      isComplete: boolean,
+      error: DomainError | null,
+      chunkType?: StreamChunkType,
+    ): void => {
+      chunkChain = chunkChain.then(() => handler.onChunk(chunk, isComplete, error, chunkType));
+    };
 
     const conversationId = ConversationIdBuilder.build(
       guildId,
@@ -237,7 +248,13 @@ export class LangChainAIChatService implements AIChatService {
 
       // Append conversation memory if memory provider is available (P2-11)
       if (this.memoryProvider) {
-        const memoryMessages = await this.memoryProvider.getMemory(conversationId);
+        let memoryMessages = await this.memoryProvider.getMemory(conversationId);
+
+        if (agentEnabled && this.checkpointProvider) {
+          const checkpointMessages = await this.checkpointProvider.getAgentMessages(conversationId);
+          memoryMessages = this.mergeMemoryWithCheckpoint(memoryMessages, checkpointMessages);
+        }
+
         for (const mem of memoryMessages) {
           if (mem.role === 'user') {
             messages.push(new HumanMessage(mem.content));
@@ -305,7 +322,7 @@ export class LangChainAIChatService implements AIChatService {
             pendingContent += content;
             totalContent += content;
             if (!agentEnabled) {
-              void handler.onChunk(content, false, null, StreamChunkType.CONTENT);
+              dispatchChunk(content, false, null, StreamChunkType.CONTENT);
             }
           }
 
@@ -314,7 +331,7 @@ export class LangChainAIChatService implements AIChatService {
           const reasoningContent = msg.reasoning_content as string | undefined;
           if (reasoningContent) {
             reasoningBuffer += reasoningContent;
-            void handler.onChunk(reasoningContent, false, null, StreamChunkType.REASONING);
+            dispatchChunk(reasoningContent, false, null, StreamChunkType.REASONING);
           }
         }
 
@@ -322,7 +339,7 @@ export class LangChainAIChatService implements AIChatService {
 
         if (toolCalls.length > 0) {
           if (agentEnabled && pendingContent.trim()) {
-            void handler.onChunk(pendingContent, false, null, StreamChunkType.TOOL_INTENT);
+            dispatchChunk(pendingContent, false, null, StreamChunkType.TOOL_INTENT);
             pendingContent = '';
           }
 
@@ -363,44 +380,41 @@ export class LangChainAIChatService implements AIChatService {
       }
 
       if (!totalContent && !reasoningBuffer) {
-        if (agentEnabled) {
-          this.publishAgentFailed(
-            guildId,
-            channelId,
-            userId,
-            conversationId,
-            'AI did not generate a response',
-          );
-        }
-        void handler.onChunk(
-          '',
-          true,
-          DomainError.aiResponseEmpty('AI did not generate a response'),
-        );
+        dispatchChunk('', true, DomainError.aiResponseEmpty('AI did not generate a response'));
+        await chunkChain;
         return;
       }
 
-      if (agentEnabled && finalResponseContent) {
-        void handler.onChunk(finalResponseContent, true, null, StreamChunkType.CONTENT);
+      if (agentEnabled) {
+        dispatchChunk(finalResponseContent ?? '', true, null, StreamChunkType.CONTENT);
         agentSucceeded = true;
       }
 
       // Final completion signal (used by non-agent mode)
       if (!agentEnabled) {
-        void handler.onChunk('', true, null);
+        dispatchChunk('', true, null);
       }
+
+      await chunkChain;
 
       if (agentEnabled && agentSucceeded) {
         if (this.checkpointProvider) {
-          await this.checkpointProvider.recordAgentTurn(conversationId);
+          const checkpointMessages = this.buildCheckpointMessages(messages, conversationId, userId);
+          await this.checkpointProvider.recordAgentTurn(conversationId, checkpointMessages);
         }
-        this.publishAgentCompleted(
-          guildId,
-          channelId,
-          userId,
-          conversationId,
-          finalResponseContent || totalContent,
-        );
+
+        if (this.eventPublisher) {
+          const event: AgentCompletedEvent = {
+            eventType: 'agent_completed',
+            guildId,
+            channelId,
+            userId,
+            conversationId,
+            finalResponse: finalResponseContent || totalContent,
+            timestamp: new Date(),
+          };
+          this.eventPublisher.publish(event);
+        }
       }
 
       // Publish AIMessageEvent after successful completion (INT-011)
@@ -431,11 +445,78 @@ export class LangChainAIChatService implements AIChatService {
       }
     } catch (error) {
       const domainError = this.exceptionMapper.map(error);
-      if (agentEnabled) {
-        this.publishAgentFailed(guildId, channelId, userId, conversationId, domainError.message);
+      dispatchChunk('', true, domainError);
+      await chunkChain;
+
+      if (agentEnabled && this.eventPublisher) {
+        const failedEvent: AgentFailedEvent = {
+          eventType: 'agent_failed',
+          guildId,
+          channelId,
+          userId,
+          conversationId,
+          reason: domainError.message,
+          timestamp: new Date(),
+        };
+        this.eventPublisher.publish(failedEvent);
       }
-      void handler.onChunk('', true, domainError);
     }
+  }
+
+  private mergeMemoryWithCheckpoint(
+    discordMemory: Array<{ role: string; content: string }>,
+    checkpointMessages: AgentCheckpointMessage[],
+  ): Array<{ role: string; content: string }> {
+    if (checkpointMessages.length === 0) {
+      return discordMemory;
+    }
+
+    const seen = new Set(discordMemory.map((message) => `${message.role}:${message.content}`));
+    const merged = [...discordMemory];
+
+    for (const message of checkpointMessages) {
+      const key = `${message.role}:${message.content}`;
+      if (!message.content.trim() || seen.has(key)) {
+        continue;
+      }
+      merged.push(message);
+      seen.add(key);
+    }
+
+    return merged;
+  }
+
+  private buildCheckpointMessages(
+    messages: BaseMessage[],
+    conversationId: string,
+    userId: string,
+  ): AgentCheckpointMessage[] {
+    const checkpointMessages: AgentCheckpointMessage[] = messages
+      .filter((message) => {
+        const type = message._getType();
+        return type === 'human' || type === 'ai';
+      })
+      .map((message) => ({
+        role: message._getType() === 'human' ? 'user' : 'assistant',
+        content: typeof message.content === 'string' ? message.content : '',
+      }))
+      .filter((message) => message.content.trim().length > 0);
+
+    const threadId =
+      ConversationIdBuilder.extractThreadId(conversationId) ?? conversationId.split(':')[1];
+    if (this.toolCallHistory && threadId) {
+      for (const entry of this.toolCallHistory.getToolCallMessages(threadId, userId)) {
+        if (!entry.memorySummary?.trim()) {
+          continue;
+        }
+        checkpointMessages.push({
+          role: 'assistant',
+          content: entry.memorySummary,
+        });
+      }
+    }
+
+    return checkpointMessages;
   }
 
   private resolveThreadId(guildId: string, channelId: string): string | null {
@@ -458,50 +539,6 @@ export class LangChainAIChatService implements AIChatService {
     }
     const truncated = result.slice(0, this.toolResultMaxChars);
     return `${truncated}\n\n{"truncated":true,"total":${result.length}}`;
-  }
-
-  private publishAgentCompleted(
-    guildId: string,
-    channelId: string,
-    userId: string,
-    conversationId: string,
-    finalResponse: string,
-  ): void {
-    if (!this.eventPublisher) {
-      return;
-    }
-    const event: AgentCompletedEvent = {
-      eventType: 'agent_completed',
-      guildId,
-      channelId,
-      userId,
-      conversationId,
-      finalResponse,
-      timestamp: new Date(),
-    };
-    this.eventPublisher.publish(event);
-  }
-
-  private publishAgentFailed(
-    guildId: string,
-    channelId: string,
-    userId: string,
-    conversationId: string,
-    reason: string,
-  ): void {
-    if (!this.eventPublisher) {
-      return;
-    }
-    const event: AgentFailedEvent = {
-      eventType: 'agent_failed',
-      guildId,
-      channelId,
-      userId,
-      conversationId,
-      reason,
-      timestamp: new Date(),
-    };
-    this.eventPublisher.publish(event);
   }
 
   /**

@@ -1,17 +1,20 @@
-import { type Guild, PermissionFlagsBits } from 'discord.js';
+import { type Guild } from 'discord.js';
 import { z } from 'zod';
 import { ToolCallerAuthorizationGuard } from './ToolCallerAuthorizationGuard.js';
+import {
+  escapeJson,
+  normalizeOptionalName,
+  parsePermissionNames,
+  parseSnowflakeId,
+  permissionListToJson,
+  permissionNamesFromBits,
+} from './permission-modify-helper.js';
 
 export const ModifyRolePermissionsParamsSchema = z.object({
   roleId: z.string(),
-  permissions: z.array(
-    z.object({
-      allow: z.string().optional(),
-      deny: z.string().optional(),
-      allowSet: z.array(z.string()).optional(),
-      denySet: z.array(z.string()).optional(),
-    }),
-  ),
+  newName: z.string().optional(),
+  permissionsToAdd: z.array(z.string()).optional(),
+  permissionsToRemove: z.array(z.string()).optional(),
 });
 
 export type ModifyRolePermissionsParams = z.infer<typeof ModifyRolePermissionsParamsSchema>;
@@ -31,52 +34,76 @@ export class ModifyRolePermissionsTool {
     const authError = await this.authGuard.validateAdministrator(guild, this.name);
     if (authError) return authError;
 
-    try {
-      const role = guild.roles.cache.get(params.roleId);
-      if (!role) {
-        return `找不到身分組 ${params.roleId}`;
-      }
-
-      // Accumulate all allow/deny bits first, then apply once (P1-26 fix)
-      let allowBits = BigInt(0);
-      let denyBits = BigInt(0);
-
-      for (const perm of params.permissions) {
-        if (perm.allow) {
-          allowBits |= BigInt(perm.allow);
-        }
-        if (perm.deny) {
-          denyBits |= BigInt(perm.deny);
-        }
-        if (perm.allowSet) {
-          for (const name of perm.allowSet) {
-            const key = name.toUpperCase() as keyof typeof PermissionFlagsBits;
-            const bit = PermissionFlagsBits[key];
-            if (bit !== undefined) allowBits |= bit;
-          }
-        }
-        if (perm.denySet) {
-          for (const name of perm.denySet) {
-            const key = name.toUpperCase() as keyof typeof PermissionFlagsBits;
-            const bit = PermissionFlagsBits[key];
-            if (bit !== undefined) denyBits |= bit;
-          }
-        }
-      }
-
-      // Apply accumulated permissions in a single call
-      let finalPerms = role.permissions;
-      if (allowBits > BigInt(0)) {
-        finalPerms = finalPerms.add(allowBits);
-      }
-      if (denyBits > BigInt(0)) {
-        finalPerms = finalPerms.remove(denyBits);
-      }
-      await role.setPermissions(finalPerms, '透過 AI Agent 修改身分組權限');
-
-      return `已成功修改身分組 ${role.name} 的權限設定`;
-    } catch (error) {
-      return `修改身分組權限失敗：${error instanceof Error ? error.message : String(error)}`;
+    const roleId = parseSnowflakeId(params.roleId);
+    if (!roleId) {
+      return this.buildErrorResponse('roleId 未提供');
     }
+
+    const role = guild.roles.cache.get(roleId);
+    if (!role) {
+      return this.buildErrorResponse('找不到指定的角色');
+    }
+
+    const normalizedName = normalizeOptionalName(params.newName);
+    if (params.newName !== undefined && normalizedName === null) {
+      return this.buildErrorResponse('新的角色名稱不能為空白');
+    }
+    if (normalizedName && normalizedName.length > 100) {
+      return this.buildErrorResponse(`角色名稱不能超過 100 字（當前: ${normalizedName.length}）`);
+    }
+
+    const hasPermissionChanges =
+      (params.permissionsToAdd?.length ?? 0) > 0 || (params.permissionsToRemove?.length ?? 0) > 0;
+    const hasRename = normalizedName !== null;
+
+    if (!hasPermissionChanges && !hasRename) {
+      return this.buildErrorResponse('未指定任何權限或名稱修改操作');
+    }
+
+    try {
+      const beforePermissions = permissionNamesFromBits(role.permissions.bitfield);
+      let afterPermissions = beforePermissions;
+
+      if (hasPermissionChanges) {
+        let nextPermissions = role.permissions.bitfield;
+        if (params.permissionsToAdd?.length) {
+          nextPermissions |= parsePermissionNames(params.permissionsToAdd);
+        }
+        if (params.permissionsToRemove?.length) {
+          nextPermissions &= ~parsePermissionNames(params.permissionsToRemove);
+        }
+        afterPermissions = permissionNamesFromBits(nextPermissions);
+        await role.setPermissions(nextPermissions, '透過 AI Agent 修改身分組權限');
+      }
+
+      if (hasRename) {
+        await role.setName(normalizedName!, '透過 AI Agent 修改身分組名稱');
+      }
+
+      const effectiveName = hasRename ? normalizedName! : role.name;
+      const message =
+        hasRename && hasPermissionChanges
+          ? '角色名稱與權限修改成功'
+          : hasRename
+            ? '角色名稱修改成功'
+            : '角色權限修改成功';
+
+      let json = `{\n  "success": true,\n  "message": "${message}",\n  "role": {\n    "id": "${role.id}",\n    "name": "${escapeJson(effectiveName)}"\n  },\n  "renamed": ${hasRename},\n  "permissionsUpdated": ${hasPermissionChanges}`;
+
+      if (hasPermissionChanges) {
+        json += `,\n  "before": {\n    "permissions": ${permissionListToJson(beforePermissions)},\n    "count": ${beforePermissions.length},\n    "raw": "${role.permissions.bitfield.toString()}"\n  },\n  "after": {\n    "permissions": ${permissionListToJson(afterPermissions)},\n    "count": ${afterPermissions.length},\n    "raw": "${role.permissions.bitfield.toString()}"\n  }`;
+      }
+
+      json += '\n}';
+      return json;
+    } catch (error) {
+      return this.buildErrorResponse(
+        `修改失敗: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  private buildErrorResponse(error: string): string {
+    return `{\n  "success": false,\n  "error": "${escapeJson(error)}"\n}`;
   }
 }

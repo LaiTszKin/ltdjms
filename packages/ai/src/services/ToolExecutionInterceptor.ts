@@ -84,7 +84,7 @@ export class ToolExecutionInterceptor {
     });
   }
 
-  onToolExecutionStarted(toolName: string, parameters: Record<string, unknown>): void {
+  onToolExecutionStarted(toolName: string, _parameters: Record<string, unknown>): void {
     try {
       const ctx = ToolExecutionContext.getContext();
       if (!ctx) {
@@ -93,15 +93,8 @@ export class ToolExecutionInterceptor {
       }
 
       if (!ToolExecutionInterceptor.executionStorage.getStore()) {
-        const executionCtx: ExecutionContext = {
-          guildId: ctx.guildId,
-          channelId: ctx.channelId,
-          userId: ctx.userId,
-          toolName,
-          parameters: parameters ?? null,
-          startTime: Date.now(),
-        };
-        ToolExecutionInterceptor.executionStorage.enterWith(executionCtx);
+        this.logger.debug('無 runTracked 上下文，跳過工具開始審計');
+        return;
       }
 
       if (this.eventPublisher) {
@@ -211,11 +204,7 @@ export class ToolExecutionInterceptor {
   }
 
   private clearExecutionContext(): void {
-    const ctx = ToolExecutionInterceptor.executionStorage.getStore();
-    if (ctx?.managedByRun) {
-      return;
-    }
-    ToolExecutionInterceptor.executionStorage.enterWith(undefined as unknown as ExecutionContext);
+    // Context lifetime is scoped to runTracked(); no AsyncLocalStorage mutation here.
   }
 
   private async persistLog(log: ReturnType<typeof createSuccessToolExecutionLog>): Promise<void> {

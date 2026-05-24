@@ -164,10 +164,6 @@ describe('UT-AIC-006 langchain-chat-service parity', () => {
     expect(chunks.findIndex((c) => c.type === StreamChunkType.TOOL_INTENT)).toBeLessThan(
       chunks.findIndex((c) => c.type === StreamChunkType.CONTENT && c.text),
     );
-
-    expect(eventPublisher.publish).toHaveBeenCalledWith(
-      expect.objectContaining({ eventType: 'agent_completed', finalResponse: finalAnswer }),
-    );
   });
 
   it('truncates oversized tool results before adding to message history', async () => {

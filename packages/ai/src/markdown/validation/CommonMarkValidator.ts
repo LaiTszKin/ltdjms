@@ -247,7 +247,7 @@ export class CommonMarkValidator implements MarkdownValidator {
     const inlineHeadingMatch = raw.match(/(?<=[^\n#`])#{2,6}\s+\S/);
     if (inlineHeadingMatch) {
       errors.push({
-        errorType: ErrorType.INLINE_HEADING,
+        errorType: ErrorType.HEADING_FORMAT,
         line: lineNum,
         column: (inlineHeadingMatch.index ?? 0) + 1,
         context: raw.slice(
@@ -438,7 +438,7 @@ export class CommonMarkValidator implements MarkdownValidator {
       const inlineMatch = line.match(/(?<=[^\n#`])#{2,6}\s+\S/);
       if (inlineMatch && inlineMatch.index && inlineMatch.index > 0) {
         errors.push({
-          errorType: ErrorType.INLINE_HEADING,
+          errorType: ErrorType.HEADING_FORMAT,
           line: lineNum,
           column: (inlineMatch.index ?? 0) + 1,
           context: line.slice(

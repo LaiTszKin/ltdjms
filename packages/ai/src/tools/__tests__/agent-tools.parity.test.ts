@@ -205,34 +205,36 @@ describe('UT-AG-010 modify-channel-permissions tool parity', () => {
     const guild = createMockGuild();
     const channel = {
       ...createTextChannelMock('general'),
+      setName: vi.fn().mockResolvedValue(undefined),
       permissionOverwrites: {
         cache: new Map(),
+        edit: vi.fn().mockResolvedValue(undefined),
         create: vi.fn().mockResolvedValue(undefined),
       },
     };
     guild.channels.cache.set(channel.id, channel as never);
+    guild.roles.cache.set(TEST_ROLE_ID, { id: TEST_ROLE_ID, name: 'Admin' } as never);
 
-    const tool = new ModifyChannelPermissionsTool(createMockAuthGuard(), permissionParser);
+    const tool = new ModifyChannelPermissionsTool(createMockAuthGuard());
     const result = await withToolContext(() =>
       tool.execute(
         {
           channelId: TEST_CHANNEL_ID,
-          permissions: [{ id: TEST_ROLE_ID, type: 'role', allowSet: ['ViewChannel'] }],
+          targetId: TEST_ROLE_ID,
+          targetType: 'role',
+          denyToAdd: ['SEND_MESSAGES'],
         },
         guild,
       ),
     );
-    expect(result).toContain('已成功修改');
+    expect(result).toContain('"success": true');
     expect(channel.permissionOverwrites.create).toHaveBeenCalled();
   });
 
   it('rejects unauthorized caller', async () => {
-    const tool = new ModifyChannelPermissionsTool(
-      createMockAuthGuard({ admin: false }),
-      permissionParser,
-    );
+    const tool = new ModifyChannelPermissionsTool(createMockAuthGuard({ admin: false }));
     const result = await withToolContext(() =>
-      tool.execute({ channelId: TEST_CHANNEL_ID, permissions: [] }, createMockGuild()),
+      tool.execute({ channelId: TEST_CHANNEL_ID }, createMockGuild()),
     );
     expect(result).toBe('你沒有權限使用此工具。');
   });
@@ -243,34 +245,39 @@ describe('UT-AG-011 modify-category-permissions tool parity', () => {
   it('modifies category permissions successfully', async () => {
     const guild = createMockGuild();
     const category = {
-      id: 'cat-1',
+      id: TEST_CHANNEL_ID,
       name: 'Category',
       type: ChannelType.GuildCategory,
-      permissionOverwrites: { create: vi.fn().mockResolvedValue(undefined) },
+      setName: vi.fn().mockResolvedValue(undefined),
+      permissionOverwrites: {
+        cache: new Map(),
+        edit: vi.fn().mockResolvedValue(undefined),
+        create: vi.fn().mockResolvedValue(undefined),
+      },
     };
     guild.channels.cache.set(category.id, category as never);
+    guild.roles.cache.set(TEST_ROLE_ID, { id: TEST_ROLE_ID, name: 'Admin' } as never);
 
-    const tool = new ModifyCategoryPermissionsTool(createMockAuthGuard(), permissionParser);
+    const tool = new ModifyCategoryPermissionsTool(createMockAuthGuard());
     const result = await withToolContext(() =>
       tool.execute(
         {
-          categoryId: 'cat-1',
-          permissions: [{ id: TEST_ROLE_ID, type: 'role', allowSet: ['ViewChannel'] }],
+          categoryId: TEST_CHANNEL_ID,
+          targetId: TEST_ROLE_ID,
+          targetType: 'role',
+          allowToAdd: ['VIEW_CHANNEL'],
         },
         guild,
       ),
     );
-    expect(result).toContain('已成功修改');
+    expect(result).toContain('"success": true');
     expect(category.permissionOverwrites.create).toHaveBeenCalled();
   });
 
   it('rejects unauthorized caller', async () => {
-    const tool = new ModifyCategoryPermissionsTool(
-      createMockAuthGuard({ admin: false }),
-      permissionParser,
-    );
+    const tool = new ModifyCategoryPermissionsTool(createMockAuthGuard({ admin: false }));
     const result = await withToolContext(() =>
-      tool.execute({ categoryId: '1', permissions: [] }, createMockGuild()),
+      tool.execute({ categoryId: '1' }, createMockGuild()),
     );
     expect(result).toBe('你沒有權限使用此工具。');
   });
@@ -280,34 +287,27 @@ describe('UT-AG-011 modify-category-permissions tool parity', () => {
 describe('UT-AG-012 modify-role-permissions tool parity', () => {
   it('modifies role permissions successfully', async () => {
     const guild = createMockGuild();
-    const permissions = {
-      add: vi.fn(function (this: typeof permissions) {
-        return this;
-      }),
-      remove: vi.fn(function (this: typeof permissions) {
-        return this;
-      }),
-    };
     const role = {
       id: TEST_ROLE_ID,
       name: 'Mod',
-      permissions,
+      permissions: { bitfield: BigInt(0) },
       setPermissions: vi.fn().mockResolvedValue(undefined),
+      setName: vi.fn().mockResolvedValue(undefined),
     };
     guild.roles.cache.set(TEST_ROLE_ID, role as never);
 
     const tool = new ModifyRolePermissionsTool(createMockAuthGuard());
     const result = await withToolContext(() =>
-      tool.execute({ roleId: TEST_ROLE_ID, permissions: [{ allowSet: ['ViewChannel'] }] }, guild),
+      tool.execute({ roleId: TEST_ROLE_ID, permissionsToAdd: ['VIEW_CHANNEL'] }, guild),
     );
-    expect(result).toContain('已成功修改');
+    expect(result).toContain('"success": true');
     expect(role.setPermissions).toHaveBeenCalled();
   });
 
   it('rejects unauthorized caller', async () => {
     const tool = new ModifyRolePermissionsTool(createMockAuthGuard({ admin: false }));
     const result = await withToolContext(() =>
-      tool.execute({ roleId: TEST_ROLE_ID, permissions: 'VIEW_CHANNEL' }, createMockGuild()),
+      tool.execute({ roleId: TEST_ROLE_ID }, createMockGuild()),
     );
     expect(result).toBe('你沒有權限使用此工具。');
   });

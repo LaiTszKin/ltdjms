@@ -104,8 +104,13 @@ export class LangChainExceptionMapper {
       if (typeof err.statusCode === 'number' && err.statusCode >= 500) {
         return true;
       }
+      if (err.code === 'ECONNRESET' || err.code === 'ECONNREFUSED') {
+        return true;
+      }
     }
-    return /5\d{2}|server error|service unavailable|bad gateway/i.test(message);
+    return /5\d{2}|server error|service unavailable|bad gateway|econnreset|econnrefused/i.test(
+      message,
+    );
   }
 
   private isEmptyResponse(error: unknown, message: string): boolean {

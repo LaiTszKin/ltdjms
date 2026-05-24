@@ -60,3 +60,7 @@ export { AIChatMentionListener } from './commands/ai-chat-mention-listener.js';
 
 // DI
 export { initializeAIModule, AI_TOKENS } from './di/ai-module.js';
+export {
+  LangGraphCheckpointProvider,
+  type AgentCheckpointMessage,
+} from './services/memory/langgraph-checkpoint-provider.js';

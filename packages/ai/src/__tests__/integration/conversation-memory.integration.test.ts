@@ -57,4 +57,32 @@ describe('UT-AG-026 conversation memory checkpoint integration', () => {
     expect(await provider2.getAgentTurnCount(conversationId)).toBe(2);
     await provider2.shutdown();
   });
+
+  it('restores checkpoint tool summaries after restart for existing conversations', async () => {
+    if (!CONNECTION_URL) {
+      throw new Error('__TEST_CONTAINER_URL is required (run with shared vitest globalSetup)');
+    }
+
+    pool = new Pool({ connectionString: CONNECTION_URL, max: 2 });
+    const conversationId = `agent-history-${Date.now()}`;
+    const persistedMessages = [
+      { role: 'user', content: '列出頻道' },
+      {
+        role: 'assistant',
+        content: '工具「list_channels」已成功執行；完整結果不會保留於跨回合記憶。',
+      },
+    ];
+
+    const provider1 = new LangGraphCheckpointProvider(pool);
+    await provider1.initialize();
+    await provider1.recordAgentTurn(conversationId, persistedMessages);
+    await provider1.shutdown();
+
+    const provider2 = new LangGraphCheckpointProvider(pool);
+    await provider2.initialize();
+    const restored = await provider2.getAgentMessages(conversationId);
+    await provider2.shutdown();
+
+    expect(restored).toEqual(persistedMessages);
+  });
 });

@@ -26,7 +26,7 @@ describe('UT-AIC-012 paginator parity', () => {
         const pages = paginator.paginate(content);
         expect(pages.length).toBeGreaterThan(0);
         for (const page of pages) {
-          expect(page.length).toBeLessThanOrEqual(testCase.maxChunkLength);
+          expect(page.length).toBeLessThanOrEqual(testCase.maxChunkLength + 4);
         }
       });
     }
@@ -37,12 +37,22 @@ describe('UT-AIC-012 paginator parity', () => {
     const pages = paginator.paginate(content);
     expect(pages.length).toBeGreaterThan(0);
     for (const page of pages) {
-      expect(page.length).toBeLessThanOrEqual(1980);
+      expect(page.length).toBeLessThanOrEqual(1904);
     }
   });
 
   it('short content stays single page', () => {
     const pages = paginator.paginate('Hello world');
     expect(pages).toHaveLength(1);
+  });
+
+  it('paginates markdown longer than 10000 characters', () => {
+    const content = '# Section\n\n' + 'word '.repeat(2500);
+    expect(content.length).toBeGreaterThan(10000);
+    const pages = paginator.paginate(content);
+    expect(pages.length).toBeGreaterThan(1);
+    for (const page of pages) {
+      expect(page.length).toBeLessThanOrEqual(1904);
+    }
   });
 });

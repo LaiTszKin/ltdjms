@@ -1,5 +1,13 @@
 import { PermissionFlagsBits, type OverwriteResolvable } from 'discord.js';
 import type { PermissionSetting } from '../services/ai-chat-service.js';
+import { parsePermissionNames } from './permission-modify-helper.js';
+
+export interface ChannelPermissionSettingInput {
+  roleId: string;
+  allowSet?: string[];
+  denySet?: string[];
+  permissionSet?: string;
+}
 
 /**
  * Parses PermissionSetting[] into discord.js OverwriteResolvable[].
@@ -43,6 +51,58 @@ export class PermissionParser {
 
       return overwrite;
     });
+  }
+
+  /** Parses Java-aligned channel permission settings for create channel/category tools. */
+  parseChannelPermissionSettings(settings: ChannelPermissionSettingInput[]): OverwriteResolvable[] {
+    return settings.map((setting) => {
+      const allowSet = this.resolveAllowSet(setting.allowSet, setting.permissionSet);
+      const denySet = setting.denySet ?? [];
+      return {
+        id: setting.roleId,
+        type: 0,
+        allow: parsePermissionNames(allowSet),
+        deny: parsePermissionNames(denySet),
+      };
+    });
+  }
+
+  private resolveAllowSet(allowSet?: string[], permissionSet?: string): string[] {
+    if (allowSet?.length) {
+      return allowSet;
+    }
+    if (!permissionSet?.trim()) {
+      return [];
+    }
+
+    switch (permissionSet.trim().toLowerCase()) {
+      case 'admin_only':
+      case 'admin-only':
+      case 'admins_only':
+        return ['ADMINISTRATOR', 'VIEW_CHANNEL', 'MESSAGE_SEND'];
+      case 'private':
+      case 'private_only':
+        return ['VIEW_CHANNEL', 'MESSAGE_SEND'];
+      case 'read_only':
+      case 'readonly':
+        return ['VIEW_CHANNEL'];
+      case 'full':
+      case 'all':
+        return [
+          'ADMINISTRATOR',
+          'MANAGE_CHANNELS',
+          'MANAGE_ROLES',
+          'MANAGE_GUILD',
+          'VIEW_CHANNEL',
+          'SEND_MESSAGES',
+          'READ_MESSAGE_HISTORY',
+          'CONNECT',
+          'SPEAK',
+          'PRIORITY_SPEAKER',
+        ];
+      default:
+        return [];
+    }
   }
 
   /**

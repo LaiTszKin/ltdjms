@@ -69,7 +69,6 @@ export class AIChatMentionListener {
           channelId,
           userMessage,
           thinkingMsg,
-          streamProcessed,
         );
         return;
       }
@@ -100,11 +99,9 @@ export class AIChatMentionListener {
     channelId: string,
     userMessage: string,
     thinkingMsg: Message,
-    streamProcessed: boolean,
   ): Promise<void> {
     const tracker = new ReasoningMessageTracker();
     tracker.setInitialMessage(thinkingMsg);
-    const pendingContent: string[] = [];
     let completionProcessed = false;
     let isFirstChunk = true;
 
@@ -135,8 +132,6 @@ export class AIChatMentionListener {
             }
           } else if (type === StreamChunkType.TOOL_INTENT) {
             await this.sendToolIntentMessage(message, chunk);
-          } else if (type === StreamChunkType.CONTENT && chunk.trim()) {
-            pendingContent.push(chunk);
           }
         }
 
@@ -145,15 +140,7 @@ export class AIChatMentionListener {
         }
         completionProcessed = true;
 
-        await tracker.deleteAll(() => {
-          void (async () => {
-            if (pendingContent.length === 0) {
-              await this.sendToChannel(message, ':question: AI 沒有產生回應');
-              return;
-            }
-            await this.sendAgentFinalContent(message, pendingContent, streamProcessed);
-          })();
-        });
+        await tracker.deleteAll(() => undefined);
       },
     };
 
@@ -320,46 +307,6 @@ export class AIChatMentionListener {
   }
 
   private async sendToolIntentMessage(message: Message, content: string): Promise<void> {
-    for (const part of this.splitter.split(content)) {
-      if (part.trim()) {
-        await this.sendToChannel(message, part);
-      }
-    }
-  }
-
-  private async sendAgentFinalContent(
-    message: Message,
-    finalContentChunks: string[],
-    streamProcessed: boolean,
-  ): Promise<void> {
-    if (!streamProcessed) {
-      const fullContent = finalContentChunks.join('').trim();
-      if (!fullContent) {
-        await this.sendToChannel(message, ':question: AI 沒有產生回應');
-        return;
-      }
-      await this.sendBufferedContent(message, null, fullContent);
-      return;
-    }
-
-    let sent = false;
-    for (const chunk of finalContentChunks) {
-      if (!chunk?.trim()) {
-        continue;
-      }
-      await this.sendMessageWithLimit(message, chunk);
-      sent = true;
-    }
-    if (!sent) {
-      await this.sendToChannel(message, ':question: AI 沒有產生回應');
-    }
-  }
-
-  private async sendMessageWithLimit(message: Message, content: string): Promise<void> {
-    if (content.length <= 2000) {
-      await this.sendToChannel(message, content);
-      return;
-    }
     for (const part of this.splitter.split(content)) {
       if (part.trim()) {
         await this.sendToChannel(message, part);

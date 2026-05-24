@@ -147,12 +147,12 @@ describe('CommonMarkValidator', () => {
     });
   });
 
-  describe('INLINE_HEADING', () => {
+  describe('HEADING_FORMAT inline heading', () => {
     it('should flag inline heading marker', () => {
       const result = validator.validate('some text ## heading');
       expect(isInvalid(result)).toBe(true);
       if (isInvalid(result)) {
-        expect(result.errors.some((e) => e.errorType === ErrorType.INLINE_HEADING)).toBe(true);
+        expect(result.errors.some((e) => e.errorType === ErrorType.HEADING_FORMAT)).toBe(true);
       }
     });
   });

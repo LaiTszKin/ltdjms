@@ -383,9 +383,6 @@ export function buildSearchResultComponents(
   return rows;
 }
 
-/** @deprecated Use buildSearchResultComponents for Java parity */
-export const buildSearchComponents = buildSearchResultComponents;
-
 export function buildPurchaseConfirmEmbed(
   product: Product,
   userBalance: number,
@@ -450,26 +447,4 @@ export function buildPurchaseConfirmComponents(productId: number): Array<{
       ],
     },
   ];
-}
-
-/** @deprecated Use buildPurchaseConfirmEmbed — kept for legacy imports */
-export function buildBuyMenuEmbed(
-  product: Product,
-  userBalance: number,
-): { title: string; description: string; color: number } {
-  return buildPurchaseConfirmEmbed(product, userBalance);
-}
-
-/** @deprecated Search results use buildShopEmbed in Java parity flow */
-export function buildSearchResultEmbed(
-  products: Product[],
-  currentPage: number,
-  totalPages: number,
-  keyword: string,
-): { title: string; description: string; color: number; footer: { text: string } } {
-  const embed = buildShopEmbed(products, currentPage, totalPages);
-  return {
-    ...embed,
-    title: `🔍 搜尋 "${keyword}" 的結果`,
-  };
 }

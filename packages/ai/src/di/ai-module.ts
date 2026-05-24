@@ -131,10 +131,15 @@ export const AI_TOKENS = {
   AgentCompletionListener: Symbol('AgentCompletionListener'),
 };
 
+let aiModuleInitialized = false;
+
 /**
  * Initializes the AI module in the tsyringe DI container.
  */
 export async function initializeAIModule(): Promise<void> {
+  if (aiModuleInitialized) {
+    return;
+  }
   const envConfig = container.resolve<EnvironmentConfig>(TOKENS.EnvironmentConfig);
   const cacheService = container.resolve<CacheService>(TOKENS.CacheService);
   const eventPublisher = container.resolve<DomainEventPublisher>(TOKENS.DomainEventPublisher);
@@ -227,11 +232,11 @@ export async function initializeAIModule(): Promise<void> {
   );
   container.registerInstance(
     AI_TOKENS.ModifyChannelPermissionsTool,
-    new ModifyChannelPermissionsTool(authGuard, permissionParser),
+    new ModifyChannelPermissionsTool(authGuard),
   );
   container.registerInstance(
     AI_TOKENS.ModifyCategoryPermissionsTool,
-    new ModifyCategoryPermissionsTool(authGuard, permissionParser),
+    new ModifyCategoryPermissionsTool(authGuard),
   );
   container.registerInstance(
     AI_TOKENS.ModifyRolePermissionsTool,
@@ -327,7 +332,7 @@ export async function initializeAIModule(): Promise<void> {
   container.registerInstance(AI_TOKENS.ToolExecutionListener, toolExecutionListener);
   container.registerInstance(AI_TOKENS.AgentCompletionListener, agentCompletionListener);
   eventPublisher.register((event) => toolExecutionListener.accept(event));
-  // AgentCompletionListener stays in DI for unit tests; mention listener owns Discord UX (P1-5/P1-6).
+  eventPublisher.register((event) => agentCompletionListener.accept(event));
 
   // ===== Shared ChatOpenAI Singleton =====
   // Single shared instance to avoid multiple HTTP agents/connection pools (P1-30, P2-11)
@@ -405,4 +410,5 @@ export async function initializeAIModule(): Promise<void> {
     aiConfig.streamingBypassValidation,
   );
   container.registerInstance(AI_TOKENS.AIChatMentionListener, listener);
+  aiModuleInitialized = true;
 }
