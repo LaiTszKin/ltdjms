@@ -13,9 +13,9 @@
   "dependencies": {
     "@ltdjms/shared": "workspace:*",
     "@ltdjms/economy": "workspace:*",
-    "drizzle-orm": "^0.42.0",
-    "pg": "^8.13.0",
-    "reflect-metadata": "^0.2.0"
+    "drizzle-orm": "^0.45.2",
+    "pg": "^8.21.0",
+    "reflect-metadata": "^0.2.2"
   },
   "devDependencies": {
     "typescript": "^6.0.3",

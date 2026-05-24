@@ -37,9 +37,9 @@
 **AND** `make test` 通過
 
 **Requirements**:
-- [ ] R1.1 所有 package `zod` dependency 更新至 `^4.4.3`
-- [ ] R1.2 修復 zod 4 breaking API（參考 [Zod 4 migration](https://zod.dev/v4/changelog)）
-- [ ] R1.3 既有 zod schema 單元測試全綠
+- [x] R1.1 所有 package `zod` dependency 更新至 `^4.4.3`
+- [x] R1.2 修復 zod 4 breaking API（參考 [Zod 4 migration](https://zod.dev/v4/changelog)）
+- [x] R1.3 既有 zod schema 單元測試全綠
 
 ### Requirement 2: Drizzle ORM 升級
 **GIVEN** drizzle-orm 0.42 + drizzle-kit 0.30
@@ -48,9 +48,9 @@
 **AND** migration 工具仍可正常執行
 
 **Requirements**:
-- [ ] R2.1 `drizzle-orm@^0.45.2` 所有 package 對齊
-- [ ] R2.2 `drizzle-kit@^0.31.10` shared package 更新
-- [ ] R2.3 整合測試中 DB query 全綠
+- [x] R2.1 `drizzle-orm@^0.45.2` 所有 package 對齊
+- [x] R2.2 `drizzle-kit@^0.31.10` shared package 更新
+- [x] R2.3 整合測試中 DB query 全綠
 
 ### Requirement 3: Pino 10 升級
 **GIVEN** logger 使用 pino 9
@@ -59,9 +59,9 @@
 **AND** bot 啟動無 logger 初始化錯誤
 
 **Requirements**:
-- [ ] R3.1 所有 package `pino` 統一為 `^10.3.1`
-- [ ] R3.2 修復 pino 10 transport/API breaking changes
-- [ ] R3.3 bot 啟動 smoke test 日誌正常
+- [x] R3.1 所有 package `pino` 統一為 `^10.3.1`
+- [x] R3.2 修復 pino 10 transport/API breaking changes
+- [x] R3.3 bot 啟動 smoke test 日誌正常
 
 ### Requirement 4: Discord.js 與基礎設施 patch 升級
 **GIVEN** discord.js 14.18
@@ -69,14 +69,14 @@
 **THEN** slash command、button、modal interaction 行為不變
 
 **Requirements**:
-- [ ] R4.1 `discord.js@^14.26.4` 所有 package 對齊
-- [ ] R4.2 `ioredis@^5.10.1`、`pg@^8.21.0`、`tsyringe@^4.10.0` 對齊
-- [ ] R4.3 `make verify` 全綠
+- [x] R4.1 `discord.js@^14.26.4` 所有 package 對齊
+- [x] R4.2 `ioredis@^5.10.1`、`pg@^8.21.0`、`tsyringe@^4.10.0` 對齊
+- [x] R4.3 `make verify` 全綠
 
 ## Error and Edge Cases
-- [ ] zod 4 預設 error message 格式變更 — 更新測試 oracle 而非降級 zod
-- [ ] drizzle query builder API 微調 — 僅修 compile error
-- [ ] pino 10 移除 deprecated API — 更新 logger factory
+- [x] zod 4 預設 error message 格式變更 — 更新測試 oracle 而非降級 zod
+- [x] drizzle query builder API 微調 — 僅修 compile error
+- [x] pino 10 移除 deprecated API — 更新 logger factory
 
 ## Clarification Questions
 None

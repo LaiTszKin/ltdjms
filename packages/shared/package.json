@@ -10,18 +10,18 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "tsyringe": "^4.8.0",
-    "pino": "^9.6.0",
-    "ioredis": "^5.6.0",
-    "discord.js": "^14.18.0",
-    "drizzle-orm": "^0.42.0",
-    "pg": "^8.13.0",
-    "zod": "^3.24.0"
+    "tsyringe": "^4.10.0",
+    "pino": "^10.3.1",
+    "ioredis": "^5.10.1",
+    "discord.js": "^14.26.4",
+    "drizzle-orm": "^0.45.2",
+    "pg": "^8.21.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "typescript": "^6.0.3",
     "vitest": "^4.1.7",
-    "drizzle-kit": "^0.30.0",
+    "drizzle-kit": "^0.31.10",
     "@types/pg": "^8.11.0",
     "@types/node": "^22.0.0"
   }

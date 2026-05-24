@@ -14,14 +14,14 @@
     "@ltdjms/shared": "workspace:*",
     "@langchain/core": "^0.3.0",
     "@langchain/openai": "^0.4.0",
-    "discord.js": "^14.18.0",
-    "zod": "^3.24.0",
+    "discord.js": "^14.26.4",
+    "zod": "^4.4.3",
     "marked": "^15.0.0",
-    "drizzle-orm": "^0.42.0",
-    "pino": "^9.0.0",
-    "pg": "^8.13.0",
-    "tsyringe": "^4.8.0",
-    "reflect-metadata": "^0.2.0"
+    "drizzle-orm": "^0.45.2",
+    "pino": "^10.3.1",
+    "pg": "^8.21.0",
+    "tsyringe": "^4.10.0",
+    "reflect-metadata": "^0.2.2"
   },
   "devDependencies": {
     "typescript": "^6.0.3",
