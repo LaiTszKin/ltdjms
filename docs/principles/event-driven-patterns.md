@@ -4,11 +4,12 @@
 
 Events are simple Java records implementing the sealed `DomainEvent` interface, which requires a `long guildId()` accessor.
 
-**13 event types** (see `shared/events/`):
+**14 event types** (see `shared/events/`):
 - `BalanceChangedEvent`, `GameTokenChangedEvent` — balance/token changes
 - `CurrencyConfigChangedEvent`, `DiceGameConfigChangedEvent` — config changes
 - `ProductChangedEvent` — product CRUD (with `OperationType` enum)
 - `RedemptionCodesGeneratedEvent`, `ProductRedemptionCompletedEvent` — redemption
+- `MembershipTierChangedEvent` — global membership tier updates after settlement
 - `AIMessageEvent` — AI interaction record
 - `AgentCompletedEvent`, `AgentFailedEvent` — agent session outcomes
 - `AIAgentChannelConfigChangedEvent` — agent config changes
@@ -36,7 +37,7 @@ This means service methods that call `publish()` block until all listeners compl
 | Listener | Events Consumed | Side Effect |
 |----------|----------------|-------------|
 | `CacheInvalidationListener` | BalanceChangedEvent, GameTokenChangedEvent | Invalidates Redis cache keys |
-| `UserPanelUpdateListener` | BalanceChangedEvent, GameTokenChangedEvent, CurrencyConfigChangedEvent | Refreshes open user panels |
+| `UserPanelUpdateListener` | BalanceChangedEvent, GameTokenChangedEvent, CurrencyConfigChangedEvent, MembershipTierChangedEvent | Refreshes open user panels |
 | `AdminPanelUpdateListener` | CurrencyConfigChangedEvent, DiceGameConfigChangedEvent, ProductChangedEvent, RedemptionCodesGeneratedEvent | Refreshes open admin panels |
 | `ProductRedemptionUpdateListener` | ProductRedemptionCompletedEvent | Refreshes admin product panels |
 | `AgentConfigCacheInvalidationListener` | AIAgentChannelConfigChangedEvent | Invalidates agent cache keys |

@@ -57,9 +57,12 @@ LTDJMS 的目標是在單一 Discord bot 內承載 guild 的經濟互動、商�
 ### Architecture Atlas
 - `resources/project-architecture/index.html` — 互動式 SVG 架構圖（8 功能模塊，含 membership-tiers），含跨模組邊界與子模組細節頁面
 
+### API Reference
+- `docs/api/slash-commands.md` — 目前註冊的 7 個 slash command（AI 為 mention 觸發，非 slash）
+
 ### Root Documents
 - `README.md` — 專案簡介、快速啟動、核心能力
-- `docs/README.md` — 完整文件導覽與建議閱讀順序
+- `docs/README.md` — 完整文件導覽、建議閱讀順序與文件維護指引
 - `docs/configuration.md` — 環境變數、外部服務設定、常見誤設
 - `docs/developer-guide.md` — 修改指引、高風險區域、測試與除錯
 - `docs/getting-started.md` — 本機啟動、Docker Compose、部署檢查

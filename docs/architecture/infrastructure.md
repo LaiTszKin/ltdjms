@@ -4,7 +4,7 @@
 
 The object graph is assembled at compile time via Dagger 2 annotations.
 
-**Root component**: `AppComponent` aggregates 12 modules covering all repositories, services, command handlers, and event listeners.
+**Root component**: `AppComponent` aggregates 16 Dagger modules covering repositories, services, command handlers, AI/markdown wiring, and event listeners (`AppComponent.java:60-76`).
 
 **Module structure**:
 - Database, cache, and Discord modules are foundational — most services depend on them
@@ -23,7 +23,7 @@ The object graph is assembled at compile time via Dagger 2 annotations.
 
 **Listener registration**: Dagger `@IntoSet` multibindings collect all `Consumer<DomainEvent>` implementations. `EventModule` declares the multibound set and `DomainEventPublisher` receives it via constructor injection.
 
-**13 event types** covering balance changes, game token changes, config changes, product changes, redemption completions, AI messages, agent completions, tool executions.
+**14 event types** covering balance changes, game token changes, config changes, product changes, redemption completions, membership tier changes, AI messages, agent completions, and tool executions (`shared/events/*Event.java`).
 
 ## Cache Layer
 

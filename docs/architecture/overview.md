@@ -1,5 +1,7 @@
 # 系統架構總覽
 
+> **閱讀優先順序**：日常開發請以三支柱架構文件為準——[`layers-and-boundaries.md`](layers-and-boundaries.md)、[`infrastructure.md`](infrastructure.md)、以及對應的 workflow 文件。本文件保留較早期的圖表與模組連結，若與程式或三支柱文件衝突，以程式碼與三支柱文件為準。
+
 本文件說明 LTDJMS Discord Bot 的整體架構與主要元件，協助開發者快速了解請求從 Discord 傳入到資料庫與回應的完整路徑。
 
 ## 1. 高階架構

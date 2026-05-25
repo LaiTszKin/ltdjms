@@ -33,7 +33,7 @@
 ### 我要修改或排查程式
 
 - `docs/developer-guide.md`：高風險區、測試策略、除錯入口
-- `docs/api/slash-commands.md`：目前 slash command 與權限、參數整理
+- `docs/api/slash-commands.md`：目前 7 個 slash command 與權限、參數整理（權威來源：`SlashCommandListener.java`）
 
 ## 文件地圖
 
@@ -72,7 +72,7 @@ docs/
 
 - `docs/api/`：對外互動面參考
 - `docs/architecture/`（既有深度文件）：`ai-chat-flow.md`、`cache-architecture.md`、`component-diagram.md`、`data-model.md`、`overview.md`、`sequence-diagrams.md`
-- `docs/modules/`：模組級說明與設計背景
+- `docs/modules/`：模組級實作細節（補充；見 `docs/modules/README.md` 與三支柱對照表）
 - `docs/development/`：開發細節、IDE 設定、測試補充、除錯、工作流程
 - `docs/operations/`：維運、監控、效能與故障排查
 - `docs/archive/`：已歸檔的實作計劃
@@ -86,3 +86,37 @@ docs/
   - `src/main/java/ltdjms/discord/currency/bot/DiscordCurrencyBot.java`
   - `src/main/java/ltdjms/discord/currency/bot/SlashCommandListener.java`
   - 對應模組下的 `services/`、`persistence/`、`commands/`
+
+## 文件維護指引
+
+### 證據追溯
+
+- **Features**（`docs/features/`）：以 BDD Given/When/Then 描述使用者可見行為，正文不寫檔案路徑；對應程式入口請查 `docs/api/slash-commands.md` 與 `docs/architecture/layers-and-boundaries.md` 的 Code Evidence Index。
+- **Architecture / Principles**：每條原則或模式應能對應實際模組邊界或程式慣例；在文內或文末附上來源路徑與行號區間（例如 `` `SlashCommandListener.java:36-42` ``）。
+- 無法從程式碼直接驗證的推論須標記 **`[INFERRED]`**，不要寫成既定事實。
+
+### LLM 安全原則
+
+產生或更新文檔時，優先餵給 LLM 結構化中繼資料（模組列表、slash command 表、函式簽名、狀態機名稱），避免貼上完整原始碼。
+
+### 增量更新
+
+程式變更後用 `git diff` 判斷受影響模組，只更新對應的 `docs/features/`、`docs/architecture/` 或 `docs/principles/` 章節，並同步 `docs/api/slash-commands.md`、`AGENTS.md`、`CLAUDE.md`（若對外入口或索引變了）。
+
+### 定期 drift detection（建議）
+
+每月或每季比對：
+
+| 檢查項 | 權威來源 |
+| --- | --- |
+| Slash commands | `SlashCommandListener.java` |
+| JDA listeners / schedulers | `DiscordCurrencyBot.java` |
+| Dagger modules | `AppComponent.java` |
+| Domain events | `shared/events/*Event.java` |
+| 環境變數 | `EnvironmentConfig.java`、`.env.example` |
+
+發現 drift 時只修補受影響章節，避免整份重寫。
+
+### 補充文件與三支柱的關係
+
+`docs/modules/`、`docs/architecture/overview.md` 等深度參考**不取代**三支柱文件。內容已併入三支柱的舊文檔不應與新結構並存描述同一主題；新增能力時先更新三支柱，再視需要補充 `docs/modules/` 的實作細節。

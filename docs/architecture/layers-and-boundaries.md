@@ -98,3 +98,36 @@ MessageReceivedEvent
 - The `product/` reward service (`ProductRewardService`) bridges product definitions to currency/token accounts
 - Shop records membership spend via `PaidEscortOrderSnapshot` and `MembershipSpendRecorder`; membership does not depend on shop domain types
 - The `markdown/` module is a decorator around `aichat/` — it knows nothing about Discord or business domains
+
+## Runtime Entry Points
+
+Production behavior is wired from `DiscordCurrencyBot` (`currency/bot/DiscordCurrencyBot.java`).
+
+### Registered Slash Commands (7)
+
+Defined in `SlashCommandListener.buildAllCommandDefinitions()` and dispatched in `onSlashCommandInteraction`: `currency-config`, `dice-game-1`, `dice-game-2`, `user-panel`, `admin-panel`, `shop`, `dispatch-panel`. Legacy handlers (`/balance`, `/adjust-balance`, `/game-token-adjust`, dice config commands) remain in the repo but are not registered; their UX lives in `/user-panel` and `/admin-panel` (`SlashCommandListener.java:104-106`, `AppComponent.java:54-56`).
+
+### JDA Listeners (8)
+
+`buildEventListeners()` registers: slash commands, user/admin panel buttons, admin product panel, dispatch panel interactions, shop buttons/selects, AI mention listener, guild member join listener (`DiscordCurrencyBot.java:193-212`).
+
+### Background Workers and HTTP
+
+- `EcpayCallbackHttpServer` — ECPay ReturnURL POST (`shop/services/EcpayCallbackHttpServer.java`)
+- `FiatOrderProcessingScheduler` — post-payment fulfillment (10s) and payment reconciliation (60s)
+- `MembershipSettlementScheduler` — hourly settlement, spend retry, token grants
+
+### Non-Slash AI Entry
+
+AI chat and agent flows are triggered by **bot mentions** in allowed or agent-enabled channels, not slash commands (`aichat/commands/AIChatMentionListener.java`).
+
+## Code Evidence Index
+
+| Topic | Primary source |
+| --- | --- |
+| Module map | `AppComponent.java:60-76`, package roots under `src/main/java/ltdjms/discord/` |
+| Slash commands | `SlashCommandListener.java` |
+| Listener wiring | `DiscordCurrencyBot.java:193-212` |
+| Shop → dispatch handoff | `shop/commands/ShopSelectMenuHandler.java`, `dispatch/services/EscortDispatchHandoffService.java` |
+| Fiat fulfillment | `shop/services/FiatOrderPostPaymentWorker.java` |
+| Membership settlement | `membership/services/MembershipSettlementScheduler.java` |
