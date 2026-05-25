@@ -1,0 +1,442 @@
+edges:
+  - id: e-eq4hb7
+    from:
+      feature: shop-payment
+      submodule: shop-interaction
+    to:
+      feature: guild-economy
+      submodule: economy-service
+    kind: call
+    label: 貨幣扣款購買
+  - id: e-grlykf
+    from:
+      feature: shop-payment
+      submodule: product-catalog-service
+    to:
+      feature: guild-economy
+      submodule: economy-service
+    kind: call
+    label: 貨幣/代幣獎勵派送
+  - id: e-uu0dn6
+    from:
+      feature: shop-payment
+      submodule: fiat-payment-service
+    to:
+      feature: escort-dispatch
+      submodule: dispatch-service
+    kind: call
+    label: 法幣付款成功→自動派遣
+  - id: e-cioa3m
+    from:
+      feature: administration
+      submodule: panel-service
+    to:
+      feature: guild-economy
+      submodule: economy-service
+    kind: call
+    label: 貨幣/代幣管理與查詢
+  - id: e-x791qu
+    from:
+      feature: administration
+      submodule: panel-service
+    to:
+      feature: shop-payment
+      submodule: product-catalog-service
+    kind: call
+    label: 商品管理與兌換碼產生
+  - id: e-k1luxm
+    from:
+      feature: administration
+      submodule: panel-service
+    to:
+      feature: escort-dispatch
+      submodule: dispatch-service
+    kind: call
+    label: 護航設定與售後人員管理
+  - id: e-dw1qkt
+    from:
+      feature: administration
+      submodule: panel-service
+    to:
+      feature: ai-chat-agent
+      submodule: ai-chat-service
+    kind: call
+    label: AI 頻道白名單設定
+  - id: e-xy49n7
+    from:
+      feature: administration
+      submodule: panel-service
+    to:
+      feature: ai-chat-agent
+      submodule: ai-agent-service
+    kind: call
+    label: Agent 啟用切換
+  - id: e-e0ewop
+    from:
+      feature: shared-infrastructure
+      submodule: discord-api
+    to:
+      feature: guild-economy
+      submodule: economy-interaction
+    kind: call
+    label: JDA Event 派發
+  - id: e-6u75kt
+    from:
+      feature: shared-infrastructure
+      submodule: discord-api
+    to:
+      feature: shop-payment
+      submodule: shop-interaction
+    kind: call
+    label: JDA Event 派發
+  - id: e-xxrg1y
+    from:
+      feature: shared-infrastructure
+      submodule: discord-api
+    to:
+      feature: escort-dispatch
+      submodule: dispatch-interaction
+    kind: call
+    label: JDA Event 派發
+  - id: e-2nap9y
+    from:
+      feature: shared-infrastructure
+      submodule: discord-api
+    to:
+      feature: ai-chat-agent
+      submodule: ai-mention-interaction
+    kind: call
+    label: JDA Event 派發
+  - id: e-xzxf69
+    from:
+      feature: shared-infrastructure
+      submodule: discord-api
+    to:
+      feature: administration
+      submodule: admin-panel-interaction
+    kind: call
+    label: JDA Event 派發
+  - id: e-zd0f36
+    from:
+      feature: shared-infrastructure
+      submodule: event-bus
+    to:
+      feature: administration
+      submodule: panel-service
+    kind: call
+    label: 領域事件驅動面板即時更新
+  - id: e-mcyh07
+    from:
+      feature: shared-infrastructure
+      submodule: cache-layer
+    to:
+      feature: guild-economy
+      submodule: economy-service
+    kind: call
+    label: 餘額/代幣快取（300s TTL）
+  - id: e-8vnyj8
+    from:
+      feature: shared-infrastructure
+      submodule: cache-layer
+    to:
+      feature: ai-chat-agent
+      submodule: ai-agent-service
+    kind: call
+    label: Agent 設定快取（1h TTL）
+  - id: e-sh27ca
+    from:
+      feature: shop-payment
+      submodule: fiat-payment-service
+    to:
+      feature: guild-economy
+      submodule: economy-service
+    kind: call
+    label: 法幣付款完成後獎勵派送
+  - id: e-nek8hi
+    from:
+      feature: shop-payment
+      submodule: fiat-payment-service
+    to:
+      feature: shared-infrastructure
+      submodule: discord-api
+    kind: call
+    label: DM 買家付款資訊
+  - id: e-t51w8w
+    from:
+      feature: administration
+      submodule: notifications
+    to:
+      feature: shared-infrastructure
+      submodule: discord-api
+    kind: call
+    label: 發送 Discord DM 通知
+  - id: e-a0jw0t
+    from:
+      feature: ai-chat-agent
+      submodule: ai-agent-service
+    to:
+      feature: shared-infrastructure
+      submodule: discord-api
+    kind: call
+    label: Agent 工具執行 JDA Discord 操作
+  - id: e-xj2jag
+    from:
+      feature: shop-payment
+      submodule: shop-interaction
+    to:
+      feature: escort-dispatch
+      submodule: dispatch-service
+    kind: call
+    label: 貨幣購買自動派遣
+  - id: e-143ipt
+    from:
+      feature: escort-dispatch
+      submodule: dispatch-interaction
+    to:
+      feature: shop-payment
+      submodule: product-catalog-service
+    kind: call
+    label: 讀取護航選項目錄供選單顯示
+  - id: e-798orc
+    from:
+      feature: escort-dispatch
+      submodule: dispatch-service
+    to:
+      feature: shop-payment
+      submodule: product-catalog-service
+    kind: call
+    label: EscortOptionPricingService 讀取目錄定價
+  - id: e-9gd5ls
+    from:
+      feature: ai-chat-agent
+      submodule: ai-chat-service
+    to:
+      feature: shared-infrastructure
+      submodule: discord-api
+    kind: call
+    label: 串流回覆經 DiscordRuntimeGateway 傳送至 Discord
+  - id: e-fl37bc
+    from:
+      feature: guild-economy
+      submodule: economy-service
+    to:
+      feature: shared-infrastructure
+      submodule: event-bus
+    kind: call
+    label: 發佈 BalanceChangedEvent / GameTokenChangedEvent / CurrencyConfigChangedEvent
+  - id: e-ytpwke
+    from:
+      feature: shop-payment
+      submodule: product-catalog-service
+    to:
+      feature: shared-infrastructure
+      submodule: event-bus
+    kind: call
+    label: 發佈 ProductChangedEvent / RedemptionCodesGeneratedEvent / ProductRedemptionCompletedEvent
+  - id: e-wozlnp
+    from:
+      feature: ai-chat-agent
+      submodule: ai-chat-service
+    to:
+      feature: shared-infrastructure
+      submodule: event-bus
+    kind: call
+    label: 發佈 AIMessageEvent 供審計日誌
+  - id: e-q6ugm7
+    from:
+      feature: ai-chat-agent
+      submodule: ai-agent-service
+    to:
+      feature: shared-infrastructure
+      submodule: event-bus
+    kind: call
+    label: 發佈 ToolExecution 開始/完成事件供審計
+  - id: e-chat-mdstream
+    from:
+      feature: ai-chat-agent
+      submodule: ai-chat-service
+    to:
+      feature: ai-chat-agent
+      submodule: markdown-stream-processor
+    kind: call
+    label: stream CONTENT through markdown processor
+  - id: e-agent-cp
+    from:
+      feature: ai-chat-agent
+      submodule: ai-agent-service
+    to:
+      feature: ai-chat-agent
+      submodule: langgraph-checkpoint
+    kind: call
+    label: read/write conversation checkpoint
+  - id: e-agent-audit
+    from:
+      feature: ai-chat-agent
+      submodule: ai-agent-service
+    to:
+      feature: ai-chat-agent
+      submodule: tool-audit-log
+    kind: call
+    label: audit each tool invocation
+  - id: e-agent-events
+    from:
+      feature: ai-chat-agent
+      submodule: ai-agent-service
+    to:
+      feature: ai-chat-agent
+      submodule: agent-event-listeners
+    kind: call
+    label: agent_completed / agent_failed observability
+  - id: e-vjni42
+    from:
+      feature: shop-payment
+      submodule: shop-interaction
+    to:
+      feature: guild-economy
+      submodule: economy-service
+    kind: failure
+    label: ErrInsufficientBalance→貨幣扣款失敗，中止購買
+  - id: e-5jogr4
+    from:
+      feature: shop-payment
+      submodule: product-catalog-service
+    to:
+      feature: guild-economy
+      submodule: economy-service
+    kind: failure
+    label: Reward 派送失敗→兌換 rollback（clearRedeemedIfMatches）
+  - id: e-tpx7gx
+    from:
+      feature: shop-payment
+      submodule: fiat-payment-service
+    to:
+      feature: escort-dispatch
+      submodule: dispatch-service
+    kind: failure
+    label: handoffFromFiatPayment 失敗→釋放 claim，下週期重試
+  - id: e-8onmci
+    from:
+      feature: shared-infrastructure
+      submodule: cache-layer
+    to:
+      feature: guild-economy
+      submodule: economy-service
+    kind: failure
+    label: ErrCacheUnavailable→降級直接查資料庫
+  - id: e-7cvlq9
+    from:
+      feature: administration
+      submodule: panel-service
+    to:
+      feature: guild-economy
+      submodule: economy-service
+    kind: failure
+    label: ErrFacadeAggregationFailed→面板顯示部分資料
+  - id: e-9orgqk
+    from:
+      feature: shared-infrastructure
+      submodule: discord-api
+    to:
+      feature: user-panel
+      submodule: panel-interaction
+    kind: call
+    label: JDA Event 派發
+  - id: e-oz8eqh
+    from:
+      feature: shared-infrastructure
+      submodule: event-bus
+    to:
+      feature: user-panel
+      submodule: panel-service
+    kind: call
+    label: 領域事件驅動面板即時更新
+  - id: e-wa86qp
+    from:
+      feature: user-panel
+      submodule: panel-service
+    to:
+      feature: guild-economy
+      submodule: economy-service
+    kind: call
+    label: 貨幣/代幣餘額與交易查詢
+  - id: e-cbwdou
+    from:
+      feature: user-panel
+      submodule: panel-service
+    to:
+      feature: shop-payment
+      submodule: product-catalog-service
+    kind: call
+    label: 兌換碼驗證與兌換記錄
+  - id: e-6kw808
+    from:
+      feature: shop-payment
+      submodule: shop-interaction
+    to:
+      feature: membership-tiers
+      submodule: payment-discount
+    kind: call
+    label: checkout quote
+  - id: e-d78qfs
+    from:
+      feature: membership-tiers
+      submodule: settlement
+    to:
+      feature: guild-economy
+      submodule: economy-service
+    kind: call
+    label: token grant
+  - id: e-zsdgqz
+    from:
+      feature: user-panel
+      submodule: panel-service
+    to:
+      feature: membership-tiers
+      submodule: membership-db
+    kind: call
+    label: membership summary
+  - id: e-e5v09v
+    from:
+      feature: shop-payment
+      submodule: fiat-payment-service
+    to:
+      feature: membership-tiers
+      submodule: spend-ledger
+    kind: call
+    label: post-payment M
+  - id: e-btfhi7
+    from:
+      feature: shared-infrastructure
+      submodule: discord-api
+    to:
+      feature: membership-tiers
+      submodule: join-tracking
+    kind: call
+    label: GuildMemberJoin
+  - id: e-upmi-query
+    from:
+      feature: user-panel
+      submodule: panel-service
+    to:
+      feature: membership-tiers
+      submodule: benefits-ui
+    kind: call
+    label: Extended panel summary
+  - id: e-shop-quotes
+    from:
+      feature: shop-payment
+      submodule: shop-interaction
+    to:
+      feature: membership-tiers
+      submodule: payment-discount
+    kind: call
+    label: Batch member price quotes
+  - id: e-admin-membership
+    from:
+      feature: administration
+      submodule: membership-admin-ui
+    to:
+      feature: membership-tiers
+      submodule: admin-membership
+    kind: call
+    label: Admin membership write

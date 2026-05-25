@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en" data-atlas-page="submodule">
+<head>
+  <meta charset="utf-8">
+  <title>Membership Tiers · payment-discount</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..500&family=Geist:wght@300..700&family=JetBrains+Mono:wght@400..600&display=swap">
+  <link rel="stylesheet" href="../../assets/architecture.css">
+</head>
+<body>
+  <header class="submodule-header">
+    <nav class="submodule-breadcrumb"><a href="../../index.html">← Atlas</a> · <a href="index.html">← Membership Tiers</a></nav>
+    <h1>payment-discount <small class="submodule-kind submodule-kind--service">Service</small></h1>
+    <p class="submodule-role">MembershipPricingService 付款折扣</p>
+  </header>
+  <main class="submodule-main">
+    <section class="sub-io" aria-label="Function I/O">
+      <h2>Function I/O</h2>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">In</th><th scope="col">Out</th><th scope="col">Side</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>quote</td><td>userId, Product</td><td>EscortPriceQuote</td><td>io</td><td>護航商品會員折後價</td></tr>
+          <tr><td>quoteEscortPrices</td><td>userId,products,guildId</td><td>Map&lt;Long,EscortPriceQuote&gt;</td><td>io</td><td>Batch quote for shop list page</td></tr>
+          <tr><td>formatEmbedPriceLine</td><td>EscortPriceQuote</td><td>markdownLine</td><td>pure</td><td>Strikethrough original + discount rate</td></tr>
+        </tbody>
+      </table>
+    </section>
+    <section class="sub-vars" aria-label="Variables">
+      <h2>Variables</h2>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Scope</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>EscortPriceQuote</td><td>record</td><td>call</td><td></td></tr>
+        </tbody>
+      </table>
+    </section>
+    <section class="sub-dataflow" aria-label="Internal data flow">
+      <h2>Internal data flow</h2>
+      <p class="sub-dataflow__empty">No internal dataflow steps recorded.</p>
+    </section>
+    <section class="sub-errors" aria-label="Errors">
+      <h2>Errors</h2>
+      <p class="sub-section__empty">No errors recorded.</p>
+    </section>
+  </main>
+  <script src="../../assets/viewer.client.js" defer></script>
+</body>
+</html>

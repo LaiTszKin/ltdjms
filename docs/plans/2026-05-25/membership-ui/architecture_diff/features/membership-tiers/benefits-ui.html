@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en" data-atlas-page="submodule">
+<head>
+  <meta charset="utf-8">
+  <title>Membership Tiers · benefits-ui</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..500&family=Geist:wght@300..700&family=JetBrains+Mono:wght@400..600&display=swap">
+  <link rel="stylesheet" href="../../assets/architecture.css">
+</head>
+<body>
+  <header class="submodule-header">
+    <nav class="submodule-breadcrumb"><a href="../../index.html">← Atlas</a> · <a href="index.html">← Membership Tiers</a></nav>
+    <h1>benefits-ui <small class="submodule-kind submodule-kind--ui">UI</small></h1>
+    <p class="submodule-role">結算贈幣 + user-panel 等級展示</p>
+  </header>
+  <main class="submodule-main">
+    <section class="sub-io" aria-label="Function I/O">
+      <h2>Function I/O</h2>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">In</th><th scope="col">Out</th><th scope="col">Side</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>grantForSettlement</td><td>userId, periodEnd, tier</td><td>void</td><td>tx</td><td>結算日發放贈幣</td></tr>
+          <tr><td>getPanelSummaryExtended</td><td>userId</td><td>MembershipPanelSummary</td><td>io</td><td>R1-R3: join date, remaining M, monthly token grant</td></tr>
+        </tbody>
+      </table>
+    </section>
+    <section class="sub-vars" aria-label="Variables">
+      <h2>Variables</h2>
+      <table class="sub-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Scope</th><th scope="col">Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>MembershipPanelSummary</td><td>record</td><td>call</td><td>Extended panel DTO</td></tr>
+          <tr><td>GlobalMemberMembership</td><td>entity</td><td>call</td><td></td></tr>
+          <tr><td>periodSpendM</td><td>long</td><td>call</td><td></td></tr>
+        </tbody>
+      </table>
+    </section>
+    <section class="sub-dataflow" aria-label="Internal data flow">
+      <h2>Internal data flow</h2>
+      <div class="sub-dataflow__canvas" data-pan-zoom-container>
+        <div class="sub-dataflow__toolbar" role="toolbar" aria-label="Diagram controls">
+          <button type="button" data-pan-zoom="zoom-in" aria-label="Zoom in">+</button>
+          <button type="button" data-pan-zoom="zoom-out" aria-label="Zoom out">−</button>
+          <button type="button" data-pan-zoom="fit" aria-label="Reset view">Fit</button>
+        </div>
+        <div class="sub-dataflow__viewport" data-pan-zoom-viewport>
+          <svg class="sub-dataflow__svg" data-atlas-svg="sub-dataflow" viewBox="0 0 628 178" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Internal dataflow">
+  <defs>
+    <marker id="sub-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" /></marker>
+  </defs>
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="89" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="94" text-anchor="middle">1</text>
+    <rect class="sub-dataflow__box" x="80" y="32" width="520" height="114" rx="14" ry="14" />
+    <rect class="sub-dataflow__fn-bg" x="94" y="46" width="212.4" height="20" rx="10" ry="10" />
+    <text class="sub-dataflow__fn-text" x="104" y="60">fn getPanelSummaryExtended</text>
+    <text class="sub-dataflow__text" x="340" y="98" text-anchor="middle">Load earliestGuildJoinAt and compute remainingToNextTierM</text>
+    <text class="sub-dataflow__chip sub-dataflow__chip--reads" x="94" y="134">← reads: GlobalMemberMembership, periodSpendM</text>
+    <text class="sub-dataflow__chip sub-dataflow__chip--writes" x="586" y="134" text-anchor="end">→ writes: MembershipPanelSummary</text>
+  </g>
+</svg>
+        </div>
+      </div>
+    </section>
+    <section class="sub-errors" aria-label="Errors">
+      <h2>Errors</h2>
+      <p class="sub-section__empty">No errors recorded.</p>
+    </section>
+  </main>
+  <script src="../../assets/viewer.client.js" defer></script>
+</body>
+</html>
