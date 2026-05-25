@@ -90,6 +90,7 @@ public class FiatOrderService {
               chargedAmountTwd,
               quote.listPriceTwd(),
               chargedAmountTwd,
+              quote.appliedTier().name(),
               paymentCode.expireAt());
       FiatOrder savedOrder = fiatOrderRepository.save(order);
       Product fulfillmentSnapshot = savedOrder.toFulfillmentProduct();

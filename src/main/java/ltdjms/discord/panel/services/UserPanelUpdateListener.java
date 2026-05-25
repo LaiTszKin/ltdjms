@@ -1,5 +1,7 @@
 package ltdjms.discord.panel.services;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 import org.slf4j.Logger;
@@ -22,6 +24,13 @@ public class UserPanelUpdateListener implements Consumer<DomainEvent> {
 
   private final PanelSessionManager sessionManager;
   private final UserPanelService userPanelService;
+  private final ExecutorService panelUpdateExecutor =
+      Executors.newSingleThreadExecutor(
+          runnable -> {
+            Thread thread = new Thread(runnable, "user-panel-update");
+            thread.setDaemon(true);
+            return thread;
+          });
 
   public UserPanelUpdateListener(
       PanelSessionManager sessionManager, UserPanelService userPanelService) {
@@ -38,17 +47,18 @@ public class UserPanelUpdateListener implements Consumer<DomainEvent> {
     } else if (event instanceof CurrencyConfigChangedEvent e) {
       updateAllGuildPanels(e.guildId());
     } else if (event instanceof MembershipTierChangedEvent e) {
-      updatePanelsForUser(e.userId());
+      panelUpdateExecutor.execute(() -> updatePanelsForUser(e.userId()));
     }
   }
 
   private void updatePanelsForUser(long userId) {
     LOG.debug("Updating user panels for userId={} due to membership tier change", userId);
+    MembershipPanelSummary membershipSummary = userPanelService.getMembershipSummary(userId);
     sessionManager.updatePanelsByUser(
         userId,
         ctx -> {
           Result<UserPanelView, DomainError> result =
-              userPanelService.getUserPanelView(ctx.guildId(), ctx.userId());
+              userPanelService.getUserPanelView(ctx.guildId(), ctx.userId(), membershipSummary);
           if (result.isOk()) {
             UserPanelView view = result.getValue();
             MessageEmbed embed =

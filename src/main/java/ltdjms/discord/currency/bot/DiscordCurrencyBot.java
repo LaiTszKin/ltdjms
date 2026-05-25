@@ -102,6 +102,12 @@ public class DiscordCurrencyBot {
     // Wait for JDA to be ready
     jda.awaitReady();
 
+    if (!jda.getGatewayIntents().contains(GatewayIntent.GUILD_MEMBERS)) {
+      throw new IllegalStateException(
+          "GUILD_MEMBERS intent is required for membership join tracking. Enable Server Members"
+              + " Intent in the Discord Developer Portal.");
+    }
+
     // 先發布到正式注入式 gateway，再保留短期 bridge 供尚未遷移的模組使用。
     publishRuntime(appComponent.discordRuntimeGateway(), jda);
     JDAProvider.setJda(jda);

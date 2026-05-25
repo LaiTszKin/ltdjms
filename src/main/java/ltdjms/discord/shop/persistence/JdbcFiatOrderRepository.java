@@ -28,7 +28,7 @@ public class JdbcFiatOrderRepository implements FiatOrderRepository {
       "id, guild_id, buyer_user_id, product_id, product_name, order_number, payment_no,"
           + " fulfillment_reward_type, fulfillment_reward_amount,"
           + " fulfillment_auto_create_escort_order, fulfillment_escort_option_code, amount_twd,"
-          + " list_price_twd, charged_amount_twd, status, trade_status, payment_message, paid_at,"
+          + " list_price_twd, charged_amount_twd, membership_tier_at_order, status, trade_status, payment_message, paid_at,"
           + " expire_at, expired_at, terminal_reason, buyer_notified_at, reward_granted_at,"
           + " fulfilled_at, admin_notified_at, last_callback_payload, fulfillment_processing_at,"
           + " admin_notification_processing_at, reconciliation_processing_at,"
@@ -46,12 +46,12 @@ public class JdbcFiatOrderRepository implements FiatOrderRepository {
         "INSERT INTO fiat_order (guild_id, buyer_user_id, product_id, product_name,"
             + " fulfillment_reward_type, fulfillment_reward_amount,"
             + " fulfillment_auto_create_escort_order, fulfillment_escort_option_code, order_number,"
-            + " payment_no, amount_twd, list_price_twd, charged_amount_twd, status, trade_status,"
+            + " payment_no, amount_twd, list_price_twd, charged_amount_twd, membership_tier_at_order, status, trade_status,"
             + " payment_message, paid_at, expire_at, expired_at, terminal_reason,"
             + " buyer_notified_at, reward_granted_at, fulfilled_at, admin_notified_at,"
             + " last_callback_payload, reconciliation_attempt_count,"
             + " reconciliation_next_attempt_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?,"
-            + " ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id";
+            + " ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id";
 
     try (Connection conn = dataSource.getConnection();
         PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -81,22 +81,23 @@ public class JdbcFiatOrderRepository implements FiatOrderRepository {
       } else {
         stmt.setLong(13, order.chargedAmountTwd());
       }
-      stmt.setString(14, order.status().name());
-      stmt.setString(15, order.tradeStatus());
-      stmt.setString(16, order.paymentMessage());
-      stmt.setTimestamp(17, toTimestamp(order.paidAt()));
-      stmt.setTimestamp(18, toTimestamp(order.expireAt()));
-      stmt.setTimestamp(19, toTimestamp(order.expiredAt()));
-      stmt.setString(20, order.terminalReason());
-      stmt.setTimestamp(21, toTimestamp(order.buyerNotifiedAt()));
-      stmt.setTimestamp(22, toTimestamp(order.rewardGrantedAt()));
-      stmt.setTimestamp(23, toTimestamp(order.fulfilledAt()));
-      stmt.setTimestamp(24, toTimestamp(order.adminNotifiedAt()));
-      stmt.setString(25, order.lastCallbackPayload());
-      stmt.setInt(26, order.reconciliationAttemptCount());
-      stmt.setTimestamp(27, toTimestamp(order.reconciliationNextAttemptAt()));
-      stmt.setTimestamp(28, Timestamp.from(order.createdAt()));
-      stmt.setTimestamp(29, Timestamp.from(order.updatedAt()));
+      stmt.setString(14, order.membershipTierAtOrder());
+      stmt.setString(15, order.status().name());
+      stmt.setString(16, order.tradeStatus());
+      stmt.setString(17, order.paymentMessage());
+      stmt.setTimestamp(18, toTimestamp(order.paidAt()));
+      stmt.setTimestamp(19, toTimestamp(order.expireAt()));
+      stmt.setTimestamp(20, toTimestamp(order.expiredAt()));
+      stmt.setString(21, order.terminalReason());
+      stmt.setTimestamp(22, toTimestamp(order.buyerNotifiedAt()));
+      stmt.setTimestamp(23, toTimestamp(order.rewardGrantedAt()));
+      stmt.setTimestamp(24, toTimestamp(order.fulfilledAt()));
+      stmt.setTimestamp(25, toTimestamp(order.adminNotifiedAt()));
+      stmt.setString(26, order.lastCallbackPayload());
+      stmt.setInt(27, order.reconciliationAttemptCount());
+      stmt.setTimestamp(28, toTimestamp(order.reconciliationNextAttemptAt()));
+      stmt.setTimestamp(29, Timestamp.from(order.createdAt()));
+      stmt.setTimestamp(30, Timestamp.from(order.updatedAt()));
 
       try (ResultSet rs = stmt.executeQuery()) {
         if (!rs.next()) {
@@ -117,6 +118,7 @@ public class JdbcFiatOrderRepository implements FiatOrderRepository {
             order.amountTwd(),
             order.listPriceTwd(),
             order.chargedAmountTwd(),
+            order.membershipTierAtOrder(),
             order.status(),
             order.tradeStatus(),
             order.paymentMessage(),
@@ -572,6 +574,7 @@ public class JdbcFiatOrderRepository implements FiatOrderRepository {
         rs.getLong("amount_twd"),
         rs.getObject("list_price_twd", Long.class),
         rs.getObject("charged_amount_twd", Long.class),
+        rs.getString("membership_tier_at_order"),
         FiatOrder.Status.valueOf(rs.getString("status")),
         rs.getString("trade_status"),
         rs.getString("payment_message"),

@@ -228,9 +228,15 @@ CREATE TABLE IF NOT EXISTS membership_token_grant_log (
     settlement_period_end TIMESTAMPTZ NOT NULL,
     tier                  VARCHAR(16) NOT NULL,
     tokens_granted        INT NOT NULL,
+    status                VARCHAR(16) NOT NULL DEFAULT 'CLAIMED',
+    tokens_adjusted       BOOLEAN NOT NULL DEFAULT FALSE,
     created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (discord_user_id, settlement_period_end)
 );
+
+CREATE INDEX IF NOT EXISTS idx_gmm_pending_grant_scan
+    ON global_member_membership (last_settlement_at)
+    WHERE last_settlement_at IS NOT NULL AND current_tier <> 'NONE';
 
 -- fiat_order membership columns (see V030/V032 migrations)
 -- ALTER TABLE fiat_order ADD COLUMN list_price_twd BIGINT;

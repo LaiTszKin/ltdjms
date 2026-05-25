@@ -140,7 +140,6 @@ public class JdbcMembershipRepository implements MembershipRepository {
   public boolean ensureSettlementAnchor(long discordUserId, Instant anchorFrom, int settlementDay) {
     String sql =
         "UPDATE global_member_membership SET"
-            + " earliest_guild_join_at = COALESCE(earliest_guild_join_at, ?),"
             + " settlement_day_of_month = COALESCE(settlement_day_of_month, ?),"
             + " next_settlement_at = COALESCE(next_settlement_at, ?),"
             + " updated_at = ?"
@@ -152,16 +151,35 @@ public class JdbcMembershipRepository implements MembershipRepository {
           MembershipJoinService.computeNextSettlementAt(
               settlementDay, anchorFrom, MembershipJoinService.SETTLEMENT_ZONE);
       Instant now = Instant.now();
-      stmt.setTimestamp(1, Timestamp.from(anchorFrom));
-      stmt.setShort(2, (short) settlementDay);
-      stmt.setTimestamp(3, Timestamp.from(nextSettlement));
-      stmt.setTimestamp(4, Timestamp.from(now));
-      stmt.setLong(5, discordUserId);
+      stmt.setShort(1, (short) settlementDay);
+      stmt.setTimestamp(2, Timestamp.from(nextSettlement));
+      stmt.setTimestamp(3, Timestamp.from(now));
+      stmt.setLong(4, discordUserId);
 
       return stmt.executeUpdate() == 1;
     } catch (SQLException e) {
       LOG.error("Failed to ensure settlement anchor for discordUserId={}", discordUserId, e);
       throw new RepositoryException("Failed to ensure settlement anchor", e);
+    }
+  }
+
+  @Override
+  public boolean qualifyBronzeIfThreshold(long discordUserId) {
+    String sql =
+        "UPDATE global_member_membership SET"
+            + " has_qualifying_bronze_order = TRUE,"
+            + " current_tier = CASE WHEN current_tier = 'NONE' THEN 'BRONZE' ELSE current_tier END,"
+            + " updated_at = ?"
+            + " WHERE discord_user_id = ? AND has_qualifying_bronze_order = FALSE";
+
+    try (Connection conn = dataSource.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(sql)) {
+      stmt.setTimestamp(1, Timestamp.from(Instant.now()));
+      stmt.setLong(2, discordUserId);
+      return stmt.executeUpdate() == 1;
+    } catch (SQLException e) {
+      LOG.error("Failed to qualify bronze for discordUserId={}", discordUserId, e);
+      throw new RepositoryException("Failed to qualify bronze", e);
     }
   }
 

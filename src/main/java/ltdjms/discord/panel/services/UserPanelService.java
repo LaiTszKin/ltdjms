@@ -39,6 +39,28 @@ public class UserPanelService {
   }
 
   /**
+   * Gets the user panel view using a precomputed membership summary.
+   *
+   * @param guildId the Discord guild ID
+   * @param userId the Discord user ID
+   * @param membershipSummary membership summary shared across guild panels
+   * @return Result containing UserPanelView on success, or DomainError on failure
+   */
+  public Result<UserPanelView, DomainError> getUserPanelView(
+      long guildId, long userId, MembershipPanelSummary membershipSummary) {
+    LOG.debug(
+        "Getting user panel view for guildId={}, userId={} with cached membership summary",
+        guildId,
+        userId);
+    return memberInfoFacade.getUserPanelView(guildId, userId, membershipSummary);
+  }
+
+  /** Returns membership tier and period progress for panel rendering. */
+  public MembershipPanelSummary getMembershipSummary(long userId) {
+    return memberInfoFacade.getMembershipSummary(userId);
+  }
+
+  /**
    * Gets a page of token transaction history for a user.
    *
    * @param guildId the Discord guild ID

@@ -9,6 +9,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import ltdjms.discord.currency.integration.PostgresIntegrationTestBase;
+import ltdjms.discord.membership.domain.MembershipTier;
 import ltdjms.discord.membership.persistence.JdbcMembershipSpendRepository;
 import ltdjms.discord.membership.persistence.MembershipSpendRepository;
 
@@ -28,15 +29,29 @@ class JdbcMembershipSpendRepositoryIntegrationTest extends PostgresIntegrationTe
   @Test
   @DisplayName("should insert spend entry idempotently by source reference")
   void shouldInsertIdempotently() {
-    boolean first =
-        spendRepository.insertIfAbsent(
-            USER_ID, 123L, 3500L, "CONF_DAM_300W", "FIAT_ORDER", "FD260411000001", PAID_AT);
-    boolean second =
-        spendRepository.insertIfAbsent(
-            USER_ID, 123L, 3500L, "CONF_DAM_300W", "FIAT_ORDER", "FD260411000001", PAID_AT);
+    var first =
+        spendRepository.insertSpendAndQualifyBronzeIfThreshold(
+            USER_ID,
+            123L,
+            3500L,
+            "CONF_DAM_300W",
+            "FIAT_ORDER",
+            "FD260411000001",
+            PAID_AT,
+            Long.MAX_VALUE);
+    var second =
+        spendRepository.insertSpendAndQualifyBronzeIfThreshold(
+            USER_ID,
+            123L,
+            3500L,
+            "CONF_DAM_300W",
+            "FIAT_ORDER",
+            "FD260411000001",
+            PAID_AT,
+            Long.MAX_VALUE);
 
-    assertThat(first).isTrue();
-    assertThat(second).isFalse();
+    assertThat(first.inserted()).isTrue();
+    assertThat(second.inserted()).isFalse();
     assertThat(
             spendRepository.sumListPriceInPeriod(
                 USER_ID, PAID_AT.minusSeconds(1), PAID_AT.plusSeconds(1)))
@@ -46,9 +61,17 @@ class JdbcMembershipSpendRepositoryIntegrationTest extends PostgresIntegrationTe
   @Test
   @DisplayName("should sum list prices within period bounds")
   void shouldSumWithinPeriod() {
-    spendRepository.insertIfAbsent(USER_ID, 123L, 500L, "A", "FIAT_ORDER", "ORDER-1", PAID_AT);
-    spendRepository.insertIfAbsent(
-        USER_ID, 123L, 800L, "B", "FIAT_ORDER", "ORDER-2", PAID_AT.plusSeconds(3600));
+    spendRepository.insertSpendAndQualifyBronzeIfThreshold(
+        USER_ID, 123L, 500L, "A", "FIAT_ORDER", "ORDER-1", PAID_AT, Long.MAX_VALUE);
+    spendRepository.insertSpendAndQualifyBronzeIfThreshold(
+        USER_ID,
+        123L,
+        800L,
+        "B",
+        "FIAT_ORDER",
+        "ORDER-2",
+        PAID_AT.plusSeconds(3600),
+        Long.MAX_VALUE);
 
     assertThat(
             spendRepository.sumListPriceInPeriod(

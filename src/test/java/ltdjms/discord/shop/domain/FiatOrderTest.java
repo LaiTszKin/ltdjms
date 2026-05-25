@@ -33,6 +33,7 @@ class FiatOrderTest {
             1200L,
             1200L,
             1200L,
+            null,
             EXPIRE_AT);
 
     assertThat(order.productName()).isEqualTo("法幣商品");
@@ -67,6 +68,7 @@ class FiatOrderTest {
                     1200L,
                     1200L,
                     1200L,
+                    null,
                     EXPIRE_AT))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
@@ -88,6 +90,7 @@ class FiatOrderTest {
                     1200L,
                     1200L,
                     1200L,
+                    null,
                     EXPIRE_AT))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("fulfillmentRewardType and fulfillmentRewardAmount");
@@ -112,6 +115,7 @@ class FiatOrderTest {
             "FD260411000001",
             "ABC123456789",
             1200L,
+            null,
             null,
             null,
             FiatOrder.Status.EXPIRED,
@@ -157,6 +161,7 @@ class FiatOrderTest {
                     "FD260411000001",
                     "ABC123456789",
                     1200L,
+                    null,
                     null,
                     null,
                     FiatOrder.Status.EXPIRED,

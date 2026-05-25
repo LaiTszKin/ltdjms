@@ -82,7 +82,12 @@ class MembershipSpendRecordingIntegrationTest {
         EscortOptionCatalog.create("CONF_DAM_300W", "包本單", "機密護", "不限", "目標", 3500L));
 
     MembershipSpendService membershipSpendService =
-        new MembershipSpendService(spendRepository, membershipRepository, catalogRepository);
+        new MembershipSpendService(
+            spendRepository,
+            membershipRepository,
+            catalogRepository,
+            new DomainEventPublisher(),
+            java.time.Clock.fixed(PAID_AT, java.time.ZoneOffset.UTC));
 
     worker =
         new FiatOrderPostPaymentWorker(
@@ -184,6 +189,7 @@ class MembershipSpendRecordingIntegrationTest {
             orderNumber,
             "CVS123456",
             amountTwd,
+            null,
             null,
             null,
             FiatOrder.Status.PAID,

@@ -61,10 +61,45 @@ public record UserPanelView(
    * @return formatted membership field in zh-TW
    */
   public String formatMembershipField() {
-    if (membershipSummary == null || membershipSummary.tier() == MembershipTier.NONE) {
+    if (membershipSummary == null) {
       return NONE_TIER_HINT;
     }
+    if (membershipSummary.tier() == MembershipTier.NONE) {
+      return formatNoneTierMembershipField();
+    }
+    return formatActiveTierMembershipField(membershipSummary);
+  }
 
+  private String formatNoneTierMembershipField() {
+    StringBuilder builder = new StringBuilder();
+    builder.append("**等級：**尚未達標\n");
+    builder
+        .append("**本週期累計 M：**")
+        .append(String.format("%,d", membershipSummary.periodSpendListPriceM()))
+        .append('\n');
+
+    if (membershipSummary.hasNextTierThreshold()) {
+      int progressPercent = (int) Math.round(membershipSummary.nextTierProgressRatio() * 100);
+      builder
+          .append("**距離白銀門檻：**")
+          .append(progressPercent)
+          .append("% (")
+          .append(String.format("%,d", membershipSummary.periodSpendListPriceM()))
+          .append(" / ")
+          .append(String.format("%,d", membershipSummary.nextTierThresholdM()))
+          .append(" M)\n");
+    }
+
+    if (membershipSummary.nextSettlementAt() != null) {
+      long epochSeconds = membershipSummary.nextSettlementAt().getEpochSecond();
+      builder.append("**下次結算日：**").append(String.format("<t:%d:D>", epochSeconds)).append('\n');
+    }
+
+    builder.append(NONE_TIER_HINT);
+    return builder.toString();
+  }
+
+  private static String formatActiveTierMembershipField(MembershipPanelSummary membershipSummary) {
     ltdjms.discord.membership.domain.MembershipTier tier = membershipSummary.tier();
     String tierName = ltdjms.discord.membership.domain.MembershipTierLabels.displayName(tier);
     String discount = ltdjms.discord.membership.domain.MembershipTierLabels.discountLabel(tier);

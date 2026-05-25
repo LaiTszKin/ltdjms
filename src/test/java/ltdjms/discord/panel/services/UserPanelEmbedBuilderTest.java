@@ -120,6 +120,27 @@ class UserPanelEmbedBuilderTest {
   }
 
   @Test
+  @DisplayName("buildPanelEmbed NONE tier with progress should show period spend")
+  void buildPanelEmbedShouldShowNoneTierProgress() {
+    MembershipPanelSummary summary =
+        new MembershipPanelSummary(
+            MembershipTier.NONE,
+            300L,
+            MembershipTier.SILVER.thresholdListPriceTwd(),
+            Instant.parse("2026-05-15T00:00:00+08:00"),
+            MembershipTier.NONE.discountRate());
+    UserPanelView view = createTestView(100L, 5L, summary);
+
+    MessageEmbed embed = UserPanelEmbedBuilder.buildPanelEmbed(view, TEST_USER_MENTION);
+
+    MessageEmbed.Field membershipField = embed.getFields().get(2);
+    assertThat(membershipField.getValue()).contains("本週期累計 M");
+    assertThat(membershipField.getValue()).contains("300");
+    assertThat(membershipField.getValue()).contains("下次結算日");
+    assertThat(membershipField.getValue()).contains("距離白銀門檻");
+  }
+
+  @Test
   @DisplayName("buildPanelEmbed 無會員時應顯示升級提示")
   void buildPanelEmbedShouldShowNoneTierHint() {
     UserPanelView view = createTestView(100L, 5L, null);

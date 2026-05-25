@@ -8,6 +8,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import javax.sql.DataSource;
 
 import org.slf4j.Logger;
@@ -22,6 +23,10 @@ public class JdbcMembershipTokenGrantRepository implements MembershipTokenGrantR
   private static final Logger LOG =
       LoggerFactory.getLogger(JdbcMembershipTokenGrantRepository.class);
 
+  private static final String STATUS_CLAIMED = "CLAIMED";
+  private static final String STATUS_COMPLETED = "COMPLETED";
+  private static final String STATUS_FAILED = "FAILED";
+
   private final DataSource dataSource;
 
   public JdbcMembershipTokenGrantRepository(DataSource dataSource) {
@@ -29,37 +34,18 @@ public class JdbcMembershipTokenGrantRepository implements MembershipTokenGrantR
   }
 
   @Override
-  public boolean hasGrantForPeriod(long discordUserId, Instant settlementPeriodEnd) {
-    String sql =
-        "SELECT 1 FROM membership_token_grant_log"
-            + " WHERE discord_user_id = ? AND settlement_period_end = ? LIMIT 1";
-
-    try (Connection conn = dataSource.getConnection();
-        PreparedStatement stmt = conn.prepareStatement(sql)) {
-      stmt.setLong(1, discordUserId);
-      stmt.setTimestamp(2, Timestamp.from(settlementPeriodEnd));
-
-      try (ResultSet rs = stmt.executeQuery()) {
-        return rs.next();
-      }
-    } catch (SQLException e) {
-      LOG.error(
-          "Failed to check membership token grant: userId={}, periodEnd={}",
-          discordUserId,
-          settlementPeriodEnd,
-          e);
-      throw new RepositoryException("Failed to check membership token grant", e);
-    }
-  }
-
-  @Override
   public boolean tryClaimGrantLog(
       long discordUserId, Instant settlementPeriodEnd, MembershipTier tier, int tokensGranted) {
     String sql =
         "INSERT INTO membership_token_grant_log"
-            + " (discord_user_id, settlement_period_end, tier, tokens_granted)"
-            + " VALUES (?, ?, ?, ?)"
-            + " ON CONFLICT (discord_user_id, settlement_period_end) DO NOTHING"
+            + " (discord_user_id, settlement_period_end, tier, tokens_granted, status,"
+            + " tokens_adjusted)"
+            + " VALUES (?, ?, ?, ?, ?, FALSE)"
+            + " ON CONFLICT (discord_user_id, settlement_period_end) DO UPDATE SET"
+            + " status = EXCLUDED.status,"
+            + " tier = EXCLUDED.tier,"
+            + " tokens_granted = EXCLUDED.tokens_granted"
+            + " WHERE membership_token_grant_log.status = ?"
             + " RETURNING id";
 
     try (Connection conn = dataSource.getConnection();
@@ -68,6 +54,8 @@ public class JdbcMembershipTokenGrantRepository implements MembershipTokenGrantR
       stmt.setTimestamp(2, Timestamp.from(settlementPeriodEnd));
       stmt.setString(3, tier.name());
       stmt.setInt(4, tokensGranted);
+      stmt.setString(5, STATUS_CLAIMED);
+      stmt.setString(6, STATUS_FAILED);
 
       try (ResultSet rs = stmt.executeQuery()) {
         return rs.next();
@@ -83,9 +71,60 @@ public class JdbcMembershipTokenGrantRepository implements MembershipTokenGrantR
   }
 
   @Override
+  public Optional<GrantClaimState> findClaimState(long discordUserId, Instant settlementPeriodEnd) {
+    String sql =
+        "SELECT status, tokens_adjusted FROM membership_token_grant_log"
+            + " WHERE discord_user_id = ? AND settlement_period_end = ?";
+
+    try (Connection conn = dataSource.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(sql)) {
+      stmt.setLong(1, discordUserId);
+      stmt.setTimestamp(2, Timestamp.from(settlementPeriodEnd));
+
+      try (ResultSet rs = stmt.executeQuery()) {
+        if (rs.next()) {
+          return Optional.of(
+              new GrantClaimState(rs.getString("status"), rs.getBoolean("tokens_adjusted")));
+        }
+      }
+    } catch (SQLException e) {
+      LOG.error(
+          "Failed to read membership token grant claim: userId={}, periodEnd={}",
+          discordUserId,
+          settlementPeriodEnd,
+          e);
+      throw new RepositoryException("Failed to read membership token grant claim", e);
+    }
+
+    return Optional.empty();
+  }
+
+  @Override
   public void releaseGrantClaim(long discordUserId, Instant settlementPeriodEnd) {
     String sql =
         "DELETE FROM membership_token_grant_log"
+            + " WHERE discord_user_id = ? AND settlement_period_end = ? AND status = ?";
+
+    try (Connection conn = dataSource.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(sql)) {
+      stmt.setLong(1, discordUserId);
+      stmt.setTimestamp(2, Timestamp.from(settlementPeriodEnd));
+      stmt.setString(3, STATUS_CLAIMED);
+      stmt.executeUpdate();
+    } catch (SQLException e) {
+      LOG.error(
+          "Failed to release membership token grant claim: userId={}, periodEnd={}",
+          discordUserId,
+          settlementPeriodEnd,
+          e);
+      throw new RepositoryException("Failed to release membership token grant claim", e);
+    }
+  }
+
+  @Override
+  public void markTokensAdjusted(long discordUserId, Instant settlementPeriodEnd) {
+    String sql =
+        "UPDATE membership_token_grant_log SET tokens_adjusted = TRUE"
             + " WHERE discord_user_id = ? AND settlement_period_end = ?";
 
     try (Connection conn = dataSource.getConnection();
@@ -95,11 +134,55 @@ public class JdbcMembershipTokenGrantRepository implements MembershipTokenGrantR
       stmt.executeUpdate();
     } catch (SQLException e) {
       LOG.error(
-          "Failed to release membership token grant claim: userId={}, periodEnd={}",
+          "Failed to mark membership token grant adjusted: userId={}, periodEnd={}",
           discordUserId,
           settlementPeriodEnd,
           e);
-      throw new RepositoryException("Failed to release membership token grant claim", e);
+      throw new RepositoryException("Failed to mark membership token grant adjusted", e);
+    }
+  }
+
+  @Override
+  public void completeGrantClaim(long discordUserId, Instant settlementPeriodEnd) {
+    String sql =
+        "UPDATE membership_token_grant_log SET status = ?"
+            + " WHERE discord_user_id = ? AND settlement_period_end = ?";
+
+    try (Connection conn = dataSource.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(sql)) {
+      stmt.setString(1, STATUS_COMPLETED);
+      stmt.setLong(2, discordUserId);
+      stmt.setTimestamp(3, Timestamp.from(settlementPeriodEnd));
+      stmt.executeUpdate();
+    } catch (SQLException e) {
+      LOG.error(
+          "Failed to complete membership token grant: userId={}, periodEnd={}",
+          discordUserId,
+          settlementPeriodEnd,
+          e);
+      throw new RepositoryException("Failed to complete membership token grant", e);
+    }
+  }
+
+  @Override
+  public void markGrantFailed(long discordUserId, Instant settlementPeriodEnd) {
+    String sql =
+        "UPDATE membership_token_grant_log SET status = ?"
+            + " WHERE discord_user_id = ? AND settlement_period_end = ?";
+
+    try (Connection conn = dataSource.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(sql)) {
+      stmt.setString(1, STATUS_FAILED);
+      stmt.setLong(2, discordUserId);
+      stmt.setTimestamp(3, Timestamp.from(settlementPeriodEnd));
+      stmt.executeUpdate();
+    } catch (SQLException e) {
+      LOG.error(
+          "Failed to mark membership token grant failed: userId={}, periodEnd={}",
+          discordUserId,
+          settlementPeriodEnd,
+          e);
+      throw new RepositoryException("Failed to mark membership token grant failed", e);
     }
   }
 
@@ -114,13 +197,15 @@ public class JdbcMembershipTokenGrantRepository implements MembershipTokenGrantR
             + "   SELECT 1 FROM membership_token_grant_log l"
             + "   WHERE l.discord_user_id = g.discord_user_id"
             + "     AND l.settlement_period_end = g.last_settlement_at"
+            + "     AND l.status = ?"
             + " )"
             + " ORDER BY g.last_settlement_at"
             + " LIMIT ?";
 
     try (Connection conn = dataSource.getConnection();
         PreparedStatement stmt = conn.prepareStatement(sql)) {
-      stmt.setInt(1, limit);
+      stmt.setString(1, STATUS_COMPLETED);
+      stmt.setInt(2, limit);
 
       try (ResultSet rs = stmt.executeQuery()) {
         List<PendingMembershipGrant> pending = new ArrayList<>();
@@ -136,38 +221,6 @@ public class JdbcMembershipTokenGrantRepository implements MembershipTokenGrantR
     } catch (SQLException e) {
       LOG.error("Failed to find pending membership token grants", e);
       throw new RepositoryException("Failed to find pending membership token grants", e);
-    }
-  }
-
-  @Override
-  public void insertGrantLog(
-      long discordUserId, Instant settlementPeriodEnd, MembershipTier tier, int tokensGranted) {
-    String sql =
-        "INSERT INTO membership_token_grant_log"
-            + " (discord_user_id, settlement_period_end, tier, tokens_granted)"
-            + " VALUES (?, ?, ?, ?)";
-
-    try (Connection conn = dataSource.getConnection();
-        PreparedStatement stmt = conn.prepareStatement(sql)) {
-      stmt.setLong(1, discordUserId);
-      stmt.setTimestamp(2, Timestamp.from(settlementPeriodEnd));
-      stmt.setString(3, tier.name());
-      stmt.setInt(4, tokensGranted);
-      stmt.executeUpdate();
-
-      LOG.info(
-          "Recorded membership token grant: userId={}, periodEnd={}, tier={}, tokens={}",
-          discordUserId,
-          settlementPeriodEnd,
-          tier,
-          tokensGranted);
-    } catch (SQLException e) {
-      LOG.error(
-          "Failed to insert membership token grant: userId={}, periodEnd={}",
-          discordUserId,
-          settlementPeriodEnd,
-          e);
-      throw new RepositoryException("Failed to insert membership token grant", e);
     }
   }
 }

@@ -95,7 +95,7 @@ public class MembershipSettlementService {
           new MembershipTierChangedEvent(discordUserId, previousTier, newTier, avgM, settledAt));
     }
 
-    tokenGrantService.grantForSettlement(discordUserId, periodEnd, newTier);
+    tokenGrantService.grantForSettlement(discordUserId, periodStart, periodEnd, newTier);
 
     LOG.info(
         "Settled membership for userId={}: tier {} -> {}, avgM={}, nextSettlement={}",

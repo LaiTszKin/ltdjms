@@ -21,6 +21,7 @@ public record FiatOrder(
     long amountTwd,
     Long listPriceTwd,
     Long chargedAmountTwd,
+    String membershipTierAtOrder,
     Status status,
     String tradeStatus,
     String paymentMessage,
@@ -143,6 +144,7 @@ public record FiatOrder(
       long amountTwd,
       Long listPriceTwd,
       Long chargedAmountTwd,
+      String membershipTierAtOrder,
       Instant expireAt) {
     Instant now = Instant.now();
     return new FiatOrder(
@@ -160,6 +162,7 @@ public record FiatOrder(
         amountTwd,
         listPriceTwd,
         chargedAmountTwd,
+        membershipTierAtOrder,
         Status.PENDING_PAYMENT,
         null,
         null,
@@ -201,6 +204,7 @@ public record FiatOrder(
         amountTwd,
         amountTwd,
         amountTwd,
+        null,
         expireAt);
   }
 

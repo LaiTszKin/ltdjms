@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -58,6 +59,7 @@ class FiatOrderPostPaymentWorkerTest {
             escortOrderBuyerNotificationService,
             membershipSpendService,
             Clock.fixed(NOW, ZoneOffset.UTC));
+    lenient().when(membershipSpendService.recordFiatEscortPayment(any(), any())).thenReturn(true);
   }
 
   @Test
@@ -81,10 +83,12 @@ class FiatOrderPostPaymentWorkerTest {
     var callOrder =
         inOrder(
             buyerNotificationService,
+            membershipSpendService,
             escortDispatchHandoffService,
             escortOrderBuyerNotificationService,
             adminNotificationService);
     callOrder.verify(buyerNotificationService).notifyPaymentSucceeded(order);
+    callOrder.verify(membershipSpendService).recordFiatEscortPayment(order, product);
     callOrder
         .verify(escortDispatchHandoffService)
         .handoffFromFiatPayment(order.guildId(), order.buyerUserId(), product, order.orderNumber());
@@ -106,7 +110,6 @@ class FiatOrderPostPaymentWorkerTest {
                     ltdjms.discord.currency.domain.CurrencyTransaction.Source.PRODUCT_REWARD,
                     ltdjms.discord.gametoken.domain.GameTokenTransaction.Source.PRODUCT_REWARD)));
     verify(fiatOrderRepository).markRewardGrantedIfNeeded(eq(order.orderNumber()), any());
-    verify(membershipSpendService).recordFiatEscortPayment(order, product);
     verify(fiatOrderRepository).markFulfilledIfNeeded(eq(order.orderNumber()), any());
     verify(fiatOrderRepository, never()).releaseFulfillmentProcessing(order.orderNumber());
   }
@@ -189,6 +192,40 @@ class FiatOrderPostPaymentWorkerTest {
     verify(fiatOrderRepository, never()).markFulfilledIfNeeded(any(), any());
   }
 
+  @Test
+  @DisplayName("spend 記錄失敗時不應標記 fulfilled")
+  void shouldNotMarkFulfilledWhenSpendRecordingFails() {
+    FiatOrder order = paidOrder();
+    when(fiatOrderRepository.claimFulfillmentProcessing(eq(order.orderNumber()), any()))
+        .thenReturn(true);
+    when(membershipSpendService.recordFiatEscortPayment(any(), any())).thenReturn(false);
+
+    worker.processSingleOrder(order);
+
+    verify(fiatOrderRepository).releaseFulfillmentProcessing(order.orderNumber());
+    verify(fiatOrderRepository, never()).markFulfilledIfNeeded(any(), any());
+  }
+
+  @Test
+  @DisplayName("handoff 失敗時 spend 仍應已寫入")
+  void shouldRecordSpendBeforeHandoffFailure() {
+    FiatOrder order = paidOrder();
+    Product product = order.toFulfillmentProduct();
+    when(fiatOrderRepository.claimFulfillmentProcessing(eq(order.orderNumber()), any()))
+        .thenReturn(true);
+    when(membershipSpendService.recordFiatEscortPayment(order, product)).thenReturn(true);
+    when(escortDispatchHandoffService.handoffFromFiatPayment(
+            eq(order.guildId()), eq(order.buyerUserId()), eq(product), eq(order.orderNumber())))
+        .thenReturn(
+            Result.err(new DomainError(DomainError.Category.INVALID_INPUT, "handoff 失敗", null)));
+
+    worker.processSingleOrder(order);
+
+    verify(membershipSpendService).recordFiatEscortPayment(order, product);
+    verify(fiatOrderRepository).releaseFulfillmentProcessing(order.orderNumber());
+    verify(fiatOrderRepository, never()).markFulfilledIfNeeded(any(), any());
+  }
+
   private FiatOrder paidOrder() {
     return new FiatOrder(
         1L,
@@ -203,6 +240,7 @@ class FiatOrderPostPaymentWorkerTest {
         "FD260411000001",
         "CVS123456",
         1200L,
+        null,
         null,
         null,
         FiatOrder.Status.PAID,

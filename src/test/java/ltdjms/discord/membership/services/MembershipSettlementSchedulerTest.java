@@ -2,6 +2,7 @@ package ltdjms.discord.membership.services;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -35,6 +36,21 @@ class MembershipSettlementSchedulerTest {
     scheduler =
         new MembershipSettlementScheduler(
             membershipRepository, settlementService, tokenGrantService, clock);
+  }
+
+  @Test
+  @DisplayName("should drain multiple settlement batches within one tick")
+  void shouldDrainMultipleBatches() {
+    when(membershipRepository.findDueForSettlement(
+            NOW, MembershipSettlementScheduler.SETTLEMENT_BATCH_LIMIT))
+        .thenReturn(
+            java.util.stream.LongStream.rangeClosed(1, 100).boxed().toList(),
+            java.util.stream.LongStream.rangeClosed(101, 150).boxed().toList(),
+            List.of());
+
+    scheduler.runSettlement();
+
+    verify(settlementService, org.mockito.Mockito.times(150)).settle(anyLong());
   }
 
   @Test

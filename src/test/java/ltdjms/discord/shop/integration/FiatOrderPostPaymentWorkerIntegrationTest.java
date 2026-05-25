@@ -182,6 +182,7 @@ class FiatOrderPostPaymentWorkerIntegrationTest {
             amountTwd,
             null,
             null,
+            null,
             FiatOrder.Status.PAID,
             "1",
             "付款成功",

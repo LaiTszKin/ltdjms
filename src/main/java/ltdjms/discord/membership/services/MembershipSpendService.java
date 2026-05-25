@@ -1,5 +1,6 @@
 package ltdjms.discord.membership.services;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
 
@@ -9,9 +10,12 @@ import org.slf4j.LoggerFactory;
 import ltdjms.discord.membership.domain.MembershipTier;
 import ltdjms.discord.membership.persistence.MembershipRepository;
 import ltdjms.discord.membership.persistence.MembershipSpendRepository;
+import ltdjms.discord.membership.persistence.SpendRecordResult;
 import ltdjms.discord.product.domain.EscortOptionCatalogRepository;
 import ltdjms.discord.product.domain.EscortProductRules;
 import ltdjms.discord.product.domain.Product;
+import ltdjms.discord.shared.events.DomainEventPublisher;
+import ltdjms.discord.shared.events.MembershipTierChangedEvent;
 import ltdjms.discord.shop.domain.FiatOrder;
 
 /** Records escort fiat payment catalog list prices into the global spend ledger. */
@@ -24,47 +28,55 @@ public class MembershipSpendService {
   private final MembershipSpendRepository spendRepository;
   private final MembershipRepository membershipRepository;
   private final EscortOptionCatalogRepository catalogRepository;
+  private final DomainEventPublisher eventPublisher;
+  private final Clock clock;
 
   public MembershipSpendService(
       MembershipSpendRepository spendRepository,
       MembershipRepository membershipRepository,
-      EscortOptionCatalogRepository catalogRepository) {
+      EscortOptionCatalogRepository catalogRepository,
+      DomainEventPublisher eventPublisher,
+      Clock clock) {
     this.spendRepository = Objects.requireNonNull(spendRepository);
     this.membershipRepository = Objects.requireNonNull(membershipRepository);
     this.catalogRepository = Objects.requireNonNull(catalogRepository);
+    this.eventPublisher = Objects.requireNonNull(eventPublisher);
+    this.clock = Objects.requireNonNull(clock);
   }
 
   /**
-   * Records catalog list price M for a paid escort-linked fiat order. Best-effort: failures are
-   * logged and do not propagate to callers.
+   * Records catalog list price M for a paid escort-linked fiat order.
+   *
+   * @return {@code true} when spend was recorded, intentionally skipped, or already present;
+   *     {@code false} on persistence failure
    */
-  public void recordFiatEscortPayment(FiatOrder order, Product product) {
-    try {
-      if (!order.isPaid()) {
-        return;
-      }
-      if (!EscortProductRules.isEscortLinked(product)) {
-        return;
-      }
-      if (order.paidAt() == null) {
-        LOG.warn(
-            "Skipping membership spend for paid order without paidAt: orderNumber={}",
-            order.orderNumber());
-        return;
-      }
+  public boolean recordFiatEscortPayment(FiatOrder order, Product product) {
+    if (!order.isPaid()) {
+      return true;
+    }
+    if (!EscortProductRules.isEscortLinked(product)) {
+      return true;
+    }
+    if (order.paidAt() == null) {
+      LOG.warn(
+          "Skipping membership spend for paid order without paidAt: orderNumber={}",
+          order.orderNumber());
+      return false;
+    }
 
+    try {
       long listPriceM = resolveListPriceM(product, order.guildId());
       if (listPriceM <= 0) {
         LOG.warn(
             "Skipping membership spend with non-positive list price: orderNumber={}, listPriceM={}",
             order.orderNumber(),
             listPriceM);
-        return;
+        return false;
       }
 
       membershipRepository.findOrCreate(order.buyerUserId());
 
-      boolean inserted =
+      SpendRecordResult result =
           spendRepository.insertSpendAndQualifyBronzeIfThreshold(
               order.buyerUserId(),
               order.guildId(),
@@ -75,11 +87,23 @@ public class MembershipSpendService {
               order.paidAt(),
               MembershipTier.BRONZE.thresholdListPriceTwd());
 
-      if (inserted) {
+      if (result.inserted()) {
         ensureSettlementAnchor(order.buyerUserId(), order.paidAt());
+        if (result.bronzePromoted()) {
+          eventPublisher.publish(
+              new MembershipTierChangedEvent(
+                  order.buyerUserId(),
+                  MembershipTier.NONE,
+                  MembershipTier.BRONZE,
+                  listPriceM,
+                  order.paidAt()));
+        }
       }
+
+      return true;
     } catch (Exception e) {
       LOG.error("Failed to record membership spend for orderNumber={}", order.orderNumber(), e);
+      return false;
     }
   }
 

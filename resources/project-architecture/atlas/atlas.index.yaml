@@ -22,6 +22,7 @@ features:
   - administration
   - shared-infrastructure
   - user-panel
+  - membership-tiers
 edges:
   - id: e-eq4hb7
     from:

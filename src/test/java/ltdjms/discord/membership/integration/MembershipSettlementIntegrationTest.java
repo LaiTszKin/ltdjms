@@ -65,7 +65,11 @@ class MembershipSettlementIntegrationTest extends PostgresIntegrationTestBase {
         new GameTokenTransactionService(transactionRepository);
     tokenGrantService =
         new MembershipTokenGrantService(
-            grantRepository, spendRepository, gameTokenService, transactionService);
+            grantRepository,
+            spendRepository,
+            membershipRepository,
+            gameTokenService,
+            transactionService);
     Clock clock = Clock.fixed(SETTLE_NOW, MembershipJoinService.SETTLEMENT_ZONE);
     settlementService =
         new MembershipSettlementService(
@@ -132,7 +136,9 @@ class MembershipSettlementIntegrationTest extends PostgresIntegrationTestBase {
     assertThat(gameTokenService.getBalance(TEST_GUILD_ID, TEST_USER_ID)).isEqualTo(100L);
     assertThat(
             new JdbcMembershipTokenGrantRepository(dataSource)
-                .hasGrantForPeriod(TEST_USER_ID, PERIOD_END))
+                .findClaimState(TEST_USER_ID, PERIOD_END)
+                .map(state -> "COMPLETED".equals(state.status()))
+                .orElse(false))
         .isTrue();
   }
 
@@ -161,14 +167,15 @@ class MembershipSettlementIntegrationTest extends PostgresIntegrationTestBase {
   }
 
   private void insertSpend(long listPriceTwd, Instant paidAt) {
-    spendRepository.insertIfAbsent(
+    spendRepository.insertSpendAndQualifyBronzeIfThreshold(
         TEST_USER_ID,
         TEST_GUILD_ID,
         listPriceTwd,
         "ESCORT_A",
         "FIAT_ORDER",
         "order-" + paidAt.toEpochMilli(),
-        paidAt);
+        paidAt,
+        Long.MAX_VALUE);
   }
 
   private static final class RecordingEventPublisher extends DomainEventPublisher {

@@ -83,9 +83,44 @@ public class MemberInfoFacade {
       return Result.err(balanceResult.getError());
     }
 
-    BalanceView balanceView = balanceResult.getValue();
-    long gameTokens = gameTokenService.getBalance(guildId, userId);
     MembershipPanelSummary membershipSummary = getMembershipSummary(userId);
+    return buildUserPanelView(guildId, userId, balanceResult.getValue(), membershipSummary);
+  }
+
+  /**
+   * Gets the user panel view using a precomputed membership summary.
+   *
+   * @param guildId the Discord guild ID
+   * @param userId the Discord user ID
+   * @param membershipSummary membership summary shared across guild panels
+   * @return Result containing UserPanelView on success, or DomainError on failure
+   */
+  public Result<UserPanelView, DomainError> getUserPanelView(
+      long guildId, long userId, MembershipPanelSummary membershipSummary) {
+    LOG.debug(
+        "Getting user panel view for guildId={}, userId={} with cached membership summary",
+        guildId,
+        userId);
+
+    Result<BalanceView, DomainError> balanceResult = balanceService.tryGetBalance(guildId, userId);
+    if (balanceResult.isErr()) {
+      LOG.warn(
+          "Failed to get balance for guildId={}, userId={}: {}",
+          guildId,
+          userId,
+          balanceResult.getError().message());
+      return Result.err(balanceResult.getError());
+    }
+
+    return buildUserPanelView(guildId, userId, balanceResult.getValue(), membershipSummary);
+  }
+
+  private Result<UserPanelView, DomainError> buildUserPanelView(
+      long guildId,
+      long userId,
+      BalanceView balanceView,
+      MembershipPanelSummary membershipSummary) {
+    long gameTokens = gameTokenService.getBalance(guildId, userId);
 
     UserPanelView panelView =
         new UserPanelView(

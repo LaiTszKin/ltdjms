@@ -2,7 +2,7 @@ package ltdjms.discord.membership.domain;
 
 import java.math.BigDecimal;
 
-/** Read-only accessors for finalized membership tier constants. */
+/** Read-only accessors for finalized membership tier constants (spec contract facade). */
 public final class MembershipTierConfig {
 
   private MembershipTierConfig() {}

@@ -10,13 +10,16 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -24,9 +27,12 @@ import ltdjms.discord.membership.domain.GlobalMemberMembership;
 import ltdjms.discord.membership.domain.MembershipTier;
 import ltdjms.discord.membership.persistence.MembershipRepository;
 import ltdjms.discord.membership.persistence.MembershipSpendRepository;
+import ltdjms.discord.membership.persistence.SpendRecordResult;
 import ltdjms.discord.product.domain.EscortOptionCatalog;
 import ltdjms.discord.product.domain.EscortOptionCatalogRepository;
 import ltdjms.discord.product.domain.Product;
+import ltdjms.discord.shared.events.DomainEventPublisher;
+import ltdjms.discord.shared.events.MembershipTierChangedEvent;
 import ltdjms.discord.shop.domain.FiatOrder;
 
 @ExtendWith(MockitoExtension.class)
@@ -40,12 +46,16 @@ class MembershipSpendServiceTest {
   @Mock private MembershipSpendRepository spendRepository;
   @Mock private MembershipRepository membershipRepository;
   @Mock private EscortOptionCatalogRepository catalogRepository;
+  @Mock private DomainEventPublisher eventPublisher;
 
   private MembershipSpendService service;
 
   @BeforeEach
   void setUp() {
-    service = new MembershipSpendService(spendRepository, membershipRepository, catalogRepository);
+    Clock clock = Clock.fixed(PAID_AT, ZoneOffset.UTC);
+    service =
+        new MembershipSpendService(
+            spendRepository, membershipRepository, catalogRepository, eventPublisher, clock);
   }
 
   @Nested
@@ -105,12 +115,34 @@ class MembershipSpendServiceTest {
               order.orderNumber(),
               PAID_AT,
               MembershipTier.BRONZE.thresholdListPriceTwd()))
-          .thenReturn(true);
+          .thenReturn(new SpendRecordResult(true, false));
 
-      service.recordFiatEscortPayment(order, product);
+      assertThat(service.recordFiatEscortPayment(order, product)).isTrue();
 
       verify(membershipRepository).findOrCreate(BUYER_ID);
       verify(membershipRepository).ensureSettlementAnchor(eq(BUYER_ID), eq(PAID_AT), eq(11));
+    }
+
+    @Test
+    @DisplayName("should publish tier changed event when bronze promotion succeeds")
+    void shouldPublishBronzePromotionEvent() {
+      Product product = escortProduct("CONF_DAM_300W", 3500L);
+      FiatOrder order = paidEscortOrder(product, 3500L);
+      when(catalogRepository.findByCode("CONF_DAM_300W"))
+          .thenReturn(java.util.Optional.of(catalogEntry("CONF_DAM_300W", 3500L)));
+      when(membershipRepository.findOrCreate(BUYER_ID))
+          .thenReturn(GlobalMemberMembership.createNew(BUYER_ID));
+      when(spendRepository.insertSpendAndQualifyBronzeIfThreshold(
+              anyLong(), anyLong(), anyLong(), any(), anyString(), anyString(), any(), anyLong()))
+          .thenReturn(new SpendRecordResult(true, true));
+
+      assertThat(service.recordFiatEscortPayment(order, product)).isTrue();
+
+      ArgumentCaptor<MembershipTierChangedEvent> captor =
+          ArgumentCaptor.forClass(MembershipTierChangedEvent.class);
+      verify(eventPublisher).publish(captor.capture());
+      assertThat(captor.getValue().previous()).isEqualTo(MembershipTier.NONE);
+      assertThat(captor.getValue().current()).isEqualTo(MembershipTier.BRONZE);
     }
 
     @Test
@@ -131,11 +163,12 @@ class MembershipSpendServiceTest {
               eq(order.orderNumber()),
               eq(PAID_AT),
               eq(MembershipTier.BRONZE.thresholdListPriceTwd())))
-          .thenReturn(true);
+          .thenReturn(new SpendRecordResult(true, false));
 
       service.recordFiatEscortPayment(order, product);
 
       verify(membershipRepository).ensureSettlementAnchor(BUYER_ID, PAID_AT, 11);
+      verify(eventPublisher, never()).publish(any());
     }
 
     @Test
@@ -156,9 +189,9 @@ class MembershipSpendServiceTest {
               eq(order.orderNumber()),
               eq(PAID_AT),
               eq(MembershipTier.BRONZE.thresholdListPriceTwd())))
-          .thenReturn(false);
+          .thenReturn(new SpendRecordResult(false, false));
 
-      service.recordFiatEscortPayment(order, product);
+      assertThat(service.recordFiatEscortPayment(order, product)).isTrue();
 
       verify(membershipRepository, never())
           .ensureSettlementAnchor(anyLong(), any(Instant.class), anyInt());
@@ -170,7 +203,7 @@ class MembershipSpendServiceTest {
       Product product = Product.createWithFiatPriceTwd(GUILD_ID, "一般商品", "desc", 500L);
       FiatOrder order = paidEscortOrder(product, 500L);
 
-      service.recordFiatEscortPayment(order, product);
+      assertThat(service.recordFiatEscortPayment(order, product)).isTrue();
 
       verify(spendRepository, never())
           .insertSpendAndQualifyBronzeIfThreshold(
@@ -178,8 +211,8 @@ class MembershipSpendServiceTest {
     }
 
     @Test
-    @DisplayName("should swallow repository errors without throwing")
-    void shouldNotThrowOnRepositoryFailure() {
+    @DisplayName("should return false when repository throws")
+    void shouldReturnFalseOnRepositoryFailure() {
       Product product = escortProduct("CONF_DAM_300W", 3500L);
       FiatOrder order = paidEscortOrder(product, 3500L);
       when(catalogRepository.findByCode("CONF_DAM_300W"))
@@ -190,8 +223,7 @@ class MembershipSpendServiceTest {
               anyLong(), anyLong(), anyLong(), any(), anyString(), anyString(), any(), anyLong()))
           .thenThrow(new RuntimeException("db down"));
 
-      org.junit.jupiter.api.Assertions.assertDoesNotThrow(
-          () -> service.recordFiatEscortPayment(order, product));
+      assertThat(service.recordFiatEscortPayment(order, product)).isFalse();
     }
   }
 
@@ -224,6 +256,7 @@ class MembershipSpendServiceTest {
         "FD260411000001",
         "CVS123456",
         chargedAmount,
+        null,
         null,
         null,
         FiatOrder.Status.PAID,

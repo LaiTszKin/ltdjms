@@ -85,11 +85,15 @@ public class FiatOrderPostPaymentWorker {
     }
 
     try {
-      var fulfillmentProduct = order.toFulfillmentProduct();
-
       if (!order.isBuyerNotified()) {
         buyerNotificationService.notifyPaymentSucceeded(order);
         fiatOrderRepository.markBuyerNotifiedIfNeeded(order.orderNumber(), Instant.now(clock));
+      }
+
+      var fulfillmentProduct = order.toFulfillmentProduct();
+      if (!membershipSpendService.recordFiatEscortPayment(order, fulfillmentProduct)) {
+        throw new IllegalStateException(
+            "Membership spend recording failed: orderNumber=" + order.orderNumber());
       }
 
       if (order.shouldAutoCreateEscortOrder() && !order.isAdminNotified()) {
@@ -138,7 +142,6 @@ public class FiatOrderPostPaymentWorker {
         fiatOrderRepository.markRewardGrantedIfNeeded(order.orderNumber(), Instant.now(clock));
       }
 
-      membershipSpendService.recordFiatEscortPayment(order, fulfillmentProduct);
       fiatOrderRepository.markFulfilledIfNeeded(order.orderNumber(), Instant.now(clock));
     } catch (Exception e) {
       fiatOrderRepository.releaseFulfillmentProcessing(order.orderNumber());

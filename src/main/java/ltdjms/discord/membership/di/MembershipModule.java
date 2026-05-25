@@ -80,9 +80,15 @@ public class MembershipModule {
   public MembershipSpendService provideMembershipSpendService(
       MembershipSpendRepository membershipSpendRepository,
       MembershipRepository membershipRepository,
-      EscortOptionCatalogRepository escortOptionCatalogRepository) {
+      EscortOptionCatalogRepository escortOptionCatalogRepository,
+      DomainEventPublisher eventPublisher,
+      @SettlementClock Clock clock) {
     return new MembershipSpendService(
-        membershipSpendRepository, membershipRepository, escortOptionCatalogRepository);
+        membershipSpendRepository,
+        membershipRepository,
+        escortOptionCatalogRepository,
+        eventPublisher,
+        clock);
   }
 
   @Provides
@@ -90,10 +96,15 @@ public class MembershipModule {
   public MembershipTokenGrantService provideMembershipTokenGrantService(
       MembershipTokenGrantRepository grantRepository,
       MembershipSpendRepository spendRepository,
+      MembershipRepository membershipRepository,
       GameTokenService gameTokenService,
       GameTokenTransactionService gameTokenTransactionService) {
     return new MembershipTokenGrantService(
-        grantRepository, spendRepository, gameTokenService, gameTokenTransactionService);
+        grantRepository,
+        spendRepository,
+        membershipRepository,
+        gameTokenService,
+        gameTokenTransactionService);
   }
 
   @Provides

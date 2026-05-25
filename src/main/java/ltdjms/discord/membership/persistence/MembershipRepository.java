@@ -36,11 +36,19 @@ public interface MembershipRepository {
       long discordUserId, Instant joinedAt, int settlementDay, Instant nextSettlementAt);
 
   /**
-   * Initializes settlement anchors from the first spend when join tracking was never recorded.
+   * Initializes {@code next_settlement_at} from the first spend when join tracking was never
+   * recorded. Does not write {@code earliest_guild_join_at}; join events remain authoritative.
    *
    * @return {@code true} when anchors were set
    */
   boolean ensureSettlementAnchor(long discordUserId, Instant anchorFrom, int settlementDay);
+
+  /**
+   * Marks bronze qualification when the user has not yet met the threshold.
+   *
+   * @return {@code true} when the row was updated
+   */
+  boolean qualifyBronzeIfThreshold(long discordUserId);
 
   /**
    * Applies settlement updates only when {@code expectedNextSettlementAt} still matches the row.

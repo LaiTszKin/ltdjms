@@ -1,11 +1,14 @@
 package ltdjms.discord.membership.domain;
 
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 
 /** Resolves settlement period boundaries for spend aggregation and panel display. */
 public final class MembershipPeriodBounds {
 
   private static final Instant EPOCH = Instant.EPOCH;
+  static final ZoneId SETTLEMENT_ZONE = ZoneId.of("Asia/Taipei");
 
   private MembershipPeriodBounds() {}
 
@@ -34,6 +37,24 @@ public final class MembershipPeriodBounds {
     return EPOCH;
   }
 
+  /**
+   * Resolves the inclusive period start for a settlement that ended at {@code settledPeriodEnd}.
+   * Used when {@code last_settlement_at} already equals the settled period end.
+   */
+  public static Instant resolvePeriodStartForEndedPeriod(
+      GlobalMemberMembership membership, Instant settledPeriodEnd) {
+    Integer settlementDay = membership.settlementDayOfMonth();
+    Instant fallbackStart =
+        settlementDay == null
+            ? EPOCH
+            : computePreviousSettlementAt(settlementDay, settledPeriodEnd, SETTLEMENT_ZONE);
+    Instant earliestJoin = membership.earliestGuildJoinAt();
+    if (earliestJoin != null && earliestJoin.isAfter(fallbackStart)) {
+      return earliestJoin;
+    }
+    return fallbackStart;
+  }
+
   private static Instant resolvePeriodEndExclusive(GlobalMemberMembership membership, Instant now) {
     Instant nextSettlement = membership.nextSettlementAt();
     if (nextSettlement == null) {
@@ -43,5 +64,21 @@ public final class MembershipPeriodBounds {
       return now;
     }
     return nextSettlement;
+  }
+
+  static Instant computePreviousSettlementAt(
+      int settlementDay, Instant periodEndExclusive, ZoneId zone) {
+    ZonedDateTime anchor = periodEndExclusive.atZone(zone);
+    java.time.YearMonth previousMonth =
+        java.time.YearMonth.from(anchor.toLocalDate()).minusMonths(1);
+    return resolveAnchorDate(
+            previousMonth.getYear(), previousMonth.getMonthValue(), settlementDay, zone)
+        .toInstant();
+  }
+
+  private static ZonedDateTime resolveAnchorDate(
+      int year, int month, int settlementDay, ZoneId zone) {
+    java.time.LocalDate anchor = java.time.LocalDate.of(year, month, settlementDay);
+    return anchor.atStartOfDay(zone);
   }
 }

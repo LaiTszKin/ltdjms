@@ -102,6 +102,16 @@ public class MembershipJoinService {
         .toInstant();
   }
 
+  /** Returns the settlement anchor one calendar month before {@code periodEndExclusive}. */
+  static Instant computePreviousSettlementAt(int settlementDay, Instant periodEndExclusive, ZoneId zone) {
+    ZonedDateTime anchor = periodEndExclusive.atZone(zone);
+    java.time.YearMonth previousMonth =
+        java.time.YearMonth.from(anchor.toLocalDate()).minusMonths(1);
+    return resolveAnchorDate(
+            previousMonth.getYear(), previousMonth.getMonthValue(), settlementDay, zone)
+        .toInstant();
+  }
+
   private static ZonedDateTime resolveAnchorDate(
       int year, int month, int settlementDay, ZoneId zone) {
     java.time.LocalDate anchor = java.time.LocalDate.of(year, month, settlementDay);
