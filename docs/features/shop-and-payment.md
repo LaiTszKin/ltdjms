@@ -39,6 +39,12 @@ Then they are prompted to choose between currency purchase or fiat order
 When the product has only one payment method  
 Then the purchase flow proceeds directly without a payment choice step
 
+### Member Pricing in Shop List
+Given the user has a global membership tier above NONE  
+When they browse the shop with `/shop`, pagination, or search  
+Then escort-linked products show strikethrough list price and discounted member price in the embed  
+And buy menu option descriptions show compact discounted prices without markdown (≤ 100 characters)
+
 ### Member Pricing on Escort Products
 Given the user has a global membership tier above NONE  
 When they select an escort-linked product  

@@ -35,10 +35,10 @@
 **Uncertainty Level**: Known
 
 **Requirements**:
-- [ ] R1.1 僅 `EscortProductRules.isEscortLinked(product)` 且 quote 有折扣時使用劃線格式
-- [ ] R1.2 無折扣（NONE tier 或非 escort）維持原價格式，無 `~~`
-- [ ] R1.3 同時有貨幣與法幣價時，各自獨立格式化
-- [ ] R1.4 分頁、搜尋結果 embed 與主列表行為一致
+- [x] R1.1 僅 `EscortProductRules.isEscortLinked(product)` 且 quote 有折扣時使用劃線格式
+- [x] R1.2 無折扣（NONE tier 或非 escort）維持原價格式，無 `~~`
+- [x] R1.3 同時有貨幣與法幣價時，各自獨立格式化
+- [x] R1.4 分頁、搜尋結果 embed 與主列表行為一致
 
 ### Requirement 2: 購買選單精簡價格
 **GIVEN** 會員開啟「🛒 購買」選單
@@ -48,8 +48,8 @@
 **Uncertainty Level**: Known（Discord Select 不支援 markdown）
 
 **Requirements**:
-- [ ] R2.1 不使用 `~~`；超長時優先保留折扣價 + 折扣率，省略原價
-- [ ] R2.2 無折扣時與現行 `buildPriceDescription` 相同
+- [x] R2.1 不使用 `~~`；超長時優先保留折扣價 + 折扣率，省略原價
+- [x] R2.2 無折扣時與現行 `buildPriceDescription` 相同
 
 ### Requirement 3: 確認頁格式統一
 **GIVEN** 會員進入支付方式選擇或確認購買 embed
@@ -59,14 +59,14 @@
 **Uncertainty Level**: Known
 
 **Requirements**:
-- [ ] R3.1 `buildPaymentMethodChoiceEmbed`、`buildPurchaseConfirmEmbed`、`buildFiatPurchaseConfirmEmbed` 改用新 formatter
-- [ ] R3.2 扣款金額仍來自 `EscortPriceQuote.charged*`，僅改 display
+- [x] R3.1 `buildPaymentMethodChoiceEmbed`、`buildPurchaseConfirmEmbed`、`buildFiatPurchaseConfirmEmbed` 改用新 formatter
+- [x] R3.2 扣款金額仍來自 `EscortPriceQuote.charged*`，僅改 display
 
 ## Error and Edge Cases
-- [ ] `MembershipPricingService` 為 null（舊 wiring）→ 列表 fallback 原價
-- [ ] quote 失敗 → log + 顯示 list price（不 block 瀏覽）
-- [ ] embed 字元總量 ≤ 6000（5 商品/頁）
-- [ ] 四捨五入與既有 pricing service 一致
+- [x] `MembershipPricingService` 為 null（舊 wiring）→ 列表 fallback 原價
+- [x] quote 失敗 → log + 顯示 list price（不 block 瀏覽）
+- [x] embed 字元總量 ≤ 6000（5 商品/頁）
+- [x] 四捨五入與既有 pricing service 一致
 
 ## Clarification Questions
 

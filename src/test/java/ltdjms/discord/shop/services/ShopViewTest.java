@@ -2,7 +2,9 @@ package ltdjms.discord.shop.services;
 
 import static org.assertj.core.api.Assertions.*;
 
+import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -41,7 +43,8 @@ class ShopViewTest {
   void buildShopEmbedShouldCreateProductEmbed() {
     Product product = Product.createWithCurrencyPrice(TEST_GUILD_ID, "測試商品", null, 100L);
 
-    MessageEmbed embed = ShopView.buildShopEmbed(List.of(product), 1, 1, TEST_GUILD_ID);
+    MessageEmbed embed =
+        ShopView.buildShopEmbed(List.of(product), 1, 1, TEST_GUILD_ID, Map.of());
 
     assertThat(embed).isNotNull();
     assertThat(embed.getTitle()).isEqualTo("🏪 商店");
@@ -56,7 +59,8 @@ class ShopViewTest {
     Product product1 = Product.createWithCurrencyPrice(TEST_GUILD_ID, "商品 A", null, 100L);
     Product product2 = Product.createWithCurrencyPrice(TEST_GUILD_ID, "商品 B", null, 200L);
 
-    MessageEmbed embed = ShopView.buildShopEmbed(List.of(product1, product2), 1, 1, TEST_GUILD_ID);
+    MessageEmbed embed =
+        ShopView.buildShopEmbed(List.of(product1, product2), 1, 1, TEST_GUILD_ID, Map.of());
 
     assertThat(embed.getDescription()).contains("**1. 商品 A**");
     assertThat(embed.getDescription()).contains("**2. 商品 B**");
@@ -67,7 +71,8 @@ class ShopViewTest {
   void buildShopEmbedShouldIncludeProductDescription() {
     Product product = Product.createWithCurrencyPrice(TEST_GUILD_ID, "測試商品", "這是測試描述", 100L);
 
-    MessageEmbed embed = ShopView.buildShopEmbed(List.of(product), 1, 1, TEST_GUILD_ID);
+    MessageEmbed embed =
+        ShopView.buildShopEmbed(List.of(product), 1, 1, TEST_GUILD_ID, Map.of());
 
     assertThat(embed.getDescription()).contains("商品描述：這是測試描述");
   }
@@ -77,7 +82,8 @@ class ShopViewTest {
   void buildShopEmbedShouldShowPageNumbersForMultiplePages() {
     Product product = Product.createWithCurrencyPrice(TEST_GUILD_ID, "測試商品", null, 100L);
 
-    MessageEmbed embed = ShopView.buildShopEmbed(List.of(product), 2, 5, TEST_GUILD_ID);
+    MessageEmbed embed =
+        ShopView.buildShopEmbed(List.of(product), 2, 5, TEST_GUILD_ID, Map.of());
 
     assertThat(embed.getFooter().getText()).isEqualTo("第 2 / 5 頁");
   }
@@ -140,7 +146,7 @@ class ShopViewTest {
   void buildBuyMenuShouldCreateUnifiedMenu() {
     Product product = Product.createWithCurrencyPrice(TEST_GUILD_ID, "測試商品", null, 100L);
 
-    var rows = ShopView.buildBuyMenu(List.of(product));
+    var rows = ShopView.buildBuyMenu(List.of(product), Map.of());
     var menu = extractMenu(rows);
 
     assertThat(menu.getId()).isEqualTo(ShopView.SELECT_BUY_PRODUCT);
@@ -165,7 +171,7 @@ class ShopViewTest {
             java.time.Instant.now(),
             java.time.Instant.now());
 
-    var rows = ShopView.buildBuyMenu(List.of(product));
+    var rows = ShopView.buildBuyMenu(List.of(product), Map.of());
     var menu = extractMenu(rows);
 
     assertThat(menu.getOptions()).hasSize(1);
@@ -182,7 +188,7 @@ class ShopViewTest {
                 i -> Product.createWithCurrencyPrice(TEST_GUILD_ID, "商品 " + i, null, 100L + i))
             .toList();
 
-    var rows = ShopView.buildBuyMenu(products);
+    var rows = ShopView.buildBuyMenu(products, Map.of());
 
     // 應有 2 個 action row（第一個 25 個，第二個 5 個）
     assertThat(rows).hasSize(2);
@@ -264,7 +270,7 @@ class ShopViewTest {
   void buildSearchResultComponentsShouldIncludePurchaseMenuPaginationAndBackButton() {
     Product product = Product.createWithCurrencyPrice(TEST_GUILD_ID, "TestProduct", null, 100L);
     List<ActionRow> components =
-        ShopView.buildSearchResultComponents(1, 3, "test", List.of(product));
+        ShopView.buildSearchResultComponents(1, 3, "test", List.of(product), Map.of());
 
     assertThat(components).hasSize(3);
     // First row: buy select menu
@@ -280,9 +286,43 @@ class ShopViewTest {
   }
 
   @Test
-  @DisplayName("buildFiatPurchaseConfirmEmbed 應該顯示會員價")
+  @DisplayName("UT-04: buildShopEmbed 護航商品有折扣時顯示劃線價")
+  void buildShopEmbedShouldShowStrikethroughForDiscountedEscortProduct() {
+    Product product = escortProduct(1L, "護航商品", 100L, 3500L);
+    EscortPriceQuote quote =
+        new EscortPriceQuote(
+            3500L, 3150L, 100L, 90L, MembershipTier.SILVER, MembershipTier.SILVER.discountRate());
+
+    MessageEmbed embed =
+        ShopView.buildShopEmbed(List.of(product), 1, 1, TEST_GUILD_ID, Map.of(1L, quote));
+
+    assertThat(embed.getDescription()).contains("~~NT$3,500~~");
+    assertThat(embed.getDescription()).contains("NT$3,150");
+    assertThat(embed.getDescription()).contains("~~100 貨幣~~");
+    assertThat(embed.getDescription()).contains("90 貨幣");
+  }
+
+  @Test
+  @DisplayName("UT-05: buildBuyMenu 折扣商品 description 無 markdown 且 ≤ 100 字元")
+  void buildBuyMenuShouldUseCompactSelectDescriptionForDiscountedProduct() {
+    Product product = escortProduct(1L, "護航商品", 100L, 3500L);
+    EscortPriceQuote quote =
+        new EscortPriceQuote(
+            3500L, 3150L, 100L, 90L, MembershipTier.SILVER, MembershipTier.SILVER.discountRate());
+
+    var rows = ShopView.buildBuyMenu(List.of(product), Map.of(1L, quote));
+    var menu = extractMenu(rows);
+
+    String description = menu.getOptions().get(0).getDescription();
+    assertThat(description).doesNotContain("~~");
+    assertThat(description.length()).isLessThanOrEqualTo(100);
+    assertThat(description).contains("9折");
+  }
+
+  @Test
+  @DisplayName("buildFiatPurchaseConfirmEmbed 應該顯示劃線會員價")
   void buildFiatPurchaseConfirmEmbedShouldShowMemberPrice() {
-    Product product = Product.createWithFiatPriceTwd(TEST_GUILD_ID, "護航商品", null, 1000L);
+    Product product = escortProduct(1L, "護航商品", null, 1000L);
     EscortPriceQuote quote =
         new EscortPriceQuote(
             1000L, 800L, 0L, 0L, MembershipTier.SILVER, MembershipTier.SILVER.discountRate());
@@ -291,8 +331,8 @@ class ShopViewTest {
 
     assertThat(embed.getTitle()).isEqualTo("💳 確認下單");
     assertThat(embed.getDescription()).contains("**商品：** 護航商品");
-    assertThat(embed.getDescription()).contains("會員價");
-    assertThat(embed.getDescription()).contains("原價");
+    assertThat(embed.getDescription()).contains("~~NT$1,000~~");
+    assertThat(embed.getDescription()).contains("NT$800");
   }
 
   @Test
@@ -325,6 +365,24 @@ class ShopViewTest {
   @DisplayName("getPageSize 應該返回正確的頁面大小")
   void getPageSizeShouldReturnCorrectPageSize() {
     assertThat(ShopView.getPageSize()).isEqualTo(5);
+  }
+
+  private static Product escortProduct(
+      long id, String name, Long currencyPrice, Long fiatPriceTwd) {
+    Instant now = Instant.now();
+    return new Product(
+        id,
+        TEST_GUILD_ID,
+        name,
+        null,
+        null,
+        null,
+        currencyPrice,
+        fiatPriceTwd,
+        true,
+        "ESCORT-OPT",
+        now,
+        now);
   }
 
   private static EscortPriceQuote quoteFor(Product product, long currency, long fiat) {
