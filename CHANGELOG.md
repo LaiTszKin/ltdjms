@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.36.1] - 2026-05-25
+
+### Fixed
+- **membership/user-panel**: 修正既有成員開啟個人面板時加入日期與結算日顯示「尚未設定／尚未記錄」，改由 Discord 歷史加入時間 backfill
+
 ## [0.36.0] - 2026-05-25
 
 ### Added
