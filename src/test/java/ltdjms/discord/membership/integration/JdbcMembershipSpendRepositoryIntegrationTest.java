@@ -81,4 +81,23 @@ class JdbcMembershipSpendRepositoryIntegrationTest extends PostgresIntegrationTe
                 USER_ID, PAID_AT.minusSeconds(1), PAID_AT.plusSeconds(7200)))
         .isEqualTo(1300L);
   }
+
+  @Test
+  @DisplayName("IT-01: should insert ADMIN_ADJUST and reflect in period sum")
+  void shouldInsertAdminAdjustAndSum() {
+    Instant from = PAID_AT.minusSeconds(1);
+    Instant to = PAID_AT.plusSeconds(3600);
+
+    boolean inserted =
+        spendRepository.insertAdminAdjust(
+            USER_ID, 123L, 3000L, "admin:1:uuid-1", PAID_AT);
+    assertThat(inserted).isTrue();
+    assertThat(spendRepository.sumListPriceInPeriod(USER_ID, from, to)).isEqualTo(3000L);
+
+    boolean duplicate =
+        spendRepository.insertAdminAdjust(
+            USER_ID, 123L, 3000L, "admin:1:uuid-1", PAID_AT);
+    assertThat(duplicate).isFalse();
+    assertThat(spendRepository.sumListPriceInPeriod(USER_ID, from, to)).isEqualTo(3000L);
+  }
 }

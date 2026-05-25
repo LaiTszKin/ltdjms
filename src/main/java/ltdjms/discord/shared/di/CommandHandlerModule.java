@@ -28,6 +28,7 @@ import ltdjms.discord.gametoken.services.DiceGame1Service;
 import ltdjms.discord.gametoken.services.DiceGame2Service;
 import ltdjms.discord.gametoken.services.GameTokenService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService;
+import ltdjms.discord.membership.services.MembershipAdminService;
 import ltdjms.discord.membership.services.MembershipQueryService;
 import ltdjms.discord.membership.services.MembershipSpendService;
 import ltdjms.discord.panel.commands.AdminPanelButtonHandler;
@@ -42,6 +43,7 @@ import ltdjms.discord.panel.services.AdminPanelUpdateListener;
 import ltdjms.discord.panel.services.CurrencyManagementFacade;
 import ltdjms.discord.panel.services.GameConfigManagementFacade;
 import ltdjms.discord.panel.services.GameTokenManagementFacade;
+import ltdjms.discord.panel.services.MembershipManagementFacade;
 import ltdjms.discord.panel.services.MemberInfoFacade;
 import ltdjms.discord.panel.services.PanelSessionManager;
 import ltdjms.discord.panel.services.ProductRedemptionUpdateListener;
@@ -162,6 +164,13 @@ public class CommandHandlerModule {
 
   @Provides
   @Singleton
+  public MembershipManagementFacade provideMembershipManagementFacade(
+      MembershipAdminService membershipAdminService) {
+    return new MembershipManagementFacade(membershipAdminService);
+  }
+
+  @Provides
+  @Singleton
   public MemberInfoFacade provideMemberInfoFacade(
       BalanceService balanceService,
       GameTokenService gameTokenService,
@@ -253,7 +262,8 @@ public class CommandHandlerModule {
       DispatchAfterSalesStaffService dispatchAfterSalesStaffService,
       EscortOptionPricingService escortOptionPricingService,
       EscortOptionCatalogRepository escortOptionCatalogRepository,
-      ProductRepository productRepository) {
+      ProductRepository productRepository,
+      MembershipManagementFacade membershipManagementFacade) {
     return new AdminPanelService(
         currencyFacade,
         gameTokenFacade,
@@ -262,7 +272,8 @@ public class CommandHandlerModule {
         dispatchAfterSalesStaffService,
         escortOptionPricingService,
         escortOptionCatalogRepository,
-        productRepository);
+        productRepository,
+        membershipManagementFacade);
   }
 
   @Provides

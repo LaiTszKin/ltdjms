@@ -113,6 +113,26 @@ class AdminPanelCommandHandlerTest {
   }
 
   @Test
+  @DisplayName("主選單應包含會員等級管理入口")
+  void mainPanelShouldIncludeMembershipManagementEntry() {
+    MessageEmbed embed = handler.buildMainPanelEmbed("💰");
+
+    List<String> fieldNames = embed.getFields().stream().map(MessageEmbed.Field::getName).toList();
+
+    assertThat(fieldNames).contains("🏅 會員等級管理");
+  }
+
+  @Test
+  @DisplayName("主選單按鈕應包含會員等級管理按鈕")
+  void mainPanelButtonsShouldContainMembershipButton() {
+    List<Button> buttons = handler.buildMainActionButtons("💰");
+
+    assertThat(buttons)
+        .extracting(Button::getId)
+        .contains(AdminPanelCommandHandler.BUTTON_MEMBERSHIP_MANAGEMENT);
+  }
+
+  @Test
   @DisplayName("非管理員不應該能開啟管理面板")
   void nonAdminCannotOpenPanel() {
     AdminPanelService adminPanelService = mock(AdminPanelService.class);

@@ -54,6 +54,27 @@ final class AdminPanelModalFactory {
         .build();
   }
 
+  static Modal createMembershipSpendModal(
+      long userId, String mode, String userMention, String modeLabel) {
+    String modalTitle = String.format("%s - %s", modeLabel, userMention);
+    if (modalTitle.length() > 45) {
+      modalTitle = modeLabel;
+    }
+
+    TextInput amountInput =
+        TextInput.create("amount", "M 數值", TextInputStyle.SHORT)
+            .setPlaceholder(mode.equals("set") ? "輸入目標 M" : "輸入調整 M")
+            .setRequired(true)
+            .setMinLength(1)
+            .setMaxLength(15)
+            .build();
+
+    return Modal.create(
+            AdminPanelButtonHandler.MODAL_MEMBERSHIP_SPEND + ":" + userId + ":" + mode, modalTitle)
+        .addComponents(ActionRow.of(amountInput))
+        .build();
+  }
+
   static Modal createGame1TokensModal(DiceGame1Config config) {
     TextInput minInput =
         TextInput.create("min", "最小代幣數", TextInputStyle.SHORT)

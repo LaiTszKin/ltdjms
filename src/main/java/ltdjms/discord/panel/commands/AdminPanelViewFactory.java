@@ -1,6 +1,7 @@
 package ltdjms.discord.panel.commands;
 
 import java.awt.Color;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -9,6 +10,9 @@ import ltdjms.discord.discord.domain.ButtonView;
 import ltdjms.discord.discord.domain.EmbedView;
 import ltdjms.discord.gametoken.domain.DiceGame1Config;
 import ltdjms.discord.gametoken.domain.DiceGame2Config;
+import ltdjms.discord.membership.domain.MembershipTier;
+import ltdjms.discord.membership.domain.MembershipTierLabels;
+import ltdjms.discord.membership.services.MembershipAdminDetail;
 import ltdjms.discord.panel.components.PanelComponentRenderer;
 import ltdjms.discord.product.domain.EscortOptionCatalog;
 import net.dv8tion.jda.api.entities.MessageEmbed;
@@ -447,5 +451,187 @@ final class AdminPanelViewFactory {
       String title, String description, List<EmbedView.FieldView> fields, String footer) {
     return PanelComponentRenderer.buildEmbed(
         new EmbedView(title, description, EMBED_COLOR, fields, footer));
+  }
+
+  static List<ActionRow> buildMembershipUserSelectComponents() {
+    EntitySelectMenu userSelect =
+        EntitySelectMenu.create(AdminPanelButtonHandler.SELECT_MEMBERSHIP_USER, EntitySelectMenu.SelectTarget.USER)
+            .setPlaceholder("選擇要管理的成員")
+            .setRequiredRange(1, 1)
+            .build();
+    return List.of(
+        PanelComponentRenderer.buildRow(userSelect),
+        PanelComponentRenderer.buildActionRow(
+            List.of(
+                new ButtonView(
+                    AdminPanelButtonHandler.BUTTON_BACK, "⬅️ 返回主選單", ButtonStyle.SECONDARY, false))));
+  }
+
+  static MessageEmbed buildMembershipUserSelectEmbed() {
+    return buildAdminEmbed(
+        "🏅 會員等級管理",
+        "選擇要查看或調整的成員",
+        List.of(),
+        "手動設定的等級將於下次結算依消費重算");
+  }
+
+  static MessageEmbed buildMembershipDetailEmbed(String userMention, MembershipAdminDetail detail) {
+    List<EmbedView.FieldView> fields = new ArrayList<>();
+    fields.add(new EmbedView.FieldView("成員", userMention, false));
+    fields.add(
+        new EmbedView.FieldView(
+            "會員資訊", formatMembershipDetailBody(detail), false));
+    return buildAdminEmbed(
+        "🏅 會員等級管理",
+        "已選取成員的會員詳情",
+        fields,
+        "手動設定的等級將於下次結算依消費重算");
+  }
+
+  static List<ActionRow> buildMembershipDetailComponents() {
+    return List.of(
+        PanelComponentRenderer.buildActionRow(
+            List.of(
+                new ButtonView(
+                    AdminPanelButtonHandler.BUTTON_MEMBERSHIP_ADJUST_SPEND,
+                    "調整消費 M",
+                    ButtonStyle.PRIMARY,
+                    false),
+                new ButtonView(
+                    AdminPanelButtonHandler.BUTTON_MEMBERSHIP_SET_TIER,
+                    "設定等級",
+                    ButtonStyle.PRIMARY,
+                    false),
+                new ButtonView(
+                    AdminPanelButtonHandler.BUTTON_MEMBERSHIP_BACK_DETAIL,
+                    "⬅️ 返回",
+                    ButtonStyle.SECONDARY,
+                    false))));
+  }
+
+  static List<ActionRow> buildMembershipSpendAdjustComponents(String selectedMode, boolean canOpenModal) {
+    StringSelectMenu modeSelect = buildMembershipSpendModeSelect(selectedMode);
+    return List.of(
+        PanelComponentRenderer.buildRow(modeSelect),
+        PanelComponentRenderer.buildActionRow(
+            List.of(
+                new ButtonView(
+                    AdminPanelButtonHandler.BUTTON_OPEN_MEMBERSHIP_SPEND_MODAL,
+                    "輸入 M 數值",
+                    ButtonStyle.PRIMARY,
+                    !canOpenModal),
+                new ButtonView(
+                    AdminPanelButtonHandler.BUTTON_MEMBERSHIP_BACK_DETAIL,
+                    "⬅️ 返回",
+                    ButtonStyle.SECONDARY,
+                    false))));
+  }
+
+  static MessageEmbed buildMembershipSpendAdjustEmbed(
+      String userMention, MembershipAdminDetail detail, String modeLabel) {
+    List<EmbedView.FieldView> fields = new ArrayList<>();
+    fields.add(new EmbedView.FieldView("成員", userMention, true));
+    fields.add(
+        new EmbedView.FieldView(
+            "本週期累計 M",
+            String.format("%,d", Math.max(0, detail.summary().periodSpendListPriceM())),
+            true));
+    if (modeLabel != null) {
+      fields.add(new EmbedView.FieldView("調整模式", modeLabel, false));
+    }
+    return buildAdminEmbed("🏅 調整本週期消費 M", "選擇模式後輸入 M 數值", fields, null);
+  }
+
+  static List<ActionRow> buildMembershipSetTierComponents(String selectedTier, boolean canConfirm) {
+    StringSelectMenu tierSelect = buildMembershipTierSelect(selectedTier);
+    return List.of(
+        PanelComponentRenderer.buildRow(tierSelect),
+        PanelComponentRenderer.buildActionRow(
+            List.of(
+                new ButtonView(
+                    AdminPanelButtonHandler.BUTTON_CONFIRM_MEMBERSHIP_TIER,
+                    "確認設定",
+                    ButtonStyle.SUCCESS,
+                    !canConfirm),
+                new ButtonView(
+                    AdminPanelButtonHandler.BUTTON_MEMBERSHIP_BACK_DETAIL,
+                    "⬅️ 返回",
+                    ButtonStyle.SECONDARY,
+                    false))));
+  }
+
+  static MessageEmbed buildMembershipSetTierEmbed(
+      String userMention, MembershipAdminDetail detail, String selectedTierLabel) {
+    List<EmbedView.FieldView> fields = new ArrayList<>();
+    fields.add(new EmbedView.FieldView("成員", userMention, true));
+    fields.add(
+        new EmbedView.FieldView(
+            "目前等級", MembershipTierLabels.displayName(detail.summary().tier()), true));
+    if (selectedTierLabel != null) {
+      fields.add(new EmbedView.FieldView("目標等級", selectedTierLabel, false));
+    }
+    return buildAdminEmbed("🏅 設定會員等級", "選擇目標等級後確認", fields, "手動等級將於下次結算依消費重算");
+  }
+
+  private static String formatMembershipDetailBody(MembershipAdminDetail detail) {
+    var summary = detail.summary();
+    StringBuilder builder = new StringBuilder();
+    builder.append("**等級：**").append(MembershipTierLabels.displayName(summary.tier())).append('\n');
+    builder.append("**加入日期：**");
+    appendTimestamp(builder, summary.earliestGuildJoinAt());
+    builder.append('\n');
+    builder
+        .append("**本週期累計 M：**")
+        .append(String.format("%,d", Math.max(0, summary.periodSpendListPriceM())))
+        .append('\n');
+    builder.append("**距下一等級：**");
+    if (summary.hasNextTierThreshold()) {
+      builder.append(String.format("%,d M", summary.remainingToNextTierM()));
+    } else {
+      builder.append("已達最高等級");
+    }
+    builder.append('\n');
+    builder.append("**下次結算日：**");
+    appendTimestamp(builder, summary.nextSettlementAt());
+    builder.append('\n');
+    builder
+        .append("**青銅保底：**")
+        .append(detail.hasQualifyingBronzeOrder() ? "是" : "否");
+    return builder.toString();
+  }
+
+  private static void appendTimestamp(StringBuilder builder, Instant instant) {
+    if (instant != null) {
+      builder.append(String.format("<t:%d:D>", instant.getEpochSecond()));
+    } else {
+      builder.append("尚未記錄");
+    }
+  }
+
+  private static StringSelectMenu buildMembershipSpendModeSelect(String selectedMode) {
+    StringSelectMenu.Builder builder =
+        StringSelectMenu.create(AdminPanelButtonHandler.SELECT_MEMBERSHIP_SPEND_MODE)
+            .setPlaceholder("選擇調整模式")
+            .addOption("增加", "add", "在本週期累計 M 上增加")
+            .addOption("減少", "deduct", "從本週期累計 M 扣除")
+            .addOption("設為", "set", "將本週期累計 M 設為指定值");
+    if (selectedMode != null) {
+      builder.setDefaultValues(List.of(selectedMode));
+    }
+    return builder.build();
+  }
+
+  private static StringSelectMenu buildMembershipTierSelect(String selectedTier) {
+    StringSelectMenu.Builder builder =
+        StringSelectMenu.create(AdminPanelButtonHandler.SELECT_MEMBERSHIP_TIER)
+            .setPlaceholder("選擇目標等級");
+    for (MembershipTier tier : MembershipTier.values()) {
+      builder.addOption(
+          MembershipTierLabels.displayName(tier), tier.name(), tier.name());
+    }
+    if (selectedTier != null) {
+      builder.setDefaultValues(List.of(selectedTier));
+    }
+    return builder.build();
   }
 }

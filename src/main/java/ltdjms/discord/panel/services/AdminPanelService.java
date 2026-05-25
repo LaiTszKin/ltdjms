@@ -18,6 +18,8 @@ import ltdjms.discord.product.domain.EscortOptionCatalogRepository;
 import ltdjms.discord.product.domain.ProductRepository;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
+import ltdjms.discord.membership.domain.MembershipTier;
+import ltdjms.discord.membership.services.MembershipAdminDetail;
 import ltdjms.discord.shared.Unit;
 
 /**
@@ -38,6 +40,7 @@ public class AdminPanelService {
   private final EscortOptionPricingService escortOptionPricingService;
   private final EscortOptionCatalogRepository escortOptionCatalogRepository;
   private final ProductRepository productRepository;
+  private final MembershipManagementFacade membershipManagementFacade;
 
   public AdminPanelService(
       CurrencyManagementFacade currencyFacade,
@@ -51,6 +54,7 @@ public class AdminPanelService {
         gameConfigFacade,
         aiConfigFacade,
         dispatchAfterSalesStaffService,
+        null,
         null,
         null,
         null);
@@ -71,6 +75,7 @@ public class AdminPanelService {
         dispatchAfterSalesStaffService,
         escortOptionPricingService,
         null,
+        null,
         null);
   }
 
@@ -83,6 +88,28 @@ public class AdminPanelService {
       EscortOptionPricingService escortOptionPricingService,
       EscortOptionCatalogRepository escortOptionCatalogRepository,
       ProductRepository productRepository) {
+    this(
+        currencyFacade,
+        gameTokenFacade,
+        gameConfigFacade,
+        aiConfigFacade,
+        dispatchAfterSalesStaffService,
+        escortOptionPricingService,
+        escortOptionCatalogRepository,
+        productRepository,
+        null);
+  }
+
+  public AdminPanelService(
+      CurrencyManagementFacade currencyFacade,
+      GameTokenManagementFacade gameTokenFacade,
+      GameConfigManagementFacade gameConfigFacade,
+      AIConfigManagementFacade aiConfigFacade,
+      DispatchAfterSalesStaffService dispatchAfterSalesStaffService,
+      EscortOptionPricingService escortOptionPricingService,
+      EscortOptionCatalogRepository escortOptionCatalogRepository,
+      ProductRepository productRepository,
+      MembershipManagementFacade membershipManagementFacade) {
     this.currencyFacade = currencyFacade;
     this.gameTokenFacade = gameTokenFacade;
     this.gameConfigFacade = gameConfigFacade;
@@ -91,6 +118,7 @@ public class AdminPanelService {
     this.escortOptionPricingService = escortOptionPricingService;
     this.escortOptionCatalogRepository = escortOptionCatalogRepository;
     this.productRepository = productRepository;
+    this.membershipManagementFacade = membershipManagementFacade;
   }
 
   // ========== Currency Management ==========
@@ -367,6 +395,44 @@ public class AdminPanelService {
     LOG.info(
         "Admin panel removing dispatch after-sales staff: guildId={}, userId={}", guildId, userId);
     return dispatchAfterSalesStaffService.removeStaff(guildId, userId);
+  }
+
+  // ========== Membership Management ==========
+
+  public Result<MembershipAdminDetail, DomainError> getMembershipDetail(long userId) {
+    if (membershipManagementFacade == null) {
+      return Result.err(DomainError.unexpectedFailure("會員管理服務尚未初始化", null));
+    }
+    return membershipManagementFacade.getDetail(userId);
+  }
+
+  public Result<Unit, DomainError> adjustMembershipSpend(
+      long guildId, long userId, long adminUserId, String mode, long amountM) {
+    if (membershipManagementFacade == null) {
+      return Result.err(DomainError.unexpectedFailure("會員管理服務尚未初始化", null));
+    }
+    LOG.debug(
+        "Admin panel adjusting membership spend: guildId={}, userId={}, adminUserId={}, mode={}, amountM={}",
+        guildId,
+        userId,
+        adminUserId,
+        mode,
+        amountM);
+    return membershipManagementFacade.adjustPeriodSpend(
+        userId, guildId, adminUserId, mode, amountM);
+  }
+
+  public Result<MembershipTier, DomainError> setMembershipTier(
+      long userId, long adminUserId, MembershipTier newTier) {
+    if (membershipManagementFacade == null) {
+      return Result.err(DomainError.unexpectedFailure("會員管理服務尚未初始化", null));
+    }
+    LOG.debug(
+        "Admin panel setting membership tier: userId={}, adminUserId={}, tier={}",
+        userId,
+        adminUserId,
+        newTier);
+    return membershipManagementFacade.setTier(userId, adminUserId, newTier);
   }
 
   // ========== Escort 定價管理 ==========

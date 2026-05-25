@@ -17,6 +17,9 @@ import ltdjms.discord.discord.services.SelectMenuUtil;
 import ltdjms.discord.dispatch.services.EscortOptionPricingService;
 import ltdjms.discord.gametoken.domain.DiceGame1Config;
 import ltdjms.discord.gametoken.domain.DiceGame2Config;
+import ltdjms.discord.membership.domain.MembershipTier;
+import ltdjms.discord.membership.domain.MembershipTierLabels;
+import ltdjms.discord.membership.services.MembershipAdminDetail;
 import ltdjms.discord.panel.components.PanelComponentRenderer;
 import ltdjms.discord.panel.services.AdminPanelService;
 import ltdjms.discord.panel.services.AdminPanelSessionManager;
@@ -102,13 +105,27 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
   public static final String BUTTON_ESCORT_CATALOG_DELETE = "admin_escort_catalog_delete";
   public static final String BUTTON_ESCORT_CATALOG_REFRESH = "admin_escort_catalog_refresh";
   public static final String BUTTON_ESCORT_CATALOG_SELECT = "admin_escort_catalog_select";
+
+  // Membership management
+  public static final String BUTTON_MEMBERSHIP = "admin_panel_membership";
+  public static final String BUTTON_MEMBERSHIP_ADJUST_SPEND = "admin_membership_adjust_spend";
+  public static final String BUTTON_MEMBERSHIP_SET_TIER = "admin_membership_set_tier";
+  public static final String BUTTON_MEMBERSHIP_BACK_DETAIL = "admin_membership_back_detail";
+  public static final String BUTTON_OPEN_MEMBERSHIP_SPEND_MODAL = "admin_open_membership_spend_modal";
+  public static final String BUTTON_CONFIRM_MEMBERSHIP_TIER = "admin_confirm_membership_tier";
+  public static final String SELECT_MEMBERSHIP_USER = "admin_select_membership_user";
+  public static final String SELECT_MEMBERSHIP_SPEND_MODE = "admin_select_membership_spend_mode";
+  public static final String SELECT_MEMBERSHIP_TIER = "admin_select_membership_tier";
+
+  // Modal IDs
   public static final String SELECT_ESCORT_CATALOG_ITEM = "admin_select_escort_catalog_item";
   public static final String SELECT_ESCORT_CATALOG_ITEM_EXTRA =
       "admin_select_escort_catalog_item_extra";
   public static final String MODAL_ESCORT_CATALOG_CREATE = "admin_modal_escort_catalog_create";
   public static final String MODAL_ESCORT_CATALOG_EDIT = "admin_modal_escort_catalog_edit";
 
-  // Modal IDs
+  public static final String MODAL_MEMBERSHIP_SPEND = "admin_modal_membership_spend";
+
   public static final String MODAL_BALANCE_ADJUST = "admin_modal_balance_adjust";
   public static final String MODAL_TOKEN_ADJUST = "admin_modal_token_adjust";
   public static final String MODAL_GAME_1_TOKENS = "admin_modal_game1_tokens";
@@ -158,6 +175,8 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
 
   // Session state for user selections (keyed by interactionId or uniqueId)
   private final Map<String, SessionState> sessionStates = new ConcurrentHashMap<>();
+  private final Map<String, MembershipSessionState> membershipSessionStates =
+      new ConcurrentHashMap<>();
   private final Map<String, EscortPricingPanelState> escortPricingPanelStates =
       new ConcurrentHashMap<>();
 
@@ -220,6 +239,12 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         case BUTTON_ESCORT_CATALOG_DELETE -> handleEscortCatalogDelete(event);
         case BUTTON_ESCORT_CATALOG_REFRESH -> handleEscortCatalogRefresh(event);
         case BUTTON_ESCORT_CATALOG_SELECT -> openEscortCatalogItemSelect(event);
+        case BUTTON_MEMBERSHIP -> showMembershipManagement(event);
+        case BUTTON_MEMBERSHIP_ADJUST_SPEND -> showMembershipSpendAdjust(event);
+        case BUTTON_MEMBERSHIP_SET_TIER -> showMembershipSetTier(event);
+        case BUTTON_MEMBERSHIP_BACK_DETAIL -> showMembershipDetailPanel(event);
+        case BUTTON_OPEN_MEMBERSHIP_SPEND_MODAL -> openMembershipSpendModal(event);
+        case BUTTON_CONFIRM_MEMBERSHIP_TIER -> handleConfirmMembershipTier(event);
         case BUTTON_BACK -> showMainPanel(event);
         case BUTTON_OPEN_BALANCE_MODAL -> openBalanceModal(event);
         case BUTTON_OPEN_TOKEN_MODAL -> openTokenModal(event);
@@ -273,6 +298,8 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         handleDispatchAfterSalesAddUserSelect(event, guildId);
       } else if (selectId.equals(SELECT_DISPATCH_AFTER_SALES_REMOVE_USER)) {
         handleDispatchAfterSalesRemoveUserSelect(event, guildId);
+      } else if (selectId.equals(SELECT_MEMBERSHIP_USER)) {
+        handleMembershipUserSelect(event, sessionKey, guildId);
       }
     } catch (Exception e) {
       LOG.error("Error handling entity select: {}", selectId, e);
@@ -314,6 +341,9 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
             handleEscortPricingPanelOptionSelect(event, sessionKey, guildId);
         case SELECT_ESCORT_CATALOG_ITEM, SELECT_ESCORT_CATALOG_ITEM_EXTRA ->
             handleEscortCatalogItemSelect(event, guildId);
+        case SELECT_MEMBERSHIP_SPEND_MODE ->
+            handleMembershipSpendModeSelect(event, sessionKey);
+        case SELECT_MEMBERSHIP_TIER -> handleMembershipTierSelect(event, sessionKey);
         // SELECT_ESCORT_CATALOG_ITEM_EXTRA is retained for backward compatibility
         default -> LOG.warn("Unknown string select: {}", selectId);
       }
@@ -346,6 +376,8 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         handleBalanceAdjustModal(event);
       } else if (modalId.startsWith(MODAL_TOKEN_ADJUST)) {
         handleTokenAdjustModal(event);
+      } else if (modalId.startsWith(MODAL_MEMBERSHIP_SPEND)) {
+        handleMembershipSpendModal(event);
       } else if (modalId.startsWith(MODAL_GAME_1_TOKENS)) {
         handleGame1TokensModal(event);
       } else if (modalId.startsWith(MODAL_GAME_1_REWARD)) {
@@ -2499,6 +2531,333 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     }
   }
 
+  // ===== Membership Management =====
+
+  private void showMembershipManagement(ButtonInteractionEvent event) {
+    long guildId = event.getGuild().getIdLong();
+    String sessionKey = getSessionKey(event.getUser().getIdLong(), guildId);
+    membershipSessionStates.remove(sessionKey);
+
+    event
+        .editMessageEmbeds(AdminPanelViewFactory.buildMembershipUserSelectEmbed())
+        .setComponents(AdminPanelViewFactory.buildMembershipUserSelectComponents())
+        .queue();
+  }
+
+  private void handleMembershipUserSelect(
+      EntitySelectInteractionEvent event, String sessionKey, long guildId) {
+    List<User> selectedUsers = event.getMentions().getUsers();
+    if (selectedUsers.isEmpty()) {
+      event.reply("請選擇一位成員").setEphemeral(true).queue();
+      return;
+    }
+
+    User selectedUser = selectedUsers.get(0);
+    long userId = selectedUser.getIdLong();
+    Result<MembershipAdminDetail, DomainError> detailResult =
+        adminPanelService.getMembershipDetail(userId);
+    if (detailResult.isErr()) {
+      event.reply("無法載入會員資料：" + detailResult.getError().message()).setEphemeral(true).queue();
+      return;
+    }
+
+    MembershipSessionState state = new MembershipSessionState();
+    state.selectedUserId = userId;
+    state.selectedUserMention = selectedUser.getAsMention();
+    membershipSessionStates.put(sessionKey, state);
+
+    MembershipAdminDetail detail = detailResult.getValue();
+    event
+        .editMessageEmbeds(
+            AdminPanelViewFactory.buildMembershipDetailEmbed(selectedUser.getAsMention(), detail))
+        .setComponents(AdminPanelViewFactory.buildMembershipDetailComponents())
+        .queue();
+  }
+
+  private void showMembershipDetailPanel(ButtonInteractionEvent event) {
+    long guildId = event.getGuild().getIdLong();
+    String sessionKey = getSessionKey(event.getUser().getIdLong(), guildId);
+    MembershipSessionState state = membershipSessionStates.get(sessionKey);
+
+    if (state == null || state.selectedUserId == null) {
+      showMembershipManagement(event);
+      return;
+    }
+
+    Result<MembershipAdminDetail, DomainError> detailResult =
+        adminPanelService.getMembershipDetail(state.selectedUserId);
+    if (detailResult.isErr()) {
+      event.reply("無法載入會員資料：" + detailResult.getError().message()).setEphemeral(true).queue();
+      return;
+    }
+
+    event
+        .editMessageEmbeds(
+            AdminPanelViewFactory.buildMembershipDetailEmbed(
+                state.selectedUserMention, detailResult.getValue()))
+        .setComponents(AdminPanelViewFactory.buildMembershipDetailComponents())
+        .queue();
+  }
+
+  private void showMembershipSpendAdjust(ButtonInteractionEvent event) {
+    String sessionKey = getSessionKey(event.getUser().getIdLong(), event.getGuild().getIdLong());
+    MembershipSessionState state = membershipSessionStates.get(sessionKey);
+
+    if (state == null || state.selectedUserId == null) {
+      event.reply("請先選擇成員").setEphemeral(true).queue();
+      return;
+    }
+
+    Result<MembershipAdminDetail, DomainError> detailResult =
+        adminPanelService.getMembershipDetail(state.selectedUserId);
+    if (detailResult.isErr()) {
+      event.reply("無法載入會員資料：" + detailResult.getError().message()).setEphemeral(true).queue();
+      return;
+    }
+
+    boolean canOpenModal = state.selectedSpendMode != null;
+    event
+        .editMessageEmbeds(
+            AdminPanelViewFactory.buildMembershipSpendAdjustEmbed(
+                state.selectedUserMention,
+                detailResult.getValue(),
+                state.selectedSpendMode != null
+                    ? getMembershipSpendModeLabel(state.selectedSpendMode)
+                    : null))
+        .setComponents(
+            AdminPanelViewFactory.buildMembershipSpendAdjustComponents(
+                state.selectedSpendMode, canOpenModal))
+        .queue();
+  }
+
+  private void handleMembershipSpendModeSelect(StringSelectInteractionEvent event, String sessionKey) {
+    MembershipSessionState state = membershipSessionStates.get(sessionKey);
+    if (state == null || state.selectedUserId == null) {
+      event.reply("請先選擇成員").setEphemeral(true).queue();
+      return;
+    }
+
+    state.selectedSpendMode = event.getValues().get(0);
+    Result<MembershipAdminDetail, DomainError> detailResult =
+        adminPanelService.getMembershipDetail(state.selectedUserId);
+    if (detailResult.isErr()) {
+      event.reply("無法載入會員資料：" + detailResult.getError().message()).setEphemeral(true).queue();
+      return;
+    }
+
+    event
+        .editMessageEmbeds(
+            AdminPanelViewFactory.buildMembershipSpendAdjustEmbed(
+                state.selectedUserMention,
+                detailResult.getValue(),
+                getMembershipSpendModeLabel(state.selectedSpendMode)))
+        .setComponents(
+            AdminPanelViewFactory.buildMembershipSpendAdjustComponents(state.selectedSpendMode, true))
+        .queue();
+  }
+
+  private void openMembershipSpendModal(ButtonInteractionEvent event) {
+    long guildId = event.getGuild().getIdLong();
+    String sessionKey = getSessionKey(event.getUser().getIdLong(), guildId);
+    MembershipSessionState state = membershipSessionStates.get(sessionKey);
+
+    if (state == null || state.selectedUserId == null || state.selectedSpendMode == null) {
+      event.reply("請先選擇成員和調整模式").setEphemeral(true).queue();
+      return;
+    }
+
+    event
+        .replyModal(
+            AdminPanelModalFactory.createMembershipSpendModal(
+                state.selectedUserId,
+                state.selectedSpendMode,
+                state.selectedUserMention,
+                getMembershipSpendModeLabel(state.selectedSpendMode)))
+        .queue();
+  }
+
+  private void handleMembershipSpendModal(ModalInteractionEvent event) {
+    long guildId = event.getGuild().getIdLong();
+    long adminUserId = event.getUser().getIdLong();
+
+    String[] parts = event.getModalId().split(":");
+    if (parts.length < 3) {
+      event.reply("無效的操作").setEphemeral(true).queue();
+      return;
+    }
+
+    long userId;
+    String mode;
+    try {
+      userId = Long.parseLong(parts[1]);
+      mode = parts[2];
+    } catch (NumberFormatException e) {
+      event.reply("無效的操作").setEphemeral(true).queue();
+      return;
+    }
+
+    String amountStr = event.getValue("amount").getAsString().trim();
+    long amount;
+    try {
+      amount = Long.parseLong(amountStr);
+    } catch (NumberFormatException e) {
+      event.reply("M 數值格式錯誤，請輸入有效整數").setEphemeral(true).queue();
+      return;
+    }
+
+    if (amount < 0) {
+      event.reply("M 數值不可為負數").setEphemeral(true).queue();
+      return;
+    }
+
+    Result<Unit, DomainError> result =
+        adminPanelService.adjustMembershipSpend(guildId, userId, adminUserId, mode, amount);
+    if (result.isErr()) {
+      event.reply("調整失敗：" + result.getError().message()).setEphemeral(true).queue();
+      return;
+    }
+
+    String sessionKey = getSessionKey(adminUserId, guildId);
+    refreshMembershipDetailPanel(guildId, adminUserId, sessionKey, userId);
+
+    event.reply("✅ 已調整本週期消費 M").setEphemeral(true).queue();
+  }
+
+  private void showMembershipSetTier(ButtonInteractionEvent event) {
+    String sessionKey = getSessionKey(event.getUser().getIdLong(), event.getGuild().getIdLong());
+    MembershipSessionState state = membershipSessionStates.get(sessionKey);
+
+    if (state == null || state.selectedUserId == null) {
+      event.reply("請先選擇成員").setEphemeral(true).queue();
+      return;
+    }
+
+    Result<MembershipAdminDetail, DomainError> detailResult =
+        adminPanelService.getMembershipDetail(state.selectedUserId);
+    if (detailResult.isErr()) {
+      event.reply("無法載入會員資料：" + detailResult.getError().message()).setEphemeral(true).queue();
+      return;
+    }
+
+    boolean canConfirm = state.selectedTier != null;
+    event
+        .editMessageEmbeds(
+            AdminPanelViewFactory.buildMembershipSetTierEmbed(
+                state.selectedUserMention,
+                detailResult.getValue(),
+                state.selectedTier != null
+                    ? MembershipTierLabels.displayName(MembershipTier.valueOf(state.selectedTier))
+                    : null))
+        .setComponents(
+            AdminPanelViewFactory.buildMembershipSetTierComponents(state.selectedTier, canConfirm))
+        .queue();
+  }
+
+  private void handleMembershipTierSelect(StringSelectInteractionEvent event, String sessionKey) {
+    MembershipSessionState state = membershipSessionStates.get(sessionKey);
+    if (state == null || state.selectedUserId == null) {
+      event.reply("請先選擇成員").setEphemeral(true).queue();
+      return;
+    }
+
+    state.selectedTier = event.getValues().get(0);
+    Result<MembershipAdminDetail, DomainError> detailResult =
+        adminPanelService.getMembershipDetail(state.selectedUserId);
+    if (detailResult.isErr()) {
+      event.reply("無法載入會員資料：" + detailResult.getError().message()).setEphemeral(true).queue();
+      return;
+    }
+
+    MembershipTier selectedTier = MembershipTier.valueOf(state.selectedTier);
+    event
+        .editMessageEmbeds(
+            AdminPanelViewFactory.buildMembershipSetTierEmbed(
+                state.selectedUserMention,
+                detailResult.getValue(),
+                MembershipTierLabels.displayName(selectedTier)))
+        .setComponents(
+            AdminPanelViewFactory.buildMembershipSetTierComponents(state.selectedTier, true))
+        .queue();
+  }
+
+  private void handleConfirmMembershipTier(ButtonInteractionEvent event) {
+    long guildId = event.getGuild().getIdLong();
+    long adminUserId = event.getUser().getIdLong();
+    String sessionKey = getSessionKey(adminUserId, guildId);
+    MembershipSessionState state = membershipSessionStates.get(sessionKey);
+
+    if (state == null || state.selectedUserId == null || state.selectedTier == null) {
+      event.reply("請先選擇成員和目標等級").setEphemeral(true).queue();
+      return;
+    }
+
+    MembershipTier newTier;
+    try {
+      newTier = MembershipTier.valueOf(state.selectedTier);
+    } catch (IllegalArgumentException e) {
+      event.reply("無效的等級").setEphemeral(true).queue();
+      return;
+    }
+
+    Result<MembershipTier, DomainError> result =
+        adminPanelService.setMembershipTier(state.selectedUserId, adminUserId, newTier);
+    if (result.isErr()) {
+      event.reply("設定失敗：" + result.getError().message()).setEphemeral(true).queue();
+      return;
+    }
+
+    refreshMembershipDetailPanel(guildId, adminUserId, sessionKey, state.selectedUserId);
+
+    event
+        .reply("✅ 已設定等級為 " + MembershipTierLabels.displayName(result.getValue()))
+        .setEphemeral(true)
+        .queue();
+  }
+
+  private void refreshMembershipDetailPanel(
+      long guildId, long adminUserId, String sessionKey, long userId) {
+    MembershipSessionState state = membershipSessionStates.get(sessionKey);
+    if (state == null || state.selectedUserId == null || state.selectedUserId != userId) {
+      return;
+    }
+
+    adminPanelSessionManager.updatePanel(
+        guildId,
+        adminUserId,
+        hook -> {
+          Result<MembershipAdminDetail, DomainError> detailResult =
+              adminPanelService.getMembershipDetail(userId);
+          if (detailResult.isErr()) {
+            LOG.warn(
+                "Failed to refresh membership panel: guildId={}, userId={}, error={}",
+                guildId,
+                userId,
+                detailResult.getError().message());
+            return;
+          }
+          hook.editOriginalEmbeds(
+                  AdminPanelViewFactory.buildMembershipDetailEmbed(
+                      state.selectedUserMention, detailResult.getValue()))
+              .setComponents(AdminPanelViewFactory.buildMembershipDetailComponents())
+              .queue(
+                  success ->
+                      LOG.trace(
+                          "Refreshed membership admin panel for guildId={}, adminId={}",
+                          guildId,
+                          adminUserId),
+                  error -> LOG.warn("Failed to refresh membership admin panel", error));
+        });
+  }
+
+  private static String getMembershipSpendModeLabel(String mode) {
+    return switch (mode) {
+      case "add" -> "增加";
+      case "deduct" -> "減少";
+      case "set", "adjust" -> "設為";
+      default -> mode;
+    };
+  }
+
   // ===== Session State =====
 
   private enum ManagementType {
@@ -2516,6 +2875,13 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     SessionState(ManagementType type) {
       this.type = type;
     }
+  }
+
+  private static class MembershipSessionState {
+    Long selectedUserId;
+    String selectedUserMention;
+    String selectedSpendMode;
+    String selectedTier;
   }
 
   private static class EscortPricingPanelState {

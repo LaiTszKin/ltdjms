@@ -64,3 +64,27 @@ Then the game settings are updated immediately
 Given the user is a guild administrator  
 When they adjust the game parameters for Dice Game 2  
 Then the game settings are updated immediately
+
+## Membership Management (Admin)
+
+### View Member Membership Detail
+Given the user is a guild administrator  
+When they open **🏅 會員等級管理** in `/admin-panel` and select a member  
+Then the panel shows tier, join date, current period spend M, remaining to next tier, next settlement date, and bronze qualifying flag
+
+### Adjust Period Spend M
+Given an administrator has selected a member  
+When they choose add, deduct, or set mode and submit a non-negative integer M amount  
+Then an `ADMIN_ADJUST` row is appended to `membership_spend_entry` with a signed delta  
+And the admin detail embed refreshes with the updated period sum  
+And tier is not recalculated immediately (settlement still applies on schedule)
+
+### Set Membership Tier
+Given an administrator has selected a member  
+When they choose a target tier and confirm  
+Then `current_tier` is updated immediately  
+And `has_qualifying_bronze_order` is set when tier is BRONZE or higher, cleared for NONE  
+And `MembershipTierChangedEvent` is published when the effective tier changes (refreshing open user panels and shop discounts)
+
+### Settlement Override Notice
+Manual tier changes take effect immediately but may be overwritten on the next scheduled settlement based on ledger spend. The admin membership embed footer reminds operators of this behavior.

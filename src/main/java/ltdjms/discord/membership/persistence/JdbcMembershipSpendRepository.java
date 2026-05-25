@@ -106,4 +106,15 @@ public class JdbcMembershipSpendRepository implements MembershipSpendRepository 
 
     return Optional.empty();
   }
+
+  @Override
+  public boolean insertAdminAdjust(
+      long discordUserId,
+      long guildId,
+      long listPriceTwd,
+      String sourceReference,
+      Instant paidAt) {
+    return spendCoordinator.insertAdminAdjust(
+        discordUserId, guildId, listPriceTwd, sourceReference, paidAt);
+  }
 }

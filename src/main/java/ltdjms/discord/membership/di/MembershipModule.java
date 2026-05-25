@@ -25,6 +25,7 @@ import ltdjms.discord.membership.persistence.MembershipSpendRetryRepository;
 import ltdjms.discord.membership.persistence.MembershipTokenGrantRepository;
 import ltdjms.discord.membership.services.MembershipJoinService;
 import ltdjms.discord.membership.services.MembershipPricingService;
+import ltdjms.discord.membership.services.MembershipAdminService;
 import ltdjms.discord.membership.services.MembershipQueryService;
 import ltdjms.discord.membership.services.MembershipSettlementScheduler;
 import ltdjms.discord.membership.services.MembershipSettlementService;
@@ -107,6 +108,22 @@ public class MembershipModule {
       MembershipSpendRepository membershipSpendRepository,
       @SettlementClock Clock clock) {
     return new MembershipQueryService(membershipRepository, membershipSpendRepository, clock);
+  }
+
+  @Provides
+  @Singleton
+  public MembershipAdminService provideMembershipAdminService(
+      MembershipRepository membershipRepository,
+      MembershipSpendRepository membershipSpendRepository,
+      MembershipQueryService membershipQueryService,
+      DomainEventPublisher eventPublisher,
+      @SettlementClock Clock clock) {
+    return new MembershipAdminService(
+        membershipRepository,
+        membershipSpendRepository,
+        membershipQueryService,
+        eventPublisher,
+        clock);
   }
 
   @Provides

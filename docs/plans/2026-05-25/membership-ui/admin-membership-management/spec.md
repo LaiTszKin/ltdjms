@@ -36,9 +36,9 @@
 **Uncertainty Level**: Known
 
 **Requirements**:
-- [ ] R1.1 權限檢查與既有 admin panel 一致
-- [ ] R1.2 資料來自 `MembershipQueryService` + `MembershipRepository`（admin detail DTO）
-- [ ] R1.3 無 membership 列時顯示 NONE 預設並允許後續調整
+- [x] R1.1 權限檢查與既有 admin panel 一致
+- [x] R1.2 資料來自 `MembershipQueryService` + `MembershipRepository`（admin detail DTO）
+- [x] R1.3 無 membership 列時顯示 NONE 預設並允許後續調整
 
 ### Requirement 2: 調整本週期消費 M
 **GIVEN** 管理員已選用戶
@@ -49,12 +49,12 @@
 **Uncertainty Level**: Exploratory（set 模式需計算 delta 或多筆 ledger）
 
 **Requirements**:
-- [ ] R2.1 **增加**：insert `list_price_twd=+amount`
-- [ ] R2.2 **減少**：insert `list_price_twd=-amount`（允許 period sum 下降）
-- [ ] R2.3 **設為**：insert 一筆使 `sum + delta = target`（delta 可正可負）
-- [ ] R2.4 `guild_id` = 管理員操作所在 guild
-- [ ] R2.5 `source_reference` = `admin:{adminUserId}:{uuid}` 保證 unique
-- [ ] R2.6 不立即重算 tier（tier 仍待 settlement）；若需即時 tier 由 R3 處理
+- [x] R2.1 **增加**：insert `list_price_twd=+amount`
+- [x] R2.2 **減少**：insert `list_price_twd=-amount`（允許 period sum 下降）
+- [x] R2.3 **設為**：insert 一筆使 `sum + delta = target`（delta 可正可負）
+- [x] R2.4 `guild_id` = 管理員操作所在 guild
+- [x] R2.5 `source_reference` = `admin:{adminUserId}:{uuid}` 保證 unique
+- [x] R2.6 不立即重算 tier（tier 仍待 settlement）；若需即時 tier 由 R3 處理
 
 ### Requirement 3: 設定會員等級
 **GIVEN** 管理員已選用戶
@@ -66,9 +66,9 @@
 **Uncertainty Level**: Known
 
 **Requirements**:
-- [ ] R3.1 立即生效（shop 折扣、user panel）
-- [ ] R3.2 下次 settlement 可能依 ledger 重算覆寫 tier（文件與 admin embed 提示）
-- [ ] R3.3 不可設 NONE 以下；NONE 為合法選項（降級）
+- [x] R3.1 立即生效（shop 折扣、user panel）
+- [x] R3.2 下次 settlement 可能依 ledger 重算覆寫 tier（文件與 admin embed 提示）
+- [x] R3.3 不可設 NONE 以下；NONE 為合法選項（降級）
 
 ### Requirement 4: Admin UI 互動
 **GIVEN** 管理員在會員管理子面板
@@ -80,16 +80,16 @@
 **Uncertainty Level**: Known
 
 **Requirements**:
-- [ ] R4.1 複用 EntitySelectMenu + Modal + StringSelect 模式（參考 balance 調整）
-- [ ] R4.2 Session state 存 `selectedUserId`（guild session 內）
+- [x] R4.1 複用 EntitySelectMenu + Modal + StringSelect 模式（參考 balance 調整）
+- [x] R4.2 Session state 存 `selectedUserId`（guild session 內）
 
 ## Error and Edge Cases
-- [ ] 非管理員 → ephemeral 拒絕
-- [ ] amount 非整數 / 負數輸入 → validation error
-- [ ] set 模式 target < 0 → reject
-- [ ] 同一 admin 快速雙擊 → unique source_reference 不衝突
-- [ ] DB 寫入失敗 → Result error，不發 event
-- [ ] tier 未變更 → 不發 `MembershipTierChangedEvent`
+- [x] 非管理員 → ephemeral 拒絕
+- [x] amount 非整數 / 負數輸入 → validation error
+- [x] set 模式 target < 0 → reject
+- [x] 同一 admin 快速雙擊 → unique source_reference 不衝突
+- [x] DB 寫入失敗 → Result error，不發 event
+- [x] tier 未變更 → 不發 `MembershipTierChangedEvent`
 
 ## Clarification Questions
 

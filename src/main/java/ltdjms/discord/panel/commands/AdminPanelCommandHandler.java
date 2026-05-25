@@ -50,6 +50,8 @@ public class AdminPanelCommandHandler implements SlashCommandListener.CommandHan
   public static final String BUTTON_ESCORT_PRICING_CONFIG =
       AdminPanelButtonHandler.BUTTON_ESCORT_PRICING_CONFIG;
   public static final String BUTTON_ESCORT_CATALOG = AdminPanelButtonHandler.BUTTON_ESCORT_CATALOG;
+  public static final String BUTTON_MEMBERSHIP_MANAGEMENT =
+      AdminPanelButtonHandler.BUTTON_MEMBERSHIP;
 
   private final AdminPanelService adminPanelService;
   private final AdminPanelSessionManager adminPanelSessionManager;
@@ -126,7 +128,8 @@ public class AdminPanelCommandHandler implements SlashCommandListener.CommandHan
                 new EmbedView.FieldView("🤖 AI Agent 配置", "管理哪些頻道啟用 AI Agent 模式", false),
                 new EmbedView.FieldView("🧰 派單售後設定", "設定派單系統的售後人員名單", false),
                 new EmbedView.FieldView("🛡️ 護航定價設定", "調整各護航訂單類型的實際收費", false),
-                new EmbedView.FieldView("📋 護航價目表管理", "新增、編輯、刪除護航項目", false)),
+                new EmbedView.FieldView("📋 護航價目表管理", "新增、編輯、刪除護航項目", false),
+                new EmbedView.FieldView("🏅 會員等級管理", "調整成員本週期消費 M 與會員等級", false)),
             PANEL_FOOTER));
   }
 
@@ -142,7 +145,7 @@ public class AdminPanelCommandHandler implements SlashCommandListener.CommandHan
             buttons.subList(2, 4),
             buttons.subList(4, 6),
             buttons.subList(6, 8),
-            buttons.subList(8, 9)));
+            buttons.subList(8, 10)));
   }
 
   private static List<ButtonView> buildMainActionButtonViews(String currencyIcon) {
@@ -156,6 +159,7 @@ public class AdminPanelCommandHandler implements SlashCommandListener.CommandHan
         new ButtonView(BUTTON_AI_AGENT_CONFIG, "🤖 AI Agent 配置", ButtonStyle.PRIMARY, false),
         new ButtonView(BUTTON_DISPATCH_AFTER_SALES_CONFIG, "🧰 派單售後設定", ButtonStyle.PRIMARY, false),
         new ButtonView(BUTTON_ESCORT_PRICING_CONFIG, "🛡️ 護航定價設定", ButtonStyle.PRIMARY, false),
-        new ButtonView(BUTTON_ESCORT_CATALOG, "📋 護航價目表管理", ButtonStyle.PRIMARY, false));
+        new ButtonView(BUTTON_ESCORT_CATALOG, "📋 護航價目表管理", ButtonStyle.PRIMARY, false),
+        new ButtonView(BUTTON_MEMBERSHIP_MANAGEMENT, "🏅 會員等級管理", ButtonStyle.PRIMARY, false));
   }
 }

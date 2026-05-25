@@ -120,6 +120,55 @@ public class JdbcMembershipSpendCoordinator {
     }
   }
 
+  /**
+   * Inserts an admin adjustment spend entry without bronze qualification side effects.
+   *
+   * @return {@code true} when a new row was inserted
+   */
+  public boolean insertAdminAdjust(
+      long discordUserId,
+      long guildId,
+      long listPriceTwd,
+      String sourceReference,
+      Instant paidAt) {
+    try (Connection conn = dataSource.getConnection()) {
+      conn.setAutoCommit(false);
+      try {
+        boolean inserted =
+            insertSpend(
+                conn,
+                discordUserId,
+                guildId,
+                listPriceTwd,
+                null,
+                MembershipSpendRepository.SOURCE_ADMIN_ADJUST,
+                sourceReference,
+                paidAt);
+        conn.commit();
+        if (inserted) {
+          LOG.info(
+              "Recorded admin membership spend adjust: userId={}, sourceReference={}, listPriceTwd={}",
+              discordUserId,
+              sourceReference,
+              listPriceTwd);
+        }
+        return inserted;
+      } catch (SQLException e) {
+        conn.rollback();
+        throw e;
+      } finally {
+        conn.setAutoCommit(true);
+      }
+    } catch (SQLException e) {
+      LOG.error(
+          "Failed to insert admin membership spend adjust: userId={}, sourceReference={}",
+          discordUserId,
+          sourceReference,
+          e);
+      throw new RepositoryException("Failed to insert admin membership spend entry", e);
+    }
+  }
+
   private static Optional<GlobalMemberMembership> selectMembershipForUpdate(
       Connection conn, long discordUserId) throws SQLException {
     try (PreparedStatement stmt = conn.prepareStatement(SELECT_MEMBERSHIP_FOR_UPDATE_SQL)) {
