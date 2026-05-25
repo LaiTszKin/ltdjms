@@ -3,7 +3,7 @@
     "meta": {
       "title": "LTDJMS — Discord Bot 專案架構",
       "summary": "基於 Java/JDA 的 Discord bot，在單一 guild 內承載經濟互動、商品交易、護航協作與 AI 頻道治理。涵蓋 guild 貨幣與遊戲代幣的雙軌經濟系統、商品商店與法幣付款（ECPay）、護航派單狀態機、AI 聊天與 Agent 工具執行、以及管理面板。掃描範圍：src/main/java/ltdjms/discord/ 下所有業務模組與共用基礎設施。",
-      "updatedAt": "2026-05-24T12:18:29.418Z"
+      "updatedAt": "2026-05-24T16:50:59.690Z"
     },
     "actors": [
       {
@@ -287,7 +287,7 @@
           {
             "slug": "shop-interaction",
             "kind": "api",
-            "role": "商店瀏覽、搜尋、購買流程處理（含按鈕、選單、Modal 互動）",
+            "role": "Shop browse/purchase 1:1 Java parity (/shop UI, confirm/fiat DM, escort handoff)",
             "functions": [
               {
                 "name": "handleShopBrowse",
@@ -323,6 +323,20 @@
                 "out": "FiatOrderResult (含繳費碼)",
                 "side": "network",
                 "purpose": "建立法幣訂單並產生 CVS 超商繳費碼"
+              },
+              {
+                "name": "buildPurchaseConfirmEmbed",
+                "in": "product, balance",
+                "out": "EmbedView + confirm/cancel buttons",
+                "side": "pure",
+                "purpose": "Confirm step before currency purchase (Java ShopView parity)."
+              },
+              {
+                "name": "getAllPurchasableProducts",
+                "in": "guildId",
+                "out": "Product[]",
+                "side": "io",
+                "purpose": "Full purchasable set for buy menu (not paginated slice)."
               }
             ],
             "variables": [
@@ -344,7 +358,8 @@
               "查詢 ProductRepository 取得商品列表/搜尋結果",
               "貨幣付款：委派 CurrencyPurchaseService 驗證餘額→扣款→發放獎勵",
               "法幣付款：委派 FiatOrderService 建立 PENDING_PAYMENT 訂單並產生繳費碼",
-              "回覆 Discord embed 或 DM 付款資訊"
+              "回覆 Discord embed 或 DM 付款資訊",
+              "Select product → branch by price type → confirm OR payment choice OR fiat defer+DM"
             ],
             "errors": [
               {
@@ -974,6 +989,13 @@
                 "out": "void (串流)",
                 "side": "network",
                 "purpose": "啟動 AI 串流回覆，處理 Reasoning/Content/ToolIntent 三種 chunk 輸出"
+              },
+              {
+                "name": "accumulateContentChunk",
+                "in": "chunk",
+                "out": "flushMessage?",
+                "side": "pure",
+                "purpose": "MessageChunkAccumulator parity for 1980-boundary streaming."
               }
             ],
             "variables": [
@@ -1318,6 +1340,66 @@
                 "means": "回傳 empty list，由呼叫方決定預設行為（全部拒絕）"
               }
             ]
+          },
+          {
+            "slug": "markdown-stream-processor",
+            "kind": "service",
+            "role": "Incremental Discord markdown stream processing (Java DiscordMarkdownStreamProcessor parity)",
+            "functions": [
+              {
+                "name": "processStreamChunk",
+                "in": "chunk, bufferState",
+                "out": "flushSegments[]",
+                "side": "pure",
+                "purpose": "Segments streaming markdown at heading boundaries for Discord."
+              }
+            ],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          },
+          {
+            "slug": "langgraph-checkpoint",
+            "kind": "db",
+            "role": "LangGraph Postgres+Redis checkpoint for agent conversation persistence",
+            "functions": [
+              {
+                "name": "saveCheckpoint",
+                "in": "threadId, state",
+                "out": "void",
+                "side": "write",
+                "purpose": "Persist agent state to Postgres with optional Redis cache."
+              }
+            ],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          },
+          {
+            "slug": "tool-audit-log",
+            "kind": "db",
+            "role": "tool_execution_log persistence + domain events (Java ToolExecutionInterceptor parity)",
+            "functions": [
+              {
+                "name": "recordToolExecution",
+                "in": "toolName, hashedParams, redactedResult",
+                "out": "void",
+                "side": "tx",
+                "purpose": "Append-only audit row + publish domain events."
+              }
+            ],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          },
+          {
+            "slug": "agent-event-listeners",
+            "kind": "api",
+            "role": "Discord notifications for tool execution and agent completion",
+            "functions": [],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
           }
         ],
         "edges": [
@@ -1362,6 +1444,27 @@
             "to": "ai-mention-interaction",
             "kind": "failure",
             "label": "ErrAIServiceUnavailable→回覆 Discord 錯誤訊息"
+          },
+          {
+            "id": "e-chat-mdstream",
+            "from": "ai-chat-service",
+            "to": "markdown-stream-processor",
+            "kind": "call",
+            "label": "stream CONTENT through markdown processor"
+          },
+          {
+            "id": "e-agent-cp",
+            "from": "ai-agent-service",
+            "to": "langgraph-checkpoint",
+            "kind": "call",
+            "label": "read/write conversation checkpoint"
+          },
+          {
+            "id": "e-agent-audit",
+            "from": "ai-agent-service",
+            "to": "tool-audit-log",
+            "kind": "call",
+            "label": "audit each tool invocation"
           }
         ]
       },
@@ -1826,6 +1929,23 @@
                 "means": "啟動時拋出 RuntimeException，不應發生於執行期"
               }
             ]
+          },
+          {
+            "slug": "parity-test-kit",
+            "kind": "pure-fn",
+            "role": "Vitest JSON snapshot helpers for Java oracle parity tests",
+            "functions": [
+              {
+                "name": "assertJsonParity",
+                "in": "actual, oracle",
+                "out": "void | AssertionError",
+                "side": "pure",
+                "purpose": "Normalizes and compares JSON structures against Java fixtures."
+              }
+            ],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
           }
         ],
         "edges": [
@@ -1918,6 +2038,134 @@
             "label": "session 讀寫"
           }
         ]
+      },
+      {
+        "slug": "membership-tiers",
+        "title": "Membership Tiers",
+        "story": "全域 Discord User ID 會員等級：護航法幣消費評級、結算日重算、付款折扣、贈幣與個人面板展示。",
+        "dependsOn": [],
+        "submodules": [
+          {
+            "slug": "tier-config",
+            "kind": "pure-fn",
+            "role": "等級常數、MembershipTierEvaluator 純函式判定",
+            "functions": [
+              {
+                "name": "resolveTier",
+                "in": "avgListPriceM, hasQualifyingBronzeOrder",
+                "out": "MembershipTier",
+                "side": "pure",
+                "purpose": "依週期平均 M 判定等級"
+              }
+            ],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          },
+          {
+            "slug": "membership-db",
+            "kind": "db",
+            "role": "global_member_membership 主表與 repository",
+            "functions": [
+              {
+                "name": "findOrCreate",
+                "in": "discordUserId",
+                "out": "GlobalMemberMembership",
+                "side": "tx",
+                "purpose": "全域會員主檔 findOrCreate"
+              }
+            ],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          },
+          {
+            "slug": "join-tracking",
+            "kind": "api",
+            "role": "GuildMemberJoin 監聽、最早加入日與結算錨點",
+            "functions": [
+              {
+                "name": "onMemberJoin",
+                "in": "userId, joinedAt",
+                "out": "void",
+                "side": "write",
+                "purpose": "記錄最早加入日與 next_settlement_at"
+              }
+            ],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          },
+          {
+            "slug": "spend-ledger",
+            "kind": "service",
+            "role": "法幣護航付款 M 寫入 spend entry",
+            "functions": [
+              {
+                "name": "recordFiatEscortPayment",
+                "in": "FiatOrder, Product",
+                "out": "void",
+                "side": "tx",
+                "purpose": "付款成功寫入 catalog 原價 M"
+              }
+            ],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          },
+          {
+            "slug": "settlement",
+            "kind": "service",
+            "role": "結算排程、月平均 M、等級重算",
+            "functions": [
+              {
+                "name": "settle",
+                "in": "discordUserId",
+                "out": "void",
+                "side": "tx",
+                "purpose": "結算週期重算 tier"
+              }
+            ],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          },
+          {
+            "slug": "payment-discount",
+            "kind": "service",
+            "role": "MembershipPricingService 付款折扣",
+            "functions": [
+              {
+                "name": "quote",
+                "in": "userId, Product",
+                "out": "EscortPriceQuote",
+                "side": "io",
+                "purpose": "護航商品會員折後價"
+              }
+            ],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          },
+          {
+            "slug": "benefits-ui",
+            "kind": "ui",
+            "role": "結算贈幣 + user-panel 等級展示",
+            "functions": [
+              {
+                "name": "grantForSettlement",
+                "in": "userId, periodEnd, tier",
+                "out": "void",
+                "side": "tx",
+                "purpose": "結算日發放贈幣"
+              }
+            ],
+            "variables": [],
+            "dataflow": [],
+            "errors": []
+          }
+        ],
+        "edges": []
       }
     ],
     "edges": [
@@ -2286,6 +2534,58 @@
         "label": "發佈 ToolExecution 開始/完成事件供審計"
       },
       {
+        "id": "e-chat-mdstream",
+        "from": {
+          "feature": "ai-chat-agent",
+          "submodule": "ai-chat-service"
+        },
+        "to": {
+          "feature": "ai-chat-agent",
+          "submodule": "markdown-stream-processor"
+        },
+        "kind": "call",
+        "label": "stream CONTENT through markdown processor"
+      },
+      {
+        "id": "e-agent-cp",
+        "from": {
+          "feature": "ai-chat-agent",
+          "submodule": "ai-agent-service"
+        },
+        "to": {
+          "feature": "ai-chat-agent",
+          "submodule": "langgraph-checkpoint"
+        },
+        "kind": "call",
+        "label": "read/write conversation checkpoint"
+      },
+      {
+        "id": "e-agent-audit",
+        "from": {
+          "feature": "ai-chat-agent",
+          "submodule": "ai-agent-service"
+        },
+        "to": {
+          "feature": "ai-chat-agent",
+          "submodule": "tool-audit-log"
+        },
+        "kind": "call",
+        "label": "audit each tool invocation"
+      },
+      {
+        "id": "e-agent-events",
+        "from": {
+          "feature": "ai-chat-agent",
+          "submodule": "ai-agent-service"
+        },
+        "to": {
+          "feature": "ai-chat-agent",
+          "submodule": "agent-event-listeners"
+        },
+        "kind": "call",
+        "label": "agent_completed / agent_failed observability"
+      },
+      {
         "id": "e-vjni42",
         "from": {
           "feature": "shop-payment",
@@ -2401,6 +2701,110 @@
         },
         "kind": "call",
         "label": "兌換碼驗證與兌換記錄"
+      },
+      {
+        "id": "e-6kw808",
+        "from": {
+          "feature": "shop-payment",
+          "submodule": "shop-interaction"
+        },
+        "to": {
+          "feature": "membership-tiers",
+          "submodule": "payment-discount"
+        },
+        "kind": "call",
+        "label": "checkout quote"
+      },
+      {
+        "id": "e-d78qfs",
+        "from": {
+          "feature": "membership-tiers",
+          "submodule": "settlement"
+        },
+        "to": {
+          "feature": "guild-economy",
+          "submodule": "economy-service"
+        },
+        "kind": "call",
+        "label": "token grant"
+      },
+      {
+        "id": "e-zsdgqz",
+        "from": {
+          "feature": "user-panel",
+          "submodule": "panel-service"
+        },
+        "to": {
+          "feature": "membership-tiers",
+          "submodule": "benefits-ui"
+        },
+        "kind": "call",
+        "label": "membership query"
+      },
+      {
+        "id": "e-spend-retry-shop",
+        "from": {
+          "feature": "membership-tiers",
+          "submodule": "spend-ledger"
+        },
+        "to": {
+          "feature": "shop-payment",
+          "submodule": "fiat-payment-service"
+        },
+        "kind": "call",
+        "label": "spend retry order lookup"
+      },
+      {
+        "id": "e-settlement-event-panel",
+        "from": {
+          "feature": "membership-tiers",
+          "submodule": "settlement"
+        },
+        "to": {
+          "feature": "shared-infrastructure",
+          "submodule": "event-bus"
+        },
+        "kind": "publish",
+        "label": "MembershipTierChangedEvent"
+      },
+      {
+        "id": "e-panel-tier-event",
+        "from": {
+          "feature": "shared-infrastructure",
+          "submodule": "event-bus"
+        },
+        "to": {
+          "feature": "user-panel",
+          "submodule": "panel-service"
+        },
+        "kind": "subscribe",
+        "label": "MembershipTierChangedEvent"
+      },
+      {
+        "id": "e-e5v09v",
+        "from": {
+          "feature": "shop-payment",
+          "submodule": "fiat-payment-service"
+        },
+        "to": {
+          "feature": "membership-tiers",
+          "submodule": "spend-ledger"
+        },
+        "kind": "call",
+        "label": "post-payment M"
+      },
+      {
+        "id": "e-btfhi7",
+        "from": {
+          "feature": "shared-infrastructure",
+          "submodule": "discord-api"
+        },
+        "to": {
+          "feature": "membership-tiers",
+          "submodule": "join-tracking"
+        },
+        "kind": "call",
+        "label": "GuildMemberJoin"
       }
     ]
   }

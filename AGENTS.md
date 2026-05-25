@@ -23,7 +23,7 @@
 LTDJMS 的目標是在單一 Discord bot 內承載 guild 的經濟互動、商品交易、護航協作與 AI 頻道治理，讓營運流程不需要在多個外部系統之間切換。
 
 主要利害關係人與成果：
-- **一般成員**：能在 guild 內查餘額、玩遊戲、逛商店、兌換商品、使用法幣付款，並在允許頻道取得 AI 回應與 Agent 協助。
+- **一般成員**：能在 guild 內查餘額、玩遊戲、逛商店、兌換商品、使用法幣付款、累積全局會員等級與折扣，並在允許頻道取得 AI 回應與 Agent 協助。
 - **管理員**：能設定貨幣經濟參數、管理商品與兌換碼、配置 AI 與護航規則，並收到訂單與付款通知。
 - **護航／售後人員**：能透過私訊流程接單、完單與承接售後案件。
 - **維運／開發者**：能透過 Docker Compose 啟動完整系統，使用 Flyway migration 維護 schema，並透過日誌與 callback server 排查問題。
@@ -35,6 +35,7 @@ LTDJMS 的目標是在單一 Discord bot 內承載 guild 的經濟互動、商�
 - `ai-chat-and-agent.md` — AI 聊天、頻道白名單、Agent 工具執行
 - `escort-dispatch.md` — 護航派單、生命週期、售後流程
 - `guild-economy.md` — 貨幣、遊戲代幣、骰子遊戲、交易記錄
+- `membership-tiers.md` — 全局會員等級、結算、消費 ledger、付款折扣、贈幣
 - `notifications.md` — 訂單通知、付款通知、錯誤處理
 - `shop-and-payment.md` — 商店、貨幣購買、法幣付款、兌換碼
 
@@ -54,7 +55,7 @@ LTDJMS 的目標是在單一 Discord bot 內承載 guild 的經濟互動、商�
 - `code-organization.md` — 模組獨立性、Handler 薄度、Facade 模式
 
 ### Architecture Atlas
-- `resources/project-architecture/index.html` — 互動式 SVG 架構圖（7 功能模塊，含獨立 `@ltdjms/user-panel`），含跨模組邊界與子模組細節頁面
+- `resources/project-architecture/index.html` — 互動式 SVG 架構圖（8 功能模塊，含 membership-tiers），含跨模組邊界與子模組細節頁面
 
 ### Root Documents
 - `README.md` — 專案簡介、快速啟動、核心能力

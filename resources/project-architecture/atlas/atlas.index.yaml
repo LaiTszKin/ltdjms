@@ -4,7 +4,7 @@ meta:
     基於 Java/JDA 的 Discord bot，在單一 guild 內承載經濟互動、商品交易、護航協作與 AI 頻道治理。涵蓋 guild
     貨幣與遊戲代幣的雙軌經濟系統、商品商店與法幣付款（ECPay）、護航派單狀態機、AI 聊天與 Agent
     工具執行、以及管理面板。掃描範圍：src/main/java/ltdjms/discord/ 下所有業務模組與共用基礎設施。
-  updatedAt: '2026-05-24T16:50:59.690Z'
+  updatedAt: '2026-05-25T07:52:55.996Z'
 actors:
   - id: member
     label: 一般成員
@@ -417,36 +417,9 @@ edges:
       submodule: panel-service
     to:
       feature: membership-tiers
-      submodule: benefits-ui
+      submodule: membership-db
     kind: call
-    label: membership query
-  - id: e-spend-retry-shop
-    from:
-      feature: membership-tiers
-      submodule: spend-ledger
-    to:
-      feature: shop-payment
-      submodule: fiat-payment-service
-    kind: call
-    label: spend retry order lookup
-  - id: e-settlement-event-panel
-    from:
-      feature: membership-tiers
-      submodule: settlement
-    to:
-      feature: shared-infrastructure
-      submodule: event-bus
-    kind: publish
-    label: MembershipTierChangedEvent
-  - id: e-panel-tier-event
-    from:
-      feature: shared-infrastructure
-      submodule: event-bus
-    to:
-      feature: user-panel
-      submodule: panel-service
-    kind: subscribe
-    label: MembershipTierChangedEvent
+    label: membership summary
   - id: e-e5v09v
     from:
       feature: shop-payment

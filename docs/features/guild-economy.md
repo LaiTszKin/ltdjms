@@ -50,6 +50,12 @@ When they use the admin panel to adjust a member's game tokens
 Then the member's token balance is updated  
 And a transaction record is created
 
+### Membership Settlement Token Grant
+Given a member completes a membership settlement period at SILVER or above  
+When token grant processing runs  
+Then monthly tier game tokens are credited to a primary guild account for that period  
+And duplicate grants for the same settlement period are prevented
+
 ## Transaction History
 
 ### View Currency History

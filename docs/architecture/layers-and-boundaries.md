@@ -22,6 +22,7 @@ The system is organized into horizontal layers (shared infrastructure) and verti
 | `redemption/` | Redemption code generation, validation, and claim |
 | `shop/` | Product browsing, currency purchase, fiat payment, post-payment processing |
 | `dispatch/` | Escort dispatch orders, lifecycle state machine, after-sales |
+| `membership/` | Global membership tiers, spend ledger, settlement, token grants, join tracking |
 | `aichat/` | AI chat, channel allowlists, streaming, prompt loading |
 | `aiagent/` | Agent channel config, tool execution, conversation memory, audit |
 | `markdown/` | AI response Markdown validation, auto-fix, segmentation |
@@ -66,7 +67,11 @@ ECPay Callback (HTTP)
 
 Scheduler (every 10s)
   -> FiatOrderPostPaymentWorker.processPendingOrders()
-    -> Claim -> notify buyer -> create escort -> grant reward -> mark fulfilled -> Release
+    -> Claim -> notify buyer -> record membership spend (snapshot) -> create escort -> grant reward -> mark fulfilled -> Release
+
+Scheduler (hourly)
+  -> MembershipSettlementScheduler
+    -> Lease-guarded tick: retry spend/grant -> settle due members -> retry grants
 
 Scheduler (every 60s)
   -> FiatPaymentReconciliationService
@@ -91,4 +96,5 @@ MessageReceivedEvent
 - Side effects (cache invalidation, panel updates, agent sync) propagate via `DomainEventPublisher`, not inline in service methods
 - The `dispatch/` handoff service (`EscortDispatchHandoffService`) is the only boundary crosser for shop-to-dispatch integration
 - The `product/` reward service (`ProductRewardService`) bridges product definitions to currency/token accounts
+- Shop records membership spend via `PaidEscortOrderSnapshot` and `MembershipSpendRecorder`; membership does not depend on shop domain types
 - The `markdown/` module is a decorator around `aichat/` — it knows nothing about Discord or business domains

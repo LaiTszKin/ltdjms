@@ -42,10 +42,11 @@ Three independent claim/release pairs exist: fulfillment, admin notification, an
 **Post-payment worker** (every 10 seconds):
 1. Claim fulfillment processing
 2. Notify buyer of payment success
-3. Auto-create escort order (if product configures it) + notify admins
-4. Grant product reward (currency or tokens)
-5. Mark order fulfilled
-6. On any step failure: release claim for retry
+3. Record membership spend for escort-linked products (best-effort; enqueue retry on failure)
+4. Auto-create escort order (if product configures it) + notify admins
+5. Grant product reward (currency or tokens)
+6. Mark order fulfilled
+7. On any step failure: release claim for retry
 
 **Reconciliation worker** (every 60 seconds):
 1. Expire unpaid orders past their deadline

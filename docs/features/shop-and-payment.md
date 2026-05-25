@@ -39,6 +39,17 @@ Then they are prompted to choose between currency purchase or fiat order
 When the product has only one payment method  
 Then the purchase flow proceeds directly without a payment choice step
 
+### Member Pricing on Escort Products
+Given the user has a global membership tier above NONE  
+When they select an escort-linked product  
+Then the shop shows the discounted member price on the confirmation step  
+And currency or fiat charges use the discounted amount while spend ledger records catalog list price M
+
+### Fiat-Only Confirmation
+Given the user selects a fiat-only escort product  
+When they proceed to purchase  
+Then they see a confirmation embed with member pricing before the order is created
+
 ## Currency Purchase
 
 ### Purchase with Guild Currency
@@ -79,6 +90,7 @@ And the user can still query the expired status
 Given a fiat order has been marked as `PAID`  
 When the background worker processes the order  
 Then the buyer receives a payment success notification  
+And if the product is escort-linked, catalog list price M is recorded for membership spend (best-effort with retry on failure)  
 And if the product has a reward, it is granted  
 And the order is marked as fulfilled  
 And if the product enables escort auto-creation, a dispatch order is created

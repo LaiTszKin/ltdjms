@@ -43,6 +43,7 @@
 docs/
 ├── features/          使用 BDD Given/When/Then 描述使用者可見功能
 │   ├── guild-economy.md       貨幣、遊戲代幣、交易
+│   ├── membership-tiers.md    全局會員等級、結算、消費 ledger、贈幣
 │   ├── shop-and-payment.md    商店、法幣付款、兌換碼
 │   ├── escort-dispatch.md     護航派單、售後
 │   ├── ai-chat-and-agent.md   AI 聊天、AI Agent
@@ -65,7 +66,7 @@ docs/
 
 ### 互動式架構圖（Architecture Atlas）
 
-- `resources/project-architecture/index.html` — 以 SVG 互動圖呈現 7 個功能模塊（含 `@ltdjms/user-panel`）與子模塊邊界，每個子模塊有獨立的 I/O、變數、資料流與錯誤頁面。使用瀏覽器直接開啟。
+- `resources/project-architecture/index.html` — 以 SVG 互動圖呈現 8 個功能模塊（含 membership-tiers）與子模塊邊界，每個子模塊有獨立的 I/O、變數、資料流與錯誤頁面。使用瀏覽器直接開啟。
 
 ### 補充與深度參考
 
