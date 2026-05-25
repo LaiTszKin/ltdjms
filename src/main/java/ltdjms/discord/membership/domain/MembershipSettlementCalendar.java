@@ -47,6 +47,41 @@ public final class MembershipSettlementCalendar {
         .toInstant();
   }
 
+  /**
+   * Returns the next settlement anchor strictly after {@code now}, advancing month-by-month from
+   * {@code anchorSettlement} when the stored anchor is already due or in the past.
+   */
+  public static Instant resolveUpcomingSettlementAt(
+      int settlementDay, Instant anchorSettlement, Instant now, ZoneId zone) {
+    if (anchorSettlement == null) {
+      return null;
+    }
+    Instant candidate = anchorSettlement;
+    while (!candidate.isAfter(now)) {
+      candidate = advanceNextSettlementAt(settlementDay, candidate, zone);
+    }
+    return candidate;
+  }
+
+  /** Panel-facing next settlement date derived from stored anchors and the current clock. */
+  public static Instant displayNextSettlementAt(
+      GlobalMemberMembership membership, Instant now, ZoneId zone) {
+    Instant storedNext = membership.nextSettlementAt();
+    Integer settlementDay = membership.settlementDayOfMonth();
+    Instant anchor = storedNext;
+    if (anchor == null) {
+      if (settlementDay == null || membership.earliestGuildJoinAt() == null) {
+        return null;
+      }
+      anchor =
+          computeNextSettlementAt(settlementDay, membership.earliestGuildJoinAt(), zone);
+    }
+    if (settlementDay == null) {
+      settlementDay = clampDayOfMonth(anchor, zone);
+    }
+    return resolveUpcomingSettlementAt(settlementDay, anchor, now, zone);
+  }
+
   private static ZonedDateTime resolveAnchorDate(
       int year, int month, int settlementDay, ZoneId zone) {
     java.time.LocalDate anchor = java.time.LocalDate.of(year, month, settlementDay);

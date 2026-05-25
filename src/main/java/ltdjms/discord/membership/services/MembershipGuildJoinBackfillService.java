@@ -42,10 +42,10 @@ public class MembershipGuildJoinBackfillService {
    * @param userId Discord user snowflake
    */
   public void ensureRecordedFromGuild(long guildId, long userId) {
-    if (!needsBackfill(userId)) {
-      return;
+    if (needsJoinBackfill(userId)) {
+      resolveMemberJoinTime(guildId, userId).ifPresent(joinedAt -> recordJoin(userId, joinedAt));
     }
-    resolveMemberJoinTime(guildId, userId).ifPresent(joinedAt -> recordJoin(userId, joinedAt));
+    membershipJoinService.repairStaleNextSettlement(userId);
   }
 
   /** Backfills missing join anchors for all members currently loaded in each guild. */
@@ -73,21 +73,18 @@ public class MembershipGuildJoinBackfillService {
     int updated = 0;
     for (Member member : guild.getMembers()) {
       long userId = member.getIdLong();
-      if (!needsBackfill(userId)) {
-        continue;
+      if (needsJoinBackfill(userId)) {
+        Instant joinedAt = memberJoinInstant(member);
+        if (joinedAt != null && recordJoin(userId, joinedAt)) {
+          updated++;
+        }
       }
-      Instant joinedAt = memberJoinInstant(member);
-      if (joinedAt == null) {
-        continue;
-      }
-      if (recordJoin(userId, joinedAt)) {
-        updated++;
-      }
+      membershipJoinService.repairStaleNextSettlement(userId);
     }
     return updated;
   }
 
-  private boolean needsBackfill(long userId) {
+  private boolean needsJoinBackfill(long userId) {
     return membershipRepository
         .findByUserId(userId)
         .map(membership -> membership.earliestGuildJoinAt() == null)

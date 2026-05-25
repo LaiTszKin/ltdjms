@@ -8,6 +8,7 @@ import java.util.Optional;
 import ltdjms.discord.membership.domain.GlobalMemberMembership;
 import ltdjms.discord.membership.domain.MembershipPeriodBounds;
 import ltdjms.discord.membership.domain.MembershipPeriodSpendBounds;
+import ltdjms.discord.membership.domain.MembershipSettlementCalendar;
 import ltdjms.discord.membership.domain.MembershipTier;
 import ltdjms.discord.membership.domain.MembershipTierEvaluator;
 import ltdjms.discord.membership.domain.MembershipTierLabels;
@@ -76,7 +77,8 @@ public class MembershipQueryService {
         effectiveTier,
         displayPeriodSpendM,
         nextTierThresholdM,
-        membership.nextSettlementAt(),
+        MembershipSettlementCalendar.displayNextSettlementAt(
+            membership, now, MembershipSettlementCalendar.SETTLEMENT_ZONE),
         effectiveTier.discountRate(),
         membership.earliestGuildJoinAt(),
         remainingToNextTierM,

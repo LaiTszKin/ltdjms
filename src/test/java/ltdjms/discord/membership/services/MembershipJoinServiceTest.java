@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -56,13 +57,13 @@ class MembershipJoinServiceTest {
 
       when(membershipRepository.findOrCreate(TEST_USER_ID)).thenReturn(created);
       when(membershipRepository.mergeEarliestGuildJoin(
-              eq(TEST_USER_ID), eq(joinedAt), eq(15), eq(zonedInstant(2024, 4, 15, 0, 0))))
+              eq(TEST_USER_ID), eq(joinedAt), eq(15), eq(zonedInstant(2026, 4, 15, 0, 0))))
           .thenReturn(true);
 
       service.onMemberJoin(TEST_USER_ID, joinedAt);
 
       verify(membershipRepository)
-          .mergeEarliestGuildJoin(TEST_USER_ID, joinedAt, 15, zonedInstant(2024, 4, 15, 0, 0));
+          .mergeEarliestGuildJoin(TEST_USER_ID, joinedAt, 15, zonedInstant(2026, 4, 15, 0, 0));
     }
 
     @Test
@@ -127,7 +128,7 @@ class MembershipJoinServiceTest {
 
       when(membershipRepository.findOrCreate(TEST_USER_ID)).thenReturn(created);
       when(membershipRepository.mergeEarliestGuildJoin(
-              eq(TEST_USER_ID), eq(joinedAt), eq(28), eq(zonedInstant(2024, 2, 28, 0, 0))))
+              eq(TEST_USER_ID), eq(joinedAt), eq(28), eq(zonedInstant(2026, 3, 28, 0, 0))))
           .thenReturn(true);
 
       service.onMemberJoin(TEST_USER_ID, joinedAt);
@@ -135,7 +136,37 @@ class MembershipJoinServiceTest {
       ArgumentCaptor<Instant> nextCaptor = ArgumentCaptor.forClass(Instant.class);
       verify(membershipRepository)
           .mergeEarliestGuildJoin(eq(TEST_USER_ID), eq(joinedAt), eq(28), nextCaptor.capture());
-      assertThat(nextCaptor.getValue()).isEqualTo(zonedInstant(2024, 2, 28, 0, 0));
+      assertThat(nextCaptor.getValue()).isEqualTo(zonedInstant(2026, 3, 28, 0, 0));
+    }
+  }
+
+  @Nested
+  @DisplayName("repairStaleNextSettlement")
+  class RepairStaleNextSettlementTests {
+
+    @Test
+    @DisplayName("should advance stale next settlement anchor for never-settled members")
+    void shouldAdvanceStaleNextSettlement() {
+      Instant joinAt = zonedInstant(2024, 3, 10, 12, 0);
+      Instant staleNext = zonedInstant(2024, 4, 15, 0, 0);
+      GlobalMemberMembership membership =
+          new GlobalMemberMembership(
+              TEST_USER_ID,
+              MembershipTier.BRONZE,
+              joinAt,
+              15,
+              null,
+              staleNext,
+              false,
+              joinAt,
+              joinAt);
+      when(membershipRepository.findByUserId(TEST_USER_ID)).thenReturn(Optional.of(membership));
+
+      service.repairStaleNextSettlement(TEST_USER_ID);
+
+      ArgumentCaptor<GlobalMemberMembership> saved = ArgumentCaptor.forClass(GlobalMemberMembership.class);
+      verify(membershipRepository).save(saved.capture());
+      assertThat(saved.getValue().nextSettlementAt()).isEqualTo(zonedInstant(2026, 4, 15, 0, 0));
     }
   }
 

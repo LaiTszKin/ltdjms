@@ -7,6 +7,7 @@ import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ltdjms.discord.membership.domain.GlobalMemberMembership;
 import ltdjms.discord.membership.domain.MembershipSettlementCalendar;
 import ltdjms.discord.membership.persistence.MembershipRepository;
 
@@ -37,7 +38,10 @@ public class MembershipJoinService {
     membershipRepository.findOrCreate(discordUserId);
 
     int settlementDay = clampDayOfMonth(joinedAt);
-    Instant nextSettlement = computeNextSettlement(settlementDay, joinedAt);
+    Instant firstSettlement = computeNextSettlement(settlementDay, joinedAt);
+    Instant nextSettlement =
+        MembershipSettlementCalendar.resolveUpcomingSettlementAt(
+            settlementDay, firstSettlement, clock.instant(), SETTLEMENT_ZONE);
 
     boolean updated =
         membershipRepository.mergeEarliestGuildJoin(
@@ -77,5 +81,53 @@ public class MembershipJoinService {
   public static Instant computeNextSettlementAt(
       int settlementDay, Instant joinedAt, java.time.ZoneId zone) {
     return MembershipSettlementCalendar.computeNextSettlementAt(settlementDay, joinedAt, zone);
+  }
+
+  /**
+   * Advances a never-settled member's stale {@code next_settlement_at} to the upcoming anchor when
+   * historical join backfill left the first settlement month in the past.
+   */
+  public void repairStaleNextSettlement(long discordUserId) {
+    membershipRepository
+        .findByUserId(discordUserId)
+        .ifPresent(
+            membership -> {
+              if (membership.lastSettlementAt() != null || membership.nextSettlementAt() == null) {
+                return;
+              }
+              Instant now = clock.instant();
+              if (membership.nextSettlementAt().isAfter(now)) {
+                return;
+              }
+              Integer settlementDay = membership.settlementDayOfMonth();
+              if (settlementDay == null && membership.earliestGuildJoinAt() != null) {
+                settlementDay = clampDayOfMonth(membership.earliestGuildJoinAt());
+              }
+              if (settlementDay == null) {
+                return;
+              }
+              Instant upcoming =
+                  MembershipSettlementCalendar.resolveUpcomingSettlementAt(
+                      settlementDay, membership.nextSettlementAt(), now, SETTLEMENT_ZONE);
+              if (upcoming.equals(membership.nextSettlementAt())) {
+                return;
+              }
+              membershipRepository.save(
+                  new GlobalMemberMembership(
+                      membership.discordUserId(),
+                      membership.currentTier(),
+                      membership.earliestGuildJoinAt(),
+                      settlementDay,
+                      membership.lastSettlementAt(),
+                      upcoming,
+                      membership.hasQualifyingBronzeOrder(),
+                      membership.createdAt(),
+                      membership.updatedAt()));
+              LOG.info(
+                  "Repaired stale next settlement for userId={}: {} -> {}",
+                  discordUserId,
+                  membership.nextSettlementAt(),
+                  upcoming);
+            });
   }
 }

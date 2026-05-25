@@ -152,6 +152,31 @@ class MembershipQueryServiceTest {
   }
 
   @Test
+  @DisplayName("getPanelSummary should show upcoming settlement when stored anchor is stale")
+  void shouldShowUpcomingSettlementForStaleAnchor() {
+    Instant joinAt = Instant.parse("2024-03-10T04:00:00Z");
+    Instant staleNext = Instant.parse("2024-04-14T16:00:00Z");
+    GlobalMemberMembership membership =
+        new GlobalMemberMembership(
+            USER_ID,
+            MembershipTier.BRONZE,
+            joinAt,
+            15,
+            null,
+            staleNext,
+            false,
+            joinAt,
+            joinAt);
+    when(membershipRepository.findByUserId(USER_ID)).thenReturn(Optional.of(membership));
+    when(membershipSpendRepository.sumListPriceInPeriod(eq(USER_ID), any(), any()))
+        .thenReturn(1_000L);
+
+    MembershipPanelSummary summary = service.getPanelSummary(USER_ID);
+
+    assertThat(summary.nextSettlementAt()).isEqualTo(Instant.parse("2026-05-14T16:00:00Z"));
+  }
+
+  @Test
   @DisplayName("getPanelSummary 應納入 membership 建立前的 admin spend")
   void shouldIncludeSpendRecordedBeforeMembershipCreatedAt() {
     Instant createdAt = Instant.parse("2026-05-25T11:15:21Z");

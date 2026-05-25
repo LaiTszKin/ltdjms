@@ -64,6 +64,7 @@ class MembershipGuildJoinBackfillServiceTest {
     service.ensureRecordedFromGuild(GUILD_ID, USER_ID);
 
     verify(membershipJoinService).onMemberJoin(USER_ID, JOIN_AT);
+    verify(membershipJoinService).repairStaleNextSettlement(USER_ID);
   }
 
   @Test
@@ -86,6 +87,7 @@ class MembershipGuildJoinBackfillServiceTest {
 
     verify(discordRuntimeGateway, never()).findGuild(GUILD_ID);
     verify(membershipJoinService, never()).onMemberJoin(eq(USER_ID), eq(JOIN_AT));
+    verify(membershipJoinService).repairStaleNextSettlement(USER_ID);
   }
 
   @Test
@@ -102,6 +104,7 @@ class MembershipGuildJoinBackfillServiceTest {
     service.ensureRecordedFromGuild(GUILD_ID, USER_ID);
 
     verify(membershipJoinService).onMemberJoin(USER_ID, JOIN_AT);
+    verify(membershipJoinService).repairStaleNextSettlement(USER_ID);
   }
 
   private static GlobalMemberMembership membershipWithoutJoin() {
