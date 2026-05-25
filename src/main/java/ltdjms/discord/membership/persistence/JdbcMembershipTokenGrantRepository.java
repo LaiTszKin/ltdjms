@@ -26,6 +26,7 @@ public class JdbcMembershipTokenGrantRepository implements MembershipTokenGrantR
   private static final String STATUS_CLAIMED = "CLAIMED";
   private static final String STATUS_COMPLETED = "COMPLETED";
   private static final String STATUS_FAILED = "FAILED";
+  private static final String STATUS_SKIPPED_NO_GUILD = "SKIPPED_NO_GUILD";
 
   private final DataSource dataSource;
 
@@ -73,7 +74,7 @@ public class JdbcMembershipTokenGrantRepository implements MembershipTokenGrantR
   @Override
   public Optional<GrantClaimState> findClaimState(long discordUserId, Instant settlementPeriodEnd) {
     String sql =
-        "SELECT status, tokens_adjusted FROM membership_token_grant_log"
+        "SELECT status, tokens_adjusted, audit_recorded FROM membership_token_grant_log"
             + " WHERE discord_user_id = ? AND settlement_period_end = ?";
 
     try (Connection conn = dataSource.getConnection();
@@ -84,7 +85,10 @@ public class JdbcMembershipTokenGrantRepository implements MembershipTokenGrantR
       try (ResultSet rs = stmt.executeQuery()) {
         if (rs.next()) {
           return Optional.of(
-              new GrantClaimState(rs.getString("status"), rs.getBoolean("tokens_adjusted")));
+              new GrantClaimState(
+                  rs.getString("status"),
+                  rs.getBoolean("tokens_adjusted"),
+                  rs.getBoolean("audit_recorded")));
         }
       }
     } catch (SQLException e) {
@@ -165,6 +169,49 @@ public class JdbcMembershipTokenGrantRepository implements MembershipTokenGrantR
   }
 
   @Override
+  public void markAuditRecorded(long discordUserId, Instant settlementPeriodEnd) {
+    String sql =
+        "UPDATE membership_token_grant_log SET audit_recorded = TRUE"
+            + " WHERE discord_user_id = ? AND settlement_period_end = ?";
+
+    try (Connection conn = dataSource.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(sql)) {
+      stmt.setLong(1, discordUserId);
+      stmt.setTimestamp(2, Timestamp.from(settlementPeriodEnd));
+      stmt.executeUpdate();
+    } catch (SQLException e) {
+      LOG.error(
+          "Failed to mark membership token grant audit recorded: userId={}, periodEnd={}",
+          discordUserId,
+          settlementPeriodEnd,
+          e);
+      throw new RepositoryException("Failed to mark membership token grant audit recorded", e);
+    }
+  }
+
+  @Override
+  public void markSkippedNoGuild(long discordUserId, Instant settlementPeriodEnd) {
+    String sql =
+        "UPDATE membership_token_grant_log SET status = ?"
+            + " WHERE discord_user_id = ? AND settlement_period_end = ?";
+
+    try (Connection conn = dataSource.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(sql)) {
+      stmt.setString(1, STATUS_SKIPPED_NO_GUILD);
+      stmt.setLong(2, discordUserId);
+      stmt.setTimestamp(3, Timestamp.from(settlementPeriodEnd));
+      stmt.executeUpdate();
+    } catch (SQLException e) {
+      LOG.error(
+          "Failed to mark membership token grant skipped: userId={}, periodEnd={}",
+          discordUserId,
+          settlementPeriodEnd,
+          e);
+      throw new RepositoryException("Failed to mark membership token grant skipped", e);
+    }
+  }
+
+  @Override
   public void markGrantFailed(long discordUserId, Instant settlementPeriodEnd) {
     String sql =
         "UPDATE membership_token_grant_log SET status = ?"
@@ -197,7 +244,7 @@ public class JdbcMembershipTokenGrantRepository implements MembershipTokenGrantR
             + "   SELECT 1 FROM membership_token_grant_log l"
             + "   WHERE l.discord_user_id = g.discord_user_id"
             + "     AND l.settlement_period_end = g.last_settlement_at"
-            + "     AND l.status = ?"
+            + "     AND l.status IN (?, ?)"
             + " )"
             + " ORDER BY g.last_settlement_at"
             + " LIMIT ?";
@@ -205,7 +252,8 @@ public class JdbcMembershipTokenGrantRepository implements MembershipTokenGrantR
     try (Connection conn = dataSource.getConnection();
         PreparedStatement stmt = conn.prepareStatement(sql)) {
       stmt.setString(1, STATUS_COMPLETED);
-      stmt.setInt(2, limit);
+      stmt.setString(2, STATUS_SKIPPED_NO_GUILD);
+      stmt.setInt(3, limit);
 
       try (ResultSet rs = stmt.executeQuery()) {
         List<PendingMembershipGrant> pending = new ArrayList<>();

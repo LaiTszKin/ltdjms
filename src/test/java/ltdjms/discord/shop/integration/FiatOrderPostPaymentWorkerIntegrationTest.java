@@ -82,7 +82,8 @@ class FiatOrderPostPaymentWorkerIntegrationTest {
             adminNotificationService,
             mock(FiatOrderBuyerNotificationService.class),
             mock(EscortOrderBuyerNotificationService.class),
-            MembershipSpendServiceFixtures.noop());
+            MembershipSpendServiceFixtures.noop(),
+            MembershipSpendServiceFixtures.noopRetry());
   }
 
   @AfterEach

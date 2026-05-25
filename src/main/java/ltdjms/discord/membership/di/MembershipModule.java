@@ -10,19 +10,26 @@ import ltdjms.discord.gametoken.services.GameTokenService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService;
 import ltdjms.discord.membership.listeners.GuildMemberJoinListener;
 import ltdjms.discord.membership.persistence.JdbcMembershipRepository;
+import ltdjms.discord.membership.persistence.JdbcMembershipSettlementCoordinator;
+import ltdjms.discord.membership.persistence.JdbcMembershipSettlementTickGuard;
 import ltdjms.discord.membership.persistence.JdbcMembershipSpendRepository;
+import ltdjms.discord.membership.persistence.JdbcMembershipSpendRetryRepository;
 import ltdjms.discord.membership.persistence.JdbcMembershipTokenGrantRepository;
 import ltdjms.discord.membership.persistence.MembershipRepository;
+import ltdjms.discord.membership.persistence.MembershipSettlementTickGuard;
 import ltdjms.discord.membership.persistence.MembershipSpendRepository;
+import ltdjms.discord.membership.persistence.MembershipSpendRetryRepository;
 import ltdjms.discord.membership.persistence.MembershipTokenGrantRepository;
 import ltdjms.discord.membership.services.MembershipJoinService;
 import ltdjms.discord.membership.services.MembershipPricingService;
 import ltdjms.discord.membership.services.MembershipSettlementScheduler;
 import ltdjms.discord.membership.services.MembershipSettlementService;
+import ltdjms.discord.membership.services.MembershipSpendRetryService;
 import ltdjms.discord.membership.services.MembershipSpendService;
 import ltdjms.discord.membership.services.MembershipTokenGrantService;
 import ltdjms.discord.product.domain.EscortOptionCatalogRepository;
 import ltdjms.discord.shared.events.DomainEventPublisher;
+import ltdjms.discord.shop.domain.FiatOrderRepository;
 
 /** Dagger module providing membership repository dependencies. */
 @Module
@@ -42,9 +49,30 @@ public class MembershipModule {
 
   @Provides
   @Singleton
+  public MembershipSpendRetryRepository provideMembershipSpendRetryRepository(
+      DataSource dataSource) {
+    return new JdbcMembershipSpendRetryRepository(dataSource);
+  }
+
+  @Provides
+  @Singleton
   public MembershipTokenGrantRepository provideMembershipTokenGrantRepository(
       DataSource dataSource) {
     return new JdbcMembershipTokenGrantRepository(dataSource);
+  }
+
+  @Provides
+  @Singleton
+  public JdbcMembershipSettlementCoordinator provideMembershipSettlementCoordinator(
+      DataSource dataSource) {
+    return new JdbcMembershipSettlementCoordinator(dataSource);
+  }
+
+  @Provides
+  @Singleton
+  public MembershipSettlementTickGuard provideMembershipSettlementTickGuard(
+      DataSource dataSource) {
+    return new JdbcMembershipSettlementTickGuard(dataSource);
   }
 
   @Provides
@@ -81,14 +109,22 @@ public class MembershipModule {
       MembershipSpendRepository membershipSpendRepository,
       MembershipRepository membershipRepository,
       EscortOptionCatalogRepository escortOptionCatalogRepository,
-      DomainEventPublisher eventPublisher,
-      @SettlementClock Clock clock) {
+      DomainEventPublisher eventPublisher) {
     return new MembershipSpendService(
         membershipSpendRepository,
         membershipRepository,
         escortOptionCatalogRepository,
-        eventPublisher,
-        clock);
+        eventPublisher);
+  }
+
+  @Provides
+  @Singleton
+  public MembershipSpendRetryService provideMembershipSpendRetryService(
+      MembershipSpendRetryRepository retryRepository,
+      FiatOrderRepository fiatOrderRepository,
+      MembershipSpendService membershipSpendService) {
+    return new MembershipSpendRetryService(
+        retryRepository, fiatOrderRepository, membershipSpendService);
   }
 
   @Provides
@@ -110,13 +146,12 @@ public class MembershipModule {
   @Provides
   @Singleton
   public MembershipSettlementService provideMembershipSettlementService(
-      MembershipRepository membershipRepository,
-      MembershipSpendRepository membershipSpendRepository,
+      JdbcMembershipSettlementCoordinator settlementCoordinator,
       MembershipTokenGrantService tokenGrantService,
       DomainEventPublisher eventPublisher,
       @SettlementClock Clock clock) {
     return new MembershipSettlementService(
-        membershipRepository, membershipSpendRepository, tokenGrantService, eventPublisher, clock);
+        settlementCoordinator, tokenGrantService, eventPublisher, clock);
   }
 
   @Provides
@@ -125,8 +160,15 @@ public class MembershipModule {
       MembershipRepository membershipRepository,
       MembershipSettlementService settlementService,
       MembershipTokenGrantService tokenGrantService,
+      MembershipSpendRetryService spendRetryService,
+      MembershipSettlementTickGuard tickGuard,
       @SettlementClock Clock clock) {
     return new MembershipSettlementScheduler(
-        membershipRepository, settlementService, tokenGrantService, clock);
+        membershipRepository,
+        settlementService,
+        tokenGrantService,
+        spendRetryService,
+        tickGuard,
+        clock);
   }
 }

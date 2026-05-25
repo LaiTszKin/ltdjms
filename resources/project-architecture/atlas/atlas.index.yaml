@@ -393,3 +393,48 @@ edges:
       submodule: product-catalog-service
     kind: call
     label: 兌換碼驗證與兌換記錄
+  - id: e-6kw808
+    from:
+      feature: shop-payment
+      submodule: shop-interaction
+    to:
+      feature: membership-tiers
+      submodule: payment-discount
+    kind: call
+    label: checkout quote
+  - id: e-d78qfs
+    from:
+      feature: membership-tiers
+      submodule: settlement
+    to:
+      feature: guild-economy
+      submodule: economy-service
+    kind: call
+    label: token grant
+  - id: e-zsdgqz
+    from:
+      feature: user-panel
+      submodule: panel-service
+    to:
+      feature: membership-tiers
+      submodule: membership-db
+    kind: call
+    label: membership summary
+  - id: e-e5v09v
+    from:
+      feature: shop-payment
+      submodule: fiat-payment-service
+    to:
+      feature: membership-tiers
+      submodule: spend-ledger
+    kind: call
+    label: post-payment M
+  - id: e-btfhi7
+    from:
+      feature: shared-infrastructure
+      submodule: discord-api
+    to:
+      feature: membership-tiers
+      submodule: join-tracking
+    kind: call
+    label: GuildMemberJoin

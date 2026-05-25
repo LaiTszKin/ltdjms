@@ -22,6 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import ltdjms.discord.dispatch.domain.EscortDispatchOrder;
 import ltdjms.discord.dispatch.services.EscortDispatchHandoffService;
+import ltdjms.discord.membership.services.MembershipSpendRetryService;
 import ltdjms.discord.membership.services.MembershipSpendService;
 import ltdjms.discord.product.domain.Product;
 import ltdjms.discord.product.services.ProductRewardService;
@@ -44,6 +45,7 @@ class FiatOrderPostPaymentWorkerTest {
   @Mock private FiatOrderBuyerNotificationService buyerNotificationService;
   @Mock private EscortOrderBuyerNotificationService escortOrderBuyerNotificationService;
   @Mock private MembershipSpendService membershipSpendService;
+  @Mock private MembershipSpendRetryService membershipSpendRetryService;
 
   private FiatOrderPostPaymentWorker worker;
 
@@ -58,6 +60,7 @@ class FiatOrderPostPaymentWorkerTest {
             buyerNotificationService,
             escortOrderBuyerNotificationService,
             membershipSpendService,
+            membershipSpendRetryService,
             Clock.fixed(NOW, ZoneOffset.UTC));
     lenient().when(membershipSpendService.recordFiatEscortPayment(any(), any())).thenReturn(true);
   }
@@ -193,17 +196,26 @@ class FiatOrderPostPaymentWorkerTest {
   }
 
   @Test
-  @DisplayName("spend 記錄失敗時不應標記 fulfilled")
-  void shouldNotMarkFulfilledWhenSpendRecordingFails() {
+  @DisplayName("spend 記錄失敗時仍應完成 fulfillment 並 enqueue retry")
+  void shouldMarkFulfilledAndEnqueueRetryWhenSpendRecordingFails() {
     FiatOrder order = paidOrder();
+    Product product = order.toFulfillmentProduct();
     when(fiatOrderRepository.claimFulfillmentProcessing(eq(order.orderNumber()), any()))
         .thenReturn(true);
-    when(membershipSpendService.recordFiatEscortPayment(any(), any())).thenReturn(false);
+    when(membershipSpendService.recordFiatEscortPayment(order, product)).thenReturn(false);
+    when(escortDispatchHandoffService.handoffFromFiatPayment(
+            eq(order.guildId()), eq(order.buyerUserId()), eq(product), eq(order.orderNumber())))
+        .thenReturn(Result.ok(autoDispatchOrder(order, product)));
+    when(fiatOrderRepository.claimAdminNotificationProcessing(eq(order.orderNumber()), any()))
+        .thenReturn(true);
+    when(productRewardService.grantReward(any()))
+        .thenReturn(Result.ok(new ProductRewardService.RewardGrantResult(50L, 150L, null)));
 
     worker.processSingleOrder(order);
 
-    verify(fiatOrderRepository).releaseFulfillmentProcessing(order.orderNumber());
-    verify(fiatOrderRepository, never()).markFulfilledIfNeeded(any(), any());
+    verify(membershipSpendRetryService).enqueue(order.orderNumber());
+    verify(fiatOrderRepository).markFulfilledIfNeeded(eq(order.orderNumber()), any());
+    verify(fiatOrderRepository, never()).releaseFulfillmentProcessing(order.orderNumber());
   }
 
   @Test

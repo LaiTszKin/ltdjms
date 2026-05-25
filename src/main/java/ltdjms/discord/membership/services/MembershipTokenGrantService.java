@@ -99,6 +99,16 @@ public class MembershipTokenGrantService {
     if (claimStateOpt.isPresent() && "COMPLETED".equals(claimStateOpt.get().status())) {
       return true;
     }
+    if (claimStateOpt.isPresent() && "SKIPPED_NO_GUILD".equals(claimStateOpt.get().status())) {
+      return true;
+    }
+    if (claimStateOpt.isPresent()
+        && "FAILED".equals(claimStateOpt.get().status())
+        && claimStateOpt.get().tokensAdjusted()
+        && claimStateOpt.get().auditRecorded()) {
+      grantRepository.completeGrantClaim(discordUserId, settlementPeriodEnd);
+      return true;
+    }
 
     if (claimStateOpt.isEmpty()
         || "FAILED".equals(claimStateOpt.get().status())) {
@@ -106,7 +116,9 @@ public class MembershipTokenGrantService {
           discordUserId, settlementPeriodEnd, tier, tokens)) {
         return grantRepository
             .findClaimState(discordUserId, settlementPeriodEnd)
-            .map(state -> "COMPLETED".equals(state.status()))
+            .map(
+                state ->
+                    "COMPLETED".equals(state.status()) || "SKIPPED_NO_GUILD".equals(state.status()))
             .orElse(false);
       }
     }
@@ -114,21 +126,20 @@ public class MembershipTokenGrantService {
     GrantClaimState claimState =
         grantRepository
             .findClaimState(discordUserId, settlementPeriodEnd)
-            .orElse(new GrantClaimState("CLAIMED", false));
+            .orElse(new GrantClaimState("CLAIMED", false, false));
     boolean tokensAlreadyAdjusted = claimState.tokensAdjusted();
+    boolean auditAlreadyRecorded = claimState.auditRecorded();
 
     var guildIdOpt =
         spendRepository.findPrimaryGuildInPeriod(
             discordUserId, settlementPeriodStart, settlementPeriodEnd);
     if (guildIdOpt.isEmpty()) {
       LOG.warn(
-          "Cannot grant membership tokens: no spend guild for userId={}, periodEnd={}",
+          "Skipping membership token grant: no spend guild for userId={}, periodEnd={}",
           discordUserId,
           settlementPeriodEnd);
-      if (!tokensAlreadyAdjusted) {
-        grantRepository.releaseGrantClaim(discordUserId, settlementPeriodEnd);
-      }
-      return false;
+      grantRepository.markSkippedNoGuild(discordUserId, settlementPeriodEnd);
+      return true;
     }
 
     long guildId = guildIdOpt.get();
@@ -155,6 +166,11 @@ public class MembershipTokenGrantService {
       newBalance = gameTokenService.getBalance(guildId, discordUserId);
     }
 
+    if (auditAlreadyRecorded) {
+      grantRepository.completeGrantClaim(discordUserId, settlementPeriodEnd);
+      return true;
+    }
+
     try {
       gameTokenTransactionService.recordTransaction(
           guildId,
@@ -163,6 +179,7 @@ public class MembershipTokenGrantService {
           newBalance,
           GameTokenTransaction.Source.MEMBERSHIP_GRANT,
           String.format("會員結算贈幣 (%s)", tier.name()));
+      grantRepository.markAuditRecorded(discordUserId, settlementPeriodEnd);
       grantRepository.completeGrantClaim(discordUserId, settlementPeriodEnd);
     } catch (RuntimeException e) {
       LOG.error(

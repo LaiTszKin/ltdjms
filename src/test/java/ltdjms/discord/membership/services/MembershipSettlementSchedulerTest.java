@@ -3,6 +3,7 @@ package ltdjms.discord.membership.services;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -18,6 +19,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import ltdjms.discord.membership.persistence.MembershipRepository;
+import ltdjms.discord.membership.persistence.PassthroughMembershipSettlementTickGuard;
 
 @ExtendWith(MockitoExtension.class)
 class MembershipSettlementSchedulerTest {
@@ -27,6 +29,7 @@ class MembershipSettlementSchedulerTest {
   @Mock private MembershipRepository membershipRepository;
   @Mock private MembershipSettlementService settlementService;
   @Mock private MembershipTokenGrantService tokenGrantService;
+  @Mock private MembershipSpendRetryService spendRetryService;
 
   private MembershipSettlementScheduler scheduler;
 
@@ -35,7 +38,12 @@ class MembershipSettlementSchedulerTest {
     Clock clock = Clock.fixed(NOW, MembershipJoinService.SETTLEMENT_ZONE);
     scheduler =
         new MembershipSettlementScheduler(
-            membershipRepository, settlementService, tokenGrantService, clock);
+            membershipRepository,
+            settlementService,
+            tokenGrantService,
+            spendRetryService,
+            PassthroughMembershipSettlementTickGuard.INSTANCE,
+            clock);
   }
 
   @Test
@@ -50,7 +58,9 @@ class MembershipSettlementSchedulerTest {
 
     scheduler.runSettlement();
 
-    verify(settlementService, org.mockito.Mockito.times(150)).settle(anyLong());
+    verify(settlementService, times(150)).settle(anyLong());
+    verify(tokenGrantService, times(2)).retryPendingGrants();
+    verify(spendRetryService).retryPendingSpends();
   }
 
   @Test
@@ -63,7 +73,8 @@ class MembershipSettlementSchedulerTest {
 
     scheduler.runSettlement();
 
-    verify(tokenGrantService).retryPendingGrants();
+    verify(tokenGrantService, times(2)).retryPendingGrants();
+    verify(spendRetryService).retryPendingSpends();
     verify(settlementService).settle(1L);
     verify(settlementService).settle(2L);
   }

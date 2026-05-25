@@ -18,4 +18,9 @@ public final class MembershipSpendServiceFixtures {
     when(service.recordFiatEscortPayment(any(FiatOrder.class), any(Product.class))).thenReturn(true);
     return service;
   }
+
+  /** Returns a no-op mock for tests that do not exercise membership spend retry. */
+  public static MembershipSpendRetryService noopRetry() {
+    return mock(MembershipSpendRetryService.class);
+  }
 }

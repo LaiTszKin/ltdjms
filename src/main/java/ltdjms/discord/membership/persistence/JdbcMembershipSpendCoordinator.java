@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ltdjms.discord.currency.persistence.RepositoryException;
+import ltdjms.discord.membership.services.MembershipJoinService;
 
 /**
  * Coordinates atomic spend insertion and bronze qualification across membership tables within a
@@ -32,6 +33,13 @@ public class JdbcMembershipSpendCoordinator {
           + " current_tier = CASE WHEN current_tier = 'NONE' THEN 'BRONZE' ELSE current_tier END,"
           + " updated_at = ?"
           + " WHERE discord_user_id = ? AND has_qualifying_bronze_order = FALSE";
+
+  private static final String ENSURE_ANCHOR_SQL =
+      "UPDATE global_member_membership SET"
+          + " settlement_day_of_month = COALESCE(settlement_day_of_month, ?),"
+          + " next_settlement_at = COALESCE(next_settlement_at, ?),"
+          + " updated_at = ?"
+          + " WHERE discord_user_id = ? AND next_settlement_at IS NULL";
 
   private final DataSource dataSource;
 
@@ -69,6 +77,9 @@ public class JdbcMembershipSpendCoordinator {
         if (inserted && listPriceTwd >= bronzeThresholdListPriceTwd) {
           bronzePromoted = qualifyBronze(conn, discordUserId);
         }
+        if (inserted) {
+          ensureSettlementAnchor(conn, discordUserId, paidAt);
+        }
         conn.commit();
         if (inserted) {
           LOG.info(
@@ -94,6 +105,24 @@ public class JdbcMembershipSpendCoordinator {
           sourceReference,
           e);
       throw new RepositoryException("Failed to insert membership spend entry", e);
+    }
+  }
+
+  private static void ensureSettlementAnchor(Connection conn, long discordUserId, Instant paidAt)
+      throws SQLException {
+    int settlementDay =
+        MembershipJoinService.clampDayOfMonth(paidAt, MembershipJoinService.SETTLEMENT_ZONE);
+    Instant nextSettlement =
+        MembershipJoinService.computeNextSettlementAt(
+            settlementDay, paidAt, MembershipJoinService.SETTLEMENT_ZONE);
+    Instant now = Instant.now();
+
+    try (PreparedStatement stmt = conn.prepareStatement(ENSURE_ANCHOR_SQL)) {
+      stmt.setShort(1, (short) settlementDay);
+      stmt.setTimestamp(2, Timestamp.from(nextSettlement));
+      stmt.setTimestamp(3, Timestamp.from(now));
+      stmt.setLong(4, discordUserId);
+      stmt.executeUpdate();
     }
   }
 

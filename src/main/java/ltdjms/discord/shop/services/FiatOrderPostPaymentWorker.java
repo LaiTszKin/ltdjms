@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import ltdjms.discord.dispatch.domain.EscortDispatchOrder;
 import ltdjms.discord.dispatch.services.EscortDispatchHandoffService;
+import ltdjms.discord.membership.services.MembershipSpendRetryService;
 import ltdjms.discord.membership.services.MembershipSpendService;
 import ltdjms.discord.product.services.ProductRewardService;
 import ltdjms.discord.shared.DomainError;
@@ -30,6 +31,7 @@ public class FiatOrderPostPaymentWorker {
   private final FiatOrderBuyerNotificationService buyerNotificationService;
   private final EscortOrderBuyerNotificationService escortOrderBuyerNotificationService;
   private final MembershipSpendService membershipSpendService;
+  private final MembershipSpendRetryService membershipSpendRetryService;
   private final Clock clock;
 
   public FiatOrderPostPaymentWorker(
@@ -39,7 +41,8 @@ public class FiatOrderPostPaymentWorker {
       ShopAdminNotificationService adminNotificationService,
       FiatOrderBuyerNotificationService buyerNotificationService,
       EscortOrderBuyerNotificationService escortOrderBuyerNotificationService,
-      MembershipSpendService membershipSpendService) {
+      MembershipSpendService membershipSpendService,
+      MembershipSpendRetryService membershipSpendRetryService) {
     this(
         fiatOrderRepository,
         productRewardService,
@@ -48,6 +51,7 @@ public class FiatOrderPostPaymentWorker {
         buyerNotificationService,
         escortOrderBuyerNotificationService,
         membershipSpendService,
+        membershipSpendRetryService,
         Clock.systemUTC());
   }
 
@@ -59,6 +63,7 @@ public class FiatOrderPostPaymentWorker {
       FiatOrderBuyerNotificationService buyerNotificationService,
       EscortOrderBuyerNotificationService escortOrderBuyerNotificationService,
       MembershipSpendService membershipSpendService,
+      MembershipSpendRetryService membershipSpendRetryService,
       Clock clock) {
     this.fiatOrderRepository = Objects.requireNonNull(fiatOrderRepository);
     this.productRewardService = Objects.requireNonNull(productRewardService);
@@ -68,6 +73,7 @@ public class FiatOrderPostPaymentWorker {
     this.escortOrderBuyerNotificationService =
         Objects.requireNonNull(escortOrderBuyerNotificationService);
     this.membershipSpendService = Objects.requireNonNull(membershipSpendService);
+    this.membershipSpendRetryService = Objects.requireNonNull(membershipSpendRetryService);
     this.clock = Objects.requireNonNull(clock);
   }
 
@@ -92,8 +98,10 @@ public class FiatOrderPostPaymentWorker {
 
       var fulfillmentProduct = order.toFulfillmentProduct();
       if (!membershipSpendService.recordFiatEscortPayment(order, fulfillmentProduct)) {
-        throw new IllegalStateException(
-            "Membership spend recording failed: orderNumber=" + order.orderNumber());
+        LOG.error(
+            "Membership spend recording failed, enqueueing retry: orderNumber={}",
+            order.orderNumber());
+        membershipSpendRetryService.enqueue(order.orderNumber());
       }
 
       if (order.shouldAutoCreateEscortOrder() && !order.isAdminNotified()) {

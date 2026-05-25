@@ -20,6 +20,7 @@ import ltdjms.discord.membership.domain.MembershipTier;
 import ltdjms.discord.membership.persistence.JdbcMembershipRepository;
 import ltdjms.discord.membership.persistence.JdbcMembershipSpendRepository;
 import ltdjms.discord.membership.persistence.JdbcMembershipTokenGrantRepository;
+import ltdjms.discord.membership.persistence.JdbcMembershipSettlementCoordinator;
 import ltdjms.discord.membership.persistence.MembershipRepository;
 import ltdjms.discord.membership.persistence.MembershipSpendRepository;
 import ltdjms.discord.membership.services.MembershipJoinService;
@@ -73,7 +74,10 @@ class MembershipSettlementIntegrationTest extends PostgresIntegrationTestBase {
     Clock clock = Clock.fixed(SETTLE_NOW, MembershipJoinService.SETTLEMENT_ZONE);
     settlementService =
         new MembershipSettlementService(
-            membershipRepository, spendRepository, tokenGrantService, eventPublisher, clock);
+            new JdbcMembershipSettlementCoordinator(dataSource),
+            tokenGrantService,
+            eventPublisher,
+            clock);
   }
 
   @Test

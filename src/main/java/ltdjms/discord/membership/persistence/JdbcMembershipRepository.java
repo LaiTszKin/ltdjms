@@ -164,26 +164,6 @@ public class JdbcMembershipRepository implements MembershipRepository {
   }
 
   @Override
-  public boolean qualifyBronzeIfThreshold(long discordUserId) {
-    String sql =
-        "UPDATE global_member_membership SET"
-            + " has_qualifying_bronze_order = TRUE,"
-            + " current_tier = CASE WHEN current_tier = 'NONE' THEN 'BRONZE' ELSE current_tier END,"
-            + " updated_at = ?"
-            + " WHERE discord_user_id = ? AND has_qualifying_bronze_order = FALSE";
-
-    try (Connection conn = dataSource.getConnection();
-        PreparedStatement stmt = conn.prepareStatement(sql)) {
-      stmt.setTimestamp(1, Timestamp.from(Instant.now()));
-      stmt.setLong(2, discordUserId);
-      return stmt.executeUpdate() == 1;
-    } catch (SQLException e) {
-      LOG.error("Failed to qualify bronze for discordUserId={}", discordUserId, e);
-      throw new RepositoryException("Failed to qualify bronze", e);
-    }
-  }
-
-  @Override
   public boolean saveSettlementResult(
       long discordUserId,
       MembershipTier newTier,

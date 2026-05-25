@@ -25,11 +25,11 @@
 
 ### Requirement 1: 結算觸發
 **GIVEN** `next_settlement_at <= now`
-**WHEN** daily scheduler tick
+**WHEN** scheduler tick（每小時，結算精度 ≤1 小時）
 **THEN** 對該用戶執行 settle
 
 **Requirements**:
-- [x] R1.1 結算後 `last_settlement_at = now`，`next_settlement_at` 推進一個月
+- [x] R1.1 結算後 `last_settlement_at = periodEnd`（結算週期結束錨點），`next_settlement_at` 推進一個月
 - [x] R1.2 無 spend 的週期 avgM=0；有 bronze flag 仍至少 BRONZE
 
 ### Requirement 2: 等級重算

@@ -111,8 +111,9 @@ class UserPanelUpdateListenerTest {
       when(userPanelService.getUserPanelView(TEST_GUILD_ID, TEST_USER_ID))
           .thenReturn(Result.ok(view));
 
-      // When 觸發 GameTokenChangedEvent
+      // When 觸發 GameTokenChangedEvent（非同步更新）
       listener.accept(new GameTokenChangedEvent(TEST_GUILD_ID, TEST_USER_ID, newTokens));
+      awaitAsyncPanelUpdate();
 
       // Then 應呼叫 service 取得最新面板資料
       verify(userPanelService).getUserPanelView(TEST_GUILD_ID, TEST_USER_ID);
@@ -155,5 +156,14 @@ class UserPanelUpdateListenerTest {
   @SuppressWarnings("unchecked")
   private static WebhookMessageEditAction<Message> mockEditAction() {
     return mock(WebhookMessageEditAction.class);
+  }
+
+  private static void awaitAsyncPanelUpdate() {
+    try {
+      Thread.sleep(200);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException(e);
+    }
   }
 }

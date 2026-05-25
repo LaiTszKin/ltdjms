@@ -31,6 +31,12 @@ public interface MembershipTokenGrantRepository {
   /** Marks a grant as retryable after tokens were credited but audit logging failed. */
   void markGrantFailed(long discordUserId, Instant settlementPeriodEnd);
 
+  /** Marks that the game token transaction audit row was persisted. */
+  void markAuditRecorded(long discordUserId, Instant settlementPeriodEnd);
+
+  /** Marks a grant as terminal when no spend guild exists for the settled period. */
+  void markSkippedNoGuild(long discordUserId, Instant settlementPeriodEnd);
+
   /** Returns settled periods that still need token grants, up to {@code limit} rows. */
   List<PendingMembershipGrant> findPendingGrants(int limit);
 }

@@ -221,6 +221,18 @@ CREATE TABLE IF NOT EXISTS membership_spend_entry (
 
 CREATE INDEX IF NOT EXISTS idx_mse_user_paid ON membership_spend_entry (discord_user_id, paid_at);
 
+CREATE TABLE IF NOT EXISTS membership_spend_retry (
+    order_number    VARCHAR(128) PRIMARY KEY,
+    status          VARCHAR(16) NOT NULL DEFAULT 'PENDING',
+    attempt_count   INT NOT NULL DEFAULT 0,
+    last_attempt_at TIMESTAMPTZ,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_msr_pending ON membership_spend_retry (status, created_at)
+    WHERE status = 'PENDING';
+
 -- Idempotent log for monthly membership token grants at settlement
 CREATE TABLE IF NOT EXISTS membership_token_grant_log (
     id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -230,6 +242,7 @@ CREATE TABLE IF NOT EXISTS membership_token_grant_log (
     tokens_granted        INT NOT NULL,
     status                VARCHAR(16) NOT NULL DEFAULT 'CLAIMED',
     tokens_adjusted       BOOLEAN NOT NULL DEFAULT FALSE,
+    audit_recorded        BOOLEAN NOT NULL DEFAULT FALSE,
     created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (discord_user_id, settlement_period_end)
 );

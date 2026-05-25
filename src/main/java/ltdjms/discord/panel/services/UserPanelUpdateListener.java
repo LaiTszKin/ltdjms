@@ -43,7 +43,7 @@ public class UserPanelUpdateListener implements Consumer<DomainEvent> {
     if (event instanceof BalanceChangedEvent e) {
       updateUserPanel(e.guildId(), e.userId());
     } else if (event instanceof GameTokenChangedEvent e) {
-      updateUserPanel(e.guildId(), e.userId());
+      panelUpdateExecutor.execute(() -> updateUserPanel(e.guildId(), e.userId()));
     } else if (event instanceof CurrencyConfigChangedEvent e) {
       updateAllGuildPanels(e.guildId());
     } else if (event instanceof MembershipTierChangedEvent e) {

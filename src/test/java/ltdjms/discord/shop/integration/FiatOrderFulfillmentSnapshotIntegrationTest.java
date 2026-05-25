@@ -107,7 +107,8 @@ class FiatOrderFulfillmentSnapshotIntegrationTest {
             adminNotificationService,
             buyerNotificationService,
             escortOrderBuyerNotificationService,
-            MembershipSpendServiceFixtures.noop());
+            MembershipSpendServiceFixtures.noop(),
+            MembershipSpendServiceFixtures.noopRetry());
   }
 
   @AfterEach

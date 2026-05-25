@@ -411,7 +411,8 @@ public class CommandHandlerModule {
       ShopAdminNotificationService shopAdminNotificationService,
       FiatOrderBuyerNotificationService fiatOrderBuyerNotificationService,
       EscortOrderBuyerNotificationService escortOrderBuyerNotificationService,
-      MembershipSpendService membershipSpendService) {
+      MembershipSpendService membershipSpendService,
+      ltdjms.discord.membership.services.MembershipSpendRetryService membershipSpendRetryService) {
     return new FiatOrderPostPaymentWorker(
         fiatOrderRepository,
         productRewardService,
@@ -419,7 +420,8 @@ public class CommandHandlerModule {
         shopAdminNotificationService,
         fiatOrderBuyerNotificationService,
         escortOrderBuyerNotificationService,
-        membershipSpendService);
+        membershipSpendService,
+        membershipSpendRetryService);
   }
 
   @Provides

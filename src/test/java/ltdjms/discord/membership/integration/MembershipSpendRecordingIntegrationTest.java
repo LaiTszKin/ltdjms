@@ -23,6 +23,8 @@ import ltdjms.discord.dispatch.persistence.JdbcEscortDispatchOrderRepository;
 import ltdjms.discord.dispatch.services.EscortDispatchHandoffService;
 import ltdjms.discord.membership.persistence.JdbcMembershipRepository;
 import ltdjms.discord.membership.persistence.JdbcMembershipSpendRepository;
+import ltdjms.discord.membership.persistence.JdbcMembershipSpendRetryRepository;
+import ltdjms.discord.membership.services.MembershipSpendRetryService;
 import ltdjms.discord.membership.services.MembershipSpendService;
 import ltdjms.discord.product.domain.EscortOptionCatalog;
 import ltdjms.discord.product.domain.Product;
@@ -86,8 +88,12 @@ class MembershipSpendRecordingIntegrationTest {
             spendRepository,
             membershipRepository,
             catalogRepository,
-            new DomainEventPublisher(),
-            java.time.Clock.fixed(PAID_AT, java.time.ZoneOffset.UTC));
+            new DomainEventPublisher());
+    MembershipSpendRetryService spendRetryService =
+        new MembershipSpendRetryService(
+            new JdbcMembershipSpendRetryRepository(dataSource),
+            fiatOrderRepository,
+            membershipSpendService);
 
     worker =
         new FiatOrderPostPaymentWorker(
@@ -97,7 +103,8 @@ class MembershipSpendRecordingIntegrationTest {
             mock(ShopAdminNotificationService.class),
             mock(FiatOrderBuyerNotificationService.class),
             mock(EscortOrderBuyerNotificationService.class),
-            membershipSpendService);
+            membershipSpendService,
+            spendRetryService);
   }
 
   @AfterEach

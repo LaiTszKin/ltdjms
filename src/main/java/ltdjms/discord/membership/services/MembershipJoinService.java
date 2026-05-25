@@ -58,7 +58,7 @@ public class MembershipJoinService {
     }
   }
 
-  static int clampDayOfMonth(Instant joinedAt, ZoneId zone) {
+  public static int clampDayOfMonth(Instant joinedAt, ZoneId zone) {
     int day = joinedAt.atZone(zone).getDayOfMonth();
     return clampDayOfMonth(day);
   }
@@ -95,20 +95,10 @@ public class MembershipJoinService {
   }
 
   /** Advances the settlement anchor by one calendar month. */
-  static Instant advanceNextSettlementAt(int settlementDay, Instant currentNext, ZoneId zone) {
+  public static Instant advanceNextSettlementAt(int settlementDay, Instant currentNext, ZoneId zone) {
     ZonedDateTime anchor = currentNext.atZone(zone);
     java.time.YearMonth nextMonth = java.time.YearMonth.from(anchor.toLocalDate()).plusMonths(1);
     return resolveAnchorDate(nextMonth.getYear(), nextMonth.getMonthValue(), settlementDay, zone)
-        .toInstant();
-  }
-
-  /** Returns the settlement anchor one calendar month before {@code periodEndExclusive}. */
-  static Instant computePreviousSettlementAt(int settlementDay, Instant periodEndExclusive, ZoneId zone) {
-    ZonedDateTime anchor = periodEndExclusive.atZone(zone);
-    java.time.YearMonth previousMonth =
-        java.time.YearMonth.from(anchor.toLocalDate()).minusMonths(1);
-    return resolveAnchorDate(
-            previousMonth.getYear(), previousMonth.getMonthValue(), settlementDay, zone)
         .toInstant();
   }
 

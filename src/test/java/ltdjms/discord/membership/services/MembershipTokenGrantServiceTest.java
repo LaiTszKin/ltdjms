@@ -76,8 +76,8 @@ class MembershipTokenGrantServiceTest {
     when(grantRepository.findClaimState(TEST_USER_ID, PERIOD_END))
         .thenReturn(
             Optional.empty(),
-            Optional.of(new GrantClaimState("CLAIMED", false)),
-            Optional.of(new GrantClaimState("COMPLETED", true)));
+            Optional.of(new GrantClaimState("CLAIMED", false, false)),
+            Optional.of(new GrantClaimState("COMPLETED", true, true)));
     when(grantRepository.tryClaimGrantLog(TEST_USER_ID, PERIOD_END, MembershipTier.GOLD, 200))
         .thenReturn(true);
     when(spendRepository.findPrimaryGuildInPeriod(TEST_USER_ID, PERIOD_START, PERIOD_END))
@@ -106,6 +106,7 @@ class MembershipTokenGrantServiceTest {
             eq(200L),
             eq(GameTokenTransaction.Source.MEMBERSHIP_GRANT),
             eq("會員結算贈幣 (GOLD)"));
+    verify(grantRepository).markAuditRecorded(TEST_USER_ID, PERIOD_END);
     verify(grantRepository).completeGrantClaim(TEST_USER_ID, PERIOD_END);
   }
 
@@ -116,7 +117,7 @@ class MembershipTokenGrantServiceTest {
     when(grantRepository.tryClaimGrantLog(TEST_USER_ID, PERIOD_END, MembershipTier.GOLD, 200))
         .thenReturn(true);
     when(grantRepository.findClaimState(TEST_USER_ID, PERIOD_END))
-        .thenReturn(Optional.empty(), Optional.of(new GrantClaimState("CLAIMED", false)));
+        .thenReturn(Optional.empty(), Optional.of(new GrantClaimState("CLAIMED", false, false)));
     when(spendRepository.findPrimaryGuildInPeriod(TEST_USER_ID, PERIOD_START, PERIOD_END))
         .thenReturn(Optional.of(TEST_GUILD_ID));
     when(gameTokenService.tryAdjustTokens(TEST_GUILD_ID, TEST_USER_ID, 200))
@@ -130,5 +131,41 @@ class MembershipTokenGrantServiceTest {
     verify(gameTokenTransactionService, never())
         .recordTransaction(anyLong(), anyLong(), anyLong(), anyLong(), any(), any());
     verify(grantRepository).releaseGrantClaim(TEST_USER_ID, PERIOD_END);
+  }
+
+  @Test
+  @DisplayName("should complete grant without duplicate audit when tokens already adjusted")
+  void shouldSkipDuplicateAuditOnRetry() {
+    when(grantRepository.findClaimState(TEST_USER_ID, PERIOD_END))
+        .thenReturn(Optional.of(new GrantClaimState("FAILED", true, true)));
+
+    assertThat(
+            service.grantForSettlement(
+                TEST_USER_ID, PERIOD_START, PERIOD_END, MembershipTier.GOLD))
+        .isTrue();
+
+    verify(gameTokenService, never()).tryAdjustTokens(anyLong(), anyLong(), anyLong());
+    verify(gameTokenTransactionService, never())
+        .recordTransaction(anyLong(), anyLong(), anyLong(), anyLong(), any(), any());
+    verify(grantRepository).completeGrantClaim(TEST_USER_ID, PERIOD_END);
+  }
+
+  @Test
+  @DisplayName("should mark skipped when no spend guild exists")
+  void shouldMarkSkippedWhenNoGuild() {
+    when(grantRepository.findClaimState(TEST_USER_ID, PERIOD_END))
+        .thenReturn(Optional.empty(), Optional.of(new GrantClaimState("CLAIMED", false, false)));
+    when(grantRepository.tryClaimGrantLog(TEST_USER_ID, PERIOD_END, MembershipTier.GOLD, 200))
+        .thenReturn(true);
+    when(spendRepository.findPrimaryGuildInPeriod(TEST_USER_ID, PERIOD_START, PERIOD_END))
+        .thenReturn(Optional.empty());
+
+    assertThat(
+            service.grantForSettlement(
+                TEST_USER_ID, PERIOD_START, PERIOD_END, MembershipTier.GOLD))
+        .isTrue();
+
+    verify(grantRepository).markSkippedNoGuild(TEST_USER_ID, PERIOD_END);
+    verify(gameTokenService, never()).tryAdjustTokens(anyLong(), anyLong(), anyLong());
   }
 }

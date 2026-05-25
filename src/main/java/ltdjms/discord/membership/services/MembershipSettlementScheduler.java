@@ -3,14 +3,12 @@ package ltdjms.discord.membership.services;
 import java.time.Clock;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ltdjms.discord.membership.persistence.MembershipRepository;
+import ltdjms.discord.membership.persistence.MembershipSettlementTickGuard;
 
 /** Periodically settles global membership tiers for users whose settlement date is due. */
 public class MembershipSettlementScheduler {
@@ -23,17 +21,23 @@ public class MembershipSettlementScheduler {
   private final MembershipRepository membershipRepository;
   private final MembershipSettlementService settlementService;
   private final MembershipTokenGrantService tokenGrantService;
+  private final MembershipSpendRetryService spendRetryService;
+  private final MembershipSettlementTickGuard tickGuard;
   private final Clock clock;
-  private ScheduledExecutorService executorService;
+  private java.util.concurrent.ScheduledExecutorService executorService;
 
   public MembershipSettlementScheduler(
       MembershipRepository membershipRepository,
       MembershipSettlementService settlementService,
       MembershipTokenGrantService tokenGrantService,
+      MembershipSpendRetryService spendRetryService,
+      MembershipSettlementTickGuard tickGuard,
       Clock clock) {
     this.membershipRepository = Objects.requireNonNull(membershipRepository);
     this.settlementService = Objects.requireNonNull(settlementService);
     this.tokenGrantService = Objects.requireNonNull(tokenGrantService);
+    this.spendRetryService = Objects.requireNonNull(spendRetryService);
+    this.tickGuard = Objects.requireNonNull(tickGuard);
     this.clock = Objects.requireNonNull(clock);
   }
 
@@ -41,9 +45,9 @@ public class MembershipSettlementScheduler {
     if (executorService != null) {
       return;
     }
-    executorService = Executors.newSingleThreadScheduledExecutor();
+    executorService = java.util.concurrent.Executors.newSingleThreadScheduledExecutor();
     executorService.scheduleWithFixedDelay(
-        this::runSettlement, 30L, SETTLEMENT_INTERVAL_SECONDS, TimeUnit.SECONDS);
+        this::runSettlement, 30L, SETTLEMENT_INTERVAL_SECONDS, java.util.concurrent.TimeUnit.SECONDS);
     LOG.info("Started membership settlement scheduler");
   }
 
@@ -57,8 +61,13 @@ public class MembershipSettlementScheduler {
   }
 
   void runSettlement() {
+    tickGuard.runGuarded(this::runSettlementTick);
+  }
+
+  private void runSettlementTick() {
     try {
       tokenGrantService.retryPendingGrants();
+      spendRetryService.retryPendingSpends();
       int batchesProcessed = 0;
       List<Long> batch;
       do {
@@ -80,6 +89,8 @@ public class MembershipSettlementScheduler {
             MAX_BATCHES_PER_TICK,
             SETTLEMENT_BATCH_LIMIT);
       }
+
+      tokenGrantService.retryPendingGrants();
     } catch (Exception e) {
       LOG.warn("Membership settlement scheduler tick failed", e);
     }

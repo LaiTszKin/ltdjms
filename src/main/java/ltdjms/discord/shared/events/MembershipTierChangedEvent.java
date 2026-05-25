@@ -9,6 +9,11 @@ public record MembershipTierChangedEvent(
     long userId,
     MembershipTier previous,
     MembershipTier current,
+    /**
+     * Period average list price M for settlement-driven changes. For immediate bronze promotion on
+     * a single qualifying order, this is the qualifying order's catalog list price M, not a period
+     * average.
+     */
     long periodAvgListPriceM,
     Instant settledAt)
     implements DomainEvent {

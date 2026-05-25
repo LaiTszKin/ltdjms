@@ -1,7 +1,5 @@
 package ltdjms.discord.membership.services;
 
-import java.time.Clock;
-import java.time.Instant;
 import java.util.Objects;
 
 import org.slf4j.Logger;
@@ -29,19 +27,16 @@ public class MembershipSpendService {
   private final MembershipRepository membershipRepository;
   private final EscortOptionCatalogRepository catalogRepository;
   private final DomainEventPublisher eventPublisher;
-  private final Clock clock;
 
   public MembershipSpendService(
       MembershipSpendRepository spendRepository,
       MembershipRepository membershipRepository,
       EscortOptionCatalogRepository catalogRepository,
-      DomainEventPublisher eventPublisher,
-      Clock clock) {
+      DomainEventPublisher eventPublisher) {
     this.spendRepository = Objects.requireNonNull(spendRepository);
     this.membershipRepository = Objects.requireNonNull(membershipRepository);
     this.catalogRepository = Objects.requireNonNull(catalogRepository);
     this.eventPublisher = Objects.requireNonNull(eventPublisher);
-    this.clock = Objects.requireNonNull(clock);
   }
 
   /**
@@ -65,7 +60,7 @@ public class MembershipSpendService {
     }
 
     try {
-      long listPriceM = resolveListPriceM(product, order.guildId());
+      long listPriceM = resolveListPriceM(product, order.guildId(), order.listPriceTwd());
       if (listPriceM <= 0) {
         LOG.warn(
             "Skipping membership spend with non-positive list price: orderNumber={}, listPriceM={}",
@@ -87,17 +82,14 @@ public class MembershipSpendService {
               order.paidAt(),
               MembershipTier.BRONZE.thresholdListPriceTwd());
 
-      if (result.inserted()) {
-        ensureSettlementAnchor(order.buyerUserId(), order.paidAt());
-        if (result.bronzePromoted()) {
-          eventPublisher.publish(
-              new MembershipTierChangedEvent(
-                  order.buyerUserId(),
-                  MembershipTier.NONE,
-                  MembershipTier.BRONZE,
-                  listPriceM,
-                  order.paidAt()));
-        }
+      if (result.inserted() && result.bronzePromoted()) {
+        eventPublisher.publish(
+            new MembershipTierChangedEvent(
+                order.buyerUserId(),
+                MembershipTier.NONE,
+                MembershipTier.BRONZE,
+                listPriceM,
+                order.paidAt()));
       }
 
       return true;
@@ -107,16 +99,11 @@ public class MembershipSpendService {
     }
   }
 
-  /** Returns total catalog list price M for a user within {@code [from, to)}. */
-  public long sumListPriceInPeriod(long discordUserId, Instant from, Instant to) {
-    return spendRepository.sumListPriceInPeriod(discordUserId, from, to);
-  }
-
   /**
    * Resolves catalog list price M for membership spend. Uses global catalog default price, not
    * guild overrides or discounted charged amounts.
    */
-  public long resolveListPriceM(Product product, long guildId) {
+  public long resolveListPriceM(Product product, long guildId, Long orderListPriceTwd) {
     Objects.requireNonNull(product, "product must not be null");
     if (product.escortOptionCode() != null && !product.escortOptionCode().isBlank()) {
       return catalogRepository
@@ -128,20 +115,23 @@ public class MembershipSpendService {
                     "Escort catalog code not found for membership spend: code={}, guildId={}",
                     product.escortOptionCode(),
                     guildId);
-                return fallbackListPrice(product);
+                return fallbackListPrice(orderListPriceTwd, product);
               });
     }
-    return fallbackListPrice(product);
+    return fallbackListPrice(orderListPriceTwd, product);
   }
 
-  private void ensureSettlementAnchor(long discordUserId, Instant paidAt) {
-    int settlementDay =
-        MembershipJoinService.clampDayOfMonth(paidAt, MembershipJoinService.SETTLEMENT_ZONE);
-    membershipRepository.ensureSettlementAnchor(discordUserId, paidAt, settlementDay);
-  }
-
-  private static long fallbackListPrice(Product product) {
+  private static long fallbackListPrice(Long orderListPriceTwd, Product product) {
+    if (orderListPriceTwd != null && orderListPriceTwd > 0) {
+      return orderListPriceTwd;
+    }
     Long fiatPrice = product.fiatPriceTwd();
-    return fiatPrice == null ? 0L : fiatPrice;
+    if (fiatPrice == null || fiatPrice <= 0) {
+      LOG.warn(
+          "Membership spend fallback using non-positive product.fiatPriceTwd: code={}",
+          product.escortOptionCode());
+      return fiatPrice == null ? 0L : fiatPrice;
+    }
+    return fiatPrice;
   }
 }

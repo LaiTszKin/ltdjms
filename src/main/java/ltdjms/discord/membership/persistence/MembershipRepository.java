@@ -44,13 +44,6 @@ public interface MembershipRepository {
   boolean ensureSettlementAnchor(long discordUserId, Instant anchorFrom, int settlementDay);
 
   /**
-   * Marks bronze qualification when the user has not yet met the threshold.
-   *
-   * @return {@code true} when the row was updated
-   */
-  boolean qualifyBronzeIfThreshold(long discordUserId);
-
-  /**
    * Applies settlement updates only when {@code expectedNextSettlementAt} still matches the row.
    *
    * @return {@code true} when the row was updated, {@code false} when skipped (already settled)
