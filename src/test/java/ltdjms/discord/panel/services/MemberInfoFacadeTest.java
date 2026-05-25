@@ -22,6 +22,7 @@ import ltdjms.discord.currency.services.CurrencyTransactionService;
 import ltdjms.discord.gametoken.services.GameTokenService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService;
 import ltdjms.discord.membership.domain.MembershipTier;
+import ltdjms.discord.membership.services.MembershipGuildJoinBackfillService;
 import ltdjms.discord.membership.services.MembershipPanelSummary;
 import ltdjms.discord.membership.services.MembershipQueryService;
 import ltdjms.discord.product.domain.Product;
@@ -45,6 +46,7 @@ class MemberInfoFacadeTest {
   @Mock private RedemptionService redemptionService;
   @Mock private ProductRedemptionTransactionService productRedemptionTransactionService;
   @Mock private MembershipQueryService membershipQueryService;
+  @Mock private MembershipGuildJoinBackfillService membershipGuildJoinBackfillService;
 
   private MemberInfoFacade facade;
 
@@ -58,7 +60,8 @@ class MemberInfoFacadeTest {
             currencyTransactionService,
             redemptionService,
             productRedemptionTransactionService,
-            membershipQueryService);
+            membershipQueryService,
+            membershipGuildJoinBackfillService);
   }
 
   @Nested
@@ -98,6 +101,8 @@ class MemberInfoFacadeTest {
       assertThat(view.membershipSummary().tier()).isEqualTo(MembershipTier.NONE);
       verify(balanceService).tryGetBalance(TEST_GUILD_ID, TEST_USER_ID);
       verify(gameTokenService).getBalance(TEST_GUILD_ID, TEST_USER_ID);
+      verify(membershipGuildJoinBackfillService)
+          .ensureRecordedFromGuild(TEST_GUILD_ID, TEST_USER_ID);
     }
 
     @Test

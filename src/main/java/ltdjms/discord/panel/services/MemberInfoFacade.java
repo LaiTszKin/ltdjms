@@ -8,6 +8,7 @@ import ltdjms.discord.currency.services.BalanceService;
 import ltdjms.discord.currency.services.CurrencyTransactionService;
 import ltdjms.discord.gametoken.services.GameTokenService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService;
+import ltdjms.discord.membership.services.MembershipGuildJoinBackfillService;
 import ltdjms.discord.membership.services.MembershipPanelSummary;
 import ltdjms.discord.membership.services.MembershipQueryService;
 import ltdjms.discord.redemption.services.ProductRedemptionTransactionService;
@@ -30,6 +31,7 @@ public class MemberInfoFacade {
   private final RedemptionService redemptionService;
   private final ProductRedemptionTransactionService productRedemptionTransactionService;
   private final MembershipQueryService membershipQueryService;
+  private final MembershipGuildJoinBackfillService membershipGuildJoinBackfillService;
 
   public MemberInfoFacade(
       BalanceService balanceService,
@@ -38,7 +40,8 @@ public class MemberInfoFacade {
       CurrencyTransactionService currencyTransactionService,
       RedemptionService redemptionService,
       ProductRedemptionTransactionService productRedemptionTransactionService,
-      MembershipQueryService membershipQueryService) {
+      MembershipQueryService membershipQueryService,
+      MembershipGuildJoinBackfillService membershipGuildJoinBackfillService) {
     this.balanceService = balanceService;
     this.gameTokenService = gameTokenService;
     this.gameTokenTransactionService = gameTokenTransactionService;
@@ -46,6 +49,7 @@ public class MemberInfoFacade {
     this.redemptionService = redemptionService;
     this.productRedemptionTransactionService = productRedemptionTransactionService;
     this.membershipQueryService = membershipQueryService;
+    this.membershipGuildJoinBackfillService = membershipGuildJoinBackfillService;
   }
 
   /**
@@ -68,6 +72,7 @@ public class MemberInfoFacade {
       return Result.err(balanceResult.getError());
     }
 
+    membershipGuildJoinBackfillService.ensureRecordedFromGuild(guildId, userId);
     MembershipPanelSummary membershipSummary = getMembershipSummary(userId);
     return buildUserPanelView(guildId, userId, balanceResult.getValue(), membershipSummary);
   }

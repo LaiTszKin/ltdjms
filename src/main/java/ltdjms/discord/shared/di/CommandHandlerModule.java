@@ -29,6 +29,7 @@ import ltdjms.discord.gametoken.services.DiceGame2Service;
 import ltdjms.discord.gametoken.services.GameTokenService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService;
 import ltdjms.discord.membership.services.MembershipAdminService;
+import ltdjms.discord.membership.services.MembershipGuildJoinBackfillService;
 import ltdjms.discord.membership.services.MembershipQueryService;
 import ltdjms.discord.membership.services.MembershipSpendService;
 import ltdjms.discord.panel.commands.AdminPanelButtonHandler;
@@ -179,7 +180,8 @@ public class CommandHandlerModule {
       CurrencyTransactionService currencyTransactionService,
       RedemptionService redemptionService,
       ProductRedemptionTransactionService productRedemptionTransactionService,
-      MembershipQueryService membershipQueryService) {
+      MembershipQueryService membershipQueryService,
+      MembershipGuildJoinBackfillService membershipGuildJoinBackfillService) {
     return new MemberInfoFacade(
         balanceService,
         gameTokenService,
@@ -187,7 +189,8 @@ public class CommandHandlerModule {
         currencyTransactionService,
         redemptionService,
         productRedemptionTransactionService,
-        membershipQueryService);
+        membershipQueryService,
+        membershipGuildJoinBackfillService);
   }
 
   // ========== Panel Services ==========

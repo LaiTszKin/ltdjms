@@ -23,6 +23,8 @@ import ltdjms.discord.membership.persistence.MembershipSettlementTickGuard;
 import ltdjms.discord.membership.persistence.MembershipSpendRepository;
 import ltdjms.discord.membership.persistence.MembershipSpendRetryRepository;
 import ltdjms.discord.membership.persistence.MembershipTokenGrantRepository;
+import ltdjms.discord.discord.domain.DiscordRuntimeGateway;
+import ltdjms.discord.membership.services.MembershipGuildJoinBackfillService;
 import ltdjms.discord.membership.services.MembershipJoinService;
 import ltdjms.discord.membership.services.MembershipPricingService;
 import ltdjms.discord.membership.services.MembershipAdminService;
@@ -99,6 +101,16 @@ public class MembershipModule {
   public MembershipJoinService provideMembershipJoinService(
       MembershipRepository membershipRepository, @SettlementClock Clock clock) {
     return new MembershipJoinService(membershipRepository, clock);
+  }
+
+  @Provides
+  @Singleton
+  public MembershipGuildJoinBackfillService provideMembershipGuildJoinBackfillService(
+      MembershipRepository membershipRepository,
+      MembershipJoinService membershipJoinService,
+      DiscordRuntimeGateway discordRuntimeGateway) {
+    return new MembershipGuildJoinBackfillService(
+        membershipRepository, membershipJoinService, discordRuntimeGateway);
   }
 
   @Provides

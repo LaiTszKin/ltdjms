@@ -10,6 +10,7 @@ import ltdjms.discord.aichat.commands.AIChatMentionListener;
 import ltdjms.discord.discord.domain.DiscordRuntimeGateway;
 import ltdjms.discord.dispatch.commands.DispatchPanelInteractionHandler;
 import ltdjms.discord.membership.listeners.GuildMemberJoinListener;
+import ltdjms.discord.membership.services.MembershipGuildJoinBackfillService;
 import ltdjms.discord.membership.services.MembershipSettlementScheduler;
 import ltdjms.discord.panel.commands.AdminPanelButtonHandler;
 import ltdjms.discord.panel.commands.AdminProductPanelHandler;
@@ -111,6 +112,10 @@ public class DiscordCurrencyBot {
     // 先發布到正式注入式 gateway，再保留短期 bridge 供尚未遷移的模組使用。
     publishRuntime(appComponent.discordRuntimeGateway(), jda);
     JDAProvider.setJda(jda);
+
+    MembershipGuildJoinBackfillService membershipGuildJoinBackfillService =
+        appComponent.membershipGuildJoinBackfillService();
+    membershipGuildJoinBackfillService.backfillLoadedGuildMembers(jda);
 
     // 啟動綠界付款回推監聽伺服器
     ecpayCallbackHttpServer.start();
