@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.36.3] - 2026-05-25
+
+### Fixed
+- **membership/user-panel**: 修正長期成員的「下次結算日」停留在加入後第一個月；改為依加入日 anchor 推算下一個未來結算日，並修復 stale anchor
+
 ## [0.36.2] - 2026-05-25
 
 ### Fixed
