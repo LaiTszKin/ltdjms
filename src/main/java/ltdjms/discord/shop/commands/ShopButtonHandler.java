@@ -1,10 +1,12 @@
 package ltdjms.discord.shop.commands;
 
 import java.util.List;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ltdjms.discord.membership.services.EscortPriceQuote;
 import ltdjms.discord.product.services.ProductService;
 import ltdjms.discord.shop.services.ShopService;
 import ltdjms.discord.shop.services.ShopView;
@@ -101,18 +103,23 @@ public class ShopButtonHandler extends ListenerAdapter {
         return;
       }
 
+      long userId = event.getUser().getIdLong();
+      Map<Long, EscortPriceQuote> quotes =
+          shopService.quoteEscortPrices(userId, searchResults.products(), guildId);
       MessageEmbed embed =
           ShopView.buildShopEmbed(
               searchResults.products(),
               searchResults.currentPage(),
               searchResults.totalPages(),
-              guildId);
+              guildId,
+              quotes);
       List<ActionRow> components =
           ShopView.buildSearchResultComponents(
               searchResults.currentPage(),
               searchResults.totalPages(),
               keyword,
-              searchResults.products());
+              searchResults.products(),
+              quotes);
 
       event.replyEmbeds(embed).setComponents(components).setEphemeral(true).queue();
     } catch (Exception e) {
@@ -146,9 +153,16 @@ public class ShopButtonHandler extends ListenerAdapter {
       embed = ShopView.buildEmptyShopEmbed();
       components = List.of();
     } else {
+      long userId = event.getUser().getIdLong();
+      Map<Long, EscortPriceQuote> quotes =
+          shopService.quoteEscortPrices(userId, shopPage.products(), guildId);
       embed =
           ShopView.buildShopEmbed(
-              shopPage.products(), shopPage.currentPage(), shopPage.totalPages(), guildId);
+              shopPage.products(),
+              shopPage.currentPage(),
+              shopPage.totalPages(),
+              guildId,
+              quotes);
       components =
           ShopView.buildShopComponents(shopPage.currentPage(), shopPage.totalPages(), true);
     }
@@ -164,7 +178,10 @@ public class ShopButtonHandler extends ListenerAdapter {
       return;
     }
 
-    List<ActionRow> buyRows = ShopView.buildBuyMenu(allProducts);
+    long userId = event.getUser().getIdLong();
+    Map<Long, EscortPriceQuote> quotes =
+        shopService.quoteEscortPrices(userId, allProducts, guildId);
+    List<ActionRow> buyRows = ShopView.buildBuyMenu(allProducts, quotes);
 
     event.reply("請選擇要購買的商品").setEphemeral(true).setComponents(buyRows).queue();
   }
@@ -192,18 +209,23 @@ public class ShopButtonHandler extends ListenerAdapter {
       embed = ShopView.buildEmptyShopEmbed();
       components = List.of();
     } else {
+      long userId = event.getUser().getIdLong();
+      Map<Long, EscortPriceQuote> quotes =
+          shopService.quoteEscortPrices(userId, searchResults.products(), guildId);
       embed =
           ShopView.buildShopEmbed(
               searchResults.products(),
               searchResults.currentPage(),
               searchResults.totalPages(),
-              guildId);
+              guildId,
+              quotes);
       components =
           ShopView.buildSearchResultComponents(
               searchResults.currentPage(),
               searchResults.totalPages(),
               keyword,
-              searchResults.products());
+              searchResults.products(),
+              quotes);
     }
 
     event.editMessageEmbeds(embed).setComponents(components).queue();

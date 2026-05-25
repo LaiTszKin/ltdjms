@@ -15,6 +15,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import ltdjms.discord.membership.domain.MembershipTier;
+import ltdjms.discord.membership.services.EscortPriceQuote;
+import ltdjms.discord.membership.services.MembershipPricingService;
 import ltdjms.discord.product.domain.Product;
 import ltdjms.discord.product.domain.ProductRepository;
 
@@ -26,6 +29,8 @@ class ShopServiceTest {
   private static final int PAGE_SIZE = 5;
 
   @Mock private ProductRepository productRepository;
+
+  @Mock private MembershipPricingService membershipPricingService;
 
   private ShopService shopService;
 
@@ -274,6 +279,74 @@ class ShopServiceTest {
 
       assertThat(result.currentPage()).isEqualTo(1);
       assertThat(result.totalPages()).isEqualTo(1);
+    }
+  }
+
+  @Nested
+  @DisplayName("quoteEscortPrices")
+  class QuoteEscortPricesTests {
+
+    @Test
+    @DisplayName("should quote only escort-linked products")
+    void shouldQuoteOnlyEscortLinkedProducts() {
+      shopService = new ShopService(productRepository, membershipPricingService, PAGE_SIZE);
+      Instant now = Instant.now();
+      Product escortProduct =
+          new Product(
+              1L,
+              TEST_GUILD_ID,
+              "Escort",
+              null,
+              null,
+              null,
+              100L,
+              3500L,
+              true,
+              "OPT",
+              now,
+              now);
+      Product regularProduct =
+          new Product(
+              2L,
+              TEST_GUILD_ID,
+              "Regular",
+              null,
+              null,
+              null,
+              50L,
+              null,
+              false,
+              null,
+              now,
+              now);
+      EscortPriceQuote quote =
+          new EscortPriceQuote(
+              3500L,
+              3150L,
+              100L,
+              90L,
+              MembershipTier.SILVER,
+              MembershipTier.SILVER.discountRate());
+
+      when(membershipPricingService.quoteEscortPrice(42L, escortProduct, TEST_GUILD_ID))
+          .thenReturn(quote);
+
+      var result = shopService.quoteEscortPrices(42L, List.of(escortProduct, regularProduct), TEST_GUILD_ID);
+
+      assertThat(result).containsOnlyKeys(1L);
+      assertThat(result.get(1L)).isEqualTo(quote);
+      verify(membershipPricingService).quoteEscortPrice(42L, escortProduct, TEST_GUILD_ID);
+      verify(membershipPricingService, never()).quoteEscortPrice(42L, regularProduct, TEST_GUILD_ID);
+    }
+
+    @Test
+    @DisplayName("should return empty map when pricing service unavailable")
+    void shouldReturnEmptyMapWhenPricingUnavailable() {
+      shopService = new ShopService(productRepository, PAGE_SIZE);
+
+      var result = shopService.quoteEscortPrices(42L, List.of(), TEST_GUILD_ID);
+
+      assertThat(result).isEmpty();
     }
   }
 

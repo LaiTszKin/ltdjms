@@ -1,11 +1,13 @@
 package ltdjms.discord.shop.commands;
 
 import java.util.List;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ltdjms.discord.currency.bot.SlashCommandListener;
+import ltdjms.discord.membership.services.EscortPriceQuote;
 import ltdjms.discord.product.services.ProductService;
 import ltdjms.discord.shop.services.ShopService;
 import ltdjms.discord.shop.services.ShopView;
@@ -34,8 +36,9 @@ public class ShopCommandHandler implements SlashCommandListener.CommandHandler {
     }
 
     long guildId = event.getGuild().getIdLong();
+    long userId = event.getUser().getIdLong();
     LOG.debug(
-        "Processing /shop command: userId={}, guildId={}", event.getUser().getIdLong(), guildId);
+        "Processing /shop command: userId={}, guildId={}", userId, guildId);
 
     try {
       ShopService.ShopPage shopPage = shopService.getShopPage(guildId, 0);
@@ -47,9 +50,15 @@ public class ShopCommandHandler implements SlashCommandListener.CommandHandler {
         embed = ShopView.buildEmptyShopEmbed();
         components = List.of();
       } else {
+        Map<Long, EscortPriceQuote> quotes =
+            shopService.quoteEscortPrices(userId, shopPage.products(), guildId);
         embed =
             ShopView.buildShopEmbed(
-                shopPage.products(), shopPage.currentPage(), shopPage.totalPages(), guildId);
+                shopPage.products(),
+                shopPage.currentPage(),
+                shopPage.totalPages(),
+                guildId,
+                quotes);
 
         components =
             ShopView.buildShopComponents(shopPage.currentPage(), shopPage.totalPages(), true);

@@ -1,12 +1,15 @@
 package ltdjms.discord.shop.services;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ltdjms.discord.membership.services.EscortPriceQuote;
 import ltdjms.discord.membership.services.MembershipPricingService;
+import ltdjms.discord.product.domain.EscortProductRules;
 import ltdjms.discord.product.domain.Product;
 import ltdjms.discord.product.domain.ProductRepository;
 import ltdjms.discord.shop.services.ShopService.ShopPage;
@@ -48,6 +51,35 @@ public class ShopService {
       throw new IllegalStateException("MembershipPricingService is not configured for ShopService");
     }
     return membershipPricingService.quoteEscortPrice(userId, product, guildId);
+  }
+
+  /**
+   * Batch-quotes escort-linked products for shop list and menu rendering.
+   *
+   * @return map keyed by product id; non-escort products omitted; empty when pricing unavailable
+   */
+  public Map<Long, EscortPriceQuote> quoteEscortPrices(
+      long userId, List<Product> products, long guildId) {
+    if (membershipPricingService == null || products == null || products.isEmpty()) {
+      return Map.of();
+    }
+
+    Map<Long, EscortPriceQuote> quotes = new HashMap<>();
+    for (Product product : products) {
+      if (!EscortProductRules.isEscortLinked(product)) {
+        continue;
+      }
+      try {
+        quotes.put(product.id(), quoteEscortPrice(userId, product, guildId));
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to quote escort price for productId={}, userId={}: {}",
+            product.id(),
+            userId,
+            e.getMessage());
+      }
+    }
+    return quotes;
   }
 
   /**

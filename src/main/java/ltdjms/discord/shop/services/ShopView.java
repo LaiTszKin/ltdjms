@@ -3,12 +3,15 @@ package ltdjms.discord.shop.services;
 import java.awt.Color;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import ltdjms.discord.discord.domain.ButtonView;
 import ltdjms.discord.discord.domain.EmbedView;
 import ltdjms.discord.discord.services.DiscordComponentRenderer;
 import ltdjms.discord.discord.services.SelectMenuUtil;
+import ltdjms.discord.membership.domain.MembershipTierLabels;
 import ltdjms.discord.membership.services.EscortPriceQuote;
+import ltdjms.discord.product.domain.EscortProductRules;
 import ltdjms.discord.product.domain.Product;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
@@ -24,6 +27,7 @@ public class ShopView {
   private static final Color WARNING_COLOR = new Color(0xED4245);
   private static final int PAGE_SIZE = 5;
   private static final String DIVIDER = "────────────────────────────────────";
+  private static final int SELECT_DESCRIPTION_MAX_LENGTH = 100;
   public static final String MODAL_SEARCH = "shop_search_modal";
 
   public static final String BUTTON_PREV_PAGE = "shop_prev_";
@@ -52,12 +56,17 @@ public class ShopView {
 
   /** Builds a shop embed for the given page of products. */
   public static MessageEmbed buildShopEmbed(
-      List<Product> products, int currentPage, int totalPages, long guildId) {
+      List<Product> products,
+      int currentPage,
+      int totalPages,
+      long guildId,
+      Map<Long, EscortPriceQuote> quotesByProductId) {
     StringBuilder sb = new StringBuilder();
     int startNumber = (currentPage - 1) * PAGE_SIZE + 1;
     for (int i = 0; i < products.size(); i++) {
       Product product = products.get(i);
       int number = startNumber + i;
+      EscortPriceQuote quote = resolveQuote(quotesByProductId, product);
 
       if (i > 0) {
         sb.append("\n").append(DIVIDER).append("\n");
@@ -66,10 +75,10 @@ public class ShopView {
       sb.append("**").append(number).append(". ").append(product.name()).append("**");
 
       if (product.hasCurrencyPrice()) {
-        sb.append("\n💰 價格：").append(product.formatCurrencyPrice());
+        sb.append("\n💰 價格：").append(formatCurrencyListLine(product, quote));
       }
       if (product.hasFiatPriceTwd()) {
-        sb.append("\n💵 實際價值：").append(product.formatFiatPriceTwd());
+        sb.append("\n💵 實際價值：").append(formatFiatListLine(product, quote));
       }
 
       if (product.description() != null && !product.description().isBlank()) {
@@ -119,14 +128,17 @@ public class ShopView {
   }
 
   /** Builds buy menu action rows with all purchasable products, auto-split into ≤25 per menu. */
-  public static List<ActionRow> buildBuyMenu(List<Product> allProducts) {
+  public static List<ActionRow> buildBuyMenu(
+      List<Product> allProducts, Map<Long, EscortPriceQuote> quotesByProductId) {
     return SelectMenuUtil.buildSelectRows(
         SELECT_BUY_PRODUCT,
         "選擇要購買的商品",
         allProducts,
         (builder, product) ->
             builder.addOption(
-                product.name(), String.valueOf(product.id()), buildPriceDescription(product)));
+                product.name(),
+                String.valueOf(product.id()),
+                buildPriceDescription(product, resolveQuote(quotesByProductId, product))));
   }
 
   /** Builds a payment method choice embed for products with both currency and fiat prices. */
@@ -136,10 +148,10 @@ public class ShopView {
     sb.append("**商品：** ").append(product.name()).append("\n\n");
     sb.append("**請選擇支付方式：**\n\n");
     if (product.hasCurrencyPrice()) {
-      sb.append("💰 **貨幣購買** — ").append(quote.formatCurrencyPriceLine()).append("\n");
+      sb.append("💰 **貨幣購買** — ").append(quote.formatCurrencyEmbedLine()).append("\n");
     }
     if (product.hasFiatPriceTwd()) {
-      sb.append("💳 **法幣下單** — ").append(quote.formatFiatPriceLine());
+      sb.append("💳 **法幣下單** — ").append(quote.formatFiatEmbedLine());
     }
 
     return DiscordComponentRenderer.buildEmbed(
@@ -181,7 +193,11 @@ public class ShopView {
    * <p>The keyword is encoded in the pagination button IDs so the handler can re-query.
    */
   public static List<ActionRow> buildSearchResultComponents(
-      int currentPage, int totalPages, String keyword, List<Product> products) {
+      int currentPage,
+      int totalPages,
+      String keyword,
+      List<Product> products,
+      Map<Long, EscortPriceQuote> quotesByProductId) {
     String encodedKeyword = encodeKeyword(keyword);
     boolean isFirstPage = currentPage == 1;
     boolean isLastPage = currentPage >= totalPages;
@@ -190,7 +206,7 @@ public class ShopView {
 
     // Buy select menu with the products shown in search results
     if (!products.isEmpty()) {
-      rows.addAll(buildSearchBuyMenu(products));
+      rows.addAll(buildSearchBuyMenu(products, quotesByProductId));
     }
 
     rows.add(
@@ -215,14 +231,17 @@ public class ShopView {
   }
 
   /** Builds search buy menu action rows, auto-split into ≤25 per menu. */
-  public static List<ActionRow> buildSearchBuyMenu(List<Product> products) {
+  public static List<ActionRow> buildSearchBuyMenu(
+      List<Product> products, Map<Long, EscortPriceQuote> quotesByProductId) {
     return SelectMenuUtil.buildSelectRows(
         SELECT_SEARCH_BUY,
         "選擇要購買的商品",
         products,
         (builder, product) ->
             builder.addOption(
-                product.name(), String.valueOf(product.id()), buildPriceDescription(product)));
+                product.name(),
+                String.valueOf(product.id()),
+                buildPriceDescription(product, resolveQuote(quotesByProductId, product))));
   }
 
   /** Builds an embed for fiat purchase confirmation. */
@@ -230,7 +249,7 @@ public class ShopView {
       Product product, EscortPriceQuote quote) {
     StringBuilder sb = new StringBuilder();
     sb.append("**商品：** ").append(product.name()).append("\n");
-    sb.append("**價格：** ").append(quote.formatFiatPriceLine()).append("\n");
+    sb.append("**價格：** ").append(quote.formatFiatEmbedLine()).append("\n");
 
     if (product.description() != null && !product.description().isBlank()) {
       sb.append("\n**商品描述：**\n").append(product.description());
@@ -259,7 +278,7 @@ public class ShopView {
       Product product, long userBalance, EscortPriceQuote quote) {
     StringBuilder sb = new StringBuilder();
     sb.append("**商品：** ").append(product.name()).append("\n");
-    sb.append("**價格：** ").append(quote.formatCurrencyPriceLine()).append("\n");
+    sb.append("**價格：** ").append(quote.formatCurrencyEmbedLine()).append("\n");
     sb.append("**您的餘額：** ").append(String.format("%,d", userBalance)).append(" 貨幣\n");
 
     long chargedPrice = quote.chargedCurrencyPrice();
@@ -310,6 +329,91 @@ public class ShopView {
             BUTTON_PREV_PAGE + (currentPage - 1), "⬅️ 上一頁", ButtonStyle.SECONDARY, isFirstPage),
         new ButtonView(
             BUTTON_NEXT_PAGE + (currentPage + 1), "下一頁 ➡️", ButtonStyle.SECONDARY, isLastPage));
+  }
+
+  private static EscortPriceQuote resolveQuote(
+      Map<Long, EscortPriceQuote> quotesByProductId, Product product) {
+    if (quotesByProductId == null || product.id() == null) {
+      return null;
+    }
+    return quotesByProductId.get(product.id());
+  }
+
+  private static String formatCurrencyListLine(Product product, EscortPriceQuote quote) {
+    if (quote != null
+        && EscortProductRules.isEscortLinked(product)
+        && quote.hasCurrencyDiscount()) {
+      return quote.formatCurrencyEmbedLine();
+    }
+    return product.formatCurrencyPrice();
+  }
+
+  private static String formatFiatListLine(Product product, EscortPriceQuote quote) {
+    if (quote != null && EscortProductRules.isEscortLinked(product) && quote.hasFiatDiscount()) {
+      return quote.formatFiatEmbedLine();
+    }
+    return product.formatFiatPriceTwd();
+  }
+
+  private static String buildPriceDescription(Product product, EscortPriceQuote quote) {
+    if (quote == null
+        || !EscortProductRules.isEscortLinked(product)
+        || (!quote.hasFiatDiscount() && !quote.hasCurrencyDiscount())) {
+      return buildPriceDescription(product);
+    }
+
+    StringBuilder sb = new StringBuilder();
+    if (product.hasCurrencyPrice()) {
+      if (quote.hasCurrencyDiscount()) {
+        sb.append(String.format("%,d 幣", quote.chargedCurrencyPrice()));
+      } else {
+        sb.append(product.formatCurrencyPrice());
+      }
+    }
+    if (product.hasFiatPriceTwd()) {
+      if (!sb.isEmpty()) {
+        sb.append("/");
+      }
+      if (quote.hasFiatDiscount()) {
+        sb.append(String.format("NT$%,d", quote.chargedPriceTwd()));
+      } else {
+        sb.append(product.formatFiatPriceTwd());
+      }
+    }
+
+    String discountSuffix = compactDiscountSuffix(quote);
+    if (!discountSuffix.isEmpty()) {
+      sb.append(" ").append(discountSuffix);
+    }
+
+    return truncateSelectDescription(sb.toString());
+  }
+
+  private static String compactDiscountSuffix(EscortPriceQuote quote) {
+    if (!quote.hasFiatDiscount() && !quote.hasCurrencyDiscount()) {
+      return "";
+    }
+    String label = MembershipTierLabels.discountLabel(quote.appliedTier());
+    if ("無折扣".equals(label)) {
+      return "";
+    }
+    return "(" + label.replace("護航 ", "").replace(" ", "") + ")";
+  }
+
+  private static String truncateSelectDescription(String text) {
+    if (text.length() <= SELECT_DESCRIPTION_MAX_LENGTH) {
+      return text;
+    }
+    int discountStart = text.lastIndexOf('(');
+    if (discountStart > 0 && text.contains("/")) {
+      String currencyOnly = text.substring(0, text.indexOf('/')).trim();
+      String discount = text.substring(discountStart);
+      String shortened = currencyOnly + " " + discount;
+      if (shortened.length() <= SELECT_DESCRIPTION_MAX_LENGTH) {
+        return shortened;
+      }
+    }
+    return text.substring(0, SELECT_DESCRIPTION_MAX_LENGTH);
   }
 
   private static String buildPriceDescription(Product product) {

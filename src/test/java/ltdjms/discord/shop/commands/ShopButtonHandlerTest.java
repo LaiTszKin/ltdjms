@@ -4,6 +4,7 @@ import static org.mockito.Mockito.*;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -65,6 +66,7 @@ class ShopButtonHandlerTest {
     when(event.editMessageEmbeds(any(MessageEmbed.class))).thenReturn(editAction);
     when(editAction.setComponents(anyList())).thenReturn(editAction);
     when(productService.getAllPurchasableProducts(TEST_GUILD_ID)).thenReturn(List.of());
+    when(shopService.quoteEscortPrices(anyLong(), anyList(), anyLong())).thenReturn(Map.of());
   }
 
   @Test
@@ -144,6 +146,7 @@ class ShopButtonHandlerTest {
     handler.onButtonInteraction(event);
 
     verify(shopService).getShopPage(TEST_GUILD_ID, currentPage - 1);
+    verify(shopService).quoteEscortPrices(TEST_USER_ID, shopPage.products(), TEST_GUILD_ID);
     verify(event).editMessageEmbeds(any(MessageEmbed.class));
     verify(editAction).setComponents(anyList());
   }
@@ -196,6 +199,7 @@ class ShopButtonHandlerTest {
     handler.onButtonInteraction(event);
 
     verify(event).reply("請選擇要購買的商品");
+    verify(shopService).quoteEscortPrices(TEST_USER_ID, List.of(product), TEST_GUILD_ID);
     verify(replyAction).setEphemeral(true);
     verify(replyAction).setComponents(anyList());
   }
