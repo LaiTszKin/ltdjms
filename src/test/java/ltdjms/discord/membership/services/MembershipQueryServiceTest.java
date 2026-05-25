@@ -150,4 +150,31 @@ class MembershipQueryServiceTest {
     assertThat(summary.remainingToNextTierM()).isEqualTo(80_000L);
     assertThat(summary.monthlyTokenGrant()).isEqualTo(MembershipTier.GOLD.monthlyTokenGrant());
   }
+
+  @Test
+  @DisplayName("getPanelSummary 應納入 membership 建立前的 admin spend")
+  void shouldIncludeSpendRecordedBeforeMembershipCreatedAt() {
+    Instant createdAt = Instant.parse("2026-05-25T11:15:21Z");
+    Instant earlierSpend = Instant.parse("2026-05-25T11:14:52Z");
+    GlobalMemberMembership membership =
+        new GlobalMemberMembership(
+            USER_ID,
+            MembershipTier.BLACK,
+            null,
+            null,
+            null,
+            null,
+            true,
+            createdAt,
+            createdAt);
+    when(membershipRepository.findByUserId(USER_ID)).thenReturn(Optional.of(membership));
+    when(membershipSpendRepository.findEarliestPaidAtBefore(eq(USER_ID), eq(NOW)))
+        .thenReturn(Optional.of(earlierSpend));
+    when(membershipSpendRepository.sumListPriceInPeriod(eq(USER_ID), eq(earlierSpend), eq(NOW)))
+        .thenReturn(250_000L);
+
+    MembershipPanelSummary summary = service.getPanelSummary(USER_ID);
+
+    assertThat(summary.periodSpendListPriceM()).isEqualTo(250_000L);
+  }
 }

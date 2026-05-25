@@ -2590,12 +2590,20 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
       return;
     }
 
-    event
-        .editMessageEmbeds(
-            AdminPanelViewFactory.buildMembershipDetailEmbed(
-                state.selectedUserMention, detailResult.getValue()))
-        .setComponents(AdminPanelViewFactory.buildMembershipDetailComponents())
-        .queue();
+    state.selectedSpendMode = null;
+    state.selectedTier = null;
+    event.deferEdit().queue(
+        success ->
+            event
+                .getHook()
+                .editOriginalEmbeds(
+                    AdminPanelViewFactory.buildMembershipDetailEmbed(
+                        state.selectedUserMention, detailResult.getValue()))
+                .setComponents(AdminPanelViewFactory.buildMembershipDetailComponents())
+                .queue(
+                    ignored -> {},
+                    error -> LOG.warn("Failed to navigate back to membership detail panel", error)),
+        error -> LOG.warn("Failed to defer membership detail panel navigation", error));
   }
 
   private void showMembershipSpendAdjust(ButtonInteractionEvent event) {
@@ -2717,7 +2725,23 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     }
 
     String sessionKey = getSessionKey(adminUserId, guildId);
-    refreshMembershipDetailPanel(guildId, adminUserId, sessionKey, userId);
+    MembershipSessionState state = membershipSessionStates.get(sessionKey);
+    if (state != null && state.selectedUserId != null && state.selectedUserId == userId) {
+      state.selectedSpendMode = null;
+      Result<MembershipAdminDetail, DomainError> detailResult =
+          requireMembershipDetail(userId);
+      if (detailResult.isOk()) {
+        event
+            .getHook()
+            .editOriginalEmbeds(
+                AdminPanelViewFactory.buildMembershipDetailEmbed(
+                    state.selectedUserMention, detailResult.getValue()))
+            .setComponents(AdminPanelViewFactory.buildMembershipDetailComponents())
+            .queue(
+                success -> {},
+                error -> LOG.warn("Failed to refresh membership panel after spend adjust", error));
+      }
+    }
 
     event.reply("✅ 已調整本週期消費 M").setEphemeral(true).queue();
   }

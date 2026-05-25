@@ -3,7 +3,6 @@ package ltdjms.discord.membership.services;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -11,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import ltdjms.discord.membership.domain.GlobalMemberMembership;
 import ltdjms.discord.membership.domain.MembershipPeriodBounds;
+import ltdjms.discord.membership.domain.MembershipPeriodSpendBounds;
 import ltdjms.discord.membership.domain.MembershipTier;
 import ltdjms.discord.membership.domain.MembershipTierEvaluator;
 import ltdjms.discord.membership.persistence.MembershipRepository;
@@ -59,7 +59,8 @@ public class MembershipAdminService {
     }
 
     Instant now = clock.instant();
-    long currentSum = resolveCurrentPeriodSum(userId, now);
+    GlobalMemberMembership membership = membershipRepository.findOrCreate(userId);
+    long currentSum = resolveCurrentPeriodSum(membership, now);
     long delta =
         switch (mode) {
           case ADD -> amountM;
@@ -153,15 +154,14 @@ public class MembershipAdminService {
     }
   }
 
-  private long resolveCurrentPeriodSum(long userId, Instant now) {
-    Optional<GlobalMemberMembership> membershipOpt = membershipRepository.findByUserId(userId);
-    if (membershipOpt.isEmpty()) {
-      return 0L;
-    }
+  private long resolveCurrentPeriodSum(GlobalMemberMembership membership, Instant now) {
     MembershipPeriodBounds.Period period =
-        MembershipPeriodBounds.currentPeriod(membershipOpt.get(), now);
+        MembershipPeriodBounds.currentPeriod(membership, now);
+    Instant periodStart =
+        MembershipPeriodSpendBounds.effectivePeriodStart(
+            membership, period, spendRepository);
     return spendRepository.sumListPriceInPeriod(
-        userId, period.startInclusive(), period.endExclusive());
+        membership.discordUserId(), periodStart, period.endExclusive());
   }
 
   private static boolean resolveBronzeFlag(MembershipTier newTier) {

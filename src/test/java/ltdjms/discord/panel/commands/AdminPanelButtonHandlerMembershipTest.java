@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.function.Consumer;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -34,7 +35,10 @@ import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.EntitySelectInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.requests.restaction.interactions.MessageEditCallbackAction;
+import net.dv8tion.jda.api.requests.restaction.WebhookMessageEditAction;
 import net.dv8tion.jda.api.interactions.modals.ModalMapping;
 import net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction;
 
@@ -258,6 +262,133 @@ class AdminPanelButtonHandlerMembershipTest {
     handler.onButtonInteraction(confirmEvent);
 
     verify(adminPanelService).setMembershipTier(TARGET_USER_ID, ADMIN_ID, MembershipTier.GOLD);
+  }
+
+  @Test
+  @DisplayName("調整消費頁返回應刷新會員詳情")
+  void backFromSpendAdjustShouldShowMembershipDetail() {
+    MembershipAdminDetail detail = sampleDetail(MembershipTier.SILVER, 10_000L, 23_000L);
+    when(adminPanelService.getMembershipDetail(TARGET_USER_ID)).thenReturn(Result.ok(detail));
+
+    EntitySelectInteractionEvent selectEvent = mock(EntitySelectInteractionEvent.class);
+    Guild guild = mock(Guild.class);
+    Member member = mock(Member.class);
+    User admin = mock(User.class);
+    User targetUser = mock(User.class);
+    MessageEditCallbackAction editAction = mock(MessageEditCallbackAction.class);
+
+    when(selectEvent.getComponentId()).thenReturn(AdminPanelButtonHandler.SELECT_MEMBERSHIP_USER);
+    when(selectEvent.isFromGuild()).thenReturn(true);
+    when(selectEvent.getGuild()).thenReturn(guild);
+    when(guild.getIdLong()).thenReturn(GUILD_ID);
+    when(selectEvent.getMember()).thenReturn(member);
+    when(member.hasPermission(Permission.ADMINISTRATOR)).thenReturn(true);
+    when(selectEvent.getUser()).thenReturn(admin);
+    when(admin.getIdLong()).thenReturn(ADMIN_ID);
+    when(selectEvent.getMentions()).thenReturn(mock(net.dv8tion.jda.api.entities.Mentions.class));
+    when(selectEvent.getMentions().getUsers()).thenReturn(List.of(targetUser));
+    when(targetUser.getIdLong()).thenReturn(TARGET_USER_ID);
+    when(targetUser.getAsMention()).thenReturn("<@" + TARGET_USER_ID + ">");
+    when(selectEvent.editMessageEmbeds(any(MessageEmbed.class))).thenReturn(editAction);
+    when(editAction.setComponents(anyList())).thenReturn(editAction);
+    handler.onEntitySelectInteraction(selectEvent);
+
+    ButtonInteractionEvent adjustEvent = mock(ButtonInteractionEvent.class);
+    when(adjustEvent.getComponentId())
+        .thenReturn(AdminPanelButtonHandler.BUTTON_MEMBERSHIP_ADJUST_SPEND);
+    when(adjustEvent.isFromGuild()).thenReturn(true);
+    when(adjustEvent.getGuild()).thenReturn(guild);
+    when(adjustEvent.getMember()).thenReturn(member);
+    when(adjustEvent.getUser()).thenReturn(admin);
+    when(admin.getIdLong()).thenReturn(ADMIN_ID);
+    when(adjustEvent.editMessageEmbeds(any(MessageEmbed.class))).thenReturn(editAction);
+    handler.onButtonInteraction(adjustEvent);
+
+    ButtonInteractionEvent backEvent = mock(ButtonInteractionEvent.class);
+    InteractionHook hook = mock(InteractionHook.class);
+    MessageEditCallbackAction deferAction = mock(MessageEditCallbackAction.class);
+    WebhookMessageEditAction<Message> hookEditAction = mock(WebhookMessageEditAction.class);
+    when(backEvent.getComponentId())
+        .thenReturn(AdminPanelButtonHandler.BUTTON_MEMBERSHIP_BACK_DETAIL);
+    when(backEvent.isFromGuild()).thenReturn(true);
+    when(backEvent.getGuild()).thenReturn(guild);
+    when(backEvent.getMember()).thenReturn(member);
+    when(backEvent.getUser()).thenReturn(admin);
+    when(backEvent.deferEdit()).thenReturn(deferAction);
+    org.mockito.Mockito.doAnswer(
+            invocation -> {
+              Consumer<?> success = invocation.getArgument(0);
+              success.accept(null);
+              return null;
+            })
+        .when(deferAction)
+        .queue(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+    when(backEvent.getHook()).thenReturn(hook);
+    when(hook.editOriginalEmbeds(any(MessageEmbed.class))).thenReturn(hookEditAction);
+    when(hookEditAction.setComponents(anyList())).thenReturn(hookEditAction);
+
+    handler.onButtonInteraction(backEvent);
+
+    verify(backEvent).deferEdit();
+    verify(hook).editOriginalEmbeds(any(MessageEmbed.class));
+    verify(hookEditAction).setComponents(anyList());
+  }
+
+  @Test
+  @DisplayName("提交消費調整 modal 成功後應刷新會員詳情面板")
+  void spendModalSubmitSuccessShouldRefreshDetailPanel() {
+    MembershipAdminDetail detail = sampleDetail(MembershipTier.SILVER, 13_000L, 20_000L);
+    when(adminPanelService.getMembershipDetail(TARGET_USER_ID)).thenReturn(Result.ok(detail));
+
+    EntitySelectInteractionEvent selectEvent = mock(EntitySelectInteractionEvent.class);
+    Guild guild = mock(Guild.class);
+    Member member = mock(Member.class);
+    User admin = mock(User.class);
+    User targetUser = mock(User.class);
+    MessageEditCallbackAction editAction = mock(MessageEditCallbackAction.class);
+
+    when(selectEvent.getComponentId()).thenReturn(AdminPanelButtonHandler.SELECT_MEMBERSHIP_USER);
+    when(selectEvent.isFromGuild()).thenReturn(true);
+    when(selectEvent.getGuild()).thenReturn(guild);
+    when(guild.getIdLong()).thenReturn(GUILD_ID);
+    when(selectEvent.getMember()).thenReturn(member);
+    when(member.hasPermission(Permission.ADMINISTRATOR)).thenReturn(true);
+    when(selectEvent.getUser()).thenReturn(admin);
+    when(admin.getIdLong()).thenReturn(ADMIN_ID);
+    when(selectEvent.getMentions()).thenReturn(mock(net.dv8tion.jda.api.entities.Mentions.class));
+    when(selectEvent.getMentions().getUsers()).thenReturn(List.of(targetUser));
+    when(targetUser.getIdLong()).thenReturn(TARGET_USER_ID);
+    when(targetUser.getAsMention()).thenReturn("<@" + TARGET_USER_ID + ">");
+    when(selectEvent.editMessageEmbeds(any(MessageEmbed.class))).thenReturn(editAction);
+    when(editAction.setComponents(anyList())).thenReturn(editAction);
+    handler.onEntitySelectInteraction(selectEvent);
+
+    ModalInteractionEvent event = mock(ModalInteractionEvent.class);
+    InteractionHook hook = mock(InteractionHook.class);
+    ReplyCallbackAction reply = mock(ReplyCallbackAction.class);
+    WebhookMessageEditAction<Message> hookEditAction = mock(WebhookMessageEditAction.class);
+
+    when(event.getModalId())
+        .thenReturn(AdminPanelButtonHandler.MODAL_MEMBERSHIP_SPEND + ":" + TARGET_USER_ID + ":add");
+    when(event.isFromGuild()).thenReturn(true);
+    when(event.getGuild()).thenReturn(guild);
+    when(event.getMember()).thenReturn(member);
+    when(event.getUser()).thenReturn(admin);
+    when(event.getHook()).thenReturn(hook);
+    when(event.getValue("amount")).thenReturn(mock(ModalMapping.class));
+    when(event.getValue("amount").getAsString()).thenReturn("3000");
+    when(adminPanelService.adjustMembershipSpend(GUILD_ID, TARGET_USER_ID, ADMIN_ID, "add", 3000L))
+        .thenReturn(Result.okVoid());
+    when(hook.editOriginalEmbeds(any(MessageEmbed.class))).thenReturn(hookEditAction);
+    when(hookEditAction.setComponents(anyList())).thenReturn(hookEditAction);
+    when(event.reply("✅ 已調整本週期消費 M")).thenReturn(reply);
+    when(reply.setEphemeral(true)).thenReturn(reply);
+
+    handler.onModalInteraction(event);
+
+    verify(hook).editOriginalEmbeds(any(MessageEmbed.class));
+    verify(hookEditAction).setComponents(anyList());
+    verify(event).reply("✅ 已調整本週期消費 M");
   }
 
   private static MembershipAdminDetail sampleDetail(

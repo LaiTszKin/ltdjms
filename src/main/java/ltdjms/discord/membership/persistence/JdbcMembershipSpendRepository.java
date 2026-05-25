@@ -54,6 +54,37 @@ public class JdbcMembershipSpendRepository implements MembershipSpendRepository 
   }
 
   @Override
+  public Optional<Instant> findEarliestPaidAtBefore(long discordUserId, Instant beforeExclusive) {
+    String sql =
+        "SELECT MIN(paid_at) FROM membership_spend_entry"
+            + " WHERE discord_user_id = ? AND paid_at < ?";
+
+    try (Connection conn = dataSource.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(sql)) {
+      stmt.setLong(1, discordUserId);
+      stmt.setTimestamp(2, Timestamp.from(beforeExclusive));
+
+      try (ResultSet rs = stmt.executeQuery()) {
+        if (rs.next()) {
+          Timestamp timestamp = rs.getTimestamp(1);
+          if (timestamp != null) {
+            return Optional.of(timestamp.toInstant());
+          }
+        }
+      }
+    } catch (SQLException e) {
+      LOG.error(
+          "Failed to find earliest membership spend: userId={}, before={}",
+          discordUserId,
+          beforeExclusive,
+          e);
+      throw new RepositoryException("Failed to find earliest membership spend", e);
+    }
+
+    return Optional.empty();
+  }
+
+  @Override
   public SpendRecordResult insertSpendAndQualifyBronzeIfThreshold(
       long discordUserId,
       long guildId,

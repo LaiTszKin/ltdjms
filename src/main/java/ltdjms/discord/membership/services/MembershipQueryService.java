@@ -7,6 +7,7 @@ import java.util.Optional;
 
 import ltdjms.discord.membership.domain.GlobalMemberMembership;
 import ltdjms.discord.membership.domain.MembershipPeriodBounds;
+import ltdjms.discord.membership.domain.MembershipPeriodSpendBounds;
 import ltdjms.discord.membership.domain.MembershipTier;
 import ltdjms.discord.membership.domain.MembershipTierEvaluator;
 import ltdjms.discord.membership.domain.MembershipTierLabels;
@@ -56,9 +57,12 @@ public class MembershipQueryService {
   private MembershipPanelSummary buildPanelSummary(GlobalMemberMembership membership) {
     Instant now = clock.instant();
     MembershipPeriodBounds.Period period = MembershipPeriodBounds.currentPeriod(membership, now);
+    Instant periodStart =
+        MembershipPeriodSpendBounds.effectivePeriodStart(
+            membership, period, membershipSpendRepository);
     long rawPeriodSpendM =
         membershipSpendRepository.sumListPriceInPeriod(
-            membership.discordUserId(), period.startInclusive(), period.endExclusive());
+            membership.discordUserId(), periodStart, period.endExclusive());
     long displayPeriodSpendM = MembershipPanelSummary.clampDisplaySpend(rawPeriodSpendM);
     MembershipTier effectiveTier =
         MembershipTierEvaluator.effectiveTier(

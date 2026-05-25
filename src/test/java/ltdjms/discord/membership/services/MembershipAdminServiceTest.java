@@ -66,9 +66,28 @@ class MembershipAdminServiceTest {
         service.adjustPeriodSpend(USER_ID, GUILD_ID, ADMIN_ID, SpendAdjustMode.ADD, 3_000L);
 
     assertThat(result.isOk()).isTrue();
+    verify(membershipRepository).findOrCreate(USER_ID);
     verify(spendRepository)
         .insertAdminAdjust(eq(USER_ID), eq(GUILD_ID), eq(3_000L), any(), eq(NOW));
     verify(eventPublisher).publish(any(MembershipPeriodSpendChangedEvent.class));
+  }
+
+  @Test
+  @DisplayName("adjust 應先建立 membership 列再寫入 spend")
+  void adjustShouldCreateMembershipBeforeInsertingSpend() {
+    GlobalMemberMembership created = membershipRow(MembershipTier.NONE, false);
+    when(membershipRepository.findOrCreate(USER_ID)).thenReturn(created);
+    when(spendRepository.sumListPriceInPeriod(eq(USER_ID), any(), any())).thenReturn(0L);
+    when(spendRepository.insertAdminAdjust(anyLong(), anyLong(), anyLong(), any(), any()))
+        .thenReturn(true);
+
+    Result<ltdjms.discord.shared.Unit, ltdjms.discord.shared.DomainError> result =
+        service.adjustPeriodSpend(USER_ID, GUILD_ID, ADMIN_ID, SpendAdjustMode.SET, 10_000L);
+
+    assertThat(result.isOk()).isTrue();
+    verify(membershipRepository).findOrCreate(USER_ID);
+    verify(spendRepository)
+        .insertAdminAdjust(eq(USER_ID), eq(GUILD_ID), eq(10_000L), any(), eq(NOW));
   }
 
   @Test
@@ -175,7 +194,7 @@ class MembershipAdminServiceTest {
 
   private void stubMembershipWithPeriodSum(long currentSum) {
     GlobalMemberMembership membership = membershipRow(MembershipTier.SILVER, false);
-    when(membershipRepository.findByUserId(USER_ID)).thenReturn(Optional.of(membership));
+    when(membershipRepository.findOrCreate(USER_ID)).thenReturn(membership);
     when(spendRepository.sumListPriceInPeriod(eq(USER_ID), any(), any())).thenReturn(currentSum);
     when(spendRepository.insertAdminAdjust(anyLong(), anyLong(), anyLong(), any(), any()))
         .thenReturn(true);
