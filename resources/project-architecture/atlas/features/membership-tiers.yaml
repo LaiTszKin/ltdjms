@@ -72,7 +72,20 @@ submodules:
         out: EscortPriceQuote
         side: io
         purpose: 護航商品會員折後價
-    variables: []
+      - name: quoteEscortPrices
+        in: userId,products,guildId
+        out: Map<Long,EscortPriceQuote>
+        side: io
+        purpose: Batch quote for shop list page
+      - name: formatEmbedPriceLine
+        in: EscortPriceQuote
+        out: markdownLine
+        side: pure
+        purpose: Strikethrough original + discount rate
+    variables:
+      - name: EscortPriceQuote
+        type: record
+        scope: call
     dataflow: []
     errors: []
   - slug: benefits-ui
@@ -84,7 +97,59 @@ submodules:
         out: void
         side: tx
         purpose: 結算日發放贈幣
-    variables: []
+      - name: getPanelSummaryExtended
+        in: userId
+        out: MembershipPanelSummary
+        side: io
+        purpose: 'R1-R3: join date, remaining M, monthly token grant'
+    variables:
+      - name: MembershipPanelSummary
+        type: record
+        scope: call
+        purpose: Extended panel DTO
+      - name: GlobalMemberMembership
+        type: entity
+        scope: call
+      - name: periodSpendM
+        type: long
+        scope: call
+    dataflow:
+      - step: Load earliestGuildJoinAt and compute remainingToNextTierM
+        fn: getPanelSummaryExtended
+        reads:
+          - GlobalMemberMembership
+          - periodSpendM
+        writes:
+          - MembershipPanelSummary
+    errors: []
+  - slug: admin-membership
+    kind: service
+    role: MembershipAdminService 管理員調整 spend M 與 tier
+    functions:
+      - name: adjustPeriodSpend
+        in: userId,guildId,adminUserId,mode,amountM
+        out: void
+        side: tx
+        purpose: 'R2: ADMIN_ADJUST ledger insert'
+      - name: setTier
+        in: userId,adminUserId,newTier
+        out: MembershipTier
+        side: tx
+        purpose: 'R3: update current_tier + publish event'
+    variables:
+      - name: ADMIN_ADJUST
+        type: sourceType
+        scope: tx
     dataflow: []
     errors: []
-edges: []
+edges:
+  - id: e-admin-spend
+    from: admin-membership
+    to: spend-ledger
+    kind: call
+    label: Insert ADMIN_ADJUST entry
+  - id: e-admin-tier
+    from: admin-membership
+    to: membership-db
+    kind: call
+    label: Update current_tier

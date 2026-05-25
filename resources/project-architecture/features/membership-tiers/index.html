@@ -70,9 +70,22 @@
         </a>
         <p class="submodule-card__role">結算贈幣 + user-panel 等級展示</p>
       </li>
+      <li class="submodule-card">
+        <a class="submodule-card__link" href="admin-membership.html">
+          <span class="submodule-card__name">admin-membership</span>
+          <span class="submodule-card__kind submodule-card__kind--service">Service</span>
+        </a>
+        <p class="submodule-card__role">MembershipAdminService 管理員調整 spend M 與 tier</p>
+      </li>
       </ul>
     </section>
-    
+    <section class="feature-edges" aria-label="Intra-feature edges">
+      <h2>Intra-feature edges</h2>
+      <ul class="feature-edges__list">
+        <li class="feature-edges__item feature-edges__item--call"><span class="feature-edges__endpoints">admin-membership → spend-ledger</span><span class="feature-edges__kind">call</span><span class="feature-edges__label">Insert ADMIN_ADJUST entry</span></li>
+        <li class="feature-edges__item feature-edges__item--call"><span class="feature-edges__endpoints">admin-membership → membership-db</span><span class="feature-edges__kind">call</span><span class="feature-edges__label">Update current_tier</span></li>
+      </ul>
+    </section>
   </main>
 </body>
 </html>

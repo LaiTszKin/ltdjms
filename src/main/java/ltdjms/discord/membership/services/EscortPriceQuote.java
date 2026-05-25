@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 
 import ltdjms.discord.membership.domain.MembershipTier;
 import ltdjms.discord.membership.domain.MembershipTierLabels;
+import ltdjms.discord.product.domain.EscortProductRules;
+import ltdjms.discord.product.domain.Product;
 
 /** Resolved shop prices for escort-linked products with optional membership discount. */
 public record EscortPriceQuote(
@@ -45,21 +47,44 @@ public record EscortPriceQuote(
   }
 
   /** Select menu: plain text, max 100 chars, no markdown. */
-  public String formatFiatSelectDescription() {
-    if (!hasFiatDiscount()) {
-      return truncateSelectDescription(String.format("NT$%,d", listPriceTwd));
+  public String formatSelectDescription(Product product) {
+    if (product == null || !EscortProductRules.isEscortLinked(product)) {
+      return formatUndiscountedSelectDescription(product);
     }
-    return truncateSelectDescription(
-        String.format("NT$%,d %s", chargedPriceTwd, compactDiscountSuffix()));
-  }
+    if (!hasFiatDiscount() && !hasCurrencyDiscount()) {
+      return formatUndiscountedSelectDescription(product);
+    }
 
-  /** Select menu: plain text, max 100 chars, no markdown. */
-  public String formatCurrencySelectDescription() {
-    if (!hasCurrencyDiscount()) {
-      return truncateSelectDescription(String.format("%,d 貨幣", listCurrencyPrice));
+    StringBuilder sb = new StringBuilder();
+    if (product.hasCurrencyPrice()) {
+      if (hasCurrencyDiscount()) {
+        sb.append(String.format("%,d 幣", chargedCurrencyPrice));
+      } else {
+        sb.append(product.formatCurrencyPrice());
+      }
     }
-    return truncateSelectDescription(
-        String.format("%,d 幣 %s", chargedCurrencyPrice, compactDiscountSuffix()));
+    if (product.hasFiatPriceTwd()) {
+      if (!sb.isEmpty()) {
+        sb.append("/");
+      }
+      if (hasFiatDiscount()) {
+        sb.append(String.format("NT$%,d", chargedPriceTwd));
+      } else {
+        sb.append(product.formatFiatPriceTwd());
+      }
+    }
+
+    String originalPart = formatOriginalPricePart(product);
+    if (!originalPart.isEmpty() && sb.length() + originalPart.length() <= SELECT_DESCRIPTION_MAX_LENGTH) {
+      sb.append(originalPart);
+    } else {
+      String discountSuffix = compactDiscountSuffix();
+      if (!discountSuffix.isEmpty()) {
+        sb.append(" ").append(discountSuffix);
+      }
+    }
+
+    return truncateSelectDescription(sb.toString());
   }
 
   public String formatFiatPriceLine() {
@@ -68,6 +93,44 @@ public record EscortPriceQuote(
 
   public String formatCurrencyPriceLine() {
     return formatCurrencyEmbedLine();
+  }
+
+  private String formatUndiscountedSelectDescription(Product product) {
+    if (product == null) {
+      return "";
+    }
+    StringBuilder sb = new StringBuilder();
+    if (product.hasCurrencyPrice()) {
+      sb.append(product.formatCurrencyPrice());
+    }
+    if (product.hasFiatPriceTwd()) {
+      if (!sb.isEmpty()) {
+        sb.append("/");
+      }
+      sb.append(product.formatFiatPriceTwd());
+    }
+    return truncateSelectDescription(sb.toString());
+  }
+
+  private String formatOriginalPricePart(Product product) {
+    StringBuilder part = new StringBuilder(" (");
+    boolean first = true;
+    if (hasCurrencyDiscount() && product.hasCurrencyPrice()) {
+      part.append("原").append(String.format("%,d", listCurrencyPrice));
+      first = false;
+    }
+    if (hasFiatDiscount() && product.hasFiatPriceTwd()) {
+      if (!first) {
+        part.append(",");
+      }
+      part.append("原NT$").append(String.format("%,d", listPriceTwd));
+    }
+    String discountLabel = MembershipTierLabels.discountLabel(appliedTier);
+    if (!"無折扣".equals(discountLabel)) {
+      part.append(",").append(discountLabel.replace("護航 ", "").replace(" ", ""));
+    }
+    part.append(")");
+    return part.toString();
   }
 
   private String compactDiscountSuffix() {

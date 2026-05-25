@@ -43,6 +43,11 @@ submodules:
         out: Product[]
         side: io
         purpose: Full purchasable set for buy menu (not paginated slice).
+      - name: handleShopBrowseWithQuotes
+        in: guildId,userId,page
+        out: ShopPageEmbed
+        side: io
+        purpose: 'R1: list embed with member pricing'
     variables:
       - name: inflightFiatOrders
         type: ConcurrentHashMap
@@ -52,6 +57,12 @@ submodules:
         type: Cache<ShopPage>
         scope: instance
         purpose: 商店頁面快取，減少重複查庫
+      - name: quotesByProductId
+        type: Map<Long,EscortPriceQuote>
+        scope: call
+      - name: ShopPageEmbed
+        type: MessageEmbed
+        scope: call
     dataflow:
       - 接收 /shop 指令或按鈕事件
       - 查詢 ProductRepository 取得商品列表/搜尋結果
@@ -59,6 +70,12 @@ submodules:
       - 法幣付款：委派 FiatOrderService 建立 PENDING_PAYMENT 訂單並產生繳費碼
       - 回覆 Discord embed 或 DM 付款資訊
       - Select product → branch by price type → confirm OR payment choice OR fiat defer+DM
+      - step: Quote escort products for current user before building embed
+        fn: handleShopBrowseWithQuotes
+        reads:
+          - quotesByProductId
+        writes:
+          - ShopPageEmbed
     errors:
       - name: ErrProductNotFound
         when: productId 在資料庫中不存在

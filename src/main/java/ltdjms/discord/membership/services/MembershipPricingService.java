@@ -1,6 +1,9 @@
 package ltdjms.discord.membership.services;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import ltdjms.discord.membership.domain.MembershipTier;
@@ -29,7 +32,42 @@ public class MembershipPricingService {
    */
   public EscortPriceQuote quoteEscortPrice(long userId, Product product, long guildId) {
     Objects.requireNonNull(product, "product must not be null");
+    return quoteEscortPrice(product, resolveEffectiveTier(userId));
+  }
 
+  /**
+   * Batch-quotes escort-linked products with a single membership tier lookup.
+   *
+   * @return map keyed by product id; non-escort products omitted
+   */
+  public Map<Long, EscortPriceQuote> quoteEscortPrices(
+      long userId, List<Product> products, long guildId) {
+    if (products == null || products.isEmpty()) {
+      return Map.of();
+    }
+
+    MembershipTier tier = resolveEffectiveTier(userId);
+    Map<Long, EscortPriceQuote> quotes = new HashMap<>();
+    for (Product product : products) {
+      if (!EscortProductRules.isEscortLinked(product) || product.id() == null) {
+        continue;
+      }
+      quotes.put(product.id(), quoteEscortPrice(product, tier));
+    }
+    return quotes;
+  }
+
+  private MembershipTier resolveEffectiveTier(long userId) {
+    return membershipRepository
+        .findByUserId(userId)
+        .map(
+            membership ->
+                MembershipTierEvaluator.effectiveTier(
+                    membership.currentTier(), membership.hasQualifyingBronzeOrder()))
+        .orElse(MembershipTier.NONE);
+  }
+
+  private EscortPriceQuote quoteEscortPrice(Product product, MembershipTier tier) {
     long listFiat = product.hasFiatPriceTwd() ? product.fiatPriceTwd() : 0L;
     long listCurrency = product.hasCurrencyPrice() ? product.currencyPrice() : 0L;
 
@@ -37,15 +75,6 @@ public class MembershipPricingService {
       return new EscortPriceQuote(
           listFiat, listFiat, listCurrency, listCurrency, MembershipTier.NONE, BigDecimal.ZERO);
     }
-
-    MembershipTier tier =
-        membershipRepository
-            .findByUserId(userId)
-            .map(
-                membership ->
-                    MembershipTierEvaluator.effectiveTier(
-                        membership.currentTier(), membership.hasQualifyingBronzeOrder()))
-            .orElse(MembershipTier.NONE);
 
     BigDecimal discountRate = tier.discountRate();
     if (discountRate.compareTo(BigDecimal.ZERO) == 0) {

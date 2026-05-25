@@ -27,6 +27,7 @@ import ltdjms.discord.membership.persistence.MembershipRepository;
 import ltdjms.discord.membership.persistence.MembershipSpendRepository;
 import ltdjms.discord.shared.Result;
 import ltdjms.discord.shared.events.DomainEventPublisher;
+import ltdjms.discord.shared.events.MembershipPeriodSpendChangedEvent;
 import ltdjms.discord.shared.events.MembershipTierChangedEvent;
 
 @ExtendWith(MockitoExtension.class)
@@ -42,7 +43,6 @@ class MembershipAdminServiceTest {
 
   @Mock private MembershipRepository membershipRepository;
   @Mock private MembershipSpendRepository spendRepository;
-  @Mock private MembershipQueryService queryService;
   @Mock private DomainEventPublisher eventPublisher;
 
   private MembershipAdminService service;
@@ -53,7 +53,6 @@ class MembershipAdminServiceTest {
         new MembershipAdminService(
             membershipRepository,
             spendRepository,
-            queryService,
             eventPublisher,
             Clock.fixed(NOW, ZoneOffset.UTC));
   }
@@ -69,6 +68,7 @@ class MembershipAdminServiceTest {
     assertThat(result.isOk()).isTrue();
     verify(spendRepository)
         .insertAdminAdjust(eq(USER_ID), eq(GUILD_ID), eq(3_000L), any(), eq(NOW));
+    verify(eventPublisher).publish(any(MembershipPeriodSpendChangedEvent.class));
   }
 
   @Test
@@ -85,7 +85,20 @@ class MembershipAdminServiceTest {
   }
 
   @Test
-  @DisplayName("UT-03: setTier GOLD updates tier and publishes event")
+  @DisplayName("UT-03: adjust DEDUCT inserts negative delta")
+  void adjustDeductShouldInsertNegativeDelta() {
+    stubMembershipWithPeriodSum(5_000L);
+
+    Result<ltdjms.discord.shared.Unit, ltdjms.discord.shared.DomainError> result =
+        service.adjustPeriodSpend(USER_ID, GUILD_ID, ADMIN_ID, SpendAdjustMode.DEDUCT, 2_000L);
+
+    assertThat(result.isOk()).isTrue();
+    verify(spendRepository)
+        .insertAdminAdjust(eq(USER_ID), eq(GUILD_ID), eq(-2_000L), any(), eq(NOW));
+  }
+
+  @Test
+  @DisplayName("UT-04: setTier GOLD updates tier and publishes event")
   void setTierGoldShouldPublishEvent() {
     GlobalMemberMembership membership = membershipRow(MembershipTier.NONE, false);
     when(membershipRepository.findOrCreate(USER_ID)).thenReturn(membership);
@@ -104,7 +117,7 @@ class MembershipAdminServiceTest {
   }
 
   @Test
-  @DisplayName("UT-04: setTier NONE clears bronze flag")
+  @DisplayName("UT-05: setTier NONE clears bronze flag")
   void setTierNoneShouldClearBronzeFlag() {
     GlobalMemberMembership membership = membershipRow(MembershipTier.BRONZE, true);
     when(membershipRepository.findOrCreate(USER_ID)).thenReturn(membership);
@@ -121,6 +134,36 @@ class MembershipAdminServiceTest {
   }
 
   @Test
+  @DisplayName("setTier BRONZE sets bronze flag")
+  void setTierBronzeShouldSetBronzeFlag() {
+    GlobalMemberMembership membership = membershipRow(MembershipTier.NONE, false);
+    when(membershipRepository.findOrCreate(USER_ID)).thenReturn(membership);
+    when(membershipRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Result<MembershipTier, ltdjms.discord.shared.DomainError> result =
+        service.setTier(USER_ID, ADMIN_ID, MembershipTier.BRONZE);
+
+    assertThat(result.isOk()).isTrue();
+    ArgumentCaptor<GlobalMemberMembership> saved = ArgumentCaptor.forClass(GlobalMemberMembership.class);
+    verify(membershipRepository).save(saved.capture());
+    assertThat(saved.getValue().hasQualifyingBronzeOrder()).isTrue();
+  }
+
+  @Test
+  @DisplayName("setTier to same effective tier does not publish event")
+  void setTierSameEffectiveTierShouldNotPublishEvent() {
+    GlobalMemberMembership membership = membershipRow(MembershipTier.SILVER, false);
+    when(membershipRepository.findOrCreate(USER_ID)).thenReturn(membership);
+    when(membershipRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Result<MembershipTier, ltdjms.discord.shared.DomainError> result =
+        service.setTier(USER_ID, ADMIN_ID, MembershipTier.SILVER);
+
+    assertThat(result.isOk()).isTrue();
+    verify(eventPublisher, never()).publish(any());
+  }
+
+  @Test
   @DisplayName("negative amountM is rejected")
   void shouldRejectNegativeAmount() {
     Result<ltdjms.discord.shared.Unit, ltdjms.discord.shared.DomainError> result =
@@ -128,31 +171,6 @@ class MembershipAdminServiceTest {
 
     assertThat(result.isErr()).isTrue();
     verify(spendRepository, never()).insertAdminAdjust(anyLong(), anyLong(), anyLong(), any(), any());
-  }
-
-  @Test
-  @DisplayName("getDetail composes summary and bronze flag")
-  void getDetailShouldComposeAdminDetail() {
-    MembershipPanelSummary summary =
-        new MembershipPanelSummary(
-            MembershipTier.SILVER,
-            10_000L,
-            33_000L,
-            NEXT_SETTLEMENT,
-            MembershipTier.SILVER.discountRate(),
-            JOIN_AT,
-            23_000L,
-            100);
-    when(queryService.getPanelSummary(USER_ID)).thenReturn(summary);
-    when(membershipRepository.findByUserId(USER_ID))
-        .thenReturn(Optional.of(membershipRow(MembershipTier.SILVER, true)));
-
-    Result<MembershipAdminDetail, ltdjms.discord.shared.DomainError> result =
-        service.getDetail(USER_ID);
-
-    assertThat(result.isOk()).isTrue();
-    assertThat(result.getValue().summary()).isEqualTo(summary);
-    assertThat(result.getValue().hasQualifyingBronzeOrder()).isTrue();
   }
 
   private void stubMembershipWithPeriodSum(long currentSum) {

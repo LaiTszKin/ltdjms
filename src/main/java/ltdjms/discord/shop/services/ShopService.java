@@ -64,22 +64,22 @@ public class ShopService {
       return Map.of();
     }
 
-    Map<Long, EscortPriceQuote> quotes = new HashMap<>();
-    for (Product product : products) {
-      if (!EscortProductRules.isEscortLinked(product)) {
-        continue;
-      }
-      try {
-        quotes.put(product.id(), quoteEscortPrice(userId, product, guildId));
-      } catch (Exception e) {
-        LOG.warn(
-            "Failed to quote escort price for productId={}, userId={}: {}",
-            product.id(),
-            userId,
-            e.getMessage());
-      }
+    List<Product> escortProducts =
+        products.stream().filter(EscortProductRules::isEscortLinked).toList();
+    if (escortProducts.isEmpty()) {
+      return Map.of();
     }
-    return quotes;
+
+    try {
+      return membershipPricingService.quoteEscortPrices(userId, escortProducts, guildId);
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to batch quote escort prices for userId={}, productCount={}: {}",
+          userId,
+          escortProducts.size(),
+          e.getMessage());
+      return Map.of();
+    }
   }
 
   /**

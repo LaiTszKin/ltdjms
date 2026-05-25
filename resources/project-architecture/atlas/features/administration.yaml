@@ -185,6 +185,18 @@ submodules:
       - name: ErrNoAdminFound
         when: guild 中不存在 ADMINISTRATOR 權限成員（不應發生）
         means: log warning，跳過管理員通知
+  - slug: membership-admin-ui
+    kind: api
+    role: Admin panel 會員等級管理子面板
+    functions:
+      - name: handleMembershipMgmt
+        in: guildId,adminUserId
+        out: AdminMembershipEmbed
+        side: io
+        purpose: 'R1-R4: user select, adjust spend, set tier'
+    variables: []
+    dataflow: []
+    errors: []
 edges:
   - id: e-xzgwfu
     from: admin-panel-interaction

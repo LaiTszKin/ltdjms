@@ -1,10 +1,14 @@
 package ltdjms.discord.membership.services;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -127,6 +131,36 @@ class MembershipPricingServiceTest {
         .isEqualTo(3150L);
     assertThat(MembershipPricingService.applyDiscount(333L, MembershipTier.BLACK.discountRate()))
         .isEqualTo(233L);
+  }
+
+  @Test
+  @DisplayName("batch quoteEscortPrices resolves membership tier once for multiple products")
+  void batchQuoteShouldLookupMembershipOnce() {
+    Product product1 = escortFiatProduct(3500L);
+    Product product2 =
+        new Product(
+            3L,
+            GUILD_ID,
+            "護航商品 2",
+            null,
+            null,
+            null,
+            1000L,
+            null,
+            true,
+            "ESCORT-C",
+            Instant.now(),
+            Instant.now());
+    when(membershipRepository.findByUserId(USER_ID))
+        .thenReturn(Optional.of(membershipWithTier(MembershipTier.SILVER)));
+
+    Map<Long, EscortPriceQuote> quotes =
+        service.quoteEscortPrices(USER_ID, List.of(product1, product2), GUILD_ID);
+
+    assertThat(quotes).hasSize(2);
+    assertThat(quotes.get(1L).chargedPriceTwd()).isEqualTo(3150L);
+    assertThat(quotes.get(3L).chargedCurrencyPrice()).isEqualTo(900L);
+    verify(membershipRepository, times(1)).findByUserId(USER_ID);
   }
 
   private static Product fiatOnlyProduct(long fiatPrice, boolean escort, String optionCode) {

@@ -14,6 +14,7 @@ import ltdjms.discord.shared.events.BalanceChangedEvent;
 import ltdjms.discord.shared.events.CurrencyConfigChangedEvent;
 import ltdjms.discord.shared.events.DomainEvent;
 import ltdjms.discord.shared.events.GameTokenChangedEvent;
+import ltdjms.discord.shared.events.MembershipPeriodSpendChangedEvent;
 import ltdjms.discord.shared.events.MembershipTierChangedEvent;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 
@@ -49,6 +50,8 @@ public class UserPanelUpdateListener implements Consumer<DomainEvent> {
     } else if (event instanceof CurrencyConfigChangedEvent e) {
       updateAllGuildPanels(e.guildId());
     } else if (event instanceof MembershipTierChangedEvent e) {
+      panelUpdateExecutor.execute(() -> updatePanelsForUser(e.userId()));
+    } else if (event instanceof MembershipPeriodSpendChangedEvent e) {
       panelUpdateExecutor.execute(() -> updatePanelsForUser(e.userId()));
     }
   }

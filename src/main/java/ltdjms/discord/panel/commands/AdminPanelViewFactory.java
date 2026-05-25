@@ -582,11 +582,14 @@ final class AdminPanelViewFactory {
     builder.append('\n');
     builder
         .append("**本週期累計 M：**")
-        .append(String.format("%,d", Math.max(0, summary.periodSpendListPriceM())))
+        .append(String.format("%,d", summary.periodSpendListPriceM()))
         .append('\n');
     builder.append("**距下一等級：**");
     if (summary.hasNextTierThreshold()) {
-      builder.append(String.format("%,d M", summary.remainingToNextTierM()));
+      builder
+          .append("還需 ")
+          .append(String.format("%,d", summary.remainingToNextTierM()))
+          .append(" M");
     } else {
       builder.append("已達最高等級");
     }

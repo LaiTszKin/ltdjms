@@ -165,8 +165,9 @@ public class CommandHandlerModule {
   @Provides
   @Singleton
   public MembershipManagementFacade provideMembershipManagementFacade(
+      MembershipQueryService membershipQueryService,
       MembershipAdminService membershipAdminService) {
-    return new MembershipManagementFacade(membershipAdminService);
+    return new MembershipManagementFacade(membershipQueryService, membershipAdminService);
   }
 
   @Provides

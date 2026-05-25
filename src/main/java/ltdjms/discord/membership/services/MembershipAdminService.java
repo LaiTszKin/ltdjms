@@ -19,6 +19,7 @@ import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 import ltdjms.discord.shared.Unit;
 import ltdjms.discord.shared.events.DomainEventPublisher;
+import ltdjms.discord.shared.events.MembershipPeriodSpendChangedEvent;
 import ltdjms.discord.shared.events.MembershipTierChangedEvent;
 
 /** Admin write use cases for membership tier and period spend adjustments. */
@@ -28,36 +29,18 @@ public class MembershipAdminService {
 
   private final MembershipRepository membershipRepository;
   private final MembershipSpendRepository spendRepository;
-  private final MembershipQueryService queryService;
   private final DomainEventPublisher eventPublisher;
   private final Clock clock;
 
   public MembershipAdminService(
       MembershipRepository membershipRepository,
       MembershipSpendRepository spendRepository,
-      MembershipQueryService queryService,
       DomainEventPublisher eventPublisher,
       Clock clock) {
     this.membershipRepository = Objects.requireNonNull(membershipRepository);
     this.spendRepository = Objects.requireNonNull(spendRepository);
-    this.queryService = Objects.requireNonNull(queryService);
     this.eventPublisher = Objects.requireNonNull(eventPublisher);
     this.clock = Objects.requireNonNull(clock);
-  }
-
-  public Result<MembershipAdminDetail, DomainError> getDetail(long userId) {
-    if (userId <= 0) {
-      return Result.err(DomainError.invalidInput("userId must be positive"));
-    }
-
-    MembershipPanelSummary summary = queryService.getPanelSummary(userId);
-    boolean hasQualifyingBronzeOrder =
-        membershipRepository
-            .findByUserId(userId)
-            .map(GlobalMemberMembership::hasQualifyingBronzeOrder)
-            .orElse(false);
-
-    return Result.ok(new MembershipAdminDetail(summary, hasQualifyingBronzeOrder));
   }
 
   public Result<Unit, DomainError> adjustPeriodSpend(
@@ -102,6 +85,7 @@ public class MembershipAdminService {
           mode,
           amountM,
           delta);
+      eventPublisher.publish(new MembershipPeriodSpendChangedEvent(userId, now));
       return Result.okVoid();
     } catch (Exception e) {
       LOG.error(

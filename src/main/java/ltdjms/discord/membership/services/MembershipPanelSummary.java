@@ -28,6 +28,11 @@ public record MembershipPanelSummary(
     return Math.min(1.0, (double) periodSpendListPriceM / nextTierThresholdM);
   }
 
+  /** Clamps raw ledger sum to a non-negative display value for UI and progress math. */
+  public static long clampDisplaySpend(long rawPeriodSpendM) {
+    return Math.max(0, rawPeriodSpendM);
+  }
+
   /** Remaining catalog list-price M until the next tier threshold; zero when no threshold. */
   public static long computeRemaining(long spent, long threshold) {
     if (threshold <= 0) {

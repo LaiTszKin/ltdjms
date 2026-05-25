@@ -70,6 +70,62 @@ class MembershipQueryServiceTest {
   }
 
   @Test
+  @DisplayName("computeRemaining: negative spent clamps via display spend in summary")
+  void computeRemainingShouldClampNegativeSpentForDisplay() {
+    assertThat(MembershipPanelSummary.computeRemaining(MembershipPanelSummary.clampDisplaySpend(-5_000L), 14_000L))
+        .isEqualTo(14_000L);
+  }
+
+  @Test
+  @DisplayName("getPanelSummary clamps negative period spend for display and remaining")
+  void shouldClampNegativePeriodSpendInSummary() {
+    GlobalMemberMembership membership =
+        new GlobalMemberMembership(
+            USER_ID,
+            MembershipTier.NONE,
+            JOIN_AT,
+            15,
+            null,
+            NEXT_SETTLEMENT,
+            false,
+            NOW,
+            NOW);
+    when(membershipRepository.findByUserId(USER_ID)).thenReturn(Optional.of(membership));
+    when(membershipSpendRepository.sumListPriceInPeriod(eq(USER_ID), any(), any()))
+        .thenReturn(-5_000L);
+
+    MembershipPanelSummary summary = service.getPanelSummary(USER_ID);
+
+    assertThat(summary.periodSpendListPriceM()).isZero();
+    assertThat(summary.remainingToNextTierM()).isEqualTo(MembershipTier.SILVER.thresholdListPriceTwd());
+    assertThat(summary.nextTierProgressRatio()).isZero();
+  }
+
+  @Test
+  @DisplayName("getAdminDetail returns bronze flag from single membership fetch")
+  void getAdminDetailShouldIncludeBronzeFlag() {
+    GlobalMemberMembership membership =
+        new GlobalMemberMembership(
+            USER_ID,
+            MembershipTier.SILVER,
+            JOIN_AT,
+            15,
+            null,
+            NEXT_SETTLEMENT,
+            true,
+            NOW,
+            NOW);
+    when(membershipRepository.findByUserId(USER_ID)).thenReturn(Optional.of(membership));
+    when(membershipSpendRepository.sumListPriceInPeriod(eq(USER_ID), any(), any()))
+        .thenReturn(10_000L);
+
+    MembershipAdminDetail detail = service.getAdminDetail(USER_ID);
+
+    assertThat(detail.hasQualifyingBronzeOrder()).isTrue();
+    assertThat(detail.summary().tier()).isEqualTo(MembershipTier.SILVER);
+  }
+
+  @Test
   @DisplayName("getPanelSummary 帶入 join_at、remaining 與 monthlyTokenGrant")
   void shouldPopulateExtendedFieldsFromMembership() {
     GlobalMemberMembership membership =

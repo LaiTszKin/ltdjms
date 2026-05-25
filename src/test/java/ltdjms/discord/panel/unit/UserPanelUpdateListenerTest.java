@@ -25,6 +25,7 @@ import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 import ltdjms.discord.shared.events.BalanceChangedEvent;
 import ltdjms.discord.shared.events.GameTokenChangedEvent;
+import ltdjms.discord.shared.events.MembershipPeriodSpendChangedEvent;
 import ltdjms.discord.shared.events.MembershipTierChangedEvent;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
@@ -166,6 +167,38 @@ class UserPanelUpdateListenerTest {
               MembershipTier.SILVER.name(),
               15_000L,
               NOW));
+      awaitAsyncPanelUpdate();
+
+      verify(userPanelService).getMembershipSummary(TEST_USER_ID);
+      verify(userPanelService).getUserPanelView(TEST_GUILD_ID, TEST_USER_ID, summary);
+      verify(interactionHook).editOriginalEmbeds(any(MessageEmbed.class));
+    }
+  }
+
+  @Nested
+  @DisplayName("MembershipPeriodSpendChangedEvent")
+  class MembershipPeriodSpendChangedEventTests {
+
+    @Test
+    @DisplayName("收到本週期消費變更事件時應更新個人面板 Embed")
+    void shouldUpdatePanelOnMembershipPeriodSpendChangedEvent() {
+      MembershipPanelSummary summary =
+          new MembershipPanelSummary(
+              MembershipTier.SILVER,
+              12_000L,
+              30_000L,
+              null,
+              MembershipTier.SILVER.discountRate(),
+              Instant.parse("2025-01-01T00:00:00Z"),
+              18_000L,
+              MembershipTier.SILVER.monthlyTokenGrant());
+      UserPanelView view =
+          new UserPanelView(TEST_GUILD_ID, TEST_USER_ID, 1_000L, "星幣", "✨", 50L, summary);
+      when(userPanelService.getMembershipSummary(TEST_USER_ID)).thenReturn(summary);
+      when(userPanelService.getUserPanelView(TEST_GUILD_ID, TEST_USER_ID, summary))
+          .thenReturn(Result.ok(view));
+
+      listener.accept(new MembershipPeriodSpendChangedEvent(TEST_USER_ID, NOW));
       awaitAsyncPanelUpdate();
 
       verify(userPanelService).getMembershipSummary(TEST_USER_ID);

@@ -14,6 +14,7 @@ import ltdjms.discord.membership.domain.MembershipTier;
 import ltdjms.discord.membership.services.MembershipAdminDetail;
 import ltdjms.discord.membership.services.MembershipAdminService;
 import ltdjms.discord.membership.services.MembershipPanelSummary;
+import ltdjms.discord.membership.services.MembershipQueryService;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 
@@ -24,26 +25,35 @@ class MembershipManagementFacadeTest {
   private static final long GUILD_ID = 100L;
   private static final long ADMIN_ID = 7L;
 
+  @Mock private MembershipQueryService membershipQueryService;
   @Mock private MembershipAdminService membershipAdminService;
 
   private MembershipManagementFacade facade;
 
   @BeforeEach
   void setUp() {
-    facade = new MembershipManagementFacade(membershipAdminService);
+    facade = new MembershipManagementFacade(membershipQueryService, membershipAdminService);
   }
 
   @Test
-  @DisplayName("should delegate getDetail to admin service")
-  void shouldDelegateGetDetail() {
+  @DisplayName("should compose admin detail from query service")
+  void shouldComposeAdminDetailFromQueryService() {
     MembershipAdminDetail detail =
         new MembershipAdminDetail(
             new MembershipPanelSummary(
                 MembershipTier.NONE, 0L, 14_000L, null, MembershipTier.NONE.discountRate(), null, 14_000L, 0),
             false);
-    when(membershipAdminService.getDetail(USER_ID)).thenReturn(Result.ok(detail));
+    when(membershipQueryService.getAdminDetail(USER_ID)).thenReturn(detail);
 
     assertThat(facade.getDetail(USER_ID).getValue()).isEqualTo(detail);
+  }
+
+  @Test
+  @DisplayName("should reject invalid user id for getDetail")
+  void shouldRejectInvalidUserIdForGetDetail() {
+    Result<MembershipAdminDetail, DomainError> result = facade.getDetail(0L);
+
+    assertThat(result.isErr()).isTrue();
   }
 
   @Test

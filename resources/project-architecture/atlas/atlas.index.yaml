@@ -1,28 +1,3 @@
-meta:
-  title: LTDJMS — Discord Bot 專案架構
-  summary: >-
-    基於 Java/JDA 的 Discord bot，在單一 guild 內承載經濟互動、商品交易、護航協作與 AI 頻道治理。涵蓋 guild
-    貨幣與遊戲代幣的雙軌經濟系統、商品商店與法幣付款（ECPay）、護航派單狀態機、AI 聊天與 Agent
-    工具執行、以及管理面板。掃描範圍：src/main/java/ltdjms/discord/ 下所有業務模組與共用基礎設施。
-  updatedAt: '2026-05-25T07:52:55.996Z'
-actors:
-  - id: member
-    label: 一般成員
-  - id: admin
-    label: 管理員
-  - id: escort
-    label: 護航人員
-  - id: after-sales-staff
-    label: 售後人員
-features:
-  - guild-economy
-  - shop-payment
-  - escort-dispatch
-  - ai-chat-agent
-  - administration
-  - shared-infrastructure
-  - user-panel
-  - membership-tiers
 edges:
   - id: e-eq4hb7
     from:
@@ -438,3 +413,30 @@ edges:
       submodule: join-tracking
     kind: call
     label: GuildMemberJoin
+  - id: e-upmi-query
+    from:
+      feature: user-panel
+      submodule: panel-service
+    to:
+      feature: membership-tiers
+      submodule: benefits-ui
+    kind: call
+    label: Extended panel summary
+  - id: e-shop-quotes
+    from:
+      feature: shop-payment
+      submodule: shop-interaction
+    to:
+      feature: membership-tiers
+      submodule: payment-discount
+    kind: call
+    label: Batch member price quotes
+  - id: e-admin-membership
+    from:
+      feature: administration
+      submodule: membership-admin-ui
+    to:
+      feature: membership-tiers
+      submodule: admin-membership
+    kind: call
+    label: Admin membership write

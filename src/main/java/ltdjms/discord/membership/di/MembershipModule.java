@@ -115,13 +115,11 @@ public class MembershipModule {
   public MembershipAdminService provideMembershipAdminService(
       MembershipRepository membershipRepository,
       MembershipSpendRepository membershipSpendRepository,
-      MembershipQueryService membershipQueryService,
       DomainEventPublisher eventPublisher,
       @SettlementClock Clock clock) {
     return new MembershipAdminService(
         membershipRepository,
         membershipSpendRepository,
-        membershipQueryService,
         eventPublisher,
         clock);
   }

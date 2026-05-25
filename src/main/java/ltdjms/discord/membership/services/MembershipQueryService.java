@@ -36,28 +36,41 @@ public class MembershipQueryService {
    * @return summary; tier {@link MembershipTier#NONE} when no membership row exists
    */
   public MembershipPanelSummary getPanelSummary(long userId) {
-    Optional<GlobalMemberMembership> membershipOpt = membershipRepository.findByUserId(userId);
-    if (membershipOpt.isEmpty()) {
-      return noneSummary(null);
-    }
+    return membershipRepository
+        .findByUserId(userId)
+        .map(this::buildPanelSummary)
+        .orElseGet(() -> noneSummary(null));
+  }
 
-    GlobalMemberMembership membership = membershipOpt.get();
+  /** Admin-facing detail with bronze flag from a single membership row fetch. */
+  public MembershipAdminDetail getAdminDetail(long userId) {
+    return membershipRepository
+        .findByUserId(userId)
+        .map(
+            membership ->
+                new MembershipAdminDetail(
+                    buildPanelSummary(membership), membership.hasQualifyingBronzeOrder()))
+        .orElseGet(() -> new MembershipAdminDetail(noneSummary(null), false));
+  }
+
+  private MembershipPanelSummary buildPanelSummary(GlobalMemberMembership membership) {
     Instant now = clock.instant();
     MembershipPeriodBounds.Period period = MembershipPeriodBounds.currentPeriod(membership, now);
-    long periodSpendM =
+    long rawPeriodSpendM =
         membershipSpendRepository.sumListPriceInPeriod(
-            userId, period.startInclusive(), period.endExclusive());
+            membership.discordUserId(), period.startInclusive(), period.endExclusive());
+    long displayPeriodSpendM = MembershipPanelSummary.clampDisplaySpend(rawPeriodSpendM);
     MembershipTier effectiveTier =
         MembershipTierEvaluator.effectiveTier(
             membership.currentTier(), membership.hasQualifyingBronzeOrder());
 
     long nextTierThresholdM = MembershipTierLabels.nextTierThresholdM(effectiveTier).orElse(0L);
     long remainingToNextTierM =
-        MembershipPanelSummary.computeRemaining(periodSpendM, nextTierThresholdM);
+        MembershipPanelSummary.computeRemaining(displayPeriodSpendM, nextTierThresholdM);
 
     return new MembershipPanelSummary(
         effectiveTier,
-        periodSpendM,
+        displayPeriodSpendM,
         nextTierThresholdM,
         membership.nextSettlementAt(),
         effectiveTier.discountRate(),

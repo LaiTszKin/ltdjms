@@ -20,6 +20,7 @@ import net.dv8tion.jda.api.interactions.components.ActionRow;
 public class ShopButtonHandler extends ListenerAdapter {
 
   private static final Logger LOG = LoggerFactory.getLogger(ShopButtonHandler.class);
+  private static final int BUY_MENU_QUOTE_WARNING_THRESHOLD = 50;
 
   private final ShopService shopService;
   private final ProductService productService;
@@ -176,6 +177,13 @@ public class ShopButtonHandler extends ListenerAdapter {
     if (allProducts.isEmpty()) {
       event.reply("目前沒有可購買的商品").setEphemeral(true).queue();
       return;
+    }
+
+    if (allProducts.size() >= BUY_MENU_QUOTE_WARNING_THRESHOLD) {
+      LOG.warn(
+          "Quoting escort prices for full buy menu catalog: guildId={}, productCount={}",
+          guildId,
+          allProducts.size());
     }
 
     long userId = event.getUser().getIdLong();

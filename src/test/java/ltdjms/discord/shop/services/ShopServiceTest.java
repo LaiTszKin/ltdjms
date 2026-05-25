@@ -6,6 +6,7 @@ import static org.mockito.Mockito.*;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -328,15 +329,14 @@ class ShopServiceTest {
               MembershipTier.SILVER,
               MembershipTier.SILVER.discountRate());
 
-      when(membershipPricingService.quoteEscortPrice(42L, escortProduct, TEST_GUILD_ID))
-          .thenReturn(quote);
+      when(membershipPricingService.quoteEscortPrices(42L, List.of(escortProduct), TEST_GUILD_ID))
+          .thenReturn(Map.of(1L, quote));
 
       var result = shopService.quoteEscortPrices(42L, List.of(escortProduct, regularProduct), TEST_GUILD_ID);
 
       assertThat(result).containsOnlyKeys(1L);
       assertThat(result.get(1L)).isEqualTo(quote);
-      verify(membershipPricingService).quoteEscortPrice(42L, escortProduct, TEST_GUILD_ID);
-      verify(membershipPricingService, never()).quoteEscortPrice(42L, regularProduct, TEST_GUILD_ID);
+      verify(membershipPricingService).quoteEscortPrices(42L, List.of(escortProduct), TEST_GUILD_ID);
     }
 
     @Test

@@ -29,6 +29,7 @@
           <tr><td>handleFiatPurchase</td><td>productId, guildId, userId</td><td>FiatOrderResult (含繳費碼)</td><td>network</td><td>建立法幣訂單並產生 CVS 超商繳費碼</td></tr>
           <tr><td>buildPurchaseConfirmEmbed</td><td>product, balance</td><td>EmbedView + confirm/cancel buttons</td><td>pure</td><td>Confirm step before currency purchase (Java ShopView parity).</td></tr>
           <tr><td>getAllPurchasableProducts</td><td>guildId</td><td>Product[]</td><td>io</td><td>Full purchasable set for buy menu (not paginated slice).</td></tr>
+          <tr><td>handleShopBrowseWithQuotes</td><td>guildId,userId,page</td><td>ShopPageEmbed</td><td>io</td><td>R1: list embed with member pricing</td></tr>
         </tbody>
       </table>
     </section>
@@ -39,6 +40,8 @@
         <tbody>
           <tr><td>inflightFiatOrders</td><td>ConcurrentHashMap</td><td>instance</td><td>避免短時間內對同一商品重複建立法幣訂單（去重）」</td></tr>
           <tr><td>shopPageCache</td><td>Cache&lt;ShopPage&gt;</td><td>instance</td><td>商店頁面快取，減少重複查庫</td></tr>
+          <tr><td>quotesByProductId</td><td>Map&lt;Long,EscortPriceQuote&gt;</td><td>call</td><td></td></tr>
+          <tr><td>ShopPageEmbed</td><td>MessageEmbed</td><td>call</td><td></td></tr>
         </tbody>
       </table>
     </section>
@@ -51,7 +54,7 @@
           <button type="button" data-pan-zoom="fit" aria-label="Reset view">Fit</button>
         </div>
         <div class="sub-dataflow__viewport" data-pan-zoom-viewport>
-          <svg class="sub-dataflow__svg" data-atlas-svg="sub-dataflow" viewBox="0 0 628 720" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Internal dataflow">
+          <svg class="sub-dataflow__svg" data-atlas-svg="sub-dataflow" viewBox="0 0 628 878" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Internal dataflow">
   <defs>
     <marker id="sub-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" /></marker>
   </defs>
@@ -96,6 +99,17 @@
     <rect class="sub-dataflow__box" x="80" y="612" width="520" height="76" rx="14" ry="14" />
     <text class="sub-dataflow__text" x="340" y="646" text-anchor="middle">Select product → branch by price type → confirm OR payment</text>
     <text class="sub-dataflow__text" x="340" y="666" text-anchor="middle">choice OR fiat defer+DM</text>
+  </g>
+  <line class="sub-dataflow__arrow" x1="340" y1="694" x2="340" y2="724" marker-end="url(#sub-arrow)" />
+  <g class="sub-dataflow__step">
+    <circle class="sub-dataflow__badge" cx="42" cy="789" r="18" />
+    <text class="sub-dataflow__badge-text" x="42" y="794" text-anchor="middle">7</text>
+    <rect class="sub-dataflow__box" x="80" y="732" width="520" height="114" rx="14" ry="14" />
+    <rect class="sub-dataflow__fn-bg" x="94" y="746" width="234.60000000000002" height="20" rx="10" ry="10" />
+    <text class="sub-dataflow__fn-text" x="104" y="760">fn handleShopBrowseWithQuotes</text>
+    <text class="sub-dataflow__text" x="340" y="798" text-anchor="middle">Quote escort products for current user before building embed</text>
+    <text class="sub-dataflow__chip sub-dataflow__chip--reads" x="94" y="834">← reads: quotesByProductId</text>
+    <text class="sub-dataflow__chip sub-dataflow__chip--writes" x="586" y="834" text-anchor="end">→ writes: ShopPageEmbed</text>
   </g>
 </svg>
         </div>

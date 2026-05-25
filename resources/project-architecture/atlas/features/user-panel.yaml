@@ -34,8 +34,25 @@ submodules:
         out: UserPanelView
         side: io
         purpose: 聚合貨幣餘額與遊戲代幣
-    variables: []
-    dataflow: []
+      - name: formatMembershipFieldExtended
+        in: MembershipPanelSummary
+        out: zhTWFieldText
+        side: pure
+        purpose: Render join date, remaining spend, benefits
+    variables:
+      - name: MembershipPanelSummary
+        type: record
+        scope: call
+      - name: UserPanelView
+        type: view
+        scope: call
+    dataflow:
+      - step: Format membership embed field with join date and benefits
+        fn: formatMembershipFieldExtended
+        reads:
+          - MembershipPanelSummary
+        writes:
+          - UserPanelView
     errors: []
   - slug: panel-session
     kind: service

@@ -303,12 +303,12 @@ class ShopViewTest {
   }
 
   @Test
-  @DisplayName("UT-05: buildBuyMenu 折扣商品 description 無 markdown 且 ≤ 100 字元")
+  @DisplayName("UT-05: buildBuyMenu 折扣商品 description 可含原價且無 markdown")
   void buildBuyMenuShouldUseCompactSelectDescriptionForDiscountedProduct() {
-    Product product = escortProduct(1L, "護航商品", 100L, 3500L);
+    Product product = escortProduct(1L, "護航商品", 100L, null);
     EscortPriceQuote quote =
         new EscortPriceQuote(
-            3500L, 3150L, 100L, 90L, MembershipTier.SILVER, MembershipTier.SILVER.discountRate());
+            0L, 0L, 100L, 90L, MembershipTier.SILVER, MembershipTier.SILVER.discountRate());
 
     var rows = ShopView.buildBuyMenu(List.of(product), Map.of(1L, quote));
     var menu = extractMenu(rows);
@@ -316,7 +316,20 @@ class ShopViewTest {
     String description = menu.getOptions().get(0).getDescription();
     assertThat(description).doesNotContain("~~");
     assertThat(description.length()).isLessThanOrEqualTo(100);
-    assertThat(description).contains("9折");
+    assertThat(description).contains("(原100,9折)");
+  }
+
+  @Test
+  @DisplayName("buildShopEmbed escort 商品無 quote 時 fallback 為原價且不含劃線")
+  void buildShopEmbedShouldFallbackToListPriceWithoutStrikethroughWhenQuoteMissing() {
+    Product product = escortProduct(2L, "護航商品", 100L, 3500L);
+
+    MessageEmbed embed =
+        ShopView.buildShopEmbed(List.of(product), 1, 1, TEST_GUILD_ID, Map.of());
+
+    assertThat(embed.getDescription()).contains("100 貨幣");
+    assertThat(embed.getDescription()).contains("NT$3,500");
+    assertThat(embed.getDescription()).doesNotContain("~~");
   }
 
   @Test

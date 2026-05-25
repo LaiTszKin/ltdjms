@@ -2554,8 +2554,7 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
 
     User selectedUser = selectedUsers.get(0);
     long userId = selectedUser.getIdLong();
-    Result<MembershipAdminDetail, DomainError> detailResult =
-        adminPanelService.getMembershipDetail(userId);
+    Result<MembershipAdminDetail, DomainError> detailResult = requireMembershipDetail(userId);
     if (detailResult.isErr()) {
       event.reply("無法載入會員資料：" + detailResult.getError().message()).setEphemeral(true).queue();
       return;
@@ -2585,7 +2584,7 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     }
 
     Result<MembershipAdminDetail, DomainError> detailResult =
-        adminPanelService.getMembershipDetail(state.selectedUserId);
+        requireMembershipDetail(state.selectedUserId);
     if (detailResult.isErr()) {
       event.reply("無法載入會員資料：" + detailResult.getError().message()).setEphemeral(true).queue();
       return;
@@ -2609,7 +2608,7 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     }
 
     Result<MembershipAdminDetail, DomainError> detailResult =
-        adminPanelService.getMembershipDetail(state.selectedUserId);
+        requireMembershipDetail(state.selectedUserId);
     if (detailResult.isErr()) {
       event.reply("無法載入會員資料：" + detailResult.getError().message()).setEphemeral(true).queue();
       return;
@@ -2639,7 +2638,7 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
 
     state.selectedSpendMode = event.getValues().get(0);
     Result<MembershipAdminDetail, DomainError> detailResult =
-        adminPanelService.getMembershipDetail(state.selectedUserId);
+        requireMembershipDetail(state.selectedUserId);
     if (detailResult.isErr()) {
       event.reply("無法載入會員資料：" + detailResult.getError().message()).setEphemeral(true).queue();
       return;
@@ -2733,7 +2732,7 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
     }
 
     Result<MembershipAdminDetail, DomainError> detailResult =
-        adminPanelService.getMembershipDetail(state.selectedUserId);
+        requireMembershipDetail(state.selectedUserId);
     if (detailResult.isErr()) {
       event.reply("無法載入會員資料：" + detailResult.getError().message()).setEphemeral(true).queue();
       return;
@@ -2762,7 +2761,7 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
 
     state.selectedTier = event.getValues().get(0);
     Result<MembershipAdminDetail, DomainError> detailResult =
-        adminPanelService.getMembershipDetail(state.selectedUserId);
+        requireMembershipDetail(state.selectedUserId);
     if (detailResult.isErr()) {
       event.reply("無法載入會員資料：" + detailResult.getError().message()).setEphemeral(true).queue();
       return;
@@ -2814,6 +2813,10 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         .queue();
   }
 
+  private Result<MembershipAdminDetail, DomainError> requireMembershipDetail(long userId) {
+    return adminPanelService.getMembershipDetail(userId);
+  }
+
   private void refreshMembershipDetailPanel(
       long guildId, long adminUserId, String sessionKey, long userId) {
     MembershipSessionState state = membershipSessionStates.get(sessionKey);
@@ -2826,7 +2829,7 @@ public class AdminPanelButtonHandler extends ListenerAdapter {
         adminUserId,
         hook -> {
           Result<MembershipAdminDetail, DomainError> detailResult =
-              adminPanelService.getMembershipDetail(userId);
+              requireMembershipDetail(userId);
           if (detailResult.isErr()) {
             LOG.warn(
                 "Failed to refresh membership panel: guildId={}, userId={}, error={}",
