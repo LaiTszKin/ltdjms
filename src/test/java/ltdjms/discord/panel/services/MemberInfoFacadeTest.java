@@ -4,10 +4,9 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-import java.time.Clock;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Collections;
-import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -22,11 +21,8 @@ import ltdjms.discord.currency.services.BalanceService;
 import ltdjms.discord.currency.services.CurrencyTransactionService;
 import ltdjms.discord.gametoken.services.GameTokenService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService;
-import ltdjms.discord.membership.domain.GlobalMemberMembership;
 import ltdjms.discord.membership.domain.MembershipTier;
-import ltdjms.discord.membership.persistence.MembershipRepository;
-import ltdjms.discord.membership.persistence.MembershipSpendRepository;
-import ltdjms.discord.membership.services.MembershipJoinService;
+import ltdjms.discord.membership.services.MembershipQueryService;
 import ltdjms.discord.product.domain.Product;
 import ltdjms.discord.redemption.domain.RedemptionCode;
 import ltdjms.discord.redemption.services.ProductRedemptionTransactionService;
@@ -40,7 +36,6 @@ class MemberInfoFacadeTest {
 
   private static final long TEST_GUILD_ID = 123456789012345678L;
   private static final long TEST_USER_ID = 987654321098765432L;
-  private static final Instant NOW = Instant.parse("2026-04-10T08:00:00Z");
 
   @Mock private BalanceService balanceService;
   @Mock private GameTokenService gameTokenService;
@@ -48,14 +43,12 @@ class MemberInfoFacadeTest {
   @Mock private CurrencyTransactionService currencyTransactionService;
   @Mock private RedemptionService redemptionService;
   @Mock private ProductRedemptionTransactionService productRedemptionTransactionService;
-  @Mock private MembershipRepository membershipRepository;
-  @Mock private MembershipSpendRepository membershipSpendRepository;
+  @Mock private MembershipQueryService membershipQueryService;
 
   private MemberInfoFacade facade;
 
   @BeforeEach
   void setUp() {
-    Clock clock = Clock.fixed(NOW, MembershipJoinService.SETTLEMENT_ZONE);
     facade =
         new MemberInfoFacade(
             balanceService,
@@ -64,9 +57,7 @@ class MemberInfoFacadeTest {
             currencyTransactionService,
             redemptionService,
             productRedemptionTransactionService,
-            membershipRepository,
-            membershipSpendRepository,
-            clock);
+            membershipQueryService);
   }
 
   @Nested
@@ -80,7 +71,10 @@ class MemberInfoFacadeTest {
       Result<BalanceView, DomainError> balanceResult = Result.ok(balanceView);
       when(balanceService.tryGetBalance(TEST_GUILD_ID, TEST_USER_ID)).thenReturn(balanceResult);
       when(gameTokenService.getBalance(TEST_GUILD_ID, TEST_USER_ID)).thenReturn(50L);
-      when(membershipRepository.findByUserId(TEST_USER_ID)).thenReturn(Optional.empty());
+      when(membershipQueryService.getPanelSummary(TEST_USER_ID))
+          .thenReturn(
+              new MembershipQueryService.PanelSummary(
+                  MembershipTier.NONE, 0L, 15_000L, null, BigDecimal.ZERO));
 
       Result<UserPanelView, DomainError> result =
           facade.getUserPanelView(TEST_GUILD_ID, TEST_USER_ID);
@@ -121,7 +115,10 @@ class MemberInfoFacadeTest {
       Result<BalanceView, DomainError> balanceResult = Result.ok(balanceView);
       when(balanceService.tryGetBalance(TEST_GUILD_ID, TEST_USER_ID)).thenReturn(balanceResult);
       when(gameTokenService.getBalance(TEST_GUILD_ID, TEST_USER_ID)).thenReturn(0L);
-      when(membershipRepository.findByUserId(TEST_USER_ID)).thenReturn(Optional.empty());
+      when(membershipQueryService.getPanelSummary(TEST_USER_ID))
+          .thenReturn(
+              new MembershipQueryService.PanelSummary(
+                  MembershipTier.NONE, 0L, 15_000L, null, BigDecimal.ZERO));
 
       Result<UserPanelView, DomainError> result =
           facade.getUserPanelView(TEST_GUILD_ID, TEST_USER_ID);
@@ -138,21 +135,15 @@ class MemberInfoFacadeTest {
     @Test
     @DisplayName("should compute period spend and next tier threshold")
     void shouldComputeMembershipSummary() {
-      Instant periodStart = Instant.parse("2026-03-15T00:00:00+08:00");
-      GlobalMemberMembership membership =
-          new GlobalMemberMembership(
-              TEST_USER_ID,
-              MembershipTier.SILVER,
-              periodStart,
-              15,
-              periodStart,
-              Instant.parse("2026-05-15T00:00:00+08:00"),
-              true,
-              periodStart,
-              periodStart);
-      when(membershipRepository.findByUserId(TEST_USER_ID)).thenReturn(Optional.of(membership));
-      when(membershipSpendRepository.sumListPriceInPeriod(TEST_USER_ID, periodStart, NOW))
-          .thenReturn(20_000L);
+      Instant nextSettlement = Instant.parse("2026-05-15T00:00:00+08:00");
+      when(membershipQueryService.getPanelSummary(TEST_USER_ID))
+          .thenReturn(
+              new MembershipQueryService.PanelSummary(
+                  MembershipTier.SILVER,
+                  20_000L,
+                  MembershipTier.GOLD.thresholdListPriceTwd(),
+                  nextSettlement,
+                  MembershipTier.SILVER.discountRate()));
 
       MembershipPanelSummary summary = facade.getMembershipSummary(TEST_USER_ID);
 
@@ -160,7 +151,7 @@ class MemberInfoFacadeTest {
       assertThat(summary.periodSpendListPriceM()).isEqualTo(20_000L);
       assertThat(summary.nextTierThresholdM())
           .isEqualTo(MembershipTier.GOLD.thresholdListPriceTwd());
-      assertThat(summary.nextSettlementAt()).isEqualTo(membership.nextSettlementAt());
+      assertThat(summary.nextSettlementAt()).isEqualTo(nextSettlement);
     }
   }
 

@@ -7,12 +7,16 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Instant;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import ltdjms.discord.membership.domain.MembershipTier;
+import ltdjms.discord.panel.services.MembershipPanelSummary;
 import ltdjms.discord.panel.services.PanelSessionManager;
 import ltdjms.discord.panel.services.UserPanelService;
 import ltdjms.discord.panel.services.UserPanelUpdateListener;
@@ -21,6 +25,7 @@ import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 import ltdjms.discord.shared.events.BalanceChangedEvent;
 import ltdjms.discord.shared.events.GameTokenChangedEvent;
+import ltdjms.discord.shared.events.MembershipTierChangedEvent;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.interactions.InteractionHook;
@@ -36,6 +41,7 @@ class UserPanelUpdateListenerTest {
 
   private static final long TEST_GUILD_ID = 123456789012345678L;
   private static final long TEST_USER_ID = 987654321098765432L;
+  private static final Instant NOW = Instant.parse("2026-04-15T08:00:00Z");
 
   private PanelSessionManager sessionManager;
   private UserPanelService userPanelService;
@@ -127,6 +133,33 @@ class UserPanelUpdateListenerTest {
       MessageEmbed.Field tokenField = embed.getFields().get(1);
       assertThat(tokenField.getName()).contains("遊戲代幣");
       assertThat(tokenField.getValue()).contains("🎮").contains("999");
+    }
+  }
+
+  @Nested
+  @DisplayName("MembershipTierChangedEvent")
+  class MembershipTierChangedEventTests {
+
+    @Test
+    @DisplayName("收到會員等級變更事件時應更新個人面板 Embed")
+    void shouldUpdatePanelOnMembershipTierChangedEvent() {
+      MembershipPanelSummary summary =
+          new MembershipPanelSummary(
+              MembershipTier.SILVER, 15_000L, 30_000L, null, MembershipTier.SILVER.discountRate());
+      UserPanelView view =
+          new UserPanelView(TEST_GUILD_ID, TEST_USER_ID, 1_000L, "星幣", "✨", 50L, summary);
+      when(userPanelService.getMembershipSummary(TEST_USER_ID)).thenReturn(summary);
+      when(userPanelService.getUserPanelView(TEST_GUILD_ID, TEST_USER_ID, summary))
+          .thenReturn(Result.ok(view));
+
+      listener.accept(
+          new MembershipTierChangedEvent(
+              TEST_USER_ID, MembershipTier.BRONZE, MembershipTier.SILVER, 15_000L, NOW));
+      awaitAsyncPanelUpdate();
+
+      verify(userPanelService).getMembershipSummary(TEST_USER_ID);
+      verify(userPanelService).getUserPanelView(TEST_GUILD_ID, TEST_USER_ID, summary);
+      verify(interactionHook).editOriginalEmbeds(any(MessageEmbed.class));
     }
   }
 

@@ -94,6 +94,7 @@ public class MembershipSpendService {
 
       return true;
     } catch (Exception e) {
+      MembershipSpendMetrics.recordFailure(SOURCE_TYPE_FIAT_ORDER, order.orderNumber());
       LOG.error("Failed to record membership spend for orderNumber={}", order.orderNumber(), e);
       return false;
     }
@@ -122,16 +123,16 @@ public class MembershipSpendService {
   }
 
   private static long fallbackListPrice(Long orderListPriceTwd, Product product) {
+    Long fiatPrice = product.fiatPriceTwd();
+    if (fiatPrice != null && fiatPrice > 0) {
+      return fiatPrice;
+    }
     if (orderListPriceTwd != null && orderListPriceTwd > 0) {
       return orderListPriceTwd;
     }
-    Long fiatPrice = product.fiatPriceTwd();
-    if (fiatPrice == null || fiatPrice <= 0) {
-      LOG.warn(
-          "Membership spend fallback using non-positive product.fiatPriceTwd: code={}",
-          product.escortOptionCode());
-      return fiatPrice == null ? 0L : fiatPrice;
-    }
-    return fiatPrice;
+    LOG.warn(
+        "Membership spend fallback using non-positive product.fiatPriceTwd: code={}",
+        product.escortOptionCode());
+    return fiatPrice == null ? 0L : fiatPrice;
   }
 }

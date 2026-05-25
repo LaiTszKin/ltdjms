@@ -32,14 +32,13 @@ class MembershipSpendRetryServiceTest {
         new MembershipSpendRetryService(retryRepository, fiatOrderRepository, membershipSpendService);
     FiatOrder order = mock(FiatOrder.class);
     Product product = mock(Product.class);
-    when(retryRepository.findPending(50)).thenReturn(java.util.List.of("FD001"));
+    when(retryRepository.claimPending(50)).thenReturn(java.util.List.of("FD001"));
     when(fiatOrderRepository.findByOrderNumber("FD001")).thenReturn(Optional.of(order));
     when(order.toFulfillmentProduct()).thenReturn(product);
     when(membershipSpendService.recordFiatEscortPayment(order, product)).thenReturn(true);
 
     assertThat(service.retryPendingSpends()).isEqualTo(1);
 
-    verify(retryRepository).recordAttempt("FD001");
     verify(retryRepository).markCompleted("FD001");
   }
 

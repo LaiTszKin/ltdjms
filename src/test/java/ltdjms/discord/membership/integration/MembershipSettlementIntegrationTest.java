@@ -119,7 +119,7 @@ class MembershipSettlementIntegrationTest extends PostgresIntegrationTestBase {
     seedMembership(MembershipTier.SILVER, true);
     insertSpend(20_000L, Instant.parse("2026-01-20T10:00:00Z"));
 
-    List<Long> due = membershipRepository.findDueForSettlement(SETTLE_NOW);
+    List<Long> due = membershipRepository.findDueForSettlement(SETTLE_NOW, 100);
     assertThat(due).contains(TEST_USER_ID);
 
     assertThat(settlementService.settle(TEST_USER_ID)).isTrue();
@@ -152,7 +152,30 @@ class MembershipSettlementIntegrationTest extends PostgresIntegrationTestBase {
     membershipRepository.findOrCreate(TEST_USER_ID);
 
     assertThat(settlementService.settle(TEST_USER_ID)).isFalse();
-    assertThat(membershipRepository.findDueForSettlement(SETTLE_NOW)).isEmpty();
+    assertThat(membershipRepository.findDueForSettlement(SETTLE_NOW, 100)).isEmpty();
+  }
+
+  @Test
+  @DisplayName("should reopen closed period when late spend arrives after settlement")
+  void shouldReopenClosedPeriodForLateSpend() {
+    seedMembership(MembershipTier.BRONZE, true);
+    insertSpend(15_000L, Instant.parse("2026-04-01T10:00:00Z"));
+
+    assertThat(settlementService.settle(TEST_USER_ID)).isTrue();
+
+    GlobalMemberMembership settled = membershipRepository.findByUserId(TEST_USER_ID).orElseThrow();
+    assertThat(settled.lastSettlementAt()).isEqualTo(PERIOD_END);
+
+    insertSpend(1_000L, Instant.parse("2026-04-10T10:00:00Z"));
+
+    GlobalMemberMembership reopened = membershipRepository.findByUserId(TEST_USER_ID).orElseThrow();
+    assertThat(reopened.nextSettlementAt()).isEqualTo(PERIOD_END);
+    assertThat(reopened.lastSettlementAt()).isEqualTo(PERIOD_START);
+
+    assertThat(settlementService.settle(TEST_USER_ID)).isTrue();
+    GlobalMemberMembership reSettled =
+        membershipRepository.findByUserId(TEST_USER_ID).orElseThrow();
+    assertThat(reSettled.currentTier()).isEqualTo(MembershipTier.SILVER);
   }
 
   private void seedMembership(MembershipTier tier, boolean bronzeFlag) {

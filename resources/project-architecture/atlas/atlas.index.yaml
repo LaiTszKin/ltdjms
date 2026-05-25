@@ -417,9 +417,36 @@ edges:
       submodule: panel-service
     to:
       feature: membership-tiers
-      submodule: membership-db
+      submodule: benefits-ui
     kind: call
-    label: membership summary
+    label: membership query
+  - id: e-spend-retry-shop
+    from:
+      feature: membership-tiers
+      submodule: spend-ledger
+    to:
+      feature: shop-payment
+      submodule: fiat-payment-service
+    kind: call
+    label: spend retry order lookup
+  - id: e-settlement-event-panel
+    from:
+      feature: membership-tiers
+      submodule: settlement
+    to:
+      feature: shared-infrastructure
+      submodule: event-bus
+    kind: publish
+    label: MembershipTierChangedEvent
+  - id: e-panel-tier-event
+    from:
+      feature: shared-infrastructure
+      submodule: event-bus
+    to:
+      feature: user-panel
+      submodule: panel-service
+    kind: subscribe
+    label: MembershipTierChangedEvent
   - id: e-e5v09v
     from:
       feature: shop-payment

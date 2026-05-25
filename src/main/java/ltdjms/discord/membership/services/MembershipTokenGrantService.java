@@ -27,6 +27,7 @@ public class MembershipTokenGrantService {
 
   private static final Logger LOG = LoggerFactory.getLogger(MembershipTokenGrantService.class);
   static final int PENDING_GRANT_BATCH_LIMIT = 100;
+  static final int MAX_GRANT_BATCHES_PER_TICK = 20;
 
   private final MembershipTokenGrantRepository grantRepository;
   private final MembershipSpendRepository spendRepository;
@@ -53,15 +54,27 @@ public class MembershipTokenGrantService {
    * @return number of grants successfully completed
    */
   public int retryPendingGrants() {
-    List<PendingMembershipGrant> pending =
-        grantRepository.findPendingGrants(PENDING_GRANT_BATCH_LIMIT);
     int completed = 0;
-    for (PendingMembershipGrant grant : pending) {
-      Instant periodStart = resolvePeriodStart(grant.discordUserId(), grant.settlementPeriodEnd());
-      if (grantForSettlement(
-          grant.discordUserId(), periodStart, grant.settlementPeriodEnd(), grant.tier())) {
-        completed++;
+    List<PendingMembershipGrant> pending;
+    int batches = 0;
+    do {
+      pending = grantRepository.findPendingGrants(PENDING_GRANT_BATCH_LIMIT);
+      for (PendingMembershipGrant grant : pending) {
+        Instant periodStart =
+            resolvePeriodStart(grant.discordUserId(), grant.settlementPeriodEnd());
+        if (grantForSettlement(
+            grant.discordUserId(), periodStart, grant.settlementPeriodEnd(), grant.tier())) {
+          completed++;
+        }
       }
+      batches++;
+    } while (pending.size() == PENDING_GRANT_BATCH_LIMIT && batches < MAX_GRANT_BATCHES_PER_TICK);
+
+    if (pending.size() == PENDING_GRANT_BATCH_LIMIT) {
+      LOG.warn(
+          "Membership token grant backlog remains after {} batches ({} per batch)",
+          MAX_GRANT_BATCHES_PER_TICK,
+          PENDING_GRANT_BATCH_LIMIT);
     }
     return completed;
   }

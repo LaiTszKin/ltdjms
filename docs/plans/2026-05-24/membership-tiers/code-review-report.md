@@ -3,30 +3,25 @@
 - **Spec**: membership-tiers (batch: membership-core, membership-join-tracking, membership-spend-ledger, membership-settlement, membership-payment-discount, membership-benefits-ui)
 - **Date**: 2026-05-24
 - **Reviewer**: QA Agent
-- **Result**: NOT PASS
+- **Result**: **NOT PASS**
 
 ---
 
-## 業務需求驗收
+## 業務需求驗收摘要
 
-| 需求 | 狀態 | 證據 | 缺口 / 不確定性 |
-|------|------|------|----------------|
-| 六等常數與 coordination 定稿表一致 | **PASS** | `MembershipTier.java` L8–13；`MembershipTierConfigTest` | — |
-| 全域 User ID、跨 guild 累加 M | **PASS** | `membership_spend_entry.discord_user_id`；`JdbcMembershipSpendRepository.sumListPriceInPeriod` | — |
-| 僅法幣 TWD + escort-linked 計入 M | **PASS** | `MembershipSpendService.recordFiatEscortPayment` L54–58；`EscortProductRules.isEscortLinked` | — |
-| M 為 catalog 原價，非折後實付 | **PARTIAL** | 主路徑：`resolveListPriceM` → `EscortOptionCatalog.priceTwd` | catalog 缺失時 fallback 使用 `toFulfillmentProduct().fiatPriceTwd()`（= `amountTwd` 折後價） |
-| 最早加入日為結算錨點（29–31 → 28） | **PASS** | `MembershipJoinService.clampDayOfMonth`；`mergeEarliestGuildJoin` | — |
-| 青銅 ≥500 M 單次 qualifying，永久保底 | **PASS** | `JdbcMembershipSpendCoordinator`；`MembershipTierEvaluator.resolveTier` | — |
-| 白銀～黑金每結算日重算，可升可降 | **PASS** | `MembershipSettlementService.settle` L66–72, L93–95 | — |
-| 結算日發放贈幣（可累積、冪等） | **PASS** | `MembershipTokenGrantService.grantForSettlement`；V031/V033 grant log | grant 失敗後 tier 已更新、tokens 延遲（符合 EC1）；audit retry 有重複風險 |
-| 付款折扣凍結於訂單建立、ECPay 一致 | **PASS** | `FiatOrderService.createFiatOnlyOrder` L66–93；callback 驗 `amountTwd` | — |
-| `/user-panel` 展示等級、進度、結算日 | **PASS** | `UserPanelView.formatMembershipField` L63–136 | — |
-| GUILD_MEMBERS intent + join listener | **PASS** | `DiscordCurrencyBot.java` L105–108；`GuildMemberJoinListener` | — |
-| Architecture Atlas membership 模塊 | **PARTIAL** | `atlas.index.yaml` L25 已列 feature；7 子模塊 HTML 存在 | 5 條跨模塊 edges 未合併至主 atlas |
-| `make verify` 全綠 | **PASS** | 2034 tests, 0 failures（2026-05-25 執行） | — |
-| spend 失敗不阻斷 fulfillment | **FAIL** | spec EC + design L53 | worker 現 throw，與 spec 相反 |
+六份子 spec 的核心流程已端到端串接：`make verify` 全綠（2037 tests）、Flyway V029–V034、Dagger  wiring、Atlas 主要邊已補齊。以下為關鍵需求追溯：
 
-**結論**：核心等級判定、join tracking、結算、折扣、面板與贈幣主流程已落地且測試通過；仍有 **1 項 P0 spec 衝突**（spend 錯誤策略）及數項 P1 資料一致性 / atlas 完整性問題，尚不足以判定 batch 驗收通過。
+| 子 spec | 關鍵需求 | 狀態 | 證據 | 缺口 / 不確定性 |
+|---------|---------|------|------|----------------|
+| membership-core | 六等常數、tier 純函式、主表 schema | **MET** | `MembershipTier.java`, `MembershipTierEvaluator.java`, `V029` | — |
+| membership-join-tracking | 最早 join 日、結算日初始化、GUILD_MEMBERS | **MET** | `GuildMemberJoinListener.java`, `JdbcMembershipRepository.mergeEarliestGuildJoin` | 既有成員無 backfill（spec 已知 out of scope） |
+| membership-spend-ledger | escort 法幣 M 入帳、idempotent、best-effort | **MET** | `MembershipSpendService`, `JdbcMembershipSpendCoordinator`, `FiatOrderPostPaymentWorker` | spend 路徑會從 `paidAt` 初始化 anchor（見 P1-2） |
+| membership-settlement | 結算日重算 tier、週期 `[L,N)`、事件 | **MET** | `JdbcMembershipSettlementCoordinator`, `MembershipSettlementService` | 與 spend 非同一 txn 可能漏計 M（見 P1-1） |
+| membership-payment-discount | 折後價寫入訂單、ECPay 驗證、貨幣折扣 | **MET** | `MembershipPricingService`, `FiatOrderService`, `CurrencyPurchaseService` | — |
+| membership-payment-discount | Shop 確認頁顯示會員價 | **PARTIAL** | 貨幣確認頁 `ShopView` L227–231；雙價 payment-method embed L131–140 | **法幣-only 商品跳過確認頁**（見 P2-1） |
+| membership-benefits-ui | 每次結算發幣、idempotent grant、user-panel | **MET** | `MembershipTokenGrantService`, `MemberInfoFacade`, `UserPanelView` | grant 與 tier commit 非原子（見 P2-2） |
+
+**整體判定：NOT PASS** — P1-1～P1-4（結算錨點與 spend 競態）及 P2-1（法幣確認頁 UI）需在合併前修復或明確接受風險並更新 spec。
 
 ---
 
@@ -36,40 +31,45 @@
 
 | # | 問題描述 | 影響 | 檔案 | 行數 |
 |---|--------|------|------|------|
-| 1 | spend 記錄失敗時 throw，阻斷法幣 fulfillment | 與 `membership-spend-ledger` spec EC 及 design 明確衝突；membership DB 異常時 escort handoff、獎勵、markFulfilled 全部停擺，影響核心購物流程 | `FiatOrderPostPaymentWorker.java` | L94–97 |
+| — | 無 | — | — | — |
 
 ### P1 — 重要問題
 
 | # | 問題描述 | 影響 | 檔案 | 行數 |
 |---|--------|------|------|------|
-| 1 | catalog 缺失時 fallback M 使用折後 charged amount | 違反 COORD-3 / SPEND-R1.1；`toFulfillmentProduct()` 將 `amountTwd`（折後）寫入 `Product.fiatPriceTwd`，fallback 低估 M，影響評級 | `FiatOrder.java`；`MembershipSpendService.java` | L230；L131, L143–146 |
-| 2 | token grant audit retry 可能重複寫入交易紀錄 | `tokens_adjusted=true` + `status=FAILED` 重試時跳過 `tryAdjustTokens` 但再次 `recordTransaction`，可能造成 audit 重複 | `MembershipTokenGrantService.java` | L154–174 |
-| 3 | spend 寫入與 settlement anchor 非同一 transaction | spend commit 後 `ensureSettlementAnchor` 失敗 → 用戶有 M 但 `next_settlement_at` 仍 null，永不進入結算 | `MembershipSpendService.java`；`JdbcMembershipSpendCoordinator.java` | L90–91；L56–73 |
-| 4 | 主 Architecture Atlas 缺少 5 條跨模塊 edges | coordination checkpoint 要求 atlas 完整；plan diff 已定義 shop→payment-discount、fiat→spend-ledger 等，主 `atlas.index.yaml` 僅列 feature | `resources/project-architecture/atlas/atlas.index.yaml` | L25（缺 edges） |
-| 5 | 結算 tick 內 `GameTokenChangedEvent` 同步觸發 panel 更新 | grant 路徑在 settlement scheduler 單執行緒內同步 fan-out panel DB 查詢，batch settle 時阻塞排程 | `UserPanelUpdateListener.java`；`MembershipSettlementScheduler.java` | L45–46；L59–73 |
+| 1 | Settlement 與 spend 寫入分屬不同 transaction；settlement 僅鎖 membership 列後 SUM spend，期間內晚到的 spend（含 retry）可能永久落在已關閉週期外 | 月平均 M 被低估、tier 永久偏低、panel 週期累計錯誤 | `JdbcMembershipSettlementCoordinator.java`, `JdbcMembershipSpendCoordinator.java` | L41–87, L133–137 / L64–83 |
+| 2 | Spend 路徑以 **`paidAt`** 初始化 `settlement_day_of_month` / `next_settlement_at`，違反 coordination「結算日 = 最早 join 日」 | 無 join 事件的既有成員、或 payment-before-join 用戶結算日錯誤 | `JdbcMembershipSpendCoordinator.java` | L111–127 |
+| 3 | `mergeEarliestGuildJoin` 僅在 `next_settlement_at IS NULL` 時寫入；payment 已初始化 anchor 後，更早的 join 無法修正 `next_settlement_at` | `settlement_day_of_month` 與 `next_settlement_at` 不一致，首次結算日期錯誤 | `JdbcMembershipRepository.java` | L111–114 |
+| 4 | `MembershipPeriodBounds.resolvePeriodStart` 在無 `last_settlement_at` 且無 `earliest_guild_join_at` 時回傳 **EPOCH**；配合 P1-2 首次結算可能加總自 epoch 以來全部 spend | 首次結算 tier 可能被高估 | `MembershipPeriodBounds.java`, `JdbcMembershipSettlementCoordinator.java` | L29–37 / L58–59 |
+| 5 | 結算排程硬上限 **1000 用戶/小時**（100×10 batch × 3600s interval），積壓僅 log 不立即 drain | 結算日高峰 tier 重算與贈幣延遲數小時至數天 | `MembershipSettlementScheduler.java` | L17–19, L73–91 |
 
 ### P2 — 一般問題
 
 | # | 問題描述 | 影響 | 檔案 | 行數 |
 |---|--------|------|------|------|
-| 1 | `last_settlement_at` 設為 `periodEnd` 而非 `now` | 與 settlement spec R1.1 字面略有偏差；與 design 算法一致，影響可忽略 | `MembershipSettlementService.java` | L80–87 |
-| 2 | 排程間隔 3600s，spec 寫 daily | design 允許 1h 精度；結算延遲最多 1 小時 | `MembershipSettlementScheduler.java` | L19, L45–46 |
-| 3 | 同 tick 失敗 grant 需等下一小時才 retry | `retryPendingGrants` 僅在 tick 開頭執行 | `MembershipSettlementScheduler.java` | L59–61 |
-| 4 | settlement sum 與 tier 寫入非 serializable | 並發 spend insert 可能落在 sum 與 save 之間，該筆 M 計入下一週期 | `MembershipSettlementService.java` | L66–87 |
-| 5 | 多 instance 無 scheduler leader election | 水平擴展時重複 settle / grant 嘗試與 event fan-out | `DiscordCurrencyBot.java`；`MembershipSettlementScheduler.java` | — |
-| 6 | 週期無 spend 時 grant 無限 retry | `findPrimaryGuildInPeriod` 空 → release claim → pending scan 反覆 enqueue | `MembershipTokenGrantService.java` | L120–131 |
-| 7 | `qualifyBronzeIfThreshold` 死碼，與 coordinator SQL 重複 | 維護 drift 風險 | `MembershipRepository.java`；`JdbcMembershipRepository.java` | L47–51；L167–184 |
-| 8 | shop 定價用 `product.fiatPriceTwd`，spend 用 catalog M | payment design 刻意分離；admin 改價 ≠ catalog 時 M 與折扣基準不一致 | `MembershipPricingService.java`；`MembershipSpendService.java` | L33；L119–124 |
+| 1 | 法幣-only escort 商品從選單直接 `deferReply` 建單，無 Shop 確認 embed；雙價法幣路徑亦跳過確認 | 不符合 payment-discount R3 / checklist C4「確認頁顯示會員價」 | `ShopSelectMenuHandler.java` | L112–125, L234–256 |
+| 2 | Tier 持久化在 coordinator txn 內 commit，token grant 在 `settle()` 尾端另開 saga；`MembershipTierChangedEvent` 先於 grant 完成 | UI 可先顯示新 tier 但贈幣尚未到帳；失敗依賴 scheduler retry | `MembershipSettlementService.java`, `MembershipTokenGrantService.java` | L48–63 / L79–202 |
+| 3 | Advisory lock 涵蓋整個 tick（grant retry + spend retry + 最多 1000 settle + grant retry），持鎖期間其他實例完全跳過 | 多實例部署下 tick 過長時 failover 延遲；佔用一條 DB connection | `JdbcMembershipSettlementTickGuard.java`, `MembershipSettlementScheduler.java` | L22–34 / L67–94 |
+| 4 | Spend / grant retry 每 tick 各處理固定 batch（50 / 100），無 drain loop | 故障恢復後積壓需數小時才能清完 | `MembershipSpendRetryService.java`, `MembershipTokenGrantService.java` | L17, L45–62 / L29, L55–66 |
+| 5 | Catalog 缺失時 fallback 優先 `order.listPriceTwd`，spec R1.2 寫 **`product.fiatPriceTwd`** | 商品改價後 retry 的 M 可能與 spec 字面不一致 | `MembershipSpendService.java` | L124–135 |
+| 6 | Spend 寫入失敗僅 LOG，design 要求 **LOG + metric** | 維運無法告警 spend 落帳失敗率 | `MembershipSpendService.java`, `FiatOrderPostPaymentWorker.java` | L100–105 |
+| 7 | `MembershipRepository.saveSettlementResult` / `ensureSettlementAnchor` 零 call site，live path 在 coordinator | 誤改 repository 路徑導致行為漂移 | `MembershipRepository.java`, `JdbcMembershipRepository.java` | L44–56, L140–205 |
+| 8 | `MembershipSettlementService` 直接依賴 concrete `JdbcMembershipSettlementCoordinator`；coordinator 反向 import `MembershipJoinService` | 分層反轉、測試/mock 困難 | `MembershipSettlementService.java`, `JdbcMembershipSettlementCoordinator.java` | L9, L19 / L20 |
+| 9 | `MemberInfoFacade` 直接注入 membership repository 並重複 period/tier 邏輯 | 跨模組應走 service facade；語意變更需多處同步 | `MemberInfoFacade.java` | L151–174 |
+| 10 | Panel 更新：單執行緒 + 無界 queue；`updatePanelsByUser` 掃描全部 session | 結算日大量 `GameTokenChangedEvent` 時 panel 更新排隊延遲 | `UserPanelUpdateListener.java`, `PanelSessionManager.java` | L27–33, L45–50 / L140–164 |
+| 11 | Spend retry 無 claim/lease pattern（`findPending` + `recordAttempt`） | 若未來多 executor 重試可能重複處理 | `MembershipSpendRetryService.java`, `JdbcMembershipSpendRetryRepository.java` | L45–62 |
 
 ### P3 — 建議改善
 
 | # | 問題描述 | 影響 | 檔案 | 行數 |
 |---|--------|------|------|------|
-| 1 | spec API 名 `resolveEscortProductPrice` 實作為 `quoteEscortPrice` | 命名不一致，行為存在 | `MembershipPricingService.java` | L30 |
-| 2 | 青銅 promotion 事件 `periodAvgListPriceM` 為單筆 M 非週期平均 | 事件消費者可能誤解 | `MembershipSpendService.java` | L93–99 |
-| 3 | `MembershipSpendService` 注入 `Clock` 未使用 | 冗餘 DI | `MembershipSpendService.java` | L32, L44 |
-| 4 | `sumListPriceInPeriod` service wrapper 無 caller | 死碼 | `MembershipSpendService.java` | L110–113 |
-| 5 | grant saga retry（audit 失敗、`tokens_adjusted`）缺專項測試 | 回歸風險 | `src/test/java/ltdjms/discord/membership/` | — |
+| 1 | `resolveEscortProductPrice` 為 spec alias，零 caller | 冗余 API | `MembershipPricingService.java` | L63–66 |
+| 2 | `schema.sql` 未含 `fiat_order` membership 欄位（僅註解） | `PostgresIntegrationTestBase` 路徑與 Flyway 漂移 | `src/main/resources/db/schema.sql` | L254–257 |
+| 3 | `PostgresIntegrationTestBase.cleanDatabase` 未 TRUNCATE `membership_token_grant_log` | 整合測試可能交叉污染 | `PostgresIntegrationTestBase.java` | L69–72 |
+| 4 | `UserPanelUpdateListenerTest` 未覆蓋 `MembershipTierChangedEvent` | 回歸風險 | `UserPanelUpdateListenerTest.java` | — |
+| 5 | Atlas 缺 event-bus、spend-retry→shop 等邊 | 架構圖不完整 | `resources/project-architecture/atlas/atlas.index.yaml` | — |
+| 6 | Grant status `SKIPPED_NO_GUILD` 用於程式但未寫入 V033 COMMENT | 文件漂移 | `JdbcMembershipTokenGrantRepository.java` | — |
+| 7 | `findDueForSettlement(Instant)` 無 limit  overload 預設 `Integer.MAX_VALUE` | API footgun | `JdbcMembershipRepository.java` | L72–74 |
 
 ---
 
@@ -77,111 +77,209 @@
 
 ### P0 修復
 
-#### P0-1: spend 失敗不應阻斷 fulfillment
-
-- **涉及檔案**：`FiatOrderPostPaymentWorker.java` > `processSingleOrder`（L94–97）
-- **根因**：上一輪 QA 修復將 spend 失敗改為 throw，與 `membership-spend-ledger/spec.md` EC 及 `design.md` L53「LOG.error + 不 throw」直接衝突。
-- **修復方案**：
-  1. 移除 throw；改為 `LOG.error` + 結構化 metric/alert。
-  2. 新增 membership spend retry 佇列（類似 token grant retry）：以 `order_number` 為 key 記錄 `PENDING`/`FAILED` spend，由 scheduler 或獨立 worker 重試 `recordFiatEscortPayment`。
-  3. 保留 fulfillment 關鍵路徑（handoff、reward、markFulfilled）不受 membership 影響。
-  4. 更新 `FiatOrderPostPaymentWorkerTest.shouldNotMarkFulfilledWhenSpendRecordingFails` 為「fulfillment 成功 + spend 標記待重試」。
-- **驗證方式**：
-  - 模擬 spend repository throw → order 仍 markFulfilled、escort handoff 成功。
-  - retry job 第二次成功 → spend entry 出現且 bronze flag 正確。
-  - `make verify` 全綠。
+無 P0 問題。
 
 ### P1 修復
 
-#### P1-1: fallback M 應優先使用訂單凍結 list price
+#### P1-1: Settlement 與 spend 競態導致 M 漏計
 
-- **涉及檔案**：`MembershipSpendService.java` > `recordFiatEscortPayment` / `resolveListPriceM`（L67–68, L131, L143–146）；`FiatOrder.java` > `toFulfillmentProduct`（L230）
-- **根因**：fallback 讀取 `Product.fiatPriceTwd`，而 fulfillment snapshot 將 `amountTwd`（折後 charged）填入該欄位；訂單已持久化 `listPriceTwd` 卻未使用。
+- **涉及檔案**：`JdbcMembershipSettlementCoordinator.java` > `applyIfDue`（L41–87）；`JdbcMembershipSpendCoordinator.java` > `insertSpendAndQualifyBronzeIfThreshold`（L64–83）
+- **根因**：Settlement SUM 與 spend INSERT 不在同一 transaction；settlement commit 後 advance `next_settlement_at`，晚到且 `paid_at` 落在已關週期的 spend 永遠不會被任何週期加總。
 - **修復方案**：
-  1. `recordFiatEscortPayment` 在 catalog 缺失時優先使用 `order.listPriceTwd()`。
-  2. 若仍為 null，再 fallback `product.fiatPriceTwd()` 並 warn。
-  3. 考慮 `toFulfillmentProduct()` 改用 `listPriceTwd ?? amountTwd` 供 fulfillment 語意一致（需評估 shop 其他 consumer）。
-- **驗證方式**：integration test — 白銀折扣訂單 + mock catalog miss → spend entry `list_price_twd` = 原價 3500 而非 3150。
+  1. **首選**：Settlement txn 內對 `membership_spend_entry` 加 `paid_at` range 的 share lock 或 re-SUM 後再 advance anchor（與 spend txn 序列化同一 user）。
+  2. **替代**：Spend 插入時若 `paid_at < next_settlement_at` 且 settlement 正在進行，block 在 membership `FOR UPDATE` 直到 settlement 完成。
+  3. **補償**：Settlement 完成後掃描 `paid_at ∈ [periodStart, periodEnd)` 且 `created_at > settledAt` 的 orphan spend，觸發 **re-settlement** 或 merge 至下一週期（需 spec 確認）。
+- **驗證方式**：整合測試 — 模擬 settlement 進行中 commit spend（paid_at 在週期內），assert 該 M 計入該週期 avgM；retry 路徑同測。
 
-#### P1-2: grant audit 重試冪等
+#### P1-2: Spend 路徑以 payment 日初始化結算錨點
 
-- **涉及檔案**：`MembershipTokenGrantService.java` > `grantForSettlement`（L154–174）；`MembershipTokenGrantRepository.java`
-- **根因**：saga 在 tokens 已調整後，audit insert 失敗標記 `FAILED`；重試路徑無條件再次 `recordTransaction`。
+- **涉及檔案**：`JdbcMembershipSpendCoordinator.java` > `ensureSettlementAnchor`（L111–127）
+- **根因**：Spend coordinator 在 `next_settlement_at IS NULL` 時以 `paidAt` 推導 settlement day，繞過 join-tracking 權威來源。
 - **修復方案**：
-  1. audit 表或 grant log 增加 `audit_recorded` flag，或對 `(guild_id, user_id, settlement_period_end, source=MEMBERSHIP_GRANT)` 加 UNIQUE。
-  2. 重試時若 `tokens_adjusted=true`，先查是否已有 audit row；有則直接 `completeGrantClaim`。
-- **驗證方式**：unit test — mock `recordTransaction` 第一次 throw、第二次 成功；assert 僅一筆 audit、grant status=COMPLETED。
+  1. **移除** spend 路徑的 `ensureSettlementAnchor`；僅 join listener / `MembershipJoinService` 初始化 anchor。
+  2. 若需支援「先付款後 join」：保留 spend 寫入但 **不** 設 anchor；`next_settlement_at null` 的用戶 skip settlement（spec 已有 EC）。
+  3. 可選 admin backfill script 為既有成員補 `earliest_guild_join_at`（follow-up）。
+- **驗證方式**：測試 — 無 join 記錄時付款不應設 `next_settlement_at`；有 join 後 anchor 來自 join 日。
 
-#### P1-3: spend + anchor 原子化
+#### P1-3: 更早 join 無法覆寫 payment 初始化的 `next_settlement_at`
 
-- **涉及檔案**：`JdbcMembershipSpendCoordinator.java`；`MembershipSpendService.java`（L90–91）
-- **根因**：coordinator transaction 只涵蓋 spend + bronze；anchor 在 service 層另開 transaction。
-- **修復方案**：將 `ensureSettlementAnchor` SQL 併入 coordinator transaction（僅 `inserted=true` 時），或新增 reconciliation：`next_settlement_at IS NULL AND EXISTS spend entry` 的修復 job。
-- **驗證方式**：integration test — anchor update mock 失敗 → 同一 transaction rollback spend；或 reconciliation 測試補 anchor。
+- **涉及檔案**：`JdbcMembershipRepository.java` > `mergeEarliestGuildJoin`（L103–137）
+- **根因**：`next_settlement_at` 只在 NULL 時更新；payment-first 場景下 join 更新 earliest 但不重算 next。
+- **修復方案**：當新 join 日 **嚴格早於** 目前 anchor 推導基準日時，一併重算 `settlement_day_of_month` 與 `next_settlement_at`（僅限 `last_settlement_at IS NULL` 的未結算用戶）。邏輯可抽取至 `MembershipJoinService` / domain。
+- **驗證方式**：整合測試 — payment 設 anchor → 更早 join event → assert `next_settlement_at` 對齊 join 日。
 
-#### P1-4: 合併 Atlas 跨模塊 edges
+#### P1-4: 首次結算 periodStart 回退 EPOCH
 
-- **涉及檔案**：`resources/project-architecture/atlas/atlas.index.yaml`
-- **根因**：batch 實作完成後僅加入 feature 清單，未從 plan diff 合併 5 條 edges（e-6kw808, e-d78qfs, e-zsdgqz, e-e5v09v, e-btfhi7）。
-- **修復方案**：自 `docs/plans/2026-05-24/membership-tiers/architecture_diff/atlas/atlas.index.yaml` L371–415 複製 edges 至主 atlas；執行 `apltk architecture validate`。
-- **驗證方式**：`apltk architecture validate` OK；viewer 可見 shop→membership 等連線。
+- **涉及檔案**：`MembershipPeriodBounds.java` > `resolvePeriodStart`（L29–37）
+- **根因**：無 join 時 periodStart=EPOCH，配合 payment-only anchor 會 over-count。
+- **修復方案**：與 P1-2/P1-3 連動 — 無 `earliest_guild_join_at` 且無 `last_settlement_at` 時 **skip settlement** 或 periodStart = `next_settlement_at` 減一個月（需與 design 對齊）。不應 silently 使用 EPOCH。
+- **驗證方式**：seed 僅有 payment anchor、無 join → settle 應 skip 或 period  bounded；不應 SILVER+ 因 epoch 累計。
 
-#### P1-5: grant 觸發的 panel 更新改為非同步
+#### P1-5: 結算吞吐硬上限 1000/小時
 
-- **涉及檔案**：`UserPanelUpdateListener.java`（L45–46）；可選 `GameTokenService` event 過濾
-- **根因**：`MembershipTierChangedEvent` 已 async，但 `GameTokenChangedEvent`（grant 路徑）仍同步 `updateUserPanel`。
-- **修復方案**：將 `GameTokenChangedEvent` 中 `source=MEMBERSHIP_GRANT` 的更新路由至 `panelUpdateExecutor`，或 settlement 完成後只發一次 async panel refresh。
-- **驗證方式**：scheduler integration test 或 mock 計時 — batch settle 100 用戶時 scheduler thread 不被 panel 更新阻塞超過閾值。
+- **涉及檔案**：`MembershipSettlementScheduler.java`（L17–19, L73–91）
+- **根因**：`MAX_BATCHES_PER_TICK=10` × `SETTLEMENT_BATCH_LIMIT=100` 後停止；`scheduleWithFixedDelay(3600s)` 無積壓追趕。
+- **修復方案**：
+  1. Tick 內 **while** drain 直到 batch 空或合理時間上限（如 55 分鐘）。
+  2. 或縮短 interval / 動態 backoff；記錄 backlog metric。
+  3. Grant 可 async 化以縮短 per-user settle 時間。
+- **驗證方式**：單元測試 mock 1500 due users → 同一 tick 或連續 tick 內全部 settle；staging 結算日壓測。
 
 ### P2 修復
 
-#### P2-1: spec 與 `last_settlement_at` 語意對齊
+#### P2-1: 法幣-only 商品缺少會員價確認頁
 
-- **涉及檔案**：`MembershipSettlementService.java`（L80）
-- **根因**：spec 寫 `= now`，design 寫 `periodEnd`。
-- **修復方案**：更新 spec 文案對齊 design（推薦），或改存 `clock.instant()` 並另存 `settlement_period_end`。
-- **驗證方式**：doc/spec 一致；現有 settlement test 仍綠。
+- **涉及檔案**：`ShopSelectMenuHandler.java` > buy select handler（L112–125）；`handlePayWithFiat`（L234–256）
+- **根因**：僅 currency-only 走 `showPurchaseConfirmOnEdit`；fiat-only / dual-price fiat 直接 defer 建單。
+- **修復方案**：法幣路徑先 `quoteEscortPrice`，對 escort-linked 商品展示與 currency 相同格式的確認 embed（含 `EscortPriceQuote.formatFiatPriceLine()`），確認後再 `processDeferredFiatOrder`。
+- **驗證方式**：`ShopSelectMenuHandlerTest` / `ShopViewTest` — fiat-only escort 商品 assert embed 含「會員價 NT$…（原價 NT$…）」。
 
-#### P2-2 ~ P2-6: 排程與並發強化（可分批）
+#### P2-2: Settlement 與 token grant 非原子 saga
 
-- **P2-3**：tick 結尾再呼叫 `retryPendingGrants()`。
-- **P2-4**：settle 單 transaction + `SELECT FOR UPDATE` on membership row。
-- **P2-5**：ShedLock 或 DB advisory lock 包裹 scheduler tick。
-- **P2-6**：grant 無 guild 時寫 `SKIPPED_NO_GUILD` terminal status，停止 pending scan。
-- **P2-7**：刪除 `MembershipRepository.qualifyBronzeIfThreshold` 及 JDBC 實作。
+- **涉及檔案**：`MembershipSettlementService.java`（L48–63）；`MembershipTokenGrantService.java`
+- **根因**：Tier commit 與 grant 分離；event 先於 grant。
+- **修復方案**：
+  1. 接受 eventual consistency 但 panel 監聽 `GameTokenChangedEvent` 刷新餘額（已有）。
+  2. 或 grant 完成後再 publish tier event（trade-off：panel tier 延遲）。
+  3. 確保 grant retry 在 tick 首尾執行（已有）並加 backlog metric。
+- **驗證方式**：整合測試 grant 失敗 → retry 成功 → 餘額正確；tier event 與 token event 順序文件化。
+
+#### P2-3: Advisory lock 持鎖過長
+
+- **涉及檔案**：`JdbcMembershipSettlementTickGuard.java`；`MembershipSettlementScheduler.java`
+- **根因**：整 tick 持鎖。
+- **修復方案**：縮小 critical section — 僅 settlement batch loop 持鎖；retry 移出鎖外或使用 per-phase lock。或 lease + heartbeat。
+- **驗證方式**：多實例測試 — 長 tick 時 secondary 可在 retry phase 執行（若設計允許）。
+
+#### P2-4: Retry queue 無 drain loop
+
+- **涉及檔案**：`MembershipSpendRetryService.java`；`MembershipTokenGrantService.java`
+- **根因**：每 tick 固定 LIMIT 一次。
+- **修復方案**：仿 settlement `do-while` drain until empty or cap；spend retry 加 max attempts / dead letter。
+- **驗證方式**：enqueue 120 pending spends → 單 tick 清完或明確 backlog log。
+
+#### P2-5: M fallback 優先 order list price
+
+- **涉及檔案**：`MembershipSpendService.java` > `fallbackListPrice`（L124–135）
+- **根因**：實作選擇 frozen order 價優於 live product 價。
+- **修復方案**：依 spec 改為 `product.fiatPriceTwd()` 優先；或更新 spec/design 明確「retry 以 order 快照為準」並保留現行邏輯。
+- **驗證方式**：調整 `MembershipSpendServiceTest.shouldPreferOrderListPriceWhenCatalogMissing` 與 spec 對齊。
+
+#### P2-6: 缺少 spend 失敗 metric
+
+- **涉及檔案**：`MembershipSpendService.java`；`FiatOrderPostPaymentWorker.java`
+- **根因**：僅 LOG.error。
+- **修復方案**：加入 counter（如 `membership_spend_record_failure_total`）於 return false 與 enqueue 路徑。
+- **驗證方式**：單元測試 mock meter；或 log 結構化欄位供 Loki 告警。
+
+#### P2-7: 死掉的 repository settlement API
+
+- **涉及檔案**：`MembershipRepository.java`；`JdbcMembershipRepository.java`
+- **根因**：邏輯遷移至 coordinator 後未清理 port。
+- **修復方案**：刪除 `saveSettlementResult` / `ensureSettlementAnchor` 或標 `@Deprecated` 並導向 coordinator；確保單一 write path。
+- **驗證方式**：grep 零 reference；`make verify`。
+
+#### P2-8: 分層反轉（service↔coordinator）
+
+- **涉及檔案**：`MembershipSettlementService.java`；`JdbcMembershipSettlementCoordinator.java`
+- **根因**：未抽象 settlement port；日曆邏輯在 service 包。
+- **修復方案**：引入 `MembershipSettlementCoordinator` interface；將 `clampDayOfMonth` / `advanceNextSettlementAt` 移至 `domain` 或 `MembershipPeriodBounds`。
+- **驗證方式**：coordinator 不再 import `ltdjms.discord.membership.services.*`。
+
+#### P2-9: Panel 跨模組直接讀 repository
+
+- **涉及檔案**：`MemberInfoFacade.java`
+- **根因**：未提供 membership read service。
+- **修復方案**：新增 `MembershipQueryService.getPanelSummary(userId)` 封裝 period sum + tier；panel 只依賴該 service。
+- **驗證方式**：`MemberInfoFacade` 不再 import membership persistence。
+
+#### P2-10: Panel 更新效能
+
+- **涉及檔案**：`UserPanelUpdateListener.java`；`PanelSessionManager.java`
+- **根因**：單執行緒 queue；tier 更新掃全表 session。
+- **修復方案**：per-user 合併更新（debounce）；`updatePanelsByUser` 用 index key `guildId:userId` 而非 suffix scan。
+- **驗證方式**：模擬 100 concurrent panel + 50 grant events → 更新延遲 < 閾值。
+
+#### P2-11: Spend retry 無 claim pattern
+
+- **涉及檔案**：`MembershipSpendRetryService.java`
+- **根因**：未使用 `FOR UPDATE SKIP LOCKED` / processing_at。
+- **修復方案**：對齊 fiat fulfillment claim/release；或文件限定僅 advisory-lock tick 內呼叫。
+- **驗證方式**：雙執行緒 retry 測試無 double insert。
 
 ### P3 改善
 
-#### P3-1 ~ P3-5: 清理與測試補強
+#### P3-1: 移除或採用 `resolveEscortProductPrice`
 
-- 移除未使用 `Clock`、`sumListPriceInPeriod` wrapper。
-- 刪除 `MembershipJoinService.computePreviousSettlementAt` 死碼。
-- 為 grant saga retry、spend retry queue 補 unit/integration test。
-- 考慮將 `MembershipTierChangedEvent.periodAvgListPriceM` 在 immediate bronze promotion 場景改名或加 javadoc。
+- **涉及檔案**：`MembershipPricingService.java`（L63–66）
+- **根因**：Spec alias 無 caller。
+- **修復方案**：刪除 alias，或將 `FiatOrderService` 等 caller 改為 spec 命名。
+- **驗證方式**：grep 一致命名。
+
+#### P3-2: 同步 `schema.sql` 與 Flyway
+
+- **涉及檔案**：`src/main/resources/db/schema.sql`
+- **根因**：`fiat_order` membership 欄位僅註解。
+- **修復方案**：補齊 `list_price_twd`, `charged_amount_twd`, `membership_tier_at_order` 定義。
+- **驗證方式**：schema-only 整合測試可跑 shop membership 欄位。
+
+#### P3-3: 整合測試 TRUNCATE 補齊
+
+- **涉及檔案**：`PostgresIntegrationTestBase.java`
+- **根因**：缺 `membership_token_grant_log`。
+- **修復方案**：`TRUNCATE membership_token_grant_log CASCADE`。
+- **驗證方式**：`MembershipSettlementIntegrationTest` 連跑無泄漏。
+
+#### P3-4: 補 `MembershipTierChangedEvent` panel 測試
+
+- **涉及檔案**：`UserPanelUpdateListenerTest.java`
+- **根因**：僅測 game token / balance。
+- **修復方案**：新增 async await + verify `updatePanelsForUser`。
+- **驗證方式**：單元測試綠。
+
+#### P3-5: Atlas 邊補全
+
+- **涉及檔案**：`resources/project-architecture/atlas/atlas.index.yaml`
+- **根因**：缺 event-bus、spend-retry 等邊。
+- **修復方案**：依 runtime 依賴補 edge；`apltk architecture validate`。
+- **驗證方式**：validate pass。
+
+#### P3-6: 文件化 `SKIPPED_NO_GUILD`
+
+- **涉及檔案**：migration comment 或 `membership-benefits-ui/design.md`
+- **根因**：V033 COMMENT 未列舉。
+- **修復方案**：追加 COMMENT 或 design 一節。
+- **驗證方式**：文件 review。
+
+#### P3-7: 限制 `findDueForSettlement(Instant)` 
+
+- **涉及檔案**：`JdbcMembershipRepository.java`
+- **根因**：預設無 limit。
+- **修復方案**：移除 overload 或強制 max limit；tests 改用 2-arg。
+- **驗證方式**：編譯 + 測試。
 
 ---
 
-## 修復優先順序
-
-1. **P0-1** — 恢復 spend best-effort + retry（解除 spec 衝突、恢復 fulfillment 可用性）
-2. **P1-1** — fallback M 使用 `order.listPriceTwd`
-3. **P1-2** — grant audit 冪等
-4. **P1-3** — spend + anchor 原子化
-5. **P1-4** — Atlas edges 合併
-6. **P1-5** — async panel on grant path
-7. P2 / P3 依營運優先級排程
-
----
-
-## 六維度審查摘要
+## 六維度審查結論
 
 | 維度 | 結論 |
 |------|------|
-| 無幻覺代碼 | **PASS** — 所有 API、Dagger 綁定、migration 與測試引用均可解析 |
-| 無冗余代碼 | **PARTIAL** — `qualifyBronzeIfThreshold`、未使用 Clock、`sumListPriceInPeriod` wrapper |
-| 無 spec 偏移 | **FAIL** — spend 錯誤策略、fallback M、atlas edges |
-| 無 spec 遺漏 | **PARTIAL** — 核心功能齊；atlas cross-edges 未合併 |
-| 無架構瑕疵 | **PARTIAL** — split saga、spend/anchor 分 transaction、sync panel on grant |
-| 無性能隱患 | **PARTIAL** — scheduler 1000/tick 上限、grant 同步 panel、pending grant 子查詢 |
+| 無幻覺代碼 | **PASS** — 類別、SQL、DI、事件均存在且對齊 V029–V034 |
+| 無冗余代碼 | **PARTIAL** — 死掉的 repository settlement API、spec alias、重複 SUM SQL |
+| 無 spec 偏移 | **FAIL** — 結算錨點來源、法幣確認頁、M fallback 字面 |
+| 無 spec 遺漏 | **PARTIAL** — 核心流程完整；payment-discount R3 法幣確認頁未完全落地 |
+| 無架構瑕疵 | **FAIL** — settlement/spend txn 邊界、分層反轉、panel repo bypass |
+| 無性能隱患 | **PARTIAL** — 1000/h 結算上限、長 advisory lock、panel 單執行緒；現階段單實例可接受，成長後需處理 |
 
-**整體判定：NOT PASS** — 需完成 P0-1 及 P1-1～P1-4 後重新執行 `/qa` 驗收。
+---
+
+## 建議修復順序
+
+1. **P1-2 → P1-3 → P1-4**（結算錨點一致性，阻斷錯誤週期）
+2. **P1-1**（M 漏計，資料正確性）
+3. **P2-1**（UI spec 合規）
+4. **P1-5 / P2-3 / P2-4**（規模與恢復能力）
+5. **P2-7～P2-9**（架構清理）
+6. **P3**（測試、文件、Atlas）
+
+完成 P1 與 P2-1 後重新執行 `/qa` 驗收。

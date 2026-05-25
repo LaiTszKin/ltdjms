@@ -6,7 +6,7 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ltdjms.discord.membership.persistence.JdbcMembershipSettlementCoordinator;
+import ltdjms.discord.membership.persistence.MembershipSettlementCoordinator;
 import ltdjms.discord.membership.persistence.SettlementApplyResult;
 import ltdjms.discord.shared.events.DomainEventPublisher;
 import ltdjms.discord.shared.events.MembershipTierChangedEvent;
@@ -16,13 +16,13 @@ public class MembershipSettlementService {
 
   private static final Logger LOG = LoggerFactory.getLogger(MembershipSettlementService.class);
 
-  private final JdbcMembershipSettlementCoordinator settlementCoordinator;
+  private final MembershipSettlementCoordinator settlementCoordinator;
   private final MembershipTokenGrantService tokenGrantService;
   private final DomainEventPublisher eventPublisher;
   private final java.time.Clock clock;
 
   public MembershipSettlementService(
-      JdbcMembershipSettlementCoordinator settlementCoordinator,
+      MembershipSettlementCoordinator settlementCoordinator,
       MembershipTokenGrantService tokenGrantService,
       DomainEventPublisher eventPublisher,
       java.time.Clock clock) {
@@ -46,6 +46,12 @@ public class MembershipSettlementService {
     }
 
     SettlementApplyResult applied = appliedOpt.get();
+    tokenGrantService.grantForSettlement(
+        applied.discordUserId(),
+        applied.periodStart(),
+        applied.periodEnd(),
+        applied.newTier());
+
     if (applied.newTier() != applied.previousTier()) {
       eventPublisher.publish(
           new MembershipTierChangedEvent(
@@ -55,12 +61,6 @@ public class MembershipSettlementService {
               applied.periodAvgListPriceM(),
               applied.settledAt()));
     }
-
-    tokenGrantService.grantForSettlement(
-        applied.discordUserId(),
-        applied.periodStart(),
-        applied.periodEnd(),
-        applied.newTier());
 
     LOG.info(
         "Settled membership for userId={}: tier {} -> {}, avgM={}, nextSettlement={}",

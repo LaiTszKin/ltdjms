@@ -60,11 +60,6 @@ public class MembershipPricingService {
         listFiat, chargedFiat, listCurrency, chargedCurrency, tier, discountRate);
   }
 
-  /** Spec alias for {@link #quoteEscortPrice(long, Product, long)}. */
-  public EscortPriceQuote resolveEscortProductPrice(long userId, Product product, long guildId) {
-    return quoteEscortPrice(userId, product, guildId);
-  }
-
   static long applyDiscount(long listPrice, BigDecimal discountRate) {
     double multiplier = BigDecimal.ONE.subtract(discountRate).doubleValue();
     return Math.round(listPrice * multiplier);

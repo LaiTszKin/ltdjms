@@ -35,7 +35,8 @@ public class ShopSelectMenuHandler extends ListenerAdapter {
   private static final Logger LOG = LoggerFactory.getLogger(ShopSelectMenuHandler.class);
 
   public static final String BUTTON_CONFIRM_PURCHASE = "shop_confirm_purchase_";
-  public static final String BUTTON_CANCEL_PURCHASE = "shop_cancel_purchase";
+  public static final String BUTTON_CONFIRM_FIAT_PURCHASE = ShopView.BUTTON_CONFIRM_FIAT_PURCHASE;
+  public static final String BUTTON_CANCEL_PURCHASE = ShopView.BUTTON_CANCEL_PURCHASE;
 
   private final ProductService productService;
   private final BalanceService balanceService;
@@ -110,19 +111,7 @@ public class ShopSelectMenuHandler extends ListenerAdapter {
                   // Currency-only: show purchase confirm (edit)
                   showPurchaseConfirmOnEdit(event, product, guildId, userId, productId);
                 } else if (hasFiat) {
-                  // Fiat-only: defer and process fiat order
-                  String inflightKey = buildFiatOrderInflightKey(guildId, userId, productId);
-                  if (!inflightFiatOrders.add(inflightKey)) {
-                    event.reply("⚠️ 這筆法幣訂單正在處理中，請稍候檢查互動結果。").setEphemeral(true).queue();
-                    return;
-                  }
-                  event
-                      .deferReply(true)
-                      .queue(
-                          hook ->
-                              processDeferredFiatOrder(
-                                  hook, event.getUser(), guildId, userId, productId, inflightKey),
-                          failure -> inflightFiatOrders.remove(inflightKey));
+                  showFiatPurchaseConfirmOnEdit(event, product, guildId, userId, productId);
                 } else {
                   event.reply("此商品暫無可用的購買方式").setEphemeral(true).queue();
                 }
@@ -145,6 +134,10 @@ public class ShopSelectMenuHandler extends ListenerAdapter {
     }
     if (buttonId.startsWith(ShopView.BUTTON_PAY_WITH_FIAT)) {
       handlePayWithFiat(event, buttonId);
+      return;
+    }
+    if (buttonId.startsWith(BUTTON_CONFIRM_FIAT_PURCHASE)) {
+      handleConfirmFiatPurchase(event, buttonId);
       return;
     }
 
@@ -242,6 +235,54 @@ public class ShopSelectMenuHandler extends ListenerAdapter {
       long guildId = event.getGuild().getIdLong();
       long userId = event.getUser().getIdLong();
 
+      productService
+          .getProduct(productId)
+          .ifPresentOrElse(
+              product -> showFiatPurchaseConfirmOnEdit(event, product, guildId, userId, productId),
+              () -> event.reply("找不到該商品").setEphemeral(true).queue());
+    } catch (Exception e) {
+      LOG.error("Error handling pay with fiat button: {}", buttonId, e);
+      event.reply("發生錯誤，請稍後再試").setEphemeral(true).queue();
+    }
+  }
+
+  /** Shows fiat purchase confirmation embed (edit from select interaction). */
+  private void showFiatPurchaseConfirmOnEdit(
+      StringSelectInteractionEvent event,
+      Product product,
+      long guildId,
+      long userId,
+      long productId) {
+    var quote = membershipPricingService.quoteEscortPrice(userId, product, guildId);
+
+    event
+        .editMessageEmbeds(ShopView.buildFiatPurchaseConfirmEmbed(product, quote))
+        .setComponents(ShopView.buildFiatPurchaseConfirmComponents(productId))
+        .queue();
+  }
+
+  /** Shows fiat purchase confirmation embed (edit from button interaction). */
+  private void showFiatPurchaseConfirmOnEdit(
+      ButtonInteractionEvent event, Product product, long guildId, long userId, long productId) {
+    var quote = membershipPricingService.quoteEscortPrice(userId, product, guildId);
+
+    event
+        .editMessageEmbeds(ShopView.buildFiatPurchaseConfirmEmbed(product, quote))
+        .setComponents(ShopView.buildFiatPurchaseConfirmComponents(productId))
+        .queue();
+  }
+
+  private void handleConfirmFiatPurchase(ButtonInteractionEvent event, String buttonId) {
+    if (!event.isFromGuild() || event.getGuild() == null) {
+      event.reply("此功能只能在伺服器中使用").setEphemeral(true).queue();
+      return;
+    }
+
+    try {
+      long productId = Long.parseLong(buttonId.substring(BUTTON_CONFIRM_FIAT_PURCHASE.length()));
+      long guildId = event.getGuild().getIdLong();
+      long userId = event.getUser().getIdLong();
+
       String inflightKey = buildFiatOrderInflightKey(guildId, userId, productId);
       if (!inflightFiatOrders.add(inflightKey)) {
         event.reply("⚠️ 這筆法幣訂單正在處理中，請稍候檢查互動結果。").setEphemeral(true).queue();
@@ -255,7 +296,7 @@ public class ShopSelectMenuHandler extends ListenerAdapter {
                       hook, event.getUser(), guildId, userId, productId, inflightKey),
               failure -> inflightFiatOrders.remove(inflightKey));
     } catch (Exception e) {
-      LOG.error("Error handling pay with fiat button: {}", buttonId, e);
+      LOG.error("Error handling confirm fiat purchase button: {}", buttonId, e);
       event.reply("發生錯誤，請稍後再試").setEphemeral(true).queue();
     }
   }

@@ -2,20 +2,19 @@ package ltdjms.discord.membership.services;
 
 import java.time.Clock;
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.Objects;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ltdjms.discord.membership.domain.MembershipSettlementCalendar;
 import ltdjms.discord.membership.persistence.MembershipRepository;
 
 /** Records earliest guild join and initializes per-member settlement anchors. */
 public class MembershipJoinService {
 
   /** Settlement anchor dates are computed at midnight in Asia/Taipei. */
-  public static final ZoneId SETTLEMENT_ZONE = ZoneId.of("Asia/Taipei");
+  public static final java.time.ZoneId SETTLEMENT_ZONE = MembershipSettlementCalendar.SETTLEMENT_ZONE;
 
   private static final Logger LOG = LoggerFactory.getLogger(MembershipJoinService.class);
 
@@ -58,9 +57,8 @@ public class MembershipJoinService {
     }
   }
 
-  public static int clampDayOfMonth(Instant joinedAt, ZoneId zone) {
-    int day = joinedAt.atZone(zone).getDayOfMonth();
-    return clampDayOfMonth(day);
+  public static int clampDayOfMonth(Instant joinedAt, java.time.ZoneId zone) {
+    return MembershipSettlementCalendar.clampDayOfMonth(joinedAt, zone);
   }
 
   int clampDayOfMonth(Instant joinedAt) {
@@ -68,43 +66,21 @@ public class MembershipJoinService {
   }
 
   static int clampDayOfMonth(int dayOfMonth) {
-    if (dayOfMonth >= 29) {
-      return 28;
-    }
-    return dayOfMonth;
+    return MembershipSettlementCalendar.clampDayOfMonth(dayOfMonth);
   }
 
   Instant computeNextSettlement(int settlementDay, Instant joinedAt) {
     return computeNextSettlementAt(settlementDay, joinedAt, clock.getZone());
   }
 
-  public static Instant computeNextSettlementAt(int settlementDay, Instant joinedAt, ZoneId zone) {
-    ZonedDateTime joinZoned = joinedAt.atZone(zone);
-    java.time.LocalDate joinDate = joinZoned.toLocalDate();
-
-    ZonedDateTime candidate =
-        resolveAnchorDate(joinDate.getYear(), joinDate.getMonthValue(), settlementDay, zone);
-
-    if (!joinZoned.isBefore(candidate)) {
-      java.time.YearMonth nextMonth = java.time.YearMonth.from(joinDate).plusMonths(1);
-      candidate =
-          resolveAnchorDate(nextMonth.getYear(), nextMonth.getMonthValue(), settlementDay, zone);
-    }
-
-    return candidate.toInstant();
+  public static Instant computeNextSettlementAt(
+      int settlementDay, Instant joinedAt, java.time.ZoneId zone) {
+    return MembershipSettlementCalendar.computeNextSettlementAt(settlementDay, joinedAt, zone);
   }
 
   /** Advances the settlement anchor by one calendar month. */
-  public static Instant advanceNextSettlementAt(int settlementDay, Instant currentNext, ZoneId zone) {
-    ZonedDateTime anchor = currentNext.atZone(zone);
-    java.time.YearMonth nextMonth = java.time.YearMonth.from(anchor.toLocalDate()).plusMonths(1);
-    return resolveAnchorDate(nextMonth.getYear(), nextMonth.getMonthValue(), settlementDay, zone)
-        .toInstant();
-  }
-
-  private static ZonedDateTime resolveAnchorDate(
-      int year, int month, int settlementDay, ZoneId zone) {
-    java.time.LocalDate anchor = java.time.LocalDate.of(year, month, settlementDay);
-    return anchor.atStartOfDay(zone);
+  public static Instant advanceNextSettlementAt(
+      int settlementDay, Instant currentNext, java.time.ZoneId zone) {
+    return MembershipSettlementCalendar.advanceNextSettlementAt(settlementDay, currentNext, zone);
   }
 }

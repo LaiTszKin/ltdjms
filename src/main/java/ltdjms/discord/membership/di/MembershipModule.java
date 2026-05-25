@@ -16,12 +16,14 @@ import ltdjms.discord.membership.persistence.JdbcMembershipSpendRepository;
 import ltdjms.discord.membership.persistence.JdbcMembershipSpendRetryRepository;
 import ltdjms.discord.membership.persistence.JdbcMembershipTokenGrantRepository;
 import ltdjms.discord.membership.persistence.MembershipRepository;
+import ltdjms.discord.membership.persistence.MembershipSettlementCoordinator;
 import ltdjms.discord.membership.persistence.MembershipSettlementTickGuard;
 import ltdjms.discord.membership.persistence.MembershipSpendRepository;
 import ltdjms.discord.membership.persistence.MembershipSpendRetryRepository;
 import ltdjms.discord.membership.persistence.MembershipTokenGrantRepository;
 import ltdjms.discord.membership.services.MembershipJoinService;
 import ltdjms.discord.membership.services.MembershipPricingService;
+import ltdjms.discord.membership.services.MembershipQueryService;
 import ltdjms.discord.membership.services.MembershipSettlementScheduler;
 import ltdjms.discord.membership.services.MembershipSettlementService;
 import ltdjms.discord.membership.services.MembershipSpendRetryService;
@@ -63,7 +65,7 @@ public class MembershipModule {
 
   @Provides
   @Singleton
-  public JdbcMembershipSettlementCoordinator provideMembershipSettlementCoordinator(
+  public MembershipSettlementCoordinator provideMembershipSettlementCoordinator(
       DataSource dataSource) {
     return new JdbcMembershipSettlementCoordinator(dataSource);
   }
@@ -87,6 +89,15 @@ public class MembershipModule {
   public MembershipJoinService provideMembershipJoinService(
       MembershipRepository membershipRepository, @SettlementClock Clock clock) {
     return new MembershipJoinService(membershipRepository, clock);
+  }
+
+  @Provides
+  @Singleton
+  public MembershipQueryService provideMembershipQueryService(
+      MembershipRepository membershipRepository,
+      MembershipSpendRepository membershipSpendRepository,
+      @SettlementClock Clock clock) {
+    return new MembershipQueryService(membershipRepository, membershipSpendRepository, clock);
   }
 
   @Provides
@@ -146,7 +157,7 @@ public class MembershipModule {
   @Provides
   @Singleton
   public MembershipSettlementService provideMembershipSettlementService(
-      JdbcMembershipSettlementCoordinator settlementCoordinator,
+      MembershipSettlementCoordinator settlementCoordinator,
       MembershipTokenGrantService tokenGrantService,
       DomainEventPublisher eventPublisher,
       @SettlementClock Clock clock) {

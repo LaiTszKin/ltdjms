@@ -2,16 +2,20 @@ package ltdjms.discord.membership.persistence;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.Optional;
 import javax.sql.DataSource;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ltdjms.discord.currency.persistence.RepositoryException;
-import ltdjms.discord.membership.services.MembershipJoinService;
+import ltdjms.discord.membership.domain.GlobalMemberMembership;
+import ltdjms.discord.membership.domain.MembershipPeriodBounds;
+import ltdjms.discord.membership.domain.MembershipTier;
 
 /**
  * Coordinates atomic spend insertion and bronze qualification across membership tables within a
@@ -34,12 +38,15 @@ public class JdbcMembershipSpendCoordinator {
           + " updated_at = ?"
           + " WHERE discord_user_id = ? AND has_qualifying_bronze_order = FALSE";
 
-  private static final String ENSURE_ANCHOR_SQL =
+  private static final String REOPEN_PERIOD_SQL =
       "UPDATE global_member_membership SET"
-          + " settlement_day_of_month = COALESCE(settlement_day_of_month, ?),"
-          + " next_settlement_at = COALESCE(next_settlement_at, ?),"
-          + " updated_at = ?"
-          + " WHERE discord_user_id = ? AND next_settlement_at IS NULL";
+          + " last_settlement_at = ?, next_settlement_at = ?, updated_at = ?"
+          + " WHERE discord_user_id = ?";
+
+  private static final String SELECT_MEMBERSHIP_FOR_UPDATE_SQL =
+      "SELECT discord_user_id, current_tier, earliest_guild_join_at, settlement_day_of_month,"
+          + " last_settlement_at, next_settlement_at, has_qualifying_bronze_order, created_at,"
+          + " updated_at FROM global_member_membership WHERE discord_user_id = ? FOR UPDATE";
 
   private final DataSource dataSource;
 
@@ -64,21 +71,24 @@ public class JdbcMembershipSpendCoordinator {
     try (Connection conn = dataSource.getConnection()) {
       conn.setAutoCommit(false);
       try {
-        boolean inserted = insertSpend(
-            conn,
-            discordUserId,
-            guildId,
-            listPriceTwd,
-            escortOptionCode,
-            sourceType,
-            sourceReference,
-            paidAt);
+        Optional<GlobalMemberMembership> membershipOpt =
+            selectMembershipForUpdate(conn, discordUserId);
+        boolean inserted =
+            insertSpend(
+                conn,
+                discordUserId,
+                guildId,
+                listPriceTwd,
+                escortOptionCode,
+                sourceType,
+                sourceReference,
+                paidAt);
         boolean bronzePromoted = false;
         if (inserted && listPriceTwd >= bronzeThresholdListPriceTwd) {
           bronzePromoted = qualifyBronze(conn, discordUserId);
         }
-        if (inserted) {
-          ensureSettlementAnchor(conn, discordUserId, paidAt);
+        if (inserted && membershipOpt.isPresent()) {
+          reopenClosedPeriodIfNeeded(conn, membershipOpt.get(), discordUserId, paidAt);
         }
         conn.commit();
         if (inserted) {
@@ -108,22 +118,49 @@ public class JdbcMembershipSpendCoordinator {
     }
   }
 
-  private static void ensureSettlementAnchor(Connection conn, long discordUserId, Instant paidAt)
-      throws SQLException {
-    int settlementDay =
-        MembershipJoinService.clampDayOfMonth(paidAt, MembershipJoinService.SETTLEMENT_ZONE);
-    Instant nextSettlement =
-        MembershipJoinService.computeNextSettlementAt(
-            settlementDay, paidAt, MembershipJoinService.SETTLEMENT_ZONE);
-    Instant now = Instant.now();
+  private static Optional<GlobalMemberMembership> selectMembershipForUpdate(
+      Connection conn, long discordUserId) throws SQLException {
+    try (PreparedStatement stmt = conn.prepareStatement(SELECT_MEMBERSHIP_FOR_UPDATE_SQL)) {
+      stmt.setLong(1, discordUserId);
+      try (ResultSet rs = stmt.executeQuery()) {
+        if (rs.next()) {
+          return Optional.of(mapRow(rs));
+        }
+      }
+    }
+    return Optional.empty();
+  }
 
-    try (PreparedStatement stmt = conn.prepareStatement(ENSURE_ANCHOR_SQL)) {
-      stmt.setShort(1, (short) settlementDay);
-      stmt.setTimestamp(2, Timestamp.from(nextSettlement));
+  private static void reopenClosedPeriodIfNeeded(
+      Connection conn,
+      GlobalMemberMembership membershipBeforeInsert,
+      long discordUserId,
+      Instant paidAt)
+      throws SQLException {
+    Instant lastSettlement = membershipBeforeInsert.lastSettlementAt();
+    if (lastSettlement == null || !paidAt.isBefore(lastSettlement)) {
+      return;
+    }
+
+    Instant closedPeriodEnd = lastSettlement;
+    Instant periodStart =
+        MembershipPeriodBounds.resolvePeriodStartForEndedPeriod(
+            membershipBeforeInsert, closedPeriodEnd);
+    try (PreparedStatement stmt = conn.prepareStatement(REOPEN_PERIOD_SQL)) {
+      Instant now = Instant.now();
+      stmt.setTimestamp(1, Timestamp.from(periodStart));
+      stmt.setTimestamp(2, Timestamp.from(closedPeriodEnd));
       stmt.setTimestamp(3, Timestamp.from(now));
       stmt.setLong(4, discordUserId);
       stmt.executeUpdate();
     }
+    LOG.warn(
+        "Reopened membership settlement period for late spend: userId={}, paidAt={}, periodStart={},"
+            + " periodEnd={}",
+        discordUserId,
+        paidAt,
+        periodStart,
+        closedPeriodEnd);
   }
 
   private static boolean insertSpend(
@@ -154,5 +191,27 @@ public class JdbcMembershipSpendCoordinator {
       stmt.setLong(2, discordUserId);
       return stmt.executeUpdate() == 1;
     }
+  }
+
+  private static GlobalMemberMembership mapRow(ResultSet rs) throws SQLException {
+    Integer settlementDay =
+        rs.getObject("settlement_day_of_month") == null
+            ? null
+            : rs.getInt("settlement_day_of_month");
+
+    return new GlobalMemberMembership(
+        rs.getLong("discord_user_id"),
+        MembershipTier.fromDbValue(rs.getString("current_tier")),
+        toInstant(rs.getTimestamp("earliest_guild_join_at")),
+        settlementDay,
+        toInstant(rs.getTimestamp("last_settlement_at")),
+        toInstant(rs.getTimestamp("next_settlement_at")),
+        rs.getBoolean("has_qualifying_bronze_order"),
+        rs.getTimestamp("created_at").toInstant(),
+        rs.getTimestamp("updated_at").toInstant());
+  }
+
+  private static Instant toInstant(Timestamp timestamp) {
+    return timestamp == null ? null : timestamp.toInstant();
   }
 }

@@ -25,7 +25,8 @@ public class UserPanelUpdateListener implements Consumer<DomainEvent> {
   private final PanelSessionManager sessionManager;
   private final UserPanelService userPanelService;
   private final ExecutorService panelUpdateExecutor =
-      Executors.newSingleThreadExecutor(
+      Executors.newFixedThreadPool(
+          2,
           runnable -> {
             Thread thread = new Thread(runnable, "user-panel-update");
             thread.setDaemon(true);

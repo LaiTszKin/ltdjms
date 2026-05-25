@@ -15,14 +15,14 @@ import org.slf4j.LoggerFactory;
 import ltdjms.discord.currency.persistence.RepositoryException;
 import ltdjms.discord.membership.domain.GlobalMemberMembership;
 import ltdjms.discord.membership.domain.MembershipPeriodBounds;
+import ltdjms.discord.membership.domain.MembershipSettlementCalendar;
 import ltdjms.discord.membership.domain.MembershipTier;
 import ltdjms.discord.membership.domain.MembershipTierEvaluator;
-import ltdjms.discord.membership.services.MembershipJoinService;
 
 /**
  * Applies membership settlement atomically with row lock to prevent concurrent spend/save races.
  */
-public class JdbcMembershipSettlementCoordinator {
+public class JdbcMembershipSettlementCoordinator implements MembershipSettlementCoordinator {
 
   private static final Logger LOG =
       LoggerFactory.getLogger(JdbcMembershipSettlementCoordinator.class);
@@ -33,11 +33,7 @@ public class JdbcMembershipSettlementCoordinator {
     this.dataSource = dataSource;
   }
 
-  /**
-   * Locks the membership row, sums period spend, and writes settlement when due.
-   *
-   * @return settlement outcome when applied, empty when skipped
-   */
+  @Override
   public Optional<SettlementApplyResult> applyIfDue(long discordUserId, Instant now) {
     try (Connection conn = dataSource.getConnection()) {
       conn.setAutoCommit(false);
@@ -55,7 +51,16 @@ public class JdbcMembershipSettlementCoordinator {
           return Optional.empty();
         }
 
-        Instant periodStart = MembershipPeriodBounds.resolvePeriodStart(membership);
+        Optional<Instant> periodStartOpt =
+            MembershipPeriodBounds.tryResolvePeriodStartForSettlement(membership);
+        if (periodStartOpt.isEmpty()) {
+          conn.rollback();
+          LOG.debug(
+              "Skipping settlement for userId={}: no join anchor or prior settlement", discordUserId);
+          return Optional.empty();
+        }
+
+        Instant periodStart = periodStartOpt.get();
         long avgM = sumSpend(conn, discordUserId, periodStart, periodEnd);
         MembershipTier previousTier =
             MembershipTierEvaluator.effectiveTier(
@@ -66,14 +71,14 @@ public class JdbcMembershipSettlementCoordinator {
         Integer settlementDay = membership.settlementDayOfMonth();
         if (settlementDay == null) {
           settlementDay =
-              MembershipJoinService.clampDayOfMonth(
-                  periodEnd, MembershipJoinService.SETTLEMENT_ZONE);
+              MembershipSettlementCalendar.clampDayOfMonth(
+                  periodEnd, MembershipSettlementCalendar.SETTLEMENT_ZONE);
         }
 
         Instant settledAt = periodEnd;
         Instant newNextSettlement =
-            MembershipJoinService.advanceNextSettlementAt(
-                settlementDay, periodEnd, MembershipJoinService.SETTLEMENT_ZONE);
+            MembershipSettlementCalendar.advanceNextSettlementAt(
+                settlementDay, periodEnd, MembershipSettlementCalendar.SETTLEMENT_ZONE);
 
         if (!updateSettlement(
             conn, discordUserId, newTier, settledAt, newNextSettlement, periodEnd)) {

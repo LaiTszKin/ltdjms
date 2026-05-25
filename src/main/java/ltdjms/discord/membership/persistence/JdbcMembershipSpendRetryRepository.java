@@ -52,28 +52,56 @@ public class JdbcMembershipSpendRetryRepository implements MembershipSpendRetryR
   }
 
   @Override
-  public List<String> findPending(int limit) {
-    String sql =
+  public List<String> claimPending(int limit) {
+    String selectSql =
         "SELECT order_number FROM membership_spend_retry"
             + " WHERE status = ?"
             + " ORDER BY created_at"
-            + " LIMIT ?";
+            + " LIMIT ?"
+            + " FOR UPDATE SKIP LOCKED";
 
-    try (Connection conn = dataSource.getConnection();
-        PreparedStatement stmt = conn.prepareStatement(sql)) {
-      stmt.setString(1, STATUS_PENDING);
-      stmt.setInt(2, limit);
+    String updateSql =
+        "UPDATE membership_spend_retry SET"
+            + " attempt_count = attempt_count + 1,"
+            + " last_attempt_at = ?,"
+            + " updated_at = ?"
+            + " WHERE order_number = ?";
 
-      try (ResultSet rs = stmt.executeQuery()) {
+    try (Connection conn = dataSource.getConnection()) {
+      conn.setAutoCommit(false);
+      try {
         List<String> orderNumbers = new ArrayList<>();
-        while (rs.next()) {
-          orderNumbers.add(rs.getString("order_number"));
+        try (PreparedStatement stmt = conn.prepareStatement(selectSql)) {
+          stmt.setString(1, STATUS_PENDING);
+          stmt.setInt(2, limit);
+          try (ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+              orderNumbers.add(rs.getString("order_number"));
+            }
+          }
         }
+
+        Instant now = Instant.now();
+        for (String orderNumber : orderNumbers) {
+          try (PreparedStatement stmt = conn.prepareStatement(updateSql)) {
+            stmt.setTimestamp(1, Timestamp.from(now));
+            stmt.setTimestamp(2, Timestamp.from(now));
+            stmt.setString(3, orderNumber);
+            stmt.executeUpdate();
+          }
+        }
+
+        conn.commit();
         return orderNumbers;
+      } catch (SQLException e) {
+        conn.rollback();
+        throw e;
+      } finally {
+        conn.setAutoCommit(true);
       }
     } catch (SQLException e) {
-      LOG.error("Failed to find pending membership spend retries", e);
-      throw new RepositoryException("Failed to find pending membership spend retries", e);
+      LOG.error("Failed to claim pending membership spend retries", e);
+      throw new RepositoryException("Failed to claim pending membership spend retries", e);
     }
   }
 
@@ -91,28 +119,6 @@ public class JdbcMembershipSpendRetryRepository implements MembershipSpendRetryR
     } catch (SQLException e) {
       LOG.error("Failed to mark membership spend retry completed: orderNumber={}", orderNumber, e);
       throw new RepositoryException("Failed to mark membership spend retry completed", e);
-    }
-  }
-
-  @Override
-  public void recordAttempt(String orderNumber) {
-    String sql =
-        "UPDATE membership_spend_retry SET"
-            + " attempt_count = attempt_count + 1,"
-            + " last_attempt_at = ?,"
-            + " updated_at = ?"
-            + " WHERE order_number = ?";
-
-    try (Connection conn = dataSource.getConnection();
-        PreparedStatement stmt = conn.prepareStatement(sql)) {
-      Instant now = Instant.now();
-      stmt.setTimestamp(1, Timestamp.from(now));
-      stmt.setTimestamp(2, Timestamp.from(now));
-      stmt.setString(3, orderNumber);
-      stmt.executeUpdate();
-    } catch (SQLException e) {
-      LOG.error("Failed to record membership spend retry attempt: orderNumber={}", orderNumber, e);
-      throw new RepositoryException("Failed to record membership spend retry attempt", e);
     }
   }
 }

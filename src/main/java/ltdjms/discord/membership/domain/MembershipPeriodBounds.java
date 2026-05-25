@@ -3,12 +3,12 @@ package ltdjms.discord.membership.domain;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Optional;
 
 /** Resolves settlement period boundaries for spend aggregation and panel display. */
 public final class MembershipPeriodBounds {
 
-  private static final Instant EPOCH = Instant.EPOCH;
-  static final ZoneId SETTLEMENT_ZONE = ZoneId.of("Asia/Taipei");
+  static final ZoneId SETTLEMENT_ZONE = MembershipSettlementCalendar.SETTLEMENT_ZONE;
 
   private MembershipPeriodBounds() {}
 
@@ -26,7 +26,7 @@ public final class MembershipPeriodBounds {
     return new Period(periodStart, periodEnd);
   }
 
-  /** Period start for settlement: last settlement, earliest join, or epoch. */
+  /** Period start for panel display: last settlement, earliest join, or account creation. */
   public static Instant resolvePeriodStart(GlobalMemberMembership membership) {
     if (membership.lastSettlementAt() != null) {
       return membership.lastSettlementAt();
@@ -34,7 +34,22 @@ public final class MembershipPeriodBounds {
     if (membership.earliestGuildJoinAt() != null) {
       return membership.earliestGuildJoinAt();
     }
-    return EPOCH;
+    return membership.createdAt();
+  }
+
+  /**
+   * Period start for settlement aggregation. Returns empty when neither join nor prior settlement
+   * exists, so settlement must be skipped until join tracking initializes anchors.
+   */
+  public static Optional<Instant> tryResolvePeriodStartForSettlement(
+      GlobalMemberMembership membership) {
+    if (membership.lastSettlementAt() != null) {
+      return Optional.of(membership.lastSettlementAt());
+    }
+    if (membership.earliestGuildJoinAt() != null) {
+      return Optional.of(membership.earliestGuildJoinAt());
+    }
+    return Optional.empty();
   }
 
   /**
@@ -46,7 +61,7 @@ public final class MembershipPeriodBounds {
     Integer settlementDay = membership.settlementDayOfMonth();
     Instant fallbackStart =
         settlementDay == null
-            ? EPOCH
+            ? membership.createdAt()
             : computePreviousSettlementAt(settlementDay, settledPeriodEnd, SETTLEMENT_ZONE);
     Instant earliestJoin = membership.earliestGuildJoinAt();
     if (earliestJoin != null && earliestJoin.isAfter(fallbackStart)) {

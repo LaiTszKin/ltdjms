@@ -8,12 +8,13 @@ public interface MembershipSpendRetryRepository {
   /** Enqueues an order for spend retry; no-op when already pending. */
   void enqueuePending(String orderNumber);
 
-  /** Returns order numbers awaiting retry, oldest first. */
-  List<String> findPending(int limit);
+  /**
+   * Claims pending retries using row locks so concurrent workers do not process the same order.
+   *
+   * @return claimed order numbers, oldest first
+   */
+  List<String> claimPending(int limit);
 
   /** Marks a retry as completed after spend was recorded. */
   void markCompleted(String orderNumber);
-
-  /** Records a failed retry attempt. */
-  void recordAttempt(String orderNumber);
 }

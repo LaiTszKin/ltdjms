@@ -2,6 +2,7 @@ package ltdjms.discord.panel.services;
 
 import java.time.Instant;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -26,6 +27,7 @@ public class PanelSessionManager {
   private static final long TTL_SECONDS = 15 * 60;
 
   private final Map<String, PanelSession> sessions = new ConcurrentHashMap<>();
+  private final Map<Long, Set<String>> sessionKeysByUser = new ConcurrentHashMap<>();
 
   /**
    * Registers a user panel session.
@@ -38,6 +40,7 @@ public class PanelSessionManager {
   public void registerSession(long guildId, long userId, InteractionHook hook, String userMention) {
     String key = getKey(guildId, userId);
     sessions.put(key, new PanelSession(hook, userMention, Instant.now()));
+    sessionKeysByUser.computeIfAbsent(userId, ignored -> ConcurrentHashMap.newKeySet()).add(key);
     LOG.debug("Registered panel session for key={}", key);
   }
 
@@ -53,14 +56,14 @@ public class PanelSessionManager {
     PanelSession session = sessions.get(key);
     if (session != null) {
       if (isExpired(session)) {
-        sessions.remove(key);
+        removeSession(key, userId);
         LOG.debug("Removed expired session for key={}", key);
       } else {
         try {
           consumer.accept(session.hook(), session.userMention());
         } catch (Exception e) {
           LOG.warn("Failed to update session for key={}. Removing session.", key, e);
-          sessions.remove(key);
+          removeSession(key, userId);
         }
       }
     }
@@ -85,6 +88,7 @@ public class PanelSessionManager {
               }
               PanelSession session = entry.getValue();
               if (isExpired(session)) {
+                removeSessionKey(key);
                 LOG.debug("Removed expired session for key={}", key);
                 return true;
               }
@@ -92,6 +96,7 @@ public class PanelSessionManager {
                 consumer.accept(session.hook(), session.userMention());
               } catch (Exception e) {
                 LOG.warn("Failed to update session for key={}. Removing session.", key, e);
+                removeSessionKey(key);
                 return true;
               }
               return false;
@@ -117,6 +122,7 @@ public class PanelSessionManager {
               }
               PanelSession session = entry.getValue();
               if (isExpired(session)) {
+                removeSessionKey(key);
                 LOG.debug("Removed expired session for key={}", key);
                 return true;
               }
@@ -125,6 +131,7 @@ public class PanelSessionManager {
                 consumer.accept(new SessionContext(session.hook(), session.userMention(), userId));
               } catch (Exception e) {
                 LOG.warn("Failed to update session for key={}. Removing session.", key, e);
+                removeSessionKey(key);
                 return true;
               }
               return false;
@@ -138,34 +145,63 @@ public class PanelSessionManager {
    * @param consumer action to perform on each matching session
    */
   public void updatePanelsByUser(long userId, Consumer<UserSessionContext> consumer) {
-    String userSuffix = ":" + userId;
-    sessions
-        .entrySet()
-        .removeIf(
-            entry -> {
-              String key = entry.getKey();
-              if (!key.endsWith(userSuffix)) {
-                return false;
-              }
-              PanelSession session = entry.getValue();
-              if (isExpired(session)) {
-                LOG.debug("Removed expired session for key={}", key);
-                return true;
-              }
-              try {
-                long guildId = Long.parseLong(key.substring(0, key.length() - userSuffix.length()));
-                consumer.accept(
-                    new UserSessionContext(session.hook(), session.userMention(), guildId, userId));
-              } catch (Exception e) {
-                LOG.warn("Failed to update session for key={}. Removing session.", key, e);
-                return true;
-              }
-              return false;
-            });
+    Set<String> keys = sessionKeysByUser.getOrDefault(userId, Set.of());
+    for (String key : Set.copyOf(keys)) {
+      PanelSession session = sessions.get(key);
+      if (session == null) {
+        removeSessionKey(key);
+        continue;
+      }
+      if (isExpired(session)) {
+        removeSession(key, userId);
+        LOG.debug("Removed expired session for key={}", key);
+        continue;
+      }
+      try {
+        int separator = key.indexOf(':');
+        long guildId = Long.parseLong(key.substring(0, separator));
+        consumer.accept(
+            new UserSessionContext(session.hook(), session.userMention(), guildId, userId));
+      } catch (Exception e) {
+        LOG.warn("Failed to update session for key={}. Removing session.", key, e);
+        removeSession(key, userId);
+      }
+    }
   }
 
   private boolean isExpired(PanelSession session) {
     return Instant.now().isAfter(session.createdAt().plusSeconds(TTL_SECONDS));
+  }
+
+  private void removeSession(String key, long userId) {
+    sessions.remove(key);
+    Set<String> keys = sessionKeysByUser.get(userId);
+    if (keys != null) {
+      keys.remove(key);
+      if (keys.isEmpty()) {
+        sessionKeysByUser.remove(userId, keys);
+      }
+    }
+  }
+
+  private void removeSessionKey(String key) {
+    sessions.remove(key);
+    int separator = key.indexOf(':');
+    if (separator <= 0) {
+      return;
+    }
+    try {
+      long userId = Long.parseLong(key.substring(separator + 1));
+      Set<String> keys = sessionKeysByUser.get(userId);
+      if (keys != null) {
+        keys.remove(key);
+        if (keys.isEmpty()) {
+          sessionKeysByUser.remove(userId, keys);
+        }
+      }
+    } catch (NumberFormatException ignored) {
+      // Ignore malformed keys.
+    }
   }
 
   private String getKey(long guildId, long userId) {

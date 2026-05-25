@@ -251,7 +251,27 @@ CREATE INDEX IF NOT EXISTS idx_gmm_pending_grant_scan
     ON global_member_membership (last_settlement_at)
     WHERE last_settlement_at IS NOT NULL AND current_tier <> 'NONE';
 
--- fiat_order membership columns (see V030/V032 migrations)
--- ALTER TABLE fiat_order ADD COLUMN list_price_twd BIGINT;
--- ALTER TABLE fiat_order ADD COLUMN charged_amount_twd BIGINT;
--- ALTER TABLE fiat_order ADD COLUMN membership_tier_at_order VARCHAR(16);
+-- fiat_order table with membership pricing audit columns (V030/V032)
+CREATE TABLE IF NOT EXISTS fiat_order (
+    id BIGSERIAL PRIMARY KEY,
+    guild_id BIGINT NOT NULL,
+    buyer_user_id BIGINT NOT NULL,
+    product_id BIGINT NOT NULL,
+    product_name VARCHAR(100) NOT NULL,
+    order_number VARCHAR(32) NOT NULL UNIQUE,
+    payment_no VARCHAR(32) NOT NULL,
+    amount_twd BIGINT NOT NULL,
+    list_price_twd BIGINT,
+    charged_amount_twd BIGINT,
+    membership_tier_at_order VARCHAR(16),
+    status VARCHAR(32) NOT NULL DEFAULT 'PENDING_PAYMENT',
+    trade_status VARCHAR(32),
+    payment_message VARCHAR(255),
+    paid_at TIMESTAMPTZ,
+    fulfilled_at TIMESTAMPTZ,
+    admin_notified_at TIMESTAMPTZ,
+    last_callback_payload TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+

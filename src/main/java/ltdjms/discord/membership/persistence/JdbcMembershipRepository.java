@@ -17,7 +17,6 @@ import org.slf4j.LoggerFactory;
 import ltdjms.discord.currency.persistence.RepositoryException;
 import ltdjms.discord.membership.domain.GlobalMemberMembership;
 import ltdjms.discord.membership.domain.MembershipTier;
-import ltdjms.discord.membership.services.MembershipJoinService;
 
 /** JDBC implementation of {@link MembershipRepository}. */
 public class JdbcMembershipRepository implements MembershipRepository {
@@ -69,11 +68,6 @@ public class JdbcMembershipRepository implements MembershipRepository {
   }
 
   @Override
-  public List<Long> findDueForSettlement(Instant before) {
-    return findDueForSettlement(before, Integer.MAX_VALUE);
-  }
-
-  @Override
   public List<Long> findDueForSettlement(Instant before, int limit) {
     String sql =
         "SELECT discord_user_id FROM global_member_membership"
@@ -109,7 +103,7 @@ public class JdbcMembershipRepository implements MembershipRepository {
             + " WHEN earliest_guild_join_at IS NULL OR ? < earliest_guild_join_at THEN ?"
             + " ELSE settlement_day_of_month END,"
             + " next_settlement_at = CASE"
-            + " WHEN next_settlement_at IS NULL"
+            + " WHEN last_settlement_at IS NULL"
             + " AND (earliest_guild_join_at IS NULL OR ? < earliest_guild_join_at) THEN ?"
             + " ELSE next_settlement_at END,"
             + " updated_at = ?"
@@ -133,74 +127,6 @@ public class JdbcMembershipRepository implements MembershipRepository {
     } catch (SQLException e) {
       LOG.error("Failed to merge earliest guild join for discordUserId={}", discordUserId, e);
       throw new RepositoryException("Failed to merge earliest guild join", e);
-    }
-  }
-
-  @Override
-  public boolean ensureSettlementAnchor(long discordUserId, Instant anchorFrom, int settlementDay) {
-    String sql =
-        "UPDATE global_member_membership SET"
-            + " settlement_day_of_month = COALESCE(settlement_day_of_month, ?),"
-            + " next_settlement_at = COALESCE(next_settlement_at, ?),"
-            + " updated_at = ?"
-            + " WHERE discord_user_id = ? AND next_settlement_at IS NULL";
-
-    try (Connection conn = dataSource.getConnection();
-        PreparedStatement stmt = conn.prepareStatement(sql)) {
-      Instant nextSettlement =
-          MembershipJoinService.computeNextSettlementAt(
-              settlementDay, anchorFrom, MembershipJoinService.SETTLEMENT_ZONE);
-      Instant now = Instant.now();
-      stmt.setShort(1, (short) settlementDay);
-      stmt.setTimestamp(2, Timestamp.from(nextSettlement));
-      stmt.setTimestamp(3, Timestamp.from(now));
-      stmt.setLong(4, discordUserId);
-
-      return stmt.executeUpdate() == 1;
-    } catch (SQLException e) {
-      LOG.error("Failed to ensure settlement anchor for discordUserId={}", discordUserId, e);
-      throw new RepositoryException("Failed to ensure settlement anchor", e);
-    }
-  }
-
-  @Override
-  public boolean saveSettlementResult(
-      long discordUserId,
-      MembershipTier newTier,
-      Instant lastSettlementAt,
-      Instant newNextSettlementAt,
-      Instant expectedNextSettlementAt) {
-    String sql =
-        "UPDATE global_member_membership SET current_tier = ?, last_settlement_at = ?,"
-            + " next_settlement_at = ?, updated_at = ?"
-            + " WHERE discord_user_id = ? AND next_settlement_at = ?";
-
-    try (Connection conn = dataSource.getConnection();
-        PreparedStatement stmt = conn.prepareStatement(sql)) {
-      Instant now = Instant.now();
-      stmt.setString(1, newTier.name());
-      stmt.setTimestamp(2, Timestamp.from(lastSettlementAt));
-      stmt.setTimestamp(3, Timestamp.from(newNextSettlementAt));
-      stmt.setTimestamp(4, Timestamp.from(now));
-      stmt.setLong(5, discordUserId);
-      stmt.setTimestamp(6, Timestamp.from(expectedNextSettlementAt));
-
-      int affected = stmt.executeUpdate();
-      if (affected == 1) {
-        LOG.info(
-            "Settled membership: discordUserId={}, tier={}, nextSettlement={}",
-            discordUserId,
-            newTier,
-            newNextSettlementAt);
-        return true;
-      }
-      LOG.debug(
-          "Skipped settlement save for discordUserId={}: next_settlement_at no longer matches",
-          discordUserId);
-      return false;
-    } catch (SQLException e) {
-      LOG.error("Failed to save settlement for discordUserId={}", discordUserId, e);
-      throw new RepositoryException("Failed to save settlement result", e);
     }
   }
 

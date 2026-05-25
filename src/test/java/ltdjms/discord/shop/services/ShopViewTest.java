@@ -280,6 +280,27 @@ class ShopViewTest {
   }
 
   @Test
+  @DisplayName("buildFiatPurchaseConfirmEmbed 應該顯示會員價")
+  void buildFiatPurchaseConfirmEmbedShouldShowMemberPrice() {
+    Product product = Product.createWithFiatPriceTwd(TEST_GUILD_ID, "護航商品", null, 1000L);
+    EscortPriceQuote quote =
+        new EscortPriceQuote(
+            1000L,
+            800L,
+            0L,
+            0L,
+            MembershipTier.SILVER,
+            MembershipTier.SILVER.discountRate());
+
+    MessageEmbed embed = ShopView.buildFiatPurchaseConfirmEmbed(product, quote);
+
+    assertThat(embed.getTitle()).isEqualTo("💳 確認下單");
+    assertThat(embed.getDescription()).contains("**商品：** 護航商品");
+    assertThat(embed.getDescription()).contains("會員價");
+    assertThat(embed.getDescription()).contains("原價");
+  }
+
+  @Test
   @DisplayName("buildPurchaseConfirmEmbed 應該建立確認 Embed")
   void buildPurchaseConfirmEmbedShouldCreateConfirmationEmbed() {
     Product product = Product.createWithCurrencyPrice(TEST_GUILD_ID, "測試商品", null, 100L);

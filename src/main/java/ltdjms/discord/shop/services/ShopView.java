@@ -33,6 +33,8 @@ public class ShopView {
   public static final String BUTTON_SEARCH = "shop_search";
   public static final String BUTTON_PAY_WITH_CURRENCY = "shop_pay_currency_";
   public static final String BUTTON_PAY_WITH_FIAT = "shop_pay_fiat_";
+  public static final String BUTTON_CONFIRM_FIAT_PURCHASE = "shop_confirm_fiat_";
+  public static final String BUTTON_CANCEL_PURCHASE = "shop_cancel_purchase";
   public static final String BUTTON_BACK_TO_SHOP = "shop_back";
   public static final String SELECT_SEARCH_BUY = "shop_search_buy_select";
   public static final String BUTTON_SEARCH_PREV = "shop_sprev_";
@@ -221,6 +223,38 @@ public class ShopView {
         (builder, product) ->
             builder.addOption(
                 product.name(), String.valueOf(product.id()), buildPriceDescription(product)));
+  }
+
+  /** Builds an embed for fiat purchase confirmation. */
+  public static MessageEmbed buildFiatPurchaseConfirmEmbed(
+      Product product, EscortPriceQuote quote) {
+    StringBuilder sb = new StringBuilder();
+    sb.append("**商品：** ").append(product.name()).append("\n");
+    sb.append("**價格：** ").append(quote.formatFiatPriceLine()).append("\n");
+
+    if (product.description() != null && !product.description().isBlank()) {
+      sb.append("\n**商品描述：**\n").append(product.description());
+    }
+
+    if (product.hasReward()) {
+      sb.append("\n\n**獎勵：** ").append(product.formatReward());
+    }
+
+    return DiscordComponentRenderer.buildEmbed(
+        new EmbedView("💳 確認下單", sb.toString(), EMBED_COLOR, List.of(), null));
+  }
+
+  /** Builds action rows for fiat purchase confirmation. */
+  public static List<ActionRow> buildFiatPurchaseConfirmComponents(long productId) {
+    return List.of(
+        DiscordComponentRenderer.buildActionRow(
+            List.of(
+                new ButtonView(
+                    BUTTON_CONFIRM_FIAT_PURCHASE + productId,
+                    "確認下單",
+                    ButtonStyle.SUCCESS,
+                    false),
+                new ButtonView(BUTTON_CANCEL_PURCHASE, "取消", ButtonStyle.SECONDARY, false))));
   }
 
   /** Builds an embed for purchase confirmation. */

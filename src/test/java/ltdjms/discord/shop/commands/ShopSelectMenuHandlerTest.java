@@ -315,24 +315,9 @@ class ShopSelectMenuHandlerTest {
   }
 
   @Test
-  @DisplayName("僅法幣價格商品應觸發法幣下單流程")
+  @DisplayName("僅法幣價格商品應先顯示確認頁再觸發法幣下單流程")
   void selectFiatOnlyProduct_shouldTriggerFiatOrder() {
-    var product =
-        new Product(
-            TEST_PRODUCT_ID,
-            TEST_GUILD_ID,
-            "Fiat Product",
-            null,
-            null,
-            null,
-            null,
-            1200L,
-            Instant.now(),
-            Instant.now());
-
-    when(selectEvent.getComponentId()).thenReturn(ShopView.SELECT_BUY_PRODUCT);
-    when(selectEvent.getValues()).thenReturn(List.of(String.valueOf(TEST_PRODUCT_ID)));
-    when(productService.getProduct(TEST_PRODUCT_ID)).thenReturn(Optional.of(product));
+    var product = fiatOnlyProduct();
     when(fiatOrderService.createFiatOnlyOrder(TEST_GUILD_ID, TEST_USER_ID, TEST_PRODUCT_ID))
         .thenReturn(
             Result.ok(
@@ -345,9 +330,12 @@ class ShopSelectMenuHandlerTest {
                     "https://example.com/pay",
                     null)));
 
-    handler.onStringSelectInteraction(selectEvent);
+    showFiatConfirmFromSelect(product);
+    verify(selectEvent).editMessageEmbeds(any(MessageEmbed.class));
+    verify(selectEvent, never()).deferReply(true);
 
-    verify(selectEvent).deferReply(true);
+    clickConfirmFiatPurchase();
+    verify(buttonEvent).deferReply(true);
     verify(privateChannel).sendMessage(contains("超商代碼"));
     verify(interactionHook)
         .editOriginal(
@@ -361,51 +349,22 @@ class ShopSelectMenuHandlerTest {
   @Test
   @DisplayName("法幣下單失敗應該回覆錯誤訊息")
   void selectFiatOnlyProductFailure_shouldReplyError() {
-    var product =
-        new Product(
-            TEST_PRODUCT_ID,
-            TEST_GUILD_ID,
-            "Fiat Product",
-            null,
-            null,
-            null,
-            null,
-            1200L,
-            Instant.now(),
-            Instant.now());
-
-    when(selectEvent.getComponentId()).thenReturn(ShopView.SELECT_BUY_PRODUCT);
-    when(selectEvent.getValues()).thenReturn(List.of(String.valueOf(TEST_PRODUCT_ID)));
-    when(productService.getProduct(TEST_PRODUCT_ID)).thenReturn(Optional.of(product));
+    var product = fiatOnlyProduct();
     when(fiatOrderService.createFiatOnlyOrder(TEST_GUILD_ID, TEST_USER_ID, TEST_PRODUCT_ID))
         .thenReturn(
             Result.err(new DomainError(DomainError.Category.INVALID_INPUT, "商品不支援法幣", null)));
 
-    handler.onStringSelectInteraction(selectEvent);
+    showFiatConfirmFromSelect(product);
+    clickConfirmFiatPurchase();
 
-    verify(selectEvent).deferReply(true);
+    verify(buttonEvent).deferReply(true);
     verify(interactionHook).editOriginal(eq("下單失敗：商品不支援法幣"));
   }
 
   @Test
   @DisplayName("法幣下單在無法開啟私訊時應顯示付款備援資訊")
   void selectFiatOnlyProductWhenOpenDmFails_shouldShowFallbackInfo() {
-    var product =
-        new Product(
-            TEST_PRODUCT_ID,
-            TEST_GUILD_ID,
-            "Fiat Product",
-            null,
-            null,
-            null,
-            null,
-            1200L,
-            Instant.now(),
-            Instant.now());
-
-    when(selectEvent.getComponentId()).thenReturn(ShopView.SELECT_BUY_PRODUCT);
-    when(selectEvent.getValues()).thenReturn(List.of(String.valueOf(TEST_PRODUCT_ID)));
-    when(productService.getProduct(TEST_PRODUCT_ID)).thenReturn(Optional.of(product));
+    var product = fiatOnlyProduct();
     when(fiatOrderService.createFiatOnlyOrder(TEST_GUILD_ID, TEST_USER_ID, TEST_PRODUCT_ID))
         .thenReturn(
             Result.ok(
@@ -427,7 +386,8 @@ class ShopSelectMenuHandlerTest {
         .when(openPrivateChannelAction)
         .queue(any(), any());
 
-    handler.onStringSelectInteraction(selectEvent);
+    showFiatConfirmFromSelect(product);
+    clickConfirmFiatPurchase();
 
     verify(interactionHook)
         .editOriginal(
@@ -442,22 +402,7 @@ class ShopSelectMenuHandlerTest {
   @Test
   @DisplayName("法幣下單在私訊送出失敗時應顯示付款備援資訊")
   void selectFiatOnlyProductWhenSendDmFails_shouldShowFallbackInfo() {
-    var product =
-        new Product(
-            TEST_PRODUCT_ID,
-            TEST_GUILD_ID,
-            "Fiat Product",
-            null,
-            null,
-            null,
-            null,
-            1200L,
-            Instant.now(),
-            Instant.now());
-
-    when(selectEvent.getComponentId()).thenReturn(ShopView.SELECT_BUY_PRODUCT);
-    when(selectEvent.getValues()).thenReturn(List.of(String.valueOf(TEST_PRODUCT_ID)));
-    when(productService.getProduct(TEST_PRODUCT_ID)).thenReturn(Optional.of(product));
+    var product = fiatOnlyProduct();
     when(fiatOrderService.createFiatOnlyOrder(TEST_GUILD_ID, TEST_USER_ID, TEST_PRODUCT_ID))
         .thenReturn(
             Result.ok(
@@ -479,7 +424,8 @@ class ShopSelectMenuHandlerTest {
         .when(dmMessageAction)
         .queue(any(), any());
 
-    handler.onStringSelectInteraction(selectEvent);
+    showFiatConfirmFromSelect(product);
+    clickConfirmFiatPurchase();
 
     verify(interactionHook)
         .editOriginal(
@@ -494,33 +440,19 @@ class ShopSelectMenuHandlerTest {
   @Test
   @DisplayName("法幣下單失敗後應釋放 in-flight guard")
   void selectFiatOnlyProductFailure_shouldReleaseInFlightGuard() {
-    var product =
-        new Product(
-            TEST_PRODUCT_ID,
-            TEST_GUILD_ID,
-            "Fiat Product",
-            null,
-            null,
-            null,
-            null,
-            1200L,
-            Instant.now(),
-            Instant.now());
-
-    when(selectEvent.getComponentId()).thenReturn(ShopView.SELECT_BUY_PRODUCT);
-    when(selectEvent.getValues()).thenReturn(List.of(String.valueOf(TEST_PRODUCT_ID)));
-    when(productService.getProduct(TEST_PRODUCT_ID)).thenReturn(Optional.of(product));
+    var product = fiatOnlyProduct();
     when(fiatOrderService.createFiatOnlyOrder(TEST_GUILD_ID, TEST_USER_ID, TEST_PRODUCT_ID))
         .thenReturn(
             Result.err(new DomainError(DomainError.Category.INVALID_INPUT, "商品不支援法幣", null)));
 
-    handler.onStringSelectInteraction(selectEvent);
-    handler.onStringSelectInteraction(selectEvent);
+    showFiatConfirmFromSelect(product);
+    clickConfirmFiatPurchase();
+    clickConfirmFiatPurchase();
 
     verify(fiatOrderService, times(2))
         .createFiatOnlyOrder(TEST_GUILD_ID, TEST_USER_ID, TEST_PRODUCT_ID);
-    verify(selectEvent, times(2)).deferReply(true);
-    verify(selectEvent, never()).reply("⚠️ 這筆法幣訂單正在處理中，請稍候檢查互動結果。");
+    verify(buttonEvent, times(2)).deferReply(true);
+    verify(buttonEvent, never()).reply("⚠️ 這筆法幣訂單正在處理中，請稍候檢查互動結果。");
   }
 
   @Test
@@ -537,30 +469,45 @@ class ShopSelectMenuHandlerTest {
         .when(deferredReplyAction)
         .queue(any(), any());
 
-    var product =
-        new Product(
-            TEST_PRODUCT_ID,
-            TEST_GUILD_ID,
-            "Fiat Product",
-            null,
-            null,
-            null,
-            null,
-            1200L,
-            Instant.now(),
-            Instant.now());
+    var product = fiatOnlyProduct();
+    showFiatConfirmFromSelect(product);
+    clickConfirmFiatPurchase();
+    clickConfirmFiatPurchase();
 
-    when(selectEvent.getComponentId()).thenReturn(ShopView.SELECT_BUY_PRODUCT);
-    when(selectEvent.getValues()).thenReturn(List.of(String.valueOf(TEST_PRODUCT_ID)));
-    when(productService.getProduct(TEST_PRODUCT_ID)).thenReturn(Optional.of(product));
-
-    handler.onStringSelectInteraction(selectEvent);
-    handler.onStringSelectInteraction(selectEvent);
-
-    verify(selectEvent).reply("⚠️ 這筆法幣訂單正在處理中，請稍候檢查互動結果。");
+    verify(buttonEvent).reply("⚠️ 這筆法幣訂單正在處理中，請稍候檢查互動結果。");
     verify(replyAction).setEphemeral(true);
     verify(fiatOrderService, never()).createFiatOnlyOrder(anyLong(), anyLong(), anyLong());
     verify(interactionHook, never()).editOriginal(anyString());
+  }
+
+  private Product fiatOnlyProduct() {
+    return new Product(
+        TEST_PRODUCT_ID,
+        TEST_GUILD_ID,
+        "Fiat Product",
+        null,
+        null,
+        null,
+        null,
+        1200L,
+        Instant.now(),
+        Instant.now());
+  }
+
+  private void showFiatConfirmFromSelect(Product product) {
+    when(selectEvent.getComponentId()).thenReturn(ShopView.SELECT_BUY_PRODUCT);
+    when(selectEvent.getValues()).thenReturn(List.of(String.valueOf(TEST_PRODUCT_ID)));
+    when(productService.getProduct(TEST_PRODUCT_ID)).thenReturn(Optional.of(product));
+    when(selectEvent.editMessageEmbeds(any(MessageEmbed.class))).thenReturn(editAction);
+    when(editAction.setComponents(anyList())).thenReturn(editAction);
+    handler.onStringSelectInteraction(selectEvent);
+  }
+
+  private void clickConfirmFiatPurchase() {
+    when(buttonEvent.getComponentId())
+        .thenReturn(ShopView.BUTTON_CONFIRM_FIAT_PURCHASE + TEST_PRODUCT_ID);
+    when(buttonEvent.deferReply(true)).thenReturn(deferredReplyAction);
+    handler.onButtonInteraction(buttonEvent);
   }
 
   // ========== ButtonInteraction 測試 (支付方式選擇) ==========
@@ -597,7 +544,7 @@ class ShopSelectMenuHandlerTest {
   }
 
   @Test
-  @DisplayName("法幣下單按鈕應觸發法幣訂單")
+  @DisplayName("法幣下單按鈕應先顯示確認頁")
   void payWithFiatButton_shouldTriggerFiatOrder() {
     String buttonId = ShopView.BUTTON_PAY_WITH_FIAT + TEST_PRODUCT_ID;
     var product =
@@ -614,28 +561,14 @@ class ShopSelectMenuHandlerTest {
             Instant.now());
 
     when(buttonEvent.getComponentId()).thenReturn(buttonId);
-    when(buttonEvent.deferReply(true)).thenReturn(deferredReplyAction);
+    when(buttonEvent.editMessageEmbeds(any(MessageEmbed.class))).thenReturn(editAction);
+    when(editAction.setComponents(anyList())).thenReturn(editAction);
     when(productService.getProduct(TEST_PRODUCT_ID)).thenReturn(Optional.of(product));
-    when(fiatOrderService.createFiatOnlyOrder(TEST_GUILD_ID, TEST_USER_ID, TEST_PRODUCT_ID))
-        .thenReturn(
-            Result.ok(
-                new FiatOrderService.FiatOrderResult(
-                    product,
-                    noDiscountQuote(product),
-                    "FD260409000001",
-                    "ABC123456789",
-                    "2026/04/12 23:59:59",
-                    "https://example.com/pay",
-                    null)));
 
     handler.onButtonInteraction(buttonEvent);
 
-    verify(buttonEvent).deferReply(true);
-    verify(privateChannel).sendMessage(contains("超商代碼"));
-    verify(interactionHook)
-        .editOriginal(
-            ArgumentMatchers.<String>argThat(
-                msg -> msg.contains("法幣訂單已建立") && msg.contains("完整付款資訊也已私訊給你")));
+    verify(buttonEvent).editMessageEmbeds(any(MessageEmbed.class));
+    verify(buttonEvent, never()).deferReply(true);
   }
 
   // ========== ButtonInteraction 測試 (確認/取消購買) ==========

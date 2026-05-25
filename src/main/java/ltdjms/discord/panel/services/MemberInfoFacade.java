@@ -1,9 +1,5 @@
 package ltdjms.discord.panel.services;
 
-import java.time.Clock;
-import java.time.Instant;
-import java.util.Optional;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,13 +8,8 @@ import ltdjms.discord.currency.services.BalanceService;
 import ltdjms.discord.currency.services.CurrencyTransactionService;
 import ltdjms.discord.gametoken.services.GameTokenService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService;
-import ltdjms.discord.membership.domain.GlobalMemberMembership;
-import ltdjms.discord.membership.domain.MembershipPeriodBounds;
 import ltdjms.discord.membership.domain.MembershipTier;
-import ltdjms.discord.membership.domain.MembershipTierEvaluator;
-import ltdjms.discord.membership.domain.MembershipTierLabels;
-import ltdjms.discord.membership.persistence.MembershipRepository;
-import ltdjms.discord.membership.persistence.MembershipSpendRepository;
+import ltdjms.discord.membership.services.MembershipQueryService;
 import ltdjms.discord.redemption.services.ProductRedemptionTransactionService;
 import ltdjms.discord.redemption.services.RedemptionService;
 import ltdjms.discord.shared.DomainError;
@@ -38,9 +29,7 @@ public class MemberInfoFacade {
   private final CurrencyTransactionService currencyTransactionService;
   private final RedemptionService redemptionService;
   private final ProductRedemptionTransactionService productRedemptionTransactionService;
-  private final MembershipRepository membershipRepository;
-  private final MembershipSpendRepository membershipSpendRepository;
-  private final Clock clock;
+  private final MembershipQueryService membershipQueryService;
 
   public MemberInfoFacade(
       BalanceService balanceService,
@@ -49,18 +38,14 @@ public class MemberInfoFacade {
       CurrencyTransactionService currencyTransactionService,
       RedemptionService redemptionService,
       ProductRedemptionTransactionService productRedemptionTransactionService,
-      MembershipRepository membershipRepository,
-      MembershipSpendRepository membershipSpendRepository,
-      Clock clock) {
+      MembershipQueryService membershipQueryService) {
     this.balanceService = balanceService;
     this.gameTokenService = gameTokenService;
     this.gameTokenTransactionService = gameTokenTransactionService;
     this.currencyTransactionService = currencyTransactionService;
     this.redemptionService = redemptionService;
     this.productRedemptionTransactionService = productRedemptionTransactionService;
-    this.membershipRepository = membershipRepository;
-    this.membershipSpendRepository = membershipSpendRepository;
-    this.clock = clock;
+    this.membershipQueryService = membershipQueryService;
   }
 
   /**
@@ -149,29 +134,13 @@ public class MemberInfoFacade {
    * @return summary for panel rendering; tier {@link MembershipTier#NONE} when no membership row
    */
   public MembershipPanelSummary getMembershipSummary(long userId) {
-    Optional<GlobalMemberMembership> membershipOpt = membershipRepository.findByUserId(userId);
-    if (membershipOpt.isEmpty()) {
-      return noneSummary(null);
-    }
-
-    GlobalMemberMembership membership = membershipOpt.get();
-    Instant now = clock.instant();
-    MembershipPeriodBounds.Period period = MembershipPeriodBounds.currentPeriod(membership, now);
-    long periodSpendM =
-        membershipSpendRepository.sumListPriceInPeriod(
-            userId, period.startInclusive(), period.endExclusive());
-    MembershipTier effectiveTier =
-        MembershipTierEvaluator.effectiveTier(
-            membership.currentTier(), membership.hasQualifyingBronzeOrder());
-
-    long nextTierThresholdM = MembershipTierLabels.nextTierThresholdM(effectiveTier).orElse(0L);
-
+    MembershipQueryService.PanelSummary summary = membershipQueryService.getPanelSummary(userId);
     return new MembershipPanelSummary(
-        effectiveTier,
-        periodSpendM,
-        nextTierThresholdM,
-        membership.nextSettlementAt(),
-        effectiveTier.discountRate());
+        summary.tier(),
+        summary.periodSpendListPriceM(),
+        summary.nextTierThresholdM(),
+        summary.nextSettlementAt(),
+        summary.discountRate());
   }
 
   /**
@@ -240,14 +209,5 @@ public class MemberInfoFacade {
         page);
     return productRedemptionTransactionService.getTransactionPage(
         guildId, userId, page, ProductRedemptionTransactionService.DEFAULT_PAGE_SIZE);
-  }
-
-  private static MembershipPanelSummary noneSummary(Instant nextSettlementAt) {
-    return new MembershipPanelSummary(
-        MembershipTier.NONE,
-        0L,
-        MembershipTier.SILVER.thresholdListPriceTwd(),
-        nextSettlementAt,
-        MembershipTier.NONE.discountRate());
   }
 }

@@ -22,7 +22,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import ltdjms.discord.membership.domain.MembershipTier;
-import ltdjms.discord.membership.persistence.JdbcMembershipSettlementCoordinator;
+import ltdjms.discord.membership.persistence.MembershipSettlementCoordinator;
 import ltdjms.discord.membership.persistence.SettlementApplyResult;
 import ltdjms.discord.shared.events.DomainEventPublisher;
 import ltdjms.discord.shared.events.MembershipTierChangedEvent;
@@ -36,7 +36,7 @@ class MembershipSettlementServiceTest {
   private static final Instant PERIOD_START = Instant.parse("2026-03-15T00:00:00+08:00");
   private static final Instant NEXT_SETTLEMENT = Instant.parse("2026-05-15T00:00:00+08:00");
 
-  @Mock private JdbcMembershipSettlementCoordinator settlementCoordinator;
+  @Mock private MembershipSettlementCoordinator settlementCoordinator;
   @Mock private MembershipTokenGrantService tokenGrantService;
   @Mock private DomainEventPublisher eventPublisher;
 

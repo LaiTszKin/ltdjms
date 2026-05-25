@@ -69,12 +69,12 @@ class MembershipSpendServiceTest {
     }
 
     @Test
-    @DisplayName("should prefer frozen order list price when catalog code is missing")
-    void shouldPreferOrderListPriceWhenCatalogMissing() {
+    @DisplayName("should prefer product fiat price when catalog code is missing")
+    void shouldPreferProductPriceWhenCatalogMissing() {
       Product product = escortProduct("MISSING_CODE", 1200L);
       when(catalogRepository.findByCode("MISSING_CODE")).thenReturn(java.util.Optional.empty());
 
-      assertThat(service.resolveListPriceM(product, GUILD_ID, 3500L)).isEqualTo(3500L);
+      assertThat(service.resolveListPriceM(product, GUILD_ID, 3500L)).isEqualTo(1200L);
     }
 
     @Test
