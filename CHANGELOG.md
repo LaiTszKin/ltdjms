@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.36.2] - 2026-05-25
+
+### Fixed
+- **config/env**: 還原 Java bot 版 `.env.example` 格式（`DB_USERNAME`、完整 ECPay / AI / Logging 預設值），避免 `make setup-env` / `make update-env` 與現有部署參數不相容
+
 ## [0.36.1] - 2026-05-25
 
 ### Fixed
