@@ -225,7 +225,7 @@ class FiatOrderServiceTest {
     assertThat(orderCaptor.getValue().amountTwd()).isEqualTo(3150L);
     assertThat(orderCaptor.getValue().listPriceTwd()).isEqualTo(3500L);
     assertThat(orderCaptor.getValue().chargedAmountTwd()).isEqualTo(3150L);
-    assertThat(result.getValue().formatDirectMessage()).contains("會員價 NT$3,150");
+    assertThat(result.getValue().formatDirectMessage()).contains("~~NT$3,500~~ NT$3,150（護航 9 折）");
   }
 
   private static EscortPriceQuote noDiscountQuote(long fiat, long currency) {
