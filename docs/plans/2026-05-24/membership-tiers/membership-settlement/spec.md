@@ -38,7 +38,7 @@
 **THEN** current_tier=SILVER
 
 **Requirements**:
-- [x] R2.1 avgM 從 GOLD 降到 12000 → tier 降為 SILVER
+- [x] R2.1 avgM 從 GOLD 降到 12000 → tier 降為 BRONZE（core 門檻：SILVER 需 avgM ≥ 15000）
 - [x] R2.2 tier 變更時發送 `MembershipTierChangedEvent`
 
 ### Requirement 3: 週期定義
@@ -50,6 +50,7 @@
 - [x] next_settlement_at null（未 join）→ skip
 - [x] 並發雙 tick → claim 或 SELECT FOR UPDATE 避免雙重結算
 - [x] settlement 失敗單用戶隔離，不阻斷 batch
+- [x] 遲到 spend（paid_at 早於 last_settlement_at）→ spend coordinator reopen 已結算週期，下次 tick 重算 avgM
 
 ## Clarification Questions
 None

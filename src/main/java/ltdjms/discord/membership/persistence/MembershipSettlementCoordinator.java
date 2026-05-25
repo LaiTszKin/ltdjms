@@ -7,9 +7,11 @@ import java.util.Optional;
 public interface MembershipSettlementCoordinator {
 
   /**
-   * Locks the membership row, sums period spend, and writes settlement when due.
+   * Locks the membership row, sums period spend, applies {@code decisionMaker}, and writes
+   * settlement when due.
    *
    * @return settlement outcome when applied, empty when skipped
    */
-  Optional<SettlementApplyResult> applyIfDue(long discordUserId, Instant now);
+  Optional<SettlementApplyResult> applyIfDue(
+      long discordUserId, Instant now, SettlementDecisionMaker decisionMaker);
 }

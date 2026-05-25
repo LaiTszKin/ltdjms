@@ -22,6 +22,7 @@ import ltdjms.discord.currency.services.CurrencyTransactionService;
 import ltdjms.discord.gametoken.services.GameTokenService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService;
 import ltdjms.discord.membership.domain.MembershipTier;
+import ltdjms.discord.membership.services.MembershipPanelSummary;
 import ltdjms.discord.membership.services.MembershipQueryService;
 import ltdjms.discord.product.domain.Product;
 import ltdjms.discord.redemption.domain.RedemptionCode;
@@ -73,8 +74,7 @@ class MemberInfoFacadeTest {
       when(gameTokenService.getBalance(TEST_GUILD_ID, TEST_USER_ID)).thenReturn(50L);
       when(membershipQueryService.getPanelSummary(TEST_USER_ID))
           .thenReturn(
-              new MembershipQueryService.PanelSummary(
-                  MembershipTier.NONE, 0L, 15_000L, null, BigDecimal.ZERO));
+              new MembershipPanelSummary(MembershipTier.NONE, 0L, 15_000L, null, BigDecimal.ZERO));
 
       Result<UserPanelView, DomainError> result =
           facade.getUserPanelView(TEST_GUILD_ID, TEST_USER_ID);
@@ -117,8 +117,7 @@ class MemberInfoFacadeTest {
       when(gameTokenService.getBalance(TEST_GUILD_ID, TEST_USER_ID)).thenReturn(0L);
       when(membershipQueryService.getPanelSummary(TEST_USER_ID))
           .thenReturn(
-              new MembershipQueryService.PanelSummary(
-                  MembershipTier.NONE, 0L, 15_000L, null, BigDecimal.ZERO));
+              new MembershipPanelSummary(MembershipTier.NONE, 0L, 15_000L, null, BigDecimal.ZERO));
 
       Result<UserPanelView, DomainError> result =
           facade.getUserPanelView(TEST_GUILD_ID, TEST_USER_ID);
@@ -138,7 +137,7 @@ class MemberInfoFacadeTest {
       Instant nextSettlement = Instant.parse("2026-05-15T00:00:00+08:00");
       when(membershipQueryService.getPanelSummary(TEST_USER_ID))
           .thenReturn(
-              new MembershipQueryService.PanelSummary(
+              new MembershipPanelSummary(
                   MembershipTier.SILVER,
                   20_000L,
                   MembershipTier.GOLD.thresholdListPriceTwd(),

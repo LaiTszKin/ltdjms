@@ -123,10 +123,8 @@ public class MembershipTokenGrantService {
       return true;
     }
 
-    if (claimStateOpt.isEmpty()
-        || "FAILED".equals(claimStateOpt.get().status())) {
-      if (!grantRepository.tryClaimGrantLog(
-          discordUserId, settlementPeriodEnd, tier, tokens)) {
+    if (claimStateOpt.isEmpty() || "FAILED".equals(claimStateOpt.get().status())) {
+      if (!grantRepository.tryClaimGrantLog(discordUserId, settlementPeriodEnd, tier, tokens)) {
         return grantRepository
             .findClaimState(discordUserId, settlementPeriodEnd)
             .map(

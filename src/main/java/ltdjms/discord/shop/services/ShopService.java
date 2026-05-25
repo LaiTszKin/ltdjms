@@ -5,6 +5,8 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ltdjms.discord.membership.services.EscortPriceQuote;
+import ltdjms.discord.membership.services.MembershipPricingService;
 import ltdjms.discord.product.domain.Product;
 import ltdjms.discord.product.domain.ProductRepository;
 import ltdjms.discord.shop.services.ShopService.ShopPage;
@@ -15,15 +17,37 @@ public class ShopService {
   private static final Logger LOG = LoggerFactory.getLogger(ShopService.class);
 
   private final ProductRepository productRepository;
+  private final MembershipPricingService membershipPricingService;
   private final int pageSize;
 
   public ShopService(ProductRepository productRepository) {
-    this(productRepository, ShopView.getPageSize());
+    this(productRepository, null, ShopView.getPageSize());
   }
 
   public ShopService(ProductRepository productRepository, int pageSize) {
+    this(productRepository, null, pageSize);
+  }
+
+  public ShopService(
+      ProductRepository productRepository, MembershipPricingService membershipPricingService) {
+    this(productRepository, membershipPricingService, ShopView.getPageSize());
+  }
+
+  public ShopService(
+      ProductRepository productRepository,
+      MembershipPricingService membershipPricingService,
+      int pageSize) {
     this.productRepository = productRepository;
+    this.membershipPricingService = membershipPricingService;
     this.pageSize = pageSize;
+  }
+
+  /** Quotes escort pricing with membership discounts for shop UI flows. */
+  public EscortPriceQuote quoteEscortPrice(long userId, Product product, long guildId) {
+    if (membershipPricingService == null) {
+      throw new IllegalStateException("MembershipPricingService is not configured for ShopService");
+    }
+    return membershipPricingService.quoteEscortPrice(userId, product, guildId);
   }
 
   /**

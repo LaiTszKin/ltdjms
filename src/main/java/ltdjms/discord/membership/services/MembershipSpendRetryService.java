@@ -2,41 +2,37 @@ package ltdjms.discord.membership.services;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ltdjms.discord.membership.persistence.MembershipSpendRetryRepository;
-import ltdjms.discord.shop.domain.FiatOrder;
-import ltdjms.discord.shop.domain.FiatOrderRepository;
+import ltdjms.discord.membership.persistence.PendingSpendRetrySnapshot;
 
 /** Retries failed membership spend recordings without blocking fiat fulfillment. */
 public class MembershipSpendRetryService {
 
   static final int RETRY_BATCH_LIMIT = 50;
   static final int MAX_RETRY_BATCHES_PER_TICK = 20;
+  static final int MAX_ATTEMPTS = 10;
 
   private static final Logger LOG = LoggerFactory.getLogger(MembershipSpendRetryService.class);
 
   private final MembershipSpendRetryRepository retryRepository;
-  private final FiatOrderRepository fiatOrderRepository;
-  private final MembershipSpendService membershipSpendService;
+  private final MembershipSpendRecorder membershipSpendRecorder;
 
   public MembershipSpendRetryService(
       MembershipSpendRetryRepository retryRepository,
-      FiatOrderRepository fiatOrderRepository,
-      MembershipSpendService membershipSpendService) {
+      MembershipSpendRecorder membershipSpendRecorder) {
     this.retryRepository = Objects.requireNonNull(retryRepository);
-    this.fiatOrderRepository = Objects.requireNonNull(fiatOrderRepository);
-    this.membershipSpendService = Objects.requireNonNull(membershipSpendService);
+    this.membershipSpendRecorder = Objects.requireNonNull(membershipSpendRecorder);
   }
 
-  /** Enqueues an order for background spend retry. */
-  public void enqueue(String orderNumber) {
-    retryRepository.enqueuePending(orderNumber);
-    MembershipSpendMetrics.recordFailure("FIAT_ORDER_RETRY_ENQUEUE", orderNumber);
-    LOG.warn("Enqueued membership spend retry: orderNumber={}", orderNumber);
+  /** Enqueues an order snapshot for background spend retry. */
+  public void enqueue(PaidEscortOrderSnapshot snapshot) {
+    retryRepository.enqueuePending(snapshot);
+    MembershipSpendMetrics.recordFailure("FIAT_ORDER_RETRY_ENQUEUE", snapshot.orderNumber());
+    LOG.warn("Enqueued membership spend retry: orderNumber={}", snapshot.orderNumber());
   }
 
   /**
@@ -46,21 +42,23 @@ public class MembershipSpendRetryService {
    */
   public int retryPendingSpends() {
     int completed = 0;
-    List<String> batch;
+    List<PendingSpendRetrySnapshot> batch;
     int batches = 0;
     do {
       batch = retryRepository.claimPending(RETRY_BATCH_LIMIT);
-      for (String orderNumber : batch) {
-        Optional<FiatOrder> orderOpt = fiatOrderRepository.findByOrderNumber(orderNumber);
-        if (orderOpt.isEmpty()) {
-          LOG.warn("Skipping membership spend retry: order not found, orderNumber={}", orderNumber);
+      for (PendingSpendRetrySnapshot snapshot : batch) {
+        if (snapshot.attemptCount() >= MAX_ATTEMPTS) {
+          retryRepository.markFailed(snapshot.orderNumber());
+          LOG.error(
+              "Membership spend retry dead-lettered after {} attempts: orderNumber={}",
+              snapshot.attemptCount(),
+              snapshot.orderNumber());
           continue;
         }
-        FiatOrder order = orderOpt.get();
-        if (membershipSpendService.recordFiatEscortPayment(order, order.toFulfillmentProduct())) {
-          retryRepository.markCompleted(orderNumber);
+        if (membershipSpendRecorder.recordPaidEscortOrder(toSnapshot(snapshot))) {
+          retryRepository.markCompleted(snapshot.orderNumber());
           completed++;
-          LOG.info("Membership spend retry succeeded: orderNumber={}", orderNumber);
+          LOG.info("Membership spend retry succeeded: orderNumber={}", snapshot.orderNumber());
         }
       }
       batches++;
@@ -73,5 +71,17 @@ public class MembershipSpendRetryService {
           RETRY_BATCH_LIMIT);
     }
     return completed;
+  }
+
+  private static PaidEscortOrderSnapshot toSnapshot(PendingSpendRetrySnapshot snapshot) {
+    return new PaidEscortOrderSnapshot(
+        snapshot.orderNumber(),
+        snapshot.buyerUserId(),
+        snapshot.guildId(),
+        snapshot.paidAt(),
+        snapshot.orderListPriceTwd(),
+        snapshot.escortOptionCode(),
+        snapshot.productFiatPriceTwd(),
+        snapshot.escortLinked());
   }
 }

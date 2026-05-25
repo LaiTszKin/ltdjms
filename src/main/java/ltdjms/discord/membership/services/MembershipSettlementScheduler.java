@@ -47,7 +47,10 @@ public class MembershipSettlementScheduler {
     }
     executorService = java.util.concurrent.Executors.newSingleThreadScheduledExecutor();
     executorService.scheduleWithFixedDelay(
-        this::runSettlement, 30L, SETTLEMENT_INTERVAL_SECONDS, java.util.concurrent.TimeUnit.SECONDS);
+        this::runSettlement,
+        30L,
+        SETTLEMENT_INTERVAL_SECONDS,
+        java.util.concurrent.TimeUnit.SECONDS);
     LOG.info("Started membership settlement scheduler");
   }
 
@@ -61,10 +64,13 @@ public class MembershipSettlementScheduler {
   }
 
   void runSettlement() {
-    tokenGrantService.retryPendingGrants();
-    spendRetryService.retryPendingSpends();
-    tickGuard.runGuarded(this::runSettlementBatches);
-    tokenGrantService.retryPendingGrants();
+    tickGuard.runGuarded(
+        () -> {
+          tokenGrantService.retryPendingGrants();
+          spendRetryService.retryPendingSpends();
+          runSettlementBatches();
+          tokenGrantService.retryPendingGrants();
+        });
   }
 
   private void runSettlementBatches() {
@@ -72,8 +78,7 @@ public class MembershipSettlementScheduler {
       long tickStartedAt = System.currentTimeMillis();
       List<Long> batch;
       do {
-        batch =
-            membershipRepository.findDueForSettlement(clock.instant(), SETTLEMENT_BATCH_LIMIT);
+        batch = membershipRepository.findDueForSettlement(clock.instant(), SETTLEMENT_BATCH_LIMIT);
         for (long userId : batch) {
           try {
             settlementService.settle(userId);

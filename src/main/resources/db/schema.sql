@@ -222,16 +222,29 @@ CREATE TABLE IF NOT EXISTS membership_spend_entry (
 CREATE INDEX IF NOT EXISTS idx_mse_user_paid ON membership_spend_entry (discord_user_id, paid_at);
 
 CREATE TABLE IF NOT EXISTS membership_spend_retry (
-    order_number    VARCHAR(128) PRIMARY KEY,
-    status          VARCHAR(16) NOT NULL DEFAULT 'PENDING',
-    attempt_count   INT NOT NULL DEFAULT 0,
-    last_attempt_at TIMESTAMPTZ,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    order_number            VARCHAR(128) PRIMARY KEY,
+    status                  VARCHAR(16) NOT NULL DEFAULT 'PENDING',
+    attempt_count           INT NOT NULL DEFAULT 0,
+    last_attempt_at         TIMESTAMPTZ,
+    buyer_user_id           BIGINT,
+    guild_id                BIGINT,
+    paid_at                 TIMESTAMPTZ,
+    order_list_price_twd    BIGINT,
+    escort_option_code      VARCHAR(64),
+    product_fiat_price_twd  BIGINT,
+    escort_linked           BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_msr_pending ON membership_spend_retry (status, created_at)
     WHERE status = 'PENDING';
+
+CREATE TABLE IF NOT EXISTS membership_scheduler_lease (
+    lock_name    VARCHAR(64) PRIMARY KEY,
+    locked_until TIMESTAMPTZ NOT NULL DEFAULT '1970-01-01T00:00:00Z',
+    locked_by    VARCHAR(128) NOT NULL DEFAULT ''
+);
 
 -- Idempotent log for monthly membership token grants at settlement
 CREATE TABLE IF NOT EXISTS membership_token_grant_log (

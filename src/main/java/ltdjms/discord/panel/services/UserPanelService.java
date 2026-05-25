@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 
 import ltdjms.discord.currency.services.CurrencyTransactionService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService;
+import ltdjms.discord.membership.services.MembershipPanelSummary;
 import ltdjms.discord.redemption.services.ProductRedemptionTransactionService;
 import ltdjms.discord.redemption.services.RedemptionService;
 import ltdjms.discord.shared.DomainError;

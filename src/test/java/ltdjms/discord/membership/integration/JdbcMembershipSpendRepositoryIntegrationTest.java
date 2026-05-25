@@ -9,7 +9,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import ltdjms.discord.currency.integration.PostgresIntegrationTestBase;
-import ltdjms.discord.membership.domain.MembershipTier;
 import ltdjms.discord.membership.persistence.JdbcMembershipSpendRepository;
 import ltdjms.discord.membership.persistence.MembershipSpendRepository;
 

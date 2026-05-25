@@ -1,11 +1,11 @@
-package ltdjms.discord.panel.services;
+package ltdjms.discord.membership.services;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 
 import ltdjms.discord.membership.domain.MembershipTier;
 
-/** Membership summary for user panel display. */
+/** Membership summary for cross-module consumers such as the user panel. */
 public record MembershipPanelSummary(
     MembershipTier tier,
     long periodSpendListPriceM,

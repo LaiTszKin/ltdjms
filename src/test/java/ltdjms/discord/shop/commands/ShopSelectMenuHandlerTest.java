@@ -26,7 +26,6 @@ import ltdjms.discord.dispatch.domain.EscortDispatchOrder;
 import ltdjms.discord.dispatch.services.EscortDispatchHandoffService;
 import ltdjms.discord.membership.domain.MembershipTier;
 import ltdjms.discord.membership.services.EscortPriceQuote;
-import ltdjms.discord.membership.services.MembershipPricingService;
 import ltdjms.discord.product.domain.Product;
 import ltdjms.discord.product.services.ProductService;
 import ltdjms.discord.shared.DomainError;
@@ -35,6 +34,7 @@ import ltdjms.discord.shop.services.CurrencyPurchaseService;
 import ltdjms.discord.shop.services.EscortOrderBuyerNotificationService;
 import ltdjms.discord.shop.services.FiatOrderService;
 import ltdjms.discord.shop.services.ShopAdminNotificationService;
+import ltdjms.discord.shop.services.ShopService;
 import ltdjms.discord.shop.services.ShopView;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
@@ -74,7 +74,7 @@ class ShopSelectMenuHandlerTest {
 
   @Mock private EscortOrderBuyerNotificationService escortOrderBuyerNotificationService;
 
-  @Mock private MembershipPricingService membershipPricingService;
+  @Mock private ShopService shopService;
 
   @Mock private StringSelectInteractionEvent selectEvent;
 
@@ -113,7 +113,7 @@ class ShopSelectMenuHandlerTest {
             escortDispatchHandoffService,
             adminNotificationService,
             escortOrderBuyerNotificationService,
-            membershipPricingService);
+            shopService);
 
     // 設定預設的 mock 行為
     when(selectEvent.getGuild()).thenReturn(guild);
@@ -127,7 +127,7 @@ class ShopSelectMenuHandlerTest {
     when(user.openPrivateChannel()).thenReturn(openPrivateChannelAction);
     when(privateChannel.sendMessage(anyString())).thenReturn(dmMessageAction);
     when(interactionHook.editOriginal(any(String.class))).thenReturn(hookEditAction);
-    when(membershipPricingService.quoteEscortPrice(anyLong(), any(), anyLong()))
+    when(shopService.quoteEscortPrice(anyLong(), any(), anyLong()))
         .thenAnswer(
             invocation -> {
               Product product = invocation.getArgument(1);

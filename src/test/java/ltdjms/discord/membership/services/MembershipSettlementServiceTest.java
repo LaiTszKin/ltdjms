@@ -9,7 +9,6 @@ import static org.mockito.Mockito.when;
 
 import java.time.Clock;
 import java.time.Instant;
-import java.time.ZonedDateTime;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -37,7 +36,6 @@ class MembershipSettlementServiceTest {
   private static final Instant NEXT_SETTLEMENT = Instant.parse("2026-05-15T00:00:00+08:00");
 
   @Mock private MembershipSettlementCoordinator settlementCoordinator;
-  @Mock private MembershipTokenGrantService tokenGrantService;
   @Mock private DomainEventPublisher eventPublisher;
 
   private MembershipSettlementService service;
@@ -45,9 +43,7 @@ class MembershipSettlementServiceTest {
   @BeforeEach
   void setUp() {
     Clock clock = Clock.fixed(NOW, MembershipJoinService.SETTLEMENT_ZONE);
-    service =
-        new MembershipSettlementService(
-            settlementCoordinator, tokenGrantService, eventPublisher, clock);
+    service = new MembershipSettlementService(settlementCoordinator, eventPublisher, clock);
   }
 
   @Nested
@@ -57,7 +53,8 @@ class MembershipSettlementServiceTest {
     @Test
     @DisplayName("should skip when coordinator returns empty")
     void shouldSkipWhenNotDue() {
-      when(settlementCoordinator.applyIfDue(TEST_USER_ID, NOW)).thenReturn(Optional.empty());
+      when(settlementCoordinator.applyIfDue(eq(TEST_USER_ID), eq(NOW), any()))
+          .thenReturn(Optional.empty());
 
       assertThat(service.settle(TEST_USER_ID)).isFalse();
       verify(eventPublisher, never()).publish(any());
@@ -66,7 +63,7 @@ class MembershipSettlementServiceTest {
     @Test
     @DisplayName("should upgrade to SILVER when avgM=15000 with bronze flag")
     void shouldUpgradeToSilver() {
-      when(settlementCoordinator.applyIfDue(TEST_USER_ID, NOW))
+      when(settlementCoordinator.applyIfDue(eq(TEST_USER_ID), eq(NOW), any()))
           .thenReturn(
               Optional.of(
                   new SettlementApplyResult(
@@ -86,17 +83,15 @@ class MembershipSettlementServiceTest {
       verify(eventPublisher).publish(eventCaptor.capture());
       MembershipTierChangedEvent event = eventCaptor.getValue();
       assertThat(event.userId()).isEqualTo(TEST_USER_ID);
-      assertThat(event.previous()).isEqualTo(MembershipTier.BRONZE);
-      assertThat(event.current()).isEqualTo(MembershipTier.SILVER);
+      assertThat(event.previousTierCode()).isEqualTo(MembershipTier.BRONZE.name());
+      assertThat(event.currentTierCode()).isEqualTo(MembershipTier.SILVER.name());
       assertThat(event.periodAvgListPriceM()).isEqualTo(15_000L);
-      verify(tokenGrantService)
-          .grantForSettlement(TEST_USER_ID, PERIOD_START, PERIOD_END, MembershipTier.SILVER);
     }
 
     @Test
     @DisplayName("should downgrade from GOLD to SILVER when avgM drops to 20000")
     void shouldDowngradeFromGoldToSilver() {
-      when(settlementCoordinator.applyIfDue(TEST_USER_ID, NOW))
+      when(settlementCoordinator.applyIfDue(eq(TEST_USER_ID), eq(NOW), any()))
           .thenReturn(
               Optional.of(
                   new SettlementApplyResult(
@@ -114,13 +109,17 @@ class MembershipSettlementServiceTest {
       verify(eventPublisher)
           .publish(
               new MembershipTierChangedEvent(
-                  TEST_USER_ID, MembershipTier.GOLD, MembershipTier.SILVER, 20_000L, PERIOD_END));
+                  TEST_USER_ID,
+                  MembershipTier.GOLD.name(),
+                  MembershipTier.SILVER.name(),
+                  20_000L,
+                  PERIOD_END));
     }
 
     @Test
     @DisplayName("should keep BRONZE floor when avgM=0 but has qualifying bronze order")
     void shouldKeepBronzeFloor() {
-      when(settlementCoordinator.applyIfDue(TEST_USER_ID, NOW))
+      when(settlementCoordinator.applyIfDue(eq(TEST_USER_ID), eq(NOW), any()))
           .thenReturn(
               Optional.of(
                   new SettlementApplyResult(
@@ -138,13 +137,17 @@ class MembershipSettlementServiceTest {
       verify(eventPublisher)
           .publish(
               new MembershipTierChangedEvent(
-                  TEST_USER_ID, MembershipTier.SILVER, MembershipTier.BRONZE, 0L, PERIOD_END));
+                  TEST_USER_ID,
+                  MembershipTier.SILVER.name(),
+                  MembershipTier.BRONZE.name(),
+                  0L,
+                  PERIOD_END));
     }
 
     @Test
     @DisplayName("should not publish event when tier unchanged")
     void shouldNotPublishWhenTierUnchanged() {
-      when(settlementCoordinator.applyIfDue(TEST_USER_ID, NOW))
+      when(settlementCoordinator.applyIfDue(eq(TEST_USER_ID), eq(NOW), any()))
           .thenReturn(
               Optional.of(
                   new SettlementApplyResult(

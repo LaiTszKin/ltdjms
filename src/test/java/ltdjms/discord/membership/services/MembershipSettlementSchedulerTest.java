@@ -1,8 +1,10 @@
 package ltdjms.discord.membership.services;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.doThrow;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -19,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import ltdjms.discord.membership.persistence.MembershipRepository;
+import ltdjms.discord.membership.persistence.MembershipSettlementTickGuard;
 import ltdjms.discord.membership.persistence.PassthroughMembershipSettlementTickGuard;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,25 +33,27 @@ class MembershipSettlementSchedulerTest {
   @Mock private MembershipSettlementService settlementService;
   @Mock private MembershipTokenGrantService tokenGrantService;
   @Mock private MembershipSpendRetryService spendRetryService;
+  @Mock private MembershipSettlementTickGuard tickGuard;
 
-  private MembershipSettlementScheduler scheduler;
+  private Clock clock;
 
   @BeforeEach
   void setUp() {
-    Clock clock = Clock.fixed(NOW, MembershipJoinService.SETTLEMENT_ZONE);
-    scheduler =
-        new MembershipSettlementScheduler(
-            membershipRepository,
-            settlementService,
-            tokenGrantService,
-            spendRetryService,
-            PassthroughMembershipSettlementTickGuard.INSTANCE,
-            clock);
+    clock = Clock.fixed(NOW, MembershipJoinService.SETTLEMENT_ZONE);
   }
 
   @Test
   @DisplayName("should drain multiple settlement batches within one tick")
   void shouldDrainMultipleBatches() {
+    doAnswer(
+            invocation -> {
+              Runnable tick = invocation.getArgument(0);
+              tick.run();
+              return null;
+            })
+        .when(tickGuard)
+        .runGuarded(any(Runnable.class));
+    MembershipSettlementScheduler scheduler = schedulerWith(tickGuard);
     when(membershipRepository.findDueForSettlement(
             NOW, MembershipSettlementScheduler.SETTLEMENT_BATCH_LIMIT))
         .thenReturn(
@@ -58,6 +63,7 @@ class MembershipSettlementSchedulerTest {
 
     scheduler.runSettlement();
 
+    verify(tickGuard).runGuarded(any(Runnable.class));
     verify(settlementService, times(150)).settle(anyLong());
     verify(tokenGrantService, times(2)).retryPendingGrants();
     verify(spendRetryService).retryPendingSpends();
@@ -66,6 +72,15 @@ class MembershipSettlementSchedulerTest {
   @Test
   @DisplayName("should settle each due user and isolate failures")
   void shouldSettleDueUsers() {
+    doAnswer(
+            invocation -> {
+              Runnable tick = invocation.getArgument(0);
+              tick.run();
+              return null;
+            })
+        .when(tickGuard)
+        .runGuarded(any(Runnable.class));
+    MembershipSettlementScheduler scheduler = schedulerWith(tickGuard);
     when(membershipRepository.findDueForSettlement(
             NOW, MembershipSettlementScheduler.SETTLEMENT_BATCH_LIMIT))
         .thenReturn(List.of(1L, 2L));
@@ -73,6 +88,7 @@ class MembershipSettlementSchedulerTest {
 
     scheduler.runSettlement();
 
+    verify(tickGuard).runGuarded(any(Runnable.class));
     verify(tokenGrantService, times(2)).retryPendingGrants();
     verify(spendRetryService).retryPendingSpends();
     verify(settlementService).settle(1L);
@@ -82,9 +98,22 @@ class MembershipSettlementSchedulerTest {
   @Test
   @DisplayName("should start and stop without error")
   void shouldStartAndStop() {
+    MembershipSettlementScheduler scheduler =
+        schedulerWith(PassthroughMembershipSettlementTickGuard.INSTANCE);
+
     scheduler.start();
     assertThat(scheduler).isNotNull();
     scheduler.stop();
     scheduler.stop();
+  }
+
+  private MembershipSettlementScheduler schedulerWith(MembershipSettlementTickGuard guard) {
+    return new MembershipSettlementScheduler(
+        membershipRepository,
+        settlementService,
+        tokenGrantService,
+        spendRetryService,
+        guard,
+        clock);
   }
 }

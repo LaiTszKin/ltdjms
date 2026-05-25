@@ -42,7 +42,7 @@ public class JdbcMembershipRepository implements MembershipRepository {
 
       try (ResultSet rs = stmt.executeQuery()) {
         if (rs.next()) {
-          return Optional.of(mapRow(rs));
+          return Optional.of(GlobalMemberMembershipRowMapper.mapRow(rs));
         }
       }
     } catch (SQLException e) {
@@ -205,21 +205,7 @@ public class JdbcMembershipRepository implements MembershipRepository {
   }
 
   private GlobalMemberMembership mapRow(ResultSet rs) throws SQLException {
-    Integer settlementDay =
-        rs.getObject("settlement_day_of_month") == null
-            ? null
-            : rs.getInt("settlement_day_of_month");
-
-    return new GlobalMemberMembership(
-        rs.getLong("discord_user_id"),
-        MembershipTier.fromDbValue(rs.getString("current_tier")),
-        toInstant(rs.getTimestamp("earliest_guild_join_at")),
-        settlementDay,
-        toInstant(rs.getTimestamp("last_settlement_at")),
-        toInstant(rs.getTimestamp("next_settlement_at")),
-        rs.getBoolean("has_qualifying_bronze_order"),
-        rs.getTimestamp("created_at").toInstant(),
-        rs.getTimestamp("updated_at").toInstant());
+    return GlobalMemberMembershipRowMapper.mapRow(rs);
   }
 
   private static Instant toInstant(Timestamp timestamp) {

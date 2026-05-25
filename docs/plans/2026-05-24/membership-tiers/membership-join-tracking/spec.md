@@ -40,7 +40,7 @@
 **THEN** `next_settlement_at` = 下一個 settlement_day 的 00:00 UTC（或 Asia/Taipei，與專案 clock 一致）
 
 **Requirements**:
-- [x] R2.1 已存在 next_settlement_at → join 不覆寫（除非為 null）
+- [x] R2.1 已存在 next_settlement_at 且 `last_settlement_at IS NOT NULL`（已結算過）→ 更早 join 不覆寫 anchor；若尚未結算（`last_settlement_at IS NULL`）且新 join 更早 → 可重算 `next_settlement_at`
 
 ## Error and Edge Cases
 - [x] Bot 無 GUILD_MEMBERS intent → log error + preparation 阻擋部署

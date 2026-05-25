@@ -1,6 +1,7 @@
 package ltdjms.discord.panel.services;
 
 import ltdjms.discord.membership.domain.MembershipTier;
+import ltdjms.discord.membership.services.MembershipPanelSummary;
 
 /**
  * View model for the user panel, containing all data needed to render the personal panel embed.

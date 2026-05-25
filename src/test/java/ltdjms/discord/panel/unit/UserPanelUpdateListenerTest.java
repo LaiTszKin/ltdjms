@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import ltdjms.discord.membership.domain.MembershipTier;
-import ltdjms.discord.panel.services.MembershipPanelSummary;
+import ltdjms.discord.membership.services.MembershipPanelSummary;
 import ltdjms.discord.panel.services.PanelSessionManager;
 import ltdjms.discord.panel.services.UserPanelService;
 import ltdjms.discord.panel.services.UserPanelUpdateListener;
@@ -154,7 +154,11 @@ class UserPanelUpdateListenerTest {
 
       listener.accept(
           new MembershipTierChangedEvent(
-              TEST_USER_ID, MembershipTier.BRONZE, MembershipTier.SILVER, 15_000L, NOW));
+              TEST_USER_ID,
+              MembershipTier.BRONZE.name(),
+              MembershipTier.SILVER.name(),
+              15_000L,
+              NOW));
       awaitAsyncPanelUpdate();
 
       verify(userPanelService).getMembershipSummary(TEST_USER_ID);

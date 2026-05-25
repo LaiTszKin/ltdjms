@@ -1,6 +1,5 @@
 package ltdjms.discord.shared.di;
 
-import java.time.Clock;
 import java.util.function.Consumer;
 import javax.inject.Provider;
 import javax.inject.Singleton;
@@ -309,8 +308,32 @@ public class CommandHandlerModule {
 
   @Provides
   @Singleton
-  public ShopService provideShopService(ProductRepository productRepository) {
-    return new ShopService(productRepository);
+  public ShopService provideShopService(
+      ProductRepository productRepository,
+      ltdjms.discord.membership.services.MembershipPricingService membershipPricingService) {
+    return new ShopService(productRepository, membershipPricingService);
+  }
+
+  @Provides
+  @Singleton
+  public ShopSelectMenuHandler provideShopSelectMenuHandler(
+      ProductService productService,
+      BalanceService balanceService,
+      ltdjms.discord.shop.services.CurrencyPurchaseService currencyPurchaseService,
+      FiatOrderService fiatOrderService,
+      EscortDispatchHandoffService escortDispatchHandoffService,
+      ShopAdminNotificationService shopAdminNotificationService,
+      EscortOrderBuyerNotificationService escortOrderBuyerNotificationService,
+      ShopService shopService) {
+    return new ShopSelectMenuHandler(
+        productService,
+        balanceService,
+        currencyPurchaseService,
+        fiatOrderService,
+        escortDispatchHandoffService,
+        shopAdminNotificationService,
+        escortOrderBuyerNotificationService,
+        shopService);
   }
 
   @Provides
@@ -439,28 +462,6 @@ public class CommandHandlerModule {
   public EcpayCallbackHttpServer provideEcpayCallbackHttpServer(
       EnvironmentConfig config, FiatPaymentCallbackService fiatPaymentCallbackService) {
     return new EcpayCallbackHttpServer(config, fiatPaymentCallbackService);
-  }
-
-  @Provides
-  @Singleton
-  public ShopSelectMenuHandler provideShopSelectMenuHandler(
-      ProductService productService,
-      BalanceService balanceService,
-      ltdjms.discord.shop.services.CurrencyPurchaseService currencyPurchaseService,
-      FiatOrderService fiatOrderService,
-      EscortDispatchHandoffService escortDispatchHandoffService,
-      ShopAdminNotificationService shopAdminNotificationService,
-      EscortOrderBuyerNotificationService escortOrderBuyerNotificationService,
-      ltdjms.discord.membership.services.MembershipPricingService membershipPricingService) {
-    return new ShopSelectMenuHandler(
-        productService,
-        balanceService,
-        currencyPurchaseService,
-        fiatOrderService,
-        escortDispatchHandoffService,
-        shopAdminNotificationService,
-        escortOrderBuyerNotificationService,
-        membershipPricingService);
   }
 
   @Provides

@@ -30,8 +30,8 @@ update tier, last_settlement_at, next_settlement_at += 1 month anchor
 ```java
 record MembershipTierChangedEvent(
   long userId,
-  MembershipTier previous,
-  MembershipTier current,
+  String previousTierCode,
+  String currentTierCode,
   long periodAvgListPriceM,
   Instant settledAt
 ) {}

@@ -22,8 +22,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import ltdjms.discord.dispatch.domain.EscortDispatchOrder;
 import ltdjms.discord.dispatch.services.EscortDispatchHandoffService;
+import ltdjms.discord.membership.services.MembershipSpendRecorder;
 import ltdjms.discord.membership.services.MembershipSpendRetryService;
-import ltdjms.discord.membership.services.MembershipSpendService;
+import ltdjms.discord.membership.services.PaidEscortOrderSnapshot;
 import ltdjms.discord.product.domain.Product;
 import ltdjms.discord.product.services.ProductRewardService;
 import ltdjms.discord.shared.DomainError;
@@ -44,7 +45,7 @@ class FiatOrderPostPaymentWorkerTest {
   @Mock private ShopAdminNotificationService adminNotificationService;
   @Mock private FiatOrderBuyerNotificationService buyerNotificationService;
   @Mock private EscortOrderBuyerNotificationService escortOrderBuyerNotificationService;
-  @Mock private MembershipSpendService membershipSpendService;
+  @Mock private MembershipSpendRecorder membershipSpendRecorder;
   @Mock private MembershipSpendRetryService membershipSpendRetryService;
 
   private FiatOrderPostPaymentWorker worker;
@@ -59,10 +60,10 @@ class FiatOrderPostPaymentWorkerTest {
             adminNotificationService,
             buyerNotificationService,
             escortOrderBuyerNotificationService,
-            membershipSpendService,
+            membershipSpendRecorder,
             membershipSpendRetryService,
             Clock.fixed(NOW, ZoneOffset.UTC));
-    lenient().when(membershipSpendService.recordFiatEscortPayment(any(), any())).thenReturn(true);
+    lenient().when(membershipSpendRecorder.recordPaidEscortOrder(any())).thenReturn(true);
   }
 
   @Test
@@ -70,6 +71,7 @@ class FiatOrderPostPaymentWorkerTest {
   void shouldProcessPaidOrderSuccessfully() {
     FiatOrder order = paidOrder();
     Product product = order.toFulfillmentProduct();
+    PaidEscortOrderSnapshot spendSnapshot = PaidEscortOrderSnapshots.fromFiatOrder(order, product);
     EscortDispatchOrder dispatchOrder = autoDispatchOrder(order, product);
     when(fiatOrderRepository.claimFulfillmentProcessing(eq(order.orderNumber()), any()))
         .thenReturn(true);
@@ -86,12 +88,12 @@ class FiatOrderPostPaymentWorkerTest {
     var callOrder =
         inOrder(
             buyerNotificationService,
-            membershipSpendService,
+            membershipSpendRecorder,
             escortDispatchHandoffService,
             escortOrderBuyerNotificationService,
             adminNotificationService);
     callOrder.verify(buyerNotificationService).notifyPaymentSucceeded(order);
-    callOrder.verify(membershipSpendService).recordFiatEscortPayment(order, product);
+    callOrder.verify(membershipSpendRecorder).recordPaidEscortOrder(spendSnapshot);
     callOrder
         .verify(escortDispatchHandoffService)
         .handoffFromFiatPayment(order.guildId(), order.buyerUserId(), product, order.orderNumber());
@@ -200,9 +202,10 @@ class FiatOrderPostPaymentWorkerTest {
   void shouldMarkFulfilledAndEnqueueRetryWhenSpendRecordingFails() {
     FiatOrder order = paidOrder();
     Product product = order.toFulfillmentProduct();
+    PaidEscortOrderSnapshot spendSnapshot = PaidEscortOrderSnapshots.fromFiatOrder(order, product);
     when(fiatOrderRepository.claimFulfillmentProcessing(eq(order.orderNumber()), any()))
         .thenReturn(true);
-    when(membershipSpendService.recordFiatEscortPayment(order, product)).thenReturn(false);
+    when(membershipSpendRecorder.recordPaidEscortOrder(spendSnapshot)).thenReturn(false);
     when(escortDispatchHandoffService.handoffFromFiatPayment(
             eq(order.guildId()), eq(order.buyerUserId()), eq(product), eq(order.orderNumber())))
         .thenReturn(Result.ok(autoDispatchOrder(order, product)));
@@ -213,7 +216,7 @@ class FiatOrderPostPaymentWorkerTest {
 
     worker.processSingleOrder(order);
 
-    verify(membershipSpendRetryService).enqueue(order.orderNumber());
+    verify(membershipSpendRetryService).enqueue(spendSnapshot);
     verify(fiatOrderRepository).markFulfilledIfNeeded(eq(order.orderNumber()), any());
     verify(fiatOrderRepository, never()).releaseFulfillmentProcessing(order.orderNumber());
   }
@@ -223,9 +226,10 @@ class FiatOrderPostPaymentWorkerTest {
   void shouldRecordSpendBeforeHandoffFailure() {
     FiatOrder order = paidOrder();
     Product product = order.toFulfillmentProduct();
+    PaidEscortOrderSnapshot spendSnapshot = PaidEscortOrderSnapshots.fromFiatOrder(order, product);
     when(fiatOrderRepository.claimFulfillmentProcessing(eq(order.orderNumber()), any()))
         .thenReturn(true);
-    when(membershipSpendService.recordFiatEscortPayment(order, product)).thenReturn(true);
+    when(membershipSpendRecorder.recordPaidEscortOrder(spendSnapshot)).thenReturn(true);
     when(escortDispatchHandoffService.handoffFromFiatPayment(
             eq(order.guildId()), eq(order.buyerUserId()), eq(product), eq(order.orderNumber())))
         .thenReturn(
@@ -233,7 +237,7 @@ class FiatOrderPostPaymentWorkerTest {
 
     worker.processSingleOrder(order);
 
-    verify(membershipSpendService).recordFiatEscortPayment(order, product);
+    verify(membershipSpendRecorder).recordPaidEscortOrder(spendSnapshot);
     verify(fiatOrderRepository).releaseFulfillmentProcessing(order.orderNumber());
     verify(fiatOrderRepository, never()).markFulfilledIfNeeded(any(), any());
   }

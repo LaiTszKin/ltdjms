@@ -14,7 +14,8 @@ import ltdjms.discord.membership.persistence.MembershipRepository;
 public class MembershipJoinService {
 
   /** Settlement anchor dates are computed at midnight in Asia/Taipei. */
-  public static final java.time.ZoneId SETTLEMENT_ZONE = MembershipSettlementCalendar.SETTLEMENT_ZONE;
+  public static final java.time.ZoneId SETTLEMENT_ZONE =
+      MembershipSettlementCalendar.SETTLEMENT_ZONE;
 
   private static final Logger LOG = LoggerFactory.getLogger(MembershipJoinService.class);
 
@@ -76,11 +77,5 @@ public class MembershipJoinService {
   public static Instant computeNextSettlementAt(
       int settlementDay, Instant joinedAt, java.time.ZoneId zone) {
     return MembershipSettlementCalendar.computeNextSettlementAt(settlementDay, joinedAt, zone);
-  }
-
-  /** Advances the settlement anchor by one calendar month. */
-  public static Instant advanceNextSettlementAt(
-      int settlementDay, Instant currentNext, java.time.ZoneId zone) {
-    return MembershipSettlementCalendar.advanceNextSettlementAt(settlementDay, currentNext, zone);
   }
 }

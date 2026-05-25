@@ -247,24 +247,33 @@ public class JdbcMembershipTokenGrantRepository implements MembershipTokenGrantR
             + "     AND l.status IN (?, ?)"
             + " )"
             + " ORDER BY g.last_settlement_at"
-            + " LIMIT ?";
+            + " LIMIT ?"
+            + " FOR UPDATE SKIP LOCKED";
 
-    try (Connection conn = dataSource.getConnection();
-        PreparedStatement stmt = conn.prepareStatement(sql)) {
-      stmt.setString(1, STATUS_COMPLETED);
-      stmt.setString(2, STATUS_SKIPPED_NO_GUILD);
-      stmt.setInt(3, limit);
+    try (Connection conn = dataSource.getConnection()) {
+      conn.setAutoCommit(false);
+      try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+        stmt.setString(1, STATUS_COMPLETED);
+        stmt.setString(2, STATUS_SKIPPED_NO_GUILD);
+        stmt.setInt(3, limit);
 
-      try (ResultSet rs = stmt.executeQuery()) {
-        List<PendingMembershipGrant> pending = new ArrayList<>();
-        while (rs.next()) {
-          pending.add(
-              new PendingMembershipGrant(
-                  rs.getLong("discord_user_id"),
-                  rs.getTimestamp("last_settlement_at").toInstant(),
-                  MembershipTier.fromDbValue(rs.getString("current_tier"))));
+        try (ResultSet rs = stmt.executeQuery()) {
+          List<PendingMembershipGrant> pending = new ArrayList<>();
+          while (rs.next()) {
+            pending.add(
+                new PendingMembershipGrant(
+                    rs.getLong("discord_user_id"),
+                    rs.getTimestamp("last_settlement_at").toInstant(),
+                    MembershipTier.fromDbValue(rs.getString("current_tier"))));
+          }
+          conn.commit();
+          return pending;
         }
-        return pending;
+      } catch (SQLException e) {
+        conn.rollback();
+        throw e;
+      } finally {
+        conn.setAutoCommit(true);
       }
     } catch (SQLException e) {
       LOG.error("Failed to find pending membership token grants", e);

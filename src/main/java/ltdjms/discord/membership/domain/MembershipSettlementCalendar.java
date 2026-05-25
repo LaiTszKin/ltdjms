@@ -39,7 +39,8 @@ public final class MembershipSettlementCalendar {
     return candidate.toInstant();
   }
 
-  public static Instant advanceNextSettlementAt(int settlementDay, Instant currentNext, ZoneId zone) {
+  public static Instant advanceNextSettlementAt(
+      int settlementDay, Instant currentNext, ZoneId zone) {
     ZonedDateTime anchor = currentNext.atZone(zone);
     java.time.YearMonth nextMonth = java.time.YearMonth.from(anchor.toLocalDate()).plusMonths(1);
     return resolveAnchorDate(nextMonth.getYear(), nextMonth.getMonthValue(), settlementDay, zone)

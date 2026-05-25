@@ -85,15 +85,10 @@ class MembershipSpendRecordingIntegrationTest {
 
     MembershipSpendService membershipSpendService =
         new MembershipSpendService(
-            spendRepository,
-            membershipRepository,
-            catalogRepository,
-            new DomainEventPublisher());
+            spendRepository, membershipRepository, catalogRepository, new DomainEventPublisher());
     MembershipSpendRetryService spendRetryService =
         new MembershipSpendRetryService(
-            new JdbcMembershipSpendRetryRepository(dataSource),
-            fiatOrderRepository,
-            membershipSpendService);
+            new JdbcMembershipSpendRetryRepository(dataSource), membershipSpendService);
 
     worker =
         new FiatOrderPostPaymentWorker(

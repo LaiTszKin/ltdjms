@@ -28,11 +28,12 @@ public class JdbcFiatOrderRepository implements FiatOrderRepository {
       "id, guild_id, buyer_user_id, product_id, product_name, order_number, payment_no,"
           + " fulfillment_reward_type, fulfillment_reward_amount,"
           + " fulfillment_auto_create_escort_order, fulfillment_escort_option_code, amount_twd,"
-          + " list_price_twd, charged_amount_twd, membership_tier_at_order, status, trade_status, payment_message, paid_at,"
-          + " expire_at, expired_at, terminal_reason, buyer_notified_at, reward_granted_at,"
-          + " fulfilled_at, admin_notified_at, last_callback_payload, fulfillment_processing_at,"
-          + " admin_notification_processing_at, reconciliation_processing_at,"
-          + " reconciliation_attempt_count, reconciliation_next_attempt_at, created_at, updated_at";
+          + " list_price_twd, charged_amount_twd, membership_tier_at_order, status, trade_status,"
+          + " payment_message, paid_at, expire_at, expired_at, terminal_reason, buyer_notified_at,"
+          + " reward_granted_at, fulfilled_at, admin_notified_at, last_callback_payload,"
+          + " fulfillment_processing_at, admin_notification_processing_at,"
+          + " reconciliation_processing_at, reconciliation_attempt_count,"
+          + " reconciliation_next_attempt_at, created_at, updated_at";
 
   private final DataSource dataSource;
 
@@ -46,12 +47,13 @@ public class JdbcFiatOrderRepository implements FiatOrderRepository {
         "INSERT INTO fiat_order (guild_id, buyer_user_id, product_id, product_name,"
             + " fulfillment_reward_type, fulfillment_reward_amount,"
             + " fulfillment_auto_create_escort_order, fulfillment_escort_option_code, order_number,"
-            + " payment_no, amount_twd, list_price_twd, charged_amount_twd, membership_tier_at_order, status, trade_status,"
-            + " payment_message, paid_at, expire_at, expired_at, terminal_reason,"
-            + " buyer_notified_at, reward_granted_at, fulfilled_at, admin_notified_at,"
-            + " last_callback_payload, reconciliation_attempt_count,"
-            + " reconciliation_next_attempt_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?,"
-            + " ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id";
+            + " payment_no, amount_twd, list_price_twd, charged_amount_twd,"
+            + " membership_tier_at_order, status, trade_status, payment_message, paid_at,"
+            + " expire_at, expired_at, terminal_reason, buyer_notified_at, reward_granted_at,"
+            + " fulfilled_at, admin_notified_at, last_callback_payload,"
+            + " reconciliation_attempt_count, reconciliation_next_attempt_at, created_at,"
+            + " updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,"
+            + " ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id";
 
     try (Connection conn = dataSource.getConnection();
         PreparedStatement stmt = conn.prepareStatement(sql)) {

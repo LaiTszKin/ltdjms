@@ -6,8 +6,11 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ltdjms.discord.membership.domain.MembershipTierEvaluator;
 import ltdjms.discord.membership.persistence.MembershipSettlementCoordinator;
 import ltdjms.discord.membership.persistence.SettlementApplyResult;
+import ltdjms.discord.membership.persistence.SettlementContext;
+import ltdjms.discord.membership.persistence.SettlementDecision;
 import ltdjms.discord.shared.events.DomainEventPublisher;
 import ltdjms.discord.shared.events.MembershipTierChangedEvent;
 
@@ -17,17 +20,14 @@ public class MembershipSettlementService {
   private static final Logger LOG = LoggerFactory.getLogger(MembershipSettlementService.class);
 
   private final MembershipSettlementCoordinator settlementCoordinator;
-  private final MembershipTokenGrantService tokenGrantService;
   private final DomainEventPublisher eventPublisher;
   private final java.time.Clock clock;
 
   public MembershipSettlementService(
       MembershipSettlementCoordinator settlementCoordinator,
-      MembershipTokenGrantService tokenGrantService,
       DomainEventPublisher eventPublisher,
       java.time.Clock clock) {
     this.settlementCoordinator = Objects.requireNonNull(settlementCoordinator);
-    this.tokenGrantService = Objects.requireNonNull(tokenGrantService);
     this.eventPublisher = Objects.requireNonNull(eventPublisher);
     this.clock = Objects.requireNonNull(clock);
   }
@@ -40,24 +40,18 @@ public class MembershipSettlementService {
    */
   public boolean settle(long discordUserId) {
     Optional<SettlementApplyResult> appliedOpt =
-        settlementCoordinator.applyIfDue(discordUserId, clock.instant());
+        settlementCoordinator.applyIfDue(discordUserId, clock.instant(), this::decideSettlement);
     if (appliedOpt.isEmpty()) {
       return false;
     }
 
     SettlementApplyResult applied = appliedOpt.get();
-    tokenGrantService.grantForSettlement(
-        applied.discordUserId(),
-        applied.periodStart(),
-        applied.periodEnd(),
-        applied.newTier());
-
     if (applied.newTier() != applied.previousTier()) {
       eventPublisher.publish(
           new MembershipTierChangedEvent(
               applied.discordUserId(),
-              applied.previousTier(),
-              applied.newTier(),
+              applied.previousTier().name(),
+              applied.newTier().name(),
               applied.periodAvgListPriceM(),
               applied.settledAt()));
     }
@@ -70,5 +64,16 @@ public class MembershipSettlementService {
         applied.periodAvgListPriceM(),
         applied.newNextSettlementAt());
     return true;
+  }
+
+  SettlementDecision decideSettlement(SettlementContext context) {
+    var membership = context.membership();
+    var previousTier =
+        MembershipTierEvaluator.effectiveTier(
+            membership.currentTier(), membership.hasQualifyingBronzeOrder());
+    var newTier =
+        MembershipTierEvaluator.resolveTier(
+            context.periodAvgListPriceM(), membership.hasQualifyingBronzeOrder());
+    return new SettlementDecision(previousTier, newTier);
   }
 }

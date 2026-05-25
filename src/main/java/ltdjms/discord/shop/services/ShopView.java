@@ -250,10 +250,7 @@ public class ShopView {
         DiscordComponentRenderer.buildActionRow(
             List.of(
                 new ButtonView(
-                    BUTTON_CONFIRM_FIAT_PURCHASE + productId,
-                    "確認下單",
-                    ButtonStyle.SUCCESS,
-                    false),
+                    BUTTON_CONFIRM_FIAT_PURCHASE + productId, "確認下單", ButtonStyle.SUCCESS, false),
                 new ButtonView(BUTTON_CANCEL_PURCHASE, "取消", ButtonStyle.SECONDARY, false))));
   }
 

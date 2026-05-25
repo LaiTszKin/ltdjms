@@ -12,7 +12,6 @@ import ltdjms.discord.discord.domain.ButtonView;
 import ltdjms.discord.discord.services.DiscordComponentRenderer;
 import ltdjms.discord.dispatch.domain.EscortDispatchOrder;
 import ltdjms.discord.dispatch.services.EscortDispatchHandoffService;
-import ltdjms.discord.membership.services.MembershipPricingService;
 import ltdjms.discord.product.domain.Product;
 import ltdjms.discord.product.services.ProductService;
 import ltdjms.discord.shared.DomainError;
@@ -21,6 +20,7 @@ import ltdjms.discord.shop.services.CurrencyPurchaseService;
 import ltdjms.discord.shop.services.EscortOrderBuyerNotificationService;
 import ltdjms.discord.shop.services.FiatOrderService;
 import ltdjms.discord.shop.services.ShopAdminNotificationService;
+import ltdjms.discord.shop.services.ShopService;
 import ltdjms.discord.shop.services.ShopView;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
@@ -45,7 +45,7 @@ public class ShopSelectMenuHandler extends ListenerAdapter {
   private final EscortDispatchHandoffService escortDispatchHandoffService;
   private final ShopAdminNotificationService adminNotificationService;
   private final EscortOrderBuyerNotificationService escortOrderBuyerNotificationService;
-  private final MembershipPricingService membershipPricingService;
+  private final ShopService shopService;
   private final Set<String> inflightFiatOrders = ConcurrentHashMap.newKeySet();
 
   public ShopSelectMenuHandler(
@@ -56,7 +56,7 @@ public class ShopSelectMenuHandler extends ListenerAdapter {
       EscortDispatchHandoffService escortDispatchHandoffService,
       ShopAdminNotificationService adminNotificationService,
       EscortOrderBuyerNotificationService escortOrderBuyerNotificationService,
-      MembershipPricingService membershipPricingService) {
+      ShopService shopService) {
     this.productService = productService;
     this.balanceService = balanceService;
     this.purchaseService = purchaseService;
@@ -64,7 +64,7 @@ public class ShopSelectMenuHandler extends ListenerAdapter {
     this.escortDispatchHandoffService = escortDispatchHandoffService;
     this.adminNotificationService = adminNotificationService;
     this.escortOrderBuyerNotificationService = escortOrderBuyerNotificationService;
-    this.membershipPricingService = membershipPricingService;
+    this.shopService = shopService;
   }
 
   @Override
@@ -102,7 +102,7 @@ public class ShopSelectMenuHandler extends ListenerAdapter {
 
                 if (hasCurrency && hasFiat) {
                   // Dual-price product: show payment method choice
-                  var quote = membershipPricingService.quoteEscortPrice(userId, product, guildId);
+                  var quote = shopService.quoteEscortPrice(userId, product, guildId);
                   event
                       .editMessageEmbeds(ShopView.buildPaymentMethodChoiceEmbed(product, quote))
                       .setComponents(ShopView.buildPaymentMethodChoiceComponents(product))
@@ -253,7 +253,7 @@ public class ShopSelectMenuHandler extends ListenerAdapter {
       long guildId,
       long userId,
       long productId) {
-    var quote = membershipPricingService.quoteEscortPrice(userId, product, guildId);
+    var quote = shopService.quoteEscortPrice(userId, product, guildId);
 
     event
         .editMessageEmbeds(ShopView.buildFiatPurchaseConfirmEmbed(product, quote))
@@ -264,7 +264,7 @@ public class ShopSelectMenuHandler extends ListenerAdapter {
   /** Shows fiat purchase confirmation embed (edit from button interaction). */
   private void showFiatPurchaseConfirmOnEdit(
       ButtonInteractionEvent event, Product product, long guildId, long userId, long productId) {
-    var quote = membershipPricingService.quoteEscortPrice(userId, product, guildId);
+    var quote = shopService.quoteEscortPrice(userId, product, guildId);
 
     event
         .editMessageEmbeds(ShopView.buildFiatPurchaseConfirmEmbed(product, quote))
@@ -310,7 +310,7 @@ public class ShopSelectMenuHandler extends ListenerAdapter {
       long productId) {
     var balanceResult = balanceService.tryGetBalance(guildId, userId);
     long userBalance = balanceResult.isOk() ? balanceResult.getValue().balance() : 0;
-    var quote = membershipPricingService.quoteEscortPrice(userId, product, guildId);
+    var quote = shopService.quoteEscortPrice(userId, product, guildId);
 
     event
         .editMessageEmbeds(ShopView.buildPurchaseConfirmEmbed(product, userBalance, quote))
@@ -333,7 +333,7 @@ public class ShopSelectMenuHandler extends ListenerAdapter {
       ButtonInteractionEvent event, Product product, long guildId, long userId, long productId) {
     var balanceResult = balanceService.tryGetBalance(guildId, userId);
     long userBalance = balanceResult.isOk() ? balanceResult.getValue().balance() : 0;
-    var quote = membershipPricingService.quoteEscortPrice(userId, product, guildId);
+    var quote = shopService.quoteEscortPrice(userId, product, guildId);
 
     event
         .editMessageEmbeds(ShopView.buildPurchaseConfirmEmbed(product, userBalance, quote))

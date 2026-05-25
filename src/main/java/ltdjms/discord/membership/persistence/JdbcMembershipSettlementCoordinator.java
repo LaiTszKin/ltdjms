@@ -17,7 +17,6 @@ import ltdjms.discord.membership.domain.GlobalMemberMembership;
 import ltdjms.discord.membership.domain.MembershipPeriodBounds;
 import ltdjms.discord.membership.domain.MembershipSettlementCalendar;
 import ltdjms.discord.membership.domain.MembershipTier;
-import ltdjms.discord.membership.domain.MembershipTierEvaluator;
 
 /**
  * Applies membership settlement atomically with row lock to prevent concurrent spend/save races.
@@ -34,7 +33,8 @@ public class JdbcMembershipSettlementCoordinator implements MembershipSettlement
   }
 
   @Override
-  public Optional<SettlementApplyResult> applyIfDue(long discordUserId, Instant now) {
+  public Optional<SettlementApplyResult> applyIfDue(
+      long discordUserId, Instant now, SettlementDecisionMaker decisionMaker) {
     try (Connection conn = dataSource.getConnection()) {
       conn.setAutoCommit(false);
       try {
@@ -56,17 +56,15 @@ public class JdbcMembershipSettlementCoordinator implements MembershipSettlement
         if (periodStartOpt.isEmpty()) {
           conn.rollback();
           LOG.debug(
-              "Skipping settlement for userId={}: no join anchor or prior settlement", discordUserId);
+              "Skipping settlement for userId={}: no join anchor or prior settlement",
+              discordUserId);
           return Optional.empty();
         }
 
         Instant periodStart = periodStartOpt.get();
         long avgM = sumSpend(conn, discordUserId, periodStart, periodEnd);
-        MembershipTier previousTier =
-            MembershipTierEvaluator.effectiveTier(
-                membership.currentTier(), membership.hasQualifyingBronzeOrder());
-        MembershipTier newTier =
-            MembershipTierEvaluator.resolveTier(avgM, membership.hasQualifyingBronzeOrder());
+        SettlementDecision decision =
+            decisionMaker.decide(new SettlementContext(membership, periodStart, periodEnd, avgM));
 
         Integer settlementDay = membership.settlementDayOfMonth();
         if (settlementDay == null) {
@@ -81,7 +79,7 @@ public class JdbcMembershipSettlementCoordinator implements MembershipSettlement
                 settlementDay, periodEnd, MembershipSettlementCalendar.SETTLEMENT_ZONE);
 
         if (!updateSettlement(
-            conn, discordUserId, newTier, settledAt, newNextSettlement, periodEnd)) {
+            conn, discordUserId, decision.newTier(), settledAt, newNextSettlement, periodEnd)) {
           conn.rollback();
           LOG.debug(
               "Skipped settlement save for userId={}: next_settlement_at no longer matches",
@@ -93,13 +91,13 @@ public class JdbcMembershipSettlementCoordinator implements MembershipSettlement
         LOG.info(
             "Settled membership atomically: discordUserId={}, tier={}, nextSettlement={}",
             discordUserId,
-            newTier,
+            decision.newTier(),
             newNextSettlement);
         return Optional.of(
             new SettlementApplyResult(
                 discordUserId,
-                previousTier,
-                newTier,
+                decision.previousTier(),
+                decision.newTier(),
                 avgM,
                 periodStart,
                 periodEnd,
@@ -128,7 +126,7 @@ public class JdbcMembershipSettlementCoordinator implements MembershipSettlement
       stmt.setLong(1, userId);
       try (ResultSet rs = stmt.executeQuery()) {
         if (rs.next()) {
-          return Optional.of(mapRow(rs));
+          return Optional.of(GlobalMemberMembershipRowMapper.mapRow(rs));
         }
       }
     }
@@ -177,27 +175,5 @@ public class JdbcMembershipSettlementCoordinator implements MembershipSettlement
       stmt.setTimestamp(6, Timestamp.from(expectedNextSettlementAt));
       return stmt.executeUpdate() == 1;
     }
-  }
-
-  private static GlobalMemberMembership mapRow(ResultSet rs) throws SQLException {
-    Integer settlementDay =
-        rs.getObject("settlement_day_of_month") == null
-            ? null
-            : rs.getInt("settlement_day_of_month");
-
-    return new GlobalMemberMembership(
-        rs.getLong("discord_user_id"),
-        MembershipTier.fromDbValue(rs.getString("current_tier")),
-        toInstant(rs.getTimestamp("earliest_guild_join_at")),
-        settlementDay,
-        toInstant(rs.getTimestamp("last_settlement_at")),
-        toInstant(rs.getTimestamp("next_settlement_at")),
-        rs.getBoolean("has_qualifying_bronze_order"),
-        rs.getTimestamp("created_at").toInstant(),
-        rs.getTimestamp("updated_at").toInstant());
-  }
-
-  private static Instant toInstant(Timestamp timestamp) {
-    return timestamp == null ? null : timestamp.toInstant();
   }
 }

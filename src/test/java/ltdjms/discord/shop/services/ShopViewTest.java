@@ -285,12 +285,7 @@ class ShopViewTest {
     Product product = Product.createWithFiatPriceTwd(TEST_GUILD_ID, "護航商品", null, 1000L);
     EscortPriceQuote quote =
         new EscortPriceQuote(
-            1000L,
-            800L,
-            0L,
-            0L,
-            MembershipTier.SILVER,
-            MembershipTier.SILVER.discountRate());
+            1000L, 800L, 0L, 0L, MembershipTier.SILVER, MembershipTier.SILVER.discountRate());
 
     MessageEmbed embed = ShopView.buildFiatPurchaseConfirmEmbed(product, quote);
 

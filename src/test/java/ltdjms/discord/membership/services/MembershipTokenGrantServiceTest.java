@@ -62,8 +62,7 @@ class MembershipTokenGrantServiceTest {
   @DisplayName("should skip grant for NONE tier")
   void shouldSkipNoneTier() {
     assertThat(
-            service.grantForSettlement(
-                TEST_USER_ID, PERIOD_START, PERIOD_END, MembershipTier.NONE))
+            service.grantForSettlement(TEST_USER_ID, PERIOD_START, PERIOD_END, MembershipTier.NONE))
         .isTrue();
 
     verify(grantRepository, never()).tryClaimGrantLog(anyLong(), any(), any(), anyInt());
@@ -89,12 +88,10 @@ class MembershipTokenGrantServiceTest {
                     TEST_GUILD_ID, TEST_USER_ID, 0, 200, 200)));
 
     assertThat(
-            service.grantForSettlement(
-                TEST_USER_ID, PERIOD_START, PERIOD_END, MembershipTier.GOLD))
+            service.grantForSettlement(TEST_USER_ID, PERIOD_START, PERIOD_END, MembershipTier.GOLD))
         .isTrue();
     assertThat(
-            service.grantForSettlement(
-                TEST_USER_ID, PERIOD_START, PERIOD_END, MembershipTier.GOLD))
+            service.grantForSettlement(TEST_USER_ID, PERIOD_START, PERIOD_END, MembershipTier.GOLD))
         .isTrue();
 
     verify(gameTokenService, times(1)).tryAdjustTokens(TEST_GUILD_ID, TEST_USER_ID, 200);
@@ -124,8 +121,7 @@ class MembershipTokenGrantServiceTest {
         .thenReturn(Result.err(DomainError.persistenceFailure("db down", null)));
 
     assertThat(
-            service.grantForSettlement(
-                TEST_USER_ID, PERIOD_START, PERIOD_END, MembershipTier.GOLD))
+            service.grantForSettlement(TEST_USER_ID, PERIOD_START, PERIOD_END, MembershipTier.GOLD))
         .isFalse();
 
     verify(gameTokenTransactionService, never())
@@ -140,8 +136,7 @@ class MembershipTokenGrantServiceTest {
         .thenReturn(Optional.of(new GrantClaimState("FAILED", true, true)));
 
     assertThat(
-            service.grantForSettlement(
-                TEST_USER_ID, PERIOD_START, PERIOD_END, MembershipTier.GOLD))
+            service.grantForSettlement(TEST_USER_ID, PERIOD_START, PERIOD_END, MembershipTier.GOLD))
         .isTrue();
 
     verify(gameTokenService, never()).tryAdjustTokens(anyLong(), anyLong(), anyLong());
@@ -161,8 +156,7 @@ class MembershipTokenGrantServiceTest {
         .thenReturn(Optional.empty());
 
     assertThat(
-            service.grantForSettlement(
-                TEST_USER_ID, PERIOD_START, PERIOD_END, MembershipTier.GOLD))
+            service.grantForSettlement(TEST_USER_ID, PERIOD_START, PERIOD_END, MembershipTier.GOLD))
         .isTrue();
 
     verify(grantRepository).markSkippedNoGuild(TEST_USER_ID, PERIOD_END);

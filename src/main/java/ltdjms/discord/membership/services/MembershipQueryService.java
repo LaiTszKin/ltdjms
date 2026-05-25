@@ -1,6 +1,5 @@
 package ltdjms.discord.membership.services;
 
-import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
@@ -16,14 +15,6 @@ import ltdjms.discord.membership.persistence.MembershipSpendRepository;
 
 /** Read-only membership queries for cross-module consumers such as the user panel. */
 public class MembershipQueryService {
-
-  /** Membership tier and period progress for panel display. */
-  public record PanelSummary(
-      MembershipTier tier,
-      long periodSpendListPriceM,
-      long nextTierThresholdM,
-      Instant nextSettlementAt,
-      BigDecimal discountRate) {}
 
   private final MembershipRepository membershipRepository;
   private final MembershipSpendRepository membershipSpendRepository;
@@ -44,7 +35,7 @@ public class MembershipQueryService {
    * @param userId Discord user snowflake
    * @return summary; tier {@link MembershipTier#NONE} when no membership row exists
    */
-  public PanelSummary getPanelSummary(long userId) {
+  public MembershipPanelSummary getPanelSummary(long userId) {
     Optional<GlobalMemberMembership> membershipOpt = membershipRepository.findByUserId(userId);
     if (membershipOpt.isEmpty()) {
       return noneSummary(null);
@@ -62,7 +53,7 @@ public class MembershipQueryService {
 
     long nextTierThresholdM = MembershipTierLabels.nextTierThresholdM(effectiveTier).orElse(0L);
 
-    return new PanelSummary(
+    return new MembershipPanelSummary(
         effectiveTier,
         periodSpendM,
         nextTierThresholdM,
@@ -70,8 +61,8 @@ public class MembershipQueryService {
         effectiveTier.discountRate());
   }
 
-  private static PanelSummary noneSummary(Instant nextSettlementAt) {
-    return new PanelSummary(
+  private static MembershipPanelSummary noneSummary(Instant nextSettlementAt) {
+    return new MembershipPanelSummary(
         MembershipTier.NONE,
         0L,
         MembershipTier.SILVER.thresholdListPriceTwd(),

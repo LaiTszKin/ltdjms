@@ -8,7 +8,7 @@ import ltdjms.discord.currency.services.BalanceService;
 import ltdjms.discord.currency.services.CurrencyTransactionService;
 import ltdjms.discord.gametoken.services.GameTokenService;
 import ltdjms.discord.gametoken.services.GameTokenTransactionService;
-import ltdjms.discord.membership.domain.MembershipTier;
+import ltdjms.discord.membership.services.MembershipPanelSummary;
 import ltdjms.discord.membership.services.MembershipQueryService;
 import ltdjms.discord.redemption.services.ProductRedemptionTransactionService;
 import ltdjms.discord.redemption.services.RedemptionService;
@@ -134,13 +134,7 @@ public class MemberInfoFacade {
    * @return summary for panel rendering; tier {@link MembershipTier#NONE} when no membership row
    */
   public MembershipPanelSummary getMembershipSummary(long userId) {
-    MembershipQueryService.PanelSummary summary = membershipQueryService.getPanelSummary(userId);
-    return new MembershipPanelSummary(
-        summary.tier(),
-        summary.periodSpendListPriceM(),
-        summary.nextTierThresholdM(),
-        summary.nextSettlementAt(),
-        summary.discountRate());
+    return membershipQueryService.getPanelSummary(userId);
   }
 
   /**

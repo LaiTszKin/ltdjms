@@ -7,6 +7,7 @@ import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ltdjms.discord.membership.services.MembershipPanelSummary;
 import ltdjms.discord.shared.DomainError;
 import ltdjms.discord.shared.Result;
 import ltdjms.discord.shared.events.BalanceChangedEvent;
@@ -26,7 +27,7 @@ public class UserPanelUpdateListener implements Consumer<DomainEvent> {
   private final UserPanelService userPanelService;
   private final ExecutorService panelUpdateExecutor =
       Executors.newFixedThreadPool(
-          2,
+          4,
           runnable -> {
             Thread thread = new Thread(runnable, "user-panel-update");
             thread.setDaemon(true);

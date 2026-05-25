@@ -96,7 +96,11 @@ public class JdbcMembershipSpendRepository implements MembershipSpendRepository 
       }
     } catch (SQLException e) {
       LOG.error(
-          "Failed to find primary spend guild: userId={}, from={}, to={}", discordUserId, from, to, e);
+          "Failed to find primary spend guild: userId={}, from={}, to={}",
+          discordUserId,
+          from,
+          to,
+          e);
       throw new RepositoryException("Failed to find primary spend guild", e);
     }
 

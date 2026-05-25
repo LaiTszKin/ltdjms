@@ -18,9 +18,9 @@ import ltdjms.discord.gametoken.services.GameTokenTransactionService;
 import ltdjms.discord.membership.domain.GlobalMemberMembership;
 import ltdjms.discord.membership.domain.MembershipTier;
 import ltdjms.discord.membership.persistence.JdbcMembershipRepository;
+import ltdjms.discord.membership.persistence.JdbcMembershipSettlementCoordinator;
 import ltdjms.discord.membership.persistence.JdbcMembershipSpendRepository;
 import ltdjms.discord.membership.persistence.JdbcMembershipTokenGrantRepository;
-import ltdjms.discord.membership.persistence.JdbcMembershipSettlementCoordinator;
 import ltdjms.discord.membership.persistence.MembershipRepository;
 import ltdjms.discord.membership.persistence.MembershipSpendRepository;
 import ltdjms.discord.membership.services.MembershipJoinService;
@@ -44,6 +44,7 @@ class MembershipSettlementIntegrationTest extends PostgresIntegrationTestBase {
   private MembershipRepository membershipRepository;
   private MembershipSpendRepository spendRepository;
   private MembershipTokenGrantService tokenGrantService;
+  private MembershipJoinService joinService;
   private MembershipSettlementService settlementService;
   private GameTokenService gameTokenService;
   private RecordingEventPublisher eventPublisher;
@@ -72,12 +73,10 @@ class MembershipSettlementIntegrationTest extends PostgresIntegrationTestBase {
             gameTokenService,
             transactionService);
     Clock clock = Clock.fixed(SETTLE_NOW, MembershipJoinService.SETTLEMENT_ZONE);
+    joinService = new MembershipJoinService(membershipRepository, clock);
     settlementService =
         new MembershipSettlementService(
-            new JdbcMembershipSettlementCoordinator(dataSource),
-            tokenGrantService,
-            eventPublisher,
-            clock);
+            new JdbcMembershipSettlementCoordinator(dataSource), eventPublisher, clock);
   }
 
   @Test
@@ -94,8 +93,10 @@ class MembershipSettlementIntegrationTest extends PostgresIntegrationTestBase {
     assertThat(settled.lastSettlementAt()).isEqualTo(PERIOD_END);
     assertThat(settled.nextSettlementAt()).isEqualTo(NEXT_SETTLEMENT);
     assertThat(eventPublisher.tierChanges()).hasSize(1);
-    assertThat(eventPublisher.tierChanges().get(0).previous()).isEqualTo(MembershipTier.BRONZE);
-    assertThat(eventPublisher.tierChanges().get(0).current()).isEqualTo(MembershipTier.SILVER);
+    assertThat(eventPublisher.tierChanges().get(0).previousTierCode())
+        .isEqualTo(MembershipTier.BRONZE.name());
+    assertThat(eventPublisher.tierChanges().get(0).currentTierCode())
+        .isEqualTo(MembershipTier.SILVER.name());
     assertThat(eventPublisher.tierChanges().get(0).periodAvgListPriceM()).isEqualTo(15_000L);
   }
 
@@ -136,6 +137,7 @@ class MembershipSettlementIntegrationTest extends PostgresIntegrationTestBase {
     insertSpend(15_000L, Instant.parse("2026-04-01T10:00:00Z"));
 
     assertThat(settlementService.settle(TEST_USER_ID)).isTrue();
+    tokenGrantService.retryPendingGrants();
 
     assertThat(gameTokenService.getBalance(TEST_GUILD_ID, TEST_USER_ID)).isEqualTo(100L);
     assertThat(
@@ -176,6 +178,51 @@ class MembershipSettlementIntegrationTest extends PostgresIntegrationTestBase {
     GlobalMemberMembership reSettled =
         membershipRepository.findByUserId(TEST_USER_ID).orElseThrow();
     assertThat(reSettled.currentTier()).isEqualTo(MembershipTier.SILVER);
+  }
+
+  @Test
+  @DisplayName("should be idempotent when settle is invoked twice for the same due period")
+  void shouldBeIdempotentOnConcurrentSettle() {
+    seedMembership(MembershipTier.BRONZE, true);
+    insertSpend(15_000L, Instant.parse("2026-04-01T10:00:00Z"));
+
+    assertThat(settlementService.settle(TEST_USER_ID)).isTrue();
+    assertThat(settlementService.settle(TEST_USER_ID)).isFalse();
+
+    GlobalMemberMembership settled = membershipRepository.findByUserId(TEST_USER_ID).orElseThrow();
+    assertThat(settled.currentTier()).isEqualTo(MembershipTier.SILVER);
+    assertThat(settled.lastSettlementAt()).isEqualTo(PERIOD_END);
+    assertThat(settled.nextSettlementAt()).isEqualTo(NEXT_SETTLEMENT);
+    assertThat(eventPublisher.tierChanges()).hasSize(1);
+  }
+
+  @Test
+  @DisplayName("should grant tokens when tier stays unchanged after settlement")
+  void shouldGrantTokensWhenTierUnchanged() {
+    seedMembership(MembershipTier.SILVER, true);
+    insertSpend(15_000L, Instant.parse("2026-04-01T10:00:00Z"));
+
+    assertThat(settlementService.settle(TEST_USER_ID)).isTrue();
+    tokenGrantService.retryPendingGrants();
+
+    GlobalMemberMembership settled = membershipRepository.findByUserId(TEST_USER_ID).orElseThrow();
+    assertThat(settled.currentTier()).isEqualTo(MembershipTier.SILVER);
+    assertThat(eventPublisher.tierChanges()).isEmpty();
+    assertThat(gameTokenService.getBalance(TEST_GUILD_ID, TEST_USER_ID)).isEqualTo(100L);
+  }
+
+  @Test
+  @DisplayName("should not overwrite next_settlement_at when later guild join arrives")
+  void shouldNotOverwriteNextSettlementOnLaterJoin() {
+    seedMembership(MembershipTier.SILVER, true);
+    Instant laterJoin = Instant.parse("2026-06-01T12:00:00+08:00");
+
+    joinService.onMemberJoin(TEST_USER_ID, laterJoin);
+
+    GlobalMemberMembership membership =
+        membershipRepository.findByUserId(TEST_USER_ID).orElseThrow();
+    assertThat(membership.nextSettlementAt()).isEqualTo(PERIOD_END);
+    assertThat(membership.earliestGuildJoinAt()).isEqualTo(PERIOD_START);
   }
 
   private void seedMembership(MembershipTier tier, boolean bronzeFlag) {

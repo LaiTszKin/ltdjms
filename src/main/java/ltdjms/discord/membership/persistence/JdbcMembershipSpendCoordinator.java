@@ -16,6 +16,7 @@ import ltdjms.discord.currency.persistence.RepositoryException;
 import ltdjms.discord.membership.domain.GlobalMemberMembership;
 import ltdjms.discord.membership.domain.MembershipPeriodBounds;
 import ltdjms.discord.membership.domain.MembershipTier;
+import ltdjms.discord.membership.domain.MembershipTierEvaluator;
 
 /**
  * Coordinates atomic spend insertion and bronze qualification across membership tables within a
@@ -31,12 +32,13 @@ public class JdbcMembershipSpendCoordinator {
           + " source_reference, paid_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
           + " ON CONFLICT (source_type, source_reference) DO NOTHING";
 
-  private static final String QUALIFY_BRONZE_SQL =
-      "UPDATE global_member_membership SET"
-          + " has_qualifying_bronze_order = TRUE,"
-          + " current_tier = CASE WHEN current_tier = 'NONE' THEN 'BRONZE' ELSE current_tier END,"
-          + " updated_at = ?"
+  private static final String QUALIFY_BRONZE_FLAG_SQL =
+      "UPDATE global_member_membership SET has_qualifying_bronze_order = TRUE, updated_at = ?"
           + " WHERE discord_user_id = ? AND has_qualifying_bronze_order = FALSE";
+
+  private static final String UPDATE_TIER_SQL =
+      "UPDATE global_member_membership SET current_tier = ?, updated_at = ?"
+          + " WHERE discord_user_id = ?";
 
   private static final String REOPEN_PERIOD_SQL =
       "UPDATE global_member_membership SET"
@@ -85,7 +87,7 @@ public class JdbcMembershipSpendCoordinator {
                 paidAt);
         boolean bronzePromoted = false;
         if (inserted && listPriceTwd >= bronzeThresholdListPriceTwd) {
-          bronzePromoted = qualifyBronze(conn, discordUserId);
+          bronzePromoted = qualifyBronze(conn, discordUserId, membershipOpt.orElse(null));
         }
         if (inserted && membershipOpt.isPresent()) {
           reopenClosedPeriodIfNeeded(conn, membershipOpt.get(), discordUserId, paidAt);
@@ -124,7 +126,7 @@ public class JdbcMembershipSpendCoordinator {
       stmt.setLong(1, discordUserId);
       try (ResultSet rs = stmt.executeQuery()) {
         if (rs.next()) {
-          return Optional.of(mapRow(rs));
+          return Optional.of(GlobalMemberMembershipRowMapper.mapRow(rs));
         }
       }
     }
@@ -155,8 +157,8 @@ public class JdbcMembershipSpendCoordinator {
       stmt.executeUpdate();
     }
     LOG.warn(
-        "Reopened membership settlement period for late spend: userId={}, paidAt={}, periodStart={},"
-            + " periodEnd={}",
+        "Reopened membership settlement period for late spend: userId={}, paidAt={},"
+            + " periodStart={}, periodEnd={}",
         discordUserId,
         paidAt,
         periodStart,
@@ -185,33 +187,27 @@ public class JdbcMembershipSpendCoordinator {
     }
   }
 
-  private static boolean qualifyBronze(Connection conn, long discordUserId) throws SQLException {
-    try (PreparedStatement stmt = conn.prepareStatement(QUALIFY_BRONZE_SQL)) {
+  private static boolean qualifyBronze(
+      Connection conn, long discordUserId, GlobalMemberMembership membership) throws SQLException {
+    try (PreparedStatement stmt = conn.prepareStatement(QUALIFY_BRONZE_FLAG_SQL)) {
       stmt.setTimestamp(1, Timestamp.from(Instant.now()));
       stmt.setLong(2, discordUserId);
-      return stmt.executeUpdate() == 1;
+      if (stmt.executeUpdate() != 1) {
+        return false;
+      }
     }
-  }
 
-  private static GlobalMemberMembership mapRow(ResultSet rs) throws SQLException {
-    Integer settlementDay =
-        rs.getObject("settlement_day_of_month") == null
-            ? null
-            : rs.getInt("settlement_day_of_month");
-
-    return new GlobalMemberMembership(
-        rs.getLong("discord_user_id"),
-        MembershipTier.fromDbValue(rs.getString("current_tier")),
-        toInstant(rs.getTimestamp("earliest_guild_join_at")),
-        settlementDay,
-        toInstant(rs.getTimestamp("last_settlement_at")),
-        toInstant(rs.getTimestamp("next_settlement_at")),
-        rs.getBoolean("has_qualifying_bronze_order"),
-        rs.getTimestamp("created_at").toInstant(),
-        rs.getTimestamp("updated_at").toInstant());
-  }
-
-  private static Instant toInstant(Timestamp timestamp) {
-    return timestamp == null ? null : timestamp.toInstant();
+    MembershipTier previousTier =
+        membership == null ? MembershipTier.NONE : membership.currentTier();
+    MembershipTier promotedTier = MembershipTierEvaluator.effectiveTier(previousTier, true);
+    if (promotedTier != previousTier) {
+      try (PreparedStatement stmt = conn.prepareStatement(UPDATE_TIER_SQL)) {
+        stmt.setString(1, promotedTier.name());
+        stmt.setTimestamp(2, Timestamp.from(Instant.now()));
+        stmt.setLong(3, discordUserId);
+        stmt.executeUpdate();
+      }
+    }
+    return previousTier == MembershipTier.NONE && promotedTier == MembershipTier.BRONZE;
   }
 }
