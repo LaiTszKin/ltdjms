@@ -77,6 +77,7 @@ Given an administrator has selected a member
 When they choose add, deduct, or set mode and submit a non-negative integer M amount  
 Then an `ADMIN_ADJUST` row is appended to `membership_spend_entry` with a signed delta  
 And the admin detail embed refreshes with the updated period sum  
+And `MembershipPeriodSpendChangedEvent` refreshes the member's open user panel (period spend and progress)  
 And tier is not recalculated immediately (settlement still applies on schedule)
 
 ### Set Membership Tier

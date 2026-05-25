@@ -66,5 +66,11 @@ Then they see join date (Discord `<t:epoch:D>` or「尚未記錄」), current ti
 
 ### Panel Updates on Tier Change
 Given the member has an open user panel  
-When membership tier changes after settlement or bronze promotion  
+When membership tier changes after settlement, bronze promotion, or admin tier adjustment  
 Then the panel refreshes to show the updated tier, join date, benefits, remaining M, and progress
+
+### Panel Updates on Period Spend Change
+Given the member has an open user panel  
+When an administrator adjusts the member's period spend M via `ADMIN_ADJUST`  
+Then `MembershipPeriodSpendChangedEvent` is published  
+And the panel refreshes to show the updated period spend M, remaining M, and progress
