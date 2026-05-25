@@ -11,7 +11,10 @@ public record MembershipPanelSummary(
     long periodSpendListPriceM,
     long nextTierThresholdM,
     Instant nextSettlementAt,
-    BigDecimal discountRate) {
+    BigDecimal discountRate,
+    Instant earliestGuildJoinAt,
+    long remainingToNextTierM,
+    int monthlyTokenGrant) {
 
   public boolean hasNextTierThreshold() {
     return nextTierThresholdM > 0;
@@ -23,5 +26,13 @@ public record MembershipPanelSummary(
       return 1.0;
     }
     return Math.min(1.0, (double) periodSpendListPriceM / nextTierThresholdM);
+  }
+
+  /** Remaining catalog list-price M until the next tier threshold; zero when no threshold. */
+  public static long computeRemaining(long spent, long threshold) {
+    if (threshold <= 0) {
+      return 0;
+    }
+    return Math.max(0, threshold - spent);
   }
 }

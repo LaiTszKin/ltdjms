@@ -62,9 +62,9 @@ And permanently failing retries are dead-lettered after max attempts
 ### View Membership Progress
 Given the member opens `/user-panel`  
 When membership data exists  
-Then they see current tier, period spend progress toward the next tier, and next settlement date
+Then they see join date (Discord `<t:epoch:D>` or「尚未記錄」), current tier, current benefits (escort discount and monthly token grant), period spend M, remaining M to the next tier, progress toward the next threshold, and next settlement date
 
 ### Panel Updates on Tier Change
 Given the member has an open user panel  
 When membership tier changes after settlement or bronze promotion  
-Then the panel refreshes to show the updated tier and progress
+Then the panel refreshes to show the updated tier, join date, benefits, remaining M, and progress

@@ -145,7 +145,14 @@ class UserPanelUpdateListenerTest {
     void shouldUpdatePanelOnMembershipTierChangedEvent() {
       MembershipPanelSummary summary =
           new MembershipPanelSummary(
-              MembershipTier.SILVER, 15_000L, 30_000L, null, MembershipTier.SILVER.discountRate());
+              MembershipTier.SILVER,
+              15_000L,
+              30_000L,
+              null,
+              MembershipTier.SILVER.discountRate(),
+              Instant.parse("2025-01-01T00:00:00Z"),
+              15_000L,
+              MembershipTier.SILVER.monthlyTokenGrant());
       UserPanelView view =
           new UserPanelView(TEST_GUILD_ID, TEST_USER_ID, 1_000L, "星幣", "✨", 50L, summary);
       when(userPanelService.getMembershipSummary(TEST_USER_ID)).thenReturn(summary);

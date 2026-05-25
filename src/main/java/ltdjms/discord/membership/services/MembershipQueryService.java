@@ -52,21 +52,30 @@ public class MembershipQueryService {
             membership.currentTier(), membership.hasQualifyingBronzeOrder());
 
     long nextTierThresholdM = MembershipTierLabels.nextTierThresholdM(effectiveTier).orElse(0L);
+    long remainingToNextTierM =
+        MembershipPanelSummary.computeRemaining(periodSpendM, nextTierThresholdM);
 
     return new MembershipPanelSummary(
         effectiveTier,
         periodSpendM,
         nextTierThresholdM,
         membership.nextSettlementAt(),
-        effectiveTier.discountRate());
+        effectiveTier.discountRate(),
+        membership.earliestGuildJoinAt(),
+        remainingToNextTierM,
+        effectiveTier.monthlyTokenGrant());
   }
 
   private static MembershipPanelSummary noneSummary(Instant nextSettlementAt) {
+    long silverThresholdM = MembershipTier.SILVER.thresholdListPriceTwd();
     return new MembershipPanelSummary(
         MembershipTier.NONE,
         0L,
-        MembershipTier.SILVER.thresholdListPriceTwd(),
+        silverThresholdM,
         nextSettlementAt,
-        MembershipTier.NONE.discountRate());
+        MembershipTier.NONE.discountRate(),
+        null,
+        MembershipPanelSummary.computeRemaining(0L, silverThresholdM),
+        MembershipTier.NONE.monthlyTokenGrant());
   }
 }

@@ -74,7 +74,15 @@ class MemberInfoFacadeTest {
       when(gameTokenService.getBalance(TEST_GUILD_ID, TEST_USER_ID)).thenReturn(50L);
       when(membershipQueryService.getPanelSummary(TEST_USER_ID))
           .thenReturn(
-              new MembershipPanelSummary(MembershipTier.NONE, 0L, 15_000L, null, BigDecimal.ZERO));
+              new MembershipPanelSummary(
+                  MembershipTier.NONE,
+                  0L,
+                  15_000L,
+                  null,
+                  BigDecimal.ZERO,
+                  null,
+                  15_000L,
+                  0));
 
       Result<UserPanelView, DomainError> result =
           facade.getUserPanelView(TEST_GUILD_ID, TEST_USER_ID);
@@ -117,7 +125,15 @@ class MemberInfoFacadeTest {
       when(gameTokenService.getBalance(TEST_GUILD_ID, TEST_USER_ID)).thenReturn(0L);
       when(membershipQueryService.getPanelSummary(TEST_USER_ID))
           .thenReturn(
-              new MembershipPanelSummary(MembershipTier.NONE, 0L, 15_000L, null, BigDecimal.ZERO));
+              new MembershipPanelSummary(
+                  MembershipTier.NONE,
+                  0L,
+                  15_000L,
+                  null,
+                  BigDecimal.ZERO,
+                  null,
+                  15_000L,
+                  0));
 
       Result<UserPanelView, DomainError> result =
           facade.getUserPanelView(TEST_GUILD_ID, TEST_USER_ID);
@@ -142,7 +158,10 @@ class MemberInfoFacadeTest {
                   20_000L,
                   MembershipTier.GOLD.thresholdListPriceTwd(),
                   nextSettlement,
-                  MembershipTier.SILVER.discountRate()));
+                  MembershipTier.SILVER.discountRate(),
+                  Instant.parse("2025-03-01T00:00:00Z"),
+                  13_000L,
+                  MembershipTier.SILVER.monthlyTokenGrant()));
 
       MembershipPanelSummary summary = facade.getMembershipSummary(TEST_USER_ID);
 

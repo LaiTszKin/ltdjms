@@ -42,6 +42,25 @@ class UserPanelEmbedBuilderTest {
         membershipSummary);
   }
 
+  private static MembershipPanelSummary panelSummary(
+      MembershipTier tier,
+      long periodSpend,
+      long nextThreshold,
+      Instant nextSettlement,
+      Instant joinAt,
+      long remaining,
+      int monthlyGrant) {
+    return new MembershipPanelSummary(
+        tier,
+        periodSpend,
+        nextThreshold,
+        nextSettlement,
+        tier.discountRate(),
+        joinAt,
+        remaining,
+        monthlyGrant);
+  }
+
   @Test
   @DisplayName("buildPanelEmbed 應包含正確的標題和描述")
   void buildPanelEmbedShouldContainCorrectTitleAndDescription() {
@@ -100,45 +119,88 @@ class UserPanelEmbedBuilderTest {
   @Test
   @DisplayName("buildPanelEmbed 應包含會員等級欄位")
   void buildPanelEmbedShouldContainMembershipField() {
+    Instant joinAt = Instant.parse("2025-06-01T00:00:00Z");
     MembershipPanelSummary summary =
-        new MembershipPanelSummary(
+        panelSummary(
             MembershipTier.GOLD,
             20_000L,
             MembershipTier.PLATINUM.thresholdListPriceTwd(),
             Instant.parse("2026-05-15T00:00:00+08:00"),
-            MembershipTier.GOLD.discountRate());
+            joinAt,
+            80_000L,
+            MembershipTier.GOLD.monthlyTokenGrant());
     UserPanelView view = createTestView(100L, 42L, summary);
 
     MessageEmbed embed = UserPanelEmbedBuilder.buildPanelEmbed(view, TEST_USER_MENTION);
 
     MessageEmbed.Field membershipField = embed.getFields().get(2);
     assertThat(membershipField.getName()).isEqualTo("會員等級");
+    assertThat(membershipField.getValue()).contains("加入日期");
+    assertThat(membershipField.getValue())
+        .contains(String.format("<t:%d:D>", joinAt.getEpochSecond()));
     assertThat(membershipField.getValue()).contains("黃金");
+    assertThat(membershipField.getValue()).contains("目前權益");
     assertThat(membershipField.getValue()).contains("護航 85 折");
+    assertThat(membershipField.getValue()).contains("每月贈幣 200");
     assertThat(membershipField.getValue()).contains("20,000");
+    assertThat(membershipField.getValue()).contains("距下一等級");
+    assertThat(membershipField.getValue()).contains("還需 80,000 M");
     assertThat(membershipField.getValue()).contains("下一門檻進度");
     assertThat(membershipField.getValue()).contains("下次結算日");
   }
 
   @Test
-  @DisplayName("buildPanelEmbed NONE tier with progress should show period spend")
+  @DisplayName("buildPanelEmbed NONE tier should show silver remaining and bronze hint")
   void buildPanelEmbedShouldShowNoneTierProgress() {
     MembershipPanelSummary summary =
-        new MembershipPanelSummary(
+        panelSummary(
             MembershipTier.NONE,
             300L,
             MembershipTier.SILVER.thresholdListPriceTwd(),
             Instant.parse("2026-05-15T00:00:00+08:00"),
-            MembershipTier.NONE.discountRate());
+            null,
+            13_700L,
+            MembershipTier.NONE.monthlyTokenGrant());
     UserPanelView view = createTestView(100L, 5L, summary);
 
     MessageEmbed embed = UserPanelEmbedBuilder.buildPanelEmbed(view, TEST_USER_MENTION);
 
     MessageEmbed.Field membershipField = embed.getFields().get(2);
+    assertThat(membershipField.getValue()).contains("加入日期");
+    assertThat(membershipField.getValue()).contains("尚未記錄");
+    assertThat(membershipField.getValue()).contains("目前權益");
+    assertThat(membershipField.getValue()).contains("升級青銅");
     assertThat(membershipField.getValue()).contains("本週期累計 M");
     assertThat(membershipField.getValue()).contains("300");
+    assertThat(membershipField.getValue()).contains("距下一等級");
+    assertThat(membershipField.getValue()).contains("還需 13,700 M");
+    assertThat(membershipField.getValue()).contains("下一門檻進度");
     assertThat(membershipField.getValue()).contains("下次結算日");
-    assertThat(membershipField.getValue()).contains("距離白銀門檻");
+  }
+
+  @Test
+  @DisplayName("buildPanelEmbed BLACK tier should show max tier labels")
+  void buildPanelEmbedShouldShowBlackTierMaxLevel() {
+    Instant joinAt = Instant.parse("2024-01-01T00:00:00Z");
+    MembershipPanelSummary summary =
+        panelSummary(
+            MembershipTier.BLACK,
+            260_000L,
+            0L,
+            Instant.parse("2026-05-15T00:00:00+08:00"),
+            joinAt,
+            0L,
+            MembershipTier.BLACK.monthlyTokenGrant());
+    UserPanelView view = createTestView(100L, 5L, summary);
+
+    MessageEmbed embed = UserPanelEmbedBuilder.buildPanelEmbed(view, TEST_USER_MENTION);
+
+    MessageEmbed.Field membershipField = embed.getFields().get(2);
+    assertThat(membershipField.getValue()).contains("黑金");
+    assertThat(membershipField.getValue()).contains("距下一等級");
+    assertThat(membershipField.getValue()).contains("已達最高等級");
+    assertThat(membershipField.getValue()).contains("下一門檻進度");
+    assertThat(membershipField.getValue()).contains("每月贈幣 2000");
   }
 
   @Test

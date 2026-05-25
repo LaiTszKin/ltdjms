@@ -1,6 +1,9 @@
 package ltdjms.discord.panel.services;
 
+import java.time.Instant;
+
 import ltdjms.discord.membership.domain.MembershipTier;
+import ltdjms.discord.membership.domain.MembershipTierLabels;
 import ltdjms.discord.membership.services.MembershipPanelSummary;
 
 /**
@@ -28,6 +31,7 @@ public record UserPanelView(
   private static final String GAME_TOKEN_NAME = "遊戲代幣";
   private static final String NONE_TIER_HINT =
       "尚未達標（需完成 M≥500 護航法幣單）\n" + "完成一筆 NT$500 以上護航法幣訂單即可升級青銅";
+  private static final String NONE_TIER_BENEFITS_HINT = "完成一筆 NT$500 以上護航法幣訂單即可升級青銅";
 
   /**
    * Gets the embed title for the user panel.
@@ -73,68 +77,93 @@ public record UserPanelView(
 
   private String formatNoneTierMembershipField() {
     StringBuilder builder = new StringBuilder();
+    appendJoinDate(builder, membershipSummary.earliestGuildJoinAt());
     builder.append("**等級：**尚未達標\n");
-    builder
-        .append("**本週期累計 M：**")
-        .append(String.format("%,d", membershipSummary.periodSpendListPriceM()))
-        .append('\n');
-
-    if (membershipSummary.hasNextTierThreshold()) {
-      int progressPercent = (int) Math.round(membershipSummary.nextTierProgressRatio() * 100);
-      builder
-          .append("**距離白銀門檻：**")
-          .append(progressPercent)
-          .append("% (")
-          .append(String.format("%,d", membershipSummary.periodSpendListPriceM()))
-          .append(" / ")
-          .append(String.format("%,d", membershipSummary.nextTierThresholdM()))
-          .append(" M)\n");
-    }
-
-    if (membershipSummary.nextSettlementAt() != null) {
-      long epochSeconds = membershipSummary.nextSettlementAt().getEpochSecond();
-      builder.append("**下次結算日：**").append(String.format("<t:%d:D>", epochSeconds)).append('\n');
-    }
-
-    builder.append(NONE_TIER_HINT);
+    builder.append("**目前權益：**").append(NONE_TIER_BENEFITS_HINT).append('\n');
+    appendPeriodSpend(builder, membershipSummary);
+    appendRemainingToNextTier(builder, membershipSummary);
+    appendNextTierProgress(builder, membershipSummary);
+    appendNextSettlement(builder, membershipSummary.nextSettlementAt());
     return builder.toString();
   }
 
   private static String formatActiveTierMembershipField(MembershipPanelSummary membershipSummary) {
-    ltdjms.discord.membership.domain.MembershipTier tier = membershipSummary.tier();
-    String tierName = ltdjms.discord.membership.domain.MembershipTierLabels.displayName(tier);
-    String discount = ltdjms.discord.membership.domain.MembershipTierLabels.discountLabel(tier);
+    MembershipTier tier = membershipSummary.tier();
+    String tierName = MembershipTierLabels.displayName(tier);
 
     StringBuilder builder = new StringBuilder();
+    appendJoinDate(builder, membershipSummary.earliestGuildJoinAt());
     builder.append("**等級：**").append(tierName).append('\n');
-    builder.append("**護航折扣：**").append(discount).append('\n');
+    appendCurrentBenefits(builder, membershipSummary);
+    appendPeriodSpend(builder, membershipSummary);
+    appendRemainingToNextTier(builder, membershipSummary);
+    appendNextTierProgress(builder, membershipSummary);
+    appendNextSettlement(builder, membershipSummary.nextSettlementAt());
+    return builder.toString();
+  }
+
+  private static void appendJoinDate(StringBuilder builder, Instant joinAt) {
+    builder.append("**加入日期：**");
+    if (joinAt != null) {
+      builder.append(String.format("<t:%d:D>", joinAt.getEpochSecond()));
+    } else {
+      builder.append("尚未記錄");
+    }
+    builder.append('\n');
+  }
+
+  private static void appendCurrentBenefits(StringBuilder builder, MembershipPanelSummary summary) {
+    String discount = MembershipTierLabels.discountLabel(summary.tier());
+    String tokenPart =
+        summary.monthlyTokenGrant() > 0
+            ? "每月贈幣 " + summary.monthlyTokenGrant()
+            : "每月贈幣：無";
+    builder.append("**目前權益：**").append(discount).append("、").append(tokenPart).append('\n');
+  }
+
+  private static void appendPeriodSpend(StringBuilder builder, MembershipPanelSummary summary) {
     builder
         .append("**本週期累計 M：**")
-        .append(String.format("%,d", membershipSummary.periodSpendListPriceM()))
+        .append(String.format("%,d", summary.periodSpendListPriceM()))
         .append('\n');
+  }
 
-    if (membershipSummary.hasNextTierThreshold()) {
-      int progressPercent = (int) Math.round(membershipSummary.nextTierProgressRatio() * 100);
+  private static void appendRemainingToNextTier(StringBuilder builder, MembershipPanelSummary summary) {
+    builder.append("**距下一等級：**");
+    if (summary.hasNextTierThreshold()) {
+      builder
+          .append("還需 ")
+          .append(String.format("%,d", summary.remainingToNextTierM()))
+          .append(" M");
+    } else {
+      builder.append("已達最高等級");
+    }
+    builder.append('\n');
+  }
+
+  private static void appendNextTierProgress(StringBuilder builder, MembershipPanelSummary summary) {
+    if (summary.hasNextTierThreshold()) {
+      int progressPercent = (int) Math.round(summary.nextTierProgressRatio() * 100);
       builder
           .append("**下一門檻進度：**")
           .append(progressPercent)
           .append("% (")
-          .append(String.format("%,d", membershipSummary.periodSpendListPriceM()))
+          .append(String.format("%,d", summary.periodSpendListPriceM()))
           .append(" / ")
-          .append(String.format("%,d", membershipSummary.nextTierThresholdM()))
+          .append(String.format("%,d", summary.nextTierThresholdM()))
           .append(" M)\n");
     } else {
       builder.append("**下一門檻進度：**已達最高等級\n");
     }
+  }
 
-    if (membershipSummary.nextSettlementAt() != null) {
-      long epochSeconds = membershipSummary.nextSettlementAt().getEpochSecond();
-      builder.append("**下次結算日：**").append(String.format("<t:%d:D>", epochSeconds));
+  private static void appendNextSettlement(StringBuilder builder, Instant nextSettlementAt) {
+    builder.append("**下次結算日：**");
+    if (nextSettlementAt != null) {
+      builder.append(String.format("<t:%d:D>", nextSettlementAt.getEpochSecond()));
     } else {
-      builder.append("**下次結算日：**尚未設定");
+      builder.append("尚未設定");
     }
-
-    return builder.toString();
   }
 
   /** Field name for the membership embed section. */

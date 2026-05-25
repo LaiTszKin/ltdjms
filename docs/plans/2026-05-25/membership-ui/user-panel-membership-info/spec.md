@@ -33,8 +33,8 @@
 **Uncertainty Level**: Known
 
 **Requirements**:
-- [ ] R1.1 有 join 記錄時使用 Discord 動態日期格式 `<t:epochSeconds:D>`
-- [ ] R1.2 無 membership 列或 join 為 null → 顯示「**加入日期：**尚未記錄」
+- [x] R1.1 有 join 記錄時使用 Discord 動態日期格式 `<t:epochSeconds:D>`
+- [x] R1.2 無 membership 列或 join 為 null → 顯示「**加入日期：**尚未記錄」
 
 ### Requirement 2: 距下一等級剩餘消費
 **GIVEN** 用戶有效 tier 低於 BLACK，且存在下一門檻 M
@@ -44,10 +44,10 @@
 **Uncertainty Level**: Known
 
 **Requirements**:
-- [ ] R2.1 `remainingM = max(0, nextTierThresholdM - periodSpendListPriceM)`
-- [ ] R2.2 NONE 用戶下一門檻為 SILVER（14,000 M）；顯示距白銀剩餘 M
-- [ ] R2.3 已達最高等級（BLACK 或無下一門檻）→ 顯示「**距下一等級：**已達最高等級」
-- [ ] R2.4 保留既有「下一門檻進度 X% (spent/threshold)」行（不刪除）
+- [x] R2.1 `remainingM = max(0, nextTierThresholdM - periodSpendListPriceM)`
+- [x] R2.2 NONE 用戶下一門檻為 SILVER（14,000 M）；顯示距白銀剩餘 M
+- [x] R2.3 已達最高等級（BLACK 或無下一門檻）→ 顯示「**距下一等級：**已達最高等級」
+- [x] R2.4 保留既有「下一門檻進度 X% (spent/threshold)」行（不刪除）
 
 ### Requirement 3: 目前會員權益
 **GIVEN** 用戶有效 tier 非 NONE
@@ -57,15 +57,15 @@
 **Uncertainty Level**: Known
 
 **Requirements**:
-- [ ] R3.1 護航折扣沿用 `MembershipTierLabels.discountLabel(tier)`
-- [ ] R3.2 每月贈幣：`monthlyTokenGrant > 0` 時顯示「每月贈幣 {N}」；0 時顯示「每月贈幣：無」
-- [ ] R3.3 NONE 用戶在權益區顯示「完成 qualifying 護航法幣單可升級青銅」提示（與既有 hint 合併，避免重複段落）
+- [x] R3.1 護航折扣沿用 `MembershipTierLabels.discountLabel(tier)`
+- [x] R3.2 每月贈幣：`monthlyTokenGrant > 0` 時顯示「每月贈幣 {N}」；0 時顯示「每月贈幣：無」
+- [x] R3.3 NONE 用戶在權益區顯示「完成 qualifying 護航法幣單可升級青銅」提示（與既有 hint 合併，避免重複段落）
 
 ## Error and Edge Cases
-- [ ] membership 查詢失敗 → 沿用既有 NONE hint，不 crash handler
-- [ ] period spend 為 0、remaining = threshold → 顯示完整 threshold 數值
-- [ ] embed field 字元 ≤ 1024（權益 + 進度 + 日期不超限）
-- [ ] `UserPanelUpdateListener` 刷新時新欄位一併更新
+- [x] membership 查詢失敗 → 沿用既有 NONE hint，不 crash handler
+- [x] period spend 為 0、remaining = threshold → 顯示完整 threshold 數值
+- [x] embed field 字元 ≤ 1024（權益 + 進度 + 日期不超限）
+- [x] `UserPanelUpdateListener` 刷新時新欄位一併更新
 
 ## Clarification Questions
 
