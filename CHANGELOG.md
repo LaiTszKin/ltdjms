@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.36.0] - 2026-05-25
+
+### Added
+- **membership/tiers**: 新增全域會員等級系統，含 Bronze 保底、結算日週期消費累計、每月代幣發放與等級折扣
+- **membership/settlement**: 新增背景結算排程，依週期平均消費 M 重算等級並發放月代幣
+- **membership/spend**: 法幣護航訂單與管理員 `ADMIN_ADJUST` 調整會寫入 `membership_spend_entry` ledger
+- **membership/user-panel**: 用戶面板顯示等級、加入日期、本週期消費 M、升級進度與權益摘要
+- **membership/shop**: 商店列表、購買選單與護航法幣付款顯示會員折扣報價
+- **membership/admin**: 管理面板新增「🏅 會員等級管理」，支援查看詳情、調整本週期消費 M 與手動設定等級
+- **docs/atlas**: 新增互動式 SVG 架構圖與功能模塊細節頁
+- **typescript/monorepo**: 新增 `@ltdjms/*` TypeScript 套件骨架，作為 Java bot 原生移植基礎
+- **testing/pbt**: 新增 Integration PBT 測試基礎設施與 economy / shop / admin 屬性測試
+
+### Fixed
+- **membership/admin**: 修正調整消費後本週期 M 顯示為 0（membership 列建立時序與 period start 計算）
+- **membership/admin**: 修正調整消費頁「返回」無反應，以及 modal 提交後面板未刷新
+- **membership/settlement**: 修正結算、消費累計、代幣發放與商店確認流程的多項 QA 問題
+- **membership/shop**: 修正會員折扣顯示、報價與用戶面板即時刷新
+- **panel/admin**: 修正多個管理面板 defer / modal / select menu 互動問題
+
+### Changed
+- **build/docker**: Docker Compose 預設建置並啟動 Java bot 映像
+- **docs**: 新增並歸檔 membership-tiers、membership-ui 規格，同步 features / architecture / principles 文檔
+
+### Docs
+- **docs/features/membership-tiers.md**: 會員等級、結算、消費 ledger 與面板行為
+- **docs/features/administration.md**: 管理員調整等級與本週期消費
+- **docs/principles/event-driven-patterns.md**: 新增 `MembershipPeriodSpendChangedEvent` 等事件說明
+
 ## [0.35.4] - 2026-05-17
 
 ### Added
